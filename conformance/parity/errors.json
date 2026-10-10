@@ -1,6 +1,6 @@
 {
   "$schema": "./errors.schema.json",
-  "$comment": "The error-code registry: every code the Worker answers with or an SDK raises. A new code needs an entry here FIRST. `pnpm gen constants` generates every SDK's ErrorCode constants from this file (tools/gen-sdk-constants.ts) and fails when the Worker's source emits a wire code missing here, or when a `wire` entry is no longer emitted. Each SDK's registry test fails when that SDK raises a code missing here. Codes are recorded as they are: wire codes are snake_case, client codes mostly kebab-case, and hosts match on the exact string, so renaming one is a behaviour change.",
+  "$comment": "The error-code registry: every code the Worker answers with, an SDK raises, or an SDK's server core answers a product backend's caller with (kind `backend`, WIRE-CONTRACT-V4 §14; never emitted by the Worker). A new code needs an entry here FIRST. `pnpm gen constants` generates every SDK's ErrorCode constants from this file (tools/gen-sdk-constants.ts) and fails when the Worker's source emits a wire code missing here, or when a `wire` entry is no longer emitted. Each SDK's registry test fails when that SDK raises a code missing here. Codes are recorded as they are: wire codes are snake_case, client codes mostly kebab-case, and hosts match on the exact string, so renaming one is a behaviour change.",
   "registryVersion": 1,
   "codes": [
     {
@@ -938,6 +938,30 @@
       "kind": "client",
       "service": "release",
       "description": "An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8)."
+    },
+    {
+      "code": "license_required",
+      "kind": "backend",
+      "service": "license",
+      "description": "401 from a product backend: the request carries no `X-PKey-License` (WIRE-CONTRACT-V4 §14.2 step 1). The client half shows its gate."
+    },
+    {
+      "code": "license_invalid",
+      "kind": "backend",
+      "service": "license",
+      "description": "401 from a product backend: the `X-PKey-License` value is longer than 16 384 bytes, is not three base64url segments, or fails the strict verifier, its issuer, its product, its device or its `issuedAt` (WIRE-CONTRACT-V4 §14.2 steps 2 and 3). The client half syncs and retries once."
+    },
+    {
+      "code": "license_stale",
+      "kind": "backend",
+      "service": "license",
+      "description": "401 from a product backend: the licence document is past its freshness window (`expiresAt`, or the backend's `maxAgeSeconds`, plus 300 s) or the gate finds it unusable (WIRE-CONTRACT-V4 §14.2 steps 4 and 5). The client half syncs and retries once."
+    },
+    {
+      "code": "sign_in_required",
+      "kind": "backend",
+      "service": "identity",
+      "description": "403 from a product backend: the route needs a signed-in account and the licence document names none (`profile.user.subject` absent or malformed; WIRE-CONTRACT-V4 §14.2 step 6). Never retried; the client half offers sign-in."
     }
   ]
 }

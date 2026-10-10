@@ -2010,6 +2010,22 @@
     <string name="core_codes_marker_rejected_title">App build problem</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_marker_rejected_message">This build's built-in content isn't valid. Reinstall the app or contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_title">License needed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_message">Activate the app, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_title">License not accepted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_message">Your license couldn't be verified. Reconnect the app, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_title">License needs refreshing</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_message">Connect to the internet so the app can refresh your license, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_title">Sign-in needed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_message">Sign in to your Polaris Key account in the app, then try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">License active</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

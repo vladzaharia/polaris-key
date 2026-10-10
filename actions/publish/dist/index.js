@@ -13611,7 +13611,7 @@ var DISPLAY_TEXT_STRIP = [
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-J3YZDZLH.js
+// ../shared-protocol/dist/chunk-QT3KVLZX.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var PROTOCOL_VERSION = 4;
 var MAX_JSON_DEPTH = 64;

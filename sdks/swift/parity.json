@@ -48,6 +48,10 @@
       "status": "implemented",
       "note": "ErrorCopy serves the generated Copy.generated.swift tables: message(code)/title(code) look a code up in COPY_CODES, then COPY_GATE, then COPY_ACTIVATION; activationMessage/activationTitle (and ActivationResult.message/title) read COPY_ACTIVATION only; an unknown code reads COPY_FALLBACK naming it; {name} placeholders are filled from params or dropped; setOverrides is the host's English layer. The hand-written table is gone; PolarisCopy's gate titles and subtitles default to the gate table (ErrorCopyTests)."
     },
+    "core.backend": {
+      "status": "planned",
+      "wp": "SP-59"
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -360,6 +364,12 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.cli.mount": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal drop-ins are the headless SDKs' expectation."
+    },
     "ui.gate": {
       "status": "implemented",
       "note": "PolarisKeyUICore runs the gate family of ui-matrix.json (UIMatrixTests); PolarisKeyUI's .polarisKeyGate draws PolarisKeyGate, Boot (the first paint), StatusScreen, GraceBanner and the toast, rendered on the iOS 26 simulator in both schemes with performAccessibilityAudit (examples/ui/swiftui KitRenderTests; baselines in Tests/PolarisKeyUISnapshotTests/__Snapshots__). iOS and iPadOS; the Mac pass is UK-08."
@@ -419,6 +429,52 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-23"
+    },
+    "server.license": {
+      "status": "planned",
+      "wp": "SP-62",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "note": "An iOS app is not a server."
+        }
+      ],
+      "note": "PolarisKeyServer, building on Linux, and the Vapor package."
+    },
+    "server.signin": {
+      "status": "planned",
+      "wp": "SP-62",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "note": "An iOS app is not a server."
+        }
+      ]
+    },
+    "server.config": {
+      "status": "planned",
+      "unowned": true,
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "note": "An iOS app is not a server."
+        }
+      ],
+      "note": "No package yet: the framework drop-ins plan (§5.7) gives serverClient() to Node and Python only (SP-63). The normal client with a memory store works on a server today."
+    },
+    "server.webhooks": {
+      "status": "planned",
+      "wp": "SP-67",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "note": "An iOS app is not a server."
+        }
+      ]
     }
   }
 }

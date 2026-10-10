@@ -727,6 +727,24 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This build's built-in content isn't valid. Reinstall the app or contact the developer.",
   },
+  license_required: {
+    title: "License needed",
+    message: "Activate the app, then try again.",
+  },
+  license_invalid: {
+    title: "License not accepted",
+    message:
+      "Your license couldn't be verified. Reconnect the app, then try again.",
+  },
+  license_stale: {
+    title: "License needs refreshing",
+    message:
+      "Connect to the internet so the app can refresh your license, then try again.",
+  },
+  sign_in_required: {
+    title: "Sign-in needed",
+    message: "Sign in to your Polaris Key account in the app, then try again.",
+  },
 };
 
 /** Per licenseStatus. */

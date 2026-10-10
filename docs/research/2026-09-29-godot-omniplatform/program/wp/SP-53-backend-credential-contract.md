@@ -22,6 +22,17 @@
 - Sequencing: it starts **after UK-03** (so `ui-matrix.json` is not regenerated twice). **SP-53 merges first**; [SP-54](SP-54-signed-in-subject-in-licence-document.md) then rebases onto it, swaps this package's private total decoder of `profile.user.subject` for `licenseUserOf` in one line, and runs the **single batched `pnpm gen corpus`** (and `node tools/gen-transcripts.mjs`) over both sets of files. Each builder runs the scoped drift gate on its own branch and never re-commits the other's generated files.
 - SP-53 does not wait for I-05: its subject-bearing `verdict` rows build `profile.user` inline in the generator.
 
+## Corrections found at implementation (2026-10-10)
+
+The code is the fact; these override the plan and the text below.
+
+- **The section is §14, not §13.** WIRE-CONTRACT-V4 §13 is already "Cloud Sync (HTTP, additive)". "Product backends" is §14, and its subsections are §14.1 to §14.6.
+- **`errors.json` goes from 156 to 160 codes**, not 154 to 158 (two codes landed between the plan and this branch).
+- **The `type` URI is `https://key.plrs.im/docs/reference/error-codes/#<code>`.** The page is `reference/error-codes` (gen-reference); there is no `reference/errors`. The generated page gains a "Backend codes" section whose headings give each of the five codes its anchor.
+- **The four new copy keys do not change `ui-matrix.json`** (it reads the kit tables, which carry core copy, but no row names a backend code), so it is not regenerated.
+- **The generator's agreement check with client-core runs in the runners.** `tools/corpus/backend.ts` recomputes every row with its own reference and throws on a hand-written expectation that disagrees; the Node and browser runners then replay every row through client-core. The generator does not import client-core, so it stays independent of what it checks (the rule for `tools/corpus/`).
+- **`ui.cli.mount` mirrors `ui.cli`'s typed N/As** (React, Swift and Godot record N/A `runtime`; Node, Python and Kotlin are planned in UK-46, UK-48 and UK-54). Kotlin's and Swift's `server.*` rows are planned with an `except` for `android` and `ios`, which are not servers.
+
 ## Goal
 
 Backend credential contract: `X-PKey-License`, the verdict, `backend` codes and copy, `backend-matrix.json`, client-core `backend`, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -55,11 +66,11 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Acceptance criteria
 
-- [ ] WIRE-CONTRACT-V4 §13 is written and the verdict order, problem body and client rule are marked [C].
-- [ ] `gen corpus`, `gen constants --check` and `parity:check` pass with the new file and codes.
-- [ ] `PROTOCOL_VERSION` 4, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3 are unchanged.
-- [ ] The `backend` kind is exempt from the generator's Worker-emits-it check (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] WIRE-CONTRACT-V4 §13 is written and the verdict order, problem body and client rule are marked [C]. (It is §14: §13 is Cloud Sync. §14.1 headers, §14.2 verdict, §14.3 problem and §14.5 client rule are [C].)
+- [x] `gen corpus`, `gen constants --check` and `parity:check` pass with the new file and codes.
+- [x] `PROTOCOL_VERSION` 4, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3 are unchanged.
+- [x] The `backend` kind is exempt from the generator's Worker-emits-it check (test: `tools/gen-sdk-constants.test.ts`, which also refuses a backend code the Worker emits).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header (the lead gate, full scope; Kotlin `:core:test :conformance:test` and the browser runner's backend suites in Chromium run separately).
 
 ## Verify
 

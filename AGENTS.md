@@ -166,7 +166,7 @@ families, and `pnpm typecheck`). A green hook is not a green gate.
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
 gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json,
 update-matrix.json,outlet-matrix.json,plan-matrix.json,feed-url-matrix.json,
-sync-scenarios.json,device-label.json,presentation-matrix.json,ui-matrix.json}`, `conformance/corpus/v2/content/cases.json`
+sync-scenarios.json,device-label.json,presentation-matrix.json,ui-matrix.json,backend-matrix.json}`, `conformance/corpus/v2/content/cases.json`
 and the one generator-owned mirror at `sdks/godot/tests/corpus/v2/` are output (an exported Godot
 pack reads only `res://`; `content/` is not mirrored). Every other runner, Swift included, reads
 `conformance/` in place: the Swift tests find it through `CorpusLocator` (`#filePath`), so there is

@@ -197,6 +197,19 @@ the person's device. A pending passkey ceremony is held for 5 minutes: its rando
 the relying party, plus the same-origin return path for a sign-in, or the account id and its user
 handle for adding a passkey.
 
+### Product backends — the licence document sent to the developer's own server (SP-53)
+
+An app built with a client half (`client.backend`) sends its signed licence document to its
+developer's own backend in the `X-PKey-License` header, with its device id in `X-PKey-Device`
+(WIRE-CONTRACT-V4 §14). The document is the one the device already holds: it carries the licence
+holder's name and email (its signed `profile`), the licence id, the device id, the entitlements
+and, once SP-54 ships, the signed-in account's pairwise subject. It goes to the developer's own
+server, never to Polaris Key: the Worker never receives or reads the header, so nothing about these
+requests is collected or stored by Polaris Key. What that server keeps is the developer's own
+policy. The server drop-ins never log the header, the document or the holder's name and email, and
+the docs list the header for APM scrubbing. The device token and the config document are never
+sent.
+
 ### Not collected
 
 Hostname, OS username, IP-derived geolocation, browsing or file activity, a list of installed

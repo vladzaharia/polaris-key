@@ -632,6 +632,22 @@
     "marker-rejected": {
       "title": "Problem mit dem App-Build",
       "message": "Die integrierten Inhalte dieses Builds sind ungültig. Installieren Sie die App neu oder wenden Sie sich an den Entwickler."
+    },
+    "license_required": {
+      "title": "Lizenz erforderlich",
+      "message": "Aktivieren Sie die App und versuchen Sie es dann erneut."
+    },
+    "license_invalid": {
+      "title": "Lizenz nicht akzeptiert",
+      "message": "Ihre Lizenz konnte nicht verifiziert werden. Stellen Sie die Verbindung der App wieder her und versuchen Sie es dann erneut."
+    },
+    "license_stale": {
+      "title": "Lizenz muss aktualisiert werden",
+      "message": "Stellen Sie eine Internetverbindung her, damit die App Ihre Lizenz aktualisieren kann, und versuchen Sie es dann erneut."
+    },
+    "sign_in_required": {
+      "title": "Anmeldung erforderlich",
+      "message": "Melden Sie sich in der App bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut."
     }
   },
   "gate": {

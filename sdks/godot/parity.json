@@ -42,6 +42,11 @@
       "status": "implemented",
       "note": "PKeyCopy (core/copy.gd, PolarisKey.core.copy, shared by every core) reads the generated PKeyCoreCopy with React's rule: message(code)/title(code) look up the error-code table, then the gate table, then the activation table; activation_message(kind)/activation_title(kind) read the activation table only; an unknown code reads COPY_FALLBACK naming it; {name} placeholders fill from params ({code} defaults to the code, an unfilled one is dropped); set_overrides() is the host layer. The kit's PKeyUiCopy reads it for every error_<code> key, its own overrides and translated kit lines first. tests/core/test_copy.gd covers every table, the fallback, placeholders, overrides and the activation-versus-code split. The .po generation from the catalogs is SP-G13."
     },
+    "core.backend": {
+      "status": "planned",
+      "wp": "SP-59",
+      "note": "PolarisKey.backend.headers(); the Godot SDK replays only the `client` section."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -469,6 +474,12 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.cli.mount": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal drop-ins are the headless SDKs' expectation."
+    },
     "ui.gate": {
       "status": "planned",
       "wp": "UK-11"
@@ -528,6 +539,30 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-23"
+    },
+    "server.license": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "Godot exports games and apps, not servers; a game's backend uses a server core in its own language (plans/SP-53.md §5)."
+    },
+    "server.signin": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "Godot exports games and apps, not servers; a game's backend uses a server core in its own language (plans/SP-53.md §5)."
+    },
+    "server.config": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "Godot exports games and apps, not servers; a game's backend uses a server core in its own language (plans/SP-53.md §5)."
+    },
+    "server.webhooks": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "Godot exports games and apps, not servers; a game's backend uses a server core in its own language (plans/SP-53.md §5)."
     }
   }
 }

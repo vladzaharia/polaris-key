@@ -5251,6 +5251,46 @@ msgstr ""
 msgid "core.codes.marker-rejected.message"
 msgstr ""
 
+#. License needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.title"
+msgstr ""
+
+#. Activate the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.message"
+msgstr ""
+
+#. License not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.title"
+msgstr ""
+
+#. Your license couldn't be verified. Reconnect the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.message"
+msgstr ""
+
+#. License needs refreshing
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.title"
+msgstr ""
+
+#. Connect to the internet so the app can refresh your license, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.message"
+msgstr ""
+
+#. Sign-in needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.title"
+msgstr ""
+
+#. Sign in to your Polaris Key account in the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.message"
+msgstr ""
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"

@@ -632,6 +632,22 @@
     "marker-rejected": {
       "title": "Problema de la compilación",
       "message": "El contenido integrado de esta compilación no es válido. Reinstala la app o contacta con el desarrollador."
+    },
+    "license_required": {
+      "title": "Se necesita una licencia",
+      "message": "Activa la app y vuelve a intentarlo."
+    },
+    "license_invalid": {
+      "title": "Licencia no aceptada",
+      "message": "No se pudo verificar tu licencia. Reconecta la app y vuelve a intentarlo."
+    },
+    "license_stale": {
+      "title": "Hay que actualizar la licencia",
+      "message": "Conéctate a internet para que la app pueda actualizar tu licencia y vuelve a intentarlo."
+    },
+    "sign_in_required": {
+      "title": "Es necesario iniciar sesión",
+      "message": "Inicia sesión en tu cuenta de Polaris Key en la app y vuelve a intentarlo."
     }
   },
   "gate": {

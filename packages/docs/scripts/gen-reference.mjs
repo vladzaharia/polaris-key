@@ -204,14 +204,36 @@ function errorCodes() {
       `\`${entry.service}\``,
       mdxProse(entry.description),
     ]);
+  // WIRE-CONTRACT-V4 §14.3 (SP-53): a product backend's problem `type` is this page with the code
+  // as its fragment, so each code a backend answers with gets its own heading (its anchor).
+  // `not_entitled` is the existing wire code, reused for a route's entitlement requirement.
+  const backendEntries = registry.filter((entry) => entry.kind === "backend");
+  const notEntitled = registry.find((entry) => entry.code === "not_entitled");
+  const backendSections = [
+    ...backendEntries,
+    ...(notEntitled
+      ? [
+          {
+            ...notEntitled,
+            description:
+              "403 from a product backend: the route needs an entitlement the licence document does not grant as `true` (WIRE-CONTRACT-V4 §14.2 step 6). The existing wire code, reused. Never retried; the client half surfaces it with the upgrade link, if any.",
+          },
+        ]
+      : []),
+  ].flatMap((entry) => [
+    `### \`${entry.code}\``,
+    "",
+    `${mdxProse(entry.description)} Service: \`${entry.service}\`.`,
+    "",
+  ]);
   return page(
     "Wire error codes",
-    "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, and the client codes the SDKs raise.",
+    "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, the client codes the SDKs raise, and the codes a product backend answers with.",
     `Wire-v3 errors are nested — \`{"error":{"code":…}}\` — and the not-found body is ONE
 shape for "no such product", "service not enabled", and "no such route" (hide-don't-reveal).
 ${codes.length} protocol codes; the worker enum maps each to its response site.
 
-Every code, wire and client, is registered in \`conformance/parity/errors.json\`
+Every code, wire, client and backend, is registered in \`conformance/parity/errors.json\`
 (${registry.length} codes), and \`pnpm gen constants\` generates each SDK's \`ErrorCode\` constants
 from it. A new code needs an entry there first.`,
     [
@@ -230,6 +252,12 @@ from it. A new code needs an entry there first.`,
       "Raised by an SDK, never sent by the Worker. Hosts match on the exact string.",
       "",
       table(["Code", "Service", "Meaning"], clientRows),
+      "",
+      "## Backend codes (`conformance/parity/errors.json`)",
+      "",
+      'Answered by an SDK\'s server core when an app calls its own backend with `X-PKey-License` (WIRE-CONTRACT-V4 §14), never by the Worker. The body is `application/problem+json`, `Cache-Control: no-store`, and its `type` is this page with the code as the fragment. A 401 also carries `WWW-Authenticate: PKey-License realm="<product>", error="<code>"`.',
+      "",
+      ...backendSections,
     ].join("\n"),
   );
 }
@@ -641,6 +669,7 @@ function corpusInventory() {
   const deviceLabel = corpusJson("device-label.json");
   const presentationMatrix = corpusJson("presentation-matrix.json");
   const uiMatrix = corpusJson("ui-matrix.json");
+  const backendMatrix = corpusJson("backend-matrix.json");
   const uiFamilies = [
     "gate",
     "activate",
@@ -688,6 +717,7 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`,
 \`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`deviceLabelVersion ${deviceLabel.deviceLabelVersion}\`,
 \`presentationMatrixVersion ${presentationMatrix.presentationMatrixVersion}\`, \`uiMatrixVersion ${uiMatrix.uiMatrixVersion}\`,
+\`backendMatrixVersion ${backendMatrix.backendMatrixVersion}\`,
 \`contentCorpusVersion ${content.contentCorpusVersion}\`, \`syncScenariosVersion ${syncScenarios.syncScenariosVersion}\`.
 Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
 \`releaseRecordCases\` families, the strict-verifier \`jwsCases\`, a \`nonWireIntegers\` member
@@ -743,6 +773,10 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       `## Product presentation (\`presentation-matrix.json\`): ${presentationMatrix.parseCases?.length ?? "?"} parse, ${presentationMatrix.pickCases?.length ?? "?"} size-choice and ${presentationMatrix.verifyCases?.length ?? "?"} verification cases`,
       "",
       "WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed field by field (a malformed field is dropped, never refusing discovery), the icon size a hero of `px` points at `scale` fetches given the types the platform decodes, and the SHA-256 check before any icon byte is shown. A generator-local reference in `tools/presentation-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/presentation` is checked against the file by its own test, like every SDK. Non-ASCII is written escaped.",
+      "",
+      `## Product backends (\`backend-matrix.json\`): ${backendMatrix.verdict?.length ?? "?"} verdict, ${backendMatrix.problem?.length ?? "?"} problem and ${backendMatrix.client?.length ?? "?"} client rows`,
+      "",
+      "WIRE-CONTRACT-V4 §14 (SP-53): a server core's six-step verdict on `X-PKey-License` (signed licence documents, header fields, the server's clock, the products served, `maxAgeSeconds` and the route's requirements, to a status, a code and the attached context), the refusal's problem body with its `WWW-Authenticate` challenge and its locale from `Accept-Language`, and the client half's refresh-and-retry rule. A reference in `tools/corpus/reference/backend.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/backend` is checked against the file by the Node and browser runners. Server cores replay `verdict` and `problem`, client halves `client`.",
       "",
       `## UI state matrix (\`ui-matrix.json\`): ${uiRows.length} component rows, ${uiMatrix.theme?.length ?? "?"} theme rows, ${uiMatrix.i18n?.length ?? "?"} i18n rows`,
       "",

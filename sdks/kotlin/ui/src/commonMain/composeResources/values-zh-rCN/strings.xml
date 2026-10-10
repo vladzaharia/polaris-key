@@ -2000,6 +2000,22 @@
     <string name="core_codes_marker_rejected_title">应用版本出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_marker_rejected_message">此版本的内置内容无效。请重新安装应用或联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_title">需要许可证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_message">请激活应用，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_title">许可证未被接受</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_message">无法验证你的许可证。请重新连接应用，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_title">许可证需要刷新</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_message">请连接互联网，以便应用刷新你的许可证，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_title">需要登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_message">请在应用中登录你的Polaris Key账户，然后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">许可证有效</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

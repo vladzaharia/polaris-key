@@ -1186,6 +1186,17 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "App build problem",
     "core.codes.marker-rejected.message":
       "This build's built-in content isn't valid. Reinstall the app or contact the developer.",
+    "core.codes.license_required.title": "License needed",
+    "core.codes.license_required.message": "Activate the app, then try again.",
+    "core.codes.license_invalid.title": "License not accepted",
+    "core.codes.license_invalid.message":
+      "Your license couldn't be verified. Reconnect the app, then try again.",
+    "core.codes.license_stale.title": "License needs refreshing",
+    "core.codes.license_stale.message":
+      "Connect to the internet so the app can refresh your license, then try again.",
+    "core.codes.sign_in_required.title": "Sign-in needed",
+    "core.codes.sign_in_required.message":
+      "Sign in to your Polaris Key account in the app, then try again.",
     "core.gate.ok.title": "License active",
     "core.gate.ok.message": "Your license is active.",
     "core.gate.grace.title": "Offline grace",
@@ -2495,6 +2506,18 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "Problem mit dem App-Build",
     "core.codes.marker-rejected.message":
       "Die integrierten Inhalte dieses Builds sind ungültig. Installieren Sie die App neu oder wenden Sie sich an den Entwickler.",
+    "core.codes.license_required.title": "Lizenz erforderlich",
+    "core.codes.license_required.message":
+      "Aktivieren Sie die App und versuchen Sie es dann erneut.",
+    "core.codes.license_invalid.title": "Lizenz nicht akzeptiert",
+    "core.codes.license_invalid.message":
+      "Ihre Lizenz konnte nicht verifiziert werden. Stellen Sie die Verbindung der App wieder her und versuchen Sie es dann erneut.",
+    "core.codes.license_stale.title": "Lizenz muss aktualisiert werden",
+    "core.codes.license_stale.message":
+      "Stellen Sie eine Internetverbindung her, damit die App Ihre Lizenz aktualisieren kann, und versuchen Sie es dann erneut.",
+    "core.codes.sign_in_required.title": "Anmeldung erforderlich",
+    "core.codes.sign_in_required.message":
+      "Melden Sie sich in der App bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut.",
     "core.gate.ok.title": "Lizenz aktiv",
     "core.gate.ok.message": "Ihre Lizenz ist aktiv.",
     "core.gate.grace.title": "Offline-Kulanzzeit",
@@ -3771,6 +3794,17 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "App build problem",
     "core.codes.marker-rejected.message":
       "This build's built-in content isn't valid. Reinstall the app or contact the developer.",
+    "core.codes.license_required.title": "License needed",
+    "core.codes.license_required.message": "Activate the app, then try again.",
+    "core.codes.license_invalid.title": "License not accepted",
+    "core.codes.license_invalid.message":
+      "Your license couldn't be verified. Reconnect the app, then try again.",
+    "core.codes.license_stale.title": "License needs refreshing",
+    "core.codes.license_stale.message":
+      "Connect to the internet so the app can refresh your license, then try again.",
+    "core.codes.sign_in_required.title": "Sign-in needed",
+    "core.codes.sign_in_required.message":
+      "Sign in to your Polaris Key account in the app, then try again.",
     "core.gate.ok.title": "License active",
     "core.gate.ok.message": "Your license is active.",
     "core.gate.grace.title": "Offline grace",
@@ -5054,6 +5088,18 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "Problema de la compilación",
     "core.codes.marker-rejected.message":
       "El contenido integrado de esta compilación no es válido. Reinstala la app o contacta con el desarrollador.",
+    "core.codes.license_required.title": "Se necesita una licencia",
+    "core.codes.license_required.message":
+      "Activa la app y vuelve a intentarlo.",
+    "core.codes.license_invalid.title": "Licencia no aceptada",
+    "core.codes.license_invalid.message":
+      "No se pudo verificar tu licencia. Reconecta la app y vuelve a intentarlo.",
+    "core.codes.license_stale.title": "Hay que actualizar la licencia",
+    "core.codes.license_stale.message":
+      "Conéctate a internet para que la app pueda actualizar tu licencia y vuelve a intentarlo.",
+    "core.codes.sign_in_required.title": "Es necesario iniciar sesión",
+    "core.codes.sign_in_required.message":
+      "Inicia sesión en tu cuenta de Polaris Key en la app y vuelve a intentarlo.",
     "core.gate.ok.title": "Licencia activa",
     "core.gate.ok.message": "Tu licencia está activa.",
     "core.gate.grace.title": "Periodo de gracia sin conexión",
@@ -6326,6 +6372,17 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "Problema na build do app",
     "core.codes.marker-rejected.message":
       "O conteúdo integrado desta build não é válido. Reinstale o app ou contate o desenvolvedor.",
+    "core.codes.license_required.title": "Licença necessária",
+    "core.codes.license_required.message": "Ative o app e tente novamente.",
+    "core.codes.license_invalid.title": "Licença não aceita",
+    "core.codes.license_invalid.message":
+      "Não foi possível verificar sua licença. Reconecte o app e tente novamente.",
+    "core.codes.license_stale.title": "A licença precisa ser atualizada",
+    "core.codes.license_stale.message":
+      "Conecte-se à internet para que o app possa atualizar sua licença e tente novamente.",
+    "core.codes.sign_in_required.title": "É preciso entrar",
+    "core.codes.sign_in_required.message":
+      "Entre na sua conta do Polaris Key no app e tente novamente.",
     "core.gate.ok.title": "Licença ativa",
     "core.gate.ok.message": "Sua licença está ativa.",
     "core.gate.grace.title": "Período offline",
@@ -7599,6 +7656,17 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "Problema della build dell'app",
     "core.codes.marker-rejected.message":
       "I contenuti integrati di questa build non sono validi. Reinstalla l'app o contatta lo sviluppatore.",
+    "core.codes.license_required.title": "Licenza necessaria",
+    "core.codes.license_required.message": "Attiva l'app, poi riprova.",
+    "core.codes.license_invalid.title": "Licenza non accettata",
+    "core.codes.license_invalid.message":
+      "Impossibile verificare la tua licenza. Ricollega l'app, poi riprova.",
+    "core.codes.license_stale.title": "Licenza da aggiornare",
+    "core.codes.license_stale.message":
+      "Connettiti a internet per consentire all'app di aggiornare la tua licenza, poi riprova.",
+    "core.codes.sign_in_required.title": "Accesso richiesto",
+    "core.codes.sign_in_required.message":
+      "Accedi al tuo account Polaris Key nell'app, poi riprova.",
     "core.gate.ok.title": "Licenza attiva",
     "core.gate.ok.message": "La tua licenza è attiva.",
     "core.gate.grace.title": "Periodo di tolleranza offline",
@@ -8891,6 +8959,18 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "アプリのビルドの問題",
     "core.codes.marker-rejected.message":
       "このビルドに組み込まれたコンテンツが無効です。アプリを再インストールするか、開発者に問い合わせてください。",
+    "core.codes.license_required.title": "ライセンスが必要です",
+    "core.codes.license_required.message":
+      "アプリをアクティベートしてから、もう一度お試しください。",
+    "core.codes.license_invalid.title": "ライセンスを受け付けられません",
+    "core.codes.license_invalid.message":
+      "ライセンスを確認できませんでした。アプリを再接続してから、もう一度お試しください。",
+    "core.codes.license_stale.title": "ライセンスの更新が必要です",
+    "core.codes.license_stale.message":
+      "アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。",
+    "core.codes.sign_in_required.title": "サインインが必要です",
+    "core.codes.sign_in_required.message":
+      "アプリでPolaris Keyアカウントにサインインしてから、もう一度お試しください。",
     "core.gate.ok.title": "ライセンス有効",
     "core.gate.ok.message": "ライセンスは有効です。",
     "core.gate.grace.title": "オフライン猶予期間",
@@ -10128,6 +10208,17 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "앱 빌드 문제",
     "core.codes.marker-rejected.message":
       "이 빌드의 내장 콘텐츠가 유효하지 않아요. 앱을 다시 설치하거나 개발자에게 문의하세요.",
+    "core.codes.license_required.title": "라이선스 필요",
+    "core.codes.license_required.message": "앱을 활성화한 후 다시 시도하세요.",
+    "core.codes.license_invalid.title": "라이선스를 확인할 수 없음",
+    "core.codes.license_invalid.message":
+      "라이선스를 확인하지 못했어요. 앱을 다시 연결한 후 다시 시도하세요.",
+    "core.codes.license_stale.title": "라이선스 새로 고침 필요",
+    "core.codes.license_stale.message":
+      "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요.",
+    "core.codes.sign_in_required.title": "로그인 필요",
+    "core.codes.sign_in_required.message":
+      "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요.",
     "core.gate.ok.title": "라이선스 활성",
     "core.gate.ok.message": "라이선스가 활성 상태예요.",
     "core.gate.grace.title": "오프라인 유예",
@@ -11265,6 +11356,17 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "应用版本出现问题",
     "core.codes.marker-rejected.message":
       "此版本的内置内容无效。请重新安装应用或联系开发者。",
+    "core.codes.license_required.title": "需要许可证",
+    "core.codes.license_required.message": "请激活应用，然后重试。",
+    "core.codes.license_invalid.title": "许可证未被接受",
+    "core.codes.license_invalid.message":
+      "无法验证你的许可证。请重新连接应用，然后重试。",
+    "core.codes.license_stale.title": "许可证需要刷新",
+    "core.codes.license_stale.message":
+      "请连接互联网，以便应用刷新你的许可证，然后重试。",
+    "core.codes.sign_in_required.title": "需要登录",
+    "core.codes.sign_in_required.message":
+      "请在应用中登录你的Polaris Key账户，然后重试。",
     "core.gate.ok.title": "许可证有效",
     "core.gate.ok.message": "你的许可证有效。",
     "core.gate.grace.title": "离线宽限期",
