@@ -344,6 +344,7 @@ func _focus_chain() -> Array:
 func _on_action() -> void:
 	if model.get("behaviour", "") == "check":
 		action_taken.emit(result)
+		var had_focus := _action.has_focus()
 		_checking = true
 		_check_note = ""
 		refresh_view()
@@ -352,6 +353,8 @@ func _on_action() -> void:
 		_checking = false
 		if not is_inside_tree():
 			return
+		if had_focus:
+			_action.grab_focus.call_deferred()
 		if not again.ok:
 			# The old answer stays; the failure is said under it.
 			_check_note = c().text("update_check_failed")

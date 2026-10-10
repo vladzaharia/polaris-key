@@ -161,6 +161,8 @@ const DEFAULTS := {
 	"settings_increase": "Increase",
 	"settings_reset": "Reset to default",
 	"settings_set_by": "Set by %s",
+	"settings_set_by_developer": "Set by the developer",
+	"settings_offline": "Couldn't load settings. Connect and try again.",
 	"settings_locked": "Locked",
 	"settings_badge_local": "Changed by you",
 	"settings_badge_env": "Set by the environment",

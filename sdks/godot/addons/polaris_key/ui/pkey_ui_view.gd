@@ -200,7 +200,7 @@ func _notification(what: int) -> void:
 		_unwatch_viewport()
 		# A game that frees the view instead of hiding it: the control that opened it gets the focus
 		# back (unless the view was only moved to another parent, which keeps its opener).
-		PKeyUiView._give_back.call_deferred(_opener, weakref(self))
+		PKeyUiView._give_back.call_deferred(weakref(_opener), weakref(self))
 	elif what == NOTIFICATION_PARENTED and _built:
 		layout_content()
 	elif what == NOTIFICATION_RESIZED and _built and is_inside_tree() and outer_view() == self:
@@ -577,7 +577,8 @@ func remember_opener() -> void:
 	_opener = f if f != null and f != self and not is_ancestor_of(f) else null
 
 
-static func _give_back(opener: Control, view: WeakRef) -> void:
+static func _give_back(opener_ref: WeakRef, view: WeakRef) -> void:
+	var opener := opener_ref.get_ref() as Control
 	var v = view.get_ref()
 	if v != null:
 		if (v as Node).is_inside_tree():

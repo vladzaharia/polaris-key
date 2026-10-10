@@ -494,6 +494,12 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 			var content := s.get_child(0) as Control if s.get_child_count() > 0 else null
 			if s.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and content != null and content.get_combined_minimum_size().y > s.size.y + 1.0:
 				out.append("%s needs its scroll fallback (%.0f > %.0f)" % [_path(view, s), content.get_combined_minimum_size().y, s.size.y])
+	# The product's name is never smaller than the body text beside it.
+	var body_size := view.get_theme_font_size("font_size", "Label")
+	for ph in view.find_children("*", "PKeyProductHeader", true, false):
+		var hdr := ph as PKeyProductHeader
+		if hdr.is_visible_in_tree() and not hdr.splash and not hdr.as_title and hdr._name.get_theme_font_size("font_size") < body_size:
+			out.append("%s's name is %d px, under the body text's %d" % [_path(view, hdr), hdr._name.get_theme_font_size("font_size"), body_size])
 	if view is PKeySettingsPanel:
 		out.append_array(_settings_column_problems(view as PKeySettingsPanel))
 	# Pad-only (a TV, even one whose OS is a phone's, or a big tablet-sized screen): the way to free a

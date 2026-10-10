@@ -265,6 +265,8 @@ func _layout_stale() -> bool:
 ## size the bar last appeared at).
 func _apply_inset() -> void:
 	var want := roundi(role("space_2") if _is_narrow() else role("space_4")) if _scroll.get_v_scroll_bar().visible else 0
+	# Room for a focus ring on a control at the right edge (a switch), which the scroll area clips.
+	want = maxi(want, PKeyUiTheme.RING_WIDTH + PKeyUiTheme.RING_OFFSET)
 	if _inset.get_theme_constant("margin_right") != want or not _inset.has_theme_constant_override("margin_right"):
 		_inset.add_theme_constant_override("margin_right", want)
 
@@ -384,10 +386,11 @@ func _render() -> void:
 	_advanced.set_pressed_no_signal(show_advanced)
 	# The live catalog is on its way (or this product has one): a key it names no entry for would
 	# show as its raw name ("ui.theme"), so it waits for the catalog or stays out.
+	var failed := cfg != null and cfg.has_meta(&"pkey_schema_failed")
 	var pending := cfg != null and cfg.enabled() and not cfg.has_meta(&"pkey_schema_done")
 	var catalogued := cfg != null and not cfg.catalog().is_empty()
-	var shown := rows.filter(func(r): return r["visible"] and (show_advanced or not r["advanced"]) and not ((pending or catalogued) and cfg.catalog_entry(r["key"]).is_empty()))
-	show_text(_empty, (t.text("settings_loading") if pending else t.text("settings_empty")) if shown.is_empty() else "")
+	var shown := rows.filter(func(r): return r["visible"] and (show_advanced or not r["advanced"]) and not ((pending or catalogued or failed) and cfg.catalog_entry(r["key"]).is_empty()))
+	show_text(_empty, (t.text("settings_loading") if pending else (t.text("settings_offline") if failed and not catalogued else t.text("settings_empty"))) if shown.is_empty() else "")
 	var sig := JSON.stringify(shown.map(func(r): return [r["key"], r["widget"], r["editable"], r["category"], r["options"].size(), r["min"] > -1e8 and r["max"] < 1e8]))
 	if sig != _signature:
 		_rebuild(shown)
@@ -403,7 +406,9 @@ func _fetch_schema(cfg: PKeyConfig) -> void:
 	if cfg.has_meta(&"pkey_schema_asked"):
 		return
 	cfg.set_meta(&"pkey_schema_asked", true)
-	await cfg.fetch_schema()
+	var got = await cfg.fetch_schema()
+	if got == null and cfg.catalog().is_empty():
+		cfg.set_meta(&"pkey_schema_failed", true)
 	cfg.set_meta(&"pkey_schema_done", true)
 	if is_inside_tree() and cfg == _bound:
 		refresh_view()
@@ -832,8 +837,8 @@ func _update_values(shown: Array) -> void:
 		# A locked row: its value, a lock and who set it, once; the description only when it says
 		# something else.
 		var locked: bool = r["enforced"]
-		(n["lock_row"] as Control).visible = locked and product != ""
-		(n["set_by"] as Label).text = t.text("settings_set_by", product) if locked and product != "" else ""
+		(n["lock_row"] as Control).visible = locked
+		(n["set_by"] as Label).text = (t.text("settings_set_by", product) if product != "" else t.text("settings_set_by_developer")) if locked else ""
 		var d: String = r["description"]
 		var repeats := locked and (d.to_lower().contains("set by") or d == "")
 		show_text(n["description"], tr(d) if d != "" and not repeats else "")

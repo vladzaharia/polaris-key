@@ -151,4 +151,4 @@ static func product_name(sdk: Node) -> String:
 		return m["name"]
 	# The product's name from the options or the project, never its slug.
 	var n := String(PKeyUiTheme.product_identity()["name"])
-	return n if n != "" else sdk.core.product
+	return n

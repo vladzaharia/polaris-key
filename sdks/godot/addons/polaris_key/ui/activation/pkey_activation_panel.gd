@@ -375,7 +375,7 @@ func _render_store_only(t: PKeyUiCopy, caps: Dictionary) -> void:
 	show_text(_restore, t.text("purchase_restore") if none and wired else "")
 	if none and mode == "main" and limit.is_empty() and not _warned_store and sdk != null and sdk.get("core") != null:
 		_warned_store = true
-		push_warning("Polaris Key: this %s build offers no way to activate (key entry is hidden on store builds, and the Identity service is not enabled), so the gate shows only 'Get the game from the store'. Enable Identity for the product, or sell the game through the store's own purchase and PolarisKey.commerce." % store)
+		push_warning("Polaris Key: this build (%s) offers no way to activate (key entry is hidden on store builds, and the Identity service is not enabled), so the gate shows only 'Get the game from the store'. Enable Identity for the product, or sell the game through the store's own purchase and PolarisKey.commerce." % store)
 
 
 const STORE_NAMES := {"app-store": "the App Store", "testflight": "TestFlight", "play": "Google Play", "play-testing": "Google Play", "ms-store": "the Microsoft Store"}
