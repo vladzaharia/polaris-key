@@ -163,7 +163,7 @@ each render them their own way.
 | `update_requires_distribution`   | Update on, Distribution off                                          | Update's feed tells a device what to do next over what Distribution delivered. It would answer every client with an empty document — a silent failure. |
 | `registration_requires_identity` | a declared `requires-identity` policy with Identity off              | there is no login to stand behind, so the endpoint could never say yes to anyone; the product has taken registration away rather than restricted it.   |
 | `config_without_activation`      | Config on, License off, **and** a declared `requires-license` policy | that closes the only mint path such a product has, leaving the service enabled and unreachable.                                                        |
-| `sync_requires_config`           | Cloud Sync on, Config off                                            | a user setting is a catalog `config` key; with Config off there is nothing to sync.                                                                    |
+| `sync_requires_config`           | Cloud Sync on, Config off                                            | a synced setting is a catalog `config` key; with Config off there is nothing to sync.                                                                  |
 | `sync_requires_identity`         | Cloud Sync on, Identity off                                          | the Cloud Sync principal is the account signed in through the product; with Identity off no device could ever have one.                                |
 
 The rules are not all enforced in the same place, and the difference matters when you are

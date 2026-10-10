@@ -962,10 +962,11 @@ it from the catalog with
 in product-specific CI) — see `CONTRIBUTING.md`. `--lang` picks the targets (`ts`, `python` and
 `swift` by default, plus `gdscript` for a Godot game's `catalog_generated.gd`).
 
-:::note[Upgrade: mirrors now always carry a user-settings block]
-Since the catalog gained `user` entries and the `cloudSync` block, every generated mirror
-includes the user-settings section even when the catalog declares no user entry (TypeScript
-emits `UserSettingKey = never` and an empty `USER_SETTINGS`; Python, Swift and GDScript emit the
-equivalent empty block). A repository that commits a mirror sees a one-time diff the first time
-it regenerates after upgrading; commit it and `--check` is clean again.
+:::note[Upgrade: mirrors list every Editable key as a setting]
+Every Editable `config` key is a synced setting whether or not it has a `user` block, so a
+mirror's `USER_SETTINGS` lists each of them with its defaults applied (`sync` `user`,
+`conflict` `lastWrite`, `listed` true unless the block says otherwise), plus `local` keys; a key
+the catalog locks (`enforced` or `hidden`) is left out, and the `device` scope is gone. A
+repository that commits a mirror sees a one-time diff the first time it regenerates after
+upgrading; commit it and `--check` is clean again.
 :::

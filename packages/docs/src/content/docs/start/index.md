@@ -57,7 +57,7 @@ that is the same word everywhere — the worker directory, the route namespace
 | [Distribution](/docs/services/distribution/) | how releases reach devices and outlets — transports, availability, rollouts               |
 | [Update](/docs/services/update/)             | the Sparkle appcast, `/version`, eligibility — the **feed** rendered over Release         |
 | [Identity](/docs/services/identity/)         | product OIDC, browser sessions, the customer portal                                       |
-| [Cloud Sync](/docs/services/sync/)           | a signed-in person's user settings, collections and saves, synced across devices          |
+| [Cloud Sync](/docs/services/sync/)           | a signed-in person's settings, saves and other records, synced across devices             |
 
 A service a product has not enabled does not return an error — **from the outside it does not
 exist.** Disabled, unregistered and no-such-route all return one identical `404`, because telling
