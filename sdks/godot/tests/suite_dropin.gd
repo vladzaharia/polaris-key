@@ -348,7 +348,7 @@ func _misc(t: PKeyTestContext) -> void:
 	big.set_font_size("font_size", "PKeyStrong", 16)
 	header.theme = big
 	header.refresh()
-	t.check("product header: beside a 36 px title the icon is 54 px or more and the name 22 px or more", header._tile.custom_minimum_size.x >= 54.0 and header._name.get_theme_font_size("font_size") >= 22, "%s %d" % [header._tile.custom_minimum_size, header._name.get_theme_font_size("font_size")])
+	t.check("product header: beside a 36 px title the icon is 36 px or more and the name 18 px or more", header._tile.custom_minimum_size.x >= 36.0 and header._name.get_theme_font_size("font_size") >= 18, "%s %d" % [header._tile.custom_minimum_size, header._name.get_theme_font_size("font_size")])
 	header.queue_free()
 	PKeyUiTheme.product_name = ""
 	# The banner's expired state.

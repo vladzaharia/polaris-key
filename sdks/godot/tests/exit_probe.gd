@@ -23,12 +23,26 @@ func _run() -> void:
 	print("PROBE configure ", configured.ok)
 	var started: PKeyResult = await pk.start()
 	print("PROBE start ", started.ok)
-	# The drop-in boot, left waiting at its gate, with the gate kept for the session and then gone.
-	pk.boot({"persistent_gate": true, "allow_offline": true, "sync_timeout_seconds": 2})
-	for i in 30:
+	# The drop-in boot through a scripted host to READY, with the gate kept for the session, and then
+	# gone. (A boot still awaited when the game quits holds a suspended coroutine, which Godot 4.4
+	# reports as a leak: the game's own await, not the SDK's.)
+	var host := PKeyFakeBootHost.new()
+	var booted := []
+	var ask := func() -> void:
+		booted.append(await pk.boot({"host": host, "persistent_gate": true, "sync_timeout_seconds": 1000}))
+	ask.call()
+	for e in [
+		{"type": "shell.done"}, {"type": "guard.done", "result": "ok"}, {"type": "sync.done", "result": "ok"},
+		{"type": "gate.status", "status": "ok"}, {"type": "decide.done", "decision": "optional"},
+		{"type": "fetch.done", "result": "ok", "installed": []}, {"type": "mount.done"},
+	]:
+		host.answer(e)
+	for i in 60:
+		if not booted.is_empty():
+			break
 		await process_frame
-	print("PROBE boot ", pk.boot_view != null)
-	var layer: Node = pk.boot_view.get_parent() if pk.boot_view != null else null
+	print("PROBE boot ", booted.size())
+	var layer: Node = pk.get_node_or_null("PKeyBootLayer")
 	if layer != null:
 		layer.queue_free()
 	await process_frame

@@ -122,13 +122,13 @@ func _size() -> void:
 	# never a small mark and a small name next to a big title.
 	var title_size := float(get_theme_font_size("font_size", "PKeyTitle")) if has_theme_font_size("font_size", "PKeyTitle") else 0.0
 	if not splash:
-		side = maxf(side, roundf(title_size * 1.5))
+		side = maxf(side, roundf(title_size * 1.0))
 	_icon.custom_minimum_size = Vector2(side, side)
 	_tile.custom_minimum_size = Vector2(side, side)
 	_name.theme_type_variation = "PKeyTitle" if splash or as_title else ("PKeySection" if hero else "PKeyStrong")
 	var name_size := float(get_theme_font_size("font_size", _name.theme_type_variation)) if has_theme_font_size("font_size", _name.theme_type_variation) else 0.0
-	if not splash and not as_title and title_size * 0.62 > name_size:
-		_name.add_theme_font_size_override("font_size", roundi(title_size * 0.62))
+	if not splash and not as_title and title_size * 0.5 > name_size:
+		_name.add_theme_font_size_override("font_size", roundi(title_size * 0.5))
 	else:
 		_name.remove_theme_font_size_override("font_size")
 	var ink := get_theme_color("font_color", "PKeyTitle") if has_theme_color("font_color", "PKeyTitle") else get_theme_color("font_color", "Label")
