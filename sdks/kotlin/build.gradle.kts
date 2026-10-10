@@ -132,13 +132,13 @@ val checkModuleBoundaries by tasks.registering {
                         }
                     }
                 }
-                if (seesCore && seesPlatform && p.path != ":boundary") {
+                if (seesCore && seesPlatform && p.path != ":boundary" && p.path != ":docs-snippets-android") {
                     problems += "${p.path} sees both :core and :platform (only :android may)"
                 }
             }
             if (androidProject != null) {
                 for (p in everyProject) {
-                    if (p == androidProject || p.path == ":boundary") continue
+                    if (p == androidProject || p.path == ":boundary" || p.path == ":docs-snippets-android") continue
                     for (config in p.configurations) {
                         for (dep in config.dependencies.withType(ProjectDependency::class.java)) {
                             if (dep.name == androidProject.name) problems += "${p.path} ${config.name} depends on :android (a leaf)"

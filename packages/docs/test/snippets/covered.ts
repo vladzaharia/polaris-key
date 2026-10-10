@@ -7,7 +7,7 @@
 export interface Covered {
   /** Repo-relative path, or a directory prefix ending in `/`. */
   path: string;
-  language: "ts" | "python";
+  language: "ts" | "python" | "swift" | "kotlin" | "gdscript";
 }
 
 const BUILD = "packages/docs/src/content/docs/build/";
@@ -24,7 +24,7 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}sdks/python/your-own-ui.md`, language: "python" },
 ];
 
-export function coveredLanguage(file: string): "ts" | "python" | null {
+export function coveredLanguage(file: string): Covered["language"] | null {
   const hit = COVERED_PAGES.find((c) =>
     c.path.endsWith("/") ? file.startsWith(c.path) : file === c.path,
   );

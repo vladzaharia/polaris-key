@@ -63,6 +63,8 @@ include(":conformance")
 // The runnable JVM CLI sample (SP-K14); not published.
 include(":sample-cli")
 project(":sample-cli").projectDir = file("samples/cli")
+// The docs snippet lane (SP-45b): compiles the code blocks of the covered docs pages. Not published.
+include(":docs-snippets")
 
 val jvmOnly = providers.gradleProperty("pkey.jvmOnly").orNull == "true"
 val localSdkDir =
@@ -82,4 +84,5 @@ if (!jvmOnly && androidSdk) {
     include(":boundary")
     include(":ui")
     include(":billing")
+    include(":docs-snippets-android")
 }
