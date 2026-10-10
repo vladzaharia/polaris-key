@@ -113,6 +113,24 @@ func _retry(t: PKeyTestContext) -> void:
 	sdk3.queue_free()
 	await _tree().process_frame
 
+	# A boot() that arrives while a Retry is under way joins it: both awaits resolve.
+	h.plan["/license/document"] = [{"hang": true}]
+	h.plan["/config/document"] = [{"hang": true}]
+	var sdk4 := await _sdk(_licensed_store())
+	var late: Array = []
+	var ask4 := func() -> void:
+		late.append(await sdk4.boot({"allow_offline": false, "sync_timeout_seconds": 0.5}))
+	ask4.call()
+	await _until(func() -> bool: return sdk4.boot_view != null and sdk4.boot_view.state["outcome"] == PKeyBoot.OFFLINE)
+	await _until(func() -> bool: return not sdk4._syncing)
+	h.serve_docs([h.F["token"]])
+	sdk4.boot_view.retry()
+	ask4.call()
+	var joined := await _until(func() -> bool: return late.size() == 2)
+	t.check("retry: a boot() during a Retry joins it, and both awaits resolve", joined and late[0].outcome == PKeyBoot.READY and late[1].outcome == PKeyBoot.READY, str(late))
+	sdk4.queue_free()
+	await _tree().process_frame
+
 
 # ── Re-gating ────────────────────────────────────────────────────────────────────────────
 

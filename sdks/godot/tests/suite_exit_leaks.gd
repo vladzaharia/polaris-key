@@ -8,7 +8,7 @@ extends RefCounted
 # process of this editor and requires a clean exit. Not run on an exported template (a template
 # ignores --script), where the probe cannot start.
 
-const LEAK_LINES := ["ObjectDB instances were leaked", "resources still in use", "Leaked instance"]
+const LEAK_LINES := ["ObjectDB instances were leaked", "resources still in use", "Leaked instance", "ObjectDB instances leaked"]
 
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:

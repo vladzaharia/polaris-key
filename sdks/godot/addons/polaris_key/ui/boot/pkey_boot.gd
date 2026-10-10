@@ -270,9 +270,9 @@ func _ready() -> void:
 
 ## Run the boot; resolves at the first stop. A coroutine (see the class doc for `opts`).
 func run(opts: Dictionary = {}) -> PKeyBootResult:
-	if _running and result == null:
+	if _running and (result == null or result.outcome == READY):
 		# A second call while the boot is going on (a game's scene and an autoload both ask for
-		# it): the same boot, not a restart that would throw its progress away. After a stop it
+		# it, a retry is under way, READY's background packs are installing): the same boot, not a restart that would throw its progress away. After a stop it
 		# starts the boot again, with the new options.
 		return await _outcome(opts.get("resolve_on_stop", false) == true)
 	_opts = opts
@@ -363,6 +363,8 @@ func send(event: Dictionary) -> bool:
 ## says: the shell or the guard again when they had not finished, otherwise the sync.
 func retry() -> void:
 	_retried = true
+	# The boot is going on again: a boot() now joins it.
+	result = null
 	send({"type": "retry"})
 
 
