@@ -41,7 +41,7 @@ function Choice<T extends string>({
           className={cn(
             "rounded-md border border-border px-2 py-1 text-xs capitalize text-fg",
             o === value &&
-              "border-accent bg-accent-subtle font-bold text-fg-strong",
+              "border-accent bg-accent-subtle font-medium text-fg-strong",
           )}
         >
           {o}
@@ -72,7 +72,7 @@ export default function Kit(): React.ReactElement {
     <KitProviders>
       <div data-service={accent} className="min-h-dvh bg-surface-page text-fg">
         <header className="sticky top-0 z-40 flex flex-wrap items-center gap-4 border-b border-border bg-surface-raised px-6 py-3">
-          <h1 className="text-lg font-bold text-fg-strong">
+          <h1 className="text-lg font-semibold text-fg-strong">
             Component gallery
           </h1>
           <Choice<ThemePreference>
@@ -101,7 +101,7 @@ export default function Kit(): React.ReactElement {
             <ul className="sticky top-20 space-y-3 text-sm">
               {KIT_GROUPS.map((g) => (
                 <li key={g}>
-                  <p className="font-bold text-fg-strong">{g}</p>
+                  <p className="font-medium text-fg-strong">{g}</p>
                   <ul className="mt-1 space-y-0.5">
                     {shown
                       .filter((s) => s.group === g)
@@ -138,7 +138,7 @@ export default function Kit(): React.ReactElement {
                 >
                   <h2
                     id={`group-${g}`}
-                    className="border-b border-border pb-2 text-xl font-bold text-fg-strong"
+                    className="border-b border-border pb-2 text-xl font-semibold text-fg-strong"
                   >
                     {g}
                   </h2>
@@ -152,7 +152,7 @@ export default function Kit(): React.ReactElement {
                       <header className="border-b border-border px-4 py-2">
                         <h3
                           id={`story-title-${s.id}`}
-                          className="text-sm font-bold text-fg-strong"
+                          className="text-sm font-semibold text-fg-strong"
                         >
                           {s.title}{" "}
                           <code className="ml-2 font-mono text-xs font-normal text-fg-subtle">

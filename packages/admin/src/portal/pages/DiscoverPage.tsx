@@ -156,7 +156,7 @@ export function DiscoverPage({
   return (
     <section className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold leading-tight text-fg-strong desk:text-display">
+        <h1 className="text-3xl font-semibold leading-tight text-fg-strong desk:text-display">
           Discover
         </h1>
         <p className="text-fg-muted">
@@ -185,7 +185,7 @@ export function DiscoverPage({
           <StationaryStar />
           <h2
             id="discover-empty-h"
-            className="text-2xl font-bold text-fg-strong desk:text-3xl"
+            className="text-2xl font-semibold text-fg-strong desk:text-3xl"
           >
             Nothing to add right now
           </h2>

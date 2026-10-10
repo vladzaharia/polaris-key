@@ -64,7 +64,8 @@ extension IdentityClient {
         }
         var opener = browser
         if opener == nil { opener = await defaultSignInBrowser() }
-        if let opener { try? await opener.open(url) }
+        // A page that cannot be shown is the caller's to know about, not a silent ten-minute wait.
+        if let opener { try await opener.open(url) }
         defer { if let opener { Task { @MainActor in opener.close() } } }
         return try await waitForSignIn(prompt)
     }
@@ -112,45 +113,63 @@ func defaultSignInBrowser() -> (any SignInBrowser)? {
     /// The verification page in an `ASWebAuthenticationSession` sheet. The device-code page has
     /// no redirect back, so the session has no callback scheme: it shows the page and is cancelled
     /// by `close()` once polling settles (or by the player).
+    ///
+    /// The presentation anchor is chosen here, on the main actor, when the sheet opens, and
+    /// handed to AuthenticationServices through a holder that is safe to call from any thread.
+    /// The system asks for the anchor on its own schedule; answering by reaching back into the
+    /// main actor from there (`MainActor.assumeIsolated`) trapped whenever it asked off-main.
     @MainActor
-    public final class WebAuthenticationSignInBrowser: NSObject, SignInBrowser,
-        ASWebAuthenticationPresentationContextProviding
-    {
+    public final class WebAuthenticationSignInBrowser: NSObject, SignInBrowser {
         private var session: ASWebAuthenticationSession?
+        private var anchor: AnchorProvider?
 
         public override init() { super.init() }
 
         public func open(_ url: URL) async throws {
+            let provider = AnchorProvider(anchor: Self.currentAnchor())
             let session = ASWebAuthenticationSession(url: url, callbackURLScheme: nil) { _, _ in }
-            session.presentationContextProvider = self
+            session.presentationContextProvider = provider
             session.prefersEphemeralWebBrowserSession = false
+            self.anchor = provider
             self.session = session
-            _ = session.start()
+            guard session.start() else {
+                self.session = nil
+                self.anchor = nil
+                throw PolarisError(
+                    code: ErrorCode.signInUnavailable,
+                    message: "The system browser sheet could not be shown for the sign-in page.")
+            }
         }
 
         public func close() {
             session?.cancel()
             session = nil
+            anchor = nil
         }
 
-        public nonisolated func presentationAnchor(for session: ASWebAuthenticationSession)
-            -> ASPresentationAnchor
-        {
-            MainActor.assumeIsolated {
-                #if os(macOS)
-                    return NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first
-                        ?? ASPresentationAnchor()
-                #else
-                    let scenes = UIApplication.shared.connectedScenes.compactMap {
-                        $0 as? UIWindowScene
-                    }
-                    if let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) {
-                        return window
-                    }
-                    if let scene = scenes.first { return ASPresentationAnchor(windowScene: scene) }
-                    return ASPresentationAnchor()
-                #endif
-            }
+        private static func currentAnchor() -> ASPresentationAnchor {
+            #if os(macOS)
+                return NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first
+                    ?? ASPresentationAnchor()
+            #else
+                let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                if let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) {
+                    return window
+                }
+                if let scene = scenes.first { return ASPresentationAnchor(windowScene: scene) }
+                return ASPresentationAnchor()
+            #endif
+        }
+    }
+
+    /// Answers `presentationAnchor(for:)` with the anchor taken when the sheet opened.
+    private final class AnchorProvider: NSObject, ASWebAuthenticationPresentationContextProviding,
+        @unchecked Sendable
+    {
+        private let anchor: ASPresentationAnchor
+        init(anchor: ASPresentationAnchor) { self.anchor = anchor }
+        func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+            anchor
         }
     }
 #endif

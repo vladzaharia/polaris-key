@@ -548,6 +548,74 @@
             #endif
         }
 
+        /// Large, AX3 and AX5: the rows a changed screen is held to (macOS runs L only).
+        static let allTypes: [DynamicTypeSize] = [.large, .accessibility3, .accessibility5]
+
+        /// A blocking state (expired, revoked, a version block) keeps its filled action on screen
+        /// at every size, type size and preset, with the renewal page and the host's own action
+        /// both given (the longest list of controls the page has).
+        func testABlockingStateKeepsItsPrimaryActionOnScreen() {
+            let allowed = AllowedRange(min: "2.0.0")
+            for status in [LicenseStatus.expired, .revoked, .versionTooOld] {
+                check(
+                    screen: "gate-\(status.rawValue)", roles: [.primaryAction], sizes: sizes,
+                    types: Self.allTypes
+                ) {
+                    PolarisGateSurface(
+                        status: status, allowedRange: allowed, isWorking: false, lastError: nil,
+                        renewURL: URL(string: "https://example.com/renew"),
+                        blockedAction: { _ in AnyView(Text("Contact support")) },
+                        licenseKey: .constant(""), theme: Tidewater.theme,
+                        onSignIn: {}, onActivate: { _ in }, onRefresh: {},
+                        content: { Text("App") })
+                }
+            }
+        }
+
+        /// "Use a different key": the form and its Activate are on screen, with Cancel.
+        func testTheDifferentKeyFormKeepsActivateOnScreen() {
+            check(
+                screen: "gate-different-key", roles: [.primaryAction, .keyField],
+                sizes: [
+                    KitSizes.iPhoneSE, KitSizes.iPhoneSELandscape, KitSizes.iPhoneMax,
+                    KitSizes.iPad, KitSizes.macSmall, KitSizes.mac,
+                ],
+                types: Self.allTypes
+            ) {
+                PolarisGateSurface(
+                    status: .expired, allowedRange: nil, isWorking: false, lastError: nil,
+                    licenseKey: .constant(""), theme: Tidewater.theme, onSignIn: {},
+                    onActivate: { _ in }, onRefresh: {}, showsKeyFormInitially: true,
+                    content: { Text("App") })
+            }
+        }
+
+        /// The signed-in screen: who signed in, Continue and Not you?.
+        func testTheSignedInScreenKeepsContinueOnScreen() {
+            check(
+                screen: "signin-ready", roles: [.primaryAction], sizes: sizes, types: Self.allTypes
+            ) {
+                PolarisSignInSurface(
+                    phase: .ready(
+                        SignInReady(identity: SignInIdentity(name: "Ada Lovelace", email: "ada@example.com"))),
+                    theme: Tidewater.theme, attach: .constant(true), onOpen: { _ in },
+                    onAccept: {}, onRetry: {}, onCancel: {})
+            }
+        }
+
+        /// Until the first read of the client, the gate draws no controls at all.
+        func testTheGateDrawsNoCardBeforeTheFirstRead() {
+            let result = KitHost.render(
+                styled(
+                    PolarisGateSurface(
+                        status: .needsActivation, allowedRange: nil, isWorking: false,
+                        lastError: nil, isLoading: true, licenseKey: .constant(""),
+                        theme: Tidewater.theme, onSignIn: {}, onActivate: { _ in }, onRefresh: {},
+                        content: { Text("App") }), .polaris),
+                at: KitSizes.iPhoneMax, scheme: .dark, type: .large, snapshot: false)
+            XCTAssertTrue(result.frames.isEmpty, "controls laid out: \(result.frames.keys)")
+        }
+
         func testButtonLabelsAreTitleCaseOnMacAndSentenceCaseOnIOS() {
             let minor: Set<String> = KitButtonCase.minorWords
             let labels = PolarisKitCopy().buttonLabels + PolarisCopy().buttonLabels
@@ -735,7 +803,11 @@
 
             let integrator = PolarisTheme(accent: .orange).resolvedPalette(
                 for: .dark, branding: .polarisKey, presentation: teal)
-            XCTAssertEqual(integrator.accent, .orange)
+            // The integrator's colour leads, and goes through the resolver like any other accent.
+            let orange = try XCTUnwrap(Color.orange.polarisHex(for: .dark))
+            let orangeResolved = try XCTUnwrap(PolarisAccent.resolve(orange, dark: true))
+            XCTAssertEqual(integrator.accent, BrandColor(hexString: orangeResolved.solid)?.color)
+            XCTAssertNotEqual(integrator.accent, branded.accent)
 
             var dark = teal
             dark.accentDark = "#9a5cff"

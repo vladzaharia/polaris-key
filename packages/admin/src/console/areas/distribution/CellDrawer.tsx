@@ -73,7 +73,7 @@ function Section({
       className="space-y-3 border-b border-border pb-5 last:border-b-0"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id={id} className="text-sm font-bold text-fg-strong">
+        <h3 id={id} className="text-sm font-semibold text-fg-strong">
           {title}
         </h3>
         {actions}
@@ -292,7 +292,7 @@ function CellBody({
                   className="space-y-2 rounded-lg border border-border p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-bold text-fg-strong">
+                    <span className="text-sm font-medium text-fg-strong">
                       {r.channel}
                     </span>
                     <StatusPill domain="rollout" state={r.state} size="sm" />

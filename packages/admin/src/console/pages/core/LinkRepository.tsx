@@ -160,8 +160,8 @@ function PlanList({
       <h3
         className={
           tone === "danger"
-            ? "text-sm font-bold text-danger"
-            : "text-sm font-bold text-fg-strong"
+            ? "text-sm font-medium text-danger"
+            : "text-sm font-medium text-fg-strong"
         }
       >
         {title}

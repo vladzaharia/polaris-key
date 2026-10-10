@@ -43,7 +43,7 @@ export function InstallSourceList({
   if (sources.length === 0) return null;
   return (
     <div>
-      <Heading id={id} className="py-2 text-xs font-bold text-fg-muted">
+      <Heading id={id} className="py-2 text-xs font-semibold text-fg-muted">
         {C["getIt.otherWays"]}
       </Heading>
       <ul
@@ -98,7 +98,7 @@ function InstallSourceItem({
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-bold text-fg-strong">{name}</p>
+            <p className="font-medium text-fg-strong">{name}</p>
             {s.version ? (
               <p className="text-sm text-fg-muted">{versionLine(s.version)}</p>
             ) : null}
@@ -180,7 +180,7 @@ function SourceWebLink({
       rel="noreferrer"
       className={
         quiet
-          ? "inline-flex items-center gap-1 text-sm font-bold text-accent-fg hover:underline"
+          ? "inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
           : PILL_CLASS
       }
     >

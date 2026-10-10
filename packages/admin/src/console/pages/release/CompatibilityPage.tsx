@@ -177,7 +177,7 @@ function CellView({ c }: { c: CompatCellDto | undefined }): React.ReactElement {
     >
       <Icon className={cn("size-3.5", STATE_CLASS[c.state])} />
       {cellText(c)}
-      {c.current ? <span className="font-bold">· Current</span> : null}
+      {c.current ? <span className="font-medium">· Current</span> : null}
     </span>
   );
 }
@@ -396,7 +396,7 @@ function CellDrawer({
             />
             {unsatisfied.length ? (
               <section className="space-y-1.5">
-                <h3 className="text-sm font-bold text-fg-strong">
+                <h3 className="text-sm font-semibold text-fg-strong">
                   Unsatisfied requirements
                 </h3>
                 <ul className="list-disc space-y-1 pl-5 text-sm">

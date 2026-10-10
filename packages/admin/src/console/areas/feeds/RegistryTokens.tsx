@@ -393,7 +393,7 @@ function MintedSnippets({
           ) ?? [];
         return (
           <section key={f.ecosystem} className="space-y-2">
-            <h3 className="inline-flex items-center gap-2 text-sm font-bold text-fg-strong">
+            <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-fg-strong">
               <Icon aria-hidden className="size-4 text-fg-muted" />
               {f.label}
             </h3>
@@ -687,7 +687,7 @@ function MintDialog({
           ) : null}
           {!godotUrl ? (
             <fieldset className="space-y-2">
-              <legend className="text-sm font-bold text-fg-strong">
+              <legend className="text-sm font-semibold text-fg-strong">
                 Feeds
               </legend>
               {!publish ? (

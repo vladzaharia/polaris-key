@@ -103,14 +103,14 @@ export function WelcomeHeader({
     >
       <span
         aria-hidden
-        className="hidden size-10 shrink-0 place-items-center sm:grid rounded-lg bg-accent-subtle text-base font-bold text-accent-fg"
+        className="hidden size-10 shrink-0 place-items-center sm:grid rounded-lg bg-accent-subtle text-base font-semibold text-accent-fg"
       >
         {welcome.name.slice(0, 1).toUpperCase()}
       </span>
       <div className="min-w-0 flex-1 space-y-2">
         <h2
           id="product-welcome-title"
-          className="flex items-center gap-2 text-lg font-bold text-fg-strong"
+          className="flex items-center gap-2 text-lg font-semibold text-fg-strong"
         >
           {welcome.name} is ready
           <span className="text-accent-fg">

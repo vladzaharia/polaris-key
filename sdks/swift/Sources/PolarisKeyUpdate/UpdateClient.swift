@@ -237,6 +237,12 @@ private func wireCode(_ body: Data) -> String? {
     return nil
 }
 
+/// Person-facing sentences for the update client. The catalog's `not-configured` sentence is
+/// about licensing ("The app's licensing isn't set up yet"); an update refusal must not read as one.
+enum UpdateCopy {
+    static let notConfigured = "Updates aren't set up in this build. Contact the developer."
+}
+
 /// A code `runUpdateCheck` never produces: `channelFeed()` withholds the record fetch with it.
 private let RECORD_WITHHELD = "record-withheld"
 
@@ -256,6 +262,10 @@ public actor UpdateClient {
     public nonisolated let packs: PacksClient
     let core: CoreContext
     private let configured: ConfiguredUpdate?
+    /// Why the client built from `client.update`'s pins is check-only: its options were refused
+    /// at construction. `decide()` and `releaseRecord()` raise it instead of `not-configured`, so
+    /// a bad pin is named rather than reported as a missing one.
+    private let configurationError: PolarisError?
     /// The in-process detection, once started: never cached past this client (§2.9). The task,
     /// not its result, so concurrent `decide()` / `outlet()` calls share one detection.
     private var detection: Task<(outlet: ResolvedOutlet, detected: DetectedOutlet?), Never>?
@@ -270,6 +280,16 @@ public actor UpdateClient {
     public init(core: CoreContext) {
         self.core = core
         self.configured = nil
+        self.configurationError = nil
+        self.packs = PacksClient(core: core, releaseKeys: [:])
+    }
+
+    /// A check-only client that remembers why its options were refused (`client.update` over
+    /// pins that failed `init(core:options:)`).
+    init(core: CoreContext, configurationError: PolarisError) {
+        self.core = core
+        self.configured = nil
+        self.configurationError = configurationError
         self.packs = PacksClient(core: core, releaseKeys: [:])
     }
 
@@ -280,6 +300,7 @@ public actor UpdateClient {
         self.core = core
         let configured = try configure(options, pinnedTrust: core.pinnedTrust)
         self.configured = configured
+        self.configurationError = nil
         // plans/P4-29.md §2.4 step 1: before any check this process, the menu of the committed
         // feed of the configured channel, re-verified on the reload path (no freshness: a stale
         // menu only falls back). No cache or no committed feed is no menu.
@@ -506,10 +527,12 @@ extension UpdateClient {
     }
 
     private func requireKeys() throws -> ConfiguredUpdate {
+        if let configurationError { throw configurationError }
         guard let configured, !configured.releaseKeys.isEmpty else {
             throw PolarisError(
                 code: ErrorCode.notConfigured,
-                message: "Update decisions need UpdateClientOptions.pinnedReleaseKeys.")
+                message: "Update decisions need UpdateClientOptions.pinnedReleaseKeys.",
+                userMessage: UpdateCopy.notConfigured)
         }
         return configured
     }
@@ -521,7 +544,8 @@ extension UpdateClient {
         guard let platform = platformValue, let arch = opts?.arch ?? ArchFamily.headerValue else {
             throw PolarisError(
                 code: ErrorCode.notConfigured,
-                message: "This host's platform or arch has no canonical build-target value; set UpdateClientOptions.platform and arch.")
+                message: "This host's platform or arch has no canonical build-target value; set UpdateClientOptions.platform and arch.",
+                userMessage: UpdateCopy.notConfigured)
         }
         return InstalledBuild(
             version: core.version, binaryVersion: opts?.binaryVersion,

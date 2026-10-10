@@ -103,7 +103,7 @@ export function PackageAccessCard({
         <div className="space-y-5">
           <FeedList feeds={feeds} registryOrigin={access.registryOrigin} />
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-            <h3 className="font-bold text-fg-strong">Your tokens</h3>
+            <h3 className="font-semibold text-fg-strong">Your tokens</h3>
             <Button
               size="sm"
               iconStart={<Plus aria-hidden />}
@@ -273,7 +273,7 @@ function TokenRow({
     <li className="py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-bold text-fg-strong">{token.label}</p>
+          <p className="font-medium text-fg-strong">{token.label}</p>
           <p className="text-sm text-fg-muted">
             <span className="font-mono">pkeyr_…{token.hint}</span> ·{" "}
             {token.lastUsedAt
@@ -285,7 +285,7 @@ function TokenRow({
           {expiry.soon ? (
             <span
               className={cn(
-                "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-bold",
+                "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
                 active
                   ? "border-warning-border bg-warning-subtle text-warning"
                   : "border-border bg-surface-sunken text-fg-muted",
@@ -314,7 +314,7 @@ function TokenRow({
           <p
             ref={headingRef}
             tabIndex={-1}
-            className="font-bold text-fg-strong outline-none"
+            className="font-medium text-fg-strong outline-none"
           >
             Revoke {token.label}?
           </p>
@@ -387,7 +387,7 @@ function SetupTabs({
           <Tabs.Trigger
             key={t.key}
             value={t.key}
-            className="-mb-px shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-fg-muted hover:text-fg-strong data-[state=active]:border-accent data-[state=active]:font-bold data-[state=active]:text-fg-strong"
+            className="-mb-px shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-fg-muted hover:text-fg-strong data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-fg-strong"
           >
             {t.label}
           </Tabs.Trigger>
@@ -485,7 +485,7 @@ function CreateTokenDialog({
           <div className="space-y-1.5">
             <label
               htmlFor={labelId}
-              className="text-sm font-bold text-fg-strong"
+              className="text-sm font-medium text-fg-strong"
             >
               Name
             </label>
@@ -507,7 +507,7 @@ function CreateTokenDialog({
           </div>
           {access.feeds.length > 1 ? (
             <label className="block space-y-1.5">
-              <span className="text-sm font-bold text-fg-strong">Feed</span>
+              <span className="text-sm font-medium text-fg-strong">Feed</span>
               <select
                 value={feed}
                 onChange={(e) => setFeed(e.target.value)}
@@ -523,7 +523,7 @@ function CreateTokenDialog({
             </label>
           ) : null}
           <label className="block space-y-1.5">
-            <span className="text-sm font-bold text-fg-strong">
+            <span className="text-sm font-medium text-fg-strong">
               Expires after
             </span>
             <select
