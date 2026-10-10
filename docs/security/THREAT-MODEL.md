@@ -7986,6 +7986,53 @@ privacyUrl}` with https URLs reads as unset, and an unreadable store fails the s
   legacy product callback, those two paths create accounts without the step, so publishing waits
   for them (docs/RUNBOOK.md).
 
+### Product backends: `X-PKey-License` (SP-53)
+
+An app can send its signed licence document to its developer's own backend, which decides the
+request offline with a server drop-in (WIRE-CONTRACT-V4 §14 is the normative form; plans/SP-53.md
+the long form). The Worker never reads the header. The rows below are pinned by
+`conformance/corpus/v2/backend-matrix.json`, recomputed by an independent reference
+(`tools/corpus/reference/backend.ts`) and replayed by client-core and, as they land, every server
+core (SP-55 to SP-57, SP-62).
+
+- **Replay (declared, not mitigated).** The document is a bearer credential for its freshness
+  window. The device header is a consistency check, not proof of possession, and a backend keeps no
+  anti-replay floor, so anyone who captures a document (a proxy log, an APM trace, a shared HAR
+  file) can present it from anywhere until it goes stale: `expiresAt + 300` s by default, about 65
+  minutes after it was signed, or `maxAgeSeconds + 300` when the backend sets one. Rows
+  `ok-replayed-older-document` and `stale-replayed-after-window` pin both edges. TLS, the client's
+  refresh rule and header scrubbing keep the exposure short; a device-bound proof is a later
+  question (framework drop-ins plan §13 Q3).
+- **Revocation bound.** A revoked, expired or disabled licence stops getting documents from the
+  Worker, so its last one is refused `license_stale` within the same window (about 65 minutes by
+  default). A backend learns of nothing sooner, and the docs say so.
+- **Header spoofing.** The document is bound by its signature and its `aud` alone. `X-PKey-Device`
+  can only refuse: a value other than the document's `deviceId` is `license_invalid`
+  (`invalid-device-mismatch`), so the header cannot re-bind a document to another device. A second
+  `X-PKey-License` field, or two documents joined into one value by a proxy, is refused rather than
+  picking one (`invalid-two-fields`, `invalid-joined-values`), so a front end and a back end that
+  pick differently cannot disagree on whose licence it is. `Authorization`, cookies and query
+  parameters are never read (`required-authorization-never-read`), so the credential is not
+  ambient and a cross-site request cannot carry it without a CORS preflight the app controls.
+- **Backend trust.** The trust set is the pins plus the last manifest verified against the pins
+  (§1), per product, chosen by the document's `aud` and re-checked after verification, so one
+  product's key never verifies a document for another (`invalid-cross-product-key`), and a
+  foreign key under the pinned `kid` fails (`invalid-foreign-key-pinned-kid`). A failed manifest
+  fetch keeps the last verified set and the pins always verify, so a Polaris Key outage never
+  refuses a document a pinned key signed. A cache of verified documents is keyed by the header's
+  SHA-256, dropped when the trust set changes, and never skips the freshness and requirement steps.
+- **Fetch amplification.** An unknown `kid` triggers at most one manifest fetch a minute, so junk
+  headers cannot be turned into requests to Polaris Key.
+- **No secrets in logs.** The header, the JWS and the holder's name and email never appear in a
+  log line, an error message or a serialisation; debug logs carry the `kid`, the `aud`, an
+  8-character hash of the device id and the refusing step, and the problem body never names the
+  step (§14.3). client-core's reference logs nothing.
+- **Size and parsing.** The value is capped at 16 384 bytes and must be three base64url segments
+  before anything is decoded (`invalid-over-max-bytes`); the strict verifier's own caps,
+  duplicate-key refusal and verify-before-parse then apply unchanged.
+- **Browser storage.** A web app keeps the document in IndexedDB beside its device token, so an XSS
+  that reads one reads both; the docs say so.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, and the SDK does not trust it.** Every
@@ -8599,7 +8646,11 @@ writer stores request data or an untruncated message, or the Operations route ga
 host or a credential; or, for the portal media proxy (PX-W1), it gains a source host beyond
 `isAllowedStorageHost`, takes any part of the source from the request, follows a redirect without
 re-checking it, serves a type it did not sniff (SVG above all), raises a size cap, or the portal
-CSP's `img-src` widens beyond `'self' data:` and the image host's origin (HA-07).
+CSP's `img-src` widens beyond `'self' data:` and the image host's origin (HA-07); or a product
+backend's verdict (SP-53) reads the licence from `Authorization`, a cookie or a query parameter,
+picks one of several `X-PKey-License` fields, keeps a verified result across a trust-set change or
+past its freshness, logs the header or the holder, gains an anti-replay floor or a proof of
+possession, or widens its window beyond `maxAgeSeconds + 300` s.
 
 ### The shared assets root and the docs gate (SEC-WEB-1)
 
