@@ -2,6 +2,7 @@
 // hidden stub that reserves every other target path.
 //
 //   node scripts/site-map.mjs apply [--include-deferred]   perform the rows and write the stubs
+//   node scripts/site-map.mjs refresh-stubs                rewrite the stubs that are still stubs
 //   node scripts/site-map.mjs redirects                    print the redirect table
 //
 // `site-map.json` is the only source: astro.config.mjs reads its redirects, test/siteMap.test.ts
@@ -70,7 +71,9 @@ export function redirectsFor(map, root = contentRoot) {
   const out = {};
   for (const row of map.rows) {
     if (fileFor(row.from, root)) continue;
-    const old = routeOf(row.from).replace(/^\/docs/, "").replace(/\/$/, "");
+    const old = routeOf(row.from)
+      .replace(/^\/docs/, "")
+      .replace(/\/$/, "");
     out[old === "" ? "/" : old] = routeOf(row.to[0]);
   }
   for (const [from, to] of Object.entries(map.extraRedirects ?? {}))
@@ -145,15 +148,16 @@ export function renderStub(stub, nearestTitle, file) {
 function titleOfRoute(map, route, root) {
   const id = route.replace(/^\/docs\//, "").replace(/\/$/, "") || "index";
   const file = fileFor(id, root) ?? fileFor(`${id}/index`, root);
-  if (file) return splitFrontmatter(readFileSync(file, "utf8")).data.title ?? id;
+  if (file)
+    return splitFrontmatter(readFileSync(file, "utf8")).data.title ?? id;
   const stub = map.stubs.find((s) => s.path === id);
   return stub?.title ?? "the docs home";
 }
 
 export function apply({ includeDeferred = false, root = contentRoot } = {}) {
   const map = loadMap();
-  const rows = activeRows(map, includeDeferred).filter(
-    (r) => fileFor(r.from, root),
+  const rows = activeRows(map, includeDeferred).filter((r) =>
+    fileFor(r.from, root),
   );
   const log = [];
   // 1. Pages that land at a path: moves, split first targets, primary merges.
@@ -163,7 +167,10 @@ export function apply({ includeDeferred = false, root = contentRoot } = {}) {
       row.action === "split" ||
       (row.action === "merge" && row.primary === true);
     if (!isBase) continue;
-    move(fileFor(row.from, root), join(root, row.to[0] + extOf(fileFor(row.from, root))));
+    move(
+      fileFor(row.from, root),
+      join(root, row.to[0] + extOf(fileFor(row.from, root))),
+    );
     log.push(`${row.action} ${row.from} -> ${row.to[0]}`);
   }
   // 2. Appends and deletes.
@@ -203,6 +210,24 @@ export function apply({ includeDeferred = false, root = contentRoot } = {}) {
   return log;
 }
 
+/** Rewrites every stub that is still a stub from the map (a written page is left alone). */
+export function refreshStubs(root = contentRoot) {
+  const map = loadMap();
+  const done = [];
+  for (const stub of map.stubs) {
+    const file = fileFor(stub.path, root);
+    if (!file) continue;
+    if (splitFrontmatter(readFileSync(file, "utf8")).data.status !== "stub")
+      continue;
+    writeFileSync(
+      file,
+      renderStub(stub, titleOfRoute(map, stub.nearest, root), file),
+    );
+    done.push(stub.path);
+  }
+  return done;
+}
+
 const extOf = (file) => (file.endsWith(".mdx") ? ".mdx" : ".md");
 
 /** Every content id under a root. */
@@ -214,7 +239,9 @@ export function allIds(root = contentRoot) {
       if (statSync(full).isDirectory()) walk(full);
       else if (/\.mdx?$/.test(name))
         out.push(
-          posix.normalize(relative(root, full).split("\\").join("/")).replace(/\.mdx?$/, ""),
+          posix
+            .normalize(relative(root, full).split("\\").join("/"))
+            .replace(/\.mdx?$/, ""),
         );
     }
   };
@@ -222,16 +249,25 @@ export function allIds(root = contentRoot) {
   return out.sort();
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === resolve(process.argv[1])
+) {
   const cmd = process.argv[2];
   if (cmd === "apply") {
-    const log = apply({ includeDeferred: process.argv.includes("--include-deferred") });
+    const log = apply({
+      includeDeferred: process.argv.includes("--include-deferred"),
+    });
     console.log(log.join("\n"));
     console.log(`site-map: ${log.length} changes`);
+  } else if (cmd === "refresh-stubs") {
+    console.log(`site-map: ${refreshStubs().length} stubs rewritten`);
   } else if (cmd === "redirects") {
     console.log(JSON.stringify(redirectsFor(loadMap()), null, 2));
   } else {
-    console.error("usage: site-map.mjs apply [--include-deferred] | redirects");
+    console.error(
+      "usage: site-map.mjs apply [--include-deferred] | refresh-stubs | redirects",
+    );
     process.exit(2);
   }
 }

@@ -13,4 +13,4 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [Your library](/docs/help/library/) for the nearest live page.
+Placeholder page. See [Using a Polaris Key product](/docs/help/) for the nearest live page.

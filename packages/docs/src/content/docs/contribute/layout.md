@@ -161,8 +161,9 @@ work down the list until it passes.
    `@polaris-key/brand` (`packages/brand/src/tokens/services.ts`; its `services.test.ts` fails
    until there is one, and `gen brand` emits the `[data-service="<slug>"]` rule), and the row's
    icon in `ServicesCard`'s `SERVICE_ICONS` (a type error until it is there).
-10. **Docs.** A `packages/docs/src/content/docs/services/<slug>/` section with an `index` page,
-    and its entry under "Services" in `packages/docs/astro.config.mjs`, in table order.
+10. **Docs.** Add the slug to a feature's `services` in `packages/docs/src/lib/features.ts`. The
+    feature's `features/<feature>/` directory needs an `index` page and a group in the
+    Developers tree of `packages/docs/src/lib/doors.ts`.
 11. **Parity and SDKs.** The feature registry (`conformance/parity/features.json`) must accept
     the slug as a feature's `service`; SDK sub-clients for the service follow their own work.
 12. **Skills and agent files.** Update `AGENTS.md`'s repo notes and the

@@ -278,7 +278,8 @@ h6,
 .sidebar-content details:has(> ul > li > a[href*="/docs/features/sign-in/"]) {
   --pkd-group-accent: var(--pk-service-identity);
 }
-.sidebar-content details:has(> ul > li > a[href*="/docs/features/cloud-sync/"]) {
+.sidebar-content
+  details:has(> ul > li > a[href*="/docs/features/cloud-sync/"]) {
   --pkd-group-accent: var(--pk-service-sync);
 }
 

@@ -28,10 +28,10 @@
       }
     },
     "messages": {
-      "description": "One entry per message id. A catalog `codes` key is its own id; a `gate` or `activation` key is prefixed with its group and a dot; the fallback is `fallback`.",
+      "description": "One entry per message id. A catalog `codes` key is its own id (server codes use `_`, client codes use `-`); a `gate` or `activation` key is prefixed with its group and a dot; the fallback is `fallback`.",
       "type": "object",
       "propertyNames": {
-        "pattern": "^(?:fallback|(?:gate|activation)\\.[a-z0-9]+(?:-[a-z0-9]+)*|[a-z0-9]+(?:_[a-z0-9]+)*)$"
+        "pattern": "^(?:fallback|(?:gate|activation)\\.[a-z0-9]+(?:-[a-z0-9]+)*|[a-z0-9]+(?:[_-][a-z0-9]+)*)$"
       },
       "additionalProperties": {
         "type": "object",

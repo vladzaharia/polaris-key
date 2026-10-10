@@ -39,9 +39,13 @@ export interface HelpMessagesData {
   developerOnly: string[];
 }
 
-/** A message id: a `codes` key, `gate.<key>`, `activation.<key>` or `fallback`. */
+/**
+ * A message id: a `codes` key as it is (server codes use `_`, client codes use `-`),
+ * `gate.<key>`, `activation.<key>` or `fallback`. The dot keeps `activation.device-limit` apart
+ * from the `device_limit` and `device-limit` code keys.
+ */
 export const MESSAGE_ID =
-  /^(?:fallback|(?:gate|activation)\.[a-z0-9]+(?:-[a-z0-9]+)*|[a-z0-9]+(?:_[a-z0-9]+)*)$/;
+  /^(?:fallback|(?:gate|activation)\.[a-z0-9]+(?:-[a-z0-9]+)*|[a-z0-9]+(?:[_-][a-z0-9]+)*)$/;
 
 /** Every catalog entry by message id. */
 export function catalogEntries(source: Catalog): Map<string, CatalogEntry> {
@@ -79,12 +83,16 @@ export function validateHelpMessages(
       const first = owner.get(entry.entry);
       if (first === undefined) owner.set(entry.entry, id);
       else if (known.get(first)?.title !== known.get(id)?.title)
-        problems.push(`${id}: shares entry "${entry.entry}" with ${first} but not its title`);
+        problems.push(
+          `${id}: shares entry "${entry.entry}" with ${first} but not its title`,
+        );
     }
   }
   for (const id of doc.developerOnly) {
-    if (!known.has(id)) problems.push(`${id}: developer-only id not in the copy catalog`);
-    if (id in doc.messages) problems.push(`${id}: both a message and developer-only`);
+    if (!known.has(id))
+      problems.push(`${id}: developer-only id not in the copy catalog`);
+    if (id in doc.messages)
+      problems.push(`${id}: both a message and developer-only`);
   }
   return problems;
 }

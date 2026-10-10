@@ -34,14 +34,25 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
   {
     name: "Generated",
     file: "Generated.astro",
-    summary: "SDK usage from SP-33's generator. Fails the build until it ships.",
-    props: ["feature: string", "sdk?: SdkId", "lane?: LaneId", 'part?: "usage" | "install" | "states"'],
+    summary:
+      "SDK usage from SP-33's generator. Fails the build until it ships.",
+    props: [
+      "feature: string",
+      "sdk?: SdkId",
+      "lane?: LaneId",
+      'part?: "usage" | "install" | "states"',
+    ],
   },
   {
     name: "Snippet",
     file: "Snippet.astro",
     summary: "A region of a compiled source file, titled with its file name.",
-    props: ["src: string", "region?: string", "lang?: string", "title?: string"],
+    props: [
+      "src: string",
+      "region?: string",
+      "lang?: string",
+      "title?: string",
+    ],
   },
   {
     name: "InstallSteps",
@@ -52,7 +63,8 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
   {
     name: "StatesToHandle",
     file: "StatesToHandle.astro",
-    summary: "Every state an own-UI app shows, with its copy key and Help link.",
+    summary:
+      "Every state an own-UI app shows, with its copy key and Help link.",
     props: ["states: { state: string; copyKey: string; helpId?: string }[]"],
   },
   {
@@ -71,7 +83,9 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     name: "Pill",
     file: "Pill.astro",
     summary: "A short status label with a word.",
-    props: ['tone?: "neutral" | "info" | "success" | "warning" | "danger" | "signed"'],
+    props: [
+      'tone?: "neutral" | "info" | "success" | "warning" | "danger" | "signed"',
+    ],
   },
   {
     name: "Status",
@@ -106,7 +120,8 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
   {
     name: "HelpMessage",
     file: "HelpMessage.astro",
-    summary: "One Help message entry: the catalog title as the heading, the id as its anchor.",
+    summary:
+      "One Help message entry: the catalog title as the heading, the id as its anchor.",
     props: ["id: string"],
   },
   {

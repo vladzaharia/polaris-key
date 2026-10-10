@@ -361,6 +361,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "contribute/releasing",
           "contribute/package-feeds",
           "contribute/data-model",
+          "contribute/docs-components",
           "contribute/agents/index",
           "contribute/agents/recipes",
           "contribute/agents/conventions",

@@ -1216,7 +1216,7 @@
       "type": "how-to",
       "title": "Go live",
       "description": "Pin keys, sign builds, wire CI and confirm each platform before you ship.",
-      "nearest": "/docs/build/ci/",
+      "nearest": "/docs/features/ship-builds/ci/",
       "package": "DOC-07b",
       "pri": "P1"
     },
@@ -1560,7 +1560,7 @@
       "type": "help",
       "title": "Secure your account",
       "description": "What to do after an email asks \"Wasn't you?\".",
-      "nearest": "/docs/help/account/",
+      "nearest": "/docs/help/sign-in/",
       "package": "DOC-04b",
       "pri": "P1"
     },
@@ -1569,7 +1569,7 @@
       "type": "help",
       "title": "Bought with a different email or on Steam?",
       "description": "Add an email or Steam so your purchases show up.",
-      "nearest": "/docs/help/account/",
+      "nearest": "/docs/help/sign-in/",
       "package": "DOC-04b",
       "pri": "P1"
     },
@@ -1587,7 +1587,7 @@
       "type": "help",
       "title": "Get free apps from Discover",
       "description": "Add a free app to your library.",
-      "nearest": "/docs/help/library/",
+      "nearest": "/docs/help/",
       "package": "DOC-05b",
       "pri": "P1"
     },
@@ -1596,7 +1596,7 @@
       "type": "help",
       "title": "Find a lost license key",
       "description": "Where to find your key, or get a new one.",
-      "nearest": "/docs/help/library/",
+      "nearest": "/docs/help/",
       "package": "DOC-05b",
       "pri": "P1"
     },
@@ -1605,7 +1605,7 @@
       "type": "help",
       "title": "What your license status means",
       "description": "What Active, Offline, Expired, Suspended, Signed out and Update required mean.",
-      "nearest": "/docs/help/library/",
+      "nearest": "/docs/help/",
       "package": "DOC-05b",
       "pri": "P1"
     },
@@ -1614,7 +1614,7 @@
       "type": "help",
       "title": "Remove an app from your library",
       "description": "What happens to your devices, and the steps.",
-      "nearest": "/docs/help/library/",
+      "nearest": "/docs/help/",
       "package": "DOC-05b",
       "pri": "P1"
     },
@@ -1632,7 +1632,7 @@
       "type": "help",
       "title": "Restore a purchase",
       "description": "Restore an App Store, Google Play or Steam purchase.",
-      "nearest": "/docs/help/library/",
+      "nearest": "/docs/help/",
       "package": "DOC-05c",
       "pri": "P1"
     },
@@ -1641,7 +1641,7 @@
       "type": "help",
       "title": "Refunds, billing and cancellations",
       "description": "What Polaris Key does and doesn't handle about payment.",
-      "nearest": "/docs/help/contact/",
+      "nearest": "/docs/help/",
       "package": "DOC-05c",
       "pri": "P1"
     },
@@ -1829,7 +1829,7 @@
       "type": "help",
       "title": "Delete your account",
       "description": "What happens when you delete your Polaris Key account, and the steps.",
-      "nearest": "/docs/help/account/",
+      "nearest": "/docs/help/sign-in/",
       "package": "DOC-04b",
       "pri": "P1"
     },
@@ -1847,7 +1847,7 @@
       "type": "help",
       "title": "Add a license with a key",
       "description": "Enter a license key in the Activate license dialog.",
-      "nearest": "/docs/help/library/",
+      "nearest": "/docs/help/",
       "package": "DOC-05b",
       "pri": "P1",
       "anchors": [

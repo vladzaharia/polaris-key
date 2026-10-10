@@ -13,4 +13,4 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [the docs home](/docs/build/ci/) for the nearest live page.
+Placeholder page. See [Publishing from CI](/docs/features/ship-builds/ci/) for the nearest live page.

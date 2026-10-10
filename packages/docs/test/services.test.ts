@@ -1,17 +1,18 @@
 /**
  * The docs site's half of the service-table drift gate (P0-09).
  *
- * Every row of `tools/services.json` is a service with its own docs section: a
- * `src/content/docs/services/<slug>/` directory and a "Services" sidebar entry in
- * `astro.config.mjs` that autogenerates from it. Both are hand-written (a docs page is prose,
- * not generated output), so each is asserted here and a new table row fails with a message
- * naming what is missing (/docs/contribute/layout/#adding-a-service).
+ * Every row of `tools/services.json` is a service with a docs home: it belongs to a feature in
+ * `src/lib/features.ts`, whose `src/content/docs/features/<feature>/` directory has an index
+ * page, and that feature has a group in the Developers sidebar (`src/lib/doors.ts`). A new table
+ * row fails here with a message naming what is missing (/docs/contribute/layout/#adding-a-service).
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { DOOR_TREES } from "../src/lib/doors";
+import { FEATURES, type Feature } from "../src/lib/features";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = join(docsRoot, "..", "..");
@@ -25,48 +26,51 @@ interface Row {
 const table = JSON.parse(
   readFileSync(join(repoRoot, "tools", "services.json"), "utf8"),
 ) as { services: Row[] };
-const astroConfig = readFileSync(join(docsRoot, "astro.config.mjs"), "utf8");
+
+const featureOf = (slug: string): Feature | undefined =>
+  Object.values(FEATURES).find((f) => f.services.includes(slug));
 
 describe("the service table, as the docs site sees it", () => {
-  it("every service has a services/<slug>/ docs directory with an index page", () => {
+  it("every service belongs to a feature", () => {
+    for (const row of table.services)
+      expect(
+        featureOf(row.slug),
+        `src/lib/features.ts has no feature for service "${row.slug}" (add it to a feature's services)`,
+      ).toBeDefined();
+  });
+
+  it("every service's feature has a docs directory with an index page", () => {
     for (const row of table.services) {
+      const feature = featureOf(row.slug)!;
       const dir = join(
         docsRoot,
         "src",
         "content",
         "docs",
-        "services",
-        row.slug,
+        "features",
+        feature.id,
       );
       expect(
         existsSync(dir),
-        `src/content/docs/services/${row.slug}/ is missing (docs section for "${row.slug}", served at ${row.docs})`,
+        `src/content/docs/features/${feature.id}/ is missing (docs for service "${row.slug}")`,
       ).toBe(true);
       expect(
         ["index.md", "index.mdx"].some((f) => existsSync(join(dir, f))),
-        `src/content/docs/services/${row.slug}/ has no index page for ${row.docs}`,
+        `src/content/docs/features/${feature.id}/ has no index page`,
       ).toBe(true);
     }
   });
 
-  it("astro.config.mjs has a Services sidebar entry per service, in table order", () => {
-    const entry = (row: Row): RegExp =>
-      new RegExp(
-        `\\{\\s*label:\\s*"${row.label}",\\s*items:\\s*\\[\\s*\\{\\s*autogenerate:\\s*\\{\\s*directory:\\s*"services/${row.slug}"\\s*\\}\\s*\\}\\s*\\]`,
-      );
-    const positions: number[] = [];
-    for (const row of table.services) {
-      const match = entry(row).exec(astroConfig);
+  it("every feature with a service has a group in the Developers sidebar", () => {
+    const developers = DOOR_TREES.find((t) => t.door === "developers")!;
+    const labels = developers.groups.map((g) => g.label);
+    for (const feature of Object.values(FEATURES)) {
+      if (feature.services.length === 0) continue;
       expect(
-        match,
-        `astro.config.mjs has no sidebar entry { label: "${row.label}", items: [{ autogenerate: { directory: "services/${row.slug}" } }] }`,
-      ).not.toBeNull();
-      positions.push(match!.index);
+        labels,
+        `src/lib/doors.ts has no Developers group "${feature.label}"`,
+      ).toContain(feature.label);
     }
-    expect(
-      positions,
-      "astro.config.mjs lists the service sidebar entries out of table order",
-    ).toEqual([...positions].sort((a, b) => a - b));
   });
 });
 

@@ -13,4 +13,4 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [Your account and sign-in methods](/docs/help/account/) for the nearest live page.
+Placeholder page. See [The customer portal](/docs/help/sign-in/) for the nearest live page.

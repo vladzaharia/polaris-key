@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { FEATURES } from "../src/lib/features";
 import { sectionFor } from "../src/lib/section";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,32 +23,49 @@ const table = JSON.parse(read(repoRoot, "tools", "services.json")) as {
 };
 
 describe("docs sections", () => {
-  it("every service's pages take that service's data-service", () => {
-    for (const { slug, label } of table.services) {
-      expect(sectionFor(`services/${slug}`)).toEqual({ slug, label });
-      expect(sectionFor(`services/${slug}/some-page`)).toEqual({ slug, label });
+  it("every service's feature pages take that service's data-service", () => {
+    for (const { slug } of table.services) {
+      const feature = Object.values(FEATURES).find((f) =>
+        f.services.includes(slug),
+      )!;
+      // The primary area of the feature (a sub-area may take another accent).
+      expect(sectionFor(`features/${feature.id}/some-page`).slug).toBe(
+        feature.accent,
+      );
     }
   });
 
-  it("core and every non-service page are the platform section", () => {
+  it("core and every non-feature page are the platform section", () => {
     for (const id of [
       "index",
-      "services/core",
-      "services/core/trust",
+      "operate/index",
+      "reference/protocol/trust",
       "reference/error-codes",
-      "start/service-model",
-      "services/not-a-service/page",
+      "start/how-it-works",
+      "features/not-a-feature/page",
     ]) {
       expect(sectionFor(id).slug).toBe("core");
     }
   });
 
-  it("the stylesheet gives every service a sidebar marker", () => {
+  it("the stylesheet gives every feature accent a sidebar marker", () => {
     const css = read(docsRoot, "src", "styles", "global.css");
-    for (const { slug } of [{ slug: "core" }, ...table.services]) {
-      expect(css).toContain(`a[href*="/docs/services/${slug}/"]`);
+    const markers: [string, string][] = [
+      ["licensing", "license"],
+      ["managed-config", "config"],
+      ["ship-builds/releases", "release"],
+      ["ship-builds/channels", "distribution"],
+      ["ship-builds/updates", "update"],
+      ["sign-in", "identity"],
+      ["cloud-sync", "sync"],
+    ];
+    for (const [dir, slug] of markers) {
+      expect(css).toContain(`a[href*="/docs/features/${dir}/"]`);
       expect(css).toContain(`var(--pk-service-${slug})`);
     }
+    // Every service has a marker.
+    for (const { slug } of table.services)
+      expect(css).toContain(`var(--pk-service-${slug})`);
   });
 });
 

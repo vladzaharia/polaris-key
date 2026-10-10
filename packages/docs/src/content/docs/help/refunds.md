@@ -13,4 +13,4 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [Get help with an app](/docs/help/contact/) for the nearest live page.
+Placeholder page. See [Using a Polaris Key product](/docs/help/) for the nearest live page.

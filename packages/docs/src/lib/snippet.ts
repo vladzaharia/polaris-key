@@ -11,7 +11,10 @@ import { readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../..");
+const repoRoot = resolve(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../../..",
+);
 
 const MARK = /^\s*(?:\/\/|#|--)\s*docs:(start|end)\s+([A-Za-z0-9._-]+)\s*$/;
 

@@ -96,9 +96,8 @@ describe("console Docs targets follow the door rule", () => {
 
 describe("every console Docs target is a final path", () => {
   const moved = new Set(
-    siteMap.rows.map(
-      (r) =>
-        `/docs/${r.from.replace(/\/index$/, "")}/`.replace(/\/\/$/, "/"),
+    siteMap.rows.map((r) =>
+      `/docs/${r.from.replace(/\/index$/, "")}/`.replace(/\/\/$/, "/"),
     ),
   );
   const targets: [string, string][] = [
