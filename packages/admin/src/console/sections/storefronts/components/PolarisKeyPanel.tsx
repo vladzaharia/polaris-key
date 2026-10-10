@@ -38,6 +38,7 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Form, useAdminForm } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
+import { ScrollTable } from "../../../../ui/ScrollTable.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { RadioCards } from "../../../../ui/RadioCards.js";
 import { SaveBar } from "../../../../ui/SaveBar.js";
@@ -903,54 +904,52 @@ function Analytics({ slug }: { slug: string }): React.ReactElement {
         </p>
       ) : null}
       {data && data.byKind.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[32rem] text-sm">
-            <caption className="sr-only">
-              The last 28 days, by way to add
-            </caption>
-            <thead>
-              <tr className="border-b border-border text-left text-fg-muted">
-                <th scope="col" className="py-2 pr-3 font-normal">
-                  Way to add
+        <ScrollTable
+          label="The last 28 days, by way to add"
+          className="w-full min-w-[32rem] text-sm"
+        >
+          <thead>
+            <tr className="border-b border-border text-left text-fg-muted">
+              <th scope="col" className="py-2 pr-3 font-normal">
+                Way to add
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-normal">
+                Impressions
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-normal">
+                Adds
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-normal">
+                First activations
+              </th>
+              <th scope="col" className="py-2 text-right font-normal">
+                Rate
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.byKind.map((k) => (
+              <tr key={k.kind} className="border-b border-border">
+                <th
+                  scope="row"
+                  className="py-2 pr-3 text-left font-normal text-fg"
+                >
+                  {kindLabel(k.kind)}
                 </th>
-                <th scope="col" className="py-2 pr-3 text-right font-normal">
-                  Impressions
-                </th>
-                <th scope="col" className="py-2 pr-3 text-right font-normal">
-                  Adds
-                </th>
-                <th scope="col" className="py-2 pr-3 text-right font-normal">
-                  First activations
-                </th>
-                <th scope="col" className="py-2 text-right font-normal">
-                  Rate
-                </th>
+                <td className="py-2 pr-3 text-right tabular-nums">
+                  {count.format(k.impressions)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums">
+                  {count.format(k.adds)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums">
+                  {count.format(k.activations)}
+                </td>
+                <td className="py-2 text-right tabular-nums">{rate(k)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {data.byKind.map((k) => (
-                <tr key={k.kind} className="border-b border-border">
-                  <th
-                    scope="row"
-                    className="py-2 pr-3 text-left font-normal text-fg"
-                  >
-                    {kindLabel(k.kind)}
-                  </th>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {count.format(k.impressions)}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {count.format(k.adds)}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {count.format(k.activations)}
-                  </td>
-                  <td className="py-2 text-right tabular-nums">{rate(k)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </ScrollTable>
       ) : data ? (
         <p className="text-sm text-fg-muted">
           No one was shown it on Polaris Key in the last 28 days.
