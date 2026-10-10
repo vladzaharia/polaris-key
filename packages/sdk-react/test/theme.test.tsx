@@ -306,9 +306,9 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
   });
 });
 
-describe("a product accent through the resolver (UI-KITS.md §3.3, DL13; the UK-47 review's V7)", () => {
-  // The accents the review measured unreadable: pink on dark (label 3.84:1), navy on dark
-  // (label 1.71:1, fill 1.57:1), yellow on light (label 1.63:1).
+describe("a product accent through the resolver (UI-KITS.md §3.3, DL13)", () => {
+  // Accents that read badly before the resolver ran: a pink on dark (label 3.84:1), a navy on
+  // dark (label 1.71:1, fill 1.57:1), a yellow on light (label 1.63:1).
   const CASES = [
     ["pink", "#ff4fa3", "dark"],
     ["navy", "#1b2a6b", "dark"],

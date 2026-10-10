@@ -9,7 +9,14 @@ no DOM, React or Lit dependency.
   the design language's decisions for that state (the one primary, the refusal tone, the error
   slot, the initial focus and the link verdict).
 - **`SignInModel`**: the one sign-in form's state machine over the SDK primitives of
-  `plans/I-04.md` §G.9, with `presentation` and `replace` as inputs.
+  `plans/I-04.md` §G.9, with `presentation` and `replace` as inputs. Two ways to let go of it:
+  - `dispose()` stops following the session and nothing more: no later answer is applied, and
+    the request and any license-choice grant stay open on the server. A binding calls it when
+    its view unmounts, so a re-mount (React's StrictMode, a Lit element moved in the DOM) can
+    follow the same sign-in again with a new model.
+  - `cancel()` ends the sign-in: it cancels the request and the grant and returns the form to
+    its first step. A binding calls it only when the person cancels, or when the host closes
+    the form for good.
 - **`createStore`**: snapshot and `subscribe`, with the "deliver on the UI thread" hook.
 - **`Copy`**: the catalog lookup and the ICU-subset formatter over injected tables
   (`@polaris-key/brand/kit-copy`).

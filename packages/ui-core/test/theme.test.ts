@@ -5,7 +5,7 @@
 //     integrator input; with no source the bundle names it and its icon gives the accent;
 //   - every product accent runs through brand's resolveAccent, so the primary, its label, the
 //     accent text and the focus ring keep their contrast in both schemes, on the brand's
-//     surfaces and on a host's own (the UK-47 review's pink, navy and yellow included);
+//     surfaces and on a host's own (a pink, a navy and a yellow that read badly unresolved);
 //   - the focus ring follows the product accent, never a fixed violet.
 
 import type {
@@ -203,7 +203,7 @@ describe("theme resolution (UI-KITS.md §3.1)", () => {
   });
 });
 
-/** The accents the UK-47 review measured unreadable, and the fixture products. */
+/** Accents that read badly unresolved (a pink, a navy, a yellow), and the fixture products. */
 const ACCENTS = {
   pink: "#ff4fa3",
   navy: "#1b2a6b",
@@ -258,7 +258,7 @@ describe("Themes: every product accent stays readable (resolveAccent, DL13)", ()
     }
   });
 
-  it("measures the UK-47 review's three failures fixed", () => {
+  it("gives the pink, navy and yellow accents a readable label and fill", () => {
     const pinkDark = resolveKitColors(ACCENTS.pink, "dark");
     expect(
       contrastRatio(pinkDark.onPrimary, pinkDark.primary),

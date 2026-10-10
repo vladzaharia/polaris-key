@@ -593,9 +593,11 @@ export class SignInModel {
   }
 
   /**
-   * Stop following the session: no answer is applied after this. The request itself stays
-   * open, so a binding that re-mounts (React's StrictMode) can follow it again with a new
-   * model; `cancel()` ends it on the server.
+   * Stop following the session: no answer is applied after this, and that is all. The request
+   * and any license-choice grant stay open on the server, so a binding that re-mounts (React's
+   * StrictMode, a Lit element moved in the DOM) can follow the same sign-in again with a new
+   * model. Call it when a view unmounts. To end the sign-in itself (the person cancelled, or the
+   * host closes the form for good), call `cancel()`, which cancels the request and the grant.
    */
   dispose(): void {
     this.endSession();

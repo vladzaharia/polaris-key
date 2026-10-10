@@ -196,7 +196,7 @@ export function resolveAccent(
   const fg = accentFg(hex, scheme, grounds);
   // On the brand's surfaces the preferred label always clears 4.5:1 on `solid`. A host's lighter
   // dark grounds can lift a dark accent's solid past where white reads (navy on a #313338 host):
-  // then the other label, so the primary is never unreadable (UK-47 review V7).
+  // then the other label, so the primary is never unreadable.
   const preferred = label === "white" ? ACCENT_WHITE : ACCENT_INK;
   const other = label === "white" ? ACCENT_INK : ACCENT_WHITE;
   const on =

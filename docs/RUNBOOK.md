@@ -1075,6 +1075,12 @@ nothing to bump and no per-SDK tag:
   empty directories: `pnpm add @polaris-key/node` with pnpm 11's defaults (its one-day age gate
   picks the newest version a day old), `npm install @polaris-key/react react react-dom`, and the
   build's exact set.
+- **The first release after `@polaris-key/ui-core` lands must be a tag deploy.** A package publishes
+  only to a deliverable the system product declares, and the deploy hook (`POST /webhooks/deploy`,
+  `linkSystemProduct`) is what applies the root `.pkey/release.yaml`, `npm.ui-core` included. Until
+  a production deploy has run it, a publish of ui-core is refused (`invalid_descriptor`) and tier 3
+  stops `node`, `react` and `cli` with it, so `main`-channel publishes fail until the tag deploy
+  has registered `npm.ui-core`.
 - **A leg stuck in `waiting`:** GitHub occasionally never advances one deployment to
   `package-registry` (no reviewer or timer can release it). Nothing above its tier publishes.
   Cancel the run, then **Re-run failed jobs**: the stuck leg and every tier above it run again.
