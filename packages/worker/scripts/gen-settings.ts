@@ -22,6 +22,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
 import { SETTINGS } from "../src/mount.js";
+import { ownerArea } from "../src/core/settings/define.js";
+import { areaName } from "../src/core/rbac/areas.js";
 import { NOT_A_SETTING } from "./settings-coverage.js";
 import type { NotASetting } from "./settings-coverage.js";
 import type {
@@ -137,6 +139,9 @@ function notes(e: SettingDef): string {
   if (e.pending) n.push(`registered ahead of ${e.pending.wp}`);
   if (e.critical) n.push("reason required");
   if (e.securityWidening) n.push("security-widening");
+  // ST-29: a key outside its owner's console area says which area a write needs.
+  if (e.scope !== "platform" && e.rbacArea !== ownerArea(e))
+    n.push(`console area: ${areaName(e.rbacArea)}`);
   if (e.systemLock)
     n.push(
       `locked to ${code(JSON.stringify(e.systemLock.value))} for the system product`,
@@ -291,6 +296,7 @@ export interface SettingsIndexEntry {
   entity: SettingDef["entity"] | null;
   service: string;
   area: string;
+  rbacArea: string;
   label: string;
   description: string;
   keywords: string[];
@@ -312,6 +318,7 @@ export function indexEntries(
     entity: e.entity ?? null,
     service: e.service,
     area: e.area,
+    rbacArea: e.rbacArea,
     label: e.label,
     description: e.description,
     keywords: [...(e.keywords ?? [])],
@@ -351,6 +358,8 @@ export async function renderIndex(
     "  service: string;",
     "  /** The settings-hub section the row lives in. */",
     "  area: string;",
+    "  /** The console area a write needs (`can()`, ST-29): what `useCan` checks for this row. */",
+    "  rbacArea: string;",
     "  label: string;",
     "  description: string;",
     "  keywords: readonly string[];",

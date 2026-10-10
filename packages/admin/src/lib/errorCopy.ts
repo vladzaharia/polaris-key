@@ -436,6 +436,15 @@ export function errorCopy(
         details,
       };
     }
+    // ST-29: the route table's refusal (`reason: "no_access"`): the member lacks the area.
+    if (reason === "no_access")
+      return {
+        title: "You don't have access to this",
+        description:
+          "Your role doesn't include this area. An admin of it can give you access.",
+        action: "none",
+        details,
+      };
     return {
       title: "You can't do that",
       description: message ?? "Your session isn't allowed to make this change.",

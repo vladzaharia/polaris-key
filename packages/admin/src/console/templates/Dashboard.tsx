@@ -24,6 +24,7 @@ import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Link } from "../router.js";
+import { useCanOpenHref } from "../access/context.js";
 
 /**
  * A cell of a side-by-side row of panels: the row's cells stretch to the tallest, and the cell's
@@ -271,11 +272,16 @@ export function AttentionList({
   /** The page's first-load key (`useFirstLoad`): the items stagger in on that load only. */
   stagger?: string;
 }): React.ReactElement | null {
+  // ST-29: an item whose action opens a page the member's role does not is left out.
+  const canOpen = useCanOpenHref();
+  const visible = items.filter(
+    (i) => !i.action?.href || canOpen(i.action.href),
+  );
   const [all, setAll] = React.useState(false);
-  const motion = useListStagger(stagger, items.length > 0, all);
+  const motion = useListStagger(stagger, visible.length > 0, all);
   const id = React.useId();
-  if (items.length === 0) return null;
-  const sorted = sortAttention(items);
+  if (visible.length === 0) return null;
+  const sorted = sortAttention(visible);
   const shown = all ? sorted : sorted.slice(0, max);
   return (
     <section
@@ -290,7 +296,7 @@ export function AttentionList({
           {title}
         </h2>
         <StatusPill tone="warning" icon={false} size="sm">
-          {items.length}
+          {visible.length}
         </StatusPill>
       </div>
       <ul
