@@ -107,6 +107,10 @@ export function compileTs(snippets: Snippet[]): Failure[] {
   const realFileExists = host.fileExists.bind(host);
   const realReadFile = host.readFile.bind(host);
   const realGetSourceFile = host.getSourceFile.bind(host);
+  const realDirectoryExists = host.directoryExists?.bind(host);
+  const virtualRoot = join(DOCS_PKG, ".snippets");
+  host.directoryExists = (d) =>
+    resolve(d).startsWith(virtualRoot) || (realDirectoryExists?.(d) ?? true);
   host.fileExists = (f) => files.has(resolve(f)) || realFileExists(f);
   host.readFile = (f) => files.get(resolve(f)) ?? realReadFile(f);
   host.getSourceFile = (f, lang, onError, shouldCreate) => {
@@ -283,4 +287,39 @@ export function pythonSymbols(python: string): Set<string> {
   });
   if (run.status !== 0) throw new Error(`pylane symbols failed: ${run.stderr}`);
   return new Set(JSON.parse(run.stdout) as string[]);
+}
+
+// ── Execution (blocks tagged `run`) ───────────────────────────────────────────────────────────
+
+export interface RunResult {
+  snippet: Snippet;
+  ok: boolean;
+  output: string;
+}
+
+/** Run a block tagged `run` against the real SDK: it must exit 0. */
+export function runSnippet(s: Snippet, python: string | null): RunResult {
+  if (s.lang === "python") {
+    if (!python) return { snippet: s, ok: false, output: "no Python interpreter" };
+    const dir = mkdtempSync(join(tmpdir(), "pkey-docs-run-"));
+    try {
+      writeFileSync(join(dir, "polaris_config.py"), readFileSync(join(PY_DIR, "tests/sdk_config_sample.py")));
+      writeFileSync(join(dir, "docs_prelude.py"), readFileSync(join(HERE, "prelude.py")));
+      writeFileSync(join(dir, "run_block.py"), `from docs_prelude import *  # noqa\n${s.code}\n`);
+      const r = spawnSync(python, ["-I", "-c", `import sys; sys.path.insert(0, ${JSON.stringify(dir)}); import runpy; runpy.run_path("run_block.py", run_name="__main__")`], { cwd: dir, encoding: "utf8", timeout: 120_000 });
+      return { snippet: s, ok: r.status === 0, output: `${r.stdout}${r.stderr}` };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  const dir = join(DOCS_PKG, ".snippets-run");
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, `run-${process.pid}-${Math.random().toString(36).slice(2)}.${s.lang === "js" ? "mjs" : "mts"}`);
+  try {
+    writeFileSync(file, s.code);
+    const r = spawnSync(process.execPath, ["--import", "tsx", file], { cwd: DOCS_PKG, encoding: "utf8", timeout: 120_000 });
+    return { snippet: s, ok: r.status === 0, output: `${r.stdout}${r.stderr}` };
+  } finally {
+    rmSync(file, { force: true });
+  }
 }

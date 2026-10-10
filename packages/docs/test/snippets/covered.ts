@@ -10,7 +10,12 @@ export interface Covered {
   language: "ts" | "python";
 }
 
-export const COVERED_PAGES: Covered[] = [];
+const BUILD = "packages/docs/src/content/docs/build/";
+
+export const COVERED_PAGES: Covered[] = [
+  { path: `${BUILD}quickstart/node.md`, language: "ts" },
+  { path: `${BUILD}sdks/node/your-own-ui.md`, language: "ts" },
+];
 
 export function coveredLanguage(file: string): "ts" | "python" | null {
   const hit = COVERED_PAGES.find((c) =>

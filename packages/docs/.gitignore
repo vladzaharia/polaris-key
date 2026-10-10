@@ -5,3 +5,4 @@ public/schemas/
 public/openapi/
 # the launch-kit web identity (copy-artifacts.mjs) — source is @polaris-key/brand
 public/branding/
+.snippets-run/

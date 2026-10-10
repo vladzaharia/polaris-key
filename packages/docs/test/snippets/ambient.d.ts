@@ -17,7 +17,7 @@ declare module "electron" {
   export const ipcMain: {
     handle(
       channel: string,
-      listener: (event: unknown, ...args: any[]) => unknown,
+      listener: (event: any, ...args: any[]) => unknown,
     ): void;
     removeHandler(channel: string): void;
   };

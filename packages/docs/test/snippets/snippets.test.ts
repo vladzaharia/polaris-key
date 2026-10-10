@@ -21,6 +21,7 @@ import {
   compilePython,
   compileTs,
   laneOf,
+  runSnippet,
   pythonBin,
   pythonSymbols,
   tsExports,
@@ -139,6 +140,22 @@ describe("covered pages", () => {
         python ?? "python3",
       );
       expect(show(failures)).toEqual([]);
+    },
+    LONG,
+  );
+
+  it(
+    "run: every block tagged `run` exits 0",
+    () => {
+      const runs = covered.filter((s) => /(^|\s)run(\s|$)/.test(s.meta));
+      const bad = runs
+        .filter((s) => s.lang !== "python" || python)
+        .map((s) => runSnippet(s, python))
+        .filter((r) => !r.ok)
+        .map(
+          (r) => `${r.snippet.file}:${r.snippet.line} ${r.output.slice(0, 600)}`,
+        );
+      expect(bad).toEqual([]);
     },
     LONG,
   );
