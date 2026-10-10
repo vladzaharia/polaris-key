@@ -120,11 +120,12 @@ func _regate(t: PKeyTestContext) -> void:
 	h.serve_docs([h.F["token"]])
 	h.plan["/license/deauthorize"] = [S.json(200, {"ok": true})]
 	var sdk := await _sdk(_licensed_store())
-	var first: PKeyBootResult = await sdk.boot({"persistent_gate": true, "sync_timeout_seconds": 5})
+	var first: PKeyBootResult = await sdk.boot({"persistent_gate": true, "confirm_identity": true, "sync_timeout_seconds": 5})
 	t.check("regate: a licensed device boots to READY", first.outcome == PKeyBoot.READY, str(first))
 	await _until(func() -> bool: return sdk.boot_view == null or not is_instance_valid(sdk.boot_view) or sdk.boot_view.is_queued_for_deletion())
 	var gate = sdk.boot_gate
 	t.check("regate: persistent_gate leaves a gate on the layer, out of the way while licensed", gate is PKeyGateView and not gate.visible, str(gate))
+	t.check("regate: confirm_identity reaches the persistent gate's sign-in dialog", gate.confirm_identity and gate.activation.sign_in_dialog.confirm_identity)
 	# The licence is lost: the persistent gate covers the game with key entry on its own.
 	await sdk.identity.sign_out()
 	await _until(func() -> bool: return gate.visible and gate.activation.visible)
@@ -140,6 +141,7 @@ func _regate(t: PKeyTestContext) -> void:
 	await _until(func() -> bool: return sdk.boot_view != null and is_instance_valid(sdk.boot_view) and sdk.boot_view.gate.visible and sdk.boot_view.gate.activation.visible)
 	var view: PKeyBoot = sdk.boot_view
 	t.check("regate: a re-boot after sign_out() shows key entry and Sign in", view != null and view.gate.activation._key.is_visible_in_tree() and view.gate.activation._sign_in.is_visible_in_tree() and again["result"] == null)
+	t.check("regate: a boot without confirm_identity does not confirm", not view.gate.activation.sign_in_dialog.confirm_identity)
 	t.check("regate: the earlier persistent gate gave way to the new boot's", not is_instance_valid(gate) or gate.is_queued_for_deletion())
 	# A cold boot with no pointer focuses the first control, and ui_down walks the chain.
 	await _until(func() -> bool: return _tree().root.gui_get_focus_owner() != null and view.is_ancestor_of(_tree().root.gui_get_focus_owner()))

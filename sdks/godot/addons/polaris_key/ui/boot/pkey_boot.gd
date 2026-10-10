@@ -594,6 +594,9 @@ func _keep_prompt(to: Node) -> bool:
 	to.add_child(kept)
 	kept.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE, Control.PRESET_MODE_MINSIZE)
 	kept.set_meta(&"pkey_kept", true)
+	# Outside this view it no longer inherits its theme: it carries the kit's own over the game.
+	kept.theme = theme if PKeyUiTheme.is_stock(theme) else (load(PKeyUiTheme.NEUTRAL_PATH) as Theme)
+	kept.refresh_view()
 	kept.follow_updates()
 	if not kept.model.get("locked", false):
 		kept.dismissed.connect(kept.queue_free)

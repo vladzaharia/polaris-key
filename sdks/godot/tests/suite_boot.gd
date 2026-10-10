@@ -263,6 +263,7 @@ func _dropin(t: PKeyTestContext) -> void:
 		if kept:
 			var rect: Rect2 = p.get_global_rect()
 			t.check("dropin: the kept %s prompt is a strip at the top, not full-screen" % kind, rect.size.y > 0.0 and rect.size.y < screen.y * 0.25 and is_equal_approx(rect.position.y, 0.0) and p.presentation() == "banner", "%s on %s" % [rect, screen])
+			t.check("dropin: the kept %s prompt keeps the kit's theme over the game" % kind, p.theme != null and PKeyUiTheme.is_stock(p.theme) and p._action.theme_type_variation == &"PKeyPrimary" and p.get_theme_stylebox("normal", "PKeyPrimary") is StyleBoxFlat)
 			t.check("dropin: the kept %s prompt has no dismiss" % kind, not (p.find_child("Dismiss", true, false) as Button).visible)
 			p._on_dismiss()
 			await tree.process_frame
