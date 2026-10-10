@@ -20,7 +20,6 @@ import {
   bearer,
   deleteTokenRecord,
   hashKey,
-  parseJsonStringList,
   type Db,
   type Env,
 } from "../../core/platform.js";
@@ -46,6 +45,7 @@ import {
   DeviceTokenRotationLost,
   rotateDeviceToken,
   shapeDevice,
+  shapeLicense,
 } from "../../core/devices.js";
 import { requireLicensedDevice } from "./auth.js";
 import { authorizeDevice, type AuthzError } from "./authz.js";
@@ -56,6 +56,7 @@ import {
   countKeyEntries,
   keyEntryGate,
   keyEntryLimitResponse,
+  licenseOwnedResponse,
 } from "../../core/keyEntries.js";
 
 /**
@@ -114,21 +115,8 @@ export function authorizationError(
   }
 }
 
-export function shapeLicense(license: LicenseRow) {
-  return {
-    id: license.id,
-    status: license.status,
-    name: license.name,
-    email: license.email,
-    tierId: license.tier_id,
-    activatedAt: license.activated_at,
-    expiresAt: license.expires_at,
-    maxOfflineDays: license.max_offline_days,
-    channels: parseJsonStringList(license.channels_json),
-    minVersion: license.min_version,
-    maxVersion: license.max_version,
-  };
-}
+/** The activation response's `license` member; defined in Core (`core/devices.ts`). */
+export { shapeLicense };
 
 async function activateWithKey(
   req: Request,
@@ -168,8 +156,9 @@ async function activateWithKey(
   const metadata = deviceMetadata(req);
 
   // PX-W9 (WIRE-CONTRACT-V4 §12.2): on an Identity product this is a key entry. An enrolled
-  // device goes on as before; a new one past the licence's limit is refused while the switch is
-  // on (step 4), and otherwise its seat claim records the entry (step 5).
+  // device goes on as before; while the switch is on a new one is refused when the licence is in
+  // an account (step 3, I-09) or past its limit (step 4), and otherwise its seat claim records
+  // the entry (step 5).
   const gate = await keyEntryGate(
     { env, db, registry: settings },
     product,
@@ -177,14 +166,14 @@ async function activateWithKey(
     deviceId,
     now,
   );
-  if (gate.kind === "refuse") {
+  if (gate.kind === "refuse" || gate.kind === "owned") {
     await logRefusal(
       db,
       {
         product: product.slug,
         licenseId: license.id,
         deviceId,
-        reason: "key_entry_limit",
+        reason: gate.kind === "owned" ? "license_owned" : "key_entry_limit",
         at: now,
         platform: metadata.platform,
         arch: metadata.arch,
@@ -192,6 +181,8 @@ async function activateWithKey(
       },
       waitUntil,
     );
+    // I-09 (§12.2 step 3): a licence in an account is reached by signing in, never by its key.
+    if (gate.kind === "owned") return licenseOwnedResponse(env, req, product);
     return keyEntryLimitResponse(env, db, req, product, gate.keyEntries);
   }
 

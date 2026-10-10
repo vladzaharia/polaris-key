@@ -37,13 +37,15 @@ export const REFUSAL_DEBOUNCE_SECONDS = 60;
 export const REFUSAL_LABEL_MAX = 64;
 
 /** Why an activation was refused. Mirrors `AuthzError` plus the licence-usability check, and
- *  PX-W9's key-entry refusal (`core/keyEntries.ts`, logged by the two key-entry routes). */
+ *  the key-entry refusals of PX-W9 (`key_entry_limit`) and I-09 (`license_owned`), both from
+ *  `core/keyEntries.ts` and logged by the two key-entry routes. */
 export type RefusalReason =
   | "device_limit"
   | "hardware_mismatch"
   | "fingerprint_required"
   | "license_unusable"
-  | "key_entry_limit";
+  | "key_entry_limit"
+  | "license_owned";
 
 /** What the refusal site knows about the device it turned away. */
 export interface RefusalInput {

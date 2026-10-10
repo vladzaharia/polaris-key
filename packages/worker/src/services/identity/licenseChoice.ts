@@ -45,6 +45,7 @@ import {
   type LicenseRow,
 } from "../../core/data.js";
 import { licenseUsable } from "../../core/devices.js";
+import { compareCandidates } from "../../core/anchor.js";
 import { licenseDeviceLimit, tierFingerprintMode } from "../../core/authz.js";
 import { escapeHtml, type Db } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
@@ -230,22 +231,9 @@ function originKind(origin: string | undefined): PurchaseSourceKind {
   return "developer";
 }
 
-/** I-09 §2.4's rank-first order: no expiry first, then the latest expiry, then the oldest. */
-export function compareCandidates(
-  a: Pick<LegacyChoiceRow, "expiresAt" | "activatedAt" | "id">,
-  b: Pick<LegacyChoiceRow, "expiresAt" | "activatedAt" | "id">,
-): number {
-  if (a.expiresAt === null && b.expiresAt !== null) return -1;
-  if (b.expiresAt === null && a.expiresAt !== null) return 1;
-  if (
-    a.expiresAt !== null &&
-    b.expiresAt !== null &&
-    a.expiresAt !== b.expiresAt
-  )
-    return b.expiresAt - a.expiresAt;
-  if (a.activatedAt !== b.activatedAt) return a.activatedAt - b.activatedAt;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
+/** I-09's rank-first order (`core/anchor.ts`): no expiry first, then the latest expiry, then the
+ *  oldest. One definition for this chooser, the sign-in card and the consent line. */
+export { compareCandidates };
 
 /**
  * Every licence this person may bind the device to, read-only: the account's usable licences

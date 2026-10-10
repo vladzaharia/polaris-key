@@ -55,6 +55,7 @@ import {
   countKeyEntries,
   keyEntryGate,
   keyEntryLimitResponse,
+  licenseOwnedResponse,
 } from "../../core/keyEntries.js";
 import { logRefusal } from "../../core/refusals.js";
 // The seat decision, the licence-gated device check and the fused merge all live in
@@ -529,18 +530,20 @@ export async function handleBrowserSessionLicense(
     deviceId,
     now,
   );
-  if (gate.kind === "refuse") {
+  if (gate.kind === "refuse" || gate.kind === "owned") {
     const meta = deviceMetadata(req);
     await logRefusal(db, {
       product: product.slug,
       licenseId: license.id,
       deviceId,
-      reason: "key_entry_limit",
+      reason: gate.kind === "owned" ? "license_owned" : "key_entry_limit",
       at: now,
       platform: meta.platform,
       arch: meta.arch,
       userAgent: meta.userAgent ?? "browser-session",
     });
+    // I-09 (§12.2 step 3): a licence in an account is reached by signing in, never by its key.
+    if (gate.kind === "owned") return licenseOwnedResponse(env, req, product);
     return keyEntryLimitResponse(env, db, req, product, gate.keyEntries);
   }
   const session = await createBrowserSession(

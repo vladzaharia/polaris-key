@@ -59,9 +59,20 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
  * the caller signs in to reach it. A still-anonymous row an operator DISABLED is different:
  * signing in will not reach it, and handing it back (or minting around it) would bypass a
  * deliberate refusal — that is "disabled", its own 403.
+ *
+ * I-09: a row in an account is "claimed" too, `sub` or not. The device attach (`via: "device"`)
+ * puts an `enroll` licence into an account without writing `sub`, and handing that row back to
+ * an anonymous caller would hand it someone's account licence.
  */
-function enrollFate(row: LicenseRow): LicenseRow | "claimed" | "disabled" {
-  if (row.origin !== "enroll" || row.sub !== null) return "claimed";
+export function enrollFate(
+  row: LicenseRow,
+): LicenseRow | "claimed" | "disabled" {
+  if (
+    row.origin !== "enroll" ||
+    row.sub !== null ||
+    (row.account_id ?? null) !== null
+  )
+    return "claimed";
   return row.status === "active" ? row : "disabled";
 }
 

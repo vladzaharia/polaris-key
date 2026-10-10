@@ -46,7 +46,7 @@ import type {
 import type { ManagedPayload } from "./payload.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import type { Product } from "./products.js";
+import type { Product, ProductPublic } from "./products.js";
 import {
   claimDeviceSeat,
   countActiveDevices,
@@ -326,7 +326,9 @@ export async function licenseDeviceLimit(
  *  that presents no fingerprint (`strict`). */
 export async function tierFingerprintMode(
   db: Db,
-  product: Product,
+  // Only the slug and the policy fields are read, so the public projection serves too (I-09's
+  // ranking runs for the consent line, which holds no signing key).
+  product: ProductPublic,
   tierId: string | null,
 ): Promise<FingerprintMode> {
   const tier = tierId ? await getTier(db, product.slug, tierId) : null;

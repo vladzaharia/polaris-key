@@ -452,7 +452,7 @@ describe("the refusal (§12.2 step 4)", () => {
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(3);
   });
 
-  it("applies only to a licence in no account (§8 Q3); a licence in an account is still counted", async () => {
+  it("applies only to a licence in no account (§8 Q3): one in an account meets license_owned first (I-09), and is counted with refusals off", async () => {
     const { product, key, licenseId } = await atLimit({ refusals: true });
     await db.run(
       "UPDATE licenses SET account_id = 'acct_x' WHERE product = ? AND id = ?",
@@ -460,7 +460,13 @@ describe("the refusal (§12.2 step 4)", () => {
       licenseId,
     );
     const res = await activate(product, key, "dev-3", NOW + 60);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "license_owned",
+    );
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(2);
+    await setRefusals(false);
+    expect((await activate(product, key, "dev-3", NOW + 120)).status).toBe(200);
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(3);
   });
 
