@@ -165,7 +165,9 @@ Scripts that read the plain lines the CLI printed before the kit move to these f
 | `<key> = <value> (source: …)`        | `key`, `value`, `source` (`config`)                |
 
 Exit codes: 0 for success, 1 for a refusal, an unusable gate or a declined confirmation, 2 for a
-usage error, and 130 when the person presses Ctrl-C. Two argparse errors moved from 1 to 2 with the
+usage error, 4 for a gate in a host CLI that refuses the host's command (planned), and 130 when the
+person presses Ctrl-C. `polaris_key.ui.terminal.exit.EXIT` holds them, the same table as the `cli`
+family of the corpus's `ui-matrix.json`. Two argparse errors moved from 1 to 2 with the
 kit, because they are usage errors: a `--key-file` that cannot be read (or no key from any source
 without a terminal), and an `import-bundle` file that cannot be read or is empty. With `--json`, a
 malformed `--trust` pair also exits 2 with its result line.

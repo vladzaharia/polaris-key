@@ -7,7 +7,7 @@
 <text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
 <text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">· status</text>
 <rect x="20.5" y="30.8" width="1" height="16.8" fill="#24292f"/>
-<text x="21" y="60.2" text-anchor="middle" fill="#cf222e">✗</text>
+<text x="21" y="60.2" text-anchor="middle" fill="#9a6700">▲</text>
 <text x="42" y="60.2" textLength="126" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Update required</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#24292f"/>
 <text x="42" y="77" textLength="537.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">This version is no longer supported. Update the app to continue.</text>
@@ -18,6 +18,6 @@
 <text x="42" y="127.4" textLength="260.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">To keep using Tidewater Studio:</text>
 <rect x="20.5" y="131.6" width="1" height="8.4" fill="#24292f"/>
 <rect x="20.5" y="139.5" width="4.7" height="1" fill="#24292f"/>
-<text x="42" y="144.2" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater update</text>
-<text x="201.6" y="144.2" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Update</text>
+<text x="42" y="144.2" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater update apply</text>
+<text x="252" y="144.2" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Update</text>
 </g></svg>
