@@ -28,6 +28,7 @@
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/manifest": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
+    "@polaris-key/ui-core": "workspace:*",
     "@tanstack/react-query": "^5.104.1",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.13",

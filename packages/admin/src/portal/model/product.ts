@@ -29,6 +29,7 @@ import {
   type Presentation,
   type QuickAction,
 } from "./library.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The product page's model on today's API (PORTAL.md §4.20, PX-04): which sections exist, the
@@ -54,10 +55,10 @@ export const SECTION_ORDER: readonly ProductSection[] = [
 
 export const SECTION_LABEL: Record<ProductSection, string> = {
   get: "Get it",
-  sync: "Cloud Sync",
-  new: "What's new",
+  sync: t("account.cloudSync"),
+  new: t("update.whatsNew"),
   license: "License",
-  devices: "Devices",
+  devices: t("account.devices"),
   package: "Package access",
   help: "Help",
 };

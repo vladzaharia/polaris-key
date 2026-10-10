@@ -24,6 +24,7 @@ import {
   useDocumentTitle,
   type AccountSection,
 } from "../router.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * Account (PORTAL.md §4.26): Profile first (PX-22, §4.30: name and picture, edited in place),
@@ -107,7 +108,7 @@ export function AccountPage({
             variant="outline"
             iconStart={<LogOut aria-hidden />}
           >
-            Sign out
+            {t("common.signOut")}
           </Button>
         </form>
       </div>

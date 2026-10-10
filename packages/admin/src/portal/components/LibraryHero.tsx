@@ -10,6 +10,7 @@ import { ProductStatusPill } from "./ProductStatus.js";
 import { QuickActionButton } from "./QuickAction.js";
 import { SeatMeter } from "./SeatMeter.js";
 import { StorePills } from "./StorePills.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The one-product hero (§4.13): art (1.45 fr) and a side panel with the icon, name, status and
@@ -98,7 +99,7 @@ export function LibraryHero({
             <>
               <dt className="text-fg-muted">License</dt>
               <dd className="text-fg-strong">{product.status.note}</dd>
-              <dt className="text-fg-muted">Devices</dt>
+              <dt className="text-fg-muted">{t("account.devices")}</dt>
               <dd className="space-y-2 text-fg-strong">
                 <span className="block">
                   {`${devicesText(product.deviceCount, product.seats?.limit)} in use`}

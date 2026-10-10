@@ -21,6 +21,7 @@ import { PILL_CLASS, StorePillList } from "../StorePills.js";
 import { SectionCard } from "./Card.js";
 import { DownloadButton } from "./DownloadButton.js";
 import { InstallSourceList } from "./InstallSources.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * Get it, first cut (§4.20, PX-04): the build recommended for the device in hand (honest: a
@@ -248,7 +249,7 @@ export function GetItPanel({
                     ) : r.notIncluded ? (
                       <span className="text-right text-sm">
                         <span className="block font-medium text-fg-strong">
-                          Not included
+                          {t("core.codes.not_entitled.title")}
                         </span>
                         <span className="block text-fg-muted">
                           {r.notIncluded}

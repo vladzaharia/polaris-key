@@ -49,6 +49,7 @@ import {
 } from "../router.js";
 import { EntryProductBody } from "./EntryProductPage.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The product page (§4.20) on today's data: everything about one product in one place. The
@@ -74,7 +75,7 @@ export function ProductPage({
       : lib.isPending
         ? null
         : lib.error
-          ? "Something went wrong"
+          ? t("core.fallback.title")
           : "Not in your library",
   );
   if (lib.isPending) return <ProductSkeleton />;

@@ -925,7 +925,7 @@ describe("main flows", () => {
   it("a sign-in licence lists its devices and removes one remotely", async () => {
     const o = await open("signIn", "/#/p/quill/devices");
     await h1(o.page, "Quill");
-    await licenseSourceIs(o.page, "Automatic Grant");
+    await licenseSourceIs(o.page, "Automatic grant");
     expect(await o.page.getByText(/Account-wide/).count()).toBe(0);
     await o.page
       .getByRole("button", { name: "Remove Living room PC" })
@@ -964,7 +964,7 @@ describe("main flows", () => {
     await devices.getByText("Mara's MacBook Pro").waitFor();
     expect(await devices.getByText(/in use/).count()).toBe(0);
     await picker.selectOption({ label: "Standard · Sign-in" });
-    await licenseSourceIs(o.page, "Automatic Grant");
+    await licenseSourceIs(o.page, "Automatic grant");
     // The count is the Devices card's alone (owner polish 2026-10-07).
     await devices
       .getByRole("img", { name: /^1 of \d+ devices? in use$/ })
@@ -1031,7 +1031,7 @@ describe("main flows", () => {
   it("no Remove for a licence its key can't bring back: a sign-in licence (PX-23 review)", async () => {
     const o = await open("signIn", "/#/p/quill");
     await h1(o.page, "Quill");
-    await licenseSourceIs(o.page, "Automatic Grant");
+    await licenseSourceIs(o.page, "Automatic grant");
     await o.page.getByRole("button", { name: "More for Quill" }).click();
     const items = o.page.getByRole("menuitem");
     await items.first().waitFor();

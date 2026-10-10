@@ -13,6 +13,7 @@ import {
   type PortalStoreLink,
 } from "../api.js";
 import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The Library's model (PORTAL.md §5.3, §5.4; PX-02, PX-08): one product per library item, the
@@ -293,15 +294,16 @@ export function devicesText(n: number, limit?: number | null): string {
  * Every licence is account-bound, so none is labelled by type: how it came to be is a quiet
  * origin in plain words (owner decision, 2026-10-05: no "Account-wide" label).
  */
-export const FROM_SIGNING_IN = "From signing in";
+export const FROM_SIGNING_IN = t("signin.choice.origin.signIn");
 
 /**
  * The **License source** of a licence granted automatically through OIDC, by the product's
  * auto-issue or a group grant when the person signed in (the Worker's `signin` origin): "Automatic
- * Grant" (owner polish 2026-10-07). The status line and the picker keep "From signing in" and
- * "Sign-in".
+ * grant", sentence case (owner polish 2026-10-07; P0-36). The status line and the picker keep
+ * "From signing in" and "Sign-in" until the catalog's `signin.choice.origin.signIn` takes this
+ * wording too.
  */
-export const AUTOMATIC_GRANT = "Automatic Grant";
+export const AUTOMATIC_GRANT = "Automatic grant";
 
 /**
  * A licence issued by signing in (`identityProvider` "oidc") with no key. Activation counts its
@@ -390,13 +392,19 @@ export function licenseOrigin(
   switch (kind) {
     case "store-key": {
       const name = storeName(store ?? "");
-      return last ? `${name} key ending ${last}` : `${name} key`;
+      return last
+        ? t("signin.choice.origin.storeKey", { store: name, last6: last })
+        : t("signin.choice.origin.storeKeyAdded", { store: name });
     }
     case "store":
       // "From the App Store", "From Steam", "From Google Play".
-      return `From ${store === "app-store" ? "the App Store" : storeName(store ?? "")}`;
+      return t("signin.choice.origin.store", {
+        store: store === "app-store" ? "the App Store" : storeName(store ?? ""),
+      });
     case "key":
-      return last ? `Key ending ${last}` : "Added with a key";
+      return last
+        ? t("signin.choice.origin.key", { last6: last })
+        : t("signin.choice.origin.keyAdded");
     case "signin":
       return AUTOMATIC_GRANT;
     case "developer":
@@ -451,7 +459,7 @@ export function licenseStatus(
   if (l.expiresAt !== null && l.expiresAt <= now) {
     return {
       kind: "expired",
-      label: "Expired",
+      label: t("part.status.expired"),
       tone: "danger",
       note: `Ended ${formatDay(l.expiresAt)}`,
       attention: true,
@@ -460,7 +468,7 @@ export function licenseStatus(
   if (seats && seats.limit > 0 && seats.inUse >= seats.limit) {
     return {
       kind: "deviceLimit",
-      label: "Device limit reached",
+      label: t("core.codes.device_limit.title"),
       tone: "danger",
       note: [tier, `${devicesText(seats.inUse, seats.limit)} in use`]
         .filter(Boolean)
@@ -496,7 +504,7 @@ export function licenseStatus(
   const until = l.expiresAt !== null ? `until ${formatDay(l.expiresAt)}` : null;
   return {
     kind: "active",
-    label: "Active",
+    label: t("part.status.ok"),
     tone: "success",
     note: [
       tier,
@@ -605,7 +613,7 @@ export function statusFromServer(
     case "expired":
       return {
         kind: "expired",
-        label: "Expired",
+        label: t("part.status.expired"),
         tone: "danger",
         note: lastCovered
           ? `Updates ended at ${lastCovered}`
@@ -617,7 +625,7 @@ export function statusFromServer(
     case "device_limit":
       return {
         kind: "deviceLimit",
-        label: "Device limit reached",
+        label: t("core.codes.device_limit.title"),
         tone: "danger",
         note: seats
           ? devicesText(seats.inUse, seats.limit)
@@ -994,7 +1002,7 @@ export function quickAction(
   if (p.status.kind === "deviceLimit") {
     return {
       kind: "link",
-      label: "Free a device",
+      label: t("signin.choice.freeDevice"),
       href: productHref("devices"),
       icon: "device",
     };
@@ -1185,7 +1193,7 @@ export function attentionItems(
         product: p,
         text: devicesInUse(p.seats.limit),
         action: {
-          label: "Free a device",
+          label: t("signin.choice.freeDevice"),
           href: devicesHref(p.slug),
           external: false,
         },
@@ -1213,7 +1221,11 @@ export function attentionItems(
       out.push({
         product: p,
         text: `${who[0]!.toUpperCase()}${who.slice(1)} suspended this license.`,
-        action: { label: `Contact ${who}`, href: link, external: true },
+        action: {
+          label: t("status.contact", { developer: who }),
+          href: link,
+          external: true,
+        },
       });
     }
   }

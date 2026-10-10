@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 /**
  * Polaris Key license keys (PORTAL.md §4.17): `pkey_<product-slug>_<22 characters of
  * base64url>`, case-sensitive, never grouped or re-cased.
@@ -234,7 +235,7 @@ function ownedVerdict(name: string, extras: KeyVerdictExtras): KeyVerdict {
   return {
     code: "license_owned",
     tone: "danger",
-    message: `This ${name} license is already in another Polaris Key account. A license never moves by its key.`,
+    message: t("core.codes.license_owned.message", { product: name }),
     ...(signInUrl ? { signInUrl } : {}),
   };
 }
@@ -309,7 +310,7 @@ export function claimVerdict(
  *  `key_entry_limit` (`conformance/parity/copy.en.json`, PX-W9) is the same sentence without the
  *  product, for SDKs that cannot name it. */
 export function noEntriesCopy(name: string): string {
-  return `This key has no entries left in ${name}. Add it to your account and ${name} signs you in instead.`;
+  return t("signin.key.noEntries", { product: name });
 }
 
 /**

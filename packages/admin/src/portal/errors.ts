@@ -1,4 +1,5 @@
 import { PortalApiError } from "./api.js";
+import { t } from "../lib/copy.js";
 
 /**
  * Error copy for the customer site (PORTAL.md §6.4): what happened, in the person's terms, and
@@ -82,13 +83,13 @@ export function portalErrorCopy(err: unknown): PortalErrorCopy {
       return DOWNLOAD_REFUSALS[err.code]!;
     if (err.status === 0)
       return {
-        title: "Can't reach Polaris Key",
+        title: t("signin.network.title"),
         description: "Check your connection, then try again.",
         retry: true,
       };
     if (err.status === 401)
       return {
-        title: "You're signed out",
+        title: t("signin.console.signedOut"),
         description: "Sign in again to carry on.",
         retry: false,
       };
@@ -112,7 +113,7 @@ export function portalErrorCopy(err: unknown): PortalErrorCopy {
       };
   }
   return {
-    title: "Something went wrong",
+    title: t("core.fallback.title"),
     description: "Try again. If it keeps happening, contact the developer.",
     retry: true,
   };

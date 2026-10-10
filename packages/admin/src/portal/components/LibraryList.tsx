@@ -11,6 +11,7 @@ import { useCueOnce } from "../stagger.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductStatusPill } from "./ProductStatus.js";
 import { QuickActionButton } from "./QuickAction.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The list view (§4.15): icon · Product · Status · Latest · Devices · Quick action · chevron,
@@ -63,7 +64,7 @@ export function LibraryList({
               scope="col"
               className="hidden px-2 py-3 font-normal wide:table-cell"
             >
-              Devices
+              {t("account.devices")}
             </th>
             <th scope="col" className="px-2 py-3 text-right font-normal">
               {actionHeader}

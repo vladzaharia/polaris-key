@@ -1004,7 +1004,7 @@ device counter (on the License card or in Devices); the sign-in licence keeps it
   help) shows the licence's cards as one column beside the nav.
 - **License card.** The tier pill sits at the top right of the card's header, before any issue
   pill. The "N of M devices" line is gone: the Devices card says it. A licence granted through
-  OIDC at sign-in (auto-issue or a group grant) reads **Automatic Grant** as its License source;
+  OIDC at sign-in (auto-issue or a group grant) reads **Automatic grant** as its License source;
   the status and the picker keep "From signing in" and "Sign-in".
 - **Access, not "Updates included" (P0-47).** The Worker ends a licence at its end date, so the
   term fact is **Access**: "Lifetime", "Until 3 Mar 2027" or "Ended 3 Mar 2027". An expired

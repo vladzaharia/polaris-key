@@ -145,6 +145,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
+      '@polaris-key/ui-core':
+        specifier: workspace:*
+        version: link:../ui-core
       '@tanstack/react-query':
         specifier: ^5.104.1
         version: 5.104.1(react@19.3.0)

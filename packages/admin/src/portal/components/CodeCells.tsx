@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
+import { t } from "../../lib/copy.js";
 
 /** Sign-in and confirmation codes are six digits (I-02, I-07). */
 export const CODE_LENGTH = 6;
@@ -45,7 +46,7 @@ export function CodeCells({
       </div>
       <input
         id={id}
-        aria-label="6-digit code"
+        aria-label={t("signin.code.label")}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
         autoComplete="one-time-code"
