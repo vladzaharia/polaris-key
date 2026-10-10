@@ -16191,7 +16191,7 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
             "distribution",
             `/outlets/${id}/${field}/${channel}`,
             "unknown_channel_ref",
-            `outlets.${id}.${field} keys must be declared channels (stable, beta, a manual channel or one of deliverables.app.channels).`
+            `outlets.${id}.${field} keys must be declared channels (stable, beta, dev, a manual channel or one of deliverables.app.channels).`
           );
         }
       }
@@ -20860,7 +20860,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
               "release",
               `/release/deliverables/app/content/packChannels/${key}`,
               "unknown_pack_channels_target",
-              `content.packChannels ${key} must match a declared pack, and every pack it matches must publish to ${String(channel)} (stable, beta or one of the pack's channels).`
+              `content.packChannels ${key} must match a declared pack, and every pack it matches must publish to ${String(channel)} (stable, beta, dev or one of the pack's channels).`
             );
         }
     }
@@ -21006,7 +21006,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
               "release",
               `/release/deliverables/app/channels/${name}/includes/${i}`,
               "invalid_channel_includes",
-              "includes may only name stable, beta, a manual channel or another declared channel."
+              "includes may only name stable, beta, dev, a manual channel or another declared channel."
             );
           } else if (!isCanonicalChannelName(inc)) {
             add4(
