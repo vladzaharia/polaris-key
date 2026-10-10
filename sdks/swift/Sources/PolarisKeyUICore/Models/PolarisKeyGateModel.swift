@@ -162,7 +162,9 @@ public final class PolarisKeyGateModel {
         self.client = client
         self.options = options
         self.copy = copy
-        self.presentationSource = presentationSource
+        // The SDK's presentation unless the host passes its own source (plans/HA-13.md).
+        self.presentationSource =
+            presentationSource ?? SDKPresentationSource(client.presentationSource)
         self.browser = browser
         self.bundle = bundle ?? KitBundle(slug: client.product, name: Self.bundleName())
         self.platform = platform

@@ -119,11 +119,14 @@ public struct ProductDiscoveryDocument: Sendable, Equatable {
     public let trust: DiscoveryTrust?
     /// The v3 authority. Every slug has an entry; absent slugs read as disabled.
     public let services: [ServiceSlug: ServiceFragment]
+    /// `core.presentation`, normalised (`PresentationRules.parsePresentation`), or nil when the
+    /// document carries none. Unsigned display data: nothing gates on it (WIRE-CONTRACT-V4 §5.5).
+    public let presentation: Presentation?
 
     public init(
         product: String, name: String? = nil, baseUrl: String? = nil,
         protocolVersion: Int? = nil, core: DiscoveryCore? = nil, trust: DiscoveryTrust? = nil,
-        services: [ServiceSlug: ServiceFragment]
+        services: [ServiceSlug: ServiceFragment], presentation: Presentation? = nil
     ) {
         self.product = product
         self.name = name
@@ -132,6 +135,7 @@ public struct ProductDiscoveryDocument: Sendable, Equatable {
         self.core = core
         self.trust = trust
         self.services = services
+        self.presentation = presentation
     }
 
     /// The capability map Core gates sub-clients on.
@@ -208,7 +212,10 @@ public enum Discovery {
                 protocolVersion: obj["protocolVersion"]?.intValue,
                 core: parseCore(obj["core"]?.objectValue),
                 trust: parseTrust(obj["trust"]?.objectValue),
-                services: services))
+                services: services,
+                // A malformed member is dropped field by field; it never refuses the document.
+                presentation: PresentationRules.parsePresentation(
+                    core: obj["core"], docName: obj["name"], product: product)))
     }
 
     private static func parseCore(_ obj: [String: JSONValue]?) -> DiscoveryCore? {

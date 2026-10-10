@@ -1,4 +1,5 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
+// @pkey-feature core.presentation
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
@@ -26,6 +27,9 @@
 // `installed.version` as `CoreOptions.version` — and its `cache` seeds the store's record. A
 // transcript with `initial.update` and no `initial.services` runs with Release, Distribution and
 // Update expected; one that loads no discovery itself is served the Worker's standard document.
+//
+// `discover` also reports `presentation`: the member `client.presentation` exposes afterwards, or
+// null (HA-13, `core.presentation`).
 //
 // The SP-00 verbs: `activate` / `enroll` also report a refusal's wire `code`
 // (`ActivationResult.code`); `boot` is `client.boot()` to its `bootOutcome`; `downloadModel` is
@@ -205,6 +209,8 @@ enum SwiftReplay {
             case .invalid: out["result"] = .string("invalid")
             case .error: out["result"] = .string("error")
             }
+            // `core.presentation` (HA-13): the member the client now exposes, or null.
+            out["presentation"] = client.presentation?.jsonValue ?? .null
         case "sync":
             let r = await client.sync(force: step.args["force"] == .bool(true))
             out["applied"] = .bool(r.applied)
@@ -419,6 +425,10 @@ enum SwiftReplay {
             requestTimeoutSeconds: 0,
             expectedServices: services?.compactMap(ServiceSlug.init(rawValue:)),
             clock: { clock.now },
+            // Persisted state (presentation.json, the icon cache) in a throwaway directory, so a
+            // replay never reads what an earlier one wrote.
+            dataDir: FileManager.default.temporaryDirectory
+                .appendingPathComponent("pkey-replay-\(UUID().uuidString)", isDirectory: true),
             // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
             deviceName: t.initial.deviceName ?? "")
         let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
@@ -522,6 +532,13 @@ final class TranscriptTests: XCTestCase {
             "license": .string("applied"), "config": .string("applied"),
         ])
         await assertReplayFails(t, matching: "step 1 (sync): documents")
+    }
+
+    /// The presentation is held as tightly: a member that stays after it went away fails.
+    func testAStalePresentationFails() async throws {
+        var t = try XCTUnwrap(try transcripts().first { $0.id == "discovery-presentation" })
+        t.steps[1].expect["presentation"] = t.steps[0].expect["presentation"]
+        await assertReplayFails(t, matching: "step 1 (discover): presentation")
     }
 
     /// The update transcripts are held as tightly: an `UpdateCheck` member that disagrees fails.
