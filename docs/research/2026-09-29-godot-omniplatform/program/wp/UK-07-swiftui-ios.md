@@ -173,15 +173,15 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.
 - [ ] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
-- [ ] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
+- [x] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
 - [ ] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
 - [ ] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/`; a changed baseline fails CI until re-recorded with the reason in the commit.
-- [ ] The §7.3 modernity lint passes on this kit (SwiftUI equivalents: no `.buttonBorderShape(.roundedRectangle)` on 26, no filled secondary capsule), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
+- [x] The §7.3 modernity lint passes on this kit (SwiftUI equivalents: no `.buttonBorderShape(.roundedRectangle)` on 26, no filled secondary capsule), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
 - [ ] The §4.4 accessibility checks pass on the same renders (`performAccessibilityAudit`, AX3 Dynamic Type).
 - [ ] The sample `examples/ui/swiftui/` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`ios.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
-- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [x] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
@@ -198,3 +198,82 @@ UK-08, UK-23, UK-25, UK-26, UK-27, UK-33 and UK-34 extend this kit; HA-13 plugs 
 
 The role agent sets `--set UK-07 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-07 done`.
+
+## Status after session 1 (2026-10-09)
+
+Delivered on `wp/UK-07-swiftui-ios` (commits prefixed `UK-07:`); the rest of this package continues
+from here.
+
+**Done.**
+
+- Floors: `Package.swift` declares iOS 18, macOS 15, tvOS 18 and visionOS 2; the sub-18
+  `#available` guards in `PolarisKeyPlatform` are gone; the Godot Apple plugin builds and warns at
+  iOS 18 / macOS 15.
+- **`PolarisKeyUICore`** (new product, no SwiftUI): `KitInputs` (the matrix vocabulary, Codable),
+  `KitStates` (one pure state machine per §4.1 component), `KitScreen` (state, copy lines with
+  arguments, actions), `KitCopy` (the ICU tables of the nine locales, written by `gen:brand` to
+  `Resources/kit-copy.json`, with per-locale overrides), `KitIdentity` (§1.2, §3.1, §3.4),
+  `PolarisKeyPreviewState`s, `KitPresentationSource` (HA-11's seam, local until HA-13) and the live
+  `@Observable PolarisKeyGateModel`. `UIMatrixTests` runs every row of all ten `ui-matrix.json`
+  families; `Activate/parsed` is recorded as a corpus defect (its key has a 20-character secret;
+  the vocabulary and `LICENSE_KEY_SHAPE` need 22): fix `KEY` in `tools/ui-matrix.ts` (plan mode).
+- **`PolarisKeyUI/Kit`**: `.polarisKeyTheme` (every §3.1 field but `platform`), the resolved style,
+  Liquid Glass buttons with the designed iOS 18 capsules, the styled parts, the DL1 scaffold, every
+  must screen but OfflineActivation's view and Boot's non-progress stages, `PolarisKeyStyle`
+  restyle hooks, `.polarisKeyGate(client)`, `.polarisKeySignIn` (sheet), announcements, previews.
+- **`examples/ui/swiftui`**: the XcodeGen sample (gallery, `-pkeyState`, `--live`) and
+  `KitRenderTests` (every state on the simulator, `performAccessibilityAudit` with contrast
+  re-measured on the render, VoiceOver names, swift-snapshot-testing diffing against the
+  baselines).
+- Docs: the SwiftUI framework page, a SwiftUI tab on each component page and on Theming.
+- `parity.json`: the ten `ui.*` rows implemented.
+- Baselines: every drawn preview state at the default row (iPhone 17 Pro Max, 440 × 956 portrait,
+  L, the Polaris Key preset) in dark and light, flat in `__Snapshots__/` (the docs and ui-qa
+  subset), and the eight full-matrix states at AX3, AX5, landscape, `native` and the iOS 18
+  `material` fallback in a folder each; `KitRulesTests` fails when a preview state has none.
+- One BUILT-mode UX review (`_mockups/review/uk07-swiftui/`): its blocking finding and twenty of
+  its major ones are fixed (banners, progress, paywall, sign-in error, alignment, the pinned
+  header, button heights, the iOS 18 and `native` grounds and contrast, selection corners, key
+  truncation, release notes, Activate done, device removal, browser-mode devices, the empty
+  Updates group, CJK weights). After it: the `native` tint goes through the contrast resolver, the
+  prominent glass is tinted 15 % darker under a white label (the glass lightens its tint), and
+  banners inset the app's bottom safe area.
+- Evidence (scratch, not committed): the iPhone matrix passes `performAccessibilityAudit` on every
+  render (two Dynamic Type exemptions scoped to reflowing states, each with its reason; an
+  element below the fold is noted, not judged); a compare run against the baselines passes. The
+  iPad Air 11 (split in landscape) and iPhone SE runs of four states were clean but for the store
+  banner and one split contrast, fixed after and not yet re-run there.
+
+**Remaining** (continue in this order):
+
+1. The rest of the UX review, then a second review: Settings' typed controls (toggle, stepper,
+   picker from the schema) and its provenance groups; AccountAndLicense's Cloud Sync value, the
+   Devices row pushing the Devices pane, Try again offline; 64 pt device rows; SignIn.choose's
+   person row, "Use a license key instead" and Replace from a full row; LicenseChoice.none-keys'
+   title and primary; SignIn.finishing keeping the hand-off's actions; Cancel and Back as glass
+   secondaries docked with the primary (the Replace step's "Back"); a reserved verdict line so
+   content never moves while typing; Welcome's extras in one quiet row and Welcome.busy keeping
+   its byline; DeviceLimit's count kept on one line, its form-factor glyphs and its selected
+   tint; the product name said once per focused step; one title-to-lede gap; the Drift Kart
+   fixture's own icon; VoiceOver labels for symbols and the no-browser link.
+2. Questions for the matrix and catalog owners (UK-02a/UK-02b), not kit work: the revoked title
+   "Signed out" and its fixes (DL6 asks for the sign-in methods); a dismissal for the store
+   banner; Restart now on iOS; a no-time `updateProgress.downloading` and a method-less
+   `signIn.methodError`; the copy findings in the review's item 29; `Activate/parsed`'s 20-character
+   key in `tools/ui-matrix.ts` (plan mode).
+3. Re-run `examples/ui/swiftui/run.sh` on `uk07-ipad` and `uk07-se` (wrap it in
+   `_lead/heavy.sh`) to confirm the glass and banner fixes there; the iPad's AX3/AX5 store banner
+   had two "Text clipped" findings with no element to attribute. Then decide on their baselines:
+   only the iPhone's are committed (about 21 MB; the same again per device).
+4. iOS 18 renders on a real iOS 18 runtime (only the fallback forced on 26, `-pkeyMaterial`, so
+   far), and their baselines.
+5. Boot's consent, offline, blocked, declined, rolled-back and error screens as designed views;
+   OfflineActivation's view (off on iOS by default; UK-08 for the Mac).
+6. The in-app license choice and Replace a device on live data once the SDK carries I-04's grant
+   (I-10a); native Apple sign-in behind the logo (`SignInWithAppleButton`, I-13); Google and Steam
+   logos with their assets.
+7. `.polarisKey(client)` (the 0.8 kit, `PolarisLoginView`) is untouched beside the new kit
+   (UK-49's): retire or alias it in SP-35; the kit README (install, one line, link) on UK-49's
+   README; `fromConfig()` (SP-32b) and the UIKit hosting recipe (UK-23).
+8. The `--live` run against a local Worker; `pnpm ui:lint` (Chromium) and the docs build in the
+   gate; `UI_MATRIX_VERSION` is a constant in the core until `gen:constants` emits it.
