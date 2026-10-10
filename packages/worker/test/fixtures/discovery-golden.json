@@ -198,6 +198,8 @@
       "identity": {
         "enabled": true,
         "configured": true,
+        "account": true,
+        "keyEntryLimit": 10,
         "endpoints": {
           "session": "https://key.plrs.im/full/identity/session",
           "sessionLicense": "https://key.plrs.im/full/identity/session/license",
@@ -207,7 +209,11 @@
           "authDeviceStart": "https://key.plrs.im/full/identity/auth/device/start",
           "authDeviceEntry": "https://key.plrs.im/full/identity/auth/device",
           "authDeviceVerify": "https://key.plrs.im/full/identity/auth/device/verify",
-          "authDevicePoll": "https://key.plrs.im/full/identity/auth/device/poll"
+          "authDevicePoll": "https://key.plrs.im/full/identity/auth/device/poll",
+          "attach": "https://key.plrs.im/full/identity/attach",
+          "subject": "https://key.plrs.im/full/identity/subject",
+          "signout": "https://key.plrs.im/full/identity/signout",
+          "accountPortal": "https://key.plrs.im/#/p/full"
         }
       },
       "sync": {

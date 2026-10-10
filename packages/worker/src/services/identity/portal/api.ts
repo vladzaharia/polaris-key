@@ -1,4 +1,5 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
+import { licenseAccess } from "../../../core/anchor.js";
 import { constantTimeEqual } from "../../../core/platform.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
@@ -239,6 +240,9 @@ export async function shapeLicenseSummary(
     activeKeyCount,
     deviceCount: devices.filter((d) => d.status === "authorized").length,
     entitlements: grants.entitlements,
+    // I-09 (plans/I-04.md §F.6): `account` for a sign-in licence, else `seats`. The fact behind
+    // the origin "From signing in" and the mixed rule; never a displayed type.
+    access: await licenseAccess(db, row),
     // PX-23: Remove from my library is offered only for a licence its key can bring back.
     removable:
       notRemovableReason(

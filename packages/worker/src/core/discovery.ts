@@ -52,6 +52,7 @@ import type { DiscoveryContext, ServiceRegistry } from "./registry.js";
 import { buildHooks } from "./hooks.js";
 import { resolvePresentation } from "./presentation.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
+import { settingsRegistryFor } from "./settings/registry.js";
 
 /** The discovery document's own `version` (a public, client-read field; not PROTOCOL_VERSION).
  *  Exported so the admin version endpoint (A-11) reports the same number. */
@@ -91,6 +92,7 @@ export async function handleDiscovery(
     db,
     base,
     hooks: buildHooks(registry, product.services, { env, db, product, now }),
+    settings: settingsRegistryFor(registry),
   };
   // Keys in canonical table order — the order clients read. Every slug gets a fragment.
   const services = {} as Record<ServiceSlug, Record<string, unknown>>;

@@ -30,6 +30,10 @@
  * `services.sync` after `identity`, `{"enabled":false}` when off; the everything product turns it
  * on and pins the fragment U-04 ships (every capability false, no endpoint until U-05, U-09 and
  * U-10 serve one). Additive, like `distribution` was.
+ * I-09 (WIRE-CONTRACT-V4 §12.6, plans/I-09.md, approved) added Identity's account members to the
+ * everything product's identity fragment: `account` and `keyEntryLimit` after `configured`, and
+ * the `attach`, `subject`, `signout` and `accountPortal` endpoints last. Additive keys a client
+ * ignores; every Identity-off fragment is unchanged.
  */
 
 import { readFileSync } from "node:fs";

@@ -87,6 +87,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   authDevicePollCode: "closed",
   // I-26: the legacy sign-in's licence chooser, a step of the sign-in that binds a licence.
   authChoose: "closed",
+  // I-09: the device attach writes a licence's owner (first claim wins) and rotates the token, so
+  // an outage refuses rather than letting a flood of claims through.
+  identityAttach: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   portalLogin: "closed",
@@ -189,6 +192,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // PX-W2: the product page's downloads listing. A read charged only after ownership is
   // proven; it mints no URL (the token mint above re-checks everything), so nothing to guard.
   portalDownloads: "open",
+  // I-09: the device's subject read and its sign-out. Device-bearer only; neither mints nor moves
+  // anything another device holds, so an outage must not stop a person signing out.
+  identityAccount: "open",
 
   // ── public read surfaces — fail open ───────────────────────────────────────
   // The release surface (R10-05) is a *delivery* path: appcasts, version checks and binary
