@@ -319,6 +319,9 @@ export function columnBreaches(page: Page): Promise<string[]> {
   return pageColumnBreaches(page, "main > *", PORTAL_COLUMN_MAX);
 }
 
+/** WCAG 2.2's minimum target size (SC 2.5.8, AA), in CSS px. */
+export const MIN_TARGET = 24;
+
 /**
  * Pointer targets smaller than {@link MIN_TARGET} square that none of SC 2.5.8's exceptions
  * excuse; one line per target (`tag "name" W×H`). A target is any visible, enabled link, button,
