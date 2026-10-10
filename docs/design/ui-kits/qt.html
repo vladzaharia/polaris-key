@@ -323,6 +323,10 @@
       .start.sunk .big {
         display: block;
       }
+      /* The icon's art is square: round the art itself so no corner shows behind the rim. */
+      .qroot .k-appicon svg {
+        border-radius: inherit;
+      }
       .start.sunk {
         background: var(--q-sunken);
         display: grid;
@@ -432,6 +436,11 @@
         outline: 2px solid var(--ring);
         outline-offset: 2px;
       }
+      /* The product accent's ring sits next to an accent fill: a 4 px offset leaves a clear gap of the
+         page between the button and the ring, so the ring never reads as a brighter edge. */
+      .pk .qb.focus {
+        outline-offset: 4px;
+      }
       .qb.sm {
         height: 28px;
         padding: 0 12px;
@@ -465,7 +474,11 @@
       }
       /* At rest a key shows its start and its last six characters (the middle gives way). */
       .qfield .k-key {
-        max-width: 232px;
+        max-width: 100%;
+      }
+      .qfield .k-key > :first-child {
+        flex: none;
+        width: 20ch;
       }
       .verdict {
         display: flex;
@@ -887,7 +900,7 @@
         .join("")}</svg>`;
       const appIcon = (s, r) =>
         `<span class="k-appicon" data-art="tidewater" data-size="${s}" style="border-radius:${r}px"></span>`;
-      const KEY = `<span class="mono"><span class="k-key"><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span><span>3WPLDA</span></span></span>`;
+      const KEY = `<span class="mono">pkey_tidewater_7Q2M…3WPLDA</span>`;
       const CAPS = `<span class="caps"><span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10" stroke="currentColor"/></svg></span><span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x=".5" y=".5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor"/></svg></span><span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0 0 10" stroke="currentColor"/></svg></span></span>`;
       const ext = `<span data-icon="external" data-size="14"></span>`;
 
@@ -958,7 +971,7 @@
           "",
           "To use it on this computer, replace one. You can add it back later.",
           false,
-        ) +
+        ).replace('class="ttl"', 'class="ttl" style="font-size:22px"') +
         `<div class="devs"><div><span data-icon="laptop" data-size="18"></span><span>Work laptop<small>Windows 11 · last used 41 days ago</small></span></div><div><span data-icon="tablet" data-size="18"></span><span>Mara’s iPad<small>iPadOS 26 · last used yesterday</small></span></div><div><span data-icon="laptop" data-size="18"></span><span>MacBook Pro<small>macOS 26 · last used today</small></span></div></div>` +
         `<div class="callout">Replace a device in your browser. Tidewater Studio continues when you’re done.</div>` +
         `<div class="row">${pair(o.os, `Open in browser ${ext}`, "Cancel")}</div>`;
@@ -1042,15 +1055,15 @@
       );
 
       const settings = () =>
-        `<div class="set"><h2>Account and license</h2><h3>From Harbor Audio</h3><div class="srow"><span class="t">Update automatically</span><span class="v"><span class="sw"></span></span></div><div class="srow"><span class="t">Release channel</span><span class="v" data-ui-no-strings>Stable</span></div><h3>Managed settings</h3><div class="srow"><span class="t"><span>Cloud Sync</span><small>Set by Harbor Audio</small></span><span class="v">Off<span data-icon="lock" data-size="16"></span></span></div></div>`;
+        `<div class="set"><h2>Account and license</h2><div class="srow lic"><span data-icon="user" data-size="20"></span><span class="t"><span>Tidewater Studio Pro</span><small>Lifetime · mara@fennick.studio</small></span>${btn(`Manage ${ext}`, "sm")}</div><div class="srow"><span data-icon="laptop" data-size="20"></span><span class="t"><span>Devices</span><small>2 of 3 in use</small></span><span class="v"><span data-icon="chevronRight" data-size="16"></span></span></div><h3>From Harbor Audio</h3><div class="srow"><span class="t">Update automatically</span><span class="v"><span class="sw"></span></span></div><div class="srow"><span class="t">Release channel</span><span class="v" data-ui-no-strings>Stable</span></div><h3>Managed settings</h3><div class="srow"><span class="t"><span>Cloud Sync</span><small>Set by Harbor Audio</small></span><span class="v">Off<span data-icon="lock" data-size="16"></span></span></div></div>`;
       shot(
         "settings",
         "<b>Settings</b> · Qt Quick on Windows 11: what the developer ships and the person can change, then locked managed settings.",
-        both("win", settings, 600, 440),
+        both("win", settings, 640, 600),
       );
 
       const boot = `<div class="boot"><span class="k-shimmer"></span>${appIcon(72, 16)}<span class="mute" style="font-size:13px">Checking your license…</span></div>`;
-      const grace = `<div class="host"><i></i><i></i><i></i></div><div class="banner"><span>Offline · 3 days left to reconnect</span>${btn("Reconnect", "sm")}</div>`;
+      const grace = `<div class="host"><i></i><i></i><i></i></div><div class="banner"><span>Offline · 3 days left to reconnect</span>${btn("Try again", "sm")}</div>`;
       const msg = (ico, title, text, acts) =>
         `<div class="msg">${ico}<div class="head"><h1 class="ttl" style="font-size:20px;line-height:28px">${title}</h1><p class="lede" style="margin:4px 0 0">${text}</p></div><div class="row end-row">${acts}</div></div>`;
       const revoked = msg(
@@ -1091,9 +1104,9 @@
       shots.push(`<figure><figcaption><b>QWidget parts</b> · from the generated QSS, by object name, with the accent in the @pk-*@ placeholders. The native preset keeps the platform QStyle and applies only spacing and hierarchy.</figcaption>
         <div class="shot" data-shot="widgets"><div class="win os-mac pk"><div class="tb-mac"><i></i><i></i><i></i></div>
         <div class="parts">
-          <div><h3>QFrame#pkCard · QLabel#pkTitle · #pkBody · #pkMeta</h3><div class="w-card"><span style="font:600 22px/28px var(--pk-font-sans)">Tidewater Studio Pro</span><span>Pro license</span><span class="mute" style="font-size:12px">mara@fennick.studio</span></div></div>
+          <div><h3>QFrame#pkCard · QLabel#pkTitle · #pkBody · #pkMeta</h3><div class="w-card"><span style="font:600 22px/28px var(--pk-font-sans)">Tidewater Studio Pro</span><span>Lifetime</span><span class="mute" style="font-size:12px">mara@fennick.studio</span></div></div>
           <div><h3>QLabel#pkCode (the kit mono)</h3><div class="w-card" style="justify-items:start"><span style="font:600 28px/34px var(--pk-font-mono);letter-spacing:.06em">WDJB-MJHT</span><span class="mute" style="font-size:12px">Code expires in 9:12</span></div></div>
-          <div><h3>QPushButton · #pkPrimary · #pkDanger · #pkLink</h3><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="w-btn primary">Activate license</span><span class="w-btn">Cancel</span><span class="w-btn danger">Remove</span><span class="w-btn link">Activate offline</span></div></div>
+          <div><h3>QPushButton · #pkPrimary · #pkDanger · #pkLink</h3><div style="display:grid;gap:8px;justify-items:start"><div style="display:flex;gap:8px;align-items:center"><span class="w-btn primary">Activate license</span><span class="w-btn">Cancel</span></div><div style="display:flex;gap:8px;align-items:center"><span class="w-btn danger">Remove</span><span class="w-btn link">Activate offline</span></div></div></div>
           <div><h3>:focus (keyboard) · :disabled</h3><div style="display:flex;gap:16px"><span class="w-btn primary focus">Activate license</span><span class="w-btn disabled">Continue</span></div></div>
           <div><h3>QLineEdit#pkKey (:focus)</h3><div class="w-edit focus">pkey_tidewater_7Q2M…3WPLDA</div></div>
           <div><h3>QProgressBar</h3><div style="display:grid;gap:8px;padding-top:6px"><div class="w-prog"><i></i></div><span class="mute" style="font-size:12px">Downloading · 38 of 61 MB</span><span class="mute" style="font-size:12px">About 20 seconds left</span></div></div>
