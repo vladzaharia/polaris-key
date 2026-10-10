@@ -252,7 +252,7 @@ paths:
                         settings: false
                         collections: false
                         saves: false
-                        endpoints: { pull: null, push: null, saves: null }
+                        endpoints: { pull: null, push: null, files: null }
                 configOnly:
                   summary: A config-only product — the other six are bare `enabled:false`
                   value:
@@ -19746,11 +19746,13 @@ components:
             blobs: https://key.plrs.im/acme/distribution/blobs/sha256/{sha256}
     SyncFragment:
       description: >
-        Cloud Sync's fragment (U-04; plans/U-01.md §2.5). `{"enabled": false}` when off. When on,
-        `settings`, `collections` and `saves` say which kinds of Cloud Sync data the product
-        serves, and each endpoint is a URL or `null`: an SDK uses an endpoint only when it is
-        present. Each capability turns true, and its endpoint appears, when the package serving
-        it ships (settings and pull/push with U-05, which also adds `limits`).
+        Cloud Sync's fragment (U-04; plans/U-01b.md D9, WIRE-CONTRACT-V4 §13.5). `{"enabled":
+        false}` when off. When on, `settings`, `collections` and `saves` say which kinds of Cloud
+        Sync data the product serves, and each endpoint is a URL or `null`: an SDK uses an
+        endpoint only when it is present. Each capability turns true, and its endpoint appears,
+        when the package serving it ships (settings and pull/push with U-05, collections with
+        U-09, saves and the files on records with U-10). The quota is not here: it depends on the
+        requesting device's licence, so the pull carries it.
       oneOf:
         - type: object
           required: [enabled]
@@ -19767,18 +19769,18 @@ components:
             saves: { type: boolean }
             endpoints:
               type: object
-              required: [pull, push, saves]
+              required: [pull, push, files]
               properties:
                 pull: { type: [string, "null"] }
                 push: { type: [string, "null"] }
-                saves: { type: [string, "null"] }
+                files: { type: [string, "null"] }
       examples:
         - { enabled: false }
         - enabled: true
           settings: false
           collections: false
           saves: false
-          endpoints: { pull: null, push: null, saves: null }
+          endpoints: { pull: null, push: null, files: null }
     Jwks:
       type: object
       description: >
