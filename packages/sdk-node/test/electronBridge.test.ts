@@ -194,6 +194,19 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
     );
   });
 
+  // @pkey-feature core.presentation
+  it("answers the presentation verbs from the host's client (HA-13)", async () => {
+    const { bridge } = await setup();
+    expect(DEFAULT_INVOKE_VERBS).toContain("core.presentationIcon");
+    // No discovery yet: the state carries no member, and there is no icon; never an error.
+    expect(
+      (await bridge.getSyncState()) as unknown as { presentation: unknown },
+    ).toMatchObject({ presentation: null });
+    expect(
+      await bridge.invoke!("core", "presentationIcon", { px: 32, scale: 2 }),
+    ).toBeNull();
+  });
+
   it("refuses a sender the host does not allow, and close() removes every handler", async () => {
     const { ipc, handle, bridge } = await setup();
     ipc.deny();

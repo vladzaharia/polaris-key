@@ -127,6 +127,8 @@ export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
   };
   const config = client.config.entries();
   if (config) state.config = config;
+  // Discovery's `core.presentation` (HA-13): the member rides every state, null for none.
+  state.presentation = client.presentation();
   return state;
 }
 
@@ -229,6 +231,10 @@ export function exposePolarisBridge(
   const onConfig = (): void => pushState();
   client.events.on("license", onLicense);
   client.events.on("config", onConfig);
+  // A new presentation member is a push too, so the renderer re-reads it (HA-13).
+  const offPresentation = client
+    .presentationSource()
+    .subscribe(() => pushState());
 
   const forgetFlow = (id: string): void => {
     const f = flows.get(id);
@@ -269,6 +275,19 @@ export function exposePolarisBridge(
       if (typeof b.skipVersion === "string" || b.skipVersion === null)
         o.skipVersion = b.skipVersion as string | null;
       return client.update.decide(o);
+    },
+    "core.presentationIcon": async (a) => {
+      const b = bag(a);
+      const num = (v: unknown, fallback: number): number =>
+        typeof v === "number" && Number.isFinite(v) ? v : fallback;
+      const decodable = Array.isArray(b.decodable)
+        ? b.decodable.filter((t): t is string => typeof t === "string")
+        : undefined;
+      return client.presentationIcon({
+        px: num(b.px, 64),
+        scale: num(b.scale, 1),
+        ...(decodable ? { decodable } : {}),
+      });
     },
     "release.changelog": async () => client.release.changelog(),
     "release.installUrl": async () => client.release.installUrl(),
@@ -414,6 +433,7 @@ export function exposePolarisBridge(
         opts.ipcMain.removeHandler(channelOf(prefix, method));
       client.events.off("license", onLicense);
       client.events.off("config", onConfig);
+      offPresentation();
       for (const id of [...flows.keys()]) forgetFlow(id);
       subscribers.clear();
     },
