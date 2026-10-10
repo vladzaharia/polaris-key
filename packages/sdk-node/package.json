@@ -148,7 +148,7 @@
     "@types/node": "^22.20.5",
     "@types/yargs": "^17.0.33",
     "@xterm/headless": "^6.0.0",
-    "commander": "^14.0.0",
+    "commander": "^15.0.0",
     "yargs": "^18.2.0"
   }
 }
