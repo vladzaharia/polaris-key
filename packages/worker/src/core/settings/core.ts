@@ -80,7 +80,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     widensWhen: "any",
     critical: true,
     confirm: { change: "L1" },
-    readers: ["core/products.ts", "admin/api.ts"],
+    readers: ["core/products.ts", "console/api.ts"],
     storage: { kind: "column", table: "products", column: "admin_group" },
   }),
   setting({
@@ -133,7 +133,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "core/settings/authority.ts",
       "core/settings/write.ts",
       "core/settingsClaims.ts",
-      "admin/handlers/products.ts",
+      "console/handlers/products.ts",
     ],
     storage: { kind: "scalar" },
     since: "ST-20",
@@ -161,7 +161,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   // ST-19b: `.pkey/product`'s `devices.registration`. It shares `services_json` with
   // `core.services` (the blob's `registration` key, `core/services.ts`): the console's Services
-  // page writes it (`core/servicesAdmin.ts`, its own Save action) and that write claims the blob
+  // page writes it (`console/handlers/servicesAdmin.ts`, its own Save action) and that write claims the blob
   // through `services_source`, so it is claimable like the enablement beside it.
   setting({
     key: "core.registration",
@@ -191,7 +191,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "core/services.ts",
       "core/register.ts",
       "core/discovery.ts",
-      "core/servicesAdmin.ts",
+      "console/handlers/servicesAdmin.ts",
     ],
     storage: { kind: "column", table: "products", column: "services_json" },
     since: "ST-19b",
@@ -277,7 +277,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "Which attestation a device must present to enrol (App Attest, Play Integrity) and whether it is enforced. Relaxing it lets unattested clients enrol.",
     keywords: ["attestation", "app attest", "play integrity"],
     docs: "/docs/features/licensing/device-trust/",
-    value: { kind: "json", schema: "TrustPolicy (core/deviceTrust.ts)" },
+    value: { kind: "json", schema: "TrustPolicy (core/trust/deviceTrust.ts)" },
     defaultValue: null,
     allowUnset: true,
     merge: "cascade",
@@ -286,7 +286,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     widensWhen: "any",
     critical: true,
     confirm: { change: "L2" },
-    readers: ["core/products.ts", "core/deviceTrust.ts"],
+    readers: ["core/products.ts", "core/trust/deviceTrust.ts"],
     storage: {
       kind: "column",
       table: "products",
@@ -387,10 +387,10 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
 
   // ── Hosted assets (HA-10, notes/S-20 §6.10, owner decisions 6 and 9) ────────────────────
-  // Core's, like the copies themselves (`core/hostedAssets.ts`): every product has hosted images
+  // Core's, like the copies themselves (`core/assets/hostedAssets.ts`): every product has hosted images
   // whether or not it runs Distribution. Operator-owned and never in the manifest: the manifest's
   // author does not pay for the storage. Rows in `product_settings`, written through
-  // `writeSetting()` (the console's Presentation page, `admin/handlers/hostedAssets.ts`).
+  // `writeSetting()` (the console's Presentation page, `console/handlers/hostedAssets.ts`).
   setting({
     key: "assets.releases.mirror",
     scope: "product",
@@ -406,7 +406,10 @@ export const CORE_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     ownership: "operator",
     confirm: { on: "L0", off: "L1" },
-    readers: ["core/assetSettings.ts", "services/release/mirrorSwitch.ts"],
+    readers: [
+      "core/assets/assetSettings.ts",
+      "services/release/mirrorSwitch.ts",
+    ],
     storage: { kind: "scalar" },
     since: "HA-10",
   }),
@@ -432,9 +435,9 @@ export const CORE_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { up: "L1", down: "L1" },
     readers: [
-      "core/assetSettings.ts",
-      "core/assetQuota.ts",
-      "core/hostedAssets.ts",
+      "core/assets/assetSettings.ts",
+      "core/assets/assetQuota.ts",
+      "core/assets/hostedAssets.ts",
     ],
     storage: { kind: "scalar" },
     since: "HA-10",
@@ -461,9 +464,9 @@ export const CORE_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { up: "L1", down: "L1" },
     readers: [
-      "core/assetSettings.ts",
-      "core/assetQuota.ts",
-      "core/hostedAssets.ts",
+      "core/assets/assetSettings.ts",
+      "core/assets/assetQuota.ts",
+      "core/assets/hostedAssets.ts",
       "services/release/mirror.ts",
     ],
     storage: { kind: "scalar" },

@@ -41,7 +41,7 @@ import {
   DEFAULT_STABLE_TAG_PATTERN,
 } from "@polaris-key/manifest";
 import { CHANNEL_ALIASES, CHANNEL_NAME_PATTERN } from "@polaris-key/protocol";
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import {
   compareVersions as compareVersionsV4,
   parseVersion,

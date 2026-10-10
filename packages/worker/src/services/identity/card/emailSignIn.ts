@@ -40,21 +40,18 @@
  * The resend answers the start's bytes too, whether or not mail went out; its other answers (wait,
  * too many for this flow, expired) are facts about this browser's own flow, never the address.
  *
- * Limits and lifetimes are I-02's (`core/emailLimits.ts`), scoped to the platform bucket
+ * Limits and lifetimes are I-02's (`core/notify/emailLimits.ts`), scoped to the platform bucket
  * `_portal`: 6 digits, 10 minutes, 5 wrong attempts per code, lockout after 10 an hour, 5 sends
  * an hour and 20 a day per recipient, per-IP and per-network hourly caps.
  */
 
-import {
-  CARD_RETURN_TO,
-  escapeHtml,
-  hashKey,
-  parseJsonColumn,
-  randomToken,
-  safeReturnTo,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { CARD_RETURN_TO, safeReturnTo } from "../../../platform/returnTo.js";
+import { escapeHtml } from "../../../platform/html.js";
+import { hashKey } from "../../../platform/crypto.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -73,13 +70,13 @@ import {
   EMAIL_SEND_PER_RECIPIENT_HOUR,
   issueEmailCode,
   verifyEmailCode,
-} from "../../../core/emailLimits.js";
+} from "../../../core/notify/emailLimits.js";
 import {
   SIGNIN_FLOW_COOKIE,
   accountRealmCookie,
   clearAccountRealmCookie,
   readCookie,
-} from "../../../core/accountCookies.js";
+} from "../../../core/accounts/accountCookies.js";
 import { signIn } from "../accounts/signIn.js";
 import { EMAIL_ISSUER } from "../accounts/repo.js";
 import { portalAuthCapabilities } from "../portal/repo.js";

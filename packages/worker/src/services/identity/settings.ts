@@ -11,7 +11,7 @@
  *                                 the same key (`policyBound: "max"`). The bounds are
  *                                 `@polaris-key/manifest`'s `IDENTITY_KEY_ENTRY_LIMIT`, which the
  *                                 manifest rule `invalid_identity_key_entry_limit` uses too. Read
- *                                 through ST-04's resolver (`core/keyEntries.ts` `keyEntryLimit()`)
+ *                                 through ST-04's resolver (`core/licensing/keyEntries.ts` `keyEntryLimit()`)
  *                                 by enforcement and by discovery's `keyEntryLimit`.
  *   identity.keyEntry.claimByKey  `identity.keyEntry.claimByKey`: column-backed on
  *                                 `portal_product_settings.claim_by_key` (`settingsColumns.ts`)
@@ -34,8 +34,8 @@ import {
   type OidcSyncTierOnSignIn,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import type { Db, DbStatement } from "../../core/platform.js";
-import { randomId } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import { randomId } from "../../platform/crypto.js";
 import {
   manifestRowSettingStatements,
   manifestValueAt,
@@ -118,7 +118,7 @@ const KEY_ENTRY_LIMIT: SettingDef = setting({
   confirm: { up: "L1", down: "L0" },
   visibleWhen: VISIBLE,
   wire: ["discovery", "refusal"],
-  readers: ["core/keyEntries.ts"],
+  readers: ["core/licensing/keyEntries.ts"],
   storage: { kind: "scalar" },
 });
 
@@ -256,7 +256,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       critical: true,
       confirm: { change: "L2" },
       visibleWhen: VISIBLE,
-      readers: ["services/identity/oidc.ts", "core/identityTrust.ts"],
+      readers: ["services/identity/oidc.ts", "core/accounts/identityTrust.ts"],
       storage: { kind: "rich", adapter: "oidc_config" },
     }),
     // ST-19b: `.pkey/product`'s `provisioning` hooks. Link and every resync replace the rows whole

@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── The commerce bridge's cryptography on workerd (P6-01) ──────────────────────────────────
 //
-// The brief: "the X.509 code must run in workerd". `core/x509.ts` is a DER interpreter over
+// The brief: "the X.509 code must run in workerd". `core/trust/x509.ts` is a DER interpreter over
 // WebCrypto ECDSA (P-256 and P-384, SHA-256 and SHA-384) and the App Store verification is built
 // on it; the Play push check is jose over a KV-cached JWKS. The Node lane covers the behaviour
 // (`test/x509.test.ts`, `test/commerce.test.ts`); this proves the same code verifies — and
@@ -9,7 +9,7 @@
 
 import { env } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
-import { verifyChain, parseCertificate } from "../src/core/x509.js";
+import { verifyChain, parseCertificate } from "../src/core/trust/x509.js";
 import {
   AppleRejected,
   setAppleRootsForTesting,
@@ -28,7 +28,7 @@ import {
   makeChain,
   signX5cJws,
 } from "../test/x509Fixtures.js";
-import type { Env as WorkerEnv } from "../src/env.js";
+import type { Env as WorkerEnv } from "../src/platform/env.js";
 
 const workerEnv = env as unknown as WorkerEnv;
 const now = Math.floor(Date.now() / 1000);

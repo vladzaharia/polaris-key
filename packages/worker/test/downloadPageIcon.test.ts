@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOW } from "./seed.js";
 import { seedHosted, setAssetHosting } from "./hostedFixture.js";
 import { SLUG, model, onBytes, setup } from "./downloadWorld.js";
-import { inertDocumentPolicy } from "../src/core/bytesHost.js";
+import { inertDocumentPolicy } from "../src/core/assets/bytesHost.js";
 import {
   PAGE_ICON_WIDTH,
   pageCsp,

@@ -446,7 +446,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-16-first-party-respond-body-module-console.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-17",
@@ -472,7 +472,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-17-layering-move-lead-codemod-at-batch-6.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-18",
@@ -1198,7 +1198,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-45-pkey-command-registry-context-doctor.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-46",
@@ -9502,7 +9502,7 @@
         "consolidation alias ST-05 (split)"
       ],
       "brief": "wp/ST-05a-one-settings-read-write-path.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-05b",
@@ -11934,7 +11934,7 @@
         "plans/SP-53.md (approved 2026-10-09)"
       ],
       "brief": "wp/SP-53-backend-credential-contract.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-54",
@@ -15702,7 +15702,7 @@
         "UX coverage 2026-10-09: B15.1-B15.6, B2.9, B11.1, B11.5 and doc:BRAND#v2-action-neutral-and-service-icons had no owner"
       ],
       "brief": "wp/DOC-14-design-doc-amendments.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LX-26",
@@ -16828,7 +16828,7 @@
         "section change portal-01"
       ],
       "brief": "wp/PX-27-library-discover-presence.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-28",

@@ -91,7 +91,7 @@ import {
   type ManifestAppDeliverable,
 } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Db, DbStatement } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import { archOf } from "./assets.js";
 import { assetSha256, type Release, type ReleaseAsset } from "./github.js";
 import {
@@ -99,7 +99,10 @@ import {
   hasArtifactMap,
   type ClassifiedFile,
 } from "./artifactMap.js";
-import { compareSemver, parseSemver } from "../../core/entitlements.js";
+import {
+  compareSemver,
+  parseSemver,
+} from "../../core/licensing/entitlements.js";
 import {
   classifyChannel,
   floorChannelOf,

@@ -19,7 +19,7 @@ import type {
   Delivery,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import { listYanks, type ReleaseYankRow } from "../model.js";
 import { packReleasesMany } from "./catalog.js";
 import {

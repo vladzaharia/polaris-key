@@ -170,7 +170,7 @@ public class LicenseClient(
     /**
      * The channels this licence grants: the `channels` entitlement's string values, in order, as
      * granted, or `["stable"]` when the entitlement is absent or not an array. The Worker's own
-     * answer (`entitledChannels` in core/entitlements.ts) and every SDK's for the same document.
+     * answer (`entitledChannels` in core/licensing/entitlements.ts) and every SDK's for the same document.
      * The grants are RAW: `staging` is not rewritten to `beta` here (WIRE-CONTRACT-V3 §5.1 rule 4
      * decides coverage).
      */

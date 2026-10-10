@@ -180,6 +180,10 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "pack-revoked" to CopyEntry("Content withdrawn", "This content was withdrawn by its developer and can't be used."),
     "pack-not-data-only" to CopyEntry("Content refused", "Some content was refused because it contains files a data pack may not hold."),
     "marker-rejected" to CopyEntry("App build problem", "This build's built-in content isn't valid. Reinstall the app or contact the developer."),
+    "license_required" to CopyEntry("License needed", "Activate the app, then try again."),
+    "license_invalid" to CopyEntry("License not accepted", "Your license couldn't be verified. Reconnect the app, then try again."),
+    "license_stale" to CopyEntry("License needs refreshing", "Connect to the internet so the app can refresh your license, then try again."),
+    "sign_in_required" to CopyEntry("Sign-in needed", "Sign in to your Polaris Key account in the app, then try again."),
 )
 
 /** Per licenseStatus. */

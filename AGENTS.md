@@ -23,7 +23,7 @@ packages/
                                                model per UI-KITS §4.1 component, SignInModel,
                                                theme + ProductIdentity (./theme), the terminal's
                                                views (./terminal); runs every ui-matrix.json row
-  worker/            @polaris-key/worker       the Cloudflare Worker (core/ + services/<slug>/)
+  worker/            @polaris-key/worker       the Cloudflare Worker (platform/ + core/ + services/<slug>/ + console/)
   admin/             @polaris-key/admin        the admin SPA + customer portal (React + Vite)
   cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint, CI publishing,
                                                `pkey sdk` per-SDK config, `pkey mirror` catalog mirrors;
@@ -79,10 +79,13 @@ The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and 
 browser conformance runners. Python, Swift, Godot and Kotlin are standalone toolchains under
 `sdks/`.
 
-Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
-opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`, `sync`). The services
-are declared
-once, as rows of `tools/services.json`; `pnpm gen services` generates every language's slug
+Inside the Worker, `src/` is layered: `src/platform/` and `src/db/` hold the primitives (`Env`,
+crypto, KV, the key vault, encodings; the `Db` interface), `src/core/` is the always-on
+substrate (domain folders `licensing/`, `accounts/`, `notify/`, `trust/`, `assets/`, `registry/`,
+`ops/`, and `core/console/` for what services' admin handlers share with the console), each
+`src/services/<slug>/` is one opt-in service (`license`, `config`, `release`, `distribution`,
+`update`, `identity`, `sync`), and `src/console/` is the operator console. The services are
+declared once, as rows of `tools/services.json`; `pnpm gen services` generates every language's slug
 constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
 `SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`. Release, Distribution and Update form a
 chain (release ← distribution ← update, coherence codes `distribution_requires_release` and
@@ -124,7 +127,7 @@ pnpm --filter @polaris-key/admin build
 pnpm --filter @polaris-key/worker assemble  # admin + docs built into the worker's [assets] root
 pnpm --filter @polaris-key/docs check:links # internal link + anchor integrity on the built site
 pnpm --filter @polaris-key/worker test adminCspParity  # console CSP parity (after the admin build):
-                                 # the SPA shells' inline-script hashes == packages/worker/src/adminCsp.ts
+                                 # the SPA shells' inline-script hashes == packages/worker/src/core/adminCsp.ts
                                  # (also inside `pnpm test`; the admin half is test/theme.test.tsx)
 
 # The workerd smoke job. Node permits the runtime code generation workerd forbids, so a green
@@ -166,7 +169,7 @@ families, and `pnpm typecheck`). A green hook is not a green gate.
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
 gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json,
 update-matrix.json,outlet-matrix.json,plan-matrix.json,feed-url-matrix.json,
-sync-scenarios.json,device-label.json,presentation-matrix.json,ui-matrix.json}`, `conformance/corpus/v2/content/cases.json`
+sync-scenarios.json,device-label.json,presentation-matrix.json,ui-matrix.json,backend-matrix.json}`, `conformance/corpus/v2/content/cases.json`
 and the one generator-owned mirror at `sdks/godot/tests/corpus/v2/` are output (an exported Godot
 pack reads only `res://`; `content/` is not mirrored). Every other runner, Swift included, reads
 `conformance/` in place: the Swift tests find it through `CorpusLocator` (`#filePath`), so there is
@@ -213,6 +216,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `platform-inventory` | `pnpm gen platform-inventory` | Platform inventory from the tagged Env members                                    |
 | `storefront-ci`      | `pnpm gen storefront-ci`      | CLI copy of the Worker's storefront CI plane                                      |
 | `settings`           | `pnpm gen settings`           | Settings reference page and console search index                                  |
+| `cli-reference`      | `pnpm gen cli-reference`      | The pkey CLI reference page, from the command table                               |
 | `brand`              | `pnpm gen brand`              | Brand tokens, launch kit, kit copy and per-SDK theme files                        |
 | `action-bundle`      | `pnpm gen action-bundle`      | The publish Action's committed esbuild bundle of the CLI                          |
 | `docs-reference`     | `pnpm gen docs-reference`     | Docs reference pages generated from the validators, routes, migrations and corpus |
@@ -260,10 +264,14 @@ a `.pkey/` directory in its own repo (`schema`, `product`, `release`); the monor
 `products/<slug>/` files are the in-repo fixture form. Adding or changing a product must never
 require a worker redeploy. If you are about to write `if (product === "djdl")`, stop.
 
-**6. Service boundaries are enforced by a test.** `packages/worker/test/boundaries.test.ts` walks
-every file under `src/services/` and refuses anything outside: a service may import `../../core/…`,
-its own directory, declared package dependencies, and `node:*` builtins. The **only** sanctioned
-cross-service edge is `update → release`. Everything else goes through a core-mediated interface
+**6. Layers and service boundaries are enforced by a test.** `packages/worker/test/boundaries.test.ts`
+walks every file under `src/`. A layer imports only itself and lower layers: `platform/` and `db/`
+import nothing above them, `core/` never imports a service, the console or a composition module
+(type-only imports count), and `console/` reads a service only through its
+`services/<slug>/public.ts`. A service may import `core/`, `platform/`, `db/`, its own directory,
+declared package dependencies, and `node:*` builtins. The **only** sanctioned cross-service edge
+is `update → release`. The same suite walks the runtime import graph, so a service reaching another
+through a chain of imports fails too. Everything else goes through a core-mediated interface
 — for one service reading another's state, the descriptor hooks in `src/core/hooks.ts`.
 (It is a test and not a lint rule because this repo has no ESLint — `pnpm lint` is Prettier.)
 

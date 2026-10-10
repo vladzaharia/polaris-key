@@ -2,7 +2,7 @@
  * P2b-06 — the public download page (`services/distribution/page/`): its model
  * (`GET /<p>/distribution/download.json`, console host), its HTML (`GET /<p>/distribution/download`
  * and `GET /<p>`, BYTES HOST ONLY), the QR encoder, platform detection, and the bytes host's
- * document rule (`core/bytesHost.ts` `inertDocumentPolicy`).
+ * document rule (`core/assets/bytesHost.ts` `inertDocumentPolicy`).
  *
  * The product is Diceroll-shaped, every release ingested through the real descriptor ingest:
  *
@@ -24,17 +24,17 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { enableServices } from "./releaseRoutesFixture.js";
 import { recordRegexRuns, replaySteps } from "./regexReplay.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import {
   dispatchBytesHost,
   inertDocumentPolicy,
   type ByteRoute,
-} from "../src/core/bytesHost.js";
+} from "../src/core/assets/bytesHost.js";
 import { notFound } from "../src/core/errors.js";
 import { BYTE_ROUTES } from "../src/mount.js";
 import { encodeQr, qrCapacity, qrRows, qrSvg } from "../src/core/qr.js";
-import { detectPlatform } from "../src/services/distribution/page/detect.js";
+import { detectPlatform } from "../src/core/platformDetect.js";
 import { escapeHtmlDecimalApostrophe as esc } from "../src/platform/html.js";
 import {
   renderDownloadPage,

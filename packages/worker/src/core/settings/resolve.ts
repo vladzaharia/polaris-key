@@ -29,11 +29,7 @@
  */
 
 import type { Db } from "../../db/types.js";
-import {
-  deployVarParser,
-  platformStoreRows,
-  type SettingsEnv,
-} from "../platformSettings.js";
+import { platformStoreRows, type SettingsEnv } from "../platformSettings.js";
 import { getManifestSnapshot } from "../manifestSnapshot.js";
 import { snapshotValue } from "./snapshot.js";
 import type { SettingsRegistry } from "./registry.js";
@@ -73,6 +69,25 @@ export function sameValue(a: unknown, b: unknown): boolean {
   return canonicalJson(a) === canonicalJson(b);
 }
 
+function positiveInteger(raw: string): number | undefined {
+  const n = Number(raw.trim());
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined;
+}
+
+/**
+ * A-13's integer `[vars]` parsers, by `[vars]` name: deploy values are reviewed in the repo, so
+ * they keep their pre-A-13 parsing rather than the runtime bounds.
+ */
+const DEPLOY_PARSERS: Readonly<
+  Record<string, (raw: string) => number | undefined>
+> = {
+  LAZY_DELTA_MAX_BYTES: positiveInteger,
+  BLOB_GC_GRACE_DAYS: (raw) => {
+    const n = Number(raw.trim());
+    return raw.trim() !== "" && Number.isFinite(n) && n > 0 ? n : undefined;
+  },
+};
+
 /**
  * A `[vars]` string as the entry's value, or `undefined` when it is not one. A-13's integer keys
  * keep their pre-A-13 parsing (deploy values are reviewed in the repo, so they are not held to
@@ -80,7 +95,7 @@ export function sameValue(a: unknown, b: unknown): boolean {
  */
 export function parseDeployValue(def: SettingDef, raw: unknown): unknown {
   if (typeof raw !== "string" || def.varName === undefined) return undefined;
-  const legacy = deployVarParser(def.varName);
+  const legacy = DEPLOY_PARSERS[def.varName];
   if (legacy && def.value.kind === "integer") return legacy(raw);
   const t = raw.trim();
   let v: unknown;
@@ -213,15 +228,11 @@ export function resolvePlatformValue(
     });
   }
   const base = { key: def.key, scope: def.scope, version: layers.version ?? 0 };
-  if (isHardOffDeploy(def, layers.deploy))
-    return {
-      ...base,
-      value: "off",
-      source: "deploy",
-      chain,
-      lockedBy: "deploy",
-    };
-  if (def.precedence === "ceiling" && layers.storeOk === false)
+  if (
+    def.precedence === "ceiling" &&
+    layers.storeOk === false &&
+    !isHardOffDeploy(def, layers.deploy)
+  )
     return { ...base, value: "off", source: "derived", chain, failsafe: true };
   if (layers.row) {
     chain.push({
@@ -236,6 +247,15 @@ export function resolvePlatformValue(
         : { ignored: true as const }),
     });
   }
+  // A deploy-time hard off wins over whatever the store holds; the chain still shows the row.
+  if (isHardOffDeploy(def, layers.deploy))
+    return {
+      ...base,
+      value: "off",
+      source: "deploy",
+      chain,
+      lockedBy: "deploy",
+    };
   const top = pick(def, chain);
   return { ...base, value: top.value, source: top.source, chain };
 }

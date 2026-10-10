@@ -1,7 +1,7 @@
 /**
  * What needs the operator, per product (ADMIN.md §6.1 "Attention items"), derived from data the
  * console already holds: the registry row. `GET /products` carries each product's setup state,
- * which the worker computes for every product on every read (`admin/lib/shape.ts`
+ * which the worker computes for every product on every read (`console/lib/shape.ts`
  * `productSetupView`), so Home lists attention for all products with no fetch per product. The
  * kinds that need other per-product reads (readiness, rollouts, expiring licenses) join through
  * A-8's summary endpoint; until then Home does not guess at them.

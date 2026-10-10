@@ -18,7 +18,7 @@
  *      ST-20: the system product is manifest-authoritative (locked), so this apply also ends any
  *      break-glass claim whose 7 days ran out or whose field the manifest changed, and the answer
  *      lists the live ones (`breakGlass`, key and expiry) for the deploy summary.
- *   3. LX-08: one bounded pass of the licensing catch-up (`core/licensingCatchUp.ts`): store grants
+ *   3. LX-08: one bounded pass of the licensing catch-up (`core/licensing/licensingCatchUp.ts`): store grants
  *      re-projected, OIDC-provisioned keys moved to their `oidc` grants. It runs after the answer
  *      (`waitUntil`; `licensing: {scheduled: true}`) and records its counts as a platform activity
  *      row (`licensing.catch_up`); without an execution context the answer carries them.
@@ -57,8 +57,8 @@
  */
 
 import { SYSTEM_PRODUCT_SLUG, parseManifest } from "@polaris-key/manifest";
-import type { Env } from "./env.js";
-import { secret } from "./env.js";
+import type { Env } from "./platform/env.js";
+import { secret } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import { errorResponse, ErrorCode, json } from "./core/errors.js";
 import { clientNetwork, rateLimitOk } from "./core/rateLimit.js";
@@ -73,8 +73,8 @@ import {
   type PublisherPolicy,
   uploadsMissing,
 } from "./core/publisher.js";
-import { randomId } from "./crypto.js";
-import { appendPlatformAudit } from "./repo.js";
+import { randomId } from "./platform/crypto.js";
+import { appendPlatformAudit } from "./core/repo.js";
 import { manifestIngestFor } from "./core/registry.js";
 import { SERVICES } from "./mount.js";
 import {
@@ -82,12 +82,12 @@ import {
   linkSystemProduct,
   systemManifestProblem,
   type SystemRepository,
-} from "./admin/systemProduct.js";
+} from "./console/systemProduct.js";
 import { MANIFEST_FILE_NAMES } from "./services/release/manifestFiles.js";
-import { reservedNamesMode } from "./core/reservedNames.js";
-import { reservedDisplayNamesMode } from "./core/reservedDisplayNames.js";
+import { reservedNamesMode } from "./core/licensing/reservedNames.js";
+import { reservedDisplayNamesMode } from "./core/accounts/reservedDisplayNames.js";
 import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
-import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
+import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
@@ -468,7 +468,7 @@ export async function handleDeployHook(
 
   // LX-08 (plans/LX-01.md §6.2 steps 2–4): the deploy-hook job `licensing.migrateProvisioned`
   // and the store-grant re-projection, one bounded pass right after the deploy that starts the
-  // dual-write (`core/licensingCatchUp.ts`). The request's single-use `jti` is spent by now, so
+  // dual-write (`core/licensing/licensingCatchUp.ts`). The request's single-use `jti` is spent by now, so
   // the pass runs AFTER the answer (`waitUntil`): a pass the runtime cuts short can never turn the
   // deploy job's retry into `oidc_token_replayed`. Its outcome is then a platform activity row;
   // the nightly maintenance finishes whatever remains. Without an execution context (tests, a

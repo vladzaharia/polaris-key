@@ -64,13 +64,13 @@ import {
 } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
-import { handleTrustManifest } from "../src/core/trust.js";
+import { handleTrustManifest } from "../src/core/trust/trust.js";
 import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
 import { handleReport } from "../src/core/devices.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+import { setServices } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 /** The trust set a real client would PIN: the product's kid → its published Ed25519 pubkey. */
@@ -391,7 +391,7 @@ describe("e2e: wire v3, worker handlers → JWS → client-core", () => {
     // Unchanged content: both 304.
     //
     // KNOWN DIVERGENCE, deliberately not asserted around: the config document's catalog-default
-    // layer stamps `updatedAt: now` (`core/payload.ts` `catalogDefaultPayload`), so for a
+    // layer stamps `updatedAt: now` (`core/licensing/payload.ts` `catalogDefaultPayload`), so for a
     // product whose catalog declares defaults the config tag also moves with the clock. That
     // makes §5's conditional refetch weaker than it reads for such products. It is pre-existing
     // and orthogonal to the document split, so this suite pins the property that IS true —

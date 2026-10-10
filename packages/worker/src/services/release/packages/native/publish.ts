@@ -14,7 +14,7 @@
  *      written;
  *   3. stages each file under the owner's staging prefix (`staging/<owner>/<session>/<sha256>`,
  *      written by the Worker with R2 checking the SHA-256, never by a client credential);
- *   4. promotes each staged file (`core/blobs.ts` `promote`: verify, copy, record) and ingests the
+ *   4. promotes each staged file (`core/assets/blobs.ts` `promote`: verify, copy, record) and ingests the
  *      descriptor with them, then audits and bumps the release generation.
  *
  * The bytes pass through the Worker (that is what a native client sends), bounded by the request
@@ -27,17 +27,19 @@ import {
   type PackageEcosystem,
   type PackageReleaseDescriptor,
 } from "@polaris-key/manifest";
-import { randomId, type Db, type Env } from "../../../../core/platform.js";
-import type { RegistryRouteContext } from "../../../../core/registryHost.js";
+import { randomId } from "../../../../platform/crypto.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
+import type { RegistryRouteContext } from "../../../../core/registry/registryHost.js";
 import type { PackageFeedSettings } from "../../../../core/hooks.js";
-import type { PublishPrincipal } from "../../../../core/registryPublish.js";
+import type { PublishPrincipal } from "../../../../core/registry/registryPublish.js";
 import {
   blobKey,
   promote,
   putVerified,
   stagingKey,
-} from "../../../../core/blobs.js";
-import { appendAudit } from "../../../../core/data.js";
+} from "../../../../core/assets/blobs.js";
+import { appendAudit } from "../../../../core/repo.js";
 import { bumpReleaseGeneration } from "../../ghCache.js";
 import {
   ingestPackageDescriptor,

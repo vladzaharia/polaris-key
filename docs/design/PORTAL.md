@@ -159,7 +159,7 @@ violet accent, no `data-service` attribute. Specifically:
   (`kit/02-lockups/key/key-compact-{dark,light}.svg`, via `<PolarisLockup variant="compact">`) at
   64 px height. Phones: 56 px. No "Powered by Polaris Key" badge anywhere (BRAND owner decision
   2026-10-03).
-- **Type:** Rubik 400 and 700 only (`font-synthesis: none`). Mono is the platform stack for keys,
+- **Type:** Rubik 400, 500 and 600 (`font-synthesis: none`; 700 is the wordmark's alone). Mono is the platform stack for keys,
   codes, hashes, versions and token prefixes only.
 - **Colour:** neutral chrome; the primary button is neutral action ink (B2); the active nav
   underline, selection, hover, checked states, focus and small counts take the accent of the service
@@ -812,7 +812,7 @@ page.
    and **Open Mossgarden** (the product page; focus lands on its `h1`).
 
 **The license key and its field.** Polaris Key license keys are **not** grouped codes. The real
-format (`packages/worker/src/crypto.ts`, `mintLicenseKey` and `productFromKey`) is
+format (`packages/worker/src/platform/crypto.ts`, `mintLicenseKey` and `productFromKey`) is
 
 ```text
 pkey_<product-slug>_<22 characters of base64url>

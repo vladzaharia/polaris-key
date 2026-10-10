@@ -7,7 +7,7 @@
  * helper here looks at a date.
  */
 
-import { compareSemver } from "../../core/entitlements.js";
+import { compareSemver } from "../../core/licensing/entitlements.js";
 
 export type TrackFallbackState =
   /** The track has no build of its own: it serves its fallback, which is not "behind". */

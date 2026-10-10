@@ -19,6 +19,7 @@ import {
   Spinner,
 } from "../src/index.js";
 import { GROUPS } from "../src/help.js";
+import { CLI_VERSION } from "../src/version.js";
 import {
   CI_TOKEN,
   cleanup,
@@ -94,7 +95,9 @@ describe("grouped help", () => {
       expect(r.out).toBe(outs[0]!.out);
     }
     const out = outs[0]!.out;
-    expect(out.split("\n")[0]).toBe("pkey · Polaris Key platform CLI");
+    expect(out.split("\n")[0]).toBe(
+      `pkey ${CLI_VERSION} · Polaris Key platform CLI`,
+    );
     expect(out).toContain("Usage  pkey <command> [options]");
     for (const [, heading] of GROUPS)
       expect(out).toMatch(new RegExp(`^${heading}$`, "m"));
@@ -102,9 +105,10 @@ describe("grouped help", () => {
     // Every top-level command is listed.
     for (const c of COMMANDS)
       expect(out).toMatch(new RegExp(`^ {2}${c.name}\\b`, "m"));
-    expect(out.trimEnd().split("\n").at(-1)).toBe(
+    expect(out.trimEnd().split("\n").slice(-2)).toEqual([
       "Run pkey <command> --help for a command's options.",
-    );
+      "Every command and flag: key.plrs.im/docs/reference/cli",
+    ]);
   });
 
   it("fits 80 columns, and 60 on a 60-column terminal, descriptions wrapping under their column", async () => {
@@ -195,7 +199,7 @@ describe("per-command help", () => {
     // validate --help in a directory with no .pkey/ is help, not a failed validation.
     const v = await run(["validate", "--help"], { cwd });
     expect(v.code).toBe(0);
-    expect(v.out).toContain("pkey validate [path] [--json]");
+    expect(v.out).toContain("pkey validate [path] [--fix] [--json]");
   });
 
   it("a subcommand's help shows its usage lines and paragraphs only", async () => {

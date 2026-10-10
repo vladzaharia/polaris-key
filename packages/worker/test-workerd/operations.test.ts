@@ -8,8 +8,8 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { D1Db } from "../src/db/d1.js";
-import { operationsSnapshot, queueStatus } from "../src/core/operations.js";
-import { writeHeartbeat } from "../src/core/platformOps.js";
+import { operationsSnapshot, queueStatus } from "../src/core/ops/operations.js";
+import { writeHeartbeat } from "../src/core/ops/platformOps.js";
 import { missingRequiredIndexes } from "../src/scheduled.js";
 
 describe("operations bindings in workerd", () => {

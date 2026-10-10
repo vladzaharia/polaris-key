@@ -59,12 +59,36 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
 
-- [ ] The built `pkey help` shows a header with the version and a 'Here' line in both states (product from `.pkey/product` and base URL; outside a repository 'no product: no .pkey/product here or above; pass --product · key.plrs.im'); groups and verbs use glossary words (Channels, release tracks), not 'Storefront' or 'outlet'; footer link; wraps at 40 columns without losing a fact. (sdk-c-23)
+- [x] The built `pkey help` shows a header with the version and a 'Here' line in both states (product from `.pkey/product` and base URL; outside a repository 'no product: no .pkey/product here or above; pass --product · key.plrs.im'); groups and verbs use glossary words (Channels, release tracks), not 'Storefront' or 'outlet'; footer link; wraps at 40 columns without losing a fact. (sdk-c-23)
 
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
+
+### Corrections found in verification (2026-10-10, the code is the fact)
+
+- UK-14's `help.ts` already held the command table that drives help and completion; this package
+  grew it rather than starting a second: `json`, `valueless`, `context` and `action` per command,
+  `checkRegistry`, and `HANDLERS` in `index.ts` (a test holds its keys to the table's names).
+  Parse reads the valueless flags from the table; dispatch refuses a word the table does not name.
+- ST-40 (Integration facts and SDK sightings) is not merged, so there is no server verdict to match.
+  `pkey doctor` reports the facts the CLI can verify today as data (`src/doctor.ts`: manifest,
+  discovery, services, signing-keys; state ok, warn or todo; `--json` is the same facts) and no
+  sightings. The SDK-sighting rows (Verified, Waiting, Not seen yet) and the mockup's sign-in,
+  polaris-key.json and key-rotation rows wait for ST-40, ST-34 and SP-41.
+- `validate --fix` moves only the validator's deprecated spellings (`DEPRECATED_SPELLINGS`, ST-19)
+  whose canonical place is empty. No validator rule, mutation-table entry or JSON schema changed,
+  so rule 9 has nothing to add.
+- Out of scope here and owned elsewhere: the mockup's `sdk add`, `login|logout`, `channel …`,
+  `release keys init` and the removal of `pkey trust`, `pkey sdk --lang` and `pkey storefront`
+  (SP-33a, ST-34, DC-08). This package renames only the words the brand transition names: the
+  `Storefront` group is `Channels`, a channel is not an `outlet` in a description, and a release
+  track is not a `channel`. Flags (`--outlet`, `--channel`) are unchanged.
+- The Screen acceptance block is written for web screens. For `pkey help` and `pkey doctor`
+  (terminal): keyboard, screen-reader landmarks, sizing, themes, motion and native rows do not
+  apply; the terminal kit's rules do (NO_COLOR, ASCII, a pipe, 40 columns), and the tests cover
+  them. `pkey-ux-reviewer` has not seen the built output.
 
 ## Screen acceptance (brand transition, 2026-10-09)
 
@@ -110,8 +134,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] reference/cli.mdx generated with --check
-- [ ] pkey doctor reports the same Verified facts as ST-40
+- [x] reference/cli.mdx generated with --check
+- [ ] pkey doctor reports the same Verified facts as ST-40 (not met: ST-40 is not merged; see the corrections above)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

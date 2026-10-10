@@ -3,7 +3,7 @@
  *
  * `/manage/api/products/<slug>/<service>/…` is dispatched through the same descriptor the public
  * router uses (`ServiceDescriptor.adminHandle`), so a service owns its own console API instead of
- * having a branch in `admin/handlers/products.ts`. Five of the six services have one
+ * having a branch in `console/handlers/products.ts`. Five of the six services have one
  * (distribution has no `adminHandle` yet — its console view is read-only, P2b-01):
  *
  *   license/{licenses…,tiers…,policy}  MOVED in P7 off the dispatcher's own destructure; the
@@ -12,11 +12,11 @@
  *   release/{health,resync,releases}   moved verbatim, plus the truth store's new read
  *   update/settings                    NEW — access modes (incl. `entitled`, D-13) and the
  *                                      compatibility window, relocated off the product PATCH
- *   identity/portal                    moved verbatim from `admin/handlers/products.ts`; the
+ *   identity/portal                    moved verbatim from `console/handlers/products.ts`; the
  *                                      console's old `portal` spelling is GONE, not rewritten —
  *                                      it 404s (asserted below)
  *
- * The session, CSRF, rate-limit and platform-admin gates all run in `admin/api.ts` BEFORE a
+ * The session, CSRF, rate-limit and platform-admin gates all run in `console/api.ts` BEFORE a
  * descriptor is reached; this suite asserts the dispatch and the handlers, not those gates
  * (which `admin.test.ts` owns).
  */
@@ -25,15 +25,15 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { getProduct, listAudit } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { getProduct, listAudit } from "../src/core/repo.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -661,7 +661,7 @@ describe("the admin regroup (§R1)", () => {
     async (old, _moved) => {
       // Pre-launch, the console was the only consumer, so a permanent alias would buy nothing
       // and cost two paths that can answer differently after the next refactor. `portal` is the
-      // one exception and it is a deliberate, dated rewrite (`admin/api.ts`), not an alias.
+      // one exception and it is a deliberate, dated rewrite (`console/api.ts`), not an alias.
       const { db, env, auth } = await fixture(false);
       const path = `/api/products/${SLUG}/${old}`;
       const res = await dispatch(
@@ -798,7 +798,7 @@ describe("the admin regroup (§R1)", () => {
 
   it("reaches a DISABLED service's settings — configure-then-enable has to be possible", async () => {
     // Unlike the public dispatcher, the admin surface does not check enablement (see the note in
-    // `admin/api.ts`). Hiding a disabled service from an authenticated platform admin would
+    // `console/api.ts`). Hiding a disabled service from an authenticated platform admin would
     // protect nothing — the console is already behind the platform-admin gate — and would make
     // it impossible to set a service up before turning it on.
     const { db, env, auth } = await fixture(false);

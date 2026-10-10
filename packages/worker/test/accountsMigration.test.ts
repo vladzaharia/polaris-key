@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 import { SqliteDb } from "../src/db/sqlite.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import { insertLicense } from "../src/repo.js";
+import { insertLicense } from "../src/core/repo.js";
 import { loadProduct } from "../src/core/products.js";
 import { activateFromIdentity } from "../src/services/identity/oidc.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
@@ -41,7 +41,7 @@ import {
   disableAccount,
   removeProductData,
 } from "../src/services/identity/accounts/deletion.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIR = join(HERE, "..", "migrations");

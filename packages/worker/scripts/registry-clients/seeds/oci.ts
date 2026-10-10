@@ -35,12 +35,12 @@ import { getPlatformProxy } from "wrangler";
 import { extractOci } from "../../../../cli/src/package/oci.ts";
 import { hashFile } from "../../../../cli/src/publish.ts";
 import { D1Db } from "../../../src/db/d1.ts";
-import { blobKey, recordObject } from "../../../src/core/blobs.ts";
+import { blobKey, recordObject } from "../../../src/core/assets/blobs.ts";
 import { stmtUpsertDeliverable } from "../../../src/services/release/model.ts";
 import { ingestPackageDescriptor } from "../../../src/services/release/packages/ingest.ts";
 import { packageStateStatements } from "../../../src/services/release/packages/state.ts";
 import { yank } from "../../../src/services/release/policy.ts";
-import type { Env } from "../../../src/env.ts";
+import type { Env } from "../../../src/platform/env.ts";
 
 export const OWNER = "registry-smoke";
 export const DELIVERABLE = "oci.smoke";

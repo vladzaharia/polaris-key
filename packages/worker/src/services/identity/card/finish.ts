@@ -8,7 +8,8 @@
  * gate or provider sign-in brings the licences waiting on its address (S-24 §5.4).
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import { startAccountSession } from "../portal/accountSessions.js";
 import { portalAudit, syncAccountLicenseLinks } from "../portal/repo.js";
 

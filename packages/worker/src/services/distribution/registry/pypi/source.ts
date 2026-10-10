@@ -15,7 +15,7 @@
  *     memory.
  */
 
-import type { RegistryRouteContext } from "../../../../core/registryHost.js";
+import type { RegistryRouteContext } from "../../../../core/registry/registryHost.js";
 import type { CatalogPackageDeliverable } from "../../../../core/hooks.js";
 import { freshRegistryObject, registryPackageOf } from "../catalogSource.js";
 import type { RegistryPackage, RegistryRenderer } from "../materialise.js";

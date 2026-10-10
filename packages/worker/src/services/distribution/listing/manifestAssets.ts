@@ -38,17 +38,17 @@
  * the consumer checks it. Acceptance is unchanged (A-18j): a manifest row is pushed only once an
  * operator accepts its bytes, as a CI row is.
  *
- * Not behind the hosting kill switch (`core/assetHosting.ts`): rows name blobs, not URLs, and
+ * Not behind the hosting kill switch (`core/assets/assetHosting.ts`): rows name blobs, not URLs, and
  * serve nothing.
  */
 
-import type { Db, DbStatement } from "../../../core/platform.js";
-import { randomId } from "../../../core/platform.js";
-import { appendAudit } from "../../../core/data.js";
-import { blobKey } from "../../../core/blobs.js";
-import { HOSTED_ASSET_REF } from "../../../core/hostedAssets.js";
-import { IMG_HOST_TYPES } from "../../../core/imgHost.js";
-import { listingScreenshotSlots } from "../../../core/hostedImages.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import { randomId } from "../../../platform/crypto.js";
+import { appendAudit } from "../../../core/repo.js";
+import { blobKey } from "../../../core/assets/blobs.js";
+import { HOSTED_ASSET_REF } from "../../../core/assets/hostedAssets.js";
+import { IMG_HOST_TYPES } from "../../../core/assets/imgHost.js";
+import { listingScreenshotSlots } from "../../../core/assets/hostedImages.js";
 import {
   listingAssetRule,
   SCREENSHOT_CLASSES,

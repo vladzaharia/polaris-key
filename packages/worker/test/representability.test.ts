@@ -37,23 +37,23 @@ import {
   TEST_PEM,
   TEST_PUB,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
-import { handleTrustManifest } from "../src/core/trust.js";
+import { handleTrustManifest } from "../src/core/trust/trust.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { flowKey, handleAuthCallback } from "../src/services/identity/oidc.js";
-import { getLicenseBySub } from "../src/repo.js";
+import { getLicenseBySub } from "../src/core/repo.js";
 import { artefacts } from "./singleUseMock.js";
 
 // The OIDC suite swaps only the IdP's remote key getter, as `oidcEdge` and `R8-oidc` do, so the

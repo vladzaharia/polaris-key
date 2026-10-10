@@ -333,6 +333,29 @@ export const HEADER_PLATFORM = "X-PKey-Platform";
 export const HEADER_ARCH = "X-PKey-Arch";
 
 /**
+ * WIRE-CONTRACT-V4 §14 (SP-53): product backends. An app sends this header to its OWN backend,
+ * never to the Worker, which never reads it: the compact `pkey-license+jws` the app holds,
+ * unchanged. A backend decides it with §14.2's six-step verdict (`backend-matrix.json`).
+ */
+export const HEADER_LICENSE = "X-PKey-License";
+
+/** §14.3: the `WWW-Authenticate` scheme of a backend's 401 refusal,
+ *  `PKey-License realm="<slug>", error="<code>"`. */
+export const BACKEND_AUTH_SCHEME = "PKey-License";
+
+/** §14.1: the longest `X-PKey-License` value a backend accepts, in bytes. A longer value is
+ *  `license_invalid` before anything is decoded. */
+export const BACKEND_LICENSE_MAX_BYTES = 16384;
+
+/** §14.4 (informative): how often a backend re-fetches the signed trust manifest, in seconds. An
+ *  unknown `kid` fetches at most once a minute, and the pinned keys always verify. */
+export const BACKEND_TRUST_REFRESH_SECONDS = 900;
+
+/** §14.1: the request headers a backend reads, for the app's own CORS allow-list. The backend
+ *  drop-ins never set CORS headers and never read `Authorization`. */
+export const POLARIS_REQUEST_HEADERS = [HEADER_LICENSE, HEADER_DEVICE] as const;
+
+/**
  * The channel vocabulary (WIRE-CONTRACT-V3 §5.1). One set of names for the licence build gate,
  * the `entitled` release check and every SDK's `X-PKey-Channel`: `stable`, `beta`, `pr-<n>`
  * (`pr` is the family; as a grant it covers every PR), a product's manual channels, and `dev`,

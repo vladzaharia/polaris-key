@@ -49,7 +49,7 @@ import {
   checksumHex,
   parseKey,
   reprDigest,
-} from "../../core/blobs.js";
+} from "../../core/assets/blobs.js";
 import { decideBlob } from "./blobAccess.js";
 import type { ByteContext } from "./bytes.js";
 import {

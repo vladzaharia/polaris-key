@@ -1,23 +1,23 @@
-import { isSameOriginRequest } from "../../../core/browserRequestGuard.js";
+import { isSameOriginRequest } from "../../../core/accounts/browserRequestGuard.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
   ALLOWED_ID_TOKEN_ALGS,
   ID_TOKEN_CLOCK_TOLERANCE,
   ID_TOKEN_MAX_AGE,
 } from "../idToken.js";
+import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
+import { escapeHtml } from "../../../platform/html.js";
+import { hashKey } from "../../../platform/crypto.js";
+import { isSameOriginNavigation } from "../../../platform/http.js";
+import { pkcePair } from "../../../platform/pkce.js";
+import { platformOidcConfig } from "../../../platform/platformOidc.js";
 import {
-  brandedHtmlSecurityHeaders,
-  escapeHtml,
-  hashKey,
-  isSameOriginNavigation,
-  pkcePair,
-  platformOidcConfig,
   PORTAL_SIGNIN_RETURN_TO,
-  randomToken,
   safeReturnTo,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+} from "../../../platform/returnTo.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -56,7 +56,7 @@ import {
 } from "../card/emailSignIn.js";
 
 export { portalMagicKey } from "../card/emailSignIn.js";
-import { portalSecurityHeaders } from "./headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
 import {
   LINK_FLOW_COOKIE,
@@ -64,7 +64,7 @@ import {
   accountRealmCookie,
   clearAccountRealmCookie,
   readCookie,
-} from "../../../core/accountCookies.js";
+} from "../../../core/accounts/accountCookies.js";
 
 const FLOW_TTL_SECONDS = 600;
 

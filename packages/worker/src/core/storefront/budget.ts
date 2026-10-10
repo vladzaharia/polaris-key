@@ -36,8 +36,8 @@
  */
 
 import type { RateSpec } from "../adapters/contract.js";
-import type { Env } from "../platform.js";
-import { kvKey } from "../platform.js";
+import type { Env } from "../../platform/env.js";
+import { pk as kvKey } from "../../platform/kv.js";
 import { storefrontAdapter, type StorefrontId } from "./adapter.js";
 
 /** What is left of a budget. */

@@ -197,6 +197,19 @@ the person's device. A pending passkey ceremony is held for 5 minutes: its rando
 the relying party, plus the same-origin return path for a sign-in, or the account id and its user
 handle for adding a passkey.
 
+### Product backends — the licence document sent to the developer's own server (SP-53)
+
+An app built with a client half (`client.backend`) sends its signed licence document to its
+developer's own backend in the `X-PKey-License` header, with its device id in `X-PKey-Device`
+(WIRE-CONTRACT-V4 §14). The document is the one the device already holds: it carries the licence
+holder's name and email (its signed `profile`), the licence id, the device id, the entitlements
+and, once SP-54 ships, the signed-in account's pairwise subject. It goes to the developer's own
+server, never to Polaris Key: the Worker never receives or reads the header, so nothing about these
+requests is collected or stored by Polaris Key. What that server keeps is the developer's own
+policy. The server drop-ins never log the header, the document or the holder's name and email, and
+the docs list the header for APM scrubbing. The device token and the config document are never
+sent.
+
 ### Not collected
 
 Hostname, OS username, IP-derived geolocation, browsing or file activity, a list of installed
@@ -264,7 +277,7 @@ What the sections above do not promise, stated plainly:
   (no crypto-shredding), and D1 Time Travel backups keep deleted rows for up to 30 days.
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
-through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the
+through `setDeviceStatus()` in `packages/worker/src/core/repo.ts`, which purges both tables in the
 same operation. Disabling a license purges every one of its devices. This is why no scheduled
 cleanup job exists for these tables: there is no orphaned data for one to collect. The update
 outcome counters are the exception: they are aggregates per release, not per device, so they are

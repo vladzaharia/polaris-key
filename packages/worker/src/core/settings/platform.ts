@@ -5,8 +5,8 @@
  * A-13's four editable keys (and LX-05's `licensing.reservedNames`) live here now, under their
  * registry keys, with their old SCREAMING_CASE names as aliases (S-18 §4.1). Their
  * `platform_settings` rows keep the old names (`storage.storedAs`), so no migration rewrites them
- * and the A-13 store and admin route (`core/platformSettings.ts`, which derives `PLATFORM_SETTINGS`
- * from this slice) are unchanged.
+ * and the one path reads and writes them (`resolvePlatformSetting`, `writeSetting`; ST-05a deleted
+ * the A-13 store's own definition list, resolver and writer).
  *
  * Everything here is reviewed against AT-2 (THREAT-MODEL "Platform settings and operations"):
  * `rules.ts` refuses an origin, the privilege root, the admin IdP, a security gate, key
@@ -40,7 +40,7 @@ export const KEY_ENTRY_LIMIT_MIN = IDENTITY_KEY_ENTRY_LIMIT.min;
 export const KEY_ENTRY_LIMIT_MAX = IDENTITY_KEY_ENTRY_LIMIT.max;
 export const KEY_ENTRY_LIMIT_DEFAULT = IDENTITY_KEY_ENTRY_LIMIT.default;
 
-/** The console's offline-window bound (`admin/lib/writeChecks.ts` `MAX_OFFLINE_DAYS`; a test pins them). */
+/** The console's offline-window bound (`core/console/writeChecks.ts` `MAX_OFFLINE_DAYS`; a test pins them). */
 export const OFFLINE_DAYS_MAX = 365;
 /** The column defaults of `products.default_max_offline_days` / `default_device_limit` (0001). */
 export const DEFAULT_MAX_OFFLINE_DAYS = 30;
@@ -51,7 +51,7 @@ export const DEVICE_LIMIT_MAX = 1_000_000;
 /**
  * HA-10 (notes/S-20 owner decision 9): the hosting quotas' defaults and bounds. The defaults are
  * S-20's (512 MiB of images, 100 GiB of mirrored release files); the maxima only keep the value a
- * bounded integer (1 TiB, 10 TiB). Per-file caps are code constants (`core/hostedAssets.ts`
+ * bounded integer (1 TiB, 10 TiB). Per-file caps are code constants (`core/assets/hostedAssets.ts`
  * `SLOT_CLASSES`), never settings: they are security bounds (S-18 §5.6).
  */
 export const ASSET_MEDIA_QUOTA_DEFAULT = 512 * 1024 * 1024;
@@ -92,7 +92,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { on: "L1", off: "L0" },
     readers: [
-      "core/deltaDemand.ts",
+      "core/assets/deltaDemand.ts",
       "services/release/packs/deltas/consumer.ts",
       "services/release/packs/deltas/sweep.ts",
     ],
@@ -145,7 +145,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "ceiling",
     ownership: "operator",
     confirm: { on: "L1", off: "L0" },
-    readers: ["core/blobGc.ts"],
+    readers: ["core/assets/blobGc.ts"],
     storage: { kind: "scalar", storedAs: "BLOB_GC_MODE" },
     since: "A-13",
   }),
@@ -166,7 +166,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "runtime",
     ownership: "operator",
     confirm: { up: "L0", down: "L1" },
-    readers: ["core/blobGc.ts"],
+    readers: ["core/assets/blobGc.ts"],
     storage: { kind: "scalar", storedAs: "BLOB_GC_GRACE_DAYS" },
     since: "A-13",
   }),
@@ -197,7 +197,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "runtime",
     ownership: "operator",
     confirm: { up: "L1", down: "L0" },
-    readers: ["core/reservedNames.ts"],
+    readers: ["core/licensing/reservedNames.ts"],
     storage: { kind: "scalar", storedAs: "LICENSING_RESERVED_NAMES" },
     since: "LX-05",
   }),
@@ -228,7 +228,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "runtime",
     ownership: "operator",
     confirm: { up: "L1", down: "L0" },
-    readers: ["core/reservedDisplayNames.ts"],
+    readers: ["core/accounts/reservedDisplayNames.ts"],
     storage: { kind: "scalar", storedAs: "IDENTITY_RESERVED_DISPLAY_NAMES" },
     since: "PX-W13",
   }),
@@ -313,7 +313,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { on: "L1", off: "L1" },
     wire: ["refusal"],
-    readers: ["core/keyEntries.ts"],
+    readers: ["core/licensing/keyEntries.ts"],
     storage: { kind: "scalar", storedAs: "KEYENTRY_REFUSALS" },
   }),
   setting({
@@ -361,7 +361,8 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     widensWhen: "on",
     ownership: "operator",
     confirm: { on: "L2", off: "L2" },
-    // A `platform_settings` row under the registry key itself (no A-13 alias); ST-05 writes it.
+    // A `platform_settings` row under the registry key itself (no A-13 alias); the platform
+    // settings route writes it through `writeSetting()`.
     storage: { kind: "scalar" },
     since: "PS-02",
     // The storefront engine's candidate set (S-21 §6.3 "Candidates", PS-03).
@@ -398,8 +399,8 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { on: "L1", off: "L1" },
     readers: [
-      "core/assetHosting.ts",
-      "core/hostedImages.ts",
+      "core/assets/assetHosting.ts",
+      "core/assets/hostedImages.ts",
       "services/release/mirrorSwitch.ts",
     ],
     storage: { kind: "scalar", storedAs: "ASSET_HOSTING" },
@@ -430,7 +431,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     productLink: { default: true, bound: false },
     ownership: "operator",
     confirm: { up: "L1", down: "L1" },
-    readers: ["core/assetSettings.ts", "core/assetQuota.ts"],
+    readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
   }),
@@ -455,7 +456,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     productLink: { default: true, bound: false },
     ownership: "operator",
     confirm: { up: "L1", down: "L1" },
-    readers: ["core/assetSettings.ts", "core/assetQuota.ts"],
+    readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
   }),

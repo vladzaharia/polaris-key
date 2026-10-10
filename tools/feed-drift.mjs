@@ -34,7 +34,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 
-/** The Godot feed's publisher and the Swift scope of the system product (admin/systemProduct.ts). */
+/** The Godot feed's publisher and the Swift scope of the system product (the worker's console/systemProduct.ts). */
 const GODOT_PUBLISHER = "polaris-key";
 
 // ── Version ordering ────────────────────────────────────────────────────────────────────────

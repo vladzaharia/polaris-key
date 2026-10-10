@@ -11,7 +11,7 @@ import {
   EMAIL_CODE_DIGITS,
   EMAIL_CODE_TTL_SECONDS,
   EMAIL_SEND_PER_RECIPIENT_HOUR,
-} from "../src/core/emailLimits.js";
+} from "../src/core/notify/emailLimits.js";
 import {
   EMAIL_RESEND_AFTER_SECONDS,
   EMAIL_SENDS_PER_FLOW,
@@ -21,7 +21,7 @@ import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.
 import {
   ACCOUNT_SESSION_COOKIE,
   SIGNIN_FLOW_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 
 // PX-W4: the email code for the account sign-in on I-02's single-use store (PORTAL.md §4.4).
 // I-07 built the start and the verify (`identityCardEmail.test.ts`); this covers what the code

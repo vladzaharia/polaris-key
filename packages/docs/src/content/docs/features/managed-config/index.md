@@ -100,7 +100,7 @@ rows through a Core-mediated seam.
 
 The layered merge that turns a catalog, a tier's profile, a license's profiles, store grants,
 license overrides, account overrides and device overrides into one effective payload lives in
-**Core** (`core/payload.ts`), not here —
+**Core** (`core/licensing/payload.ts`), not here —
 License's entitlements and Config's `config` + `secrets` maps are sliced from the _same_ merged
 result, by different services, so the walk has to happen once or the two documents could quietly
 disagree about precedence. Document **assembly** — stamping the envelope onto that slice — lives

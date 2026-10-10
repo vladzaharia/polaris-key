@@ -23,7 +23,7 @@ import {
   seedProductSecret,
   seedTier,
 } from "../seed.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
@@ -35,7 +35,7 @@ import {
   deviceFlowKey,
   flowKey,
 } from "../../src/services/identity/oidc.js";
-import { handleAdminApi } from "../../src/admin/api.js";
+import { handleAdminApi } from "../../src/console/api.js";
 import { handleMagicStart } from "../../src/services/identity/portal/auth.js";
 import { handlePortalApi } from "../portalHarness.js";
 import {
@@ -43,7 +43,7 @@ import {
   CSRF_HEADER,
   issueSession,
   type SessionIdentity,
-} from "../../src/admin/session.js";
+} from "../../src/core/console/session.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -62,13 +62,13 @@ import {
   syncAccountLicenseLinks,
   upsertPortalProductSettings,
 } from "../../src/services/identity/portal/repo.js";
-import { pk } from "../../src/kv.js";
+import { pk } from "../../src/platform/kv.js";
 import {
   type FetchImpl,
   getInstallationToken,
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
-import { hashKey } from "../../src/crypto.js";
+import { hashKey } from "../../src/platform/crypto.js";
 
 const PORTAL_SECRET = "r5-portal-session-secret";
 const ADMIN_SECRET = "r5-admin-session-secret";
@@ -515,8 +515,8 @@ describe("R5-04 cross-tenant portal capability coupling", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
-// R5-05 — There is no tenant-scoped admin role. admin/api.ts:12-13 documents "product
-// routes need the product's admin_group", but admin/authz.ts:21-27 ignores the product
+// R5-05 — There is no tenant-scoped admin role. console/api.ts:12-13 documents "product
+// routes need the product's admin_group", but console/authz.ts:21-27 ignores the product
 // entirely and grants on PLATFORM_ADMIN_GROUP alone.
 // ───────────────────────────────────────────────────────────────────────────────
 describe("R5-05 no tenant-scoped admin role exists", () => {

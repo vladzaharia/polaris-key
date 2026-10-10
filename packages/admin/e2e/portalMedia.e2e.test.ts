@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
+import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import {
   MEDIA_CSP,
   MEDIA_IMMUTABLE,
@@ -16,7 +16,7 @@ import {
   IMG_CSP,
   IMG_IMMUTABLE,
   hardenImgHostResponse,
-} from "../../worker/src/core/imgHost.js";
+} from "../../worker/src/core/assets/imgHost.js";
 
 /**
  * The portal never loads art from a developer's host (docs/design/PORTAL.md G1). Since HA-07 it
@@ -121,7 +121,7 @@ function imgHostAnswer(
   };
 }
 
-/** The image host's paths, as `core/imgHost.ts` answers them: the alias 302s to the copy. */
+/** The image host's paths, as `core/assets/imgHost.ts` answers them: the alias 302s to the copy. */
 function imgHostFor(pathname: string) {
   const alias = /^\/([a-z0-9-]+)\/(icon|header)$/.exec(pathname);
   if (alias)

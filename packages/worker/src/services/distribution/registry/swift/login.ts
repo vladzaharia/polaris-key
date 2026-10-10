@@ -19,7 +19,7 @@
 
 import { licenseUsable } from "../../../../core/devices.js";
 import { clientNetwork, rateLimitOk } from "../../../../core/rateLimit.js";
-import type { RegistryRoute } from "../../../../core/registryHost.js";
+import type { RegistryRoute } from "../../../../core/registry/registryHost.js";
 import {
   feedAnswering,
   feedRefusal,

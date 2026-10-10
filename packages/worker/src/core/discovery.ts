@@ -43,7 +43,7 @@
  */
 
 import { PROTOCOL_VERSION } from "@polaris-key/protocol";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";
 import { loadPublicSigningKey, loadPublicSigningKeys } from "./products.js";

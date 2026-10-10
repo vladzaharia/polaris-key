@@ -22,24 +22,24 @@ import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { R2Mock, asR2 } from "./r2Mock.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   blobKey,
   putVerified,
   recordObject,
   recordRef,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { loadProduct } from "../src/core/products.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { SERVICES } from "../src/mount.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import {

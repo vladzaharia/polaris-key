@@ -21,7 +21,7 @@
  *                                      stage round of a pack's objects (P4-02)
  *
  * Binaries never transit the Worker: CI PUTs them to R2 with the ticket's credentials, and the
- * Worker only verifies and promotes (`core/blobs.ts`). The credential store, the OIDC checks and
+ * Worker only verifies and promotes (`core/assets/blobs.ts`). The credential store, the OIDC checks and
  * the tickets are Core's (`core/publisher.ts`); the descriptor rules are `descriptor.ts`'s.
  *
  * ── WHAT CI IS NEVER TOLD ───────────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ import {
   referencedKeys,
   stagingKey,
   verifyStaged,
-} from "../../core/blobs.js";
+} from "../../core/assets/blobs.js";
 import {
   claimUploadTicket,
   exchangeOidcToken,
@@ -82,8 +82,8 @@ import {
   type CiTokenRecord,
   type JwksFetcher,
 } from "../../core/publisher.js";
-import { appendAudit } from "../../core/data.js";
-import { randomId } from "../../core/platform.js";
+import { appendAudit } from "../../core/repo.js";
+import { randomId } from "../../platform/crypto.js";
 import {
   APP_DELIVERABLE_ID,
   MAX_DESCRIPTOR_BYTES,

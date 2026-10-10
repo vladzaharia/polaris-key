@@ -1,5 +1,5 @@
 /**
- * HA-02 — the image host (`core/imgHost.ts`, `core/imgHostname.ts`; notes/S-20 §6.5, owner
+ * HA-02 — the image host (`core/assets/imgHost.ts`, `core/assets/imgHostname.ts`; notes/S-20 §6.5, owner
  * decision 2). Modelled on `bytesHost.test.ts`: configuration, isolation in both directions, the
  * pinned headers, cookies, per-product tenancy, the never-gated rule, variants and aliases.
  */
@@ -21,22 +21,22 @@ import {
   imgUrl,
   isImgHost,
   matchImgPath,
-} from "../src/core/imgHost.js";
+} from "../src/core/assets/imgHost.js";
 import {
   HOSTED_ASSET_REF,
   getHostedAsset,
   ingest,
   parseVariants,
   rebuildLadder,
-} from "../src/core/hostedAssets.js";
+} from "../src/core/assets/hostedAssets.js";
 import {
   blobKey,
   putVerified,
   recordObject,
   stmtRecordRef,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -480,7 +480,8 @@ describe("image host: serving", () => {
   });
 
   it("a route's own Set-Cookie and Access-Control headers never survive the hardening", async () => {
-    const { hardenImgHostResponse } = await import("../src/core/imgHost.js");
+    const { hardenImgHostResponse } =
+      await import("../src/core/assets/imgHost.js");
     const res = hardenImgHostResponse(
       new Response("x", {
         headers: {

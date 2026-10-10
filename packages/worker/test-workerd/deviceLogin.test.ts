@@ -12,7 +12,7 @@ import {
 } from "../src/core/singleUse.js";
 import { qrSvg } from "../src/core/qr.js";
 import { requestLocation } from "../src/services/identity/portal/deviceLogin.js";
-import type { Env as WorkerEnv } from "../src/env.js";
+import type { Env as WorkerEnv } from "../src/platform/env.js";
 
 const workerEnv = env as unknown as WorkerEnv;
 

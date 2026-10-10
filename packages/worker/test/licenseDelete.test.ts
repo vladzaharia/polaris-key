@@ -1,6 +1,6 @@
 /**
  * Licence deletion on the console API (`services/license/admin/deletion.ts`,
- * `core/licenseDelete.ts`): who may be deleted, the typed confirmation, the cascade over every
+ * `core/licensing/licenseDelete.ts`): who may be deleted, the typed confirmation, the cascade over every
  * table keyed by the licence, the KV purge, the audit row, the bulk route and the "Clean up
  * duplicates" list.
  */
@@ -16,20 +16,20 @@ import {
   seedTier,
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { getTokenRecord, putTokenRecord } from "../src/kv.js";
-import { listAudit } from "../src/repo.js";
-import { licenseDeleteFor } from "../src/core/licenseDelete.js";
+import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
+import { listAudit } from "../src/core/repo.js";
+import { licenseDeleteFor } from "../src/core/licensing/licenseDelete.js";
 import { SERVICES } from "../src/mount.js";
-import { auditStatementFor } from "../src/admin/audit.js";
+import { auditStatementFor } from "../src/core/console/audit.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "admins";
@@ -48,7 +48,7 @@ const LICENSE_KEYED = [
   "dist_purchase_bindings",
   "dist_purchases",
   // LX-08: the licence's entitlement events and the grants it holds (its `oidc` grant; a store
-  // grant blocks through `license_store_grants`), deleted by Core (`core/grants.ts`).
+  // grant blocks through `license_store_grants`), deleted by Core (`core/licensing/grants.ts`).
   "entitlement_events",
   "grants",
   "keys_index",

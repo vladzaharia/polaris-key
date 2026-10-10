@@ -22,7 +22,7 @@
  * feed settings only through the `delivery` hook, like the ticket publish does.
  *
  * WHO MAY PUSH. Only a request bearing an OCI token from `/v2/token` granting `push` on this
- * repository, whose subject still resolves to a publisher (`core/registryTokens.ts`
+ * repository, whose subject still resolves to a publisher (`core/registry/registryTokens.ts`
  * `registryPublisher`: an owner-bound `pkeyr_` with `publish`, or a `pkeyci_` with
  * `release:publish`). Anything else is 401 with the Bearer challenge naming `pull,push`, before
  * the repository is even looked up, so the routes are no oracle for what exists.
@@ -56,7 +56,7 @@ import {
   type RegistryMethod,
   type RegistryRoute,
   type RegistryRouteContext,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 import { json } from "../../../core/errors.js";
 import {
   OCI_PUSH_REF,
@@ -65,17 +65,18 @@ import {
   recordRef,
   referencedKeys,
   storedObjects,
-} from "../../../core/blobs.js";
+} from "../../../core/assets/blobs.js";
 import {
   isPullToken,
   lookupRegistrySubject,
   registryPublisher,
   verifyPullToken,
   type RegistryPublisher,
-} from "../../../core/registryTokens.js";
+} from "../../../core/registry/registryTokens.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
-import { appendAudit } from "../../../core/data.js";
-import { randomId, sha256Hex } from "../../../core/platform.js";
+import { appendAudit } from "../../../core/repo.js";
+import { randomId } from "../../../platform/crypto.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import {
   classifyChannel,
   isMovingSelector,
@@ -431,7 +432,7 @@ function contentRange(
  * appended to the upload. `docker push` and go-containerregistry send each layer as one `PATCH`
  * with chunked transfer encoding, so R2, which needs every stream's length, can only be fed such a
  * body in pieces of known length: the isolate holds one piece at a time (Core's blob-store rule,
- * `core/blobs.ts`: never buffer an object; the isolate has 128 MB). At least `MIN_PART_BYTES`, so
+ * `core/assets/blobs.ts`: never buffer an object; the isolate has 128 MB). At least `MIN_PART_BYTES`, so
  * the first piece of a fresh upload fixes a real part size.
  */
 export const SPOOL_BYTES = 16 * 1024 * 1024;

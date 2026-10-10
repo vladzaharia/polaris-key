@@ -28,10 +28,10 @@
  * report-back (A-18h), and a deep-linked step's (`deep-link`) by its verifier (A-18j).
  */
 
-import type { Db } from "../platform.js";
-import { hashKey } from "../../crypto.js";
+import type { Db } from "../../db/types.js";
+import { hashKey } from "../../platform/crypto.js";
 import { sha256Hex } from "../../platform/hash.js";
-import type { AdminSession } from "../adminApi.js";
+import type { AdminSession } from "../console/session.js";
 import type { Plane } from "../adapters/contract.js";
 import { storefrontAdapter, type StorefrontId } from "./adapter.js";
 import type { CiStoreId } from "./ciPlane.js";

@@ -11,7 +11,7 @@
  * ── What "inherited" means here ────────────────────────────────────────────────────────────
  *
  * `GET …/license/licenses/<id>` returns the license row's own overrides and nothing else; the
- * merged payload is only assembled at signing time (`core/payload.ts`) and no admin endpoint
+ * merged payload is only assembled at signing time (`core/licensing/payload.ts`) and no admin endpoint
  * exposes it. So the console rebuilds the layers below, in the server's order and with its
  * precedence rule, from data it can fetch:
  *
@@ -310,7 +310,7 @@ function ConfigEditor({
   >();
   const [saving, setSaving] = React.useState(false);
 
-  // The tier's profile, then the license's own profiles in order: `core/payload.ts`'s order.
+  // The tier's profile, then the license's own profiles in order: `core/licensing/payload.ts`'s order.
   const profileIds = React.useMemo(() => {
     const ids: string[] = [];
     const tierProfile = tiers?.find((t) => t.id === license.tier)?.profile;

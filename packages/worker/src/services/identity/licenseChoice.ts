@@ -43,11 +43,15 @@ import {
   seatActiveSince,
   type DeviceRow,
   type LicenseRow,
-} from "../../core/data.js";
+} from "../../core/repo.js";
 import { licenseUsable } from "../../core/devices.js";
-import { compareCandidates } from "../../core/anchor.js";
-import { licenseDeviceLimit, tierFingerprintMode } from "../../core/authz.js";
-import { escapeHtml, type Db } from "../../core/platform.js";
+import { compareCandidates } from "../../core/licensing/anchor.js";
+import {
+  licenseDeviceLimit,
+  tierFingerprintMode,
+} from "../../core/licensing/authz.js";
+import { escapeHtml } from "../../platform/html.js";
+import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import type { PurchaseSourceKind, ServiceHooks } from "../../core/hooks.js";
 import { getAccountRow } from "./accounts/repo.js";
@@ -231,7 +235,7 @@ function originKind(origin: string | undefined): PurchaseSourceKind {
   return "developer";
 }
 
-/** I-09's rank-first order (`core/anchor.ts`): no expiry first, then the latest expiry, then the
+/** I-09's rank-first order (`core/licensing/anchor.ts`): no expiry first, then the latest expiry, then the
  *  oldest. One definition for this chooser, the sign-in card and the consent line. */
 export { compareCandidates };
 

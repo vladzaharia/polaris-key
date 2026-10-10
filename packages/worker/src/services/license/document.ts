@@ -24,8 +24,9 @@
 
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { sha256Base64Url } from "@polaris-key/jws";
-import type { Env, Db } from "../../core/platform.js";
-import { bearer } from "../../core/platform.js";
+import type { Env } from "../../platform/env.js";
+import type { Db } from "../../db/types.js";
+import { bearer } from "../../platform/http.js";
 import type { Product } from "../../core/products.js";
 import {
   ErrorCode,
@@ -37,10 +38,10 @@ import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { deviceMetadata, touchDeviceMetadata } from "../../core/devices.js";
 import { isStrictJsonError, signDoc } from "../../core/signing.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
-import { requireLicensedDevice } from "./auth.js";
-import { docProfile } from "./authz.js";
-import { resolveEntitlements } from "./entitlements.js";
-import { checkBuildGate, type GateResult } from "./gate.js";
+import { requireLicensedDevice } from "../../core/licensing/authz.js";
+import { docProfile } from "../../core/licensing/authz.js";
+import { resolveEntitlements } from "../../core/licensing/authz.js";
+import { checkBuildGate, type GateResult } from "../../core/licensing/gate.js";
 
 // The envelope stamper moved to `core/documents.ts` when offline bundles landed (§7): one bundle
 // carries a license document AND a config document, so Core has to be able to build both, and a
@@ -52,8 +53,8 @@ export {
   type BuildLicenseDocInput,
 } from "../../core/documents.js";
 import { buildLicenseDoc } from "../../core/documents.js";
-import { graceClampFor } from "../../core/graceClamp.js";
-import { licenseOfflineDays } from "../../core/entitlements.js";
+import { graceClampFor } from "../../core/licensing/graceClamp.js";
+import { licenseOfflineDays } from "../../core/licensing/entitlements.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 
 /**
@@ -162,7 +163,7 @@ export async function handleLicenseDocument(
     licenseId: valid.license.id,
     now,
     maxOfflineDays,
-    // LX-07 (S-19 G9): the offline window ends no later than the licence (`core/graceClamp.ts`).
+    // LX-07 (S-19 G9): the offline window ends no later than the licence (`core/licensing/graceClamp.ts`).
     clampGraceTo: await graceClampFor(
       { env, db, registry: settings },
       product.slug,

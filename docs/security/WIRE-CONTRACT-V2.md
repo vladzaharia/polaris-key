@@ -96,7 +96,7 @@ A verifier holds three tiers, in strictly decreasing authority:
 > positive signal to act on before falling back to the prune-on-absence rule above.
 >
 > Separately, R11-07 found there is **no CHECK constraint on any status column**, and `retire`/
-> `revoke` (`admin/handlers/products.ts:730`) have no status guard — so retiring the _active_
+> `revoke` (`console/handlers/products.ts:730`) have no status guard — so retiring the _active_
 > signing key bricks the product, since `idx_product_keys_one_active` enforces at-most-one and
 > never at-least-one. Add both the CHECK constraint and the guard.
 

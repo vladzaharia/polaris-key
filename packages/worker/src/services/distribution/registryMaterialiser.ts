@@ -2,7 +2,7 @@
  * Distribution's `registryMaterialiser` (`core/registry.ts`): the consumer of the package-feed
  * render queue, the piece F-02 and F-03 each left to the other (plans/F-01.md §6.5).
  *
- * Core reads `registry_render_queue` (`core/registryQueue.ts` `drainRenderQueue`) after every
+ * Core reads `registry_render_queue` (`core/registry/registryQueue.ts` `drainRenderQueue`) after every
  * request that enqueued and on every cron tick, and hands one owner's rows here. This file turns
  * them into F-02's framework calls: `drainRegistry` over the feed adapters' renderers
  * (`registry/index.ts` `RENDERERS`), Release's state through the `releaseCatalog` hook, and each
@@ -19,8 +19,8 @@ import type {
   RegistryMaterialiser,
   ScheduledServiceContext,
 } from "../../core/registry.js";
-import type { QueuedRender } from "../../core/registryQueue.js";
-import { registryOrigin } from "../../core/registryHostname.js";
+import type { QueuedRender } from "../../core/registry/registryQueue.js";
+import { registryOrigin } from "../../core/registry/registryHostname.js";
 import { catalogPackageSource } from "./registry/catalogSource.js";
 import { RENDERERS } from "./registry/index.js";
 import {

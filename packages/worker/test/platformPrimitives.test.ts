@@ -1,13 +1,13 @@
 /**
  * The platform primitives (P0-15): `src/platform/{bytes,hash,compare,random,pkce,json,hmacToken,
- * html,returnTo,email}.ts`, lent to services through `core/platform.ts`.
+ * html,returnTo,email}.ts`, which services import directly.
  *
  * Three jobs:
  *
  *   1. PIN THE SESSION FORMAT. The console and portal sessions moved onto the shared
  *      `hmacToken` module. A cookie minted by the code BEFORE the move must still verify, and
  *      the new code must mint the identical bytes, or every operator and customer is signed out
- *      by the deploy. The tokens below were minted by the pre-P0-15 `admin/session.ts` and
+ *      by the deploy. The tokens below were minted by the pre-P0-15 `core/console/session.ts` and
  *      `services/identity/portal/session.ts` with the random source fixed.
  *   2. PIN THE SEMANTICS of each primitive where the copies it replaced could have differed
  *      (padding, alphabet, hex case, length mismatch, the apostrophe, the return-to policy).
@@ -25,7 +25,7 @@ import {
   buildSessionCookie,
   issueSession,
   verifySession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   issuePortalSession,
   verifyPortalSession,
@@ -75,13 +75,16 @@ import {
   PRODUCT_SIGNIN_RETURN_TO,
   safeReturnTo,
 } from "../src/platform/returnTo.js";
-import type { Env } from "../src/env.js";
-import { open, seal } from "../src/keyvault.js";
+import type { Env } from "../src/platform/env.js";
+import { open, seal } from "../src/platform/keyvault.js";
 import {
   mintDownloadTicket,
   verifyDownloadTicket,
 } from "../src/core/downloadTicket.js";
-import { signPullToken, verifyPullToken } from "../src/core/registryTokens.js";
+import {
+  signPullToken,
+  verifyPullToken,
+} from "../src/core/registry/registryTokens.js";
 
 // ── 1. Session pins ──────────────────────────────────────────────────────────────────────────
 
@@ -103,7 +106,7 @@ const PIN_ENV = {
   PORTAL_SESSION_SECRET: "pin-portal-secret-9876543210",
 } as unknown as Env;
 
-/** Minted by the pre-P0-15 `admin/session.ts`. */
+/** Minted by the pre-P0-15 `core/console/session.ts`. */
 const ADMIN_PIN =
   "eyJzdWIiOiJvcC1zdWItMSIsIm5hbWUiOiJBZGEgT3AiLCJlbWFpbCI6ImFkYUBleGFtcGxlLmNvbSIsImdyb3VwcyI6WyJwb2xhcmlzLWFkbWlucyJdLCJjc3JmIjoiQXdvUkdCOG1MVFE3UWtsUVYxNWxiQSIsImV4cCI6MTgwMDAyODgwMCwiYXV0aEF0IjoxNzk5OTk5OTcwfQ.DwEnh2CmprxeDBR8RN87_ZrORb9J9XR34l4x_spJLhk";
 
@@ -658,7 +661,7 @@ const RULES: Rule[] = [
   },
   {
     id: "local copy by name",
-    use: "the platform export of the same job (core/platform.ts lists them)",
+    use: "the platform/ export of the same job",
     pattern: new RegExp(
       `(?:\\bfunction\\s+(?:${COPY_NAMES})\\s*[<(])|(?:\\b(?:const|let|var)\\s+(?:${COPY_NAMES})\\s*(?::[^=]+)?=\\s*(?:async\\s*)?(?:\\([^)]*\\)|\\w+)\\s*(?::[^=]+)?=>)`,
     ),

@@ -11,9 +11,9 @@ import { describe, expect, it } from "vitest";
 import {
   appleAppAttestRoot,
   verifyAppAttestation,
-} from "../src/core/appAttest.js";
-import { certificateKey, ecdsaDerToRaw } from "../src/core/x509.js";
-import { checkPlayVerdict } from "../src/core/playIntegrity.js";
+} from "../src/core/trust/appAttest.js";
+import { certificateKey, ecdsaDerToRaw } from "../src/core/trust/x509.js";
+import { checkPlayVerdict } from "../src/core/trust/playIntegrity.js";
 import { makeAppAttestation, makeTestChain } from "../test/attestFixtures.js";
 
 const NOW = 1_767_225_600;

@@ -14,7 +14,7 @@ document, and the trust manifest needed to verify them — inside one `pkey-bund
 why its payload cap is 262 144 bytes rather than the 64 KiB every other artifact gets.
 
 Spec reference: §7. Implementation: `packages/client-core/src/bundle.ts` (the verifier),
-`packages/sdk-node/src/core/bundle.ts` (the host write), `packages/worker/src/core/bundles.ts`
+`packages/sdk-node/src/core/bundle.ts` (the host write), `packages/worker/src/console/handlers/bundles.ts`
 (the mint).
 
 ## The payload

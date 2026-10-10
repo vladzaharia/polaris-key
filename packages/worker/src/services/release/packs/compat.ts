@@ -43,7 +43,7 @@
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { CatalogRevocation } from "../../../core/hooks.js";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import type { ReleaseConfigRow } from "../config.js";
 import { listYanks } from "../model.js";
 import { recordRevoked } from "@polaris-key/client-core/record";

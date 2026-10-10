@@ -17,7 +17,7 @@
  *      the challenge the adapter declares.
  *   5. CAPABILITIES CONSISTENT: with the routes (search), the settings (`yankHidesFromIndex`,
  *      `requireSigned`), the access ladder (the challenge), the renders (channels) and the
- *      console's model (`admin/lib/feedModel.ts` exposes exactly the adapter's declaration).
+ *      console's model (`console/lib/feedModel.ts` exposes exactly the adapter's declaration).
  *   6. DETERMINISTIC RENDERS: a sample package renders non-empty, twice to the same bytes, under
  *      keys and types the host admits; a renderer stamped `package` ignores the feed settings.
  *   7. SETUP INPUTS: named clients, and only namespace keys the ingest rules declare.
@@ -51,7 +51,7 @@ import {
   isRegistryEcosystem,
   registryEcosystemOf,
   registryNotFound,
-} from "../src/core/registryHost.js";
+} from "../src/core/registry/registryHost.js";
 import {
   REGISTRY_OWNERLESS_ROUTES,
   REGISTRY_ROUTES,
@@ -84,11 +84,11 @@ import {
   parseExtPatch,
   parseNamespace,
   verbSupported,
-} from "../src/admin/lib/feedModel.js";
+} from "../src/console/lib/feedModel.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";

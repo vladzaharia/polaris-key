@@ -94,6 +94,10 @@
     {
       "id": "ui",
       "title": "UI and commerce"
+    },
+    {
+      "id": "server",
+      "title": "Servers"
     }
   ],
   "sdks": [
@@ -324,6 +328,22 @@
       ],
       "allowedNa": [],
       "note": "The English base is conformance/parity/copy.en.json (copy.schema.json); gen constants emits one generated copy module per SDK and refuses a key set that does not cover every errors.json code, every licenseStatus and every activationResult. The unit proof is each SDK's fallback and placeholder table (SDK-PARITY-PASS §3.2)."
+    },
+    {
+      "id": "core.backend",
+      "family": "core",
+      "title": "The client half: X-PKey-License to the app's own backend, refresh first and retry once (client.backend)",
+      "service": "license",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "backend-matrix.json",
+          "family": "client",
+          "wp": "SP-53"
+        }
+      ],
+      "allowedNa": [],
+      "note": "WIRE-CONTRACT-V4 §14.5: backend-matrix.json's `client` section; client-core's `clientBackendAction` is the reference (SP-53). Never sends the device token or the config document."
     },
     {
       "id": "license.gate",
@@ -933,7 +953,12 @@
       "family": "devices",
       "title": "Attach: add the device's licence to the account signed in on it, with a preview",
       "service": "identity",
-      "proof": [{ "kind": "transcript", "wp": "I-10a" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-10a"
+        }
+      ],
       "allowedNa": [],
       "note": "I-09 (WIRE-CONTRACT-V4 §12.3): identity.attach({confirm}) previews the device's own licence (confirm:false writes nothing) and attaches it to the account the device is signed in to (confirm:true: a rotated token, subject and attached: claimed). The nested refusals account_required, license_owned and license_email_bound are not auth failures. Pinned by identity-attach.json and identity-attach-errors.json; I-10a (Node, React, Python) and I-10b (Swift, Godot, Kotlin) implement it."
     },
@@ -942,7 +967,12 @@
       "family": "devices",
       "title": "The account on the device: subject(), signOut() and openAccount()",
       "service": "identity",
-      "proof": [{ "kind": "transcript", "wp": "I-10a" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-10a"
+        }
+      ],
       "allowedNa": [],
       "note": "I-09 (WIRE-CONTRACT-V4 §12.3, §12.6): subject() reads the pairwise subject signed in on the device; signOut() flushes Cloud Sync first, then clears the binding and drops the token when the seat was released; openAccount() opens discovery's accountPortal. Each only when discovery's identity fragment carries account: true and the endpoint. Pinned by identity-subject-signout.json and discovery-identity.json; I-10a and I-10b implement it."
     },
@@ -1944,7 +1974,11 @@
       "family": "ui",
       "title": "Account screens: License in another account with Sign in, Add to your Library (attach) and Sign out",
       "service": "sdk",
-      "proof": [{ "kind": "snapshot" }],
+      "proof": [
+        {
+          "kind": "snapshot"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "headless",
@@ -2021,6 +2055,81 @@
         }
       ],
       "note": "Required on node and python, the headless SDKs, which ship no widget kit (plans/SP-00.md D6). One unit test per verb."
+    },
+    {
+      "id": "ui.cli.mount",
+      "family": "ui",
+      "title": "Terminal drop-ins: the license verbs mounted into the host's CLI framework (namespace, collisions, exit 4)",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "cli",
+          "wp": "UK-51"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "dotnet",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "unity",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "tauri",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        }
+      ],
+      "note": "Framework drop-ins plan §7 and §9.3: UK-51 pins the `cli` family; the headless SDKs follow (Node UK-46, Python UK-48) and the JVM kit with it (UK-54)."
     },
     {
       "id": "ui.gate",
@@ -2230,6 +2339,214 @@
       ],
       "allowedNa": [],
       "note": "Required on every SDK, Node and Python included (owner, 2026-10-05). LX-20 owns the client side in Node, React, Python, Swift and Kotlin."
+    },
+    {
+      "id": "server.license",
+      "family": "server",
+      "title": "Gate a server route with the app's licence document: X-PKey-License, the six-step verdict and the problem body",
+      "service": "license",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "backend-matrix.json",
+          "family": "verdict",
+          "wp": "SP-53"
+        },
+        {
+          "kind": "corpus",
+          "file": "backend-matrix.json",
+          "family": "problem",
+          "wp": "SP-53"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "A desktop renderer is not a server: the host's Node SDK, or the app's own backend, serves the requests."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "An iOS app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift on macOS and Linux."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "An Android app is not a server: the server cores are Node, Python, Kotlin on the JVM and Swift."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        }
+      ],
+      "note": "WIRE-CONTRACT-V4 §14. Each server core replays backend-matrix.json's `verdict` and `problem` sections; client-core's `backendVerdict` and `backendProblem` are the reference (SP-53)."
+    },
+    {
+      "id": "server.signin",
+      "family": "server",
+      "title": "requireSignIn(): the signed-in account's pairwise subject from the licence document",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "backend-matrix.json",
+          "family": "verdict",
+          "wp": "SP-53"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "A desktop renderer is not a server: the host's Node SDK, or the app's own backend, serves the requests."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "An iOS app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift on macOS and Linux."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "An Android app is not a server: the server cores are Node, Python, Kotlin on the JVM and Swift."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        }
+      ],
+      "note": "WIRE-CONTRACT-V4 §14.2 step 6: `profile.user.subject` (SP-54 emits it) matching the pairwise-subject pattern, else `sign_in_required`."
+    },
+    {
+      "id": "server.config",
+      "family": "server",
+      "title": "Managed config on a server: serverClient() with a memory store and a stable device id",
+      "service": "config",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "A desktop renderer is not a server: the host's Node SDK, or the app's own backend, serves the requests."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "An iOS app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift on macOS and Linux."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "An Android app is not a server: the server cores are Node, Python, Kotlin on the JVM and Swift."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        }
+      ],
+      "note": "Framework drop-ins plan §5.7: a server is a device with its own licence; the config document is never forwarded from an app."
+    },
+    {
+      "id": "server.webhooks",
+      "family": "server",
+      "title": "Developer webhooks: verifyWebhook() and polarisWebhook() in every server drop-in",
+      "service": "core",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "A desktop renderer is not a server: the host's Node SDK, or the app's own backend, serves the requests."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "An iOS app is not a server: the server cores are Node, Python, Kotlin (JVM) and Swift on macOS and Linux."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "An Android app is not a server: the server cores are Node, Python, Kotlin on the JVM and Swift."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Godot exports games and apps, not servers: an engine SDK ships no server core (plans/SP-53.md §5)."
+        }
+      ],
+      "note": "Later and deferred (SP-66 plans the format, SP-67 delivers it): Polaris Key sends no developer webhooks yet."
     }
   ]
 }

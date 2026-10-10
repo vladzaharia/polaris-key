@@ -45,7 +45,8 @@
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import type {
   CustomerFile,
   CustomerRelease,
@@ -60,7 +61,7 @@ import {
   type PagePlatform,
 } from "../../../core/platformDetect.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getProduct } from "../../../core/data.js";
+import { getProduct } from "../../../core/repo.js";
 import {
   getPortalProductSettings,
   listPortalArtifacts,

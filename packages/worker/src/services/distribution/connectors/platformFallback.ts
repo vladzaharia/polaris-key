@@ -13,7 +13,8 @@
  * inert on its own terms and never falls through to the team key.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   platformCredentialHandle,
   platformPin,

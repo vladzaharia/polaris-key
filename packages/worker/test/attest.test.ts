@@ -37,11 +37,11 @@ import {
   handleAttest,
   handleAttestChallenge,
   type AttestDeps,
-} from "../src/core/attestation.js";
+} from "../src/core/trust/attestation.js";
 import {
   accessRefusal,
   entitlementFlagRefusal,
-} from "../src/core/entitledAccess.js";
+} from "../src/core/licensing/entitledAccess.js";
 import { buildHooks, type ServiceHooks } from "../src/core/hooks.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import {
@@ -55,9 +55,9 @@ import {
   setServices,
   setTrustPolicy,
   upsertDevice,
-} from "../src/repo.js";
-import { hashKey } from "../src/crypto.js";
-import type { Env } from "../src/env.js";
+} from "../src/core/repo.js";
+import { hashKey } from "../src/platform/crypto.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import {
   b64,

@@ -265,7 +265,7 @@ const feeds = (scope: FeedScope, owner?: string): Target[] => {
 /**
  * HA-06: a hosted-asset write (an upload, Revert, delete-a-copy). The slots themselves; the
  * registry row and the product detail, which carry `presentation.icon` for the product card and
- * the Products table (worker `admin/lib/presentation.ts`); Home's summary; the activity trail;
+ * the Products table (worker `console/lib/presentation.ts`); Home's summary; the activity trail;
  * and, because a store slot (A-18) is also written into the listing model, the slot board and
  * the listing.
  */

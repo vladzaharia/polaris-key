@@ -16,6 +16,8 @@ import type { SettingDef } from "../src/core/settings/types.js";
 import {
   clampToBound,
   isHardOffDeploy,
+  isSettingValue,
+  parseDeployValue,
   outOfBounds,
   resolvePlatformSetting,
   resolvePlatformValue,
@@ -28,12 +30,10 @@ import {
 } from "../src/core/settings/resolve.js";
 import {
   invalidatePlatformSettings,
-  PLATFORM_SETTINGS,
-  resolveSetting as resolveA13,
   TOMBSTONE_JSON,
   type StoredSetting,
 } from "../src/core/platformSettings.js";
-import { PLATFORM_SLICE } from "../src/core/settings/platform.js";
+import { aliasedPlatformEntries } from "../src/core/settings/platformRead.js";
 
 // ── A seeded generator ───────────────────────────────────────────────────────────────────────
 
@@ -361,9 +361,9 @@ describe("the policy clamp (direction)", () => {
   });
 });
 
-// ── A-13 parity ──────────────────────────────────────────────────────────────────────────────
+// ── A-13's precedence rules ──────────────────────────────────────────────────────────────────────────────
 
-describe("A-13's keys resolve as A-13 resolves them", () => {
+describe("A-13's keys follow A-13's precedence rules (ST-05a: the one resolver)", () => {
   const VARS = [
     undefined,
     "on",
@@ -405,21 +405,14 @@ describe("A-13's keys resolve as A-13 resolves them", () => {
     { value: "nope", version: 1, updatedAt: NOW, updatedBy: "u" },
     { value: undefined, version: 1, updatedAt: NOW, updatedBy: "u" },
   ];
-  const SOURCE = {
-    runtime: "platform",
-    deploy: "deploy",
-    default: "default",
-  } as const;
-
-  it("value, source and the deploy-time hard off agree for every var, row and store state", () => {
-    expect(PLATFORM_SETTINGS.length).toBeGreaterThan(0);
-    for (const a13 of PLATFORM_SETTINGS) {
-      const def = PLATFORM_SLICE.find((d) => d.key === a13.registryKey)!;
+  it("value, source and the deploy-time hard off hold for every var, row and store state", () => {
+    const entries = aliasedPlatformEntries();
+    expect(entries.length).toBeGreaterThan(0);
+    for (const def of entries)
       for (const raw of VARS)
         for (const row of ROWS)
           for (const storeOk of [true, false]) {
-            const old = resolveA13(a13, raw, row, storeOk);
-            const now = resolvePlatformValue(def, {
+            const r = resolvePlatformValue(def, {
               deploy: raw,
               row:
                 row && !row.deleted
@@ -428,19 +421,38 @@ describe("A-13's keys resolve as A-13 resolves them", () => {
               storeOk,
               version: row?.version ?? 0,
             });
-            const why = `${a13.key} var=${JSON.stringify(raw)} row=${JSON.stringify(row)} ok=${storeOk}`;
-            expect(now.value, why).toEqual(old.value);
-            expect(now.version, why).toBe(old.version);
-            if (old.source === "failsafe") {
-              expect(now.failsafe, why).toBe(true);
+            const why = `${def.key} var=${JSON.stringify(raw)} row=${JSON.stringify(row)} ok=${storeOk}`;
+            // The version is the row's, a tombstone's included.
+            expect(r.version, why).toBe(row?.version ?? 0);
+            const hardOff = isHardOffDeploy(def, raw);
+            expect(r.lockedBy === "deploy", why).toBe(hardOff);
+            if (hardOff) {
+              // A deploy-time off beats any row and any store state.
+              expect(r.value, why).toBe("off");
+              expect(r.source, why).toBe("deploy");
+            } else if (def.precedence === "ceiling" && !storeOk) {
+              // An unreadable store turns a kill switch off (fail safe).
+              expect(r.failsafe, why).toBe(true);
+              expect(r.value, why).toBe("off");
             } else {
-              expect(now.source, why).toBe(SOURCE[old.source]);
-              expect(now.failsafe, why).toBeUndefined();
+              expect(r.failsafe, why).toBeUndefined();
+              const usable =
+                row && !row.deleted && isSettingValue(def, row.value);
+              if (usable) {
+                expect(r.source, why).toBe("platform");
+                expect(r.value, why).toEqual(row.value);
+              } else {
+                // No usable row: a valid [vars] value, else the default.
+                const parsed = parseDeployValue(def, raw);
+                expect(r.source, why).toBe(
+                  parsed === undefined ? "default" : "deploy",
+                );
+                expect(r.value, why).toEqual(
+                  parsed === undefined ? def.defaultValue : parsed,
+                );
+              }
             }
-            expect(now.lockedBy === "deploy", why).toBe(old.forcedOff);
-            expect(isHardOffDeploy(def, raw), why).toBe(old.forcedOff);
           }
-    }
   });
 });
 

@@ -9,7 +9,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOW } from "./seed.js";
-import { blobKey } from "../src/core/blobs.js";
+import { blobKey } from "../src/core/assets/blobs.js";
 import {
   SLUG,
   bytesFor,

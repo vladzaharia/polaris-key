@@ -21,7 +21,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import type { Db, DbStatement } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { resyncRepo } from "../src/services/release/resync.js";
@@ -49,7 +49,7 @@ import {
   listReleaseMetadata,
   releaseStoreStatements,
 } from "../src/services/release/store.js";
-import { recordRef } from "../src/core/blobs.js";
+import { recordRef } from "../src/core/assets/blobs.js";
 import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "diceroll";

@@ -4,7 +4,7 @@
  * captures the sign-in mail the card sends.
  */
 import { vi } from "vitest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";

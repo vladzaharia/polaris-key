@@ -122,7 +122,7 @@ function draftOf(p: ProductDetail): Draft {
   };
 }
 
-/** Client checks that mirror the server's (worker `admin/handlers/products.ts`). */
+/** Client checks that mirror the server's (worker `console/handlers/products.ts`). */
 export function validateSettings(v: Draft): Record<string, string> {
   const out: Record<string, string> = {};
   if (!v.name.trim()) out.name = "Enter a display name.";

@@ -15,8 +15,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ADMIN_SCRIPT_HASHES } from "../src/adminCsp.js";
-import { appSecurityHeaders } from "../src/securityHeaders.js";
+import { ADMIN_SCRIPT_HASHES } from "../src/core/adminCsp.js";
+import { appSecurityHeaders } from "../src/core/securityHeaders.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, "..", "..", "admin", "dist");

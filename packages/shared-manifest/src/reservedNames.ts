@@ -3,7 +3,7 @@
  *
  * The reserved names are the system keys the Worker injects (and overwrites), plus keys it only
  * reads. It injects a few into every licence document's `entitlements` after the profile and
- * override merge (`packages/worker/src/core/entitlements.ts`): `channels`, `deviceLimit`,
+ * override merge (`packages/worker/src/core/licensing/entitlements.ts`): `channels`, `deviceLimit`,
  * `app.minVersion`, `app.maxVersion`, `license.tier` and `license.tierLabel`. They share one
  * namespace with the product's own catalog `flag` entries, so a product flag of the same name is
  * silently overwritten. It only reads `pkey.cloudSync.bytes`, the Cloud Sync quota a tier, a

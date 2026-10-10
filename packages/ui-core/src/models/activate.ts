@@ -63,7 +63,7 @@ export function welcomeView(ctx: Context): View<"Welcome", WelcomeState> {
 
 // ── Activate: the key field ──────────────────────────────────────────────────────────────────
 
-/** A license key's secret: exactly 22 base64url characters (packages/worker/src/crypto.ts). */
+/** A license key's secret: exactly 22 base64url characters (packages/worker/src/platform/crypto.ts). */
 export const KEY_SECRET_LENGTH = 22;
 const KEY_PREFIX = "pkey_";
 const KEY_SHAPE = /^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)$/;

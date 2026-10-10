@@ -38,7 +38,8 @@ import {
   assetPackBase,
   parseAssetPackId,
 } from "@polaris-key/manifest";
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import type { CatalogRelease, ServiceHooks } from "../../../../core/hooks.js";
 import {
   isAvailabilityState,

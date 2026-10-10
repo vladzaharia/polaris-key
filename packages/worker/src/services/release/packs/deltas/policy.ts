@@ -13,7 +13,7 @@
 
 import { ZSTD_DICTIONARY_MAGIC } from "@polaris-key/protocol/packs";
 import { LAZY_DELTA_MAX_BYTES_CEILING } from "../../../../core/platformSettings.js";
-import { hexEncode } from "../../../../core/platform.js";
+import { hexEncode } from "../../../../platform/bytes.js";
 
 /** The one method v1 generates. */
 export const LAZY_DELTA_METHOD = "zstd-patch-from";

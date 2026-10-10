@@ -32,7 +32,7 @@
  */
 
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import type { ReleaseConfigRow } from "../config.js";
 import { canonicalChannel, type Candidate } from "../resolve.js";
 import type { RecordRefusalReason } from "../records.js";

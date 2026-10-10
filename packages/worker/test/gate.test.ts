@@ -6,7 +6,7 @@ import {
   compareSemver,
   isDevBuild,
   parseSemver,
-} from "../src/core/gate.js";
+} from "../src/core/licensing/gate.js";
 import {
   channelEntitled,
   impliedChannel,

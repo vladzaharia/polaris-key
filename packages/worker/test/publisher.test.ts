@@ -28,7 +28,7 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   checkPublisherPolicy,
   claimPublisherPolicy,
@@ -60,7 +60,7 @@ import {
   type PublisherPolicy,
 } from "../src/core/publisher.js";
 import { requireCiScope } from "../src/core/ciScope.js";
-import { deleteProduct } from "../src/admin/repo.js";
+import { deleteProduct } from "../src/core/console/repo.js";
 
 const SLUG = "diceroll";
 const ORIGIN = "https://key.example.test";

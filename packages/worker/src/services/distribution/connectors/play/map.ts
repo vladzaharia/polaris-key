@@ -24,7 +24,7 @@
  * above the version the track serves now → 4; otherwise the operator's default (0 unless set).
  */
 
-import { compareSemver } from "../../../../core/entitlements.js";
+import { compareSemver } from "../../../../core/licensing/entitlements.js";
 import type { RolloutState } from "../../../../core/hooks.js";
 import type { AvailabilityState } from "../../availability.js";
 

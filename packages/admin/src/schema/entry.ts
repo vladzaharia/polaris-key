@@ -10,7 +10,7 @@
  * `@polaris-key/catalog` is workerd-safe *because* it interprets schemas instead of compiling
  * them (no `Function` constructor), which is exactly what makes it importable in a browser too.
  * So the console runs `Catalog#validateEntryValue` — byte-for-byte the call
- * `admin/lib/overrides.ts` makes server-side. A value this file accepts is a value the PUT
+ * `core/console/overrides.ts` makes server-side. A value this file accepts is a value the PUT
  * accepts, and the message an operator reads inline is the message the 422 would have carried.
  *
  * `pattern` is matched by the linear-time NFA in `shared-catalog/src/regex.ts` rather than the

@@ -37,7 +37,7 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { matchRoute } from "../src/router.js";
@@ -52,19 +52,19 @@ import {
   graceClampReport,
   graceClampReportCsv,
   graceClampState,
-} from "../src/core/graceClamp.js";
+} from "../src/core/licensing/graceClamp.js";
 import { buildDoc } from "../src/services/identity/doc.js";
 import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "../src/services/identity/browserSession.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { listAudit, setServices } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { listAudit, setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { reportOnCopy } from "../scripts/grace-clamp-report.js";
 

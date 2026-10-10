@@ -33,7 +33,7 @@ html_handling = "none"
 name = "RL"
 class_name = "RateLimitDO"
 
-# P6-03: the update-health counters (`src/updateHealthDo.ts`), one object per (product,
+# P6-03: the update-health counters (`src/core/updateHealthDo.ts`), one object per (product,
 # deliverable, release), reached only through `src/core/updateHealth.ts`. `durable_objects` is
 # NOT inheritable, so every environment below repeats every binding.
 [[durable_objects.bindings]]
@@ -104,24 +104,24 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # Each environment binds its own R2 bucket as BLOBS — polaris-key-blobs-<env>, created by
 # the operator with an AGE lock of 180 days on blobs/, bundles/, deltas/ and gated/, a 1-day
 # lifecycle expiry on staging/, and r2.dev DISABLED. No R2 public/custom domain is ever
-# attached to a bucket: every read goes through this Worker (core/blobs.ts), the only place
+# attached to a bucket: every read goes through this Worker (core/assets/blobs.ts), the only place
 # that sets ETag to the SHA-256, adds Repr-Digest and enforces the per-product ref check.
 #
 # The bytes host is the SAME Worker on a second custom domain (dl*.plrs.im), declared as a
-# route with custom_domain = true; BLOB_ORIGIN names it so src/core/bytesHost.ts can confine
+# route with custom_domain = true; BLOB_ORIGIN names it so src/core/assets/bytesHost.ts can confine
 # that host to byte routes. dl.plrs.im is same-site with key.plrs.im (an owner decision that
 # deviates from the separate-registrable-domain rule — see docs/security/THREAT-MODEL.md §3);
 # the compensating headers and the cookie rules are test-pinned in test/bytesHost.test.ts.
 # `vars` is NOT inheritable, so each environment carries its own BLOB_ORIGIN.
 #
 # The registry host (F-02; docs/DEPLOYMENT.md "Registry host and feeds") is the same Worker on a
-# THIRD custom domain, pkg*.plrs.im, with PKG_ORIGIN naming it so src/core/registryHost.ts can
+# THIRD custom domain, pkg*.plrs.im, with PKG_ORIGIN naming it so src/core/registry/registryHost.ts can
 # confine that host to the package-feed routes, its landing page and OCI's /v2/ root. It keeps
 # every bytes-host compensation (test/registryHost.test.ts). Its rendered index documents live
 # under registry/ in the same bucket, a prefix that gets NO age lock and NO lifecycle rule.
 #
 # The image host (HA-02; docs/DEPLOYMENT.md "Image host") is the same Worker on a FOURTH custom
-# domain, img*.plrs.im, with IMG_ORIGIN naming it so src/core/imgHost.ts can confine that host to
+# domain, img*.plrs.im, with IMG_ORIGIN naming it so src/core/assets/imgHost.ts can confine that host to
 # the hosted-image routes (/<p>/a/<sha256>[/<w>.webp] and the /<p>/icon, /<p>/header and
 # /<p>/screenshots/<n> aliases). Public, inline, cookie-less raster images only, read from the
 # same BLOBS bucket under blobs/ (test/imgHost.test.ts). No new bucket and no new Worker: the
@@ -193,7 +193,7 @@ queue = "pkey-deltas-prod"
 [[env.prod.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-prod"
-# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# HA-05: the hosted-asset pull queue (core/assets/hostedAssetPulls.ts). This Worker is the producer (a
 # register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
 # AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. HA-08's
 # release-file mirrors ride the same queue (services/release/mirror.ts). A delivery that keeps
@@ -213,7 +213,7 @@ dead_letter_queue = "pkey-assets-dlq-prod"
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.prod.version_metadata]
 binding = "CF_VERSION_METADATA"
-# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# HA-01: the Cloudflare Images binding (`core/assets/hostedAssets.ts` reads ingested image dimensions
 # with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
 [env.prod.images]
 binding = "IMAGES"
@@ -221,9 +221,9 @@ binding = "IMAGES"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "prod"
 BLOB_ORIGIN = "https://dl.plrs.im"
-# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+# F-02: the registry host (core/registry/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg.plrs.im"
-# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+# HA-02: the image host (core/assets/imgHost.ts); it answers only the hosted-image routes.
 IMG_ORIGIN = "https://img.plrs.im"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key.plrs.im"
@@ -240,7 +240,7 @@ LAZY_DELTAS = "runtime"
 PLATFORM_REPOSITORY = "vladzaharia/polaris-key"
 PLATFORM_REPOSITORY_ID = "1278490640"
 PLATFORM_REPOSITORY_OWNER_ID = "79390"
-# I-18: the shared sign-in sender (core/emailSender.ts). Uncomment once auth.plrs.im passes
+# I-18: the shared sign-in sender (core/notify/emailSender.ts). Uncomment once auth.plrs.im passes
 # `pnpm --filter @polaris-key/worker email:dns-check` and the staging send is aligned; until then
 # the Worker sends from noreply@plrs.im.
 # EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"
@@ -311,7 +311,7 @@ queue = "pkey-deltas-staging"
 [[env.staging.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-staging"
-# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# HA-05: the hosted-asset pull queue (core/assets/hostedAssetPulls.ts). This Worker is the producer (a
 # register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
 # AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. HA-08's
 # release-file mirrors ride the same queue (services/release/mirror.ts). A delivery that keeps
@@ -331,7 +331,7 @@ dead_letter_queue = "pkey-assets-dlq-staging"
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.staging.version_metadata]
 binding = "CF_VERSION_METADATA"
-# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# HA-01: the Cloudflare Images binding (`core/assets/hostedAssets.ts` reads ingested image dimensions
 # with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
 [env.staging.images]
 binding = "IMAGES"
@@ -339,9 +339,9 @@ binding = "IMAGES"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "staging"
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
-# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+# F-02: the registry host (core/registry/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg-staging.plrs.im"
-# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+# HA-02: the image host (core/assets/imgHost.ts); it answers only the hosted-image routes.
 IMG_ORIGIN = "https://img-staging.plrs.im"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-staging.plrs.im"
@@ -411,7 +411,7 @@ queue = "pkey-deltas-dev"
 [[env.dev.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-dev"
-# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# HA-05: the hosted-asset pull queue (core/assets/hostedAssetPulls.ts). This Worker is the producer (a
 # register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
 # AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. HA-08's
 # release-file mirrors ride the same queue (services/release/mirror.ts). A delivery that keeps
@@ -431,7 +431,7 @@ dead_letter_queue = "pkey-assets-dlq-dev"
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.dev.version_metadata]
 binding = "CF_VERSION_METADATA"
-# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# HA-01: the Cloudflare Images binding (`core/assets/hostedAssets.ts` reads ingested image dimensions
 # with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
 [env.dev.images]
 binding = "IMAGES"
@@ -439,9 +439,9 @@ binding = "IMAGES"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "dev"
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
-# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+# F-02: the registry host (core/registry/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg-dev.plrs.im"
-# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+# HA-02: the image host (core/assets/imgHost.ts); it answers only the hosted-image routes.
 IMG_ORIGIN = "https://img-dev.plrs.im"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-dev.plrs.im"
@@ -495,7 +495,7 @@ PKEY_ENVIRONMENT = "test"
 #   GITHUB_WEBHOOK_SECRET, PLATFORM_ADMIN_GROUP, PLATFORM_KEK,
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
 # The KEK keyring (rotation-capable; replaces PLATFORM_KEK, written in ONE `wrangler secret bulk`):
-#   PLATFORM_KEK_KEYS, PLATFORM_KEK_ACTIVE. PLATFORM_KEK_ID stays unset (src/env.ts says why).
+#   PLATFORM_KEK_KEYS, PLATFORM_KEK_ACTIVE. PLATFORM_KEK_ID stays unset (src/platform/env.ts says why).
 #   A PLATFORM_KEK left beside them is the legacy key, open-only, until the re-seal sweep has
 #   moved every value off it; then delete it (RUNBOOK "Rotating when the old KEK is unknown").
 # Portal session secret (required, at least 32 characters, distinct from ADMIN_SESSION_SECRET):
@@ -526,16 +526,16 @@ PKEY_ENVIRONMENT = "test"
 #   environment's PLATFORM_KEK, never the raw credential (RUNBOOK "Login-card providers"). Set one
 #   provider's values in ONE `wrangler secret bulk --env <env>`; the ids are not secret but travel
 #   with them so a provider never comes up half-configured.
-# Sign-in and account email (I-18, core/emailSender.ts, core/emailDelivery.ts):
+# Sign-in and account email (I-18, core/notify/emailSender.ts, core/notify/emailDelivery.ts):
 #   prod and staging bind Cloudflare Email Service as EMAIL. The display name is never
 #   configurable ("Polaris Key", or "<App> via Polaris Key" for passthrough); EMAIL_SENDER_ADDRESS
 #   picks the address (unset = noreply@plrs.im). PORTAL_EMAIL_FROM is still read for its address
 #   only, while EMAIL_SENDER_ADDRESS is unset.
-# Optional [vars] left unset here, each with a code default (src/env.ts): BLOB_GC_MODE,
+# Optional [vars] left unset here, each with a code default (src/platform/env.ts): BLOB_GC_MODE,
 #   BLOB_GC_GRACE_DAYS, LAZY_DELTA_MAX_BYTES, LICENSING_RESERVED_NAMES,
 #   IDENTITY_RESERVED_DISPLAY_NAMES, KEYENTRY_REFUSALS, ASSET_HOSTING (A-13: the console's
 #   Platform → Settings value wins),
 #   PLATFORM_DEPLOY_ENVIRONMENT (default production).
 # Injected at deploy by .github/workflows/deploy.yml (--var): PKEY_RELEASE_TAG, PKEY_GIT_SHA.
 # Product signing keys and product-scoped secrets are sealed in D1 through the admin API.
-# This block is checked against src/env.ts by `pnpm gen platform-inventory --check` (ST-02).
+# This block is checked against src/platform/env.ts by `pnpm gen platform-inventory --check` (ST-02).

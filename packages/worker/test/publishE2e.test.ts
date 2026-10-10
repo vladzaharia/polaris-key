@@ -45,7 +45,7 @@ import {
   SLUG,
 } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
   GITHUB_OIDC_ISSUER,

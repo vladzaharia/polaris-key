@@ -5,10 +5,10 @@
  * batch. Anything another writer commits in between is invisible to the plan, so a statement
  * whose correctness depends on what the plan read must re-check it when it runs — inside the
  * batch, against the row as it is at that moment. These are the checks, and the one helper that
- * attaches a check to a statement built elsewhere (`model.ts`, `core/blobs.ts`).
+ * attaches a check to a statement built elsewhere (`model.ts`, `core/assets/blobs.ts`).
  */
 
-import type { DbParam, DbStatement } from "../../core/platform.js";
+import type { DbParam, DbStatement } from "../../db/types.js";
 
 /**
  * True when the release has an ingested descriptor. Params: product, release id. A described

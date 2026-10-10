@@ -21,7 +21,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { asR2, R2Mock } from "./r2Mock.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { packageCatalog } from "../src/services/release/packages/catalog.js";
 import {
@@ -50,7 +50,7 @@ import {
   type RenderedObject,
 } from "../src/services/distribution/registry/materialise.js";
 import { stmtSetChannelPolicy } from "../src/services/release/model.js";
-import { markUnreferenced } from "../src/core/blobGc.js";
+import { markUnreferenced } from "../src/core/assets/blobGc.js";
 import { SETTINGS } from "../src/mount.js";
 
 const P = "acme";

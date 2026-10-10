@@ -2,7 +2,7 @@
  * Core's new-authorization listeners (PS-04, notes/S-21 §6.6): who hears that a device was just
  * authorized on a licence it did not hold a seat on before.
  *
- * `authorizeDevice` (`core/authz.ts`) is the one place every activation path binds a device to a
+ * `authorizeDevice` (`core/licensing/authz.ts`) is the one place every activation path binds a device to a
  * licence (key entry, enrol, a product sign-in, the browser session), so it is the one place that
  * can say "a device first bound to this licence". A service that needs to know registers a
  * listener here at module load, so Core never imports a service and the service never reads
@@ -15,8 +15,8 @@
  */
 
 import type { Db } from "../db/types.js";
-import type { Env } from "../env.js";
-import type { WaitUntil } from "./refusals.js";
+import type { Env } from "../platform/env.js";
+import type { WaitUntil } from "./licensing/refusals.js";
 
 /** One new authorization: a device that now holds a seat on `licenseId` it did not hold before. */
 export interface NewAuthorization {

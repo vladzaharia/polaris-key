@@ -15,9 +15,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   REGISTRY_CSP,
   dispatchRegistryHost,
-} from "../src/core/registryHost.js";
+} from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { REGISTRY_ROUTES, SERVICES } from "../src/mount.js";
 import {
   IMMUTABLE_CACHE_CONTROL,
@@ -40,12 +40,12 @@ import {
   acceptsManifest,
 } from "../src/services/distribution/registry/oci/routes.js";
 import { unyank } from "../src/services/release/policy.js";
-import type { AdminSession } from "../src/admin/session.js";
+import type { AdminSession } from "../src/core/console/session.js";
 import { packageCatalog } from "../src/services/release/packages/catalog.js";
 import { ociPackage } from "../src/services/distribution/registry/oci/source.js";
 import { loadProductPublic } from "../src/core/products.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2 } from "./r2Mock.js";

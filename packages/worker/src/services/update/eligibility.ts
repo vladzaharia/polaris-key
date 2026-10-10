@@ -18,7 +18,7 @@
  * ── THE R3 GAP ──────────────────────────────────────────────────────────────────────────────
  *
  * R3 recorded that a stable-only licence could fetch the beta appcast and the beta DMG behind
- * it. The enforcement lives in Core (`core/entitledAccess.ts`) because Release and Update may
+ * it. The enforcement lives in Core (`core/licensing/entitledAccess.ts`) because Release and Update may
  * not import License; what this file contributes is the SELECTOR that check evaluates — without
  * it the entitled mode would be asked about a request it could not describe.
  */

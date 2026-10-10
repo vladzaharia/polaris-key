@@ -38,7 +38,7 @@ import {
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { SERVICES } from "../src/mount.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { releaseService } from "../src/services/release/index.js";
 import { distributionService } from "../src/services/distribution/index.js";
 import { updateService } from "../src/services/update/index.js";
@@ -49,7 +49,7 @@ import {
   yankRelease,
 } from "../src/services/release/model.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 
 const SLUG = "djdl";
 const HOOKS: readonly HookName[] = [

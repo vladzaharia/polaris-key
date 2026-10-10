@@ -17,7 +17,7 @@
  * no token. `delete`, `*` and `registry:catalog:*` are refused.
  *
  * PUSH (F-23). `push` is granted, per scope and with pull, only to a credential that may publish
- * to that owner's OCI feed (`core/registryTokens.ts` `registryPublisher`: an owner-bound `pkeyr_`
+ * to that owner's OCI feed (`core/registry/registryTokens.ts` `registryPublisher`: an owner-bound `pkeyr_`
  * with `publish`, or a `pkeyci_` with `release:publish`), and only for a repository that is a
  * declared package deliverable. The token then names the repository in `push` as well as in
  * `repos`; Release's push routes (`services/release/packages/ociPush.ts`) re-resolve the subject
@@ -29,7 +29,7 @@
  * action) is 403 `DENIED`. A missing `REGISTRY_TOKEN_KEY` is 503 `UNAVAILABLE`. The
  * `registryOciToken` budget (per IP, fail closed) is 429 `TOOMANYREQUESTS`.
  *
- * THE PULL TOKEN carries identity only (`core/registryTokens.ts`): every OCI request re-resolves
+ * THE PULL TOKEN carries identity only (`core/registry/registryTokens.ts`): every OCI request re-resolves
  * its subject and re-runs the ladder, so revocation and a tightened feed take effect within 30 s.
  */
 
@@ -37,7 +37,7 @@ import { clientNetwork, rateLimitOk } from "../../../../core/rateLimit.js";
 import {
   registryHostname,
   type OwnerlessRegistryRoute,
-} from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
 import { json } from "../../../../core/errors.js";
 import {
   isPullToken,
@@ -47,7 +47,7 @@ import {
   registryTokenKeyConfigured,
   signPullToken,
   type ResolvedRegistryToken,
-} from "../../../../core/registryTokens.js";
+} from "../../../../core/registry/registryTokens.js";
 import {
   authorizeFeedRead,
   extractFeedCredential,

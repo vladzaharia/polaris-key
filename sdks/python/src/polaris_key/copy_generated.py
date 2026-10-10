@@ -196,6 +196,10 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "pack-revoked": CopyEntry("Content withdrawn", "This content was withdrawn by its developer and can't be used."),
         "pack-not-data-only": CopyEntry("Content refused", "Some content was refused because it contains files a data pack may not hold."),
         "marker-rejected": CopyEntry("App build problem", "This build's built-in content isn't valid. Reinstall the app or contact the developer."),
+        "license_required": CopyEntry("License needed", "Activate the app, then try again."),
+        "license_invalid": CopyEntry("License not accepted", "Your license couldn't be verified. Reconnect the app, then try again."),
+        "license_stale": CopyEntry("License needs refreshing", "Connect to the internet so the app can refresh your license, then try again."),
+        "sign_in_required": CopyEntry("Sign-in needed", "Sign in to your Polaris Key account in the app, then try again."),
     }
 )
 

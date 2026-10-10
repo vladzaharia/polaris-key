@@ -14,7 +14,7 @@
  * Read through Core's `releaseCatalog` hook (Distribution never reads Release's tables).
  */
 
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import type { ReleaseCatalog } from "../../../core/hooks.js";
 import {
   LISTING_LIMITS,

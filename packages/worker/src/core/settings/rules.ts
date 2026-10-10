@@ -59,7 +59,7 @@ export const DENIED_PLATFORM_NAMES: readonly string[] = [
   "OIDC_ISSUER_ALLOWLIST",
   // The KEK keyring. PLATFORM_KEK is the legacy single key: on its own it is the whole ring;
   // beside PLATFORM_KEK_KEYS it is the legacy key, open-only, under the kid PLATFORM_KEK_ID
-  // names (src/keyvault.ts). Every one of the four is key material or kid selection.
+  // names (src/platform/keyvault.ts). Every one of the four is key material or kid selection.
   "PLATFORM_KEK",
   "PLATFORM_KEK_KEYS",
   "PLATFORM_KEK_ACTIVE",

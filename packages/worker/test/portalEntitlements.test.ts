@@ -3,7 +3,7 @@
  * document, key by key.
  *
  * Two drifts are pinned here. The portal used to fall back to a catalog flag's `default`, which
- * no document carries (catalog defaults are a `config`-only layer, `core/payload.ts`), so a flag
+ * no document carries (catalog defaults are a `config`-only layer, `core/licensing/payload.ts`), so a flag
  * defaulting to `true` showed as granted while the device saw it absent. And it read channels and
  * the version window from the licence row alone, where the document unions tier and licence
  * channels and takes the tighter of tier and licence versions.

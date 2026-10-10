@@ -24,7 +24,7 @@
 //     literal bytes the recorder sent, because a fingerprint or a facts snapshot legitimately
 //     differs per host.
 
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 import { dispatchWith } from "../../src/dispatch.js";
 import { TEST_KID, TEST_PUB } from "../seed.js";

@@ -123,7 +123,8 @@ describe("an art-less cover never repeats the icon's letter", () => {
     mockFetch(signedIn([djdl, other]));
     renderPortal();
     const card = await screen.findByRole("article", { name: "DJDL" });
-    expect(fallbacks(card)).toEqual(["", "D"]);
+    // An art-less tile has no icon row over the art: the letter shows once, in the art.
+    expect(fallbacks(card)).toEqual(["D"]);
   });
 
   it("on a focused flow's card", () => {

@@ -1,6 +1,6 @@
 // Product context — assembled from the `products` row + active schema version + the
 // per-product signing key. The signing key is now KEK-custodied: it lives sealed in the
-// `product_keys` table and is opened per request under `env.PLATFORM_KEK` (src/keyvault.ts),
+// `product_keys` table and is opened per request under `env.PLATFORM_KEK` (src/platform/keyvault.ts),
 // NOT resolved from a Worker secret by name. Fails closed if there is no active product key
 // or it can't be decrypted: a product with no usable key can never sign config.
 
@@ -10,7 +10,7 @@ import {
   type ManifestAssetRef,
   type ManifestPresentation,
 } from "@polaris-key/manifest";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import {
   getActiveProductKey,
@@ -18,14 +18,14 @@ import {
   getProduct,
   getProductSecret,
   listVerificationProductKeys,
-} from "../repo.js";
-import { open } from "../keyvault.js";
+} from "./repo.js";
+import { open } from "../platform/keyvault.js";
 import {
   parseAutoIssue,
   parseFingerprintPolicy,
   type AutoIssuePolicy,
   type FingerprintPolicy,
-} from "../fingerprint.js";
+} from "./fingerprint.js";
 import {
   parseServices,
   resolveRegistration,
@@ -33,7 +33,7 @@ import {
   type ServicesMap,
 } from "./services.js";
 import { parseWebOrigins } from "./cors.js";
-import { parseTrustPolicy, type TrustPolicy } from "./deviceTrust.js";
+import { parseTrustPolicy, type TrustPolicy } from "./trust/deviceTrust.js";
 
 export interface Product {
   slug: string;
@@ -58,7 +58,7 @@ export interface Product {
   /** The exact browser origins this product answers CORS for (P0-05, `web.origins`). Empty
    *  when undeclared or unreadable, which means no `Access-Control-*` header is ever sent. */
   webOrigins: readonly string[];
-  /** The operator's device-trust policy (P6-02, `core/deviceTrust.ts`). Optional so a hand-built
+  /** The operator's device-trust policy (P6-02, `core/trust/deviceTrust.ts`). Optional so a hand-built
    *  product reads as the default policy; the loader always sets it. */
   trustPolicy?: TrustPolicy;
   /**
@@ -121,7 +121,7 @@ export async function loadPublicSigningKeys(
 /**
  * A product WITHOUT its signing key: everything a route that never signs needs (P2-05).
  *
- * The bytes host (`core/bytesHost.ts`) serves downloads; no byte route signs anything, so
+ * The bytes host (`core/assets/bytesHost.ts`) serves downloads; no byte route signs anything, so
  * unsealing the product's Ed25519 key under `PLATFORM_KEK` on every download chunk would be
  * work for nothing and would hand a private key to code that has no use for it. Byte routes get
  * this shape instead (least privilege), and every Core check a download needs

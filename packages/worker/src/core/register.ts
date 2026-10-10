@@ -42,11 +42,11 @@
  * shape, seat rebinding or what a refusal looks like.
  */
 
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
-import { getDevice } from "../repo.js";
+import { getDevice } from "./repo.js";
 import { ErrorCode, methodNotAllowed, wireError } from "./errors.js";
 import { clientNetwork, rateLimitOk } from "./rateLimit.js";
 import { authorizeRegistration, type ServiceRegistry } from "./registry.js";

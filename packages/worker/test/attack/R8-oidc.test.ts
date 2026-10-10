@@ -67,10 +67,10 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // and `requireLicensedDevice` adds back the licence-usability check core used to apply inline.
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
 // these tests assert against.
-import { requireLicensedDevice } from "../../src/services/license/auth.js";
-import { licenseMergeFor } from "../../src/core/licenseMerge.js";
+import { requireLicensedDevice } from "../../src/core/licensing/authz.js";
+import { licenseMergeFor } from "../../src/core/licensing/licenseMerge.js";
 import { SERVICES } from "../../src/mount.js";
-import { authorizeDevice } from "../../src/core/authz.js";
+import { authorizeDevice } from "../../src/core/licensing/authz.js";
 import {
   countActiveDevices,
   getDevice,
@@ -78,7 +78,7 @@ import {
   getLicenseBySub,
   SEAT_DORMANCY_SECONDS,
   seatActiveSince,
-} from "../../src/repo.js";
+} from "../../src/core/repo.js";
 import { handleEnroll } from "../../src/services/license/enroll.js";
 import {
   handleMagicStart,
@@ -88,12 +88,15 @@ import {
   portalFlowKey,
   portalMagicKey,
 } from "../../src/services/identity/portal/auth.js";
-import { handleAdminCallback, handleAdminLogin } from "../../src/admin/auth.js";
-import { hashKey, randomId } from "../../src/crypto.js";
-import type { Env } from "../../src/env.js";
+import {
+  handleAdminCallback,
+  handleAdminLogin,
+} from "../../src/console/auth.js";
+import { hashKey, randomId } from "../../src/platform/crypto.js";
+import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
-import { adminFlowKey } from "../../src/admin/auth.js";
+import { adminFlowKey } from "../../src/console/auth.js";
 
 // Same JWKS shim the in-tree oidcEdge suite uses: swap ONLY the remote key getter so the
 // REAL jwtVerify (iss/aud/alg/sig/nonce) still runs.
@@ -2457,7 +2460,7 @@ describe("R8-05 claim trust", () => {
       installFetchMock(
         await signIdToken(ctx, { email, groups: ["members"], nonce: "N" }), // no `sub`
       );
-      // FIXED: the product flow now matches admin (admin/auth.ts:216) and portal
+      // FIXED: the product flow now matches admin (console/auth.ts:216) and portal
       // (portal/auth.ts:280) — a generic 401, indistinguishable from any other bad token.
       const res = await callback(ctx, state);
       expect(res.status).toBe(401);

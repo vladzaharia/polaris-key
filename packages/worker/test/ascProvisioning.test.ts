@@ -20,13 +20,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { setPlatformPin } from "../src/core/platformCredentials.js";
 import { TEAM_RATE_KEY } from "../src/core/storefront/budget.js";
 import type { AscResource } from "../src/core/asc/client.js";

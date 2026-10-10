@@ -12,9 +12,9 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { dispatch } from "../src/dispatch.js";
-import { secureResponse } from "../src/securityHeaders.js";
+import { secureResponse } from "../src/core/securityHeaders.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import {
   CORS_ALLOW_HEADERS,
   CORS_ALLOW_METHODS,
@@ -25,7 +25,7 @@ import {
   withCors,
 } from "../src/core/cors.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 
 const SLUG = "djdl";

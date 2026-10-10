@@ -15,11 +15,16 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { selectNodeZstd } from "@polaris-key/node/packs";
+import { BACKEND_LOCALES } from "@polaris-key/client-core/backend";
 import {
+  BACKEND_MATRIX_FILE,
+  backendCopyFile,
   CONTENT_DIR,
   CORPUS_FILES,
+  defineBackendSuites,
   defineContentSuites,
   defineCorpusSuites,
+  type BackendMatrix,
   type ContentCorpus,
   type CorpusFiles,
 } from "./suites.js";
@@ -44,6 +49,25 @@ defineCorpusSuites({
   updateMatrix: read("updateMatrix"),
   outletMatrix: read("outletMatrix"),
   planMatrix: read("planMatrix"),
+});
+
+// Product backends (WIRE-CONTRACT-V4 §14): `backend-matrix.json`, with the copy catalog's `codes`
+// tables (`conformance/parity/copy.<locale>.json`) that its problem rows are written from.
+const parity = (name: string): unknown =>
+  JSON.parse(readFileSync(join(here, "..", "..", "parity", name), "utf8"));
+defineBackendSuites({
+  matrix: JSON.parse(
+    readFileSync(
+      join(here, "..", "..", "corpus", "v2", BACKEND_MATRIX_FILE),
+      "utf8",
+    ),
+  ) as BackendMatrix,
+  copy: Object.fromEntries(
+    BACKEND_LOCALES.map((l) => [
+      l,
+      (parity(backendCopyFile(l)) as { codes: unknown }).codes,
+    ]),
+  ) as Parameters<typeof defineBackendSuites>[0]["copy"],
 });
 
 // The content corpus: `content/cases.json` and every file under `content/blobs/`, by its path

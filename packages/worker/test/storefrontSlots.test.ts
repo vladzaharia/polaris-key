@@ -16,13 +16,13 @@ import { NOW, seedProduct } from "./seed.js";
 import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import { R2Mock, asR2 } from "./r2Mock.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   acceptedAssets,
   IMAGE_SLOTS,

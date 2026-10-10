@@ -41,7 +41,8 @@ import type {
   PatchFromOptions,
   PatchFromResult,
 } from "@polaris-key/zstd-wasm/encoder";
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   checksumHex,
   deltaKey,
@@ -49,7 +50,7 @@ import {
   putVerified,
   recordObject,
   recordRef,
-} from "../../../../core/blobs.js";
+} from "../../../../core/assets/blobs.js";
 import {
   HOT_WINDOW_SECONDS,
   installedBase,
@@ -57,7 +58,7 @@ import {
   lazyDeltasOn,
   pairDemand,
   payloadDevices,
-} from "../../../../core/deltaDemand.js";
+} from "../../../../core/assets/deltaDemand.js";
 import { cheapestAlternative } from "./alternative.js";
 import {
   pairMessage,
@@ -93,7 +94,7 @@ import {
   recordRefused,
   type PairKey,
 } from "./store.js";
-import { platformSetting } from "../../../../core/platformSettings.js";
+import { platformSetting } from "../../../../core/settings/platformRead.js";
 
 /** Pair jobs one R2 event fans out into, at most. */
 export const EVENT_FANOUT = 3;
@@ -243,7 +244,7 @@ async function runPair(
     await pairDemand(db, m.product, m.deliverable, m.from, m.to, since),
     await payloadDevices(db, m.product, m.deliverable, m.from, since),
   );
-  const maxBytes = await platformSetting(env, db, "LAZY_DELTA_MAX_BYTES");
+  const maxBytes = await platformSetting(env, db, "deltas.lazy.maxBytes");
   const verdict = shouldQueue({
     from: {
       sha256: m.from,

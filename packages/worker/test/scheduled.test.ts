@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   AUDIT_RETENTION_SECONDS,
   PRUNE_BATCH_ROWS,
@@ -26,7 +26,7 @@ import {
   claimDeviceSeat,
   insertLicense,
   setServices,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 import { CONNECTOR_EVENT_RETENTION_SECONDS } from "../src/services/distribution/connectors/state.js";
 import { portalAudit } from "../src/services/identity/portal/repo.js";
 import { createHash } from "node:crypto";
@@ -37,7 +37,7 @@ import {
   DEFAULT_GC_GRACE_SECONDS,
   MIN_GC_GRACE_SECONDS,
   blobGcSettings,
-} from "../src/core/blobGc.js";
+} from "../src/core/assets/blobGc.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The NEWEST index assertion is the live one: each successor (0018, then 0027_i) re-runs the

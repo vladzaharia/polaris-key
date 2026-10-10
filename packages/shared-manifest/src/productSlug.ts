@@ -52,7 +52,7 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
 
 /**
  * One-segment admin actions under `/manage/api/products/`, matched before the segment is read
- * as a product slug (`packages/worker/src/admin/handlers/products.ts`): a product slugged like
+ * as a product slug (`packages/worker/src/console/handlers/products.ts`): a product slugged like
  * one would have its console record shadowed. The manifest validator (`reserved_slug`), the slug
  * check and both create paths refuse them.
  *

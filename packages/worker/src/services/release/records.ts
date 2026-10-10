@@ -42,7 +42,8 @@ import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { releaseRecordClaims } from "@polaris-key/client-core/record";
 import { parseVersion } from "@polaris-key/client-core/version";
-import { sha256Hex, type Db, type DbStatement } from "../../core/platform.js";
+import { sha256Hex } from "../../platform/hash.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import type { ReleaseConfigRow } from "./config.js";
 
 /** The one ingest refusal code (registered in `conformance/parity/errors.json`). */

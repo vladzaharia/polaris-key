@@ -109,6 +109,11 @@
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
   --text-display: 2.5rem;
   --text-display--line-height: 1.1;
+  /* The portal page title (B12): 48/52 from desk up, 32/36 on phones. Library and Discover. */
+  --text-page-title: 3rem;
+  --text-page-title--line-height: calc(52 / 48);
+  --text-page-title-sm: 2rem;
+  --text-page-title-sm--line-height: calc(36 / 32);
   /* Steps the brand scale (xs 12 … 5xl 48) does not have, named so no view writes an arbitrary
      bracketed text size (EXPERIENCE.md §3). Each sets the font size only, as the arbitrary values
      it replaced did. The type-scale pass maps them onto display / title / section / row. */

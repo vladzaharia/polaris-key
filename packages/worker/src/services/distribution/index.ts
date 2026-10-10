@@ -52,8 +52,9 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { ParsedManifest } from "@polaris-key/manifest";
-import { parseJsonColumn, type DbStatement } from "../../core/platform.js";
-import { bytesHostname } from "../../core/bytesHost.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import type { DbStatement } from "../../db/types.js";
+import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
 import { registryMaterialiser } from "./registryMaterialiser.js";
 import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
@@ -257,18 +258,18 @@ export const distributionService: ServiceDescriptor = {
   manifestIngestAlways: accessIngestStatements,
   /**
    * LX-03: a retired licence's purchases move to the survivor and its purchase binding becomes
-   * an alias of it (`commerce/state.ts`, `core/licenseMerge.ts`), whatever Distribution's
+   * an alias of it (`commerce/state.ts`, `core/licensing/licenseMerge.ts`), whatever Distribution's
    * enablement — a purchase left on the retired licence would be stranded when it is turned on.
    */
   licenseMerge: commerceMergeStatements,
   /**
-   * Licence deletion (`core/licenseDelete.ts`): a licence with recorded store purchases is never
+   * Licence deletion (`core/licensing/licenseDelete.ts`): a licence with recorded store purchases is never
    * deleted; otherwise its purchase binding and the aliases resolving to it go, whatever
    * Distribution's enablement.
    */
   licenseDelete: commerceDeleteContribution,
   /**
-   * LX-08 (`core/licensingCatchUp.ts`): each purchase's `grant_id` and each store mapping's
+   * LX-08 (`core/licensing/licensingCatchUp.ts`): each purchase's `grant_id` and each store mapping's
    * entitlement rows re-projected from `dist_purchases` and `dist_store_products.flag`, whatever
    * Distribution's enablement.
    */

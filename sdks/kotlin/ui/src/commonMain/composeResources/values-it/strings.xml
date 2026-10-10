@@ -2020,6 +2020,22 @@
     <string name="core_codes_marker_rejected_title">Problema della build dell'app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_marker_rejected_message">I contenuti integrati di questa build non sono validi. Reinstalla l'app o contatta lo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_title">Licenza necessaria</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_message">Attiva l'app, poi riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_title">Licenza non accettata</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_message">Impossibile verificare la tua licenza. Ricollega l'app, poi riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_title">Licenza da aggiornare</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_message">Connettiti a internet per consentire all'app di aggiornare la tua licenza, poi riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_title">Accesso richiesto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_message">Accedi al tuo account Polaris Key nell'app, poi riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">Licenza attiva</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

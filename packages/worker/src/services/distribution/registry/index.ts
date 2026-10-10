@@ -4,7 +4,7 @@
  * Every feed is one `FeedAdapter` (`adapter.ts`), exported from its own `registry/<ecosystem>/`
  * directory and listed once in `FEED_ADAPTERS` below. Everything else is derived from that list:
  * `RENDERERS` (the materialiser's), `DISTRIBUTION_REGISTRY_ROUTES` (which `mount.ts` spreads into
- * `REGISTRY_ROUTES`), the console's capabilities and settings validation (`admin/lib/feedModel.ts`)
+ * `REGISTRY_ROUTES`), the console's capabilities and settings validation (`console/lib/feedModel.ts`)
  * and `routeCoverage`'s registry table. Adding a feed is adding its directory and one line here;
  * `test/feedAdapters.test.ts` is the conformance suite it must pass, and
  * `/docs/contribute/package-feeds/` the checklist.
@@ -14,7 +14,7 @@ import type {
   OwnerlessRegistryRoute,
   RegistryEcosystem,
   RegistryRoute,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 import type { PackageEcosystem } from "@polaris-key/manifest";
 import { rendererOf, type FeedAdapter } from "./adapter.js";
 import type { RegistryRenderer } from "./materialise.js";

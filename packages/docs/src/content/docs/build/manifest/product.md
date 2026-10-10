@@ -43,8 +43,8 @@ the transport per deliverable and the store listing. It has its own page:
 In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
 (the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
 a product hosts its own `.pkey/`,
-`packages/worker/src/services/release/manifest.ts#parseManifest` — Release's re-export of
-`@polaris-key/manifest`, since repo ingest is a release-service path — parses the files,
+`parseManifest` from `@polaris-key/manifest` (repo ingest is a release-service path, in
+`packages/worker/src/services/release/`) parses the files,
 aggregates **all** validation errors, and returns a `ParsedManifest` ready for D1 insertion. The
 schema is compiled through `@polaris-key/catalog` before anything is written so malformed
 JSON-Schema fragments fail during import/resync, not during a client request.

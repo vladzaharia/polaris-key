@@ -8,7 +8,7 @@ import {
   parseManifestPackDeliverable,
   type ManifestPackDeliverable,
 } from "@polaris-key/manifest";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 
 /** The declared pack ids, by id: the validator context's `release.packs` (decision 37). */
 export async function readPackDeliverableIds(

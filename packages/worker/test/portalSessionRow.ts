@@ -4,7 +4,7 @@
  * (`{ token, session }`), so a test that minted a bare signed cookie before server-side sessions
  * existed swaps the call, not its assertions. A bare signed cookie (no row) is refused now.
  */
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { startAccountSession } from "../src/services/identity/portal/accountSessions.js";
 import {

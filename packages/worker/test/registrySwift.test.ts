@@ -30,15 +30,15 @@ import {
   SLUG,
 } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { releaseCatalog } from "../src/services/release/catalog.js";
-import { getProduct } from "../src/repo.js";
+import { getProduct } from "../src/core/repo.js";
 import { REGISTRY_ROUTES } from "../src/mount.js";
-import { REGISTRY_CSP } from "../src/core/registryHost.js";
-import { blobKey } from "../src/core/blobs.js";
+import { REGISTRY_CSP } from "../src/core/registry/registryHost.js";
+import { blobKey } from "../src/core/assets/blobs.js";
 import {
   materialise,
   type RegistryPackage,

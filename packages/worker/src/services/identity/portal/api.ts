@@ -1,34 +1,32 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
-import { licenseAccess } from "../../../core/anchor.js";
-import { constantTimeEqual } from "../../../core/platform.js";
+import { licenseAccess } from "../../../core/licensing/anchor.js";
+import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import {
-  isAllowedDownloadRedirectHost,
-  isAllowedStorageHost,
-  parseJsonOr,
-  platformOidcConfig,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { isAllowedDownloadRedirectHost } from "../../../core/assets/bytesHostname.js";
+import { isAllowedStorageHost } from "../../../platform/http.js";
+import { parseJsonOr } from "../../../platform/json.js";
+import { platformOidcConfig } from "../../../platform/platformOidc.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import type { Delivery, ServiceHooks } from "../../../core/hooks.js";
 import {
   loadProductPublic,
   type ProductPublic,
 } from "../../../core/products.js";
-import { licenseEntitled } from "../../../core/entitledAccess.js";
-import { isBytesHost } from "../../../core/bytesHostname.js";
+import { licenseEntitled } from "../../../core/licensing/entitledAccess.js";
+import { isBytesHost } from "../../../core/assets/bytesHostname.js";
 import {
   DOWNLOAD_TICKET_PARAM,
   downloadTicketsEnabled,
   mintDownloadTicket,
 } from "../../../core/downloadTicket.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getProduct } from "../../../core/data.js";
+import { getProduct } from "../../../core/repo.js";
 import { licenseUsable } from "../../../core/devices.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
-import { registryOrigin } from "../../../core/registryHostname.js";
+import { registryOrigin } from "../../../core/registry/registryHostname.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
   REGISTRY_TOKEN_DEFAULT_DAYS,
@@ -39,7 +37,7 @@ import {
   listRegistryTokens,
   mintRegistryToken,
   revokeRegistryToken,
-} from "../../../core/registryTokens.js";
+} from "../../../core/registry/registryTokens.js";
 import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
 import {
   getPortalAccount,
@@ -87,10 +85,10 @@ import { handleAccountPasskeys } from "../passkeys/routes.js";
 import {
   LINK_FLOW_COOKIE,
   clearAccountRealmCookie,
-} from "../../../core/accountCookies.js";
+} from "../../../core/accounts/accountCookies.js";
 import { handleAccountMethods } from "./methods.js";
 import { handleAccountLink } from "./link.js";
-import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
+import { clearDeviceSubjects } from "../../../core/accounts/subjectHooks.js";
 import {
   handleLibraryEntryRemove,
   libraryView,
@@ -118,7 +116,7 @@ import {
 } from "./email.js";
 import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
 import { platformSignInEnded } from "../accounts/platformMigration.js";
-import { portalSecurityHeaders } from "./headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { handleProductDownloads } from "./downloads.js";
 import {
   discoverCount,
@@ -135,7 +133,7 @@ import {
 } from "./deviceLogin.js";
 import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
 import { handleProfileApi } from "./profile.js";
-import { readBodyText } from "../../../core/cappedBody.js";
+import { AdminBodyError, readBody } from "../../../core/http/body.js";
 
 export function portalJson(
   body: unknown,
@@ -174,19 +172,7 @@ function isMutation(method: string): boolean {
   return method !== "GET" && method !== "HEAD";
 }
 
-export async function readBody(req: Request): Promise<Record<string, unknown>> {
-  const raw = await readBodyText(req);
-  if (!raw.trim()) return {};
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    return parsed as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
+export { readBody };
 
 function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   return {
@@ -1368,6 +1354,18 @@ export function decodeSegments(path: string): string[] | null {
 }
 
 export async function handlePortalApi(
+  ...args: Parameters<typeof dispatchPortalApi>
+): Promise<Response> {
+  try {
+    return await dispatchPortalApi(...args);
+  } catch (e) {
+    // A refused body (413 oversize, 400 malformed) is the caller's error, never an empty `{}`.
+    if (e instanceof AdminBodyError) return err(e.status, e.code, e.message);
+    throw e;
+  }
+}
+
+async function dispatchPortalApi(
   req: Request,
   env: Env,
   db: Db,

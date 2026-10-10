@@ -12,8 +12,18 @@ import {
   findCommand,
   renderCommandHelp,
   renderHelp,
+  VALUELESS_FLAGS,
   type CompletionShell,
+  type HelpHere,
 } from "./help.js";
+import { fixManifest, type FixMove } from "./fix.js";
+import { applyContext, resolveContext, type PkeyContext } from "./context.js";
+import {
+  checkRemote,
+  doctorOk,
+  manifestFact,
+  type DoctorFact,
+} from "./doctor.js";
 import {
   Spinner,
   termFor,
@@ -33,6 +43,7 @@ import {
   type LoadedManifest,
   type ProductModule,
   type ValidationMessage,
+  type ValidationResult,
 } from "./manifest.js";
 import { authGithubOidc, CI_TOKEN_ENV, type CiEnv } from "./oidc.js";
 import type { StageProgress } from "./ci.js";
@@ -574,56 +585,24 @@ async function runCommand(
       parsed.command === "help"
         ? parsed.positional
         : [parsed.command, ...parsed.positional];
-    return cmdHelp(words, stdout, stderr, term);
+    const here = await resolveContext({ cwd, env: ci.env });
+    return cmdHelp(words, stdout, stderr, term, {
+      product: here.product,
+      baseUrl: here.baseUrl.url,
+    });
   }
 
   try {
-    switch (parsed.command) {
-      case "init":
-        return await cmdInit(parsed, cwd, stdout);
-      case "validate":
-        return await cmdValidate(parsed, cwd, stdout, term(stdout));
-      case "completion":
-        return cmdCompletion(parsed, stdout, stderr);
-      case "distribution":
-        return await cmdDistribution(parsed, cwd, stdout, stderr, ci);
-      case "doctor":
-        return await cmdDoctor(parsed, cwd, stdout, term(stdout), ci.env);
-      case "bundle":
-        return await cmdBundle(parsed, cwd, stdout, ci.env);
-      case "trust":
-        return cmdTrust(parsed, stdout);
-      case "sdk":
-        return await cmdSdk(parsed, cwd, stdout, stderr, ci.fetchImpl);
-      case "mirror":
-        return await cmdMirror(parsed, cwd, stdout, ci.fetchImpl);
-      case "auth":
-        return await cmdAuth(parsed, stdout, stderr, ci);
-      case "release":
-        return await cmdRelease(parsed, cwd, stdout, stderr, ci, g);
-      case "manifest":
-        return await cmdManifest(parsed, cwd, stdout);
-      case "feeds":
-        return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
-      case "listing":
-        return await cmdListing(parsed, cwd, stdout, stderr, ci, g);
-      case "assets":
-        return await cmdAssets(parsed, cwd, stdout, stderr, ci);
-      case "transport":
-        return await cmdTransport(parsed, cwd, stdout, stderr, ci);
-      case "storefront":
-        return await cmdStorefront(
-          {
-            positional: parsed.positional,
-            flags: parsed.flags,
-            rest: parsed.rest,
-          },
-          { cwd, stdout, stderr, ...ci },
-        );
-      default:
-        stderr.write(unknownCommand(parsed.command, term(stderr)));
-        return 2;
+    // The registry (`help.ts`) is the one list of commands: a word it does not name is unknown,
+    // whatever the handlers table holds.
+    const cmd = findCommand(parsed.command);
+    const handler = cmd ? HANDLERS[cmd.name] : undefined;
+    if (!cmd || !handler) {
+      stderr.write(unknownCommand(parsed.command, term(stderr)));
+      return 2;
     }
+    await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
+    return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
   } catch (err) {
     // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
     // cleaned per line, so it draws no escape and no line of it reads as a workflow command.
@@ -631,6 +610,48 @@ async function runCommand(
     return 1;
   }
 }
+
+/** What a command handler gets besides its parsed arguments. */
+interface Runtime {
+  cwd: string;
+  stdout: TermOut;
+  stderr: TermOut;
+  ci: CiIo & { env: CiEnv };
+  g: TermFlags;
+  term: (out: TermOut) => Term;
+}
+
+type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
+
+/**
+ * Each registered command's handler, by name. `help` is answered before dispatch. A test holds
+ * this table's keys to the registry's names (`COMMANDS` less `help`) so a command cannot be
+ * listed without running, or run without being listed.
+ */
+export const HANDLERS: Readonly<Record<string, Handler>> = {
+  init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
+  validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
+  completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
+  distribution: (p, rt) =>
+    cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
+  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
+  bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
+  trust: (p, rt) => cmdTrust(p, rt.stdout),
+  sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
+  mirror: (p, rt) => cmdMirror(p, rt.cwd, rt.stdout, rt.ci.fetchImpl),
+  auth: (p, rt) => cmdAuth(p, rt.stdout, rt.stderr, rt.ci),
+  release: (p, rt) => cmdRelease(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
+  manifest: (p, rt) => cmdManifest(p, rt.cwd, rt.stdout),
+  feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
+  listing: (p, rt) => cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
+  assets: (p, rt) => cmdAssets(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
+  transport: (p, rt) => cmdTransport(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
+  storefront: (p, rt) =>
+    cmdStorefront(
+      { positional: p.positional, flags: p.flags, rest: p.rest },
+      { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci },
+    ),
+};
 
 /**
  * `✗  Unknown command "bogus". Run pkey help to see every command.` and nothing else: the hundred
@@ -658,10 +679,11 @@ function cmdHelp(
   stdout: TermOut,
   stderr: TermOut,
   term: (out: TermOut) => Term,
+  here: HelpHere,
 ): number {
   const [name, sub] = words;
   if (name === undefined) {
-    stdout.write(renderHelp(term(stdout)));
+    stdout.write(renderHelp(term(stdout), here));
     return 0;
   }
   const cmd = findCommand(name);
@@ -692,9 +714,6 @@ function cmdCompletion(
   stdout.write(completionScript(shell as CompletionShell));
   return 0;
 }
-
-/** Flags that never take a value, so they never swallow the next word (`validate --json dir`). */
-const VALUELESS_FLAGS = new Set(["json"]);
 
 function parseArgs(argv: string[]): ParsedArgs {
   const [command = "help", ...rest] = argv;
@@ -771,7 +790,7 @@ async function cmdInit(
   return 0;
 }
 
-const VALIDATE_USAGE = "Usage: pkey validate [path] [--json]";
+const VALIDATE_USAGE = "Usage: pkey validate [path] [--fix] [--json]";
 
 /**
  * `pkey validate [path] [--json]`: the `.pkey/` under `path` (relative to the current directory;
@@ -787,8 +806,29 @@ async function cmdValidate(
   if (parsed.positional.length > 1) throw new Error(VALIDATE_USAGE);
   const target = parsed.positional[0];
   const dir = target === undefined ? cwd : path.resolve(cwd, target);
-  if (flagBool(parsed, "json")) return validateJson(dir, cwd, stdout);
+  const json = flagBool(parsed, "json");
+  // `--fix` repairs what it safely can, then validates what is left (`fix.ts`).
+  let fixed: FixMove[] | undefined;
+  if (flagBool(parsed, "fix")) {
+    fixed = await fixManifest(await loadManifest(dir), cwd);
+    if (!json) writeFixed(fixed, stdout, term);
+  }
+  if (json) return validateJson(dir, cwd, stdout, fixed);
   return validateText(dir, cwd, stdout, term);
+}
+
+/** What `--fix` moved, one ✓ line each, or the one line saying there was nothing to repair. */
+function writeFixed(moves: FixMove[], stdout: TermOut, term: Term): void {
+  const { painter, symbols } = term;
+  if (!moves.length) {
+    stdout.write(`Nothing to fix.\n\n`);
+    return;
+  }
+  for (const m of moves)
+    stdout.write(
+      `${painter.style(symbols.ok, ["success"])}  Moved ${m.from} to ${m.to} (${m.file})\n`,
+    );
+  stdout.write("\n");
 }
 
 /**
@@ -886,6 +926,7 @@ async function validateJson(
   dir: string,
   cwd: string,
   stdout: TermOut,
+  fixed?: FixMove[],
 ): Promise<number> {
   const envelope = (exit: number, rest: Record<string, unknown>) =>
     `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}\n`;
@@ -914,6 +955,7 @@ async function validateJson(
   const exitCode = result.ok ? 0 : 1;
   stdout.write(
     envelope(exitCode, {
+      ...(fixed ? { fixed } : {}),
       valid: result.ok,
       modules: result.enabledModules,
       requiredSecrets: result.requiredSecrets,
@@ -1083,47 +1125,110 @@ async function cmdDistributionCi(
   return 0;
 }
 
+/**
+ * `pkey doctor [--product slug] [--base-url url] [--json]`: validate `.pkey/`, then, when a
+ * product is known (the flag, else the nearest `.pkey/product`), check its live discovery at the
+ * base URL (the flag, else `PKEY_BASE_URL`, else production). The facts are `doctor.ts`'s; the text
+ * answer prints the validation then the remote lines, `--json` the facts in one result line.
+ */
 async function cmdDoctor(
   parsed: ParsedArgs,
   cwd: string,
   stdout: TermOut,
   term: Term,
-  env: UntrustedEnv,
+  ci: CiIo & { env: CiEnv },
 ): Promise<number> {
-  const u = (v: unknown) => untrusted(v, env);
+  const u = (v: unknown) => untrusted(v, ci.env);
+  const ctx = await resolveContext({
+    cwd,
+    env: ci.env,
+    product: flagString(parsed, "product"),
+    baseUrl: flagString(parsed, "base-url"),
+  });
+  if (flagBool(parsed, "json")) return doctorJson(ctx, cwd, stdout, ci);
+
   const localCode = await validateText(cwd, cwd, stdout, term);
-  const baseUrl = flagString(parsed, "base-url");
-  const product = flagString(parsed, "product");
-  if (!baseUrl || !product) {
+  if (!ctx.product) {
     stdout.write(
-      "\nRemote checks skipped. Pass --base-url and --product to check product discovery.\n",
+      "\nRemote checks skipped. No product: pass --product, or run where .pkey/product is.\n",
     );
     return localCode;
   }
-
-  const url = `${baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(product)}/.well-known/polaris.json`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    stdout.write(`\nRemote discovery: failed (${res.status}) ${url}\n`);
+  const remote = await checkRemote({
+    baseUrl: ctx.baseUrl.url,
+    product: ctx.product.slug,
+    fetchImpl: ci.fetchImpl,
+  });
+  if (remote.status !== undefined) {
+    stdout.write(
+      `\nRemote discovery: failed (${remote.status}) ${remote.url}\n`,
+    );
     return 1;
   }
-  const body = (await res.json()) as {
-    signing?: unknown;
-    trust?: unknown;
-    services?: Record<string, { enabled?: unknown } | undefined>;
-  };
-  stdout.write(`\nRemote discovery: ok ${url}\n`);
+  stdout.write(`\nRemote discovery: ok ${remote.url}\n`);
   // Every name and value below is the server's: each is cleaned (`untrusted.ts`).
-  const enabled = Object.entries(body.services ?? {})
-    .filter(([, service]) => service?.enabled === true)
-    .map(([slug]) => u(slug));
+  const enabled = remote.services.map((slug) => u(slug));
   stdout.write(
     `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}\n`,
   );
-  stdout.write(
-    `Signing keys exposed: ${u(JSON.stringify(body.signing ?? body.trust ?? {}))}\n`,
-  );
+  stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}\n`);
   return localCode;
+}
+
+/** `pkey doctor --json`: one result line, the facts beside the envelope's fields. */
+async function doctorJson(
+  ctx: PkeyContext,
+  cwd: string,
+  stdout: TermOut,
+  ci: CiIo & { env: CiEnv },
+): Promise<number> {
+  let result: ValidationResult | null = null;
+  let problem: string | undefined;
+  try {
+    result = validateLoadedManifest(await loadManifest(cwd));
+  } catch (e) {
+    problem = (e as Error).message;
+  }
+  const facts: DoctorFact[] = [manifestFact(result, problem)];
+  let services: string[] = [];
+  let signing: unknown = null;
+  if (ctx.product) {
+    try {
+      const remote = await checkRemote({
+        baseUrl: ctx.baseUrl.url,
+        product: ctx.product.slug,
+        fetchImpl: ci.fetchImpl,
+      });
+      facts.push(...remote.facts);
+      services = remote.services;
+      signing = remote.signing;
+    } catch (e) {
+      facts.push({
+        id: "discovery",
+        state: "todo",
+        detail: (e as Error).message,
+      });
+    }
+  }
+  const exit = doctorOk(facts) ? 0 : 1;
+  stdout.write(
+    `${untrustedJson({
+      v: 1,
+      command: "doctor",
+      event: "result",
+      ok: exit === 0,
+      exit,
+      product: ctx.product?.slug ?? null,
+      baseUrl: ctx.baseUrl.url,
+      facts,
+      services,
+      signing,
+    }).replace(
+      /[\u007f-\uffff]/g,
+      (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+    )}\n`,
+  );
+  return exit;
 }
 
 /**

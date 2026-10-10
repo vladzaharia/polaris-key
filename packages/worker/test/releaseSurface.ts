@@ -26,7 +26,7 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { Product } from "../src/core/products.js";
 import type { ServicesMap } from "../src/core/services.js";

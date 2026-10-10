@@ -18,7 +18,7 @@ import {
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
   linkExistingProduct,
@@ -26,16 +26,16 @@ import {
   planResync,
   prepareLink,
 } from "../src/services/release/linkExisting.js";
-import { parseManifest } from "../src/services/release/manifest.js";
+import { parseManifest } from "@polaris-key/manifest";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
-import { getActiveSchema, getProduct, setServices } from "../src/repo.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { getActiveSchema, getProduct, setServices } from "../src/core/repo.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);

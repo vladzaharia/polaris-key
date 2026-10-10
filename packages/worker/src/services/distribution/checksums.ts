@@ -19,7 +19,7 @@
  * (Maven's MD5 and SHA-1 sidecars stay, because Maven requires them.)
  */
 
-import { parseKey } from "../../core/blobs.js";
+import { parseKey } from "../../core/assets/blobs.js";
 import type { CatalogSourceArtifact } from "../../core/hooks.js";
 
 /** The one file name this module answers to. */

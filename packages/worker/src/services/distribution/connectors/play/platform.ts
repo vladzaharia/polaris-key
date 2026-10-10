@@ -17,7 +17,8 @@
  *     admin who asked (the platform audit's actor). A product's connector never uses this path.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   platformGoogleAccessToken,
   TokenExchangeError,
@@ -31,7 +32,7 @@ import {
   recordPlatformCredentialResult,
   resolvePlatformCredential,
 } from "../../../../core/platformCredentials.js";
-import type { PlatformEventActor } from "../../../../core/platformEvents.js";
+import type { PlatformEventActor } from "../../../../core/ops/platformEvents.js";
 import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,

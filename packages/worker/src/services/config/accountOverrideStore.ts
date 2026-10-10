@@ -1,6 +1,6 @@
 /**
  * The account override layer as a store of account × product data (U-03; notes/S-17 §5.5, D21),
- * registered with Core's subject-store registry (`core/subjectHooks.ts`) so an account merge, a
+ * registered with Core's subject-store registry (`core/accounts/subjectHooks.ts`) so an account merge, a
  * deletion and an export reach it without Config importing Identity (rule 6).
  *
  *   merge   per key, the SURVIVING subject's value wins; keys only the absorbed side holds are
@@ -23,22 +23,22 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import type { DbStatement } from "../../core/platform.js";
+import type { DbStatement } from "../../db/types.js";
 import {
   getAccountOverrides,
   parseAccountOverridePayload,
   stmtDeleteAccountOverrides,
   stmtPutAccountOverrides,
   type AccountOverridePayload,
-} from "../../core/accountOverrides.js";
-import { listOverrideMigrationReport } from "../../core/overrideMigration.js";
+} from "../../core/accounts/accountOverrides.js";
+import { listOverrideMigrationReport } from "../../core/ops/overrideMigration.js";
 import {
   registerSubjectStore,
   type SubjectStore,
-} from "../../core/subjectHooks.js";
-import { isSealedEnvelope } from "../../core/adminApi.js";
-import { randomId } from "../../core/platform.js";
-import { auditStatement, getActiveSchema } from "../../core/data.js";
+} from "../../core/accounts/subjectHooks.js";
+import { isSealedEnvelope } from "../../core/managedSecrets.js";
+import { randomId } from "../../platform/crypto.js";
+import { auditStatement, getActiveSchema } from "../../core/repo.js";
 
 /** The registry name (stable: the export document is keyed by it). */
 export const ACCOUNT_OVERRIDE_STORE = "config.accountOverrides";

@@ -182,6 +182,10 @@ public let COPY_CODES: [String: CopyEntry] = [
     "pack-revoked": CopyEntry(title: "Content withdrawn", message: "This content was withdrawn by its developer and can't be used."),
     "pack-not-data-only": CopyEntry(title: "Content refused", message: "Some content was refused because it contains files a data pack may not hold."),
     "marker-rejected": CopyEntry(title: "App build problem", message: "This build's built-in content isn't valid. Reinstall the app or contact the developer."),
+    "license_required": CopyEntry(title: "License needed", message: "Activate the app, then try again."),
+    "license_invalid": CopyEntry(title: "License not accepted", message: "Your license couldn't be verified. Reconnect the app, then try again."),
+    "license_stale": CopyEntry(title: "License needs refreshing", message: "Connect to the internet so the app can refresh your license, then try again."),
+    "sign_in_required": CopyEntry(title: "Sign-in needed", message: "Sign in to your Polaris Key account in the app, then try again."),
 ]
 
 /// Per licenseStatus.

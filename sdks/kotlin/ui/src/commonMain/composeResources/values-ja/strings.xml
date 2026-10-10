@@ -2000,6 +2000,22 @@
     <string name="core_codes_marker_rejected_title">アプリのビルドの問題</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_marker_rejected_message">このビルドに組み込まれたコンテンツが無効です。アプリを再インストールするか、開発者に問い合わせてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_title">ライセンスが必要です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_message">アプリをアクティベートしてから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_title">ライセンスを受け付けられません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_message">ライセンスを確認できませんでした。アプリを再接続してから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_title">ライセンスの更新が必要です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_message">アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_title">サインインが必要です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_message">アプリでPolaris Keyアカウントにサインインしてから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">ライセンス有効</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

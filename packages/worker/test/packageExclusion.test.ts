@@ -27,13 +27,13 @@ import {
   PACKAGE_VERSION,
 } from "./packageFixture.js";
 import { simulate, SimulateNotFound } from "../src/services/update/simulate.js";
-import { getProduct } from "../src/repo.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { getProduct } from "../src/core/repo.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { NO_HOOKS } from "./helpers.js";
 
 installDigestStream();

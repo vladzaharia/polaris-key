@@ -22,7 +22,7 @@
  *
  * The developer's actions live here too: export the subject's product data (JSON), delete it
  * (through Core's subject-store registry), detach a licence, and RELINK a licence to another
- * subject of this product with a 72-hour undo. The admin layer (`admin/handlers/users.ts`) owns
+ * subject of this product with a 72-hour undo. The admin layer (`console/handlers/users.ts`) owns
  * the step-up check; this module owns the rules of the move.
  */
 
@@ -33,21 +33,21 @@ import {
   licenseAccountId,
   licenseEmail,
   resolveSubject,
-} from "../../../core/accountSubjects.js";
-import { associateLicenseHolder } from "../../../core/licenseHolders.js";
+} from "../../../core/accounts/accountSubjects.js";
+import { associateLicenseHolder } from "../../../core/licensing/licenseHolders.js";
 import {
   runSubjectDelete,
   runSubjectExport,
   subjectDataSize,
-} from "../../../core/subjectHooks.js";
-import { getLicense, getProduct, type LicenseRow } from "../../../core/data.js";
+} from "../../../core/accounts/subjectHooks.js";
+import { getLicense, getProduct, type LicenseRow } from "../../../core/repo.js";
 import {
   b64urlDecodeBinary,
   b64urlEncodeBinary,
-  normalizeEmail,
-  randomId,
-  type Db,
-} from "../../../core/platform.js";
+} from "../../../platform/bytes.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import { randomId } from "../../../platform/crypto.js";
+import type { Db } from "../../../db/types.js";
 import { sendNotice, sendSecurityNotice } from "../portal/email.js";
 import {
   licenseAssignedToYouNotice,
@@ -190,7 +190,7 @@ const ROW_LAST_SIGNIN = `
 /**
  * How many users each product's Users page lists (`listProductUsers` with Identity on: a subject
  * with a licence, a signed-in device or a sign-in through the product), for every product in ONE
- * grouped query. The console's summary read (`admin/lib/summary.ts`) puts it on Home's card.
+ * grouped query. The console's summary read (`console/lib/summary.ts`) puts it on Home's card.
  */
 export async function countListedUsersByProduct(
   db: Db,

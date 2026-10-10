@@ -16,7 +16,7 @@ import type {
   BlockReason,
   ManagedEntry,
 } from "@polaris-key/protocol";
-import { checkBuildGate } from "../src/core/gate.js";
+import { checkBuildGate } from "../src/core/licensing/gate.js";
 
 interface MatrixRow {
   name: string;

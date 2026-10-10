@@ -14,7 +14,7 @@
  *   - the ingest rules (`@polaris-key/manifest` `PACKAGE_ECOSYSTEM_RULES`): the adapter points at
  *     its ecosystem's ONE declaration there, which the manifest validator, Release's ingest and
  *     the console's settings validation all read;
- *   - the console (`admin/lib/feedModel.ts`): labels, base URLs, namespace and extension
+ *   - the console (`console/lib/feedModel.ts`): labels, base URLs, namespace and extension
  *     validation and the capabilities the admin API exposes are read from the adapter, never
  *     switched on the ecosystem name.
  *
@@ -46,7 +46,7 @@ import type {
 import type {
   OwnerlessRegistryRoute,
   RegistryRoute,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 import type { ChallengeKind } from "./authorize.js";
 import type {
   RegistryPackage,

@@ -27,14 +27,18 @@
  * the feed-level check, so it discloses nothing.
  */
 
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,
-} from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
 import type { CatalogPackageDeliverable } from "../../../../core/hooks.js";
-import { registryNotFound } from "../../../../core/registryHost.js";
-import { blobKey, blobResponse, hasRef } from "../../../../core/blobs.js";
+import { registryNotFound } from "../../../../core/registry/registryHost.js";
+import {
+  blobKey,
+  blobResponse,
+  hasRef,
+} from "../../../../core/assets/blobs.js";
 import { ErrorCode, errorResponse } from "../../../../core/errors.js";
 import { authorizeFeedRead } from "../authorize.js";
 import { registryCacheHeaders } from "../cache.js";
@@ -59,7 +63,7 @@ import {
 
 /**
  * The policy the HTML form is served under: an opaque origin with nothing allowed, no base, no
- * form target. `core/registryHost.ts` admits the page only when `inertDocumentPolicy` accepts
+ * form target. `core/registry/registryHost.ts` admits the page only when `inertDocumentPolicy` accepts
  * this exact header (THREAT-MODEL §3).
  */
 export const PYPI_DOCUMENT_CSP =

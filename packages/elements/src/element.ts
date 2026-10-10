@@ -281,8 +281,14 @@ export abstract class PkElement extends LitElement {
     return this.model;
   }
 
-  private modelInput(): UiInput {
-    return inputWithIdentity(this.input ?? {}, this.resolved);
+  /** What the view model reads before the identity is applied: the host's input, or (the sign-in
+   *  form, driven live) the form model's. */
+  protected baseInput(): UiInput {
+    return this.input ?? {};
+  }
+
+  protected modelInput(): UiInput {
+    return inputWithIdentity(this.baseInput(), this.resolved);
   }
 
   protected override willUpdate(changed: PropertyValues): void {
@@ -303,6 +309,11 @@ export abstract class PkElement extends LitElement {
     );
   }
 
+  /** Extra detail for a control's `pk-action` (the sign-in form adds the picked row). */
+  protected actionDetail(_key: string): Record<string, unknown> {
+    return {};
+  }
+
   protected ctx(view: View, resolved: Resolved): RenderCtx {
     const copy = copyFor(
       resolved.locale,
@@ -320,6 +331,7 @@ export abstract class PkElement extends LitElement {
           action: actionOf(key),
           component: view.component,
           state: view.state,
+          ...this.actionDetail(key),
           ...extra,
         };
         if (key === "activate.submit")
@@ -344,8 +356,13 @@ export abstract class PkElement extends LitElement {
           "pk-input",
           { field, value },
         ),
-      pick: (id) => this.patchInput({ selected: id }, "pk-select", { id }),
+      pick: (id) => this.pickRow(id),
     };
+  }
+
+  /** A row was picked (a device, a license): the input's `selected`, and `pk-select`. */
+  protected pickRow(id: string): void {
+    this.patchInput({ selected: id }, "pk-select", { id });
   }
 
   /** The body of the kit root; a subclass may draw more around the view (the gate's app slot). */

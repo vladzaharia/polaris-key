@@ -7,8 +7,8 @@
 import { createHash } from "node:crypto";
 import { expect } from "vitest";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { recordObject, blobKey } from "../src/core/blobs.js";
+import type { Env } from "../src/platform/env.js";
+import { recordObject, blobKey } from "../src/core/assets/blobs.js";
 import { stmtUpsertDeliverable } from "../src/services/release/model.js";
 import { ingestPackageDescriptor } from "../src/services/release/packages/ingest.js";
 

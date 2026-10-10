@@ -8,13 +8,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   adminOidcConfig,
   adminOidcIsDedicated,
   platformOidcConfig,
-} from "../src/platformOidc.js";
-import { handleAdminCallback, handleAdminLogin } from "../src/admin/auth.js";
+} from "../src/platform/platformOidc.js";
+import { handleAdminCallback, handleAdminLogin } from "../src/console/auth.js";
 import { handlePortalLogin } from "../src/services/identity/portal/auth.js";
 
 const ADMIN = {

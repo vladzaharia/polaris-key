@@ -51,17 +51,17 @@ import {
   putVerified,
   recordObject,
   recordRef,
-} from "../../src/core/blobs.js";
+} from "../../src/core/assets/blobs.js";
 import { stmtUpsertAsset } from "../../src/services/distribution/listing/store.js";
 import { steamCopyCard } from "../../src/services/distribution/storefronts/steam/copyCard.js";
-import { handleAdmin } from "../../src/admin/index.js";
+import { handleAdmin } from "../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../../src/admin/session.js";
+} from "../../src/core/console/session.js";
 import type { Db } from "../../src/db/types.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { makeEnv, NOW, seedProduct } from "../seed.js";

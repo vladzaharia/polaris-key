@@ -1,6 +1,6 @@
 /**
  * Same-origin typed client for the `/manage/api/*` surface. The worker
- * (`packages/worker/src/admin/api.ts` + each service's `admin.ts`) is the source of truth for
+ * (`packages/worker/src/console/api.ts` + each service's `admin.ts`) is the source of truth for
  * these shapes.
  *
  * ── THE ADMIN SURFACE IS SERVICE-GROUPED (plan §R1) ─────────────────────────────────────────
@@ -89,7 +89,7 @@ export interface PlatformCloudflareVersion {
   uploadedAt: string | null;
 }
 
-/** `GET /manage/api/platform/version` (worker `core/deployIdentity.ts`). */
+/** `GET /manage/api/platform/version` (worker `core/ops/deployIdentity.ts`). */
 export interface PlatformIdentity {
   releaseTag: string | null;
   gitSha: string | null;
@@ -229,7 +229,7 @@ export type PlatformSetting =
   | PlatformIntegerSetting
   | PlatformChoiceSetting;
 
-/** `GET /manage/api/platform/reserved-names` (LX-05, worker `admin/handlers/reservedNames.ts`). */
+/** `GET /manage/api/platform/reserved-names` (LX-05, worker `console/handlers/reservedNames.ts`). */
 export interface PlatformReservedNames {
   /** The platform's severity for an incompatible declaration. */
   mode: "warn" | "error";
@@ -261,7 +261,7 @@ export interface PlatformDeployValue {
   value: string | string[] | null;
 }
 
-/** `GET /manage/api/platform/settings` (worker `admin/handlers/platformSettings.ts`). */
+/** `GET /manage/api/platform/settings` (worker `console/handlers/platformSettings.ts`). */
 export interface PlatformSettingsView {
   settings: PlatformSetting[];
   /** False when the settings table could not be read. */
@@ -280,7 +280,7 @@ export interface PlatformSettingsView {
 
 /**
  * Where the platform-wide migration of licence config and secret overrides onto account
- * overrides stands (worker `admin/handlers/overrideMigration.ts` `stateView`):
+ * overrides stands (worker `console/handlers/overrideMigration.ts` `stateView`):
  * `idle` (no notice), `notice` (the 30-day notice runs), `running` (the run started; licence
  * config and secrets are frozen) and `completed`.
  */
@@ -521,7 +521,7 @@ export interface OperationsConnector {
   failedEvents24h: number;
 }
 
-/** `GET /manage/api/platform/operations` (worker `core/operations.ts`). A section is `null` when it could not be read. */
+/** `GET /manage/api/platform/operations` (worker `core/ops/operations.ts`). A section is `null` when it could not be read. */
 export interface PlatformOperations {
   /** Epoch seconds. */
   generatedAt: number;
@@ -597,7 +597,7 @@ export interface PlatformOperations {
   };
 }
 
-// ── platform store connections (A-16; worker `admin/handlers/platformStoreConnections.ts`) ──
+// ── platform store connections (A-16; worker `console/handlers/platformStoreConnections.ts`) ──
 
 /** A store the platform holds one team-level connection for. */
 export type PlatformStore =
@@ -1050,7 +1050,7 @@ export interface ProductOnboarding {
   nextActions?: ProductSetupAction[] | string[];
 }
 
-/** A product's hosted icon on the image host (worker `admin/lib/presentation.ts`). */
+/** A product's hosted icon on the image host (worker `console/lib/presentation.ts`). */
 export interface ProductIconRef {
   /** The original, content-addressed. */
   url: string;
@@ -1072,7 +1072,7 @@ export interface ProductPresentation {
 
 /**
  * One hosted-asset slot as the Presentation page reads it (HA-05, HA-06; worker
- * `admin/handlers/hostedAssets.ts`, `HostedAssetDto`).
+ * `console/handlers/hostedAssets.ts`, `HostedAssetDto`).
  */
 export interface HostedAssetDto {
   slot: string;
@@ -1116,7 +1116,7 @@ export interface HostedAssetDto {
 }
 
 /**
- * One of a product's hosted-asset settings (HA-10; worker `admin/handlers/hostedAssets.ts`,
+ * One of a product's hosted-asset settings (HA-10; worker `console/handlers/hostedAssets.ts`,
  * `AssetSettingDto`): `assets.releases.mirror`, `assets.quota.mediaBytes`,
  * `assets.quota.releaseBytes`.
  */
@@ -1330,7 +1330,7 @@ export type ProductUserResponse =
   | { mergedInto: string; user?: undefined };
 
 /**
- * `GET users/<subject>/overrides` (U-03; worker `admin/handlers/accountOverrides.ts`): one
+ * `GET users/<subject>/overrides` (U-03; worker `console/handlers/accountOverrides.ts`): one
  * account's managed config on one product, keyed by its pairwise subject. Config and secrets only
  * (entitlements stay on the licence); a secret, and a config key the catalog flags `secret`, come
  * back without their value.
@@ -3729,7 +3729,7 @@ export interface PatchLicenseBody {
 // ── offline bundles ───────────────────────────────────────────────────────────
 /**
  * What to mint into one offline activation bundle. The server
- * (`packages/worker/src/core/bundles.ts`) decides what actually rides inside by ENABLEMENT,
+ * (`packages/worker/src/console/handlers/bundles.ts`) decides what actually rides inside by ENABLEMENT,
  * so this is a request, not an instruction.
  */
 export interface MintBundleBody {
@@ -3822,7 +3822,7 @@ export interface TierBody {
   maxVersion?: string | null;
 }
 
-// ── package feeds (F-11; worker `admin/handlers/feeds.ts`) ───────────────────────────
+// ── package feeds (F-11; worker `console/handlers/feeds.ts`) ───────────────────────────
 
 /** The ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS): the six of
  *  tier 1, then tier 3's Cargo (F-30) and Go (F-31). */
@@ -3956,7 +3956,7 @@ export interface FeedDetailDto extends FeedsHead {
   ungatedPackages?: { id: string; name: string }[];
 }
 
-// ── registry tokens (F-21; worker `admin/handlers/registryTokens.ts`) ────────────────────────
+// ── registry tokens (F-21; worker `console/handlers/registryTokens.ts`) ────────────────────────
 
 /** One registry token as the console lists it: never the plaintext or its hash. */
 export interface RegistryTokenDto {
@@ -4802,7 +4802,7 @@ const rawApi = {
       body: JSON.stringify(body),
     }),
   /** Hand `services_json` back to the manifest. Changes nothing live — the manifest re-applies
-   *  on the NEXT resync (worker `core/servicesAdmin.ts`). */
+   *  on the NEXT resync (worker `console/handlers/servicesAdmin.ts`). */
   revertServices: (slug: string) =>
     call<ServicesResponse>(`${p(slug)}/services/revert`, { method: "POST" }),
 

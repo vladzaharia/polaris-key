@@ -8,7 +8,7 @@ import {
   mintOpaqueToken,
   productFromKey,
   randomId,
-} from "../src/crypto.js";
+} from "../src/platform/crypto.js";
 import { sha256Hex } from "../src/platform/hash.js";
 
 describe("mintLicenseKey", () => {

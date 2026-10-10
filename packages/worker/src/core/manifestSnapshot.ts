@@ -7,7 +7,7 @@
  *
  *   - `resync`      `services/release/resync.ts` `resyncRepo` (webhook or manual);
  *   - `link`        `services/release/linkRepo.ts` `linkRepo`;
- *   - `deploy-hook` `admin/systemProduct.ts` `linkSystemProduct` (the system product);
+ *   - `deploy-hook` `console/systemProduct.ts` `linkSystemProduct` (the system product);
  *   - `backfill`    ST-01c, for products not applied since this table existed.
  *
  * One row per product, latest only (`ON CONFLICT(product) DO UPDATE`). Readers: Revert (ST-01b),

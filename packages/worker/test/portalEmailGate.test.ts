@@ -47,11 +47,11 @@ import {
 import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { createSignInRequest } from "../src/services/identity/passthrough/request.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import {
   EMAIL_ISSUER,
   insertAccount,
@@ -64,8 +64,8 @@ import {
 } from "../src/services/identity/accounts/terms.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import { deleteAccount } from "../src/services/identity/accounts/deletion.js";
-import { deleteProduct } from "../src/admin/repo.js";
-import type { Env } from "../src/env.js";
+import { deleteProduct } from "../src/core/console/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 
 afterEach(() => {

@@ -1,6 +1,6 @@
 /**
  * P6-03 — update outcome events on `POST /<p>/devices/report` (`updates`) and their counters
- * (`core/updateHealth.ts`, `src/updateHealthDo.ts`).
+ * (`core/updateHealth.ts`, `src/core/updateHealthDo.ts`).
  *
  * Pinned here: the allowlist keeps valid events and drops malformed ones and unknown events;
  * the same report retried counts nothing twice; the 16 KiB cap still holds; counting fails open;
@@ -26,7 +26,7 @@ import { handleRegister } from "../src/core/register.js";
 import { handleReport } from "../src/core/devices.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import {
   boundedUpdates,
   countsFor,
@@ -44,8 +44,8 @@ import {
   SWEEP_RESUME_MS,
   UNKNOWN,
   RETENTION_SECONDS,
-} from "../src/updateHealthDo.js";
-import type { Env } from "../src/env.js";
+} from "../src/core/updateHealthDo.js";
+import type { Env } from "../src/platform/env.js";
 import type { ServiceHooks } from "../src/core/hooks.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 

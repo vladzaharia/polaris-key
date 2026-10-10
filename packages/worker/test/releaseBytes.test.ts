@@ -14,14 +14,14 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { R2Mock, asR2 } from "./r2Mock.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   BLOB_CSP,
   blobKey,
   putVerified,
   recordObject,
   recordRef,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import {
   stmtSetArtifactModel,
   stmtUpsertBuild,

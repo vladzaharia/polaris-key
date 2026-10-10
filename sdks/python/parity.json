@@ -51,6 +51,10 @@
       "status": "implemented",
       "note": "polaris_key.copy serves copy_generated.py (from copy.en.json): message()/title() read the error-code, then gate, then activation table; activation_message()/activation_title() and describe_error() read typed activation results from the activation table only; unknown codes read COPY_FALLBACK naming the code; {name} placeholders fill or drop; register_locale('en', ...) is the host override layer. The hand-kept EN table is gone. tests/test_copy.py checks every table against copy.en.json."
     },
+    "core.backend": {
+      "status": "planned",
+      "wp": "SP-58"
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -345,6 +349,10 @@
       "status": "implemented",
       "note": "The terminal kit (polaris_key.ui.terminal, UK-13): every verb of the argparse, click and typer front ends drawn to UI-KITS §1.4 Terminal, with --json on every verb, over polaris_key.ui.core's headless models. Proofs: tests/cli/test_golden.py (golden ANSI in every variant and SVG for 70 component states in both themes), tests/cli/test_lint.py (catalog strings, 80/60 columns, piped output, RTL-safe source), tests/cli/test_flows.py (interactive flows with scripted keys, and rich's bytes against the kit's), tests/cli/test_responsive.py (the resolution matrix in pyte with soft-wrap marks and reflow: 40/60/80/120 columns at 12 and 24 rows with long values, de and ja at 40 and 60, and an 80 to 50 resize mid-flow by SIGWINCH; no line wider than the terminal, no URL or code cut, the code, URL and keys in view) and tests/cli/test_textual.py. The ui.gate … ui.i18n rows are UK-02b's and do not exist yet."
     },
+    "ui.cli.mount": {
+      "status": "planned",
+      "wp": "UK-48"
+    },
     "ui.gate": {
       "status": "planned",
       "wp": "UK-12",
@@ -414,6 +422,22 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-22"
+    },
+    "server.license": {
+      "status": "planned",
+      "wp": "SP-56"
+    },
+    "server.signin": {
+      "status": "planned",
+      "wp": "SP-56"
+    },
+    "server.config": {
+      "status": "planned",
+      "wp": "SP-63"
+    },
+    "server.webhooks": {
+      "status": "planned",
+      "wp": "SP-67"
     }
   }
 }

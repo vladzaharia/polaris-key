@@ -51,17 +51,17 @@ import {
   type Obj,
 } from "./packFixture.js";
 import type { Db, DbParam } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { manifestIngestStatements } from "../src/services/distribution/outlets.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { hashKey } from "../src/crypto.js";
+import { hashKey } from "../src/platform/crypto.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
-import { deltaKey, recordObject, recordRef } from "../src/core/blobs.js";
+import { deltaKey, recordObject, recordRef } from "../src/core/assets/blobs.js";
 import { recordReady } from "../src/services/release/packs/deltas/store.js";
 import { dczHeader } from "../src/services/distribution/dictionary.js";
 import {

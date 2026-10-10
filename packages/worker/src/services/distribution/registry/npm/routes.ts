@@ -28,14 +28,14 @@
  */
 
 import type { ReleaseCatalog } from "../../../../core/hooks.js";
-import { blobKey } from "../../../../core/blobs.js";
-import { registryOrigin } from "../../../../core/registryHostname.js";
+import { blobKey } from "../../../../core/assets/blobs.js";
+import { registryOrigin } from "../../../../core/registry/registryHostname.js";
 import {
   registryNotFound,
   type RegistryRoute,
   type RegistryRouteContext,
   type RegistryRouteMatch,
-} from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
 import { registryCacheHeaders } from "../cache.js";
 import {
   catalogPackageSource,

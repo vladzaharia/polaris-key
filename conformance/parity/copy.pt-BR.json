@@ -632,6 +632,22 @@
     "marker-rejected": {
       "title": "Problema na build do app",
       "message": "O conteúdo integrado desta build não é válido. Reinstale o app ou contate o desenvolvedor."
+    },
+    "license_required": {
+      "title": "Licença necessária",
+      "message": "Ative o app e tente novamente."
+    },
+    "license_invalid": {
+      "title": "Licença não aceita",
+      "message": "Não foi possível verificar sua licença. Reconecte o app e tente novamente."
+    },
+    "license_stale": {
+      "title": "A licença precisa ser atualizada",
+      "message": "Conecte-se à internet para que o app possa atualizar sua licença e tente novamente."
+    },
+    "sign_in_required": {
+      "title": "É preciso entrar",
+      "message": "Entre na sua conta do Polaris Key no app e tente novamente."
     }
   },
   "gate": {

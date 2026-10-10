@@ -13,7 +13,7 @@
  */
 
 import type { Db, DbParam, DbStatement } from "../../db/types.js";
-import { STORES } from "../storeGrants.js";
+import { STORES } from "./storeGrants.js";
 import {
   GRANT_CONTRIBUTING_STATES,
   grantEventMoves,
@@ -209,7 +209,7 @@ export async function transitionLicense(
 
 /**
  * Store-sourced grants are left out of every transition here. Until LX-11 retires the dual-write,
- * a store grant's state is the projection of `license_store_grants` (`core/grants.ts`
+ * a store grant's state is the projection of `license_store_grants` (`core/licensing/grants.ts`
  * `storeGrantProjection`): a transition written here would be overwritten by that purchase's next
  * projection and reported as drift. Their refunds and revocations arrive through `applyStoreGrant`.
  */

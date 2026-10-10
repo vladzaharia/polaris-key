@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 
 // Atomic fixed-window rate limiter. One Durable Object instance per product, or per shard of
 // a sharded limiter (see SHARDING below); the DO serializes requests and its storage input-gate makes

@@ -48,6 +48,67 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Run by the lead in a short window (tracks.md rule 2); every package that touches the moved files depends on it, so no branch is in flight across the codemod.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections (verified against the code, 2026-10-10)
+
+- **`merge.ts` goes to `core/licensing/`, not `platform/`.** It type-imports `ManagedPayload` from
+  `core/payload.ts` and its only caller is `core/licensing/payload.ts`: it is payload logic, and in
+  `platform/` it would import upward.
+- **`securityHeaders.ts` and `fingerprint.ts` go to `core/`, not `platform/`.** P0-15 made
+  `platform/` a leaf with no package imports (`test/platformPrimitives.test.ts`).
+  `fingerprint.ts` imports `@polaris-key/protocol`, and `securityHeaders.ts` hashes the brand
+  page style from `core/brandHtml.ts`, which imports `@polaris-key/brand`. Both therefore move to
+  `core/`, as does `adminCsp.ts`, which only `securityHeaders.ts` reads. `core/fingerprint.ts`
+  is now the real module where the shim used to be.
+- **`repo.ts` moves to `core/repo.ts`, `admin/repo.ts` to `core/console/repo.ts`.** Deleting
+  `core/data.ts`, `core/ingest.ts` and `core/adminApi.ts` means services import these queries
+  directly, so they must sit in a layer a service may import. Splitting them into owner stores
+  stays with P0-18.
+- **"AdminSession into core" is `core/console/`.** The session (and the revocation check it calls),
+  the audit writer, the response envelope, the console's queries, `deviceShape`, `overrides`,
+  `writeChecks`, `redact` and `deviceAdmin` are what services' admin handlers share with the
+  console; they live in `core/console/`. `managedSecrets.ts` is Config sealing used by Core's
+  payload code, so it is `core/managedSecrets.ts`.
+- **The Core admin handlers.** `core/bundles.ts` and `core/servicesAdmin.ts` move to
+  `console/handlers/`. `blobGc.ts`'s admin endpoints stay in `core/assets/blobGc.ts`: after the
+  move they import only `core/console/respond.ts`, which is legal, and splitting the file is not
+  a move.
+- **`updateHealthDo.ts` moves to `core/`.** `core/updateHealth.ts` imports its constants at
+  runtime, so the Durable Object sits beside its client.
+- **`core/cors.ts` took `Route` from `router.ts`** (type-only). It now takes a structural
+  `CorsRoute`, so Core never imports the composition root.
+- **The shape split.** The licence summary is `core/licensing/summary.ts` and the catalog loader is
+  `core/activeCatalog.ts`; `productView` and the secrets inventory stay in
+  `console/lib/shape.ts` (JSON helpers were already in `platform/json.ts` after P0-15).
+- **`core/registry.ts` keeps its name** (the service registry, 57 importers); the package-registry
+  modules move into the folder `core/registry/` beside it, file names unchanged.
+- **`public.ts` vs P0-19's `api.ts`.** `services/<slug>/public.ts` exists for config,
+  distribution, identity and release (the services the console reads) and holds exactly what the
+  console imports. P0-19's façades should grow these files (or rename them) rather than add a
+  second barrel.
+- **The `pkeyci_` mock seam.** `core/ciTokens.ts` existed so the CI-route suites could mock the
+  lookup; they now mock `lookupCiToken` on `core/publisher.ts` with `importOriginal`.
+- Migration comments that name a moved file are left as they are (migrations are not edited).
+
+### Path map
+
+Every file keeps its basename. `admin/**` not listed below becomes `console/**`.
+
+| Was (`packages/worker/src/`)                                                                                                                                                                                                        | Now                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `env`, `crypto`, `kv`, `keyvault`, `http`, `platformOidc`                                                                                                                                                                           | `platform/`                                              |
+| `repo`, `updateHealthDo`, `securityHeaders`, `fingerprint`, `adminCsp`, `admin/lib/managedSecrets` (`core/brandHtml` stays)                                                                                                         | `core/`                                                  |
+| `admin/{session,sessionRevocation,audit,repo}`, `admin/lib/{respond,deviceShape,overrides,writeChecks,redact}`, `core/deviceAdmin`                                                                                                  | `core/console/`                                          |
+| `merge`, `core/{authz,entitlements,entitledAccess,entitlementEvents,grants,graceClamp,keyEntries,licenseDelete,licenseHolders,licenseMerge,licensingCatchUp,payload,refusals,reservedNames,storeGrants,anchor,gate,manageUrl}`      | `core/licensing/`                                        |
+| `core/{accountCookies,accountOverrides,accountSubjects,subjectHooks,identityGate,identityTrust,browserRequestGuard,reservedDisplayNames,syncAccess}`                                                                                | `core/accounts/`                                         |
+| `core/{emailDelivery,emailDns,emailLimits,emailSender}`                                                                                                                                                                             | `core/notify/`                                           |
+| `core/{trust,trustSigners,deviceTrust,attestation,appAttest,playIntegrity,x509,cbor}`                                                                                                                                               | `core/trust/`                                            |
+| `core/{blobs,blobGc,hostedAssets,hostedAssetPulls,hostedAssetUploads,hostedImages,assetHosting,assetQuota,assetSettings,sniff,deltaDemand,imgHost,imgHostname,bytesHost,bytesHostname,bytesLanding}`                                | `core/assets/`                                           |
+| `core/registry{Credential,Host,Hostname,Landing,Publish,Queue,Tokens,Vocabulary}`                                                                                                                                                   | `core/registry/`                                         |
+| `core/{operations,platformOps,deployIdentity,platformEvents,securityEvents,settingsBackfill,overrideMigration}`                                                                                                                     | `core/ops/`                                              |
+| `core/{bundles,servicesAdmin}`                                                                                                                                                                                                      | `console/handlers/`                                      |
+| `admin/**` (the rest)                                                                                                                                                                                                               | `console/**`                                             |
+| the 13 shims (`core/{platform,data,adminApi,ingest,fingerprint,ciTokens}`, `services/license/{authz,auth,entitlements,gate}`, `services/release/manifest`, `services/identity/portal/headers`, `services/distribution/page/detect`) | deleted (`core/fingerprint.ts` is now the module itself) |
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -55,9 +116,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Transitive boundary test is blocking (P0-48 seeded it report-only)
-- [ ] No re-export shim remains
-- [ ] Gate green with no behaviour change
+- [x] Transitive boundary test is blocking (P0-48 seeded it report-only)
+- [x] No re-export shim remains
+- [x] Gate green with no behaviour change
 
 ## Verify
 

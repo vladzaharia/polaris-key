@@ -86,8 +86,9 @@ distribution channel; `outlet` in code), **kind**, **customer portal**.
 4. **Every capability has a home.** The admin API offers about 40 routes the console never calls
    (inventory §0.3). The redesign gives each one a page, or deliberately defers it.
 5. **Brand-true.** Per-service accents follow the kit, dark-first with system follow. Gold means
-   signed, and nothing else. The Star Cut identifies the delivery services. The section bit sits in
-   the header, in service sections only; core pages show the K without a bit.
+   signed, and nothing else. The Star Cut is the Polaris Key Delivery mark (bytes host, lockups), never
+   a service icon. The section bit sits in the header, in service sections only; core pages show
+   the K without a bit. The primary action is neutral ink; accents mark context (§2.4).
 6. **Accessible by construction.**
    - WCAG 2.2 AA.
    - Keyboard-complete, including the two matrices.
@@ -146,27 +147,26 @@ fixes:**
 - **Marks:** `PolarisMark` (Pinned K and Star Cut, optical cuts by displayed size),
   `PolarisLockup`, `PoweredByBadge`. `SERVICE_MARK` maps distribution and update to the Star Cut. Service icons (`<ServiceIcon>`) are not marks (BRAND §1.1). The primary action role is `action-neutral` (BRAND §4.7).
 
-**What ADMIN needs from the brand package.** If BRAND.md lands these under other names, a one-file
-alias layer in admin absorbs the difference:
+**What the console takes from the brand package.**
 
-| Need                       | Form                                                                                                                                                                                                                  | Used by                         |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| A Tailwind v4 theme export | `@import "@polaris-key/brand/tailwind.css"`, an `@theme` block mapping the semantic tokens to utilities (`bg-surface-raised`, `text-muted`, `border-subtle`, `bg-accent-solid`, `text-accent-fg`, `bg-signed-solid`…) | every component                 |
-| Section scoping            | A `[data-service="<ServiceId>"]` selector that re-points the `accent.*` custom properties to that section's family, with `core` as the default                                                                        | shell, buttons, nav, focus ring |
-| Theme selector             | `:root[data-theme="dark" \| "light"]`, plus a pre-paint snippet that resolves `system`                                                                                                                                | both SPAs                       |
-| `SectionMark`              | `<SectionMark section={ServiceId} size={28} />`: the Pinned K whose terminal bit is `signed.mark` for `core` and the section's `accent.solid` otherwise, star unchanged                                               | `BrandBlock` (top bar)          |
-| `ServiceGlyph`             | `<ServiceGlyph id size={16 \| 24} />`: the Star Cut service and favicon cuts for distribution; lucide icons for the rest (Update: `CircleArrowUp`)                                                                    | sidebar, badges, empty states   |
-| `SignedGlyph`              | the terminal-bit rhombus as a 10–12 px UI glyph in `signed.solid`                                                                                                                                                     | `SignedBadge`                   |
-| Fonts                      | `@polaris-key/brand/fonts.css` (variable Rubik and JetBrains Mono, latin and latin-ext WOFF2), self-hosted through Vite                                                                                               | both SPAs                       |
-| Favicons and PWA           | the kit's `04-web/key` set for `/manage` and `/`                                                                                                                                                                      | `index.html`, `manage.html`     |
+| Need                       | Form                                                                                                                                                                                                                               | Used by                        |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| A Tailwind v4 theme export | `@import "@polaris-key/brand/tailwind.css"`, an `@theme` block mapping the semantic tokens to utilities (`bg-surface-raised`, `text-muted`, `border-subtle`, `bg-accent-solid`, `text-accent-fg`, `bg-action`, `ring-state-ring`…) | every component                |
+| Section scoping            | `[data-service="<ServiceId>"]` re-points the `accent.*` and `state-*` custom properties to that service's family, with `core` as the default; `commerce` repeats Distribution's rule                                               | shell, nav, focus ring, states |
+| Theme selector             | `:root[data-theme="dark" \| "light"]`, plus a pre-paint snippet that resolves `system`                                                                                                                                             | both SPAs                      |
+| `PolarisMark`              | `<PolarisMark bit="section" size={48} />`: the Pinned K whose terminal bit takes the nearest service's accent and is absent on core, star unchanged; `<PolarisLockup>` and the trimmed header lockup                               | `BrandBlock` (top bar)         |
+| `ServiceGlyph`             | `<ServiceGlyph id size={16 \| 24} />` renders the brand `<ServiceIcon>` set (BRAND §1.1), never a recoloured mark                                                                                                                  | sidebar, badges, empty states  |
+| `SignedGlyph`              | the terminal-bit rhombus as a 10–12 px UI glyph in `signed.solid`                                                                                                                                                                  | `SignedBadge`                  |
+| Action role                | `bg-action text-action-on` with hover, pressed and disabled states (BRAND §4.7): the one filled primary                                                                                                                            | `Button`                       |
+| Fonts                      | `@polaris-key/brand/fonts.css` (variable Rubik and JetBrains Mono, latin and latin-ext WOFF2), self-hosted through Vite                                                                                                            | both SPAs                      |
+| Favicons and PWA           | the `web/key/` set for `/manage` and `/`                                                                                                                                                                                           | `index.html`, `manage.html`    |
 
-**Mapping from today's tokens.** `styles.css` `--pk-*` HSL channels and the
-`[data-service=key|id|…]` placeholder palette (SH-18) are deleted in chunk 1.
+**Service accents.** `tools/services.json`'s `console.accent` values are the brand `ServiceId`s
+(`license`, `identity`, …), regenerated by `pnpm gen services`. The console still reads the
+`distribution` and `update` accents from that table for the Ship builds pages; mapping them to
+Release cyan, and so dropping the Update tangerine from the console, is ST-48's (B5, §2.4).
 
-`tools/services.json`'s `console.accent` values (`key`, `id`, …) become the brand `ServiceId`s
-(`license`, `identity`, …). This is a service-table change, so it must be regenerated with
-`pnpm gen services` and pass `pnpm gen services --check`. Alternatively, `console.accent` is
-dropped in favor of the brand's `SERVICE_FAMILY`; that is the brand lead's call, and either works.
+---
 
 ### 0.4 Stack decisions
 
@@ -272,18 +272,14 @@ Navigation has two tiers.
 A section's label is its service label. The glossary rule that "the slug is the console section
 name" holds.
 
-The sidebar shows **platform links** (Home, Products) and the **Platform section** when no product
-is in scope. It fixes SH-10: Home and Products no longer draw a product's sections.
-
-**The Platform section** (owner decision, notes/S-13 §11 item 3, 2026-10-04) is a sidebar group of
-instance-wide pages that belong to no product: Settings, Deployment, Operations, Store connections
-and Package feeds. It follows the product sections' rules: its header has no icon, every item has
-one, only the active group is open (a collapsed group can be peeked into), it takes the `core`
-accent and no section bit. It is shown **only off a product** (Home, Products and the Platform pages
-themselves), after the platform links. Inside a product it is hidden (owner, 2026-10-04: beside a
-product's own sections it read as part of the product), and stays one step away: the product
-switcher's **Platform** entry (beside "All products"), the account menu's version chip (→
-Deployment) and `⌘K`. `#/platform` is not a page: it redirects to Settings.
+Off a product the sidebar is the **Platform context** (owner decision, notes/S-13 §11 item 3,
+2026-10-04; contexts ST-45): a context header, then Home · Members · Connections · Settings ·
+Packages · Status · Activity, with no product sections. It takes the `core` accent and no section
+bit; every item has an icon, and Home and the Platform pages no longer draw a product's sections
+(SH-10). Inside a product it is hidden (beside a product's own sections it read as part of the
+product) and stays one step away: the product switcher's **Platform** entry (beside "All
+products"), the account menu's version chip (→ Status) and `⌘K`. `#/platform` is not a page: it
+opens Platform › Settings. The pages and their old ids are the route ledger (§2.8).
 
 ### 2.2 Global elements
 
@@ -304,42 +300,42 @@ Deployment) and `⌘K`. `#/platform` is not a page: it redirects to Settings.
 Each section's pages are listed in nav order. **Bold** marks pages that are new or substantially
 re-scoped. A page is shown only when its section is shown, plus the conditions listed.
 
-| Section (accent)                   | Page                   | URL (`#/p/:slug/…`)                                                                      | Template                 | Replaces / notes                                                                                                                                                                                                                                                                                           |
-| ---------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Core** (violet, gold bit)        | Overview               | `` (root)                                                                                | T1 overview              | ProductOverview, rebuilt as the operational overview (§6.2)                                                                                                                                                                                                                                                |
-|                                    | Services               | `services`                                                                               | T4 settings              | Services, plus the **dependency graph** (Release → Distribution → Update) that replaces Distribution's ChainCard                                                                                                                                                                                           |
-|                                    | Devices                | `devices`, `devices/:deviceId` (drawer)                                                  | T2 collection            | Devices; drawer routed                                                                                                                                                                                                                                                                                     |
-|                                    | Users                  | `users`, `users/:subject/[overview\|licenses\|devices\|activity\|data]`                  | T2, T3                   | New (I-12): every product, keyed by pairwise subject; sign-in history with Identity on; `data` only with Cloud Sync on                                                                                                                                                                                     |
-|                                    | Presentation           | `presentation`                                                                           | T4 settings (sections)   | New (HA-06): every image Polaris Key hosts for the product (icon, listing art, store slots), with source, status, size and an image-host preview; Upload or Replace claims a slot, Revert to manifest, Delete copy                                                                                         |
-|                                    | **Keys & secrets**     | `keys`                                                                                   | T4 settings (sections)   | Secrets, Settings → Signing key, Products → Prepare signing key. Holds signing keys (gold), product secrets and **CI publishing** (trusted publisher and CI tokens, an API with no UI today). Edge mint moves to Config; outlet credentials move to Distribution.                                          |
-|                                    | Activity               | `activity`                                                                               | T2 collection (timeline) | Activity, with filters and target links                                                                                                                                                                                                                                                                    |
-|                                    | Settings               | `settings`                                                                               | T4 settings              | Settings: General, License defaults (when License is on), **Repository** (link state, last sync, Resync from repo), **Storage** (blob GC dry run, API with no UI today), Danger zone                                                                                                                       |
-| **License** (chartreuse)           | Licenses               | `license/licenses`, `license/licenses/:id/[overview\|keys\|devices\|config\|history]`    | T2, T3                   | Licenses, LicenseDetail; tabs in the URL                                                                                                                                                                                                                                                                   |
-|                                    | Tiers                  | `license/tiers`, `license/tiers/:id`                                                     | T2, T3                   | Tiers, with a **detail page** (used-by, policy) instead of dialogs                                                                                                                                                                                                                                         |
-|                                    | Enrollment             | `license/enrollment`                                                                     | T4                       | "Enrollment & fingerprints" → **Enrollment** (registration policy read-out with a link to Services, fingerprint policy, probes)                                                                                                                                                                            |
-| **Config** (yellow)                | Catalog                | `config/catalog`, `config/catalog/edit`                                                  | T2 (read), T7 editor     | Catalog + PublishDialog; structured editor, diff, review (§6.6)                                                                                                                                                                                                                                            |
-|                                    | Profiles               | `config/profiles`, `config/profiles/:id/[payload\|used-by\|history]`                     | T2, T3 + T7              | Profiles, ProfileDetail                                                                                                                                                                                                                                                                                    |
-|                                    | **Edge mint**          | `config/edge-mint`                                                                       | T2 collection            | EdgeMintRecipes, moved from Secrets; always visible, with a first-run state (EMR-1)                                                                                                                                                                                                                        |
-| **Release** (cyan)                 | Releases               | `release/releases`, `release/releases/:releaseId/[builds\|packs\|channels\|history]`     | T2, T3                   | Releases store table; **release detail page** (new)                                                                                                                                                                                                                                                        |
-|                                    | **Channels**           | `release/channels?deliverable=app`                                                       | T5 visualization         | ChannelsPanel, promoted to a page; all deliverables (CHN-1)                                                                                                                                                                                                                                                |
-|                                    | Deliverables           | `release/deliverables`, `release/deliverables/:id/[releases\|channels\|delivery\|files]` | T2, T3                   | Deliverables, DeliverableDetail                                                                                                                                                                                                                                                                            |
-|                                    | Compatibility          | `release/compatibility`, `release/compatibility/simulator`                               | T5 + T6                  | Compatibility split into Matrix and Simulator sub-pages                                                                                                                                                                                                                                                    |
-|                                    | **Content keys**       | `release/content-keys`                                                                   | T2                       | ContentKeys, moved off Deliverables (DLV-5)                                                                                                                                                                                                                                                                |
-| **Distribution** (green, Star Cut) | **Matrix**             | `distribution/matrix?deliverable=app`                                                    | T5                       | Matrix; default page of the section                                                                                                                                                                                                                                                                        |
-|                                    | **Rollouts**           | `distribution/rollouts`                                                                  | T2                       | Distribution overview's rollouts table, now live with controls                                                                                                                                                                                                                                             |
-|                                    | **Outlets & feeds**    | `distribution/outlets`                                                                   | T2 + T3 drawer           | New. Outlets and capabilities (API with no UI today), storefront feed URLs, distribution keys                                                                                                                                                                                                              |
-|                                    | **Storefronts**        | `distribution/storefronts?flow=add&step=&stores=`                                        | T2 tiles + T6            | A-18j. One tile per storefront adapter, capabilities rendered from its declaration; **Add to storefronts** (T6) provisions the product onto any of them, resumable from the ledger (notes/S-15 §8.1)                                                                                                       |
-|                                    | **Polaris Key**        | `distribution/storefronts/polaris-key`                                                   | T4                       | PS-06. The built-in storefront's own page: readiness, Listing (Automatic / Listed / Not listed), Audience (typed widening), Ways to add (absent when not configured), Group labels, "Who can see this?" with a persona preview, the 28-day analytics card (notes/S-21 §6.6; SETUP.md §2.10's Discover tab) |
-|                                    | **Listing**            | `distribution/listing?tab=&locale=&release=`                                             | T3 (tabs)                | A-18j. The shared listing model: text per locale, fit report with overrides, slot board, release notes, "Push listing" per store (notes/S-15 §8.2)                                                                                                                                                         |
-|                                    | **App Store**          | `distribution/app-store?step=&build=&version=`                                           | T6 + aside               | A-17g. The App Store Distribute flow (notes/S-14 §8.2) beside App Store Connect's versions and review submissions                                                                                                                                                                                          |
-|                                    | **Commerce**           | `distribution/commerce`                                                                  | T2                       | A-17g. App Store products: the `app-store` commerce mappings beside Apple's In-App Purchases (S-14 §8.3)                                                                                                                                                                                                   |
-|                                    | **Access**             | `distribution/access`                                                                    | T4                       | Delivery access moved from UpdateSettings, incl. **per-pack** gates (UPS-5, DLV-3)                                                                                                                                                                                                                         |
-|                                    | Health                 | `distribution/health`                                                                    | T1-style dashboard       | Update health, with funnel charts and a window selector                                                                                                                                                                                                                                                    |
-|                                    | **Outlet credentials** | `distribution/credentials`                                                               | T2 + drawer              | OutletCredentials, moved from Secrets; store connectors status                                                                                                                                                                                                                                             |
-| **Update** (tangerine, Star Cut)   | **Feed**               | `update/feed`                                                                            | T4                       | UpdateSettings minus delivery access: metadata access, compat window, artifact policy, feed **endpoints**                                                                                                                                                                                                  |
-| **Identity** (orchid)              | **Portal**             | `identity/portal`                                                                        | T4                       | Portal module toggles with dependencies, branding read-out                                                                                                                                                                                                                                                 |
-|                                    | **Sign-in**            | `identity/sign-in`                                                                       | T3 read-only             | The OIDC card, now showing the provider, issuer and client (data already returned by `config/mint` → `identity`) and the manifest pointer                                                                                                                                                                  |
-| **Cloud Sync** (teal)              | **Data**               | `sync/data`                                                                              | T3 read-only             | U-04. What the catalog declares: user settings, collections, saves, migrations, and the platform ceilings; the sign-in-only callout                                                                                                                                                                        |
+| Section (accent)                | Page                   | URL (`#/p/:slug/…`)                                                                      | Template                 | Replaces / notes                                                                                                                                                                                                                                                                                           |
+| ------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Core** (violet, no bit)       | Overview               | `` (root)                                                                                | T1 overview              | ProductOverview, rebuilt as the operational overview (§6.2)                                                                                                                                                                                                                                                |
+|                                 | Services               | `services`                                                                               | T4 settings              | Services, plus the **dependency graph** (Release → Distribution → Update) that replaces Distribution's ChainCard                                                                                                                                                                                           |
+|                                 | Devices                | `devices`, `devices/:deviceId` (drawer)                                                  | T2 collection            | Devices; drawer routed                                                                                                                                                                                                                                                                                     |
+|                                 | Users                  | `users`, `users/:subject/[overview\|licenses\|devices\|activity\|data]`                  | T2, T3                   | New (I-12): every product, keyed by pairwise subject; sign-in history with Identity on; `data` only with Cloud Sync on                                                                                                                                                                                     |
+|                                 | Presentation           | `presentation`                                                                           | T4 settings (sections)   | New (HA-06): every image Polaris Key hosts for the product (icon, listing art, store slots), with source, status, size and an image-host preview; Upload or Replace claims a slot, Revert to manifest, Delete copy                                                                                         |
+|                                 | **Keys & secrets**     | `keys`                                                                                   | T4 settings (sections)   | Secrets, Settings → Signing key, Products → Prepare signing key. Holds signing keys (gold), product secrets and **CI publishing** (trusted publisher and CI tokens, an API with no UI today). Edge mint moves to Config; outlet credentials move to Distribution.                                          |
+|                                 | Activity               | `activity`                                                                               | T2 collection (timeline) | Activity, with filters and target links                                                                                                                                                                                                                                                                    |
+|                                 | Settings               | `settings`                                                                               | T4 settings              | Settings: General, License defaults (when License is on), **Repository** (link state, last sync, Resync from repo), **Storage** (blob GC dry run, API with no UI today), Danger zone                                                                                                                       |
+| **License** (chartreuse)        | Licenses               | `license/licenses`, `license/licenses/:id/[overview\|keys\|devices\|config\|history]`    | T2, T3                   | Licenses, LicenseDetail; tabs in the URL                                                                                                                                                                                                                                                                   |
+|                                 | Tiers                  | `license/tiers`, `license/tiers/:id`                                                     | T2, T3                   | Tiers, with a **detail page** (used-by, policy) instead of dialogs                                                                                                                                                                                                                                         |
+|                                 | Enrollment             | `license/enrollment`                                                                     | T4                       | "Enrollment & fingerprints" → **Enrollment** (registration policy read-out with a link to Services, fingerprint policy, probes)                                                                                                                                                                            |
+| **Config** (yellow)             | Catalog                | `config/catalog`, `config/catalog/edit`                                                  | T2 (read), T7 editor     | Catalog + PublishDialog; structured editor, diff, review (§6.6)                                                                                                                                                                                                                                            |
+|                                 | Profiles               | `config/profiles`, `config/profiles/:id/[payload\|used-by\|history]`                     | T2, T3 + T7              | Profiles, ProfileDetail                                                                                                                                                                                                                                                                                    |
+|                                 | **Edge mint**          | `config/edge-mint`                                                                       | T2 collection            | EdgeMintRecipes, moved from Secrets; always visible, with a first-run state (EMR-1)                                                                                                                                                                                                                        |
+| **Release** (cyan, Ship builds) | Releases               | `release/releases`, `release/releases/:releaseId/[builds\|packs\|channels\|history]`     | T2, T3                   | Releases store table; **release detail page** (new)                                                                                                                                                                                                                                                        |
+|                                 | **Channels**           | `release/channels?deliverable=app`                                                       | T5 visualization         | ChannelsPanel, promoted to a page; all deliverables (CHN-1)                                                                                                                                                                                                                                                |
+|                                 | Deliverables           | `release/deliverables`, `release/deliverables/:id/[releases\|channels\|delivery\|files]` | T2, T3                   | Deliverables, DeliverableDetail                                                                                                                                                                                                                                                                            |
+|                                 | Compatibility          | `release/compatibility`, `release/compatibility/simulator`                               | T5 + T6                  | Compatibility split into Matrix and Simulator sub-pages                                                                                                                                                                                                                                                    |
+|                                 | **Content keys**       | `release/content-keys`                                                                   | T2                       | ContentKeys, moved off Deliverables (DLV-5)                                                                                                                                                                                                                                                                |
+| **Distribution** (Ship builds)  | **Matrix**             | `distribution/matrix?deliverable=app`                                                    | T5                       | Matrix; default page of the section                                                                                                                                                                                                                                                                        |
+|                                 | **Rollouts**           | `distribution/rollouts`                                                                  | T2                       | Distribution overview's rollouts table, now live with controls                                                                                                                                                                                                                                             |
+|                                 | **Outlets & feeds**    | `distribution/outlets`                                                                   | T2 + T3 drawer           | New. Outlets and capabilities (API with no UI today), storefront feed URLs, distribution keys                                                                                                                                                                                                              |
+|                                 | **Storefronts**        | `distribution/storefronts?flow=add&step=&stores=`                                        | T2 tiles + T6            | A-18j. One tile per storefront adapter, capabilities rendered from its declaration; **Add to storefronts** (T6) provisions the product onto any of them, resumable from the ledger (notes/S-15 §8.1)                                                                                                       |
+|                                 | **Polaris Key**        | `distribution/storefronts/polaris-key`                                                   | T4                       | PS-06. The built-in storefront's own page: readiness, Listing (Automatic / Listed / Not listed), Audience (typed widening), Ways to add (absent when not configured), Group labels, "Who can see this?" with a persona preview, the 28-day analytics card (notes/S-21 §6.6; SETUP.md §2.10's Discover tab) |
+|                                 | **Listing**            | `distribution/listing?tab=&locale=&release=`                                             | T3 (tabs)                | A-18j. The shared listing model: text per locale, fit report with overrides, slot board, release notes, "Push listing" per store (notes/S-15 §8.2)                                                                                                                                                         |
+|                                 | **App Store**          | `distribution/app-store?step=&build=&version=`                                           | T6 + aside               | A-17g. The App Store Distribute flow (notes/S-14 §8.2) beside App Store Connect's versions and review submissions                                                                                                                                                                                          |
+|                                 | **Commerce**           | `distribution/commerce`                                                                  | T2                       | A-17g. App Store products: the `app-store` commerce mappings beside Apple's In-App Purchases (S-14 §8.3)                                                                                                                                                                                                   |
+|                                 | **Access**             | `distribution/access`                                                                    | T4                       | Delivery access moved from UpdateSettings, incl. **per-pack** gates (UPS-5, DLV-3)                                                                                                                                                                                                                         |
+|                                 | Health                 | `distribution/health`                                                                    | T1-style dashboard       | Update health, with funnel charts and a window selector                                                                                                                                                                                                                                                    |
+|                                 | **Outlet credentials** | `distribution/credentials`                                                               | T2 + drawer              | OutletCredentials, moved from Secrets; store connectors status                                                                                                                                                                                                                                             |
+| **Update** (Ship builds)        | **Feed**               | `update/feed`                                                                            | T4                       | UpdateSettings minus delivery access: metadata access, compat window, artifact policy, feed **endpoints**                                                                                                                                                                                                  |
+| **Identity** (orchid)           | **Portal**             | `identity/portal`                                                                        | T4                       | Portal module toggles with dependencies, branding read-out                                                                                                                                                                                                                                                 |
+|                                 | **Sign-in**            | `identity/sign-in`                                                                       | T3 read-only             | The OIDC card, now showing the provider, issuer and client (data already returned by `config/mint` → `identity`) and the manifest pointer                                                                                                                                                                  |
+| **Cloud Sync** (teal)           | **Data**               | `sync/data`                                                                              | T3 read-only             | U-04. What the catalog declares: user settings, collections, saves, migrations, and the platform ceilings; the sign-in-only callout                                                                                                                                                                        |
 
 **Global pages**:
 
@@ -368,13 +364,10 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
   (PRF-8 is fixed by cross-links, not a move).
 - **Devices stay in Core.** The device is Core's principal and exists without License. License
   detail embeds the same `DeviceTable` scoped to that license.
-- **Update keeps its own section** although it has one page. The service table and glossary make
-  sections equal to services. Its pages sit directly under Distribution's in the sidebar. Since
-  2026-10-03 their accents differ (Distribution green, Update tangerine), and since 2026-10-04 the
-  Update glyph is lucide `CircleArrowUp` (owner feedback: a recognisable "update" icon; the Star
-  Cut alone made the two sections indistinguishable). `RefreshCw` stays the refresh/resync verb.
-  Superseded in the console chrome by B5 (2026-10-09): every Ship builds page, Updates included,
-  shows the Package glyph and Release cyan (§2.4); tangerine is marketing and docs only.
+- **Update stays a service and a page** (the service table and glossary make sections equal to
+  services), but in the console it is one of the Ship builds pages: the Package glyph and Release
+  cyan (§2.4, B5). `CircleArrowUp` is Update's service icon in navigation, diagrams and menus
+  (BRAND §1.1); `RefreshCw` stays the refresh and resync verb.
 
 ### 2.4 Accent and mark mapping
 
@@ -398,16 +391,20 @@ them. Glyphs follow the BRAND service icon set (§1.1).
   accent of the service the element references, `fg` for text and edges, `solid` for fills; a Config
   row in a mixed list is config yellow). The primary button is neutral action ink (B2). **Status
   colors never change by section and are never drawn in a service accent**: success is always success.
-- **Gold appears only for signed things** (`SignedBadge`, key displays, signature verified) and as
-  the K's bit on core pages.
-- **The Star Cut** appears on Distribution and Update group labels, their `service-off` empty
-  states, their `ServiceBadge`s, and the delivery cards on Home and Overview. It never indicates
-  live update status (kit rule): an "update available" or "rolling out" state is a `StatusPill`.
+- **Gold appears only for signed things** (`SignedBadge`, key displays, signature verified). The
+  K on core pages has no bit.
+- **Ship builds is one identity** (B5): the Package glyph and Release cyan chrome (rule, tile, nav
+  marker) on Releases, Release tracks, Rollouts, Channels, Packages, Updates and Health, crumb
+  "Ship builds › …". Distribution green stays on Commerce and Sales surfaces. Update tangerine and
+  Packs orange are marketing and docs only, with no `data-service`. A non-protocol area names its
+  `data-service` explicitly, never `undefined`.
+- **The Star Cut** is the Polaris Key Delivery mark: lockups, the bytes host and `service-off`
+  empty states of the delivery pages. It is not a service icon and never indicates live update
+  status (kit rule): an "update available" or "rolling out" state is a `StatusPill`.
 - **The section bit in the header** is a deliberate, owner-approved extension of the kit's gold
   rule. It shows only in service sections; on core pages the K has no bit (BRAND.md §6,
-  2026-10-03). The kit draws the bit only in the display cut (≥ 48 px). The header mark is 28 px.
-  Open question **Q1** asks the brand lead to draw a service-cut bit (recommended) or to accept a
-  48 px brand block.
+  2026-10-03). The kit draws the bit only in the display cut (≥ 48 px), so the header mark is 48 px
+  (`BrandBlock`).
 
 ### 2.5 URL scheme
 
@@ -1212,27 +1209,27 @@ reduced motion; `e2e/motion.e2e.test.ts` runs with it on (MO-03).
 
 The wireframes are low fidelity. Glyph legend:
 
-| Glyph       | Meaning                                                                                |
-| ----------- | -------------------------------------------------------------------------------------- |
-| `◆`         | gold / signed                                                                          |
-| `★`         | Star Cut                                                                               |
-| `●`         | success / live                                                                         |
-| `◐`         | in progress                                                                            |
-| `▲`         | warning                                                                                |
-| `✕`         | danger                                                                                 |
-| `○`         | neutral                                                                                |
-| `⧉`         | copy                                                                                   |
-| `⋯`         | menu                                                                                   |
-| `▾`         | select                                                                                 |
-| `◇ ◈ ▣ ★ ◉` | service glyphs: License, Config, Release, Distribution and Update (Star Cut), Identity |
-| `⊙`         | pinned                                                                                 |
-| `⊘`         | revoked                                                                                |
-| `◯`         | current set member                                                                     |
-| `⟳`         | rolling out                                                                            |
-| `✎`         | changed in the draft                                                                   |
-| `ⓘ`         | opens an explanatory popover                                                           |
-| `↗`         | external link                                                                          |
-| `☐` `☑`     | checkbox                                                                               |
+| Glyph     | Meaning                                                          |
+| --------- | ---------------------------------------------------------------- |
+| `◆`       | gold / signed                                                    |
+| `★`       | Star Cut (the Delivery mark)                                     |
+| `●`       | success / live                                                   |
+| `◐`       | in progress                                                      |
+| `▲`       | warning                                                          |
+| `✕`       | danger                                                           |
+| `○`       | neutral                                                          |
+| `⧉`       | copy                                                             |
+| `⋯`       | menu                                                             |
+| `▾`       | select                                                           |
+| `◇ ◈ ▣ ◉` | service glyphs: License, Config, Ship builds (Package), Identity |
+| `⊙`       | pinned                                                           |
+| `⊘`       | revoked                                                          |
+| `◯`       | current set member                                               |
+| `⟳`       | rolling out                                                      |
+| `✎`       | changed in the draft                                             |
+| `ⓘ`       | opens an explanatory popover                                     |
+| `↗`       | external link                                                    |
+| `☐` `☑`   | checkbox                                                         |
 
 ### 6.1 Console home
 
@@ -2789,10 +2786,7 @@ does not apply. Each addition still needs:
 ## 8. Open questions for the lead
 
 1. **Q1 · Section bit optical cut (closed).** The kit draws the K's terminal bit only in the display
-   cut (≥ 48 px), so the header mark is 48 px (BRAND §6); option (b) below was taken.
-   - **(a) Recommended:** the brand package draws a service-cut (24-unit grid) terminal bit, used
-     only by `SectionMark`.
-   - **(b)** The brand block grows to a 48 px display mark in a 64 px top bar.
+   cut (≥ 48 px), so the header mark is 48 px in a 64 px top bar (BRAND §6).
 2. **Q2 · Routing.**
    - **(a) Recommended:** keep hash routing with the new scheme and redirects. No Worker change.
    - **(b)** Path routing under `/manage/*` and `/`. Needs an asset fallback in `W/router.ts`, plus
@@ -2810,7 +2804,7 @@ does not apply. Each addition still needs:
 
 ## Lead decisions (2026-10-03)
 
-- **Q1 (section bit at header size):** pending the brand package's legibility proof (BRAND.md "the section bit"); chunk 2 implements whichever the brand contract specifies.
+- **Q1 (section bit at header size):** the header mark is 48 px (BRAND §6).
 - **Q2:** keep hash routing.
 - **Q3:** approved: TanStack Query/Table/Virtual, react-hook-form, cmdk, sonner, jsdiff, CodeMirror 6 (lazy), vitest-axe.
 - **Q4:** approved: A-1…A-7 land inside their area chunks; A-8…A-10 as the chunks need them.

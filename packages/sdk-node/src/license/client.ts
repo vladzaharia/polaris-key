@@ -180,7 +180,7 @@ export class LicenseClient {
   /**
    * The channels this license grants: the `channels` entitlement's string values, in order, as
    * granted — or `["stable"]` when the entitlement is absent or not an array. This is the
-   * Worker's own answer (`entitledChannels` in core/entitlements.ts), and the same list every
+   * Worker's own answer (`entitledChannels` in core/licensing/entitlements.ts), and the same list every
    * SDK returns for the same document.
    *
    * The grants are RAW: `staging` is not rewritten to `beta` here. Whether a grant covers a

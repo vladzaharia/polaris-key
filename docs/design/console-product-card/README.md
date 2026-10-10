@@ -294,7 +294,7 @@ GET /manage/api/summary                       platform-admin, like GET /products
 
 Each fact is one grouped query across all products, four in total however many products there are.
 A service that is off has no member. Where a service owns the table, the query goes through that
-service's descriptor hook (rule 6's spirit; `src/admin/` is outside the boundary test). Gates:
+service's descriptor hook (rule 6's spirit; `src/console/` is outside the boundary test). Gates:
 
 - rule 10: the OpenAPI entry plus the `routeCoverage` table;
 - a `qk.summary()` query, refetched with the products query.
@@ -397,7 +397,7 @@ mockup's: `shots/built-home-{desktop,phone}-{dark,light}.png` and
 
 - `GET /manage/api/products` carries `presentation.icon`: one statement reads every product's
   icon. It is the `presentation.icon` copy, else the `listing.icon` copy, as image-host URLs with
-  the 64 and 128 px variants (`admin/lib/presentation.ts`).
+  the 64 and 128 px variants (`console/lib/presentation.ts`).
 - The console shell's CSP adds exactly `IMG_ORIGIN` to `img-src` (`cspImageOrigin`).
 - The card is `ProductCard` in `console/pages/global/Home.tsx`, and the logo is
   `ui/ProductLogo.tsx`.
@@ -408,7 +408,7 @@ mockup's: `shots/built-home-{desktop,phone}-{dark,light}.png` and
 **Step 2: the facts.**
 
 - `GET /manage/api/summary` runs four grouped queries for every product
-  (`admin/lib/summary.ts`).
+  (`console/lib/summary.ts`).
 - The card shows each row's fact, with a skeleton while the read is in flight, and renders fully
   without it.
 

@@ -5262,6 +5262,46 @@ msgstr "App build problem"
 msgid "core.codes.marker-rejected.message"
 msgstr "This build's built-in content isn't valid. Reinstall the app or contact the developer."
 
+#. License needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.title"
+msgstr "License needed"
+
+#. Activate the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.message"
+msgstr "Activate the app, then try again."
+
+#. License not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.title"
+msgstr "License not accepted"
+
+#. Your license couldn't be verified. Reconnect the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.message"
+msgstr "Your license couldn't be verified. Reconnect the app, then try again."
+
+#. License needs refreshing
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.title"
+msgstr "License needs refreshing"
+
+#. Connect to the internet so the app can refresh your license, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.message"
+msgstr "Connect to the internet so the app can refresh your license, then try again."
+
+#. Sign-in needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.title"
+msgstr "Sign-in needed"
+
+#. Sign in to your Polaris Key account in the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.message"
+msgstr "Sign in to your Polaris Key account in the app, then try again."
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"

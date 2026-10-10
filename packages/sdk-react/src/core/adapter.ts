@@ -278,7 +278,7 @@ export function readEntitlementValue(
 
 /** The channels the licence grants, off a snapshot: the `channels` entitlement's string values
  *  in order, as granted, or `["stable"]` when it is absent or not an array. The Worker's own
- *  answer (`entitledChannels` in core/entitlements.ts) and every SDK's; raw grants, never
+ *  answer (`entitledChannels` in core/licensing/entitlements.ts) and every SDK's; raw grants, never
  *  alias-rewritten — whether a grant COVERS a channel is the entitlement rule's question. */
 export function readEntitledChannels(state: PolarisState): string[] {
   const value = state.entitlements["channels"];

@@ -586,7 +586,7 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -er .csrf) || echo "STOP: no CSRF 
    git fetch origin
    SHA=$(curl -fsS "$BASE/platform/version" -H "$COOKIE" | jq -er .gitSha) &&
    FIX=$(git log origin/main --reverse --format=%H -S'export interface LegacyKey' \
-           -- packages/worker/src/keyvault.ts | head -1) &&
+           -- packages/worker/src/platform/keyvault.ts | head -1) &&
    git merge-base --is-ancestor "$FIX" "$SHA" &&
    echo "OK: the live build has the legacy key" ||
    echo "STOP: the live build predates the legacy key, or its commit is unknown"
@@ -1291,8 +1291,8 @@ Every sign-in and account email leaves ONE shared sender, `noreply@auth.plrs.im`
 dedicated auth sending subdomain `auth.plrs.im`, so its reputation is every product's (S-16 §9
 risk 9). Platform mail is sent as `Polaris Key`; mail for sign-in started through a product as
 `<App> via Polaris Key`, where `<App>` is the product's display name after the reserved-name
-validator (`src/core/emailSender.ts`; a refused name falls back to the slug). Every send goes
-through `deliverEmail` (`src/core/emailDelivery.ts`): binding, sender, Apple private relay, the
+validator (`src/core/notify/emailSender.ts`; a refused name falls back to the slug). Every send goes
+through `deliverEmail` (`src/core/notify/emailDelivery.ts`): binding, sender, Apple private relay, the
 hashed suppression list, the per-product daily cap (passthrough mail only), then the send.
 Throttling, quota, an unverified sender and provider outages answer `email_unavailable`; the
 login card then offers another sign-in method.
@@ -1406,7 +1406,7 @@ in once afterwards. There is nothing to migrate.
 
 **A person locked out by the email limits** (10 wrong codes in an hour) gets no new code for 15
 minutes and sees nothing different; waiting is the fix. The limits are in
-`src/core/emailLimits.ts`.
+`src/core/notify/emailLimits.ts`.
 
 ### Publish Polaris Key's terms (I-33)
 
@@ -1710,7 +1710,7 @@ stays on the old objects until LX-09. Three things change underneath:
    until the deploy reads none of the new objects, so the window is safe.
 2. **The catch-up runs by itself after the deploy.** The deploy hook (`POST /webhooks/deploy`)
    runs one bounded pass, and the nightly maintenance (`licensingCatchUp`) runs one every night
-   until nothing is left (`src/core/licensingCatchUp.ts`). Each pass does two things:
+   until nothing is left (`src/core/licensing/licensingCatchUp.ts`). Each pass does two things:
    - it re-projects the store grants and mappings, which picks up what the old Worker wrote
      between the migration and the deploy;
    - it moves the provisioned keys of licences that have not signed in since. That is the job
@@ -1730,7 +1730,7 @@ stays on the old objects until LX-09. Three things change underneath:
 
 3. **Nothing else is needed.** There is no switch and no flag. Reads move in LX-09; LX-16 stops the
    dual-write and retires the old objects after a zero-drift report (`storeGrantDrift` in
-   `src/core/grants.ts`).
+   `src/core/licensing/grants.ts`).
 
 **Rolling back.** Store grants and mappings never left their old tables, so a Worker built before
 LX-08 keeps serving them. The provisioned keys **did** leave the overrides column. After rolling

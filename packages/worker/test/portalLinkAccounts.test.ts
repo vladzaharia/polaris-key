@@ -7,13 +7,16 @@
 import { describe, expect, it } from "vitest";
 import { NOW, seedProduct } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
-import { insertLicense } from "../src/repo.js";
-import { deleteProduct } from "../src/admin/repo.js";
+import { insertLicense } from "../src/core/repo.js";
+import { deleteProduct } from "../src/core/console/repo.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   LINK_FLOW_COOKIE,
-} from "../src/core/accountCookies.js";
-import { resolveSubject, subjectFor } from "../src/core/accountSubjects.js";
+} from "../src/core/accounts/accountCookies.js";
+import {
+  resolveSubject,
+  subjectFor,
+} from "../src/core/accounts/accountSubjects.js";
 import {
   ACCOUNT_COLUMNS,
   MERGE_UNDO_SECONDS,

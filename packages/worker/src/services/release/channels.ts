@@ -27,7 +27,10 @@ import {
   isIgnoreTag,
 } from "@polaris-key/manifest";
 import { CHANNEL_ALIASES, CHANNEL_BETA } from "@polaris-key/protocol";
-import { compareSemver, parseSemver } from "../../core/entitlements.js";
+import {
+  compareSemver,
+  parseSemver,
+} from "../../core/licensing/entitlements.js";
 import type { Release } from "./github.js";
 
 export type ChannelKind = "stable" | "beta" | "dev" | "pr" | "manual";

@@ -13,7 +13,7 @@
  * through retries into the DLQ).
  */
 
-import { parseKey } from "../../../../core/blobs.js";
+import { parseKey } from "../../../../core/assets/blobs.js";
 import { isDeliverableId } from "@polaris-key/manifest";
 
 export const PAIR_MESSAGE_TYPE = "lazy-delta-pair";

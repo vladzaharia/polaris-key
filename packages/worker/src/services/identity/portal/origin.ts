@@ -20,8 +20,8 @@
  * by its other facts.
  */
 
-import type { Db } from "../../../core/platform.js";
-import { licenseEmail } from "../../../core/accountSubjects.js";
+import type { Db } from "../../../db/types.js";
+import { licenseEmail } from "../../../core/accounts/accountSubjects.js";
 import { loadProductPublic } from "../../../core/products.js";
 import type { PortalHooksFor } from "./api.js";
 import { purchasesFor } from "./purchase.js";

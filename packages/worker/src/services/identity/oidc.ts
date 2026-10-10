@@ -20,7 +20,7 @@
 // carried over: a compatibility alias for a path nobody can still be calling is a second code
 // path for free.
 
-import { constantTimeEqual } from "../../core/platform.js";
+import { constantTimeEqual } from "../../platform/compare.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -31,34 +31,33 @@ import {
   ID_TOKEN_MAX_AGE,
 } from "./idToken.js";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import type { ManagedPayload } from "../../core/payload.js";
+import type { ManagedPayload } from "../../core/licensing/payload.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // R9-01: the manifest validator's issuer rule, applied again at the SINK. Ingest-only
 // validation would leave every `oidc_config` row written before it landed (or by any future
 // writer that bypasses `parseManifest`) able to steer the token POST that carries this
-// product's client secret. Imported from the shared package rather than through Release, whose
-// `manifest.ts` merely re-exports it — a service may not import a sibling.
+// product's client secret. Imported from the shared package, as Release's ingest does — a
+// service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import { representabilityIssue } from "@polaris-key/catalog";
+import { bearer } from "../../platform/http.js";
+import { hashKey, randomId } from "../../platform/crypto.js";
+import { platformOidcConfig } from "../../platform/platformOidc.js";
+import { secret, type Env } from "../../platform/env.js";
+import { brandedHtmlSecurityHeaders } from "../../core/securityHeaders.js";
 import {
-  bearer,
-  hashKey,
-  platformOidcConfig,
-  secret,
-  brandedHtmlSecurityHeaders,
   // The product sign-in pages have always escaped `& < > "` and let an apostrophe through;
   // every sink is a text node or a double-quoted attribute (R9-12), and the bytes are kept.
   escapeHtmlKeepApostrophe as escapeHtml,
-  pkcePair,
+} from "../../platform/html.js";
+import { pkcePair } from "../../platform/pkce.js";
+import {
   PRODUCT_SIGNIN_RETURN_TO,
-  randomBytes,
-  randomId,
-  randomToken,
   safeReturnTo,
-  tryParseJson,
-  type Db,
-  type Env,
-} from "../../core/platform.js";
+} from "../../platform/returnTo.js";
+import { randomBytes, randomToken } from "../../platform/random.js";
+import { tryParseJson } from "../../platform/json.js";
+import type { Db } from "../../db/types.js";
 import {
   openProductSecret,
   type Product,
@@ -85,32 +84,32 @@ import {
   stmtInsertLicense,
   type LicenseRow,
   type TierRow,
-} from "../../core/data.js";
+} from "../../core/repo.js";
 import {
   guardedInsert,
   guardedWrite,
   oidcGrantStatements,
-} from "../../core/grants.js";
+} from "../../core/licensing/grants.js";
 import { licenseTransitionStatement } from "../../core/licensing/lifecycleWrites.js";
 import { readSyncTierOnSignIn } from "./settings.js";
 import {
   mergeLicenseInto,
   type LicenseMerge,
-} from "../../core/licenseMerge.js";
+} from "../../core/licensing/licenseMerge.js";
 import { allowsOidcDefault } from "../../core/fingerprint.js";
 import {
   authorizeDevice,
   licenseDeviceLimit,
   tierFingerprintMode,
   tierExpiresAt,
-} from "../../core/authz.js";
+} from "../../core/licensing/authz.js";
 import {
   isValidClientDeviceId,
   licenseUsable,
   validateDeviceToken,
 } from "../../core/devices.js";
-import { applyProvisionedAccountSecrets } from "../../core/accountOverrides.js";
-import { licenseConfigOverridesFrozen } from "../../core/overrideMigration.js";
+import { applyProvisionedAccountSecrets } from "../../core/accounts/accountOverrides.js";
+import { licenseConfigOverridesFrozen } from "../../core/ops/overrideMigration.js";
 import {
   createBrowserSession,
   type BrowserSessionSubject,
@@ -1041,7 +1040,7 @@ const SIGNIN_UPDATE_ATTEMPTS = 3;
 /**
  * The column a sign-in writes on top of the provisioning (LX-08, S-19 §7.14 step 4): provisioned
  * ENTITLEMENT keys never go into `overrides_json` any more, they are the licence's `oidc` grant
- * (`core/grants.ts`); provisioned secrets go to the column until the U-03 run freezes it (then to
+ * (`core/licensing/grants.ts`); provisioned secrets go to the column until the U-03 run freezes it (then to
  * the owner's account overrides). Config is never provisioned.
  */
 function provisionedColumn(
@@ -2253,7 +2252,7 @@ export async function handleAuthCallback(
 
   // An identity with no subject is not an identity: `getLicenseBySub(…, "")` would match every
   // other subject-less row, so distinct people would share one license. Admin and portal both
-  // reject this already (admin/auth.ts:216, portal/auth.ts:280) — so does the product flow now
+  // reject this already (console/auth.ts:216, portal/auth.ts:280) — so does the product flow now
   // (R8-05a). Same generic 401 as any other bad ID token.
   const identity = mapClaims(claims);
   if (!identity.sub) {

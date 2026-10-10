@@ -11,7 +11,7 @@ import { D1Db } from "../src/db/d1.js";
 import {
   appliedMigrations,
   LATEST_MIGRATION,
-} from "../src/core/deployIdentity.js";
+} from "../src/core/ops/deployIdentity.js";
 
 describe("deploy identity in workerd", () => {
   it("reads every applied migration from d1_migrations through the binding", async () => {

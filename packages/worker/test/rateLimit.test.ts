@@ -26,7 +26,7 @@ import {
 import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 
 describe("rateLimitOk", () => {
   it("allows up to the limit within a window, then blocks", async () => {

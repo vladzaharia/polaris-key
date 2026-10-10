@@ -22,11 +22,11 @@
  */
 
 import type { Db } from "../db/types.js";
-import type { Env } from "../env.js";
-import { appendAudit } from "../repo.js";
-import { randomId } from "../crypto.js";
+import type { Env } from "../platform/env.js";
+import { appendAudit } from "./repo.js";
+import { randomId } from "../platform/crypto.js";
 import type { ServicesMap } from "./services.js";
-import { clearDeviceSubjects } from "./subjectHooks.js";
+import { clearDeviceSubjects } from "./accounts/subjectHooks.js";
 
 /** Who made the write, for the audit row: the verified admin session, or the resync. */
 export interface ServicesActor {

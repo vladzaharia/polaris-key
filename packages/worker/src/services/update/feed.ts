@@ -15,7 +15,8 @@
  * The arch is part of the edge-cache key (`gateway.ts`), so the two feeds cannot collide.
  */
 
-import type { Env, Db } from "../../core/platform.js";
+import type { Env } from "../../platform/env.js";
+import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
 import type { UpdateArch } from "@polaris-key/protocol/update";

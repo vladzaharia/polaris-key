@@ -14,7 +14,7 @@
 
 import { bindAdminFlow } from "./flowBinderHelper.js";
 import { describe, expect, it } from "vitest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import { makeTestDb } from "./helpers.js";
@@ -25,12 +25,12 @@ import {
   handleAdminLogin,
   sanitizeReturnTo,
   type IdTokenVerifier,
-} from "../src/admin/auth.js";
+} from "../src/console/auth.js";
 import {
   ADMIN_COOKIE,
   issueSession,
   type SessionIdentity,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 const ADMIN_SECRET = "docs-test-admin-secret";
 const PLATFORM_GROUP = "admins";

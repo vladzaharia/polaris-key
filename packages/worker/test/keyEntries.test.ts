@@ -30,12 +30,12 @@ import {
   keyEntryLimit,
   keyEntryState,
   parseKeyEntryLimit,
-} from "../src/core/keyEntries.js";
+} from "../src/core/licensing/keyEntries.js";
 import { serializeServices } from "../src/core/services.js";
 import { SETTINGS } from "../src/mount.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
-import { claimDeviceSeat, getLicense, setServices } from "../src/repo.js";
-import { authorizeDevice } from "../src/core/authz.js";
+import { claimDeviceSeat, getLicense, setServices } from "../src/core/repo.js";
+import { authorizeDevice } from "../src/core/licensing/authz.js";
 import {
   handleActivate,
   handleToken,
@@ -48,7 +48,7 @@ import {
   PORTAL_CSRF_HEADER,
 } from "../src/services/identity/portal/session.js";
 import { KEY_PREVIEW_LIMIT_PER_MINUTE } from "../src/services/identity/portal/selfService.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { ServiceSlug } from "../src/core/services.js";
 

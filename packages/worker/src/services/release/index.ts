@@ -16,11 +16,11 @@ import type {
   ServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../core/console/session.js";
 import { handleReleaseRoutes } from "./routes.js";
 import { handleReleaseAdmin } from "./admin.js";
 import { getReleaseConfig } from "./config.js";
-import { bytesHostname } from "../../core/bytesHost.js";
+import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { releaseCatalog } from "./catalog.js";
 import { releaseKeyFingerprints } from "./records.js";
 import { sweepNativeSessions } from "./packages/native/index.js";

@@ -23,7 +23,7 @@
  *                  declared `.pkey/product` `presentation.accent` before the listing's
  *                  `tintColor`, as the SDK kits do (UI-KITS §1.2). The page
  *                  never holds a developer URL. Art is Polaris Key's hosted copy on the image host
- *                  (HA-07, `core/hostedImages.ts`): the icon of `presentation.icon`, else
+ *                  (HA-07, `core/assets/hostedImages.ts`): the icon of `presentation.icon`, else
  *                  `listing.icon`, and the header of `listing.header`, exactly as the image host's
  *                  `/icon` and `/header` aliases choose them, each at the ladder width its surface
  *                  draws at (`PRESENTATION_WIDTHS`). PER SLOT, a slot with no copy the image host
@@ -48,14 +48,15 @@
  * `GET /api/licenses`. Downloads, stores and feeds on the product view are PX-W2's (G2, G4).
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   loadProductPublic,
   type ProductPublic,
 } from "../../../core/products.js";
-import { licenseDeviceLimit } from "../../../core/authz.js";
-import { seatActiveSince } from "../../../core/data.js";
-import type { DeviceRow } from "../../../core/data.js";
+import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
+import { seatActiveSince } from "../../../core/repo.js";
+import type { DeviceRow } from "../../../core/repo.js";
 import {
   PRESENTATION_HEADER_SLOTS,
   PRESENTATION_ICON_SLOTS,
@@ -63,7 +64,7 @@ import {
   hostedImageOrigin,
   hostedImageUrl,
   hostedImages,
-} from "../../../core/hostedImages.js";
+} from "../../../core/assets/hostedImages.js";
 import { presentationText } from "../../../core/presentation.js";
 import { err, notFound, portalJson, type PortalHooksFor } from "./api.js";
 import { entitlementView } from "./entitlements.js";
@@ -151,7 +152,7 @@ export async function productListing(
 
 /**
  * Where the portal draws a product's art, and so which ladder width it asks for (HA-07: the
- * variant chosen per surface, `core/hostedImages.ts`). The widths are the drawn size at 2x:
+ * variant chosen per surface, `core/assets/hostedImages.ts`). The widths are the drawn size at 2x:
  *
  *   library    the tiles' 48 to 64 px icons and their header art (and the library's hero banner);
  *   product    the product page's 112 px icon and its full-width banner;

@@ -101,7 +101,7 @@ function baselineFor(entry: ConfigEntry, payload: RedactedPayload): Baseline {
   const bucket = entry.kind === "flag" ? payload.entitlements : payload.config;
   const m: ManagedEntry | undefined = bucket[entry.key];
   // A `kind: "config"` entry flagged `secret: true` lives in the config bucket but comes back
-  // redacted to `value: ""` (worker `admin/lib/redact.ts`). Treat it as write-only.
+  // redacted to `value: ""` (worker `core/console/redact.ts`). Treat it as write-only.
   const writeOnly = isSecretEntry(entry);
   return {
     set: m !== undefined,

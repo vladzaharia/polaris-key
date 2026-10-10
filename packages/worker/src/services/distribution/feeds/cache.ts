@@ -21,7 +21,8 @@
  *   - Where there is no Cache API (Node tests) or it throws, the answer is computed every time.
  */
 
-import { sha256Hex, type Db } from "../../../core/platform.js";
+import { sha256Hex } from "../../../platform/hash.js";
+import type { Db } from "../../../db/types.js";
 import type { ReleaseCatalog } from "../../../core/hooks.js";
 
 // The cache itself is Core's since P3-09 (Update's app-updater feeds share it).

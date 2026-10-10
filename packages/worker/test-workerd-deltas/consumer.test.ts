@@ -22,7 +22,7 @@ import {
   deltaKey,
   putVerified,
   recordObject,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import { D1Db } from "../src/db/d1.js";
 import { NOW, seedProduct } from "../test-workerd/seed.js";
 import { pairMessage } from "../src/services/release/packs/deltas/messages.js";

@@ -2020,6 +2020,22 @@
     <string name="core_codes_marker_rejected_title">Problema de la compilación</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_marker_rejected_message">El contenido integrado de esta compilación no es válido. Reinstala la app o contacta con el desarrollador.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_title">Se necesita una licencia</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_required_message">Activa la app y vuelve a intentarlo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_title">Licencia no aceptada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_invalid_message">No se pudo verificar tu licencia. Reconecta la app y vuelve a intentarlo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_title">Hay que actualizar la licencia</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_stale_message">Conéctate a internet para que la app pueda actualizar tu licencia y vuelve a intentarlo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_title">Es necesario iniciar sesión</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_required_message">Inicia sesión en tu cuenta de Polaris Key en la app y vuelve a intentarlo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">Licencia activa</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

@@ -6,15 +6,15 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
   type SessionIdentity,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   getDevice,
   getFingerprint,
@@ -22,8 +22,8 @@ import {
   upsertDevice,
   upsertFingerprint,
   type DeviceRow,
-} from "../src/repo.js";
-import { getTokenRecord, putTokenRecord } from "../src/kv.js";
+} from "../src/core/repo.js";
+import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";

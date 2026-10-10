@@ -25,7 +25,7 @@
  *     PUT  …/storefronts/steam/checklist             { item, done } — an operator tick, audited
  *
  * Narrative-only like the rest of the console API (`routeCoverage`'s `adminApi` kind); session,
- * CSRF, rate limit and the platform-admin gate run in `admin/api.ts` first.
+ * CSRF, rate limit and the platform-admin gate run in `console/api.ts` first.
  *
  * EVERY Steam call goes through `SteamClient` (`core/steam/client.ts`): the gate admits it first,
  * then the per-day budget (stopped on the first 403), and only then is the publisher key opened
@@ -37,9 +37,10 @@
 
 import { ErrorCode } from "../../../../core/errors.js";
 import type { ServiceContext } from "../../../../core/registry.js";
-import type { AdminSession } from "../../../../core/adminApi.js";
-import { adminJson, audit, err, readBody } from "../../../../core/adminApi.js";
-import { blobResponse, hasRef } from "../../../../core/blobs.js";
+import type { AdminSession } from "../../../../core/console/session.js";
+import { adminJson, err, readBody } from "../../../../core/console/respond.js";
+import { audit } from "../../../../core/console/audit.js";
+import { blobResponse, hasRef } from "../../../../core/assets/blobs.js";
 import { storefrontAdapter } from "../../../../core/storefront/adapter.js";
 import {
   readRate,

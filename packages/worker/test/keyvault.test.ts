@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { signJws, verifyJws } from "@polaris-key/jws";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import {
   describeKeyring,
@@ -8,7 +8,7 @@ import {
   open,
   seal,
   type Sealed,
-} from "../src/keyvault.js";
+} from "../src/platform/keyvault.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -22,16 +22,20 @@ import {
 import {
   openManagedValue,
   sealManagedValue,
-} from "../src/admin/lib/managedSecrets.js";
-import type { ManagedPayload } from "../src/core/payload.js";
-import { handleAdmin } from "../src/admin/index.js";
+} from "../src/core/managedSecrets.js";
+import type { ManagedPayload } from "../src/core/licensing/payload.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
-import { getProductSecret, listAudit, listPlatformAudit } from "../src/repo.js";
+import {
+  getProductSecret,
+  listAudit,
+  listPlatformAudit,
+} from "../src/core/repo.js";
 import { signInSecretContext } from "../src/services/identity/providers/config.js";
 import { sealSignInSecret } from "../scripts/seal-signin-secret.js";
 

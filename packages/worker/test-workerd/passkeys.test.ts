@@ -7,14 +7,14 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { D1Db } from "../src/db/d1.js";
-import type { Env as WorkerEnv } from "../src/env.js";
+import type { Env as WorkerEnv } from "../src/platform/env.js";
 import { handlePortal } from "../src/services/identity/portal/index.js";
 import { startAccountSession } from "../src/services/identity/portal/accountSessions.js";
 import { PORTAL_CSRF_HEADER } from "../src/services/identity/portal/session.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   PASSKEY_FLOW_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import { SoftAuthenticator } from "../test/softAuthenticator.js";
 import { NOW, seedProduct } from "./seed.js";
 

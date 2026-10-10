@@ -24,7 +24,11 @@ import {
 import { setDeliverableAccess } from "../../seed.js";
 import { asR2, installDigestStream, R2Mock } from "../../r2Mock.js";
 import { sha256Hex } from "../../releaseRoutesFixture.js";
-import { blobKey, putVerified, recordObject } from "../../../src/core/blobs.js";
+import {
+  blobKey,
+  putVerified,
+  recordObject,
+} from "../../../src/core/assets/blobs.js";
 import { manifestDeliverableStatements } from "../../../src/services/release/deliverables.js";
 import { ingestReleaseDescriptor } from "../../../src/services/release/descriptor.js";
 

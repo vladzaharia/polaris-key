@@ -6,10 +6,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dispatchRegistryHost } from "../src/core/registryHost.js";
+import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
-import { deleteProduct } from "../src/admin/repo.js";
+import { setServices } from "../src/core/repo.js";
+import { deleteProduct } from "../src/core/console/repo.js";
 import {
   REGISTRY_OWNERLESS_ROUTES,
   REGISTRY_ROUTES,
@@ -30,10 +30,10 @@ import {
   revokeRegistryToken,
   signPullToken,
   verifyPullToken,
-} from "../src/core/registryTokens.js";
+} from "../src/core/registry/registryTokens.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2 } from "./r2Mock.js";

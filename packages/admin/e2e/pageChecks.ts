@@ -10,7 +10,9 @@ import { LINT_SCRIPT, lintPage } from "../../ui-qa/src/index.ts";
  * Tables that scroll sideways outside a labelled, focusable region (WCAG 1.4.10 and 2.1.1: a dense
  * table scrolls only inside `role=region` with an accessible name and `tabindex=0`). A strip of
  * links or tabs that scrolls is not a table: its items take focus, which axe's
- * `scrollable-region-focusable` already checks. Code blocks and form controls are excused.
+ * `scrollable-region-focusable` already checks. A named grid whose cells take focus (the ARIA
+ * grid pattern's one tab stop, src/ui/Grid.tsx) is the same: its arrow keys scroll it, and a tab
+ * stop on its scroller would break the pattern. Code blocks and form controls are excused.
  */
 export function unlabelledScrollers(page: Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -28,6 +30,13 @@ export function unlabelledScrollers(page: Page): Promise<string[]> {
       )
         continue;
       if (!el.checkVisibility({ visibilityProperty: true })) continue;
+      const grid = "[role=grid]:is([aria-label], [aria-labelledby])";
+      if (
+        el.matches(grid)
+          ? el.querySelector('[tabindex="0"]')
+          : el.querySelector(`${grid} [tabindex="0"]`)
+      )
+        continue;
       const named =
         el.getAttribute("role") === "region" &&
         (el.getAttribute("aria-label") || el.getAttribute("aria-labelledby")) &&

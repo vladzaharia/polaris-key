@@ -23,7 +23,7 @@
  * edge and document, §6.7); with the drain running, a stamp match is the common case.
  */
 
-import { sha256Hex } from "../../../core/platform.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import type {
   CatalogPackageDeliverable,
   CatalogPackageVersion,
@@ -32,7 +32,7 @@ import type {
 import {
   isRegistryEcosystem,
   type RegistryEcosystem,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 import { registryCacheHeaders } from "./cache.js";
 import {
   RENDER_STAMP_META,

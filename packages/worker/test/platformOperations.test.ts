@@ -1,19 +1,19 @@
 // A-14: self-reported operations (notes/S-13 §7.2 phase 1): the cron's `platform_job_runs`, the
 // scripts' `platform_heartbeats`, their retention, the `DELTA_DLQ` metrics-only binding, and the
-// platform-admin `GET /manage/api/platform/operations` (`core/operations.ts`).
+// platform-admin `GET /manage/api/platform/operations` (`core/ops/operations.ts`).
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db, DbStatement } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   D1_MAX_BOUND_PARAMS,
   ERROR_SUMMARY_MAX,
@@ -22,8 +22,8 @@ import {
   recordJobRun,
   truncateSummary,
   writeHeartbeat,
-} from "../src/core/platformOps.js";
-import { queueStatus } from "../src/core/operations.js";
+} from "../src/core/ops/platformOps.js";
+import { queueStatus } from "../src/core/ops/operations.js";
 import {
   CONNECTOR_POLL_CRON,
   MAINTENANCE_CRON,
@@ -642,7 +642,7 @@ describe("the DELTA_DLQ binding is used for metrics() only", () => {
     });
   }
 
-  it("no source file sends to it, and only env.ts and core/operations.ts name it", () => {
+  it("no source file sends to it, and only env.ts and core/ops/operations.ts name it", () => {
     const naming: string[] = [];
     for (const file of sources(SRC)) {
       const text = readFileSync(file, "utf8");
@@ -651,9 +651,9 @@ describe("the DELTA_DLQ binding is used for metrics() only", () => {
       if (/DELTA_DLQ/.test(text)) naming.push(relative(SRC, file));
     }
     expect(naming.sort()).toEqual([
-      "admin/handlers/platform.ts", // the Deployment page's binding-presence list
-      "core/operations.ts",
-      "env.ts",
+      "console/handlers/platform.ts", // the Deployment page's binding-presence list
+      "core/ops/operations.ts",
+      "platform/env.ts",
       "platformInventory.generated.ts", // ST-02: the generated inventory, data only
     ]);
     // The generated inventory names it once, as a string in a data row, and reads nothing.
@@ -664,11 +664,11 @@ describe("the DELTA_DLQ binding is used for metrics() only", () => {
     expect(inventory.match(/DELTA_DLQ/g)).toEqual(["DELTA_DLQ"]);
     expect(inventory).toContain('name: "DELTA_DLQ"');
     // Where operations.ts reads it, it hands it straight to `queueStatus` (metrics only).
-    const ops = readFileSync(join(SRC, "core", "operations.ts"), "utf8");
+    const ops = readFileSync(join(SRC, "core", "ops", "operations.ts"), "utf8");
     expect(ops.match(/DELTA_DLQ/g)).toHaveLength(1);
     expect(ops).toMatch(/queueStatus\(env\.DELTA_DLQ\)/);
     const platform = readFileSync(
-      join(SRC, "admin", "handlers", "platform.ts"),
+      join(SRC, "console", "handlers", "platform.ts"),
       "utf8",
     );
     expect(platform.match(/DELTA_DLQ/g)).toEqual(["DELTA_DLQ"]);

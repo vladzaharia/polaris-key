@@ -1,32 +1,32 @@
-// A-11 / A-12: the Platform section's admin API (`src/admin/handlers/platform.ts`), deploy
-// identity (`src/core/deployIdentity.ts`) and the product-less audit trail (`platform_audit`).
+// A-11 / A-12: the Platform section's admin API (`src/console/handlers/platform.ts`), deploy
+// identity (`src/core/ops/deployIdentity.ts`) and the product-less audit trail (`platform_audit`).
 
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PROTOCOL_VERSION } from "@polaris-key/protocol";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
   type AdminSession,
-} from "../src/admin/session.js";
-import { platformAudit } from "../src/admin/audit.js";
+} from "../src/core/console/session.js";
+import { platformAudit } from "../src/core/console/audit.js";
 import {
   appliedMigrations,
   deployIdentity,
   LATEST_MIGRATION,
-} from "../src/core/deployIdentity.js";
+} from "../src/core/ops/deployIdentity.js";
 import { DISCOVERY_VERSION } from "../src/core/discovery.js";
 import {
   runScheduledMaintenance,
   AUDIT_RETENTION_SECONDS,
 } from "../src/scheduled.js";
-import { listPlatformAudit } from "../src/repo.js";
+import { listPlatformAudit } from "../src/core/repo.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";

@@ -23,7 +23,7 @@ import {
   dryRunOverrideMigration,
   overrideMigrationReportCsv,
   type OverrideMigrationDryRun,
-} from "../src/core/overrideMigration.js";
+} from "../src/core/ops/overrideMigration.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS = join(HERE, "..", "migrations");

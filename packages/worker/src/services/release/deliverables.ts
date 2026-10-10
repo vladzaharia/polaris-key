@@ -19,7 +19,7 @@ import {
   type ManifestPackDeliverable,
   type ManifestPackageDeliverable,
 } from "@polaris-key/manifest";
-import type { DbStatement } from "../../core/platform.js";
+import type { DbStatement } from "../../db/types.js";
 import { stmtSetChannelPolicy, stmtUpsertDeliverable } from "./model.js";
 
 export function manifestDeliverableStatements(

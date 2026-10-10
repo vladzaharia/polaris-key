@@ -19,7 +19,7 @@ import {
   planTarget,
 } from "@polaris-key/client-core/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
-import { blobKey } from "../../../../core/blobs.js";
+import { blobKey } from "../../../../core/assets/blobs.js";
 import type { PayloadSide } from "./records.js";
 
 async function readIndex(

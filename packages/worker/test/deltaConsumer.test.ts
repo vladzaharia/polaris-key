@@ -24,14 +24,14 @@ import { seedProduct, NOW } from "./seed.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
 import { bytesFrom, sha } from "./packFixture.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import { blobKey, deltaKey } from "../src/core/blobs.js";
+import { blobKey, deltaKey } from "../src/core/assets/blobs.js";
 import {
   MAX_DEMAND_ROWS_PER_DEVICE,
   boundedPackInstalls,
   hotPairs,
   refreshDemand,
   recordPackInstalls,
-} from "../src/core/deltaDemand.js";
+} from "../src/core/assets/deltaDemand.js";
 import {
   handleDeltaBatch,
   processDeltaMessage,
@@ -51,7 +51,7 @@ import {
 import { sweepLazyDeltas } from "../src/services/release/packs/deltas/sweep.js";
 import { lazyDeltaRow } from "../src/services/release/packs/deltas/store.js";
 import { runScheduledMaintenance } from "../src/scheduled.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 
 installDigestStream();
 
@@ -810,7 +810,7 @@ describe("the request Worker cannot encode", () => {
   });
 
   it("the report path imports no codec and no queue", () => {
-    for (const f of ["core/devices.ts", "core/deltaDemand.ts"]) {
+    for (const f of ["core/devices.ts", "core/assets/deltaDemand.ts"]) {
       const text = readFileSync(join(SRC, f), "utf8");
       expect(text).not.toMatch(/zstd-wasm/);
       expect(text).not.toMatch(/DELTA_QUEUE\.send|\.send\(/);

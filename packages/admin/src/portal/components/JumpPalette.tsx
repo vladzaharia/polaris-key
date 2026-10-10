@@ -192,7 +192,9 @@ export function JumpPalette({
                         src={p.presentation.iconUrl}
                         size={24}
                       />
-                      <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                      <span dir="auto" className="min-w-0 flex-1 truncate">
+                        {p.name}
+                      </span>
                       <span className="shrink-0 text-xs text-fg-muted">
                         {p.status.label}
                       </span>
@@ -237,7 +239,7 @@ export function JumpPalette({
                       className={item}
                     >
                       <Clock aria-hidden className="size-4 text-fg-muted" />
-                      {p.name}
+                      <span dir="auto">{p.name}</span>
                     </Command.Item>
                   ))}
                 </Command.Group>

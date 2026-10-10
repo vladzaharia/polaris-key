@@ -7,17 +7,17 @@
 
 import { createHash } from "node:crypto";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { dispatch } from "../src/dispatch.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { setServices } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { syncReleaseStore } from "../src/services/release/sync.js";
 import {

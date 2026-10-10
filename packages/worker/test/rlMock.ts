@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { RateLimitDO } from "../src/rateLimitDo.js";
 
 // A faithful in-memory DurableObjectNamespace that runs the REAL RateLimitDO class against an

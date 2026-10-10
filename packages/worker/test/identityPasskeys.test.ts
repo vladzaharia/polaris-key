@@ -6,7 +6,7 @@ import { issuePortalSessionRow } from "./portalSessionRow.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   PASSKEY_FLOW_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import { upsertPortalProductSettings } from "../src/services/identity/portal/repo.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,

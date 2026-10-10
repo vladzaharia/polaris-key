@@ -32,11 +32,8 @@ import {
   type ManifestListing,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import {
-  parseJsonColumn,
-  type Db,
-  type DbStatement,
-} from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import { kindsNarrowableTo } from "./capabilities.js";
 
 /** A `dist_outlets` row. */

@@ -523,6 +523,50 @@ describe("Needs attention", () => {
   });
 });
 
+describe("Needs attention: the one solid action (B12)", () => {
+  const branding = {
+    developerName: "Northpaw Type",
+    supportUrl: "https://northpaw.example/renew",
+  };
+  it("marks only the most urgent item, whatever the library's order", () => {
+    const lib = build(
+      [
+        license({
+          product: "glyphsmith",
+          expiresAt: NOW_S + 9 * DAY,
+          productBranding: branding,
+        }),
+        license({
+          product: "ember",
+          expiresAt: NOW_S - DAY,
+          usable: false,
+          productBranding: branding,
+        }),
+      ],
+      [],
+      NOW_S,
+    );
+    const items = attentionItems(lib);
+    expect(items.map((i) => i.product.slug)).toEqual(["ember", "glyphsmith"]);
+    expect(items.map((i) => i.urgent)).toEqual([true, false]);
+  });
+
+  it("negative control: a single item is the urgent one; none is urgent twice", () => {
+    const lib = build(
+      [
+        license({
+          product: "glyphsmith",
+          expiresAt: NOW_S + 9 * DAY,
+          productBranding: branding,
+        }),
+      ],
+      [],
+      NOW_S,
+    );
+    expect(attentionItems(lib).filter((i) => i.urgent)).toHaveLength(1);
+  });
+});
+
 describe("the server-side library (PX-W1: G1, G5, G16)", () => {
   const item = (
     over: Partial<PortalLicensedItem> = {},

@@ -7,14 +7,14 @@
  * API, the re-checks through the real connector cron (`runConnectorPolls`).
  */
 
-import { storeGrantDrift } from "../src/core/grants.js";
-import { runLicensingCatchUp } from "../src/core/licensingCatchUp.js";
+import { storeGrantDrift } from "../src/core/licensing/grants.js";
+import { runLicensingCatchUp } from "../src/core/licensing/licensingCatchUp.js";
 import { SERVICES } from "../src/mount.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { CONSOLE, SLUG } from "./releaseRoutesFixture.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { NOW, setDeliverableAccess } from "./seed.js";
-import { setServices, setTrustPolicy } from "../src/repo.js";
+import { setServices, setTrustPolicy } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import {
   APPLE_PRODUCT,

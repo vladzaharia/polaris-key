@@ -10,22 +10,25 @@ import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { insertLicense } from "../src/repo.js";
-import { subjectFor, subjectForOrNull } from "../src/core/accountSubjects.js";
+import { insertLicense } from "../src/core/repo.js";
+import {
+  subjectFor,
+  subjectForOrNull,
+} from "../src/core/accounts/accountSubjects.js";
 import {
   forgetRegistryTokens,
   lookupRegistryCredential,
   mintRegistryToken,
-} from "../src/core/registryTokens.js";
+} from "../src/core/registry/registryTokens.js";
 import {
   registerSubjectStore,
   unregisterSubjectStore,
-} from "../src/core/subjectHooks.js";
+} from "../src/core/accounts/subjectHooks.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
-import { applyProvisionedAccountSecrets } from "../src/core/accountOverrides.js";
+import { applyProvisionedAccountSecrets } from "../src/core/accounts/accountOverrides.js";
 import * as deletion from "../src/services/identity/accounts/deletion.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
 import { getAccountRow } from "../src/services/identity/accounts/repo.js";

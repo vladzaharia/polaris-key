@@ -1,5 +1,5 @@
 /**
- * HA-05 — pull on register and resync (`core/hostedAssetPulls.ts`, `src/assetQueue.ts`,
+ * HA-05 — pull on register and resync (`core/assets/hostedAssetPulls.ts`, `src/assetQueue.ts`,
  * `services/release/assetSource.ts`; notes/S-20 §6.3, §6.4).
  *
  * The three acceptance criteria of the brief are the first three `it`s under "re-sync semantics":
@@ -30,16 +30,16 @@ import {
   type AssetPullMessage,
   type ManifestAssetSource,
   type RepoSourceResolver,
-} from "../src/core/hostedAssetPulls.js";
+} from "../src/core/assets/hostedAssetPulls.js";
 import {
   HOSTED_ASSET_REF,
   parseVariants,
   type IngestContext,
-} from "../src/core/hostedAssets.js";
-import { blobKey } from "../src/core/blobs.js";
+} from "../src/core/assets/hostedAssets.js";
+import { blobKey } from "../src/core/assets/blobs.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
 import { handleAssetQueue } from "../src/assetQueue.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import { makeTestDb } from "./helpers.js";
@@ -52,8 +52,8 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
-import { handleAdmin } from "../src/admin/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/admin/session.js";
+import { handleAdmin } from "../src/console/index.js";
+import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
 
 beforeAll(() => installDigestStream());
 

@@ -17,8 +17,8 @@ import {
 import {
   brandedHtmlSecurityHeaders,
   secureResponse,
-} from "../src/securityHeaders.js";
-import { handleAdminCallback } from "../src/admin/auth.js";
+} from "../src/core/securityHeaders.js";
+import { handleAdminCallback } from "../src/console/auth.js";
 import {
   handleMagicVerify,
   signInRefusal,
@@ -35,7 +35,7 @@ import {
   sendNotice,
 } from "../src/services/identity/portal/email.js";
 import { licenseAddedNotice } from "../src/services/identity/portal/notices.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { artefacts } from "./singleUseMock.js";
 
 /**

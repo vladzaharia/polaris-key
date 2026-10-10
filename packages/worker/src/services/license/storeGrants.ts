@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * License's `applyStoreGrant` (P6-01, `core/storeGrants.ts`): the one writer of
+ * License's `applyStoreGrant` (P6-01, `core/licensing/storeGrants.ts`): the one writer of
  * `license_store_grants`. From LX-08 each write also re-projects the purchase's licence-held grant
- * (`core/grants.ts`, Core's tables) in the same batch: the dual-write of S-19 §7.14 step 3.
+ * (`core/licensing/grants.ts`, Core's tables) in the same batch: the dual-write of S-19 §7.14 step 3.
  *
  * Distribution has already verified the purchase with its store and bound it to this licence;
  * this only records the effect. One row per (store, purchase key hash, flag):
@@ -24,15 +24,15 @@ import type {
   StoreGrantChange,
   StoreGrantContext,
   StoreGrantOutcome,
-} from "../../core/storeGrants.js";
-import type { LicenseMergeChange } from "../../core/licenseMerge.js";
-import type { DbStatement } from "../../core/platform.js";
-import { appendAudit, getLicense } from "../../core/data.js";
-import { randomId } from "../../core/platform.js";
+} from "../../core/licensing/storeGrants.js";
+import type { LicenseMergeChange } from "../../core/licensing/licenseMerge.js";
+import type { DbStatement } from "../../db/types.js";
+import { appendAudit, getLicense } from "../../core/repo.js";
+import { randomId } from "../../platform/crypto.js";
 import {
   grantMergeStatements,
   storeGrantProjection,
-} from "../../core/grants.js";
+} from "../../core/licensing/grants.js";
 
 /** The audit actor of a store-grant change. */
 export const STORE_GRANT_ACTOR = "system:commerce";
@@ -114,7 +114,7 @@ export async function applyStoreGrant(
 }
 
 /**
- * LX-03: License's share of a licence merge (`core/licenseMerge.ts`) — every store grant of the
+ * LX-03: License's share of a licence merge (`core/licensing/licenseMerge.ts`) — every store grant of the
  * retired licence, active or revoked, moves to the survivor, so the flags it paid for ride the
  * survivor's document and a later refund, revocation or REFUND_REVERSED (which match the grant on
  * its licence) still finds it. The grant's key is (product, store, purchase key hash, flag), not
@@ -129,7 +129,7 @@ export function storeGrantMergeStatements(
              WHERE product = ? AND license_id = ?`,
       params: [change.toLicenseId, change.product, change.fromLicenseId],
     },
-    // LX-08: the store grants' projection moves with them (`core/grants.ts`).
+    // LX-08: the store grants' projection moves with them (`core/licensing/grants.ts`).
     ...grantMergeStatements(change),
   ];
 }

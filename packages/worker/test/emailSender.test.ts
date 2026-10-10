@@ -9,8 +9,8 @@ import {
   platformSender,
   SENDER_APP_NAME_MAX,
   senderAddress,
-} from "../src/core/emailSender.js";
-import type { Env } from "../src/env.js";
+} from "../src/core/notify/emailSender.js";
+import type { Env } from "../src/platform/env.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv } from "./seed.js";
 

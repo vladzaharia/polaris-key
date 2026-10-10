@@ -1,5 +1,5 @@
 /**
- * P6-01 — `core/x509.ts`: the pinned-root chain verifier the App Store verification (and P6-02's
+ * P6-01 — `core/trust/x509.ts`: the pinned-root chain verifier the App Store verification (and P6-02's
  * App Attest) runs on. Every chain is generated here (`x509Fixtures.ts`); the workerd lane runs
  * the same verifier in the runtime it ships to (`test-workerd/runtime.test.ts`).
  */
@@ -17,7 +17,7 @@ import {
   parseCertificate,
   readDer,
   verifyChain,
-} from "../src/core/x509.js";
+} from "../src/core/trust/x509.js";
 import { APPLE_ROOT_CA_G3_DER } from "../src/services/distribution/commerce/appleRoot.js";
 import {
   APPLE_INTERMEDIATE_OID,

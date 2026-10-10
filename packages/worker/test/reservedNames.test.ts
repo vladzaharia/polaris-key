@@ -15,21 +15,20 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { RESERVED_ENTITLEMENT_KEYS } from "@polaris-key/manifest";
-import { reservedNamesMode } from "../src/core/reservedNames.js";
-import { tighterMax, tighterMin } from "../src/core/entitlements.js";
-import {
-  invalidatePlatformSettings,
-  writePlatformSetting,
-} from "../src/core/platformSettings.js";
+import { reservedNamesMode } from "../src/core/licensing/reservedNames.js";
+import { tighterMax, tighterMin } from "../src/core/licensing/entitlements.js";
+import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
+import { writeSetting } from "../src/core/settings/write.js";
+import { SETTINGS } from "../src/mount.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -181,13 +180,18 @@ describe("LICENSING_RESERVED_NAMES resolution", () => {
     ).toBe("warn");
     const env = { LICENSING_RESERVED_NAMES: "error" };
     expect(await reservedNamesMode(env, db)).toBe("error");
-    const write = await writePlatformSetting(
-      db,
-      "LICENSING_RESERVED_NAMES",
-      "warn",
-      0,
-      NOW,
-      "u1",
+    const write = await writeSetting(
+      { env, db, registry: SETTINGS },
+      {
+        key: "LICENSING_RESERVED_NAMES",
+        value: "warn",
+        expectedVersion: 0,
+      },
+      {
+        actor: { sub: "u1", name: null, email: null },
+        origin: "console",
+        now: NOW,
+      },
     );
     expect(write.ok).toBe(true);
     invalidatePlatformSettings(env, db);
@@ -275,7 +279,7 @@ describe("console catalog writes", () => {
 describe("the reserved keys' rule text (reservedNames.ts) matches the policy injection", () => {
   // The console shows these rules read-only; they once said the opposite of the code ("the
   // lower of" the minimums, "the higher of" the maximums). The window is an intersection: a
-  // licence can narrow its tier's window, never widen it (`core/entitlements.ts`).
+  // licence can narrow its tier's window, never widen it (`core/licensing/entitlements.ts`).
   const rule = (key: string) =>
     RESERVED_ENTITLEMENT_KEYS.find((k) => k.key === key)!.rule;
 

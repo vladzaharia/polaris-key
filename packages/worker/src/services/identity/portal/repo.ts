@@ -1,20 +1,18 @@
 import {
   hashKey,
   mintOpaqueToken,
-  normalizeEmail,
-  parseJsonColumn,
   randomId,
-  type Db,
-  type DbParam,
-  type DbStatement,
-  type Env,
-} from "../../../core/platform.js";
+} from "../../../platform/crypto.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import type { Db, DbParam, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import type {
   DeviceRow,
   KeyRow,
   LicenseRow,
   ProductRow,
-} from "../../../core/data.js";
+} from "../../../core/repo.js";
 import { parseServices } from "../../../core/services.js";
 import {
   resolveListing,
@@ -27,8 +25,8 @@ import {
   attachLicenseAccount,
   licenseAccountId,
   subjectFor,
-} from "../../../core/accountSubjects.js";
-import { notAutoAttachBlockedSql } from "../../../core/licenseHolders.js";
+} from "../../../core/accounts/accountSubjects.js";
+import { notAutoAttachBlockedSql } from "../../../core/licensing/licenseHolders.js";
 import { catchUpLegacyAccount } from "../accounts/legacy.js";
 import { deleteAccount, type ErasureResult } from "../accounts/deletion.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";

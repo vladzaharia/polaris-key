@@ -146,6 +146,11 @@ describe("the sources", () => {
       "swift",
       "godot",
       "kotlin",
+      // SP-53 (WIRE-CONTRACT-V4 §14.4): the server cores, sent on their trust-manifest fetch.
+      "node-server",
+      "python-server",
+      "swift-server",
+      "kotlin-server",
     ]);
   });
 
@@ -215,9 +220,12 @@ describe("the sources", () => {
       deviceLabelVersion: 1,
       presentationMatrixVersion: 1,
       uiMatrixVersion: 2,
+      backendMatrixVersion: 1,
       contentCorpusVersion: 2,
     });
     expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
+    // SP-53 (WIRE-CONTRACT-V4 §14): the backend header joins the HEADER_* names.
+    expect(SOURCES.protocol.HEADER_LICENSE).toBe("X-PKey-License");
     // PX-W13: the identity subpath's constants ride along with core's.
     expect(SOURCES.protocol.DEVICE_LABEL_MAX_CODEPOINTS).toBe(64);
     expect(SOURCES.protocol.REQUEST_HANDLE_TTL_SECONDS).toBe(600);
@@ -317,6 +325,54 @@ describe("the source test: errors.json against the Worker", () => {
     expect(checkCoverage(mislabelled, scanned)).toEqual([
       expect.stringContaining(`"not_found" is emitted by the Worker`),
     ]);
+  });
+
+  it("exempts the backend kind from the Worker-emits check, and refuses one the Worker emits (WIRE-CONTRACT-V4 §14)", () => {
+    const scanned = scanWorkerSource(SRC);
+    // The four SP-53 codes are registered as `backend`, the Worker emits none of them, and the
+    // registry is still clean: a backend code is never required to be emitted.
+    const backend = SOURCES.errors.filter((e) => e.kind === "backend");
+    expect(backend.map((e) => e.code).sort()).toEqual([
+      "license_invalid",
+      "license_required",
+      "license_stale",
+      "sign_in_required",
+    ]);
+    for (const e of backend) expect(scanned.has(e.code), e.code).toBe(false);
+    expect(checkCoverage(SOURCES.errors, scanned)).toEqual([]);
+    // A backend code the Worker starts to emit is refused, which keeps the kinds honest.
+    const fixture = {
+      path: "packages/worker/src/services/license/fixture.ts",
+      text: 'return errorResponse(401, "license_stale", "stale");',
+    };
+    expect(
+      checkCoverage(
+        SOURCES.errors,
+        scanWorkerSource({ ...SRC, files: [...SRC.files, fixture] }),
+      ),
+    ).toEqual([
+      expect.stringContaining(
+        `"license_stale" is emitted by the Worker (packages/worker/src/services/license/fixture.ts:1) but errors.json marks it kind "backend"`,
+      ),
+    ]);
+    // A wire code relabelled `backend` is refused the same way.
+    const relabelled = SOURCES.errors.map((e) =>
+      e.code === "not_entitled" ? { ...e, kind: "backend" as const } : e,
+    );
+    expect(checkCoverage(relabelled, scanned)).toEqual([
+      expect.stringContaining(
+        `"not_entitled" is emitted by the Worker (${scanned.get("not_entitled")![0]}) but errors.json marks it kind "backend"`,
+      ),
+    ]);
+  });
+
+  it("the generated ErrorCodeKind names the backend kind, and the four codes carry it", () => {
+    const ts = renderTs(MODEL);
+    expect(ts).toContain(
+      'export type ErrorCodeKind = "wire" | "client" | "backend";',
+    );
+    expect(ts).toContain('"license_stale": "backend",');
+    expect(ts).toContain('"not_entitled": "wire",');
   });
 });
 

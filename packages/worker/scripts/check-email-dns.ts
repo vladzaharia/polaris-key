@@ -5,13 +5,16 @@
  *   pnpm --filter @polaris-key/worker email:dns-check -- other.example
  *
  * Resolves over Cloudflare's DNS-over-HTTPS JSON API (no local resolver cache), then applies
- * `evaluateEmailDns` (src/core/emailDns.ts). Exits 0 when every check passes, 1 otherwise. Read-
+ * `evaluateEmailDns` (src/core/notify/emailDns.ts). Exits 0 when every check passes, 1 otherwise. Read-
  * only: it sends no mail and changes no record. A real send's Authentication-Results (the staging
  * deliverability check, RUNBOOK "Sign-in email") is still the proof of alignment; this is the
  * precondition.
  */
-import { AUTH_EMAIL_DOMAIN } from "../src/core/emailSender.js";
-import { emailDnsNames, evaluateEmailDns } from "../src/core/emailDns.js";
+import { AUTH_EMAIL_DOMAIN } from "../src/core/notify/emailSender.js";
+import {
+  emailDnsNames,
+  evaluateEmailDns,
+} from "../src/core/notify/emailDns.js";
 
 const DOH = "https://cloudflare-dns.com/dns-query";
 

@@ -1,7 +1,7 @@
 /**
  * Platform → Override migration (U-03; notes/S-17 §5.12, decision 21): the one-time move of every
  * product's licence config and secret overrides onto account overrides, from
- * `/manage/api/platform/override-migration` (worker `admin/handlers/overrideMigration.ts`).
+ * `/manage/api/platform/override-migration` (worker `console/handlers/overrideMigration.ts`).
  *
  * The order is the Worker's and the page only offers the next step:
  *

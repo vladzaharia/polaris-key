@@ -12,16 +12,16 @@ import {
   pemToDer,
   verifyAppAttestation,
   type AppAttestInput,
-} from "../src/core/appAttest.js";
-import { CborError, decodeCbor } from "../src/core/cbor.js";
+} from "../src/core/trust/appAttest.js";
+import { CborError, decodeCbor } from "../src/core/trust/cbor.js";
 import {
   certificateKey,
   ecdsaDerToRaw,
   parseCertificate,
   verifyChain,
   X509Error,
-} from "../src/core/x509.js";
-import { checkPlayVerdict } from "../src/core/playIntegrity.js";
+} from "../src/core/trust/x509.js";
+import { checkPlayVerdict } from "../src/core/trust/playIntegrity.js";
 import {
   cbor,
   makeAppAttestation,

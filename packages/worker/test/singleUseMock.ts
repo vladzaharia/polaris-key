@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { SingleUseDO } from "../src/singleUseDo.js";
 import {
   consumeArtefact,

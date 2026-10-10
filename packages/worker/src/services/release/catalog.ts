@@ -28,7 +28,7 @@ import type {
   ReleaseCatalog,
 } from "../../core/hooks.js";
 // A JSON object column; anything unreadable or not an object reads as `null`.
-import { parseJsonObject } from "../../core/platform.js";
+import { parseJsonObject } from "../../platform/json.js";
 import {
   listArtifactsForBuild,
   listBuilds,

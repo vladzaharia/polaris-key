@@ -18,7 +18,7 @@
  * migration's header).
  */
 
-import type { Db, DbStatement } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import type { Delivery } from "../../../core/hooks.js";
 import { httpsUrl, TERMS_VERSION_RE } from "../../../core/platformTerms.js";
 

@@ -43,11 +43,11 @@
  *     sealed column and the `.p8` never leave this module except as a token minted from them.
  */
 
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
-import { open, seal, type SealContext } from "../keyvault.js";
-import { appendAudit } from "../repo.js";
-import { randomId } from "../crypto.js";
+import { open, seal, type SealContext } from "../platform/keyvault.js";
+import { appendAudit } from "./repo.js";
+import { randomId } from "../platform/crypto.js";
 import { sha256Hex } from "../platform/hash.js";
 import {
   OUTLET_CREDENTIAL_ACTOR,
@@ -62,7 +62,7 @@ import {
   appendPlatformEvent,
   PLATFORM_SYSTEM_ACTOR,
   type PlatformEventActor,
-} from "./platformEvents.js";
+} from "./ops/platformEvents.js";
 
 // ── the registry ─────────────────────────────────────────────────────────────────────────────
 

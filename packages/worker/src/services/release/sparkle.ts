@@ -19,12 +19,10 @@
  * request for a release whose signature fails would re-download and re-hash the whole DMG.
  */
 
-import {
-  base64DecodeEitherAlphabet,
-  kvKey,
-  sha256Hex,
-  type Env,
-} from "../../core/platform.js";
+import { base64DecodeEitherAlphabet } from "../../platform/bytes.js";
+import { pk as kvKey } from "../../platform/kv.js";
+import { sha256Hex } from "../../platform/hash.js";
+import type { Env } from "../../platform/env.js";
 import type { FetchImpl } from "./githubApp.js";
 import {
   ed25519SignaturePrecheck,

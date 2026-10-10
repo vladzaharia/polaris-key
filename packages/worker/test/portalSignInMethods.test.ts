@@ -12,7 +12,7 @@ import {
   type CardWorld,
 } from "./identityCardHarness.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
-import { ACCOUNT_SESSION_COOKIE } from "../src/core/accountCookies.js";
+import { ACCOUNT_SESSION_COOKIE } from "../src/core/accounts/accountCookies.js";
 import { PORTAL_CSRF_HEADER } from "../src/services/identity/portal/session.js";
 import { STEP_UP_MAX_AGE_SECONDS } from "../src/services/identity/accounts/links.js";
 import {

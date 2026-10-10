@@ -19,7 +19,7 @@
  * built until a product gates content.
  */
 
-import type { DbStatement } from "../../../core/platform.js";
+import type { DbStatement } from "../../../db/types.js";
 
 /** `YYYY-MM-DD`, the stored form and OpenID Connect Core §5.1's full form of the claim. */
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;

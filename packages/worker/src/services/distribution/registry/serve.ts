@@ -24,7 +24,7 @@ import {
   type RegistryRoute,
   type RegistryRouteContext,
   type RegistryRouteMatch,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   authorizeFeedRead,
@@ -99,7 +99,7 @@ export interface FeedReadOptions {
    * F-08: `false` keeps a PUBLIC answer out of the Cache API: large content-addressed bytes (OCI
    * blobs, up to 5 GiB) that must honour `Range` and may exceed the Cache API's object limit. The
    * access check still runs first; the answer carries its own immutable headers and handles its
-   * own conditionals (`core/blobs.ts` `blobResponse`).
+   * own conditionals (`core/assets/blobs.ts` `blobResponse`).
    */
   readonly cacheApi?: false;
   /** The request's credential, when the caller already took it (`feedRoute`). */

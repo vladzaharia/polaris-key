@@ -12,7 +12,7 @@
  * license document, the config document and the trust manifest, so `typ` is the ONLY thing
  * standing between them: without it a config document could be replayed into a call site
  * expecting a license document and verify perfectly. Every call site here passes one — the
- * license and config documents, and all three artifacts `core/bundles.ts` mints — so the
+ * license and config documents, and all three artifacts `console/handlers/bundles.ts` mints — so the
  * optionality is inherited from `signJws`, not exercised: a signer that omits `typ` is a bug
  * rather than a compatibility choice. The one Polaris Key document with no `typ` is the FUSED
  * browser-session artifact (`services/identity/doc.ts`), and it never reaches this function:
@@ -21,7 +21,7 @@
  *
  * Key MATERIAL is loaded by `core/products.ts` (`loadProduct` opens the sealed `product_keys`
  * row under the KEK; `loadPublicSigningKey(s)` reads the public halves), and published by
- * `core/trust.ts`. This module never touches storage.
+ * `core/trust/trust.ts`. This module never touches storage.
  *
  * ── THE SIGNER GUARDS (plans/P3-01.md §2.2, "Keeping the signer total") ─────────────────────
  *

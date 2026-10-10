@@ -30,17 +30,17 @@ import {
   SLUG,
 } from "../releaseRoutesFixture.js";
 import type { Db } from "../../src/db/types.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../../src/services/release/deliverables.js";
-import { handleAdmin } from "../../src/admin/index.js";
+import { handleAdmin } from "../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../../src/admin/session.js";
-import { dispatchRegistryHost } from "../../src/core/registryHost.js";
+} from "../../src/core/console/session.js";
+import { dispatchRegistryHost } from "../../src/core/registry/registryHost.js";
 import { REGISTRY_ROUTES, SERVICES } from "../../src/mount.js";
 import {
   INDEX_CACHE_CONTROL,

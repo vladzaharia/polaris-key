@@ -8,18 +8,19 @@
  * listing, the policy and the engine's rules are Identity's own, and Distribution is read only
  * through its `delivery()` descriptor hook (rule 6). The one fact that hook does not carry, the
  * fit report's grade for `polaris-key`, comes from the caller, which reads it from Distribution's
- * listing model (`admin/handlers/polarisKeyStorefront.ts`).
+ * listing model (`console/handlers/polarisKeyStorefront.ts`).
  *
  * Operator-facing and product-scoped: nothing here reads an account. The engine's paths are
  * described from the POLICY (which groups are mapped, whether the product auto-issues, whether
  * it is open), never from who holds what.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import type { ProductPublic } from "../../../../core/products.js";
 import type { Delivery } from "../../../../core/hooks.js";
-import { getTier } from "../../../../core/data.js";
-import { licenseTermsOf } from "../../../../core/entitlements.js";
+import { getTier } from "../../../../core/repo.js";
+import { licenseTermsOf } from "../../../../core/licensing/entitlements.js";
 import { polarisKeyStorefrontEnabled } from "../../../../core/storefrontSwitch.js";
 import type { FitStatus } from "../../../../core/storefront/projection.js";
 import {

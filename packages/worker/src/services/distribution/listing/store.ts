@@ -8,12 +8,8 @@
  * `.pkey/distribution` reaches the model only through an explicit import (`import.ts`).
  */
 
-import {
-  parseJsonOr,
-  tryParseJson,
-  type Db,
-  type DbStatement,
-} from "../../../core/platform.js";
+import { parseJsonOr, tryParseJson } from "../../../platform/json.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import type {
   ListingApp,
   ListingAssetInput,

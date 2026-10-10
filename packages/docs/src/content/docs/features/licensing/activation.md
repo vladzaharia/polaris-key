@@ -161,7 +161,7 @@ the same database batch as the seat: a claim that loses the ordinal race rolls t
 with it, and of concurrent calls from one device only one records.
 
 `manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), built by
-`core/manageUrl.ts` and present only while the product's portal is on. For a licence attached to
+`core/licensing/manageUrl.ts` and present only while the product's portal is on. For a licence attached to
 an account it opens the free-device flow for that licence
 (`/#/p/<slug>/free-device?license=<id>`); for a floating licence it opens the activate page, which
 goes on to free-device once the key is added. `for` is a coarse platform-and-arch label from the

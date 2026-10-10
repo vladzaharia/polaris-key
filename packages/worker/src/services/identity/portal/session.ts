@@ -1,11 +1,8 @@
-import {
-  importHmacKey,
-  randomToken,
-  signHmacToken,
-  verifyHmacToken,
-  type Env,
-} from "../../../core/platform.js";
-import { ACCOUNT_SESSION_COOKIE } from "../../../core/accountCookies.js";
+import { importHmacKey } from "../../../platform/hash.js";
+import { randomToken } from "../../../platform/random.js";
+import { signHmacToken, verifyHmacToken } from "../../../platform/hmacToken.js";
+import type { Env } from "../../../platform/env.js";
+import { ACCOUNT_SESSION_COOKIE } from "../../../core/accounts/accountCookies.js";
 
 /**
  * `__Host-` prefixed for the same reason as the admin cookie (R1-08): it is the only way to
@@ -44,7 +41,7 @@ export interface PortalSessionIdentity {
 
 /**
  * Domain-separation tag mixed into the signed message (R1-02) — the portal counterpart of
- * `admin/session.ts`'s `ADMIN_SESSION_DOMAIN`. See that file for the full rationale. The
+ * `core/console/session.ts`'s `ADMIN_SESSION_DOMAIN`. See that file for the full rationale. The
  * short version: the key below may legitimately be the ADMIN key, and a shared key with no
  * realm tag meant the boundary between "anyone with an email address" and "platform
  * administrator" was a coincidence of JSON field names.
@@ -111,7 +108,7 @@ export async function verifyPortalSession(
   return session;
 }
 
-/** Reads EVERY match and fails closed on a duplicate — see `admin/session.ts` (R1-08). */
+/** Reads EVERY match and fails closed on a duplicate — see `core/console/session.ts` (R1-08). */
 function readSessionCookie(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
   const values = new Set<string>();

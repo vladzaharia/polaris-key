@@ -40,7 +40,7 @@ import {
   SLUG,
 } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
   claimPublisherPolicy,
@@ -54,13 +54,13 @@ import { setPublishJwksFetcherForTests } from "../src/services/release/publish.j
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
-import { recordRef } from "../src/core/blobs.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { recordRef } from "../src/core/assets/blobs.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { withDefaultHead } from "./githubHead.js";
 
 installDigestStream();

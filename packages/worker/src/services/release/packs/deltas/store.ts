@@ -4,12 +4,12 @@
  * P4-14's collector. The primary key (product, from, to, method) is the idempotency key.
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
 import type { LazyDeltaDescriptor, LazyDeltaRefusal } from "./policy.js";
 import { LAZY_DELTA_METHOD } from "./policy.js";
 
 /** The `blob_refs.ref_kind` a generated delta is held by (never dropped by the collector,
- *  `core/blobGc.ts`; only this package's cold marking drops it). */
+ *  `core/assets/blobGc.ts`; only this package's cold marking drops it). */
 export const LAZY_DELTA_REF_KIND = "lazy-delta";
 
 export type LazyDeltaState = "ready" | "refused" | "cold";
@@ -196,7 +196,7 @@ export async function readyBefore(
 /**
  * Mark a ready delta cold and drop the product's `lazy-delta` ref to its object, in one batch:
  * with no ref left, P4-14's mark and sweep collect the object (a delta needs only the minimum
- * grace, `core/blobGc.ts`). The row stays, so the pair is not regenerated while it stays cold;
+ * grace, `core/assets/blobGc.ts`). The row stays, so the pair is not regenerated while it stays cold;
  * the sweep revives it (`ready` again) if devices come back to it.
  */
 export async function markCold(

@@ -17,8 +17,8 @@ import {
 } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleReport } from "../src/core/devices.js";
-import { getDevice, setKeyStatus } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+import { getDevice, setKeyStatus } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 async function activate(
@@ -136,7 +136,7 @@ describe("licensing edge cases", () => {
 
   it("rejects activate on a revoked key", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl");
-    const { hashKey } = await import("../src/crypto.js");
+    const { hashKey } = await import("../src/platform/crypto.js");
     await setKeyStatus(db, "djdl", await hashKey(key), "revoked");
     const res = await handleActivate(
       mkReq("POST", {

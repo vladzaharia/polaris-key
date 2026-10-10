@@ -4,7 +4,7 @@
  * console's admin API. One implementation, so the transition table, the mirrored-row refusal and
  * the audit are pinned once for each door.
  *
- * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the P2-05 policy suite.
+ * The `pkeyci_` lookup (`lookupCiToken` in `core/publisher.ts`) is mocked, as in the P2-05 policy suite.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,20 +16,21 @@ const tokens = vi.hoisted(
       { product: string; subject: string; scopes: readonly string[] }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));
 
 import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
 import { loadProduct } from "../src/core/products.js";

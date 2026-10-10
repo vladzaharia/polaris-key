@@ -9,10 +9,10 @@ import {
   stripAccountCookies,
   withoutAccountCookies,
   withoutAccountSetCookies,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import { issuePortalSession } from "../src/services/identity/portal/session.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import { subjectFor } from "../src/core/accountSubjects.js";
+import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import { browserLabel } from "../src/services/identity/portal/accountSessions.js";
 
 // I-07: account sessions (S-16 §5.4 item 7): host-only, revocable, listable, "sign out

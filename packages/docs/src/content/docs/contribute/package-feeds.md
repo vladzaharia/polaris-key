@@ -40,14 +40,14 @@ An adapter never re-implements the shared pieces:
   not-found or the client's native `401`.
 - **Render-on-write.** The framework (`registry/materialise.ts`) writes the adapter's documents
   to R2 under `registry/<ecosystem>/<owner>/`, stamps them, and keeps them fresh. Core reads
-  the render queue (`core/registryQueue.ts` `drainRenderQueue`) after every request that
+  the render queue (`core/registry/registryQueue.ts` `drainRenderQueue`) after every request that
   enqueued a render and on every cron tick, and hands the rows to Distribution's
   `registryMaterialiser`, which runs the adapters' renderers. The cron then self-checks stale
   stamps. Reads compare the stored stamp with D1 (`catalogSource.ts` `freshRegistryObject`), so a
   feed is never stale between a publish and the drain.
 - **Release's state.** Packages are read only through the `releaseCatalog` hook
   (`catalogSource.ts`). Distribution never imports Release (rule 6).
-- **The console's model.** `admin/lib/feedModel.ts` reads labels, base URLs, namespace and
+- **The console's model.** `console/lib/feedModel.ts` reads labels, base URLs, namespace and
   extension validation and capabilities from the adapters. It has no per-ecosystem switch.
 
 ## One integration pattern
@@ -87,7 +87,7 @@ one fails CI.
    `PackageEcosystemRules`. Register it in `PACKAGE_ECOSYSTEM_RULES`; the mapped type makes it a
    compile error until you do. The enum is part of the published JSON Schemas, so the schema and
    the mutation table change with it. Run `pnpm --filter @polaris-key/manifest test`.
-2. **The host.** Add the ecosystem to `REGISTRY_ECOSYSTEMS` in `core/registryHost.ts` (NuGet is
+2. **The host.** Add the ecosystem to `REGISTRY_ECOSYSTEMS` in `core/registry/registryHost.ts` (NuGet is
    already there, reserved: take yours out of `RESERVED_ECOSYSTEMS`, as Cargo's F-30 and Go's
    F-31 did). If the protocol needs a content type that is not on `REGISTRY_HOST_TYPES`, stop:
    that list is a THREAT-MODEL review trigger. Seed the ecosystem's row in `dist_registry_policy`

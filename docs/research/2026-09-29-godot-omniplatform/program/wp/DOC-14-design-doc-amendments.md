@@ -40,6 +40,19 @@ B15 lists the doc fixes but allocated no package. Stale text includes UI-KITS 4.
 
 - Any code or mockup change.
 
+## Corrections found against the code (2026-10-10)
+
+- Most B15 fixes were already in the docs when this package started (UI-KITS 4.2 and 4.3,
+  EXPERIENCE 0.2, ADMIN 6.1 and 6.2, BRAND 7.6, 10 and 14). The package finished the rest and
+  removed the contradictions between the six docs: sidebar width 240 px (the code), the top-bar
+  surface, the portal display h1 (48/52), the Ship builds identity in ADMIN 2.4, the primary
+  button in BRAND 5.4, the `--pk-ring` row in BRAND 11, and the stale decision logs.
+- `loginHint` and `nameHint`: PX-W18 and UK-44 are `dropped` (PX-W18 merged into I-08, which keeps
+  only the wire parameters). The kits and SDKs send no hints. UK-42 still lists UK-44 as a
+  dependency; that is a graph follow-up, not a doc change.
+- The web kit mockup `docs/design/ui-kits/web.html` still shows `publishableKey`; mockups are out
+  of scope here.
+
 ## Screens and items this package closes
 
 - no mockup screen; the items are listed in `ux-coverage.json` under this package id

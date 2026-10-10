@@ -11,13 +11,13 @@ import { SELF, env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { D1Db } from "../src/db/d1.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
-import type { Env } from "../src/env.js";
-import { dispatchRegistryHost } from "../src/core/registryHost.js";
+import { setServices } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
+import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import {
   mintRegistryToken,
   signPullToken,
-} from "../src/core/registryTokens.js";
+} from "../src/core/registry/registryTokens.js";
 import {
   REGISTRY_OWNERLESS_ROUTES,
   REGISTRY_ROUTES,

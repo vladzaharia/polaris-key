@@ -1,8 +1,8 @@
 // The browser conformance runner for corpus v2 / wire contract v4 (P1b-05). It drives the SAME
 // suites as the Node runner (`../node/suites.ts`, through `@polaris-key/client-core`) inside a
 // real browser engine, so WebCrypto's Ed25519 and SHA-256, not Node's, verify every vector in
-// `cases.json`, `gate-matrix.json`, `update-matrix.json`, `outlet-matrix.json` and
-// `plan-matrix.json`. The files come in through Vite's JSON import rather than node:fs. The
+// `cases.json`, `gate-matrix.json`, `update-matrix.json`, `outlet-matrix.json`,
+// `plan-matrix.json` and `backend-matrix.json`. The files come in through Vite's JSON import rather than node:fs. The
 // content corpus (`content/cases.json`) runs too: its blobs are read raw through Vitest's
 // `readFile` command (harness only), and the files index and every apply case decode through
 // `@polaris-key/zstd-wasm`'s browser entry (`loadZstdWasm`), the decoder `@polaris-key/react`
@@ -18,11 +18,26 @@ import updateMatrix from "../../corpus/v2/update-matrix.json";
 import outletMatrix from "../../corpus/v2/outlet-matrix.json";
 import planMatrix from "../../corpus/v2/plan-matrix.json";
 import content from "../../corpus/v2/content/cases.json";
+import backendMatrix from "../../corpus/v2/backend-matrix.json";
+import copyDe from "../../parity/copy.de.json";
+import copyEn from "../../parity/copy.en.json";
+import copyEs from "../../parity/copy.es.json";
+import copyIt from "../../parity/copy.it.json";
+import copyJa from "../../parity/copy.ja.json";
+import copyKo from "../../parity/copy.ko.json";
+import copyPtBr from "../../parity/copy.pt-BR.json";
+import copyZhHans from "../../parity/copy.zh-Hans.json";
 import { commands } from "vitest/browser";
 import { loadZstdWasm } from "@polaris-key/zstd-wasm/browser";
+import type {
+  BackendCopyTable,
+  BackendLocale,
+} from "@polaris-key/client-core/backend";
 import {
+  defineBackendSuites,
   defineContentSuites,
   defineCorpusSuites,
+  type BackendMatrix,
   type ContentCorpus,
   type CorpusFiles,
 } from "../node/suites.js";
@@ -36,6 +51,22 @@ defineCorpusSuites({
   updateMatrix: updateMatrix as unknown as CorpusFiles["updateMatrix"],
   outletMatrix: outletMatrix as unknown as CorpusFiles["outletMatrix"],
   planMatrix: planMatrix as unknown as CorpusFiles["planMatrix"],
+});
+
+// Product backends (WIRE-CONTRACT-V4 §14): the verdict runs through this engine's WebCrypto, and
+// the problem rows read the copy catalog's `codes` tables, imported through Vite like the corpus.
+defineBackendSuites({
+  matrix: backendMatrix as unknown as BackendMatrix,
+  copy: {
+    en: copyEn.codes,
+    de: copyDe.codes,
+    es: copyEs.codes,
+    it: copyIt.codes,
+    ja: copyJa.codes,
+    ko: copyKo.codes,
+    "pt-BR": copyPtBr.codes,
+    "zh-Hans": copyZhHans.codes,
+  } satisfies Record<BackendLocale, BackendCopyTable>,
 });
 
 // Every file under content/blobs/: the glob lists them (its URLs are unused: Vite's dev server

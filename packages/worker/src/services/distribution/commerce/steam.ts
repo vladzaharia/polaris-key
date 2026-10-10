@@ -28,7 +28,8 @@
  * query (`ISteamApps/GetPartnerAppListForWebAPIKey/v2`) plus the operator-entered `steam.appIds`.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
@@ -41,7 +42,7 @@ import {
   recordPlatformCredentialResult,
   resolvePlatformCredential,
 } from "../../../core/platformCredentials.js";
-import type { PlatformEventActor } from "../../../core/platformEvents.js";
+import type { PlatformEventActor } from "../../../core/ops/platformEvents.js";
 import { resolvePlatformStoreSetting } from "../../../core/platformStoreSettings.js";
 import type { SteamSettings } from "./settings.js";
 import type { VerifiedPurchase } from "./state.js";

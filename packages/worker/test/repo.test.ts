@@ -25,7 +25,7 @@ import {
   type AuditRow,
   type LicenseRow,
   type DeviceRow,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 
 const lic = (
   slug: string,

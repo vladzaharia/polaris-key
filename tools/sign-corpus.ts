@@ -23,7 +23,7 @@
 //                           which reads it from `res://` in the editor and in an exported pack).
 //                           Every file is written into every target in `CORPUS_TARGETS`.
 //
-// Fourteen files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// Fifteen files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
 // pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
 // `fingerprint.json` (the hardware-hash
 // formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
@@ -41,8 +41,11 @@
 // `core.presentation`: the parse rule, the icon size choice and the hash check, WIRE-CONTRACT-V4
 // §5.5, plans/HA-12.md §4; rows and a generator-local reference in tools/presentation-matrix.ts),
 // `ui-matrix.json` (the UI kits' layer-(c) state matrix, plans/UK-02b.md §4; rows, checks and a
-// generator-local i18n formatter in tools/ui-matrix.ts) and `content/` (the content corpus:
-// `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
+// generator-local i18n formatter in tools/ui-matrix.ts), `backend-matrix.json` (product backends:
+// the verdict on `X-PKey-License`, the problem body and the client rule, WIRE-CONTRACT-V4 §14,
+// plans/SP-53.md §4; rows in tools/corpus/backend.ts, reference in tools/corpus/reference/
+// backend.ts) and `content/` (the content corpus: `cases.json` plus `blobs/`, plans/P4-01.md §4.4,
+// P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
 // `CARRIED_MATRIX_ROWS` (tools/corpus/gate.ts) before deletion. Fourteen are still emitted; one,
@@ -71,6 +74,7 @@ import {
 import { buildSyncScenarios } from "./sync-scenarios.js";
 import { buildPresentationMatrix } from "./presentation-matrix.js";
 import { buildUiMatrix } from "./ui-matrix.js";
+import { buildBackendMatrixV1 } from "./corpus/backend.js";
 import { buildV2 } from "./corpus/cases.js";
 import { asciiJson, REPO_ROOT } from "./corpus/common.js";
 import { buildConfigMatrix } from "./corpus/config.js";
@@ -111,6 +115,7 @@ const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
 const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
 const V2_PRESENTATION_MATRIX_OUT = join(V2_DIR, "presentation-matrix.json");
 const V2_UI_MATRIX_OUT = join(V2_DIR, "ui-matrix.json");
+const V2_BACKEND_MATRIX_OUT = join(V2_DIR, "backend-matrix.json");
 
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, GODOT_V2_RESOURCES];
@@ -244,6 +249,15 @@ async function main(): Promise<void> {
   const v2UiMatrix = await format(asciiJson(buildUiMatrix()), {
     parser: "json",
   });
+  // plans/SP-53.md §4: product backends (WIRE-CONTRACT-V4 §14), the verdict, the problem body and
+  // the client rule, recomputed by tools/corpus/reference/backend.ts. Signed licence documents
+  // inside; the copy is read from conformance/parity/. ASCII only.
+  const v2BackendMatrix = await format(
+    asciiJson(await buildBackendMatrixV1()),
+    {
+      parser: "json",
+    },
+  );
 
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
@@ -262,6 +276,7 @@ async function main(): Promise<void> {
     [basename(V2_DEVICE_LABEL_OUT), v2DeviceLabel],
     [basename(V2_PRESENTATION_MATRIX_OUT), v2PresentationMatrix],
     [basename(V2_UI_MATRIX_OUT), v2UiMatrix],
+    [basename(V2_BACKEND_MATRIX_OUT), v2BackendMatrix],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its

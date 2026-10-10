@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 import { parseJsonObject } from "./platform/json.js";
 import { constantTimeEqual } from "./platform/compare.js";
 

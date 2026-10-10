@@ -31,7 +31,7 @@
  * HTML, so the 4.7 editor renders them as text (THREAT-MODEL §3, "Tenant-supplied text").
  */
 
-import { escapeHtmlDecimalApostrophe } from "../../../../core/platform.js";
+import { escapeHtmlDecimalApostrophe } from "../../../../platform/html.js";
 import type {
   PackageFile,
   PackageVersion,

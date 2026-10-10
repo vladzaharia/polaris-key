@@ -20,20 +20,20 @@ import {
   SLUG,
 } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { releaseCatalog } from "../src/services/release/catalog.js";
 import { digestStream } from "../src/services/release/packages/digests.js";
 import { NO_HOOKS } from "./helpers.js";
-import { getProduct } from "../src/repo.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { getProduct } from "../src/core/repo.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 /** The real admin API as a platform admin, at `/api<path>`. */
 async function admin(

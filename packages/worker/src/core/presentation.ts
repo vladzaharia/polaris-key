@@ -45,7 +45,7 @@ import {
   type PresentationIconType,
   type ProductPresentation,
 } from "@polaris-key/protocol/core";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceHooks } from "./hooks.js";
@@ -54,8 +54,8 @@ import {
   firstHostedImage,
   hostedImageOrigin,
   hostedImages,
-} from "./hostedImages.js";
-import { imgUrl } from "./imgHostname.js";
+} from "./assets/hostedImages.js";
+import { imgUrl } from "./assets/imgHostname.js";
 
 /** The text half: what the portal shares with discovery (it draws its own art, HA-07). */
 export interface PresentationText {

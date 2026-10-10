@@ -25,7 +25,7 @@ sense.
 lives on the `ConfigEntry` itself (see [The catalog](/docs/services/config/catalog/)), authored
 once by whoever writes the schema.
 
-It seeds exactly one thing: the bottom layer of the merge, `core/payload.ts`'s
+It seeds exactly one thing: the bottom layer of the merge, `core/licensing/payload.ts`'s
 `catalogDefaultPayload`. For every catalog entry whose `kind` is `config` **and** which declares a
 schema-level `default`, that layer gets:
 
@@ -65,8 +65,8 @@ catalog default  ->  tier's profile  ->  license's profiles (in order)  ->  lice
 - **device overrides** — the device row's own `overrides_json`, the last layer Core reads before
   the merge is complete.
 
-`resolveMergedPayload` (`core/payload.ts`) walks exactly this list — `mergePayloads`
-(`src/merge.ts`) — key by key, independently for `config`, `secrets`, and `entitlements`. When
+`resolveMergedPayload` (`core/licensing/payload.ts`) walks exactly this list — `mergePayloads`
+(`src/core/licensing/merge.ts`) — key by key, independently for `config`, `secrets`, and `entitlements`. When
 `license` is `null` — a Config-only device under D-08 — the tier, the profile layers, and the
 license-override layer simply contribute nothing; the catalog default and the device's own
 overrides are exactly the right answer, not a special case.

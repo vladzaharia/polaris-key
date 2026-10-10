@@ -16,17 +16,17 @@ import {
   seedLicenseWithKey,
   seedProduct,
 } from "./seed.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
 import { handleDevices } from "../src/core/devices.js";
-import { setDeviceSubject } from "../src/core/accountSubjects.js";
+import { setDeviceSubject } from "../src/core/accounts/accountSubjects.js";
 import {
   handleActivate,
   handleToken,

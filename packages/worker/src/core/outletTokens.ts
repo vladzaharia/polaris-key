@@ -32,11 +32,11 @@
  * a fake token endpoint with keys generated in the test — no network, no real credential.
  */
 
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import { sha256Hex } from "../platform/hash.js";
-import { open, seal, type SealContext } from "../keyvault.js";
-import { pk } from "../kv.js";
+import { open, seal, type SealContext } from "../platform/keyvault.js";
+import { pk } from "../platform/kv.js";
 import { signJwtEs256, signJwtRs256 } from "./jwt.js";
 import { isRedirect, readCappedText } from "./readCapped.js";
 import {

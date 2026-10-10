@@ -22,14 +22,14 @@ import {
   seedLicenseWithKey,
   seedProduct,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import {
   getDevice,
   getLicense,
   setServices,
   type DeviceRow,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
@@ -37,9 +37,9 @@ import {
   resolveSyncPrincipal,
   setDeviceSubject,
   subjectFor,
-} from "../src/core/accountSubjects.js";
-import { clearDeviceSubjects } from "../src/core/subjectHooks.js";
-import { syncAccess } from "../src/core/syncAccess.js";
+} from "../src/core/accounts/accountSubjects.js";
+import { clearDeviceSubjects } from "../src/core/accounts/subjectHooks.js";
+import { syncAccess } from "../src/core/accounts/syncAccess.js";
 import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
 import { handleActivate } from "../src/services/license/activation.js";

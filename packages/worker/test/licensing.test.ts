@@ -24,11 +24,11 @@ import {
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { handleDevices } from "../src/core/devices.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import { hashKey } from "../src/crypto.js";
-import { getTokenRecord } from "../src/kv.js";
-import { setLicenseProfiles } from "../src/repo.js";
+import { hashKey } from "../src/platform/crypto.js";
+import { getTokenRecord } from "../src/platform/kv.js";
+import { setLicenseProfiles } from "../src/core/repo.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 

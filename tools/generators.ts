@@ -161,7 +161,7 @@ export const GENERATORS: Generator[] = [
     order: 50,
     inputs: [
       "packages/worker/scripts/gen-platform-inventory.ts",
-      "packages/worker/src/env.ts",
+      "packages/worker/src/platform/env.ts",
       "packages/worker/wrangler.toml",
     ],
     outputs: ["packages/worker/src/platformInventory.generated.ts"],
@@ -192,6 +192,18 @@ export const GENERATORS: Generator[] = [
       "packages/admin/src/console/settings.generated.ts",
     ],
     write: [tsx("packages/worker/scripts/gen-settings.ts")],
+  },
+  {
+    id: "cli-reference",
+    title: "The pkey CLI reference page, from the command table",
+    order: 75,
+    inputs: [
+      "packages/cli/scripts/gen-reference.ts",
+      "packages/cli/src/help.ts",
+    ],
+    outputs: ["packages/docs/src/content/docs/reference/cli.mdx"],
+    write: [tsx("packages/cli/scripts/gen-reference.ts")],
+    needsBuild: true,
   },
   {
     id: "brand",

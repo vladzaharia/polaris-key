@@ -111,12 +111,14 @@ struct KitButtonSkin: ViewModifier {
             let fill = kind == .destructive ? p.danger : p.accentSolid
             let label = kind == .destructive ? Color.white : p.accentOn
             if style.usesGlass, #available(iOS 26.0, macOS 26.0, *) {
+                #if compiler(>=6.2)
                 content
                     .buttonStyle(.glassProminent)
                     .buttonBorderShape(.capsule)
                     .controlSize(compact ? .regular : .large)
                     .tint(fill)
                     .foregroundStyle(label)
+                #endif
             } else {
                 content
                     .buttonStyle(
@@ -128,11 +130,13 @@ struct KitButtonSkin: ViewModifier {
             if style.usesGlass, #available(iOS 26.0, macOS 26.0, *) {
                 // Liquid Glass behind an opaque label: the system `.glass` style draws its label
                 // with vibrancy, which measured under 4.5:1 in the accessibility audit.
+                #if compiler(>=6.2)
                 content
                     .buttonStyle(
                         KitGlassStyle(
                             label: p.textStrong, ground: p.raised, dark: style.dark,
                             reduceMotion: style.reduceMotion, height: height))
+                #endif
             } else if style.reduceTransparency || style.increaseContrast || !style.dark {
                 // A tonal raised fill with a hairline: the regular material over a light page
                 // measured about 1.02:1, so the button read as bare text (DL4).
@@ -181,6 +185,7 @@ struct KitCapsuleStyle: ButtonStyle {
     }
 }
 
+#if compiler(>=6.2)
 /// The iOS 26 secondary: a Liquid Glass capsule, interactive, with an opaque label.
 @available(iOS 26.0, macOS 26.0, *)
 struct KitGlassStyle: ButtonStyle {
@@ -210,6 +215,7 @@ struct KitGlassStyle: ButtonStyle {
                 reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
+#endif
 
 /// A quiet text link in the accent's text colour (the extras row; no default blue, rule 6).
 struct KitQuietStyle: ButtonStyle {

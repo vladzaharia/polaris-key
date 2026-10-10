@@ -11,9 +11,13 @@
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
-import { blobKey, putVerified, recordObject } from "../src/core/blobs.js";
+import {
+  blobKey,
+  putVerified,
+  recordObject,
+} from "../src/core/assets/blobs.js";
 import { D1Db } from "../src/db/d1.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { packReleaseStatements } from "../src/services/release/packs/ingest.js";
 import { NOW, seedProduct } from "./seed.js";

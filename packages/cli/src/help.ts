@@ -19,6 +19,7 @@ import {
 import { CI_TOKEN_ENV } from "./oidc.js";
 import { LOGO_COLS, LOGO_STAR_GLYPH, logoLines, logoMode } from "./logo.js";
 import type { Term } from "./terminal.js";
+import { CLI_VERSION } from "./version.js";
 
 export type GroupId =
   | "manifest"
@@ -42,7 +43,7 @@ export const GROUPS: ReadonlyArray<readonly [GroupId, string]> = [
   ["feeds", "Feeds"],
   ["listing", "Listing and assets"],
   ["transport", "Transport"],
-  ["storefront", "Storefront"],
+  ["storefront", "Channels"],
   ["shell", "Shell"],
 ];
 
@@ -52,10 +53,31 @@ interface Para {
   text: string;
 }
 
+/** The two values a command can take from the working directory and the environment. */
+export type ContextKey = "product" | "baseUrl";
+
 export interface PkeyCommand {
   /** The word after `pkey`. */
   name: string;
   group: GroupId;
+  /** Whether the command has `--json`: declared by every command, never inferred (P0-45). */
+  json: boolean;
+  /**
+   * Flags that never take a value, so they never swallow the next word (`validate --json dir`).
+   * Parse reads the union over the table.
+   */
+  valueless?: readonly string[];
+  /**
+   * The values `--product` and `--base-url` default to when absent: `product` from the nearest
+   * `.pkey/product`, `baseUrl` from `PKEY_BASE_URL`. Only a command that takes the flag lists it.
+   */
+  context?: readonly ContextKey[];
+  /**
+   * The publish Action's inputs this command receives, as input name to the flag it becomes.
+   * `action.ts` runs the Action's steps through these commands; a test holds the union to
+   * `ACTION_INPUTS` and each flag to the command's usage.
+   */
+  action?: Readonly<Record<string, string>>;
   /** One line: what the command is for (its help's header, and completion's description). */
   summary: string;
   /** The overview's rows: the words as typed after `pkey`, and what they do. */
@@ -75,10 +97,15 @@ interface EnvVar {
   subs?: readonly string[];
 }
 
+/** An Action input that picks the step (or carries the map) rather than becoming a flag. */
+export const STEP = "(step)";
+
 const CI_PARA =
   "A CI command runs in GitHub Actions with permissions: id-token: write, or with " +
   `${CI_TOKEN_ENV}. The CI commands exchange the job's GitHub OIDC token for a short-lived ` +
-  "pkeyci_ token themselves; no secret is stored in the repository. See /docs/build/ci/.";
+  "pkeyci_ token themselves; no secret is stored in the repository. --product defaults to " +
+  "the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See " +
+  "/docs/build/ci/.";
 
 const CI_ENV: EnvVar = {
   name: CI_TOKEN_ENV,
@@ -107,6 +134,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "init",
     group: "manifest",
+    json: false,
     summary: "Scaffold .pkey/ in this directory",
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
@@ -128,11 +156,13 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "validate",
     group: "manifest",
+    json: true,
+    valueless: ["json", "fix"],
     summary: "Check .pkey/ with the rules the platform applies",
     rows: [
       ["validate [path]", "Check .pkey/ with the rules the platform applies"],
     ],
-    usage: ["pkey validate [path] [--json]"],
+    usage: ["pkey validate [path] [--fix] [--json]"],
     about: [
       {
         text:
@@ -152,27 +182,48 @@ export const COMMANDS: readonly PkeyCommand[] = [
           '{"v":1,"command":"validate","event":"result","ok":false,"exit":1,' +
           '"error":"no-manifest","message"}.',
       },
+      {
+        text:
+          "--fix repairs what it safely can before it validates: a field written in an old " +
+          "spelling moves to its canonical place when that place is empty (the " +
+          "deprecated_spelling warnings), keeping YAML comments. It never overwrites a value " +
+          'and leaves a conflict for you. It prints each move, or "Nothing to fix." With ' +
+          '--json the moves are the result\'s "fixed" list.',
+      },
     ],
   },
   {
     name: "doctor",
     group: "manifest",
+    json: true,
+    valueless: ["json"],
+    context: ["product", "baseUrl"],
     summary: "Validate, then check the live product's discovery",
     rows: [["doctor", "Validate, then check the live product's discovery"]],
-    usage: ["pkey doctor [--base-url url --product slug]"],
+    usage: ["pkey doctor [--product slug] [--base-url url] [--json]"],
     about: [
       {
         text:
-          "pkey doctor runs validate first. With both --base-url and --product it also fetches " +
-          "<base-url>/<product>/.well-known/polaris.json and reports whether discovery answers, " +
-          "which services it enables and which signing keys it exposes; a failed remote check " +
-          "exits 1.",
+          "pkey doctor runs validate first. When a product is known (--product, else the nearest " +
+          ".pkey/product) it also fetches <base-url>/<product>/.well-known/polaris.json (--base-url, " +
+          "else $PKEY_BASE_URL, else key.plrs.im) and reports whether discovery answers, which " +
+          "services it enables and which signing keys it exposes; a failed remote check exits 1. " +
+          "Without a product the remote checks are skipped and it says so.",
+      },
+      {
+        text:
+          "--json prints one result line: " +
+          '{"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl",' +
+          '"facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, ' +
+          "discovery, services or signing-keys and state ok, warn or todo. It exits 1 while any " +
+          "fact is todo.",
       },
     ],
   },
   {
     name: "manifest",
     group: "manifest",
+    json: false,
     summary: "Write the .pkey/ JSON Schemas for editors",
     rows: [["manifest schemas", "Write the .pkey/ JSON Schemas for editors"]],
     tree: { schemas: [] },
@@ -188,6 +239,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "sdk",
     group: "sdk",
+    json: false,
     summary: "Print an SDK snippet, or one SDK's config file",
     rows: [["sdk", "Print an SDK snippet, or one SDK's config file"]],
     usage: [
@@ -209,6 +261,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "trust",
     group: "sdk",
+    json: false,
     summary: "Format a signing key for every SDK's pinned keys",
     rows: [["trust", "Format a signing key for every SDK's pinned keys"]],
     usage: ["pkey trust --kid kid --public-key key"],
@@ -216,6 +269,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "mirror",
     group: "sdk",
+    json: false,
     summary: "Write typed catalog mirrors for each language",
     rows: [["mirror", "Write typed catalog mirrors for each language"]],
     usage: [
@@ -231,6 +285,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "bundle",
     group: "bundles",
+    json: false,
+    context: ["product", "baseUrl"],
     summary: "Mint an offline activation bundle for one device",
     rows: [["bundle", "Mint an offline activation bundle for one device"]],
     usage: [
@@ -250,6 +306,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "auth",
     group: "ci",
+    json: false,
+    context: ["product", "baseUrl"],
     summary: "Exchange the job's OIDC token for a CI token",
     rows: [
       ["auth github-oidc", "Exchange the job's OIDC token for a CI token"],
@@ -269,6 +327,31 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "release",
     group: "ci",
+    json: false,
+    context: ["product", "baseUrl"],
+    action: {
+      product: "--product",
+      deliverable: "--deliverable",
+      version: "--version",
+      tag: "--tag",
+      channel: "--channel",
+      dir: "--dir",
+      source: "--source",
+      meta: "--meta",
+      "base-url": "--base-url",
+      "release-key": "--release-key-file",
+      "content-key": "--content-key-file",
+      delegation: "--delegation",
+      "min-supported-seq": "--min-supported-seq",
+      "content-stamp": "--content-stamp",
+      embedded: "--embedded",
+      pins: "--pin",
+      out: "--out",
+      bases: "--bases",
+      "script-extensions": "--script-extensions",
+      "script-types": "--script-types",
+      "dry-run": "--dry-run",
+    },
     summary: "Publish, sign and move releases from CI",
     rows: [
       ["release publish", "Publish an app or pack release from build output"],
@@ -276,8 +359,11 @@ export const COMMANDS: readonly PkeyCommand[] = [
       ["release revoke", "Revoke a pack release or a delegation"],
       ["release keys generate", "Generate a release key or a content key"],
       ["release delegate", "Let a content key sign data-only pack releases"],
-      ["release promote", "Point a channel at a release"],
-      ["release pin|unpin", "Hold a channel on one release, or let it move"],
+      ["release promote", "Point a release track at a release"],
+      [
+        "release pin|unpin",
+        "Hold a release track on one release, or let it move",
+      ],
       ["release yank", "Withdraw a release"],
     ],
     tree: {
@@ -427,14 +513,16 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "distribution",
     group: "distribution",
-    summary: "Outlet ids for a build, store reports and rollouts",
+    json: false,
+    context: ["product", "baseUrl"],
+    summary: "Channel ids for a build, store reports and rollouts",
     rows: [
-      ["distribution outlet-ids", "Print a build outlet's store ids as JSON"],
+      ["distribution outlet-ids", "Print a build channel's store ids as JSON"],
       [
         "distribution report",
         "Report a store's availability, submission or key",
       ],
-      ["distribution rollout", "Start or change an outlet rollout"],
+      ["distribution rollout", "Start or change a channel rollout"],
       [
         "distribution pause|resume|halt|complete",
         "Pause, resume, halt or complete that rollout",
@@ -499,6 +587,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "feeds",
     group: "feeds",
+    json: true,
+    context: ["product", "baseUrl"],
     summary: "The F-Droid feed, package-feed setup and feed pruning",
     rows: [
       ["feeds fdroid", "Build, sign and register a channel's F-Droid repo"],
@@ -553,6 +643,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "listing",
     group: "listing",
+    json: true,
+    context: ["product", "baseUrl"],
     summary: "Import a Godot listing, or derive every store's assets",
     rows: [
       ["listing import", "Import a Godot project into the product's listing"],
@@ -599,6 +691,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "assets",
     group: "listing",
+    json: false,
+    context: ["product", "baseUrl"],
+    action: { assets: STEP },
     summary: "Host a file in a presentation or listing slot",
     rows: [["assets push", "Host a file in a presentation or listing slot"]],
     tree: { push: [] },
@@ -625,6 +720,24 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "transport",
     group: "transport",
+    json: false,
+    context: ["product", "baseUrl"],
+    action: {
+      transport: STEP,
+      deliverable: "--deliverable",
+      version: "--release",
+      dir: "--from",
+      "content-api": "--content-api",
+      variant: "--variant",
+      "transport-out": "--out",
+      "gradle-project": "--project",
+      "pad-delivery": "--delivery",
+      "steam-depot": "--depot",
+      "steam-branch": "--branch",
+      "steam-setlive": "--setlive",
+      "asc-expect-resource": "--expect-resource",
+      "transport-report": "--no-report",
+    },
     summary: "Package a published pack for a store transport",
     rows: [
       [
@@ -681,11 +794,21 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "storefront",
     group: "storefront",
+    json: true,
+    context: ["product", "baseUrl"],
+    action: {
+      storefront: STEP,
+      "itch-platform": "--platform",
+      "storefront-outlet": "--outlet",
+    },
     summary: "Run store CLIs from CI and open store pull requests",
     rows: [
       ["storefront itch push", "Push a build to itch.io with butler"],
       ["storefront snap metadata", "Write the listing into snapcraft.yaml"],
-      ["storefront snap upload", "Upload a snap to its declared channels"],
+      [
+        "storefront snap upload",
+        "Upload a snap to the release tracks it declares",
+      ],
       [
         "storefront snap upload-metadata",
         "Send the snap's summary, description and icon",
@@ -765,6 +888,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "completion",
     group: "shell",
+    json: false,
     summary: "Print a shell completion script",
     rows: [["completion bash|zsh|fish", "Print a shell completion script"]],
     tree: { bash: [], zsh: [], fish: [] },
@@ -782,6 +906,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "help",
     group: "shell",
+    json: false,
     summary: "Show this help, or one command's",
     rows: [["help [command]", "Show this help, or one command's"]],
     usage: ["pkey help [command]"],
@@ -798,8 +923,11 @@ export const COMMANDS: readonly PkeyCommand[] = [
 
 /** The options most commands take, closing the overview. */
 export const COMMON_OPTIONS: ReadonlyArray<readonly [string, string]> = [
-  ["--product slug", "The product a command acts on"],
-  ["--base-url url", "The Polaris Key origin to talk to"],
+  ["--product slug", "The product to act on; default from .pkey/product"],
+  [
+    "--base-url url",
+    "The Polaris Key origin; default $PKEY_BASE_URL, else key.plrs.im",
+  ],
   ["--dry-run", "Check and print; upload and write nothing"],
   ["--json", "One JSON object on stdout, where a command has it"],
   ["--no-color", "Plain text (also NO_COLOR=1, or a pipe)"],
@@ -827,6 +955,64 @@ const VALUELESS = [
 
 export function findCommand(name: string): PkeyCommand | undefined {
   return COMMANDS.find((c) => c.name === name);
+}
+
+/** Every flag the table declares valueless, which parse reads so no flag is listed twice. */
+export const VALUELESS_FLAGS: ReadonlySet<string> = new Set(
+  COMMANDS.flatMap((c) => c.valueless ?? []),
+);
+
+/**
+ * What is wrong with a command table, one sentence each (empty when it is sound). The table is
+ * the one place a command exists, so the checks are: every name once, every group known, every
+ * row and usage line under its own command, a declared `--json` is in some usage line, a
+ * declared `context` flag is in some usage line, and each Action input maps to a flag the
+ * command's usage names.
+ */
+export function checkRegistry(
+  commands: readonly PkeyCommand[] = COMMANDS,
+  groups: ReadonlyArray<readonly [GroupId, string]> = GROUPS,
+): string[] {
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  const known = new Set(groups.map(([id]) => id));
+  for (const c of commands) {
+    if (seen.has(c.name)) problems.push(`${c.name} is registered twice`);
+    seen.add(c.name);
+    if (!known.has(c.group))
+      problems.push(`${c.name} is in group ${c.group}, which has no heading`);
+    for (const [term] of c.rows)
+      if (term.split(" ")[0] !== c.name)
+        problems.push(
+          `${c.name}: row "${term}" does not start with the command`,
+        );
+    for (const u of c.usage)
+      if (!u.startsWith(`pkey ${c.name}`))
+        problems.push(
+          `${c.name}: usage "${u}" does not start with pkey ${c.name}`,
+        );
+    const usage = c.usage.join(" ");
+    const has = (flag: string, text = usage) =>
+      new RegExp(`${flag}(?![\\w-])`).test(text);
+    const described = `${usage} ${(c.about ?? []).map((p) => p.text).join(" ")}`;
+    if (c.json && !has("--json"))
+      problems.push(`${c.name} declares --json but no usage line shows it`);
+    for (const f of c.valueless ?? [])
+      if (!has(`--${f}`))
+        problems.push(`${c.name}: valueless --${f} is in no usage line`);
+    const ctx = { product: "--product", baseUrl: "--base-url" } as const;
+    for (const k of c.context ?? [])
+      if (!has(ctx[k], described))
+        problems.push(
+          `${c.name}: context ${k} but its help never mentions ${ctx[k]}`,
+        );
+    for (const [input, flag] of Object.entries(c.action ?? {}))
+      if (flag !== STEP && !has(flag))
+        problems.push(
+          `${c.name}: Action input ${input} maps to ${flag}, in no usage line`,
+        );
+  }
+  return problems;
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────────────────────
@@ -919,8 +1105,53 @@ function logoHeader(term: Term, art: Line[], block: Line[]): string[] {
   return out;
 }
 
+/** What `pkey` will act on here: the header's "Here" line (`context.ts` resolves it). */
+export interface HelpHere {
+  product: { slug: string; name?: string; source: "flag" | "manifest" } | null;
+  baseUrl: string;
+}
+
+/** A URL as people say it: no scheme, no trailing slash (`https://key.plrs.im/` is key.plrs.im). */
+export function shortUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+}
+
+const LABEL_WIDTH = 7;
+
+/**
+ * The "Here" line: the product and where it came from, then the base URL, wrapped to `width`
+ * with the continuation under the value. Outside a repository it says why there is no product
+ * and the one way to name it.
+ */
+function hereLines(here: HelpHere, width: number, separator: string): Line[] {
+  const product = here.product;
+  const room = Math.max(1, width - LABEL_WIDTH);
+  const text = product
+    ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${
+        product.source === "manifest" ? ".pkey/product" : "--product"
+      }`
+    : "no product: no .pkey/product here or above; pass --product";
+  const lines = wrapSpans([{ text }], room);
+  // The base URL follows on the last line when it fits there, else it takes a line of its own.
+  const url = shortUrl(here.baseUrl);
+  const tail = lines.at(-1) ?? [];
+  const used = cellWidth(tail.map((x) => x.text).join(""));
+  const joined = ` ${separator} ${url}`;
+  if (used + cellWidth(joined) <= room)
+    tail.push({ text: joined, style: ["muted"] });
+  else lines.push([{ text: url, style: ["muted"] }]);
+  return lines.map(
+    (l, i): Line => [
+      i === 0
+        ? { text: "Here".padEnd(LABEL_WIDTH), style: ["muted"] }
+        : { text: " ".repeat(LABEL_WIDTH) },
+      ...l,
+    ],
+  );
+}
+
 /** The grouped overview: `pkey`, `pkey help`, `pkey --help`. */
-export function renderHelp(term: Term): string {
+export function renderHelp(term: Term, here?: HelpHere): string {
   const { painter, symbols } = term;
   const line = (spans: Line) => painter.line(spans);
   const allRows = COMMANDS.flatMap((c) => c.rows);
@@ -935,6 +1166,7 @@ export function renderHelp(term: Term): string {
       ? [{ text: `${LOGO_STAR_GLYPH} `, style: ["strong"] }]
       : []),
     { text: "pkey", style: ["strong"] },
+    { text: ` ${CLI_VERSION}`, style: ["muted"] },
   ];
   const tagline: Line = [
     {
@@ -946,11 +1178,16 @@ export function renderHelp(term: Term): string {
     { text: "Usage", style: ["muted"] },
     { text: "  pkey <command> [options]" },
   ];
+  const room = art
+    ? Math.max(1, term.caps.columns - LOGO_COLS - 2)
+    : term.caps.columns;
+  const hereBlock = here ? hereLines(here, room, symbols.separator) : [];
   const out: string[] = art
-    ? logoHeader(term, art, [name, tagline, [], usage])
+    ? logoHeader(term, art, [name, tagline, [], ...hereBlock, usage])
     : [
         ...wrapSpans([...name, ...tagline], term.caps.columns).map(line),
         "",
+        ...hereBlock.map(line),
         line(usage),
       ];
   for (const [group, heading] of GROUPS) {
@@ -969,6 +1206,15 @@ export function renderHelp(term: Term): string {
       [
         {
           text: "Run pkey <command> --help for a command's options.",
+          style: ["muted"],
+        },
+      ],
+      term.caps.columns,
+    ).map(line),
+    ...wrapSpans(
+      [
+        {
+          text: `Every command and flag: ${shortUrl(here?.baseUrl ?? DEFAULT_BASE_URL)}/docs/reference/cli`,
           style: ["muted"],
         },
       ],

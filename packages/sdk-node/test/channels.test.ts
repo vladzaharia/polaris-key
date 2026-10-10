@@ -5,7 +5,7 @@
 // The fixture table below is the SAME table every SDK's channel test runs (Python
 // tests/test_channels.py, Swift ChannelsTests.swift, React test/channels.test.ts), so for one
 // `channels` entitlement every SDK returns one list. The expectations are the Worker's own
-// `entitledChannels` (packages/worker/src/core/entitlements.ts): the string values in order, as
+// `entitledChannels` (packages/worker/src/core/licensing/entitlements.ts): the string values in order, as
 // granted (no alias rewriting, no deduplication), and `["stable"]` when the entitlement is absent
 // or not an array. There is no corpus case for this yet (P0-04 D11 sends it to a later corpus
 // plan), so identical unit fixtures are the proof.

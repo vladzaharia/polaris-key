@@ -1157,7 +1157,17 @@ export interface AttentionItem {
   /** "Your Studio license ends on 13 Oct." The action says what to do. */
   text: string;
   action: { label: string; href: string; external: boolean };
+  /** The one most urgent item of the shelf: the only solid action (B12). */
+  urgent: boolean;
 }
+
+/** How soon each issue stops the person: lower is more urgent. */
+const URGENCY: Partial<Record<StatusKind, number>> = {
+  suspended: 0,
+  expired: 1,
+  deviceLimit: 2,
+  expiresSoon: 3,
+};
 
 /**
  * The device-limit reason. The card's title already names the product, so the text does not.
@@ -1184,7 +1194,7 @@ export function attentionItems(
   products: readonly LibraryProduct[],
   devicesHref?: (slug: string) => string,
 ): AttentionItem[] {
-  const out: AttentionItem[] = [];
+  const out: Omit<AttentionItem, "urgent">[] = [];
   for (const p of products) {
     // An entry (PS-04) has no licence to expire, suspend or fill: never anything to act on.
     if (p.kind === "entry") continue;
@@ -1229,5 +1239,12 @@ export function attentionItems(
       });
     }
   }
-  return out;
+  // Most urgent first (a stable sort keeps the library's order within a tier); only that first
+  // item is solid (B12).
+  const rank = (i: Omit<AttentionItem, "urgent">): number =>
+    URGENCY[i.product.status.kind] ?? 9;
+  return out
+    .map((item, at) => ({ item, at }))
+    .sort((a, b) => rank(a.item) - rank(b.item) || a.at - b.at)
+    .map(({ item }, at) => ({ ...item, urgent: at === 0 }));
 }

@@ -70,7 +70,7 @@ import {
 } from "./model.js";
 import { consoleOriginOf } from "./index.js";
 // The download page's own escaper (`render.ts`), so the portal's QR label matches the page's.
-import { escapeHtmlDecimalApostrophe as esc } from "../../../core/platform.js";
+import { escapeHtmlDecimalApostrophe as esc } from "../../../platform/html.js";
 
 /** The most releases one answer reads (each costs a builds and an artifacts read). */
 export const CUSTOMER_MAX_RELEASES = 20;

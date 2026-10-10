@@ -29,7 +29,8 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import { parseJsonColumn, type Db } from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import type { Db } from "../../db/types.js";
 import type {
   AvailabilityRecord,
   CatalogRelease,

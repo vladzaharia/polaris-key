@@ -149,7 +149,7 @@ import {
   feedCapabilityView,
 } from "../../src/services/distribution/registry/index.js";
 import { FEED_OPS } from "../../src/services/distribution/registry/adapter.js";
-import type { AdminSession } from "../../src/admin/session.js";
+import type { AdminSession } from "../../src/core/console/session.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { makeEnv, NOW } from "../seed.js";

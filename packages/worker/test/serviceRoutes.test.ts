@@ -31,10 +31,10 @@ import { licenseService } from "../src/services/license/index.js";
 import { configService } from "../src/services/config/index.js";
 import { identityService } from "../src/services/identity/index.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { hashKey, mintDeviceToken } from "../src/crypto.js";
-import { putTokenRecord } from "../src/kv.js";
-import { setServices, upsertDevice } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+import { hashKey, mintDeviceToken } from "../src/platform/crypto.js";
+import { putTokenRecord } from "../src/platform/kv.js";
+import { setServices, upsertDevice } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };

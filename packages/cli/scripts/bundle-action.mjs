@@ -129,7 +129,13 @@ async function bundle() {
     logLevel: "warning",
     banner: { js: BANNER },
     footer: { js: await footer() },
-    define: { __PKEY_EMBEDDED_SCHEMAS__: JSON.stringify(await schemas()) },
+    define: {
+      __PKEY_EMBEDDED_SCHEMAS__: JSON.stringify(await schemas()),
+      __PKEY_CLI_VERSION__: JSON.stringify(
+        JSON.parse(await readFile(path.join(pkgDir, "package.json"), "utf8"))
+          .version,
+      ),
+    },
   });
   return result.outputFiles[0].text;
 }

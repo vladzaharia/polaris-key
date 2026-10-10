@@ -17,7 +17,7 @@
  * validates every field and refuses the whole update on the first bad one.
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
 import { readConnectorSettings, writeConnectorSettings } from "../settings.js";
 import { isPriority } from "./map.js";
 import { PLAY_CONNECTOR } from "./setup.js";

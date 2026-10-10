@@ -7,6 +7,7 @@ import { viewOf, type ComponentName } from "@polaris-key/ui-core";
 import { PkElement } from "./element.js";
 import { TAGS } from "./layout.js";
 import { text, type RenderCtx } from "./render.js";
+import { PkSignIn, STEP_ELEMENTS } from "./signin.js";
 import type { ElementsTheme, ThemeHost } from "./theme.js";
 import { renderView } from "./views.js";
 
@@ -98,7 +99,9 @@ export const ELEMENTS: Readonly<Record<ComponentName, typeof PkElement>> =
       c,
       c === "PolarisKeyGate"
         ? (PkGate as unknown as typeof PkElement)
-        : componentClass(c),
+        : c === "SignIn"
+          ? (PkSignIn as unknown as typeof PkElement)
+          : componentClass(c),
     ]),
   ) as Record<ComponentName, typeof PkElement>;
 
@@ -107,6 +110,9 @@ export function defineElements(
   registry: CustomElementRegistry = customElements,
 ): void {
   if (!registry.get("pk-provider")) registry.define("pk-provider", PkProvider);
+  for (const [tag, cls] of Object.entries(STEP_ELEMENTS))
+    if (!registry.get(tag))
+      registry.define(tag, cls as unknown as CustomElementConstructor);
   for (const [component, tag] of Object.entries(TAGS) as [
     ComponentName,
     string,

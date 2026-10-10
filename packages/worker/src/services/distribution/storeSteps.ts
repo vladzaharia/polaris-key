@@ -30,8 +30,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { appendAudit } from "../../core/data.js";
-import { randomId } from "../../core/platform.js";
+import { appendAudit } from "../../core/repo.js";
+import { randomId } from "../../platform/crypto.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import {
   STOREFRONT_OPS,

@@ -15,7 +15,7 @@
  *
  * Two are claimable because the code already lets an operator write them: the channel policy
  * (promote, pin, yank, floors; the console and CI, `policy.ts`) and the trusted publisher (the
- * console's `PUT …/ci-publisher`, `admin/handlers/ciPublishing.ts`).
+ * console's `PUT …/ci-publisher`, `console/handlers/ciPublishing.ts`).
  *
  * `wire` labels the values that already reach a device, and none of these entries changes a
  * document's or discovery's shape:
@@ -69,7 +69,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
       "services/release/config.ts",
       "services/release/gateway.ts",
       "services/release/sync.ts",
-      "admin/systemProduct.ts",
+      "console/systemProduct.ts",
     ],
     storage: releaseConfig("gh_owner"),
     since: "ST-19b",
@@ -291,7 +291,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     visibleWhen: VISIBLE,
     readers: [
       "core/publisher.ts",
-      "admin/handlers/ciPublishing.ts",
+      "console/handlers/ciPublishing.ts",
       "services/release/resync.ts",
     ],
     storage: { kind: "rich", adapter: "ci_publishers" },

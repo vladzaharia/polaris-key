@@ -47,6 +47,14 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **ST-05 (split)**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections (ST-05a, verified against the code)
+
+- `core/platformSettings.ts` stays as the `platform_settings` row cache only (30-second per-isolate copy, tombstone, refresh and invalidate): the resolver reads rows through it. Its definition list, validator, confirm, resolver and writers are deleted.
+- The eight readers go through `core/settings/platformRead.ts`, a typed wrapper over `resolvePlatformSetting()` on Core's registry (Core cannot import `mount.ts`); a deploy-time hard off still answers without a read.
+- `/platform/settings` PATCH and DELETE are strict `writeSetting()` calls and now serve any live operator-edited switch, integer or enum platform entry by registry key or alias (so `storefront.polarisKey.enabled` is written through the registry, behind its L2 typed confirmation). The GET list is unchanged: the aliased A-13 entries.
+- The product row-settings route keeps only its scope check and `not_claimed`; value, version, reason and pending checks are `writeSetting()`'s (`requireVersion` / `requireReason` options). Refusal reasons are now `writeSetting()`'s (`expected_version_required`, `pending_setting`).
+- `storefrontSwitch.ts` is a separate fail-safe reader (a bad stored value hides the storefront); the resolver would ignore such a value, so it is left as is.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -54,8 +62,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] One resolver and one writer for platform and product settings
-- [ ] No A-13 parallel settings code remains
+- [x] One resolver and one writer for platform and product settings
+- [x] No A-13 parallel settings code remains
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

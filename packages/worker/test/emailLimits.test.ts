@@ -19,8 +19,8 @@ import {
   normalizeEmailCode,
   recipientHash,
   verifyEmailCode,
-} from "../src/core/emailLimits.js";
-import type { Env } from "../src/env.js";
+} from "../src/core/notify/emailLimits.js";
+import type { Env } from "../src/platform/env.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import { singleUseMock } from "./singleUseMock.js";

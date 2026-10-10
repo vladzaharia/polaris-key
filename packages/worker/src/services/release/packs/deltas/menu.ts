@@ -10,7 +10,7 @@
  */
 
 import type { FeedDelta } from "@polaris-key/protocol/update";
-import type { Db } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
 import { LAZY_DELTA_METHOD } from "./policy.js";
 import type { LazyDeltaRow } from "./store.js";
 

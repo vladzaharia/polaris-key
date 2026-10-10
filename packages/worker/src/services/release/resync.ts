@@ -22,7 +22,8 @@ import {
   catalogDeliveryIssues,
   declassifyRefusal,
 } from "../../core/configDelivery.js";
-import type { Db, DbStatement, Env } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import {
   auditValue,
   claimGuardParams,
@@ -31,20 +32,20 @@ import {
   endBreakGlassStatements,
   systemResyncRefusal,
   type BreakGlassClaim,
+  RESYNC_ACTOR,
+  stmtSettingAudit,
+  unlessClaimed,
+  type ClaimKey,
+} from "../../core/settingsClaims.js";
+import {
   countLicensesUsingTier,
-  getActiveSchema,
-  getManifestSnapshot,
-  getProduct,
-  invalidateWidenedEdgeMintApprovals,
-  isManagedSecretKey,
-  isSealedEnvelope,
   listProfiles,
   listTiers,
-  liveRowClaimKeys,
   nextSchemaVersion,
-  parsePayload,
-  parseWebOrigins,
-  RESYNC_ACTOR,
+} from "../../core/console/repo.js";
+import {
+  getActiveSchema,
+  getProduct,
   stmtDeleteManifestProfile,
   stmtDeleteManifestTier,
   stmtDeleteOrphanEdgeMintApprovals,
@@ -57,20 +58,26 @@ import {
   stmtSetAutoIssuePolicy,
   stmtSetFingerprintPolicy,
   stmtSetServices,
-  stmtSettingAudit,
   stmtUpsertManifestProfile,
   stmtUpsertManifestTier,
-  unlessClaimed,
-  type ClaimKey,
   type ProductRow,
   type TierRow,
-} from "../../core/ingest.js";
+} from "../../core/repo.js";
+import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
+import { invalidateWidenedEdgeMintApprovals } from "../../core/edgeMintApproval.js";
+import {
+  isManagedSecretKey,
+  isSealedEnvelope,
+} from "../../core/managedSecrets.js";
+import { liveRowClaimKeys } from "../../core/rowSettings.js";
+import { parsePayload } from "../../core/console/redact.js";
+import { parseWebOrigins } from "../../core/cors.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "./config.js";
 import {
   parseManifest,
   type ManifestProfile,
   type ParsedManifest,
-} from "./manifest.js";
+} from "@polaris-key/manifest";
 import {
   discoverInstallation,
   type FetchImpl,
@@ -103,14 +110,14 @@ import {
   stmtDeleteManifestPublisher,
   stmtUpsertManifestPublisher,
 } from "../../core/publisher.js";
-import { randomId } from "../../core/platform.js";
+import { randomId } from "../../platform/crypto.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
-import { reservedNamesMode } from "../../core/reservedNames.js";
-import { reservedDisplayNamesMode } from "../../core/reservedDisplayNames.js";
+import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
+import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
 import {
   syncHostedAssets,
   type AssetWarning,
-} from "../../core/hostedAssetPulls.js";
+} from "../../core/assets/hostedAssetPulls.js";
 import { repoBlobLookup } from "./assetSource.js";
 
 export type ResyncResult =
@@ -206,7 +213,7 @@ export function resyncNotes(result: Extract<ResyncResult, { ok: true }>): {
  * the ingest fail. A `finally` does not run when the
  * Worker is KILLED after those writes (CPU limit, a cancelled webhook), so this is not the
  * guarantee: every writer of an approval input sweeps BEFORE it writes — `applyRepoManifest`, and
- * the console's services and License-policy edits (`core/servicesAdmin.ts`,
+ * the console's services and License-policy edits (`console/handlers/servicesAdmin.ts`,
  * `services/license/admin/policy.ts`) — so no revert can be the first thing to look.
  */
 export async function resyncRepo(

@@ -37,9 +37,9 @@
  * its own label and never reuses this one. A ticket is never logged (THREAT-MODEL R12).
  */
 
-import type { Env } from "../env.js";
-import { secret } from "../env.js";
-import { bytesHostname, normalizeHostname } from "./bytesHostname.js";
+import type { Env } from "../platform/env.js";
+import { secret } from "../platform/env.js";
+import { bytesHostname, normalizeHostname } from "./assets/bytesHostname.js";
 import {
   b64urlDecodeStrict,
   b64urlEncode,

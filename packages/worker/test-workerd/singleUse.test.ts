@@ -13,9 +13,12 @@ import {
   redeemArtefact,
   updateArtefact,
 } from "../src/core/singleUse.js";
-import { issueEmailCode, verifyEmailCode } from "../src/core/emailLimits.js";
+import {
+  issueEmailCode,
+  verifyEmailCode,
+} from "../src/core/notify/emailLimits.js";
 import { rateLimitOk } from "../src/core/rateLimit.js";
-import type { Env as WorkerEnv } from "../src/env.js";
+import type { Env as WorkerEnv } from "../src/platform/env.js";
 
 const workerEnv = env as unknown as WorkerEnv;
 

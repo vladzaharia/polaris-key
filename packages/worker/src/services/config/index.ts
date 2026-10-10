@@ -18,7 +18,7 @@ import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
 import { CONFIG_SETTINGS_SLICE } from "./settings.js";
 // U-03: registers the account override layer with Core's subject-store registry (merge, delete,
-// export), at module load like every store (`core/subjectHooks.ts`).
+// export), at module load like every store (`core/accounts/subjectHooks.ts`).
 import "./accountOverrideStore.js";
 
 export const configService: ServiceDescriptor = {
@@ -29,7 +29,7 @@ export const configService: ServiceDescriptor = {
   /** `config/{catalog,profiles,mint}` on the console API (§R1; `mint` is P0-12). */
   adminHandle: handleConfigAdmin,
   /**
-   * Licence deletion (`core/licenseDelete.ts`): the licence-override migration's report rows for
+   * Licence deletion (`core/licensing/licenseDelete.ts`): the licence-override migration's report rows for
    * the deleted licence go with it (U-03). The account override layer is keyed by the account,
    * not the licence, so it stays.
    */

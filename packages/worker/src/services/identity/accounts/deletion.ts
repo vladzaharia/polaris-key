@@ -17,19 +17,20 @@ import { deleteAccountAvatars } from "../card/avatars.js";
 import {
   accountLicenses,
   stmtDetachAccountLicenses,
-} from "../../../core/accountSubjects.js";
-import { stmtDeleteAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
-import { randomId, type Db, type DbStatement } from "../../../core/platform.js";
+} from "../../../core/accounts/accountSubjects.js";
+import { stmtDeleteAccountAutoAttachBlocks } from "../../../core/licensing/licenseHolders.js";
+import { randomId } from "../../../platform/crypto.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import {
   forgetRegistryTokens,
   stmtRevokeAccountRegistryTokens,
-} from "../../../core/registryTokens.js";
+} from "../../../core/registry/registryTokens.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
   runSubjectDelete,
   runSubjectDeleteIsolated,
-} from "../../../core/subjectHooks.js";
+} from "../../../core/accounts/subjectHooks.js";
 import { portalAudit } from "../portal/repo.js";
 import { stmtSubjectEvent } from "./events.js";
 import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";

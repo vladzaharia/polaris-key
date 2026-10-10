@@ -3,7 +3,7 @@
  * S-17 §7.1 risk 8).
  *
  * An account merge re-keys data and an account deletion removes it, and both reach a store only
- * through `registerSubjectStore` (`core/subjectHooks.ts`). A store that forgets to register is
+ * through `registerSubjectStore` (`core/accounts/subjectHooks.ts`). A store that forgets to register is
  * not an error anyone sees: its rows simply survive a deletion or stay with the absorbed subject
  * after a merge. So this suite makes forgetting impossible to merge:
  *
@@ -29,7 +29,7 @@ import {
   subjectStores,
   unregisterSubjectStore,
   type SubjectStore,
-} from "../src/core/subjectHooks.js";
+} from "../src/core/accounts/subjectHooks.js";
 import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
 
@@ -274,7 +274,7 @@ function sourceFiles(dir: string): string[] {
 describe("Cloud Sync's principal has no owner fallback", () => {
   it("no Cloud Sync source calls subjectFor, licenseOwnerSubject or reads an account id", () => {
     const files = [
-      join(WORKER_ROOT, "src", "core", "syncAccess.ts"),
+      join(WORKER_ROOT, "src", "core", "accounts", "syncAccess.ts"),
       ...sourceFiles(join(WORKER_ROOT, "src", "services", "sync")),
     ];
     const offenders: string[] = [];
