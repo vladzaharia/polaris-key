@@ -53,12 +53,73 @@ export type PictureDraft =
   | { kind: "upload"; picture: PortalAvatar }
   | null;
 
+/**
+ * What the person did to the birth date in this edit (I-33): typed one (`""` while the field is
+ * empty), removed it, or nothing.
+ */
+export type BirthdateDraft =
+  | { kind: "typed"; value: string }
+  | { kind: "removed" }
+  | null;
+
 export interface ProfileDraft {
   name: NameDraft;
   picture: PictureDraft;
+  /** Absent in a draft made before I-33's field existed: nothing chosen. */
+  birthdate?: BirthdateDraft;
 }
 
-export const NO_DRAFT: ProfileDraft = { name: null, picture: null };
+export const NO_DRAFT: ProfileDraft = {
+  name: null,
+  picture: null,
+  birthdate: null,
+};
+
+/** The birth date the editor's field shows: `YYYY-MM-DD`, or `""` for none. */
+export function draftBirthdate(
+  profile: PortalProfile,
+  draft: ProfileDraft,
+): string {
+  const d = draft.birthdate;
+  if (d?.kind === "typed") return d.value;
+  if (d?.kind === "removed") return "";
+  return profile.birthdate ?? "";
+}
+
+/** The birth date's part of the PATCH: a new date, `null` to remove the saved one, or nothing. */
+function birthdateChange(
+  profile: PortalProfile,
+  draft: ProfileDraft,
+): string | null | undefined {
+  const d = draft.birthdate;
+  if (!d) return undefined;
+  const saved = profile.birthdate ?? null;
+  const value = d.kind === "removed" ? "" : d.value.trim();
+  if (value === "") return saved ? null : undefined;
+  return value === saved ? undefined : value;
+}
+
+/**
+ * A birth date as the reader's locale writes it ("February 28, 1987"), read as a calendar day
+ * (UTC), so no time zone moves it a day.
+ */
+export function formatBirthdate(value: string, locale?: string): string {
+  const at = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(at.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(at);
+}
+
+/** Today in the reader's own calendar, `YYYY-MM-DD`: the field's latest date. */
+export function todayIso(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** The earliest birth date the Worker takes (`BIRTHDATE_MIN`). */
+export const BIRTHDATE_MIN = "1900-01-01";
 
 /** The methods that supplied a name: the "Use a name from" chips. */
 export function nameOptions(
@@ -267,7 +328,7 @@ export function reconcileDraft(
     !pictureOptions(profile).some((o) => o.linkId === p.linkId)
       ? null
       : p;
-  return name === n && picture === p ? draft : { name, picture };
+  return name === n && picture === p ? draft : { ...draft, name, picture };
 }
 
 /** A typed name that is empty once trimmed: the editor refuses it before asking (`invalid_name`). */
@@ -290,6 +351,8 @@ export function profileChange(
   else if (p?.kind === "from") change.picture = { from: p.linkId };
   else if (p?.kind === "upload" && p.picture.asset !== profile.picture?.asset)
     change.picture = { upload: p.picture.asset };
+  const b = birthdateChange(profile, draft);
+  if (b !== undefined) change.birthdate = b;
   return Object.keys(change).length ? change : null;
 }
 
@@ -368,6 +431,8 @@ export function profileErrorCopy(err: unknown, op: "save" | "upload"): string {
     switch (err.reason) {
       case "invalid_name":
         return PROFILE_COPY["profile.error.invalidName"];
+      case "invalid_birthdate":
+        return PROFILE_COPY["profile.error.invalidBirthdate"];
       case "unknown_source":
         return PROFILE_COPY["profile.error.unknownSource"];
       case "no_name":

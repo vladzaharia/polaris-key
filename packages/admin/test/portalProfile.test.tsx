@@ -84,7 +84,7 @@ async function openEditor(): Promise<HTMLElement> {
   await userEvent.click(
     within(card).getByRole("button", { name: "Edit profile" }),
   );
-  await within(card).findByRole("textbox", { name: "Display name" });
+  await within(card).findByRole("textbox", { name: "Screen name" });
   return card;
 }
 
@@ -171,7 +171,7 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
   it("a typed name is Your choice and sticks; untouched values are not sent", async () => {
     mockFetch(profileRoutes(FOLLOWING));
     const card = await openEditor();
-    const field = within(card).getByRole("textbox", { name: "Display name" });
+    const field = within(card).getByRole("textbox", { name: "Screen name" });
     await waitFor(() => expect(document.activeElement).toBe(field));
     // Imported and never chosen: it follows Google, and there is no Your choice tag.
     expect(
@@ -218,7 +218,7 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
     expect(
       (
         within(card).getByRole("textbox", {
-          name: "Display name",
+          name: "Screen name",
         }) as HTMLInputElement
       ).value,
     ).toBe("marafox");
@@ -305,7 +305,7 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
   it("choosing nothing, or retyping the saved name, saves nothing", async () => {
     mockFetch(profileRoutes(FOLLOWING));
     const card = await openEditor();
-    const field = within(card).getByRole("textbox", { name: "Display name" });
+    const field = within(card).getByRole("textbox", { name: "Screen name" });
     await userEvent.clear(field);
     await userEvent.type(field, "Mara Fennick");
     expect(within(card).getByText("Your choice").hidden).toBe(true);
@@ -322,7 +322,7 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
     mockFetch(profileRoutes(CHOSEN));
     const card = await openEditor();
     await userEvent.type(
-      within(card).getByRole("textbox", { name: "Display name" }),
+      within(card).getByRole("textbox", { name: "Screen name" }),
       " Jr",
     );
     await userEvent.click(within(card).getByRole("button", { name: "Cancel" }));
@@ -337,7 +337,7 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
   it("an empty name is refused before asking", async () => {
     mockFetch(profileRoutes(CHOSEN));
     const card = await openEditor();
-    const field = within(card).getByRole("textbox", { name: "Display name" });
+    const field = within(card).getByRole("textbox", { name: "Screen name" });
     await userEvent.clear(field);
     await userEvent.click(
       within(card).getByRole("button", { name: "Save profile" }),
@@ -385,6 +385,113 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
   it("is axe-clean while editing", async () => {
     mockFetch(profileRoutes(CHOSEN));
     await openEditor();
+    expect(await axeViolations()).toEqual([]);
+  });
+});
+
+describe("the birth date (I-33): optional, private, added, changed and removed here", () => {
+  const birthField = (card: HTMLElement) =>
+    within(card).getByLabelText("Birth date") as HTMLInputElement;
+
+  it("says it is optional and private, and the card shows nothing while there is none", async () => {
+    mockFetch(profileRoutes(CHOSEN));
+    const card = await openProfile();
+    expect(within(card).queryByText(/^Born /)).toBeNull();
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Edit profile" }),
+    );
+    const field = birthField(card);
+    expect(field.type).toBe("date");
+    expect(field.value).toBe("");
+    expect(field.min).toBe("1900-01-01");
+    expect(field.autocomplete).toBe("bday");
+    expect(within(card).getByText("Optional")).toBeTruthy();
+    const hint = within(card).getByText(
+      "Private to you. Apps never receive it.",
+    );
+    expect(field.getAttribute("aria-describedby")).toBe(hint.id);
+    expect(
+      within(card).queryByRole("button", { name: "Remove birth date" }),
+    ).toBeNull();
+  });
+
+  it("a typed date is sent alone, and the card then shows it in the reader's words", async () => {
+    mockFetch(profileRoutes(CHOSEN));
+    const card = await openEditor();
+    await userEvent.type(birthField(card), "1987-02-28");
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Save profile" }),
+    );
+    await waitFor(() =>
+      expect(patches()).toEqual([{ birthdate: "1987-02-28" }]),
+    );
+    expect(
+      await within(card).findByText("Born February 28, 1987"),
+    ).toBeTruthy();
+  });
+
+  it("Remove birth date sends null and moves focus to the emptied field", async () => {
+    mockFetch(profileRoutes({ ...CHOSEN, birthdate: "1987-02-28" }));
+    const card = await openProfile();
+    expect(within(card).getByText("Born February 28, 1987")).toBeTruthy();
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Edit profile" }),
+    );
+    expect(birthField(card).value).toBe("1987-02-28");
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Remove birth date" }),
+    );
+    expect(birthField(card).value).toBe("");
+    await waitFor(() => expect(document.activeElement).toBe(birthField(card)));
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Save profile" }),
+    );
+    await waitFor(() => expect(patches()).toEqual([{ birthdate: null }]));
+    await waitFor(() => expect(within(card).queryByText(/^Born /)).toBeNull());
+  });
+
+  it("an unchanged date, or none touched, sends nothing", async () => {
+    mockFetch(profileRoutes({ ...CHOSEN, birthdate: "1987-02-28" }));
+    const card = await openEditor();
+    const field = birthField(card);
+    await userEvent.clear(field);
+    await userEvent.type(field, "1987-02-28");
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Save profile" }),
+    );
+    await waitFor(() =>
+      expect(
+        within(card).queryByRole("button", { name: "Save profile" }),
+      ).toBeNull(),
+    );
+    expect(patches()).toEqual([]);
+  });
+
+  it("the Worker's invalid_birthdate lands on the field, worded for a person, and the input stays", async () => {
+    mockFetch(
+      profileRoutes(CHOSEN, {
+        "PATCH /api/me/profile": {
+          status: 400,
+          body: {
+            error: "bad_request",
+            reason: "invalid_birthdate",
+            message: "Enter a real date, no later than today.",
+          },
+        },
+      }),
+    );
+    const card = await openEditor();
+    await userEvent.type(birthField(card), "2023-02-28");
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Save profile" }),
+    );
+    const alert = await within(card).findByRole("alert");
+    expect(alert.textContent).toBe("Enter a real date, no later than today.");
+    const field = birthField(card);
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("aria-describedby")).toContain(alert.id);
+    expect(field.value).toBe("2023-02-28");
+    expect(document.activeElement).toBe(field);
     expect(await axeViolations()).toEqual([]);
   });
 });

@@ -556,7 +556,7 @@ describe("Account → Profile (PX-22, §4.30)", () => {
         .getByText("Name typed by you · picture from Steam (marafox)")
         .waitFor();
       await card.getByRole("button", { name: "Edit profile" }).click();
-      const field = card.getByRole("textbox", { name: "Display name" });
+      const field = card.getByRole("textbox", { name: "Screen name" });
       await field.fill("Mara F.");
       await card.getByText("Your choice", { exact: true }).waitFor();
       await card
@@ -580,6 +580,42 @@ describe("Account → Profile (PX-22, §4.30)", () => {
         expect.arrayContaining([`${google}-96`, google]),
       );
       expect(shown.every((p) => p.decoded)).toBe(true);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("the birth date (I-33): typed in the native field, sent alone, shown on the card, then removed", async () => {
+    const patches: unknown[] = [];
+    const o = await open("three", "/#/account/profile", {
+      routes: profileRoutes(PROFILE_STEAM, patches),
+      width: 390,
+      height: 844,
+    });
+    try {
+      await h1(o.page, "Account");
+      const card = o.page.getByRole("region", { name: "Profile" });
+      await card.getByRole("button", { name: "Edit profile" }).click();
+      const field = card.getByLabel("Birth date");
+      await field.fill("1987-02-28");
+      await card.getByRole("button", { name: "Save profile" }).click();
+      await card.getByText("Born February 28, 1987").waitFor();
+      expect(patches).toEqual([{ birthdate: "1987-02-28" }]);
+      await card.getByRole("button", { name: "Edit profile" }).click();
+      await card.getByRole("button", { name: "Remove birth date" }).click();
+      // The button goes with the date; focus lands on the field it emptied.
+      await o.page.waitForFunction(
+        () =>
+          (document.activeElement as HTMLInputElement | null)?.type === "date",
+      );
+      await card.getByRole("button", { name: "Save profile" }).click();
+      await card.getByRole("button", { name: "Edit profile" }).waitFor();
+      expect(await card.getByText(/^Born /).count()).toBe(0);
+      expect(patches).toEqual([
+        { birthdate: "1987-02-28" },
+        { birthdate: null },
+      ]);
       expect(await o.violations()).toEqual([]);
     } finally {
       await o.close();

@@ -22,7 +22,9 @@ import {
 import { useUpdateProfile, useUploadPicture } from "../data.js";
 import {
   badgeProvider,
+  BIRTHDATE_MIN,
   currentPictureOrigin,
+  draftBirthdate,
   draftName,
   draftNameSource,
   draftPicture,
@@ -39,6 +41,7 @@ import {
   reconcileDraft,
   selectedTile,
   tileInUse,
+  todayIso,
   UPLOAD_MAX_BYTES,
   UPLOAD_TYPES,
   type PictureTile,
@@ -47,14 +50,18 @@ import {
 import { Avatar } from "./Avatar.js";
 import { ProviderGlyph, providerBadge } from "./Glyphs.js";
 
-type FieldError = { field: "name" | "picture" | "form"; text: string } | null;
+type FieldError = {
+  field: "name" | "picture" | "birthdate" | "form";
+  text: string;
+} | null;
 
 /**
- * Account → Profile, editing (PORTAL.md §4.30, frame 50; PX-22): a preview, the display name with
+ * Account → Profile, editing (PORTAL.md §4.30, frame 50; PX-22): a preview, the screen name with
  * a **Your choice** tag once typed and chips for each method's name, the picture as radio tiles
- * (each method's picture, an upload, Initials) with **In use** on the saved one, and an **Upload**
- * tile. Saving sends only what the person chose (`model/profile.ts`), so imported values they left
- * alone keep following their provider and every choice sticks.
+ * (each method's picture, an upload, Initials) with **In use** on the saved one, an **Upload**
+ * tile, and the optional birth date (I-33), private to the person. Saving sends only what the
+ * person chose (`model/profile.ts`), so imported values they left alone keep following their
+ * provider and every choice sticks.
  */
 export function ProfileEditor({
   profile,
@@ -79,6 +86,7 @@ export function ProfileEditor({
   const pictureRef = React.useRef<HTMLFieldSetElement>(null);
   const uploadRef = React.useRef<HTMLButtonElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const birthRef = React.useRef<HTMLInputElement>(null);
   const id = React.useId();
 
   React.useEffect(() => {
@@ -105,6 +113,7 @@ export function ProfileEditor({
   const inUse = tileInUse(profile);
   const names = nameOptions(profile);
   const providers = nameProviders(profile);
+  const birthdate = draftBirthdate(profile, draft);
 
   let hint: string | null = null;
   if (yourChoice) hint = nameTypedHint(providers);
@@ -198,6 +207,15 @@ export function ProfileEditor({
       nameRef.current?.focus();
       return;
     }
+    // A half-typed date reads as empty to script; the browser knows it is not one.
+    if (birthRef.current && !birthRef.current.validity.valid) {
+      setError({
+        field: "birthdate",
+        text: C["profile.error.invalidBirthdate"],
+      });
+      birthRef.current.focus();
+      return;
+    }
     const change = profileChange(profile, draft);
     if (!change) return onDone(false);
     save.mutate(change, {
@@ -214,14 +232,29 @@ export function ProfileEditor({
         const field = reason ? fieldOf(reason, change) : "form";
         setError({ field, text: profileErrorCopy(err, "save") });
         if (field === "name") nameRef.current?.focus();
+        if (field === "birthdate") birthRef.current?.focus();
       },
     });
+  };
+
+  const typeBirthdate = (value: string): void => {
+    setDraft((d) => ({ ...d, birthdate: { kind: "typed", value } }));
+    if (error?.field === "birthdate") setError(null);
+  };
+
+  const removeBirthdate = (): void => {
+    setDraft((d) => ({ ...d, birthdate: { kind: "removed" } }));
+    if (error?.field === "birthdate") setError(null);
+    // The button leaves with the date: focus goes to the field it emptied.
+    requestAnimationFrame(() => birthRef.current?.focus());
   };
 
   const nameErrId = `${id}-name-err`;
   const hintId = `${id}-name-hint`;
   const pictureErrId = `${id}-picture-err`;
   const uploadNoteId = `${id}-upload-note`;
+  const birthErrId = `${id}-birthdate-err`;
+  const birthHintId = `${id}-birthdate-hint`;
   const badge = badgeProvider(pic.picture, pic.source, nameSrc.source);
 
   return (
@@ -428,6 +461,52 @@ export function ProfileEditor({
             ) : null}
           </fieldset>
 
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <label
+                htmlFor={`${id}-birthdate`}
+                className="text-sm font-bold text-fg-strong"
+              >
+                {C["profile.birthdate.label"]}
+              </label>
+              <span className="text-xs text-fg-muted">
+                {C["profile.birthdate.optional"]}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                ref={birthRef}
+                id={`${id}-birthdate`}
+                type="date"
+                value={birthdate}
+                min={BIRTHDATE_MIN}
+                max={todayIso()}
+                autoComplete="bday"
+                aria-invalid={error?.field === "birthdate" ? true : undefined}
+                aria-describedby={
+                  error?.field === "birthdate"
+                    ? `${birthErrId} ${birthHintId}`
+                    : birthHintId
+                }
+                onValueChange={typeBirthdate}
+                className="w-full max-w-56"
+              />
+              {birthdate ? (
+                <Button variant="ghost" onClick={removeBirthdate}>
+                  {C["profile.birthdate.remove"]}
+                </Button>
+              ) : null}
+            </div>
+            {error?.field === "birthdate" ? (
+              <p id={birthErrId} role="alert" className="text-sm text-danger">
+                {error.text}
+              </p>
+            ) : null}
+            <p id={birthHintId} className="text-sm text-fg-muted">
+              {C["profile.birthdate.hint"]}
+            </p>
+          </div>
+
           <p className="flex gap-2 text-sm text-fg-muted">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
             <span>{C["profile.note"]}</span>
@@ -464,7 +543,8 @@ function currentNote(
 function fieldOf(
   reason: string,
   change: { nameFrom?: string; picture?: unknown },
-): "name" | "picture" | "form" {
+): "name" | "picture" | "birthdate" | "form" {
+  if (reason === "invalid_birthdate") return "birthdate";
   if (reason === "invalid_name" || reason === "no_name") return "name";
   if (reason === "no_picture" || reason === "unknown_upload") return "picture";
   if (reason === "unknown_source") {

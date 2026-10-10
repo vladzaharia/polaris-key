@@ -763,8 +763,14 @@ export interface PortalProfileSourceOption {
   picture: PortalAvatar | null;
 }
 
+/** Where the birth date came from (I-33): typed here, or accepted from a connection's claim. */
+export type PortalBirthdateSource =
+  | { kind: "user" }
+  | { kind: "connection"; connectionId: string };
+
 /** `GET /api/me/profile`. */
 export interface PortalProfile {
+  /** The screen name. */
   displayName: string | null;
   displayNameSource: PortalProfileSource | null;
   explicitName: boolean;
@@ -774,6 +780,12 @@ export interface PortalProfile {
   explicitPicture: boolean;
   locale: string | null;
   sources: PortalProfileSourceOption[];
+  /**
+   * I-33: the optional birth date, `YYYY-MM-DD`, private to the person (no app or developer ever
+   * receives it). Absent from a Worker before I-33.
+   */
+  birthdate?: string | null;
+  birthdateSource?: PortalBirthdateSource | null;
 }
 
 /** `PATCH /api/me/profile`: every value it sets is an explicit choice that sticks. */
@@ -783,6 +795,8 @@ export interface PortalProfileChange {
   /** A sign-in method's name, by the method's id. */
   nameFrom?: string;
   picture?: "initials" | { from: string } | { upload: string };
+  /** I-33: a birth date (`YYYY-MM-DD`), or `null` to remove it. */
+  birthdate?: string | null;
 }
 
 // ── Account → Sign-in methods (PX-W12, I-16; PORTAL.md §4.26, G27) ─────────────────────────

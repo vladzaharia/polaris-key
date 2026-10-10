@@ -1236,6 +1236,9 @@ type Profile = {
   explicitPicture: boolean;
   locale: string | null;
   sources: typeof PROFILE_SOURCES;
+  /** I-33: the optional birth date, private to the person. */
+  birthdate?: string | null;
+  birthdateSource?: Record<string, unknown> | null;
 };
 
 /** Every signed-in scenario: a typed name and Initials chosen, so the chip shows initials. */
@@ -1255,6 +1258,13 @@ export const PROFILE_STEAM: Profile = {
   ...PROFILE_INITIALS,
   picture: pic(STEAM_ASSET),
   pictureSource: { kind: "provider", linkId: "lnk_steam", provider: "steam" },
+};
+
+/** I-33: the same profile with a birth date Mara typed. */
+export const PROFILE_BORN: Profile = {
+  ...PROFILE_STEAM,
+  birthdate: "1987-02-28",
+  birthdateSource: { kind: "user" },
 };
 
 /**
@@ -1286,9 +1296,15 @@ export function profileRoutes(
         name?: string;
         nameFrom?: string;
         picture?: "initials" | { from?: string; upload?: string };
+        birthdate?: string | null;
       };
       patches.push(change);
       const next = { ...profile };
+      if (change.birthdate !== undefined) {
+        next.birthdate = change.birthdate;
+        next.birthdateSource =
+          change.birthdate === null ? null : { kind: "user" };
+      }
       if (change.name !== undefined) {
         next.displayName = change.name;
         next.displayNameSource = { kind: "typed" };

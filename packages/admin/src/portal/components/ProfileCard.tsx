@@ -4,9 +4,13 @@ import { Button } from "../../ui/Button.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { toast } from "../../ui/toast.js";
 import type { PortalAccount } from "../api.js";
-import { PROFILE_COPY as C } from "../copy/profile.js";
+import { bornLine, PROFILE_COPY as C } from "../copy/profile.js";
 import { useProfile } from "../data.js";
-import { badgeProvider, sourceSummary } from "../model/profile.js";
+import {
+  badgeProvider,
+  formatBirthdate,
+  sourceSummary,
+} from "../model/profile.js";
 import { Avatar } from "./Avatar.js";
 import { providerBadge } from "./Glyphs.js";
 import { ProfileEditor } from "./ProfileEditor.js";
@@ -14,8 +18,9 @@ import { SectionCard } from "./product/Card.js";
 
 /**
  * Account's first card, Profile (PORTAL.md §4.26, §4.30; PX-22): the avatar with the badge of the
- * provider its picture came from, the display name, where each came from ("Name typed by you ·
- * picture from Steam (marafox)"), **Edit profile**, and **Add a picture** when there is none.
+ * provider its picture came from, the screen name, where each came from ("Name typed by you ·
+ * picture from Steam (marafox)"), the birth date when there is one (I-33; this page is the only
+ * place it shows), **Edit profile**, and **Add a picture** when there is none.
  * Editing happens in place (`ProfileEditor`); focus returns to **Edit profile** after.
  *
  * On a Worker without the profile route (404) the card shows the session's name and picture and
@@ -101,6 +106,11 @@ export function ProfileCard({
                 {profile ? (
                   <p className="text-sm text-fg-muted">
                     {sourceSummary(profile)}
+                  </p>
+                ) : null}
+                {profile?.birthdate ? (
+                  <p className="text-sm text-fg-muted">
+                    {bornLine(formatBirthdate(profile.birthdate))}
                   </p>
                 ) : null}
               </div>
