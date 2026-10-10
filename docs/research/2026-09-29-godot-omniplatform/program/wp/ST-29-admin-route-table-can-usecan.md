@@ -142,11 +142,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A route x principal matrix test covers every admin route
-- [ ] sessionFromRequest() is called only by the deny-by-default dispatcher (grep test)
-- [ ] docs.ts serves Help and the developer sections with no session, gates Operate → Console on a console session, and gates Operate → Platform, Contribute and the runbook on `can('platform.docs')` (owner, 2026-10-08)
-- [ ] THREAT-MODEL §9 trigger reviewed; no behaviour change for platform admins
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
+- [x] A route x principal matrix test covers every admin route (`test/rbacRouteMatrix.test.ts`)
+- [x] sessionFromRequest() is called only by the deny-by-default dispatcher (grep test: `test/consoleSessionReader.test.ts`)
+- [ ] docs.ts serves Help and the developer sections with no session, gates Operate → Console on a console session, and gates Operate → Platform, Contribute and the runbook on `can('platform.docs')` (owner, 2026-10-08). Met except Help, which stays member-tier until the owner's support address exists (D4; see Corrections)
+- [x] THREAT-MODEL §9 trigger reviewed; no behaviour change for platform admins (one ordering change: a step-up row asks for the step-up before the handler's own refusal; see Corrections)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text (see Corrections for where each part landed).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
