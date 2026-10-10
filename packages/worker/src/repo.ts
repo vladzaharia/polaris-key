@@ -115,6 +115,12 @@ export interface LicenseRow {
    *  on a row read before the migration) for every licence not created by a batch. Written only
    *  by the batch create (`services/license/batches.ts`). */
   batch_id?: string | null;
+  /** LX-08 (0105_c) / LX-12: why a disabled licence ended (`revoked`, `superseded`, `refunded`,
+   *  `chargeback`), written with the disable by `core/licensing/lifecycleWrites.ts`; NULL while
+   *  active and on a licence disabled before LX-12. Read through `licenseLifecycleState`. */
+  ended_reason?: string | null;
+  /** LX-08 (0105_d): the licence that replaced this one (a merge's survivor); NULL otherwise. */
+  superseded_by?: string | null;
   modified_by: string | null;
   modified_at: number;
 }

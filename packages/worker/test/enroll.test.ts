@@ -460,6 +460,9 @@ describe("merge on sign-in", () => {
     const old = await getLicense(db, "djdl", enrolled);
     expect(old?.status).toBe("disabled");
     expect(old?.enroll_hwid).toBeTruthy();
+    // LX-12: it ended as superseded by the identity's licence, written with the disable.
+    expect(old?.ended_reason).toBe("superseded");
+    expect(old?.superseded_by).toBe(identityLicense);
     // LX-03: the moved device holds a seat ordinal on the identity's licence.
     expect(
       (

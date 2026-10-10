@@ -18112,6 +18112,18 @@ components:
             description: "The licence's own email; `''` when none.",
           }
         status: { type: string, enum: [active, disabled] }
+        endedReason:
+          type: [string, "null"]
+          enum: [revoked, superseded, refunded, chargeback, null]
+          description: >
+            LX-12: why a disabled licence ended: `revoked` (Disable, Disable unused keys or the
+            product's deletion), `superseded` (another licence replaced it; see `supersededBy`),
+            `refunded` or `chargeback` (its sale was fully refunded or charged back; only the
+            store's reversal restores it, so Enable answers 409). `null` while active, and for a
+            licence disabled before the reason was recorded.
+        supersededBy:
+          type: [string, "null"]
+          description: "LX-12: the licence that replaced this one; `null` otherwise. Enable clears it on a superseded licence."
         tier: { type: [string, "null"] }
         expiresAt: { type: [integer, "null"] }
         ownerSubject:

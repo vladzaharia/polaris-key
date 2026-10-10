@@ -33,6 +33,10 @@
  */
 
 import type { Db, DbParam, DbStatement } from "../../core/platform.js";
+import {
+  licenseEventSourceSql,
+  licenseTargetSetSql,
+} from "../../core/licensing/lifecycleWrites.js";
 
 /** The most licences one batch creates. Measured at 500 on D1 (`test-workerd/licenseBatches`). */
 export const MAX_BATCH_COUNT = 500;
@@ -316,7 +320,9 @@ export function unusedCountIs(
  * Disable every active licence of the batch that was never used, in one conditional UPDATE that
  * runs only when the statement before it in the batch (the guarded audit row) wrote its row
  * (`changes()`, as `core/platformSettings.ts` guards its audit rows). Nothing runs between the two
- * inside one batch, so the UPDATE disables exactly the count the audit row records.
+ * inside one batch, so the UPDATE disables exactly the count the audit row records. LX-12: each
+ * is revoked through the lifecycle (`ended_reason` `revoked`); revoke moves only an active
+ * licence, so the source predicate is the `status = 'active'` this always had.
  */
 export function disableUnusedAfterAuditStatement(
   product: string,
@@ -325,8 +331,8 @@ export function disableUnusedAfterAuditStatement(
   now: number,
 ): DbStatement {
   return {
-    sql: `UPDATE licenses SET status = 'disabled', modified_by = ?, modified_at = ?
-      WHERE product = ? AND batch_id = ? AND status = 'active'
+    sql: `UPDATE licenses SET ${licenseTargetSetSql("revoke")}, modified_by = ?, modified_at = ?
+      WHERE product = ? AND batch_id = ? AND ${licenseEventSourceSql("revoke")}
         AND NOT ${licenseEverBoundSql("licenses")}
         AND changes() = 1`,
     params: [actor, now, product, batchId],

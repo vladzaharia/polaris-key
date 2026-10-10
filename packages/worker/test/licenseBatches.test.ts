@@ -432,6 +432,16 @@ describe("batch reads, used counts and Disable unused keys", () => {
     expect(status.get(moved!.licenseId)).toBe("active");
     expect(status.get(unused!.licenseId)).toBe("disabled");
     expect(status.get(alreadyOff!.licenseId)).toBe("disabled");
+    // LX-12: each is revoked, its reason written with the disable; the used ones have none.
+    const reasons = new Map(
+      (await batchLicenses(body.batchId)).map((r) => [
+        r.id,
+        r.ended_reason ?? null,
+      ]),
+    );
+    expect(reasons.get(unused!.licenseId)).toBe("revoked");
+    expect(reasons.get(alreadyOff!.licenseId)).toBe("revoked");
+    expect(reasons.get(bound!.licenseId)).toBeNull();
     // The licence outside the batch is untouched.
     expect(
       (
