@@ -52,6 +52,12 @@
     {
       "kit": "godot",
       "rule": "godot-rtl",
+      "file": "sdks/godot/addons/polaris_key/ui/product/pkey_product_header.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-rtl",
       "file": "sdks/godot/addons/polaris_key/ui/settings/pkey_settings_panel.gd",
       "count": 1
     }
