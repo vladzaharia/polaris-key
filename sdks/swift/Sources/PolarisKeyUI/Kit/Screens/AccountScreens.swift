@@ -36,6 +36,51 @@ struct PaneText: View {
     }
 }
 
+/// A service glyph tile for a settings group header (UI-KITS §1.2 `serviceCues`): off by
+/// default, never a fill, a status or a large surface; the service's own accent at 20 pt.
+struct ServiceCue: View {
+    let service: KitService
+
+    var body: some View {
+        kitStyle { style in
+            if style.serviceCues {
+                let (glyph, ring, fill) = Self.look(service, dark: style.dark)
+                Image(systemName: glyph)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(ring.color)
+                    .frame(width: 20, height: 20)
+                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(fill.color))
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    static func look(_ service: KitService, dark: Bool) -> (String, BrandColor, BrandColor) {
+        switch service {
+        case .update, .distribution, .release:
+            return dark
+                ? ("arrow.down.circle", PolarisBrand.Dark.stateUpdateRing, PolarisBrand.Dark.stateUpdateSelectedFill)
+                : ("arrow.down.circle", PolarisBrand.Light.stateUpdateRing, PolarisBrand.Light.stateUpdateSelectedFill)
+        case .sync:
+            return dark
+                ? ("icloud", PolarisBrand.Dark.stateSyncRing, PolarisBrand.Dark.stateSyncSelectedFill)
+                : ("icloud", PolarisBrand.Light.stateSyncRing, PolarisBrand.Light.stateSyncSelectedFill)
+        case .config:
+            return dark
+                ? ("slider.horizontal.3", PolarisBrand.Dark.stateConfigRing, PolarisBrand.Dark.stateConfigSelectedFill)
+                : ("slider.horizontal.3", PolarisBrand.Light.stateConfigRing, PolarisBrand.Light.stateConfigSelectedFill)
+        case .identity:
+            return dark
+                ? ("person.crop.circle", PolarisBrand.Dark.stateIdentityRing, PolarisBrand.Dark.stateIdentitySelectedFill)
+                : ("person.crop.circle", PolarisBrand.Light.stateIdentityRing, PolarisBrand.Light.stateIdentitySelectedFill)
+        case .license:
+            return dark
+                ? ("key", PolarisBrand.Dark.stateLicenseRing, PolarisBrand.Dark.stateLicenseSelectedFill)
+                : ("key", PolarisBrand.Light.stateLicenseRing, PolarisBrand.Light.stateLicenseSelectedFill)
+        }
+    }
+}
+
 /// The settings pane's account and license, as sections.
 public struct AccountAndLicenseSection: View {
     let screen: KitScreen<AccountState>
@@ -130,7 +175,10 @@ public struct AccountAndLicenseSection: View {
                         }
                     }
                 } header: {
-                    PaneText(CopyLine("account.updates"), .footnote, color: .muted)
+                    HStack(spacing: 6) {
+                        ServiceCue(service: .update)
+                        PaneText(CopyLine("account.updates"), .footnote, color: .muted)
+                    }
                 }
             }
             if screen.shows("common.signOut") {
@@ -243,7 +291,10 @@ public struct SettingsSection: View {
                     }
                 }
             } header: {
-                PaneText(CopyLine("settings.title"), .footnote, color: .muted)
+                HStack(spacing: 6) {
+                    ServiceCue(service: .config)
+                    PaneText(CopyLine("settings.title"), .footnote, color: .muted)
+                }
             }
         }
     }

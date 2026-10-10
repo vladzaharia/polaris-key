@@ -69,6 +69,24 @@ public struct PolarisKeyTheme: Sendable, Equatable {
         case line, badge
     }
 
+    /// The semantic roles `colors` may override (UI-KITS §3.1), per scheme.
+    public enum ColorRole: String, Sendable, Hashable, CaseIterable {
+        case surfacePage, surfaceRaised, surfaceSunken, textStrong, textDefault, textMuted
+        case textSubtle, borderSubtle, danger, warning, success
+    }
+
+    /// Per-role overrides, per scheme (`#rrggbb`). A status colour keeps its meaning: it is never
+    /// replaced by the accent.
+    public struct Colors: Sendable, Equatable {
+        public var dark: [ColorRole: String]
+        public var light: [ColorRole: String]
+
+        public init(dark: [ColorRole: String] = [:], light: [ColorRole: String] = [:]) {
+            self.dark = dark
+            self.light = light
+        }
+    }
+
     /// The integrator's identity (UI-KITS §1.2): it wins field by field over the presentation
     /// and the bundle.
     public struct Product: Sendable, Equatable {
@@ -95,6 +113,11 @@ public struct PolarisKeyTheme: Sendable, Equatable {
     public var preset: KitPreset
     public var colorScheme: KitColorScheme
     public var accent: Accent
+    /// Service glyph tiles on settings group headers (UI-KITS §1.2); off on product screens.
+    public var serviceCues: Bool
+    public var colors: Colors
+    /// Fields and groups take it; iOS controls stay capsules (§7.3: never a rounded-rectangle
+    /// override on 26).
     public var radius: Radius
     public var typography: Typography
     public var density: Density
@@ -110,7 +133,8 @@ public struct PolarisKeyTheme: Sendable, Equatable {
 
     public init(
         preset: KitPreset = .polarisKey, colorScheme: KitColorScheme = .system,
-        accent: Accent = .product, radius: Radius = .md, typography: Typography = Typography(),
+        accent: Accent = .product, serviceCues: Bool = false, colors: Colors = Colors(),
+        radius: Radius = .md, typography: Typography = Typography(),
         density: Density = .comfortable, motion: Motion = .system, ambient: Bool? = nil,
         product: Product? = nil, copy: [String: [String: String]] = [:], locale: String? = nil,
         poweredBy: PoweredBy? = nil
@@ -118,6 +142,8 @@ public struct PolarisKeyTheme: Sendable, Equatable {
         self.preset = preset
         self.colorScheme = colorScheme
         self.accent = accent
+        self.serviceCues = serviceCues
+        self.colors = colors
         self.radius = radius
         self.typography = typography
         self.density = density

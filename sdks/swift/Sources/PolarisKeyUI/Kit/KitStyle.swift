@@ -55,6 +55,8 @@ public struct KitResolvedStyle: Sendable, Equatable {
     public var platform: KitPlatform
     /// Draw the iOS 18 material fallback even where Liquid Glass exists (review and baselines).
     public var forcesMaterial = false
+    public var radius: PolarisKeyTheme.Radius = .md
+    public var serviceCues = false
 
     /// Liquid Glass is available (iOS 26) and transparency is not reduced.
     public var usesGlass: Bool {
@@ -77,10 +79,24 @@ public struct KitResolvedStyle: Sendable, Equatable {
     }
 
     public var cardPad: CGFloat { CGFloat(PolarisKit.IOS.cardPad) }
-    /// The inset grouped list's radius.
-    public var groupRadius: CGFloat { 16 }
+    /// The inset grouped list's radius (`theme.radius`; surfaces scale from the control radius).
+    public var groupRadius: CGFloat {
+        switch radius {
+        case .sm: return 12
+        case .md: return 16
+        case .lg: return 22
+        case .points(let n): return CGFloat(n) + 4
+        }
+    }
     /// A field's radius (filled, no border).
-    public var fieldRadius: CGFloat { 14 }
+    public var fieldRadius: CGFloat {
+        switch radius {
+        case .sm: return 10
+        case .md: return 14
+        case .lg: return 18
+        case .points(let n): return CGFloat(n)
+        }
+    }
     /// The sheet's radius (concentric with the device's corners).
     public var sheetRadius: CGFloat { CGFloat(PolarisKit.IOS.radiusSheet) }
 
@@ -321,6 +337,28 @@ enum KitPaletteResolver {
     }
 }
 
+extension KitPaletteResolver {
+    /// The theme's per-role overrides (UI-KITS §3.1 `colors`).
+    static func apply(_ overrides: [PolarisKeyTheme.ColorRole: String], to p: inout KitPalette) {
+        for (role, hex) in overrides {
+            guard let color = BrandColor(hexString: hex)?.color else { continue }
+            switch role {
+            case .surfacePage: p.page = color
+            case .surfaceRaised: p.raised = color
+            case .surfaceSunken: p.sunken = color
+            case .textStrong: p.textStrong = color
+            case .textDefault: p.textDefault = color
+            case .textMuted: p.textMuted = color
+            case .textSubtle: p.textSubtle = color
+            case .borderSubtle: p.border = color
+            case .danger: p.danger = color
+            case .warning: p.warning = color
+            case .success: p.success = color
+            }
+        }
+    }
+}
+
 extension Color {
     #if canImport(UIKit)
         static let systemGroupedGround = Color(uiColor: .systemGroupedBackground)
@@ -391,9 +429,10 @@ struct PolarisKeyStyleScope: ViewModifier {
         case .system: dark = systemScheme == .dark
         }
         let derived = identity.accentSource == .icon ? icon.flatMap(KitIconAccent.derive) : nil
-        let palette = KitPaletteResolver.palette(
+        var palette = KitPaletteResolver.palette(
             identity: identity, preset: theme.preset, dark: dark, derivedAccent: derived,
             increaseContrast: contrast == .increased)
+        KitPaletteResolver.apply(dark ? theme.colors.dark : theme.colors.light, to: &palette)
         let motionReduced: Bool
         switch theme.motion {
         case .system: motionReduced = reduceMotion
@@ -405,7 +444,8 @@ struct PolarisKeyStyleScope: ViewModifier {
             density: theme.density, reduceMotion: motionReduced,
             reduceTransparency: reduceTransparency, increaseContrast: contrast == .increased,
             ambient: theme.ambient ?? (theme.preset != .native), poweredBy: theme.poweredBy,
-            platform: inputs.platform, forcesMaterial: forcesMaterial)
+            platform: inputs.platform, forcesMaterial: forcesMaterial, radius: theme.radius,
+            serviceCues: theme.serviceCues)
     }
 }
 

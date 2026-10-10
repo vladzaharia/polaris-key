@@ -60,6 +60,27 @@ final class KitRulesTests: XCTestCase {
         XCTAssertNil(PolarisKeyTheme().integrator)
     }
 
+    func testColorsOverrideOneRoleAtATime() {
+        let id = KitIdentity.resolve(PolarisKeyPreviewState.base())
+        var palette = KitPaletteResolver.palette(
+            identity: id, preset: .polarisKey, dark: true, derivedAccent: nil,
+            increaseContrast: false)
+        let before = palette
+        KitPaletteResolver.apply([.surfacePage: "#101820", .danger: "not a colour"], to: &palette)
+        XCTAssertEqual(palette.page, BrandColor(hexString: "#101820")!.color)
+        XCTAssertEqual(palette.danger, before.danger, "an invalid colour leaves the role alone")
+        XCTAssertEqual(palette.textStrong, before.textStrong)
+    }
+
+    func testTheRadiusScalesFieldsAndGroups() {
+        var style = KitResolvedStyle.fallback
+        style.radius = .sm
+        XCTAssertLessThan(style.fieldRadius, KitResolvedStyle.fallback.fieldRadius)
+        style.radius = .points(20)
+        XCTAssertEqual(style.fieldRadius, 20)
+        XCTAssertEqual(style.groupRadius, 24)
+    }
+
     // MARK: Layout
 
     func testTheArrangementComesFromTheShape() {
