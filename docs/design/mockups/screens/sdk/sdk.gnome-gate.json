@@ -20,10 +20,25 @@
   ],
   "status": "mockup",
   "designReview": {
-    "round": 0,
-    "reviewer": "Pending",
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots, mockup mode)",
     "date": "2026-10-09",
-    "verdict": "Not reviewed yet.",
-    "findings": []
+    "verdict": "Good after one fix round: no QR on a desktop surface, every refusal neutral, one primary per frame; the clipped visionOS panel, copy drift between boards and screens, mixed accents on the polaris-key cards and weak polaris focus rings were fixed.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Copy for the same step differed between the boards and these screens (sign-in wording, Back and Cancel on inline steps, offline action, expired code).",
+        "resolution": "One wording everywhere: the sign-in step reads 'Check the code there matches this one.' with 'Or go to <url>'; inline steps say Back, only sheets say Cancel; the offline action is Try again; the expired code uses the catalog sentence."
+      },
+      {
+        "severity": "major",
+        "issue": "The visionOS panel clipped Cancel on sign-in and device limit.",
+        "resolution": "The window follows its content."
+      },
+      {
+        "issue": "Vertical centring of the TV and desktop columns.",
+        "resolution": "declined: DL1 top-aligns the panes with the panel's content."
+      }
+    ]
   }
 }
