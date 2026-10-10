@@ -1458,26 +1458,6 @@
     },
     {
       "board": "windows",
-      "state": "activate",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "windows",
-      "state": "gate",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "windows",
-      "state": "gate",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "windows",
-      "state": "gate",
-      "text": "Start a 14-day trial"
-    },
-    {
-      "board": "windows",
       "state": "settings",
       "text": "Audio"
     },
@@ -1489,42 +1469,7 @@
     {
       "board": "windows",
       "state": "settings",
-      "text": "Install updates automatically"
-    },
-    {
-      "board": "windows",
-      "state": "settings",
       "text": "Share crash reports Set by Fennick Studio"
-    },
-    {
-      "board": "windows",
-      "state": "settings",
-      "text": "Up to date · checked 2 min ago"
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Can't reach Harbor Audio"
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Check your connection. You can keep working offline for 3 more days."
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Tidewater Studio Pro ended on 30 September. Renew to keep working on your sessions."
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Your license has ended"
-    },
-    {
-      "board": "windows",
-      "state": "update",
-      "text": "Release notes"
     }
   ]
 }
