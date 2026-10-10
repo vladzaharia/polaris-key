@@ -20,6 +20,7 @@
 import type { AllowedRange, ManagedEntry } from "@polaris-key/protocol";
 import type { ManagedPayload } from "./payload.js";
 import type { LicenseRow, TierRow } from "./data.js";
+import { resolveLicenseTerms, type LicenseTerms } from "./licensing/terms.js";
 
 interface ParsedSemver {
   major: number;
@@ -222,31 +223,98 @@ export function injectAdminPolicy(
     }
   }
 
-  const channels = [
-    ...new Set([
-      ...parseChannelsJson(tier?.channels_json ?? null),
-      ...parseChannelsJson(license.channels_json),
-    ]),
-  ];
-  if (channels.length > 0)
-    payload.entitlements["channels"] = enforced(channels);
+  // LX-32: one resolver decides every limit; this only stamps what it resolved. The device limit
+  // is stamped only when the licence or its tier sets one, so a merged `deviceLimit` entitlement
+  // (a profile, store grant or override) keeps its place below them (LX-14a).
+  const terms = licenseTermsOf(license, tier, { defaultDeviceLimit: 0 }, null, {
+    minOf,
+    maxOf,
+  });
+  if (terms.channels.value.length > 0)
+    payload.entitlements["channels"] = enforced(terms.channels.value);
 
-  // LX-14a: the licence's own limit is the most specific value, so it beats the tier's, which
-  // beats any `deviceLimit` entitlement a profile, store grant or override merged in above.
-  const deviceLimit = licenseOwnDeviceLimit(license) ?? tierDeviceLimit(tier);
-  if (deviceLimit !== null) {
-    payload.entitlements["deviceLimit"] = enforced(deviceLimit);
-  }
+  if (
+    terms.deviceLimit.source === "license" ||
+    terms.deviceLimit.source === "tier"
+  )
+    payload.entitlements["deviceLimit"] = enforced(terms.deviceLimit.value);
 
-  const minVersion = minOf(
-    tier?.min_version ?? undefined,
-    license.min_version ?? undefined,
-  );
-  if (minVersion) payload.entitlements["app.minVersion"] = enforced(minVersion);
+  if (terms.minVersion.value)
+    payload.entitlements["app.minVersion"] = enforced(terms.minVersion.value);
+  if (terms.maxVersion.value)
+    payload.entitlements["app.maxVersion"] = enforced(terms.maxVersion.value);
+}
 
-  const maxVersion = maxOf(
-    tier?.max_version ?? undefined,
-    license.max_version ?? undefined,
-  );
-  if (maxVersion) payload.entitlements["app.maxVersion"] = enforced(maxVersion);
+/** A licence that sets nothing itself. */
+const NO_OWN_TERMS = {
+  device_limit: null,
+  max_offline_days: null,
+  channels_json: null,
+  min_version: null,
+  max_version: null,
+} as const;
+
+/**
+ * LX-32: the resolved Limits of a licence row on a tier row (`core/licensing/terms.ts`), with
+ * the Worker's comparators. Every reader of a licence's limits goes through this one call.
+ * `product` needs only what the caller reads: the seat paths pass the device default alone, the
+ * documents add the offline default, the fingerprint path adds its policy.
+ */
+export function licenseTermsOf(
+  /** `null`: no licence (a keyless device, or a read of the tier and platform layers alone). */
+  license: Pick<
+    LicenseRow,
+    | "device_limit"
+    | "max_offline_days"
+    | "channels_json"
+    | "min_version"
+    | "max_version"
+  > | null,
+  tier: Pick<
+    TierRow,
+    | "policy_device_limit"
+    | "channels_json"
+    | "min_version"
+    | "max_version"
+    | "policy_fingerprint"
+  > | null,
+  product: {
+    defaultDeviceLimit: number;
+    defaultMaxOfflineDays?: number;
+    fingerprintPolicy?: { enabled: boolean; defaultMode: string | null };
+  },
+  entitlementDeviceLimit?: number | null,
+  /** The version comparators; `injectAdminPolicy` forwards its caller's pair. */
+  cmp: {
+    minOf: (a?: string, b?: string) => string | undefined;
+    maxOf: (a?: string, b?: string) => string | undefined;
+  } = { minOf: tighterMin, maxOf: tighterMax },
+): LicenseTerms {
+  if (!license) license = NO_OWN_TERMS;
+  return resolveLicenseTerms({
+    license: {
+      deviceLimit: licenseOwnDeviceLimit(license),
+      maxOfflineDays: license.max_offline_days,
+      channels: parseChannelsJson(license.channels_json),
+      minVersion: license.min_version,
+      maxVersion: license.max_version,
+    },
+    tier: tier
+      ? {
+          deviceLimit: tierDeviceLimit(tier),
+          channels: parseChannelsJson(tier.channels_json),
+          minVersion: tier.min_version,
+          maxVersion: tier.max_version,
+          fingerprintMode: tier.policy_fingerprint ?? null,
+        }
+      : null,
+    entitlementDeviceLimit,
+    product: {
+      deviceLimit: product.defaultDeviceLimit,
+      maxOfflineDays: product.defaultMaxOfflineDays ?? 0,
+      fingerprint: product.fingerprintPolicy,
+    },
+    minOf: cmp.minOf,
+    maxOf: cmp.maxOf,
+  });
 }

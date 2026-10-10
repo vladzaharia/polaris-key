@@ -58,10 +58,7 @@ import {
   type LicenseRow,
   type TierRow,
 } from "./data.js";
-import {
-  resolveFingerprintMode,
-  type PresentedFingerprint,
-} from "./fingerprint.js";
+import type { PresentedFingerprint } from "./fingerprint.js";
 import {
   bindDevice,
   licenseUsable,
@@ -72,11 +69,11 @@ import {
 import { openManagedPayload, resolveMergedPayload } from "./payload.js";
 import {
   injectAdminPolicy,
-  licenseOwnDeviceLimit,
-  tierDeviceLimit,
+  licenseTermsOf,
   tighterMax,
   tighterMin,
 } from "./entitlements.js";
+import type { LicenseTerms } from "./licensing/terms.js";
 import { logRefusal, type RefusalReason, type WaitUntil } from "./refusals.js";
 import {
   hasAuthorizationListeners,
@@ -257,13 +254,39 @@ export interface DeviceLimitInfo {
  *  enforced and the licence document's `deviceLimit` cannot disagree. */
 export async function licenseDeviceLimitInfo(
   db: Db,
-  product: Pick<Product, "slug" | "defaultDeviceLimit">,
+  product: LicenseTermsProduct,
+  license: LicenseRow,
+  now: number,
+  opts: { withoutOidcGrant?: boolean } = {},
+): Promise<DeviceLimitInfo> {
+  const terms = await licenseTerms(db, product, license, now, opts);
+  return {
+    limit: terms.deviceLimit.value,
+    source: terms.deviceLimit.source,
+    inherited: {
+      limit: terms.inheritedDeviceLimit.value,
+      source: terms.inheritedDeviceLimit.source,
+    },
+  };
+}
+
+/** What `licenseTerms` reads of the product: the slug and the defaults. The seat paths hold only
+ *  the public projection, so the offline default and the fingerprint policy are optional and
+ *  their fields of the result are meaningful only when given. */
+export type LicenseTermsProduct = Pick<Product, "slug" | "defaultDeviceLimit"> &
+  Partial<Pick<Product, "defaultMaxOfflineDays" | "fingerprintPolicy">>;
+
+/** LX-32: a licence's resolved Limits with their sources (`core/licensing/terms.ts`), the one
+ *  answer every reader (documents, seat enforcement, admin and portal reads) agrees on. */
+export async function licenseTerms(
+  db: Db,
+  product: LicenseTermsProduct,
   license: LicenseRow,
   now: number,
   /** LX-08: `withoutOidcGrant` for a hypothetical row whose overrides already carry the
    *  provisioned keys a sign-in is about to write (`core/payload.ts`). */
   opts: { withoutOidcGrant?: boolean } = {},
-): Promise<DeviceLimitInfo> {
+): Promise<LicenseTerms> {
   const { payload, tier } = await resolveMergedPayload(
     db,
     product.slug,
@@ -273,17 +296,12 @@ export async function licenseDeviceLimitInfo(
     { entitlementsOnly: true, withoutOidcGrant: opts.withoutOidcGrant },
   );
   const merged = payload.entitlements["deviceLimit"];
-  const tierLimit = tierDeviceLimit(tier);
-  const inherited: DeviceLimitInfo["inherited"] =
-    tierLimit !== null
-      ? { limit: tierLimit, source: "tier" }
-      : merged && typeof merged.value === "number"
-        ? { limit: merged.value, source: "entitlement" }
-        : { limit: product.defaultDeviceLimit, source: "product" };
-  const own = licenseOwnDeviceLimit(license);
-  return own !== null
-    ? { limit: own, source: "license", inherited }
-    : { ...inherited, inherited };
+  return licenseTermsOf(
+    license,
+    tier,
+    product,
+    merged && typeof merged.value === "number" ? merged.value : null,
+  );
 }
 
 /** The seat limit `authorizeDevice` enforces on `license` (`licenseDeviceLimitInfo`'s number).
@@ -311,12 +329,10 @@ export async function tierFingerprintMode(
   product: Product,
   tierId: string | null,
 ): Promise<FingerprintMode> {
-  if (!product.fingerprintPolicy.enabled) return "off";
   const tier = tierId ? await getTier(db, product.slug, tierId) : null;
-  return resolveFingerprintMode(
-    tier?.policy_fingerprint,
-    product.fingerprintPolicy.defaultMode,
-  );
+  // LX-32: the resolver decides (the tier's policy, else the product default, "off" on opt-out).
+  // Only the fingerprint field is read, so the licence is an empty one.
+  return licenseTermsOf(null, tier, product).fingerprintMode.value;
 }
 
 export async function authorizeDevice(

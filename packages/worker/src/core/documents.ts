@@ -28,7 +28,7 @@
  *
  * Both builders take it rather than reading it from a licence row, and that is what lets the
  * bundle mint express §7's operator-chosen grace: the network routes pass
- * `license.max_offline_days ?? product.defaultMaxOfflineDays`, the mint passes the operator's
+ * the licence's resolved offline days (`licenseTermsOf`), the mint passes the operator's
  * `graceDays`. `expiresAt` is NOT parameterised — it is `DOC_EXPIRY_SECONDS` on both paths,
  * because §7 step 4 verifies inner documents on the reload profile where `graceUntil` is the
  * bound that matters. See the note in `core/bundles.ts`.

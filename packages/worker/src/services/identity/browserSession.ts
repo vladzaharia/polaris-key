@@ -73,6 +73,7 @@ import { clearDeviceSubjects } from "../../core/subjectHooks.js";
 import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { graceClampFor } from "../../core/graceClamp.js";
+import { licenseTermsOf } from "../../core/entitlements.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 import { resolveAccount } from "./accounts/repo.js";
 import { platformSubjectAccountRefused } from "./accounts/platformMigration.js";
@@ -405,8 +406,8 @@ async function browserDoc(
     };
   }
 
-  const maxOfflineDays =
-    valid.license.max_offline_days ?? product.defaultMaxOfflineDays;
+  const maxOfflineDays = licenseTermsOf(valid.license, null, product)
+    .maxOfflineDays.value;
   return {
     ok: true,
     doc: buildDoc({

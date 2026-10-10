@@ -83,10 +83,7 @@ import {
   licenseHolder,
   type HolderFilter,
 } from "../../../core/licenseHolders.js";
-import {
-  licenseDeviceLimit,
-  licenseDeviceLimitInfo,
-} from "../../../core/authz.js";
+import { licenseDeviceLimit, licenseTerms } from "../../../core/authz.js";
 import type { LicenseRow } from "../../../core/data.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
@@ -178,18 +175,15 @@ async function deviceLimitView(
   ctx: LicenseAdminContext,
   license: LicenseRow,
 ): Promise<Record<string, unknown>> {
-  const info = await licenseDeviceLimitInfo(
-    ctx.db,
-    ctx.product,
-    license,
-    ctx.now,
-  );
+  const terms = await licenseTerms(ctx.db, ctx.product, license, ctx.now);
   return {
     deviceLimit: license.device_limit ?? null,
-    effectiveDeviceLimit: info.limit,
-    deviceLimitSource: info.source,
-    inheritedDeviceLimit: info.inherited.limit,
-    inheritedDeviceLimitSource: info.inherited.source,
+    effectiveDeviceLimit: terms.deviceLimit.value,
+    deviceLimitSource: terms.deviceLimit.source,
+    inheritedDeviceLimit: terms.inheritedDeviceLimit.value,
+    inheritedDeviceLimitSource: terms.inheritedDeviceLimit.source,
+    // LX-32: every limit with the layer it came from (the console's Limits read-out).
+    terms,
   };
 }
 

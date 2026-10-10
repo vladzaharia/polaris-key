@@ -20,6 +20,12 @@ import { qk } from "../../data/queries.js";
 import { fromSeconds, formatDate } from "../../../lib/format.js";
 import { compareVersions } from "../../../lib/version.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
+// LX-32: the one limits resolver. It is pure and imports nothing, so the console shares the
+// Worker's implementation for the live read-out of a form that is not saved yet.
+import {
+  resolveLicenseTerms,
+  type LicenseTerms,
+} from "../../../../../worker/src/core/licensing/terms.js";
 
 // ── Queries ────────────────────────────────────────────────────────────────────────────────────
 
@@ -197,15 +203,26 @@ export function seatLimitOf(
   ) {
     limit = license.effectiveDeviceLimit;
     source = license.deviceLimitSource;
-  } else if (license.deviceLimit != null) {
-    limit = license.deviceLimit;
-    source = "license";
-  } else if (tier?.policyDeviceLimit != null) {
-    limit = tier.policyDeviceLimit;
-    source = "tier";
   } else {
-    limit = productLimit;
-    source = "product";
+    // An older Worker did not report it: resolve it here with the same resolver.
+    const terms = termsOf(
+      {
+        tier: license.tier,
+        deviceLimit: license.deviceLimit ?? null,
+        entitlementDeviceLimit: null,
+        maxOfflineDays: null,
+        channels: [],
+        minVersion: null,
+        maxVersion: null,
+      },
+      tier,
+      { defaultDeviceLimit: productLimit ?? 0, defaultMaxOfflineDays: 0 },
+    );
+    limit =
+      productLimit === undefined && terms.deviceLimit.source === "product"
+        ? undefined
+        : terms.deviceLimit.value;
+    source = terms.deviceLimit.source;
   }
   return {
     limit: limit && limit > 0 ? limit : null,
@@ -219,26 +236,56 @@ export function seatLimitText(s: SeatLimit): string {
   return `${s.limit ?? "No limit"} · ${s.from}`;
 }
 
-/** The stricter floor and the lower ceiling, as `core/entitlements.ts` merges them. */
-function tighter(
-  a: string | null,
-  b: string | null,
-  pick: "min" | "max",
-): "a" | "b" | null {
-  if (!a && !b) return null;
-  if (!a) return "b";
-  if (!b) return "a";
+/** The version comparators the Worker's `tighterMin` / `tighterMax` are: the first argument (the
+ *  tier's) wins a tie or a pair that does not parse. */
+const minOf = (a?: string, b?: string): string | undefined => {
+  if (!a) return b;
+  if (!b) return a;
   const c = compareVersions(a, b);
-  if (c === null) return "a";
-  return pick === "min" ? (c >= 0 ? "a" : "b") : c <= 0 ? "a" : "b";
+  return c === null || c >= 0 ? a : b;
+};
+const maxOf = (a?: string, b?: string): string | undefined => {
+  if (!a) return b;
+  if (!b) return a;
+  const c = compareVersions(a, b);
+  return c === null || c <= 0 ? a : b;
+};
+
+function termsOf(
+  input: PolicyInput,
+  tier: TierSummary | undefined,
+  product: { defaultDeviceLimit: number; defaultMaxOfflineDays: number },
+): LicenseTerms {
+  return resolveLicenseTerms({
+    license: {
+      deviceLimit: input.deviceLimit ?? null,
+      maxOfflineDays: input.maxOfflineDays,
+      channels: input.channels,
+      minVersion: input.minVersion,
+      maxVersion: input.maxVersion,
+    },
+    tier: tier
+      ? {
+          deviceLimit: tier.policyDeviceLimit ?? null,
+          channels: tier.channels,
+          minVersion: tier.minVersion,
+          maxVersion: tier.maxVersion,
+          fingerprintMode: null,
+        }
+      : null,
+    entitlementDeviceLimit: input.entitlementDeviceLimit ?? null,
+    product: {
+      deviceLimit: product.defaultDeviceLimit,
+      maxOfflineDays: product.defaultMaxOfflineDays,
+    },
+    minOf,
+    maxOf,
+  });
 }
 
 /**
- * What a device on these terms receives, and where each value comes from. Mirrors the Worker:
- * the device limit is the license's own, else the tier's, else a `deviceLimit` entitlement, else
- * the product's (LX-14a); offline
- * days are the license's, else the product's; channels are the union of the tier's and the
- * license's (none: stable only); the version window takes the tighter bound of each.
+ * What a device on these terms receives, and where each value comes from: the Worker's resolver
+ * (`core/licensing/terms.ts`) rendered as read-out lines.
  */
 export function effectivePolicy(
   input: PolicyInput,
@@ -248,61 +295,47 @@ export function effectivePolicy(
     | undefined,
 ): PolicyLine[] {
   const tier = input.tier ? tiers.find((t) => t.id === input.tier) : undefined;
+  const terms = termsOf(input, tier, {
+    defaultDeviceLimit: product?.defaultDeviceLimit ?? 0,
+    defaultMaxOfflineDays: product?.defaultMaxOfflineDays ?? 0,
+  });
   const lines: PolicyLine[] = [];
 
-  if (input.deviceLimit != null) {
-    lines.push({
-      label: "Device limit",
-      value: String(input.deviceLimit),
-      source: "license",
-      from: deviceLimitFrom("license", tier),
-    });
-  } else if (tier?.policyDeviceLimit != null) {
-    lines.push({
-      label: "Device limit",
-      value: String(tier.policyDeviceLimit),
-      source: "tier",
-      from: deviceLimitFrom("tier", tier),
-    });
-  } else if (input.entitlementDeviceLimit != null) {
-    lines.push({
-      label: "Device limit",
-      value: String(input.entitlementDeviceLimit),
-      source: "license",
-      from: deviceLimitFrom("entitlement", tier),
-    });
-  } else {
-    const limit = product?.defaultDeviceLimit;
-    lines.push({
-      label: "Device limit",
-      value:
-        limit === undefined ? "—" : limit > 0 ? String(limit) : "Unlimited",
-      source: "product",
-      from: "product default",
-    });
-  }
+  const limit = terms.deviceLimit;
+  lines.push({
+    label: "Device limit",
+    value:
+      limit.source === "product"
+        ? product === undefined
+          ? "—"
+          : limit.value > 0
+            ? String(limit.value)
+            : "Unlimited"
+        : String(limit.value),
+    source: limit.source === "entitlement" ? "license" : limit.source,
+    from: deviceLimitFrom(limit.source, tier),
+  });
 
-  if (input.maxOfflineDays != null) {
-    lines.push({
-      label: "Offline",
-      value: `${input.maxOfflineDays} days`,
-      source: "license",
-      from: "this license",
-    });
-  } else {
-    const d = product?.defaultMaxOfflineDays;
-    lines.push({
-      label: "Offline",
-      value: d === undefined ? "—" : `${d} days`,
-      source: "product",
-      from: "product default",
-    });
-  }
-
-  const tierChannels = tier?.channels ?? [];
-  const union = [...new Set([...tierChannels, ...input.channels])];
+  const offline = terms.maxOfflineDays;
   lines.push(
-    union.length === 0
+    offline.source === "license"
+      ? {
+          label: "Offline",
+          value: `${offline.value} days`,
+          source: "license",
+          from: "this license",
+        }
+      : {
+          label: "Offline",
+          value: product === undefined ? "—" : `${offline.value} days`,
+          source: "product",
+          from: "product default",
+        },
+  );
+
+  const ch = terms.channels;
+  lines.push(
+    ch.source === "none"
       ? {
           label: "Channels",
           value: "stable",
@@ -311,37 +344,27 @@ export function effectivePolicy(
         }
       : {
           label: "Channels",
-          value: union.join(", "),
-          source: input.channels.length ? "license" : "tier",
+          value: ch.value.join(", "),
+          source: ch.source === "tier" ? "tier" : "license",
           from:
-            input.channels.length && tierChannels.length
+            ch.source === "both"
               ? `this license and ${tierName(tier!)}`
-              : input.channels.length
+              : ch.source === "license"
                 ? "this license"
                 : tierName(tier!),
         },
   );
 
-  const minPick = tighter(input.minVersion, tier?.minVersion ?? null, "min");
-  const maxPick = tighter(input.maxVersion, tier?.maxVersion ?? null, "max");
-  if (minPick || maxPick) {
-    const min =
-      minPick === "a"
-        ? input.minVersion
-        : minPick === "b"
-          ? tier!.minVersion
-          : null;
-    const max =
-      maxPick === "a"
-        ? input.maxVersion
-        : maxPick === "b"
-          ? tier!.maxVersion
-          : null;
-    const fromTier = minPick === "b" || maxPick === "b";
-    const fromLicense = minPick === "a" || maxPick === "a";
+  const { minVersion: min, maxVersion: max } = terms;
+  if (min.value || max.value) {
+    const fromTier = min.source === "tier" || max.source === "tier";
+    const fromLicense = min.source === "license" || max.source === "license";
     lines.push({
       label: "Versions",
-      value: [min ? `≥ ${min}` : null, max ? `≤ ${max}` : null]
+      value: [
+        min.value ? `≥ ${min.value}` : null,
+        max.value ? `≤ ${max.value}` : null,
+      ]
         .filter(Boolean)
         .join(" · "),
       source: fromLicense ? "license" : "tier",
@@ -361,6 +384,21 @@ export function effectivePolicy(
     });
   }
   return lines;
+}
+
+/** The device limit these terms resolve to, or `null` when there is none (a product default of
+ *  0): what a re-tier would enforce. */
+export function resolvedDeviceLimit(
+  input: PolicyInput,
+  tiers: readonly TierSummary[],
+  product: Pick<ProductDetail, "defaultDeviceLimit"> | undefined,
+): number | null {
+  const tier = input.tier ? tiers.find((t) => t.id === input.tier) : undefined;
+  const { value } = termsOf(input, tier, {
+    defaultDeviceLimit: product?.defaultDeviceLimit ?? 0,
+    defaultMaxOfflineDays: 0,
+  }).deviceLimit;
+  return value > 0 ? value : null;
 }
 
 /** A tier's policy in one line, for pickers and tables: "365-day term · 5 devices · stable, beta". */
