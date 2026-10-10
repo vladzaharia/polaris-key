@@ -146,11 +146,27 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every SDK in scope runs `presentation-matrix.json` (`parseCases`, `pickCases`, `verifyCases`) green and replays `discovery-presentation.json`.
-- [ ] Transcript replayers pass in every SDK.
-- [ ] UI snapshots show the product icon for a fixture with presentation, and today's output without it.
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/ui/theming` (presentation).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Every SDK in scope runs `presentation-matrix.json` (`parseCases`, `pickCases`, `verifyCases`) green and replays `discovery-presentation.json`. Node (`conformance/runners/node/presentation.test.ts`, through `PresentationStore` and a cold start), browser (`conformance/runners/browser/presentation.browser.test.ts`, Chromium), Python (`tests/test_presentation.py`), Swift (`PresentationTests.swift`), Kotlin (`PresentationMatrixTest`, JCA and Tink). No corpus gap.
+- [x] Transcript replayers pass in every SDK: `discovery-presentation` asserts `expect.presentation` (the normalised member, then null) in Node, React, Python, Swift and Kotlin.
+- [x] UI snapshots show the product icon for a fixture with presentation, and today's output without it. React: `test/presentation.test.tsx` (the verified icon, the monogram when it fails to load, nothing without presentation, the integrator's logo wins). Swift: `PresentationKitTests.swift` over the committed `welcome-default-drift-kart` and `welcome-default-no-presentation` baselines. Kotlin: `PresentationThemeTest` (Robolectric, rendered pixels). Python and Node terminal kits: the goldens through the real client.
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/ui/theming` (presentation), with the integrator CSP requirement (`img-src blob:`, `connect-src` for the image origin).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+
+## Status (2026-10-10)
+
+- **Seams (D1).** Node `client.presentationSource()`, React `adapter.presentationSource()` and
+  `usePresentation()`, Python `client.presentation_source`, Swift `client.presentationSource`,
+  Kotlin `client.presentationSource`. Thin adapters left in place: Node's terminal kit reads the
+  client-core seam or the old `presentation()` shape; Swift's `PolarisProductPresentation` is filled
+  once in `PolarisKeyModel`; Python's `presentation_source(client)` lookup is unchanged.
+- **Desktop over Node.** The Electron host puts `client.presentation()` in every state push and
+  answers `core.presentationIcon`, so the renderer reuses Node's cache and re-verifies the bytes.
+- **Follow-ups (not blocking).** The Kotlin kit keeps today's fallback under
+  `PolarisBranding.PolarisKey` (core violet when nothing else gives an accent), where
+  `ui-matrix.json`'s compose row says ink: UK-09's `commonMain` resolver settles it. Python's Qt
+  glue does not exist yet (UK-12), so `Theme.qml` is not wired. No new simulator or Roborazzi
+  baselines were recorded. The screen-acceptance rows above are for the UK kits' screens; HA-13
+  changes only the identity they show (the icon and accent), and no `pkey-ux-reviewer` pass was run.
 
 ## Verify
 
