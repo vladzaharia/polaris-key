@@ -34,7 +34,12 @@ describe("the one conflict vocabulary", () => {
       "union",
       "revision",
     ]);
-    expect(USER_SETTING_CONFLICTS).toEqual(["lastWrite", "max", "min", "merge"]);
+    expect(USER_SETTING_CONFLICTS).toEqual([
+      "lastWrite",
+      "max",
+      "min",
+      "merge",
+    ]);
     for (const c of USER_SETTING_CONFLICTS) expect(SYNC_CONFLICTS).toContain(c);
   });
 

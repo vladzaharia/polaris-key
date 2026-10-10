@@ -189,7 +189,9 @@ export function resolveCollection(c: CloudSyncCollection): ResolvedCollection {
     maxRecords:
       c.template === "saves"
         ? CLOUD_SYNC_SAVE_SLOTS
-        : (c.maxRecords ?? t?.maxRecords ?? CLOUD_SYNC_DEFAULTS.records.maxRecords),
+        : (c.maxRecords ??
+          t?.maxRecords ??
+          CLOUD_SYNC_DEFAULTS.records.maxRecords),
     files: {
       maxBytes:
         c.files?.maxBytes ??
@@ -225,7 +227,9 @@ export type SettingRoute =
   | { key: string; route: "local" | "locked" | "refused" };
 
 /** Whether a `config` entry is Editable: the catalog sets no `managementDefault` that locks it. */
-export function isEditable(entry: Pick<ConfigEntry, "managementDefault">): boolean {
+export function isEditable(
+  entry: Pick<ConfigEntry, "managementDefault">,
+): boolean {
   return (
     entry.managementDefault !== "enforced" &&
     entry.managementDefault !== "hidden"
@@ -360,14 +364,21 @@ export function userSettingIssues(
       "user.sync",
       "user.sync device is retired: a reinstall gets a new device id, so the value could not survive it. Use local to keep a value on the device.",
     );
-  else if (user.sync !== undefined && !oneOf(user.sync, USER_SETTING_SYNC_SCOPES))
+  else if (
+    user.sync !== undefined &&
+    !oneOf(user.sync, USER_SETTING_SYNC_SCOPES)
+  )
     error(
       "invalid_user_setting",
       "user.sync",
       "user.sync must be user, platform or local.",
     );
   if (user.listed !== undefined && typeof user.listed !== "boolean")
-    error("invalid_user_setting", "user.listed", "user.listed must be a boolean.");
+    error(
+      "invalid_user_setting",
+      "user.listed",
+      "user.listed must be a boolean.",
+    );
   // Rule 4: a setting that holds a set is an object of booleans with `conflict: merge`.
   if (user.conflict === "union") {
     error(
@@ -387,7 +398,11 @@ export function userSettingIssues(
   }
   // Rule 1: only a config key is a setting a person chooses.
   if (entry.kind !== "config")
-    error("user_setting_wrong_kind", "user", "user is only valid on config entries.");
+    error(
+      "user_setting_wrong_kind",
+      "user",
+      "user is only valid on config entries.",
+    );
   // Rule 2: a value the operator locks is not the person's to choose, so the block does nothing.
   if (
     entry.managementDefault === "enforced" ||
