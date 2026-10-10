@@ -92,6 +92,8 @@ const DEFAULTS := {
 	"activation_unsupported": "This isn't available on this platform.",
 	"activation_license_expired": "This license has expired. Renew it to keep playing.",
 	"activation_attestation_required": "This game needs to confirm it was installed from an official store before it can be activated here.",
+	"store_only": "Get %s from %s to play.",
+	"store_only_game": "the game",
 	"activation_manage_devices": "Manage devices",
 	"activation_error": "Activation failed. Check your connection and try again.",
 	"free_device": "Replace a device",

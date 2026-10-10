@@ -316,6 +316,21 @@ func _misc(t: PKeyTestContext) -> void:
 	var users: Array = []
 	_scan_for_mark("res://addons/polaris_key/ui", users)
 	t.check("brand: no kit scene uses the Pinned K mark", users.is_empty(), str(users))
+	# A store build with no way to activate says where to get the game, not an empty form.
+	PKeyUiTheme.product_name = "Diceroll"
+	var storesdk := await _sdk(PKeyMemoryStore.new(h.F["device_id"]), func(o: PKeyOptions) -> void: o.update_outlet = "app-store")
+	var storeonly := PKeyActivationPanel.new()
+	storeonly.auto_sdk = false
+	storeonly.sdk = storesdk
+	_tree().root.add_child(storeonly)
+	PKeyUiTheme.product_name = "Diceroll"
+	storeonly.set_capabilities({"key_entry": false, "sign_in": false, "continue_free": false, "offline": false})
+	t.check("activation: a store build with no way in says where to get the game", storeonly._store_note.visible and storeonly._store_note.text == "Get Diceroll from the App Store to play." and not storeonly._key_field.visible, storeonly._store_note.text)
+	storeonly.set_capabilities({"key_entry": true, "sign_in": false, "continue_free": false, "offline": false})
+	t.check("activation: ... and says nothing when there is a way in", not storeonly._store_note.visible)
+	storeonly.queue_free()
+	storesdk.queue_free()
+	PKeyUiTheme.product_name = ""
 	# The banner's expired state.
 	var lines := PKeyBannerController.lines({"status": "expired"}, 0.0, false, false, c)
 	t.check("banner: an expired licence earns a line", lines.size() == 1 and lines[0][0] == "banner_expired", str(lines))

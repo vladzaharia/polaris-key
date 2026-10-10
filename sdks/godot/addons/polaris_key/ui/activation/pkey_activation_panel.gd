@@ -93,6 +93,10 @@ var _free_block: VBoxContainer
 var _free: Button
 var _msg_free: Label
 var _offline: Button
+var _store_note: Label
+var _restore: Button
+var _warned_store := false
+var _restore_note := ""
 var _spacer: Control
 ## The device-limit view.
 var _limit_box: VBoxContainer
@@ -156,6 +160,10 @@ func _build() -> void:
 	_free = button(_free_block, "ContinueFree", _on_free)
 	_msg_free = label(_free_block, "FreeMessage")
 	_offline = button(_form, "OfflineActivation", _on_offline, "PKeyLink")
+	# A store build with no way to activate here (key entry is the store's to forbid, no sign-in
+	# service): say where to get the game instead of showing an empty form.
+	_store_note = label(_form, "StoreNote", "PKeyMuted")
+	_restore = button(_form, "RestorePurchases", _on_restore)
 	_offline.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_limit_root = vbox(_stack, "Limit", "PKeyStack")
 	_limit_box = _limit_root
@@ -343,6 +351,7 @@ func _render() -> void:
 	set_process(busy)
 	_offline.text = t.text("offline_activation")
 	_offline.visible = caps["offline"]
+	_render_store_only(t, caps)
 	var slots := {"key": _msg_key, "sign_in": _msg_sign_in, "free": _msg_free}
 	for k in slots:
 		show_text(slots[k], message if k == message_slot else "")
@@ -354,6 +363,43 @@ func _render() -> void:
 		(slots[k] as Label).theme_type_variation = &"PKeyMuted" if message_ok else &"PKeyError"
 	_key.theme_type_variation = &"PKeyFieldError" if message != "" and not message_ok and message_slot == "key" else &""
 	_render_limit(t)
+
+
+## "Get {product} from {store} to play." when nothing else on the form is offered.
+func _render_store_only(t: PKeyUiCopy, caps: Dictionary) -> void:
+	var none: bool = not (caps["key_entry"] or caps["sign_in"] or caps["continue_free"] or caps["offline"])
+	var store := _store_name()
+	none = none and store != ""
+	show_text(_store_note, (_restore_note + "\n" if _restore_note != "" else "") + t.text("store_only", [String(PKeyUiTheme.product_identity()["name"]) if String(PKeyUiTheme.product_identity()["name"]) != "" else t.text("store_only_game"), store]) if none else "")
+	var wired: bool = sdk != null and sdk.get("commerce") != null and String(sdk.commerce.current_store()) in ["app-store", "steam"]
+	show_text(_restore, t.text("purchase_restore") if none and wired else "")
+	if none and mode == "main" and limit.is_empty() and not _warned_store and sdk != null and sdk.get("core") != null:
+		_warned_store = true
+		push_warning("Polaris Key: this %s build offers no way to activate (key entry is hidden on store builds, and the Identity service is not enabled), so the gate shows only 'Get the game from the store'. Enable Identity for the product, or sell the game through the store's own purchase and PolarisKey.commerce." % store)
+
+
+const STORE_NAMES := {"app-store": "the App Store", "testflight": "TestFlight", "play": "Google Play", "play-testing": "Google Play", "ms-store": "the Microsoft Store"}
+
+
+func _store_name() -> String:
+	if sdk != null and sdk.get("core") != null:
+		var kind := String(sdk.core.update_outlet().get("kind", ""))
+		if STORE_NAMES.has(kind):
+			return STORE_NAMES[kind]
+	return ""
+
+
+func _on_restore() -> void:
+	if sdk == null or sdk.get("commerce") == null or busy:
+		return
+	busy = true
+	refresh_view()
+	var r: PKeyPurchaseResult = await sdk.commerce.restore()
+	busy = false
+	_restore_note = c().text("purchase_restored") if r.ok else c().text("purchase_nothing_to_restore")
+	refresh_view()
+	if r.ok:
+		activated.emit()
 
 
 func _render_limit(t: PKeyUiCopy) -> void:
@@ -408,8 +454,8 @@ func _focus_chain() -> Array:
 	if not limit.is_empty():
 		return [_manage, _again, _other_key]
 	if pad_only():
-		return [_sign_in, _key, _submit, _free, _offline]
-	return [_key, _submit, _sign_in, _free, _offline]
+		return [_sign_in, _key, _submit, _free, _offline, _restore]
+	return [_key, _submit, _sign_in, _free, _offline, _restore]
 
 
 ## Sign in on a pad-only device (no keyboard to type a key with); otherwise the key field.
