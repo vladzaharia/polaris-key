@@ -661,7 +661,9 @@ async function computeFile(
   // DC-15: the generated SHA256SUMS of this release, whatever a developer published by that name.
   // It is read after the same access decision as the files it lists.
   if (target.name === SHA256SUMS_NAME && file?.release) {
-    const body = sha256sumsBody(await catalog.artifacts(file.release.releaseId));
+    const body = sha256sumsBody(
+      await catalog.artifacts(file.release.releaseId),
+    );
     if (body === null) return notFound();
     return new Response(ctx.req.method === "HEAD" ? null : body, {
       status: 200,

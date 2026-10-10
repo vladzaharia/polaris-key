@@ -378,8 +378,9 @@ function checksumsUrlOf(model: DownloadModel): string | null {
   const id = model.release?.releaseId;
   const url = model.platforms
     .flatMap((g) => g.builds)
-    .find((b) => b.releaseId === id && b.url.includes("/distribution/files/"))
-    ?.url;
+    .find(
+      (b) => b.releaseId === id && b.url.includes("/distribution/files/"),
+    )?.url;
   return url ? url.replace(/\/[^/]+$/, "/SHA256SUMS") : null;
 }
 
