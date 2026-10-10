@@ -133,7 +133,7 @@ import {
 } from "./deviceLogin.js";
 import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
 import { handleProfileApi } from "./profile.js";
-import { readBodyText } from "../../../core/cappedBody.js";
+import { AdminBodyError, readBody } from "../../../core/http/body.js";
 
 export function portalJson(
   body: unknown,
@@ -172,19 +172,7 @@ function isMutation(method: string): boolean {
   return method !== "GET" && method !== "HEAD";
 }
 
-export async function readBody(req: Request): Promise<Record<string, unknown>> {
-  const raw = await readBodyText(req);
-  if (!raw.trim()) return {};
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    return parsed as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
+export { readBody };
 
 function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   return {
@@ -1366,6 +1354,18 @@ export function decodeSegments(path: string): string[] | null {
 }
 
 export async function handlePortalApi(
+  ...args: Parameters<typeof dispatchPortalApi>
+): Promise<Response> {
+  try {
+    return await dispatchPortalApi(...args);
+  } catch (e) {
+    // A refused body (413 oversize, 400 malformed) is the caller's error, never an empty `{}`.
+    if (e instanceof AdminBodyError) return err(e.status, e.code, e.message);
+    throw e;
+  }
+}
+
+async function dispatchPortalApi(
   req: Request,
   env: Env,
   db: Db,
