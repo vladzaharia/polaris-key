@@ -5,6 +5,7 @@
   "testRoots": [
     "packages/sdk-react/test",
     "packages/client-core/test",
+    "packages/ui-core/test",
     "conformance/runners/node",
     "conformance/runners/browser",
     "tools/gen-mirrors.test.ts"
