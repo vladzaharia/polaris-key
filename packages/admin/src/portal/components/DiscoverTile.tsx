@@ -120,7 +120,10 @@ export function DiscoverTile({
           // edge already shows the letter, as on Library cards.
           letter={false}
           liftArt
-          className="aspect-video"
+          // The whole 16:9 frame edge to edge, capped at 280 px tall (contained over a blurred
+          // copy of itself where the column is wider), as on Library tiles.
+          fit="contain"
+          className="aspect-video max-h-[17.5rem] w-full"
         >
           {added ? (
             <span
@@ -147,6 +150,7 @@ export function DiscoverTile({
             <div className="min-w-0 flex-1 pt-9">
               <h3
                 id={id}
+                dir="auto"
                 className="truncate text-lg font-semibold text-fg-strong"
               >
                 <a
@@ -160,7 +164,7 @@ export function DiscoverTile({
                 </a>
               </h3>
               {offer.developerName ? (
-                <p className="truncate text-sm text-fg-muted">
+                <p dir="auto" className="truncate text-sm text-fg-muted">
                   {offer.developerName}
                 </p>
               ) : null}

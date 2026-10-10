@@ -156,7 +156,7 @@ export function DiscoverPage({
   return (
     <section className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold leading-tight text-fg-strong desk:text-display">
+        <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
           Discover
         </h1>
         <p className="text-fg-muted">

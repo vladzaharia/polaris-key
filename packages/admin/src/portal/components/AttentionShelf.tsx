@@ -6,8 +6,8 @@ import { href } from "../router.js";
 import { ProductArt } from "./ProductArt.js";
 
 /**
- * Needs attention (§4.15): only items the person can act on, each with its solid primary
- * action. Hidden when empty.
+ * Needs attention (§4.15): only items the person can act on, each with its action: only the single most urgent
+ * item is solid, the others are outlined (B12). Hidden when empty.
  *
  * Three columns from 900 px; two at 761–899 px, where an odd last card spans both; one on phones
  * (§8). Each card is a size container: the thumbnail shows only when the card has 22rem for it
@@ -34,7 +34,7 @@ export function AttentionShelf({
         </span>
       </h2>
       <ul className="grid gap-4 desk:grid-cols-2 desk:[&>li:last-child:nth-child(odd)]:col-span-2 mid:grid-cols-3 mid:[&>li:last-child:nth-child(odd)]:col-span-1">
-        {items.map(({ product, text, action }) => (
+        {items.map(({ product, text, action, urgent }) => (
           <li
             key={product.slug}
             className="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4 shadow-elevation-1 @container"
@@ -49,7 +49,7 @@ export function AttentionShelf({
                 className="hidden h-[4.625rem] w-[8.25rem] shrink-0 rounded-lg @[22rem]:block"
               />
               <div className="min-w-0 flex-1 space-y-2">
-                <h3 className="font-semibold text-fg-strong">
+                <h3 dir="auto" className="font-semibold text-fg-strong">
                   <a
                     href={href.product(product.slug)}
                     className="hover:underline"
@@ -60,7 +60,12 @@ export function AttentionShelf({
                 <p className="text-sm text-fg-muted">{text}</p>
               </div>
             </div>
-            <Button asChild size="md" className="mt-auto w-full min-w-0">
+            <Button
+              asChild
+              size="md"
+              variant={urgent ? "primary" : "quiet"}
+              className="mt-auto w-full min-w-0"
+            >
               {action.external ? (
                 <a
                   href={action.href}

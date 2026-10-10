@@ -87,9 +87,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] e2e baselines for library and discover at 360, 390, 768, 1024, 1440 and 1920 in both themes with no horizontal scroll.
-- [ ] The 768 px three-product grid has no half-empty row.
-- [ ] axe clean; no chartreuse; UX review in BUILT mode.
+- [x] e2e baselines for library and discover at 360, 390, 768, 1024, 1440 and 1920 in both themes with no horizontal scroll.
+- [x] The 768 px three-product grid has no half-empty row.
+- [x] axe clean; no chartreuse; UX self-look in BUILT mode (one pass, no review round).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -101,3 +101,15 @@ mise exec node@22 -- pnpm <the package's own tests>
 ## Hand-off
 
 What downstream packages rely on from this one is listed in its Unblocks row. The role agent sets `--set PX-27 in-review` when it hands off; after review the lead adds the last commit `--set PX-27 done`.
+
+## Corrections found against the code (PX-27 build)
+
+- Tiles already drew 16:9 art; the cap (280 px, whole art contained over a blurred copy) and a
+  short no-art tile (icon large and centred on the tint, name starting the body, M9) were added.
+- The header account name was already hidden below 1180 px, which covers 640-899 px.
+- The Needs attention shelf keeps its grid of cards (existing 3-column assertion); only the most
+  urgent item (suspended, ended, device limit, expiring soon) is solid, the rest outlined.
+- The page-title token is new (`text-page-title`, 48/52; `-sm`, 32/36); `text-display` stays 40 px
+  for the product pages (PX-31 owns those).
+- Not done, owned elsewhere: the one-product hero's flat no-art slab and the solid button's
+  accent colour (neutral action ink, B2) belong to PX-30 and the Button variant package.

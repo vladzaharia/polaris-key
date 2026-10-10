@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   ACCOUNT,
@@ -68,8 +68,11 @@ describe("portal shell and data layer (PX-01)", () => {
     await waitFor(() => expect(library?.textContent).toBe("Library2"));
     // Discover is hidden from the nav until the Worker can list offers (G24).
     expect(screen.queryByRole("link", { name: /discover/i })).toBeNull();
+    // The header's action (the key tile in the grid says the same, below the title).
     expect(
-      screen.getByRole("button", { name: "Activate license" }),
+      within(screen.getByRole("banner")).getByRole("button", {
+        name: "Activate license",
+      }),
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: `Account: ${ACCOUNT.name}` }),

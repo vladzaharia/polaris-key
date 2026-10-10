@@ -16,6 +16,8 @@ const ADMIN_TEXT_SIZES = [
   "headline",
   "headline-lg",
   "display",
+  "page-title",
+  "page-title-sm",
 ] as const;
 
 const twMerge = extendTailwindMerge({
