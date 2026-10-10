@@ -6,6 +6,9 @@
 import { closeSync, openSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   activateFlow,
@@ -34,6 +37,12 @@ import {
   render,
 } from "./harness.js";
 import { Screen } from "./screen.js";
+import { Command } from "commander";
+import yargs from "yargs";
+import {
+  registerPolarisCommands,
+  registerYargsCommands,
+} from "../../src/cli/index.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DAY = 86_400;
@@ -45,7 +54,7 @@ const flat = (t: string) => plain(t).replace(/\s+[│└┌|`+]?\s*/g, " ");
 const variant = VARIANTS.find((v) => v.id === "no-color-80")!;
 
 describe("what a real client reports", () => {
-  it("reads the roster's last seen in seconds, and this device's own verification in milliseconds", async () => {
+  it("reads the roster's last seen in seconds for the other devices, whatever this device's own milliseconds say", async () => {
     const { text } = await render({ variant }, (h) =>
       devicesListFlow(
         h.ctx,
@@ -78,13 +87,14 @@ describe("what a real client reports", () => {
       ),
     );
     const t = plain(text);
-    expect(t).toContain("macOS arm64 · last seen 2 days ago");
+    expect(t).toContain("macOS arm64 · dev_a");
+    expect(t).not.toContain("2 days ago");
     expect(t).toContain("iOS · last seen 5 days ago");
     expect(t).not.toMatch(/\d{3},\d{3}/);
     expect(t).not.toContain("macos");
   });
 
-  it("falls back to this device's own millisecond verification when the roster has none", async () => {
+  it("leaves out last seen for this device, a zero and a time ahead; dates an old one; names no raw platform", async () => {
     const { text } = await render({ variant }, (h) =>
       devicesListFlow(
         h.ctx,
@@ -97,12 +107,54 @@ describe("what a real client reports", () => {
               label: "Work laptop",
               platform: "linux",
               lastVerifiedAt: NOW - 3 * DAY * 1000,
+              lastSeen: NOW / 1000 - 3 * DAY,
+            },
+            {
+              id: "dev_z",
+              current: false,
+              status: "ok",
+              label: "Zero",
+              platform: "macos",
+              lastSeen: 0,
+            },
+            {
+              id: "dev_f",
+              current: false,
+              status: "ok",
+              label: "Ahead",
+              platform: "macos",
+              lastSeen: NOW / 1000 + 2 * DAY,
+            },
+            {
+              id: "dev_o",
+              current: false,
+              status: "ok",
+              label: "Old",
+              platform: "macos",
+              lastSeen: NOW / 1000 - 400 * DAY,
+            },
+            {
+              id: "dev_b",
+              current: false,
+              status: "ok",
+              label: "Bsd",
+              platform: "freebsd",
+              arch: "x64",
             },
           ],
         }),
       ),
     );
-    expect(plain(text)).toContain("Linux · last seen 3 days ago");
+    const t = plain(text);
+    // This device: "This computer", no time; a zero: no time at all.
+    expect(t).toMatch(/Linux · dev_a · This computer/);
+    expect(t).not.toMatch(/20,\d{3}|days ago.*Zero/);
+    expect(t).toMatch(/macOS · dev_z\b/);
+    expect(t).toContain("macOS · last seen today · dev_f");
+    expect(t).toMatch(/macOS · last seen Aug 2025 · dev_o/);
+    // Not a raw id: the architecture alone.
+    expect(t).toMatch(/\n.*x64 · dev_b/);
+    expect(t).not.toContain("freebsd");
   });
 
   it("names the holder from a name or an email, an empty one counting as absent", () => {
@@ -120,7 +172,8 @@ describe("what a real client reports", () => {
     );
     expect(holder(view({ name: "Mara", email: "" }, null))).toBe("Mara");
     expect(holder(view({ email: "m@x.co" }, null))).toBe("m@x.co");
-    expect(holder(view(null, { name: "Mara", email: "" }))).toBe("Mara");
+    // A key only device shows no holder: that email is the purchaser's, not a signed-in account.
+    expect(holder(view(null, { name: "Mara", email: "" }))).toBe(null);
     // Signed in comes from the account on the device, never from the license profile.
     expect(view(null, { name: "Mara", email: "m@x.co" }).state).toBe(
       "key-only",
@@ -162,6 +215,7 @@ describe("login on a device that holds a key license", () => {
   ) {
     const asked: Array<[unknown, boolean]> = [];
     let attached: boolean | null = null;
+    let question = "";
     const { text } = await render(
       {
         variant,
@@ -194,12 +248,13 @@ describe("login on a device that holds a key license", () => {
           }),
         );
         await settle();
+        question = h.screen.text();
         answer(h.stdin);
         const r = await done;
         h.screen.write(`\nexit ${r.exitCode} ${JSON.stringify(r.result)}`);
       },
     );
-    return { text, asked, attached };
+    return { text, asked, attached, question };
   }
 
   it("asks, and Enter keeps the key license (the default is No)", async () => {
@@ -207,6 +262,33 @@ describe("login on a device that holds a key license", () => {
     expect(r.attached).toBe(false);
     expect(plain(r.text)).toContain("Signed in as Mara Fennick");
     expect(r.text).toContain('"attached":null');
+  });
+
+  it("shows the account as found, not as signed in, until the sign-in finishes", async () => {
+    const r = await login((stdin) => stdin.press("return"));
+    const q = plain(r.question);
+    expect(q).toContain("Mara Fennick");
+    expect(q).toContain("(y/N)");
+    expect(q).not.toContain("✓");
+    expect(q).not.toContain("Signed in");
+    expect(q).toContain("Esc cancel sign-in");
+    // Only the finished sign-in ticks, and a no leaves no "on your account" line.
+    expect(plain(r.text)).toContain("✓  Signed in as");
+    expect(plain(r.text)).not.toContain("now on your account");
+  });
+
+  it("says when the key license is on the account, so a yes and a no read differently", async () => {
+    const yes = await login((s) => s.press("y"));
+    expect(plain(yes.text)).toContain(
+      "The license key is now on your account.",
+    );
+  });
+
+  it("Esc at the question ends as a cancelled sign-in", async () => {
+    const asked = await login((s) => s.press("escape"));
+    expect(asked.attached).toBe(false);
+    expect(plain(asked.text)).toContain("Sign-in cancelled");
+    expect(plain(asked.text)).not.toContain("✓  Signed in");
   });
 
   it("n keeps it; y adds it to the account", async () => {
@@ -389,7 +471,7 @@ describe("update apply ends in an actionable line", () => {
       decide: async () => ({ decision: binary }),
     });
     expect(flat(r.text)).toContain(
-      "Download 2.5.0 from key.plrs.im/tidewater/download.",
+      "Download it here: key.plrs.im/tidewater/download",
     );
     expect(r.text).toContain("exit 1 blocked unsupported");
   });
@@ -397,7 +479,9 @@ describe("update apply ends in an actionable line", () => {
   it("a build with no update feed names the command that still works", async () => {
     const r = await apply({ decidable: false });
     expect(flat(r.text)).toContain("Updates aren't set up");
-    expect(flat(r.text)).toContain("Run tidewater update check");
+    expect(flat(r.text)).toContain(
+      "tidewater update check Check for a newer version",
+    );
     expect(r.text).toContain("exit 1 not-configured not-configured");
   });
 
@@ -822,5 +906,141 @@ describe("no kit string names Polaris Key where the product fits", () => {
     ).toEqual([]);
     for (const f of sources(SRC))
       expect(readFileSync(f, "utf8"), f).not.toMatch(/licence/i);
+  });
+});
+
+describe("activate on a real process's stdin", () => {
+  const tsx = join(HERE, "../../../../node_modules/.bin/tsx");
+  const flow = join(HERE, "stdin-flow.ts");
+  const key = "pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA";
+
+  interface Ran {
+    code: number | null;
+    out: string;
+    ms: number;
+    killed: boolean;
+  }
+  /** Run the program with `stdin` as its stdin; `feed` writes to it. Killed at 15 s. */
+  function run(
+    stdin: "pipe" | number,
+    feed: (w: NodeJS.WritableStream | null) => void = () => undefined,
+  ): Promise<Ran> {
+    return new Promise((resolve) => {
+      const t0 = Date.now();
+      const child = spawn(tsx, [flow], { stdio: [stdin, "pipe", "pipe"] });
+      let out = "";
+      child.stdout!.on("data", (d) => (out += d));
+      let killed = false;
+      const guard = setTimeout(() => {
+        killed = true;
+        child.kill("SIGKILL");
+      }, 15_000);
+      feed(child.stdin);
+      child.on("close", (code) => {
+        clearTimeout(guard);
+        resolve({ code, out, ms: Date.now() - t0, killed });
+      });
+    });
+  }
+
+  it.skipIf(!existsSync(tsx))(
+    "an open, silent pipe ends in no key (exit 2) and the process exits by itself",
+    async () => {
+      // The writer holds its end open and never writes: only the bound can end the wait.
+      const r = await run("pipe");
+      expect(r.killed).toBe(false);
+      expect(r.code).toBe(2);
+      expect(r.out).toContain("No license key arrived on stdin");
+    },
+    30_000,
+  );
+
+  it.skipIf(!existsSync(tsx))(
+    "a key written by a Node parent (a socket) is read, without the writer closing",
+    async () => {
+      const r = await run("pipe", (w) => w!.write(`${key}\n`));
+      expect(r.killed).toBe(false);
+      expect(r.code).toBe(0);
+      expect(r.out).not.toContain("7Q2Mx9cLr4TbV0aZ3WPLDA");
+    },
+    30_000,
+  );
+
+  it.skipIf(!existsSync(tsx))(
+    "a key on a file, and on a shell pipe, is read",
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), "uk45-"));
+      const file = join(dir, "key");
+      writeFileSync(file, `${key}\n`);
+      const viaFile = spawnSync(tsx, [flow], {
+        input: undefined,
+        stdio: [openSync(file, "r"), "pipe", "pipe"],
+        encoding: "utf8",
+      });
+      expect(viaFile.status).toBe(0);
+      const viaShell = spawnSync(
+        "sh",
+        ["-c", `printf '%s\\n' '${key}' | '${tsx}' '${flow}'`],
+        { encoding: "utf8" },
+      );
+      expect(viaShell.status).toBe(0);
+    },
+    30_000,
+  );
+});
+
+describe("the pre-kit output (kit: false) prints a value only with --reveal", () => {
+  const factory = async () =>
+    stubClient({
+      config: {
+        getSecret: () => "s3cr3t",
+        mintToken: async () => ({ token: "tok_live", expiresAt: 1 }),
+      },
+    });
+  const options = (lines: string[], codes: number[]) => ({
+    pinnedKeys: {},
+    productSlug: "tidewater",
+    kit: false,
+    print: (l: string) => lines.push(l),
+    setExitCode: (c: number) => codes.push(c),
+  });
+
+  it.each([
+    [
+      "commander",
+      ["secret", "api.key"],
+      ["secret", "api.key", "--reveal"],
+      "s3cr3t",
+    ],
+    ["commander", ["mint", "cdn"], ["mint", "cdn", "--reveal"], "tok_live"],
+    [
+      "yargs",
+      ["secret", "api.key"],
+      ["secret", "api.key", "--reveal"],
+      "s3cr3t",
+    ],
+    ["yargs", ["mint", "cdn"], ["mint", "cdn", "--reveal"], "tok_live"],
+  ])("%s %j", async (front, hidden, revealed, value) => {
+    const run = async (argv: string[]) => {
+      const lines: string[] = [];
+      const codes: number[] = [];
+      if (front === "commander") {
+        const program = new Command();
+        program.exitOverride();
+        registerPolarisCommands(program, factory, options(lines, codes));
+        await program.parseAsync(argv, { from: "user" });
+      } else {
+        const y = yargs([]).exitProcess(false);
+        registerYargsCommands(y, factory, options(lines, codes));
+        await y.parseAsync(["polaris-key", ...argv]);
+      }
+      return { out: lines.join("\n"), codes };
+    };
+    const without = await run(hidden);
+    expect(without.out).not.toContain(value);
+    expect(without.out).toContain("--reveal");
+    expect(without.codes).toEqual([1]);
+    const withFlag = await run(revealed);
+    expect(withFlag.out).toBe(value);
   });
 });

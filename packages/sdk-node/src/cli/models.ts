@@ -436,7 +436,9 @@ export function statusView(i: StatusInput): StatusView {
           ...(signedIn ? [] : ["account.keyOnly"]),
         ],
         tier: tierName(i.info),
-        holder,
+        // A key only device shows no holder: an email on its license is the purchaser's, and must
+        // not read as a signed-in account.
+        holder: signedIn ? holder : null,
         graceUntil: i.graceUntil ?? null,
       };
     }

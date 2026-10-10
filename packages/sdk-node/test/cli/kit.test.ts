@@ -879,8 +879,9 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
   it("prints no value without --reveal, and says how to ask for it", async () => {
     const secretRun = await run("secret", "s3cr3t", {}, { hidden: true });
     expect(secretRun.out).toBe("");
-    expect(secretRun.code).toBe(0);
-    expect(secretRun.err).toContain("api.key is set");
+    // As mint: a script that captured the value before must not read an empty one as success.
+    expect(secretRun.code).toBe(2);
+    expect(secretRun.err).toContain("api.key is set but not printed");
     expect(secretRun.err).toContain("secret api.key --reveal");
     expect(secretRun.err).not.toContain("s3cr3t");
     // Minting prints a token and nothing else: without --reveal it mints none.

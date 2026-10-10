@@ -201,7 +201,12 @@ export const SCENARIOS: Scenario[] = [
   {
     name: "activate-rejected-unauthorized",
     opts: { piped: `${KEY}\n` },
-    data: [...COMMON, "activate", "pkey_tidewater_"],
+    data: [
+      ...COMMON,
+      "activate",
+      "pkey_tidewater_",
+      "key.plrs.im/activate?product=tidewater",
+    ],
     run: (h) =>
       activateFlow(
         h.ctx,
@@ -981,9 +986,8 @@ export const SCENARIOS: Scenario[] = [
       "Work laptop",
       "Mara's iPad",
       "MacBook Pro",
-      "linux x64",
-      "iPadOS",
-      "macOS arm64",
+      "x64",
+      "arm64",
       "dev_9fK2Lw7QmZ",
       "dev_4hQ8",
       "dev_7tR1",

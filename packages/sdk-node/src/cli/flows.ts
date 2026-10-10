@@ -82,7 +82,13 @@ import {
   qrFits,
   qrLines,
 } from "./term/progress.js";
-import { cellWidth, padEnd, wrapSpans, type Line } from "./term/width.js";
+import {
+  cellWidth,
+  padEnd,
+  wrapSpans,
+  type Line,
+  type Span,
+} from "./term/width.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────────────────
 
@@ -183,14 +189,16 @@ async function busy<T>(
  *  sit on a hidden prompt). */
 export const PIPED_KEY_WAIT_MS = 2000;
 
-/** stdin is something that ends or delivers a line (a file or a FIFO), not an open terminal,
- *  socket or device. A stream with no descriptor (a test's) counts as a pipe. */
+/** stdin is something that ends or delivers a line: a file, a FIFO, or a socket (libuv gives a
+ *  child started by Node's `spawn`, `execSync({ input })` or execa a socketpair, not a FIFO),
+ *  never a terminal or a device. A socket may stay open and silent, so the read is bounded by
+ *  `PIPED_KEY_WAIT_MS`. A stream with no descriptor (a test's) counts as a pipe. */
 function stdinIsPipeLike(stdin: object): boolean {
   const fd = (stdin as { fd?: unknown }).fd;
   if (typeof fd !== "number") return true;
   try {
     const st = fstatSync(fd);
-    return st.isFile() || st.isFIFO();
+    return st.isFile() || st.isFIFO() || st.isSocket();
   } catch {
     return false;
   }
@@ -203,7 +211,7 @@ const firstLine = (text: string): string =>
     ?.trim() ?? "";
 
 /**
- * Read the key from a piped stdin: only when stdin is a file or a FIFO, stopping at the first
+ * Read the key from a piped stdin: only when stdin is a file, a FIFO or a socket, stopping at the first
  * non-empty line (it does not wait for the writer to close), and giving up after about two
  * seconds, so `activate` on a headless server with an open, silent stdin ends in "no key" (exit
  * 2) instead of hanging.
@@ -231,6 +239,15 @@ async function readPiped(ctx: KitContext): Promise<string> {
   } finally {
     clearTimeout(timer);
     void it.return?.();
+    // The pending read would otherwise hold the process open after the bound: let go of stdin.
+    const s = ctx.stdin as {
+      pause?: () => unknown;
+      unref?: () => unknown;
+      destroy?: () => unknown;
+    };
+    s.pause?.();
+    s.unref?.();
+    s.destroy?.();
   }
   return firstLine(buf);
 }
@@ -490,13 +507,13 @@ export async function statusFlow(
     case "StatusScreen": {
       const shown = view.fixes.filter((f) => f.verb !== null);
       // A device activated with a key alone was never "signed out": its key stopped working.
-      const keyOnly = view.state === "revoked" && identity === null;
+      const keyOnly = st.status === "revoked" && identity === null;
       rows.push(
         ...(keyOnly
           ? problemRows(
               "fail",
               t("cli.status.keyRevoked.title"),
-              withLink(ctx, "cli.status.keyRevoked.message", portalUrl(client)),
+              t("cli.status.keyRevoked.message"),
             )
           : problemRows(
               "fail",
@@ -504,6 +521,7 @@ export async function statusFlow(
               t(`core.gate.${view.state}.message`),
             )),
       );
+      if (keyOnly) rows.push(linkRow(portalUrl(client)));
       if (shown.length)
         rows.push(
           ...gap(ctx),
@@ -592,6 +610,12 @@ function portalUrl(client: PolarisKeyClient): string {
   return `${base}/activate?product=${encodeURIComponent(client.product)}`;
 }
 
+/** A link on a row of its own, kept whole (the device limit's way). */
+const linkRow = (url: string): RailRow => ({
+  ...textRow([linkSpan(url)]),
+  keep: true,
+});
+
 /** Rows for an activation outcome other than the device limit. */
 function outcomeRows(
   ctx: KitContext,
@@ -624,13 +648,16 @@ function outcomeRows(
     ? [
         t(`core.activation.${o.kind}.title`),
         // The server answers a wrong key, an expired one and a disabled one with the same 401, so
-        // the copy covers all three and links to where the license is checked.
+        // the copy covers all three; the link to where the license is checked has its own row.
         o.kind === "unauthorized"
-          ? withLink(ctx, "cli.activate.unauthorized", portal)
+          ? t("cli.activate.unauthorized")
           : t(`core.activation.${o.kind}.message`),
       ]
     : [ctx.copy.code(o.code, "title"), ctx.copy.code(o.code, "message")];
-  return problemRows(NETWORK.has(o.code) ? "warn" : "fail", title, message);
+  return [
+    ...problemRows(NETWORK.has(o.code) ? "warn" : "fail", title, message),
+    ...(o.kind === "unauthorized" ? [linkRow(portal)] : []),
+  ];
 }
 
 function outcomeExit(o: ActivateOutcome): number {
@@ -796,7 +823,11 @@ export async function activateFlow(
     };
   if (key === INTERRUPT) return interrupted();
   if (key === null) {
-    const message = t("cli.activate.noKey", { command: cmd(ctx, "activate") });
+    // A pipe that delivered nothing says so; telling the person to pipe the key is no help.
+    const message =
+      ctx.stdin.isTTY === true
+        ? t("cli.activate.noKey", { command: cmd(ctx, "activate") })
+        : t("cli.activate.noKeyPiped");
     show(ctx, [...hist, stepRow("fail", [{ text: message }]), endRow()]);
     return {
       exitCode: EXIT.usage,
@@ -945,13 +976,48 @@ export async function enrollFlow(
 
 // ── login, logout, deactivate ──────────────────────────────────────────────────────────────
 
+/** Keep a parenthesis with the unit it wraps: "Mara (" never ends a line, nor ")" starts one. */
+function bindParens(line: Line): Line {
+  const out: Span[] = line.map((s) => ({ ...s }));
+  for (let i = 0; i + 1 < out.length; i++) {
+    const a = out[i]!;
+    const b = out[i + 1]!;
+    if (b.unit && a.text.endsWith("(")) {
+      a.text = a.text.slice(0, -1);
+      b.text = `(${b.text}`;
+    }
+    if (a.unit && b.text.startsWith(")")) {
+      a.text = `${a.text})`;
+      b.text = b.text.slice(1);
+    }
+  }
+  return out.filter((s) => s.text !== "");
+}
+
+/** The account just found, name and email, not yet "signed in". */
+function whoLine(ctx: KitContext, who: ShownIdentity): Line {
+  const parts = [present(who.name), present(who.email)].filter(
+    (p): p is string => p !== null,
+  );
+  const unit = (text: string): Span => ({
+    text,
+    style: ["strong"],
+    unit: true,
+  });
+  return parts.flatMap((p, i) =>
+    i === 0
+      ? [unit(p)]
+      : [{ text: ` ${ctx.symbols.separator} `, style: ["muted"] }, unit(p)],
+  );
+}
+
 /** "Signed in as Mara (mara@…)": the name and email shown, whichever the account has. */
 function signedInLine(ctx: KitContext, who: ShownIdentity): string | Line {
   const name = present(who.name);
   const email = present(who.email);
   const t = ctx.copy.t.bind(ctx.copy);
   if (name && email)
-    return unitLine(ctx, "signin.cli.signedIn", { name, email });
+    return bindParens(unitLine(ctx, "signin.cli.signedIn", { name, email }));
   if (email) return t("cli.signin.signedInEmail", { email });
   if (name) return t("cli.signin.signedInName", { name });
   return t("signInHandoff.ok");
@@ -1052,8 +1118,9 @@ export async function loginFlow(
   const screen = (): RailRow[] => {
     const rows: RailRow[] = [...header()];
     if (ask.now) {
+      // Sign-in is not finished until the device answers: the account is shown, not ticked.
       rows.push(
-        stepRow("ok", signedInLine(ctx, ask.now.who)),
+        stepRow("done", whoLine(ctx, ask.now.who)),
         stepRow("active", t("cli.login.attach")),
         hintsRow(ctx, t("cli.keys.confirm")),
       );
@@ -1208,6 +1275,9 @@ export async function loginFlow(
   } finally {
     stopSpin();
   }
+  // Esc or Ctrl-C at the attach question answered No to let the wait end, but it cancelled the
+  // sign-in: nothing that follows may read as signed in.
+  if (abort.signal.aborted) r = "cancelled";
   abort.abort();
   await keyLoop;
   // The outcome replaces the whole screen, header included: one result block, never the code view
@@ -1251,6 +1321,8 @@ export async function loginFlow(
     };
     finish([
       stepRow("ok", line),
+      // Said once the license key is on the account, so a yes and a no read differently.
+      ...(r.attached ? [textRow(t("cli.login.attached"))] : []),
       useCode ? endRow() : endRow(t("signin.cli.closeTab")),
     ]);
     return { exitCode: EXIT.ok, state: "signedIn", result };
@@ -1376,17 +1448,22 @@ function platformText(
   arch: string | null | undefined,
 ): string | null {
   const canonical = platform ? canonicalPlatform(platform) : null;
-  const name = canonical
-    ? ctx.copy.t(`cli.platform.${canonical}`)
-    : present(platform);
+  // A platform the catalog does not name is left out rather than shown as its raw id.
+  const name = canonical ? ctx.copy.t(`cli.platform.${canonical}`) : null;
   return [name, present(arch)].filter(Boolean).join(" ") || null;
 }
 
-/** Epoch seconds for how long ago, in days ("today", "yesterday", "3 days ago"). */
+/** Epoch seconds as how long ago: "today", "3 days ago", and past about two months "Aug 2025". A
+ *  time ahead of the clock (a skewed one) reads as today. */
 function relative(ctx: KitContext, epochSeconds: number): string {
   const days = Math.round((epochSeconds - ctx.now() / 1000) / 86_400);
+  if (days < -60)
+    return new Intl.DateTimeFormat(ctx.copy.locale, {
+      month: "short",
+      year: "numeric",
+    }).format(new Date(epochSeconds * 1000));
   const fmt = new Intl.RelativeTimeFormat(ctx.copy.locale, { numeric: "auto" });
-  return Math.abs(days) >= 1 ? fmt.format(days, "day") : fmt.format(0, "day");
+  return fmt.format(Math.min(0, days), "day");
 }
 
 /** `devices list`: the devices on this license, this one first and marked. */
@@ -1412,13 +1489,13 @@ export async function devicesListFlow(
       label: d.label ?? null,
       platform: platformText(ctx, d.platform, d.arch),
       current: d.current,
-      // The roster's `lastSeen` is epoch seconds for every device; this device's own
-      // `lastVerifiedAt` is epoch MILLISECONDS and only the fallback when the roster has none.
-      lastSeenAt:
-        d.lastSeen ??
-        (d.current && d.lastVerifiedAt !== undefined
-          ? d.lastVerifiedAt / 1000
-          : null),
+      // The roster's `lastSeen` is epoch seconds. Not for this device (its row already says
+      // "This computer", and its own `lastVerifiedAt` is epoch milliseconds), nor for a zero.
+      lastSeenAt: d.current
+        ? null
+        : d.lastSeen !== undefined && d.lastSeen > 0
+          ? d.lastSeen
+          : null,
     })),
   );
   if (view.state === "empty") {
@@ -1521,6 +1598,8 @@ export async function devicesListFlow(
         id: d.id,
         label: d.label ?? null,
         platform: d.platform ?? null,
+        arch: d.arch ?? null,
+        lastSeen: d.lastSeen ?? null,
         current: d.current,
       })),
     },
@@ -1655,11 +1734,7 @@ async function downloadLink(client: PolarisKeyClient): Promise<string | null> {
  * put this program here (npm, pnpm, Homebrew; npx fetches the newest each run), else the generic
  * line. The command names the product's package (`update.packageName`), else the program.
  */
-function platformRows(
-  ctx: KitContext,
-  client: PolarisKeyClient,
-  version: string | null,
-): RailRow[] {
+function platformRows(ctx: KitContext, client: PolarisKeyClient): RailRow[] {
   const t = ctx.copy.t.bind(ctx.copy);
   const subkind =
     client.update.outlet?.subkind ?? client.update.detected?.subkind ?? null;
@@ -1671,44 +1746,32 @@ function platformRows(
     npx: `npx ${pkg}@latest`,
   };
   const command = subkind ? commands[subkind] : undefined;
-  if (command && subkind === "npx")
-    return [
-      textRow(
-        unitLine(ctx, "cli.update.npx", { command, version: version ?? "" }),
-      ),
-    ];
+  // The command is a command row, as the board draws a fix; the sentence around it is gone.
   if (command)
-    return [textRow(unitLine(ctx, "update.platform.command", { command }))];
+    return [
+      ...commandRows(ctx, [
+        {
+          label: [{ text: command, style: ["strong"], keep: true }],
+          value: [{ text: t("cli.update.install"), style: ["muted"] }],
+        },
+      ]),
+    ];
   return [textRow(t("update.platform.generic", { product: ctx.product.name }))];
 }
 
-/** The "Download 2.5.0 from …" rows of an install this kit cannot do for the person. */
+/** The download rows of an install this kit cannot do for the person: a line, then the link. */
 async function downloadRows(
   ctx: KitContext,
   client: PolarisKeyClient,
-  version: string,
 ): Promise<RailRow[]> {
   const url = await downloadLink(client);
   if (!url)
     return [
       textRow(
-        ctx.copy.t("update.platform.generic", { product: ctx.product.name }),
+        ctx.copy.t("cli.update.downloadNoLink", { product: ctx.product.name }),
       ),
     ];
-  const mark = "\u0000";
-  const [before = "", after = ""] = ctx.copy
-    .t("cli.update.download", { version, url: mark })
-    .split(mark);
-  return [
-    {
-      ...textRow([
-        ...(before ? [{ text: before }] : []),
-        linkSpan(url),
-        ...(after ? [{ text: after }] : []),
-      ]),
-      keep: true,
-    },
-  ];
+  return [textRow(ctx.copy.t("cli.update.download")), linkRow(url)];
 }
 
 /** `update check`: the signed decision, or the plain version check. */
@@ -1827,7 +1890,7 @@ export async function updateCheckFlow(
         rows.push(
           stepRow(
             "active",
-            t("update.title", { product, version: view.version! }),
+            t("cli.update.availableNoSize", { version: view.version! }),
           ),
           textRow(t("update.platform.generic", { product })),
           ...(view.storeUrl ? [textRow([linkSpan(view.storeUrl)])] : []),
@@ -1837,9 +1900,9 @@ export async function updateCheckFlow(
         rows.push(
           stepRow(
             "active",
-            t("update.title", { product, version: view.version! }),
+            t("cli.update.availableNoSize", { version: view.version! }),
           ),
-          ...platformRows(ctx, client, view.version),
+          ...platformRows(ctx, client),
         );
         break;
       case "ready":
@@ -2005,9 +2068,18 @@ async function whatsNewRows(
     // No notes: the ready line stands alone.
   }
   if (notes.length === 0) return [];
+  const bullet = ctx.caps.unicode ? "•" : "-";
+  const width = Math.max(1, contentWidth(ctx.caps.columns) - 2);
   return [
+    ...gap(ctx),
     textRow(ctx.copy.t("update.whatsNew"), ["strong"]),
-    ...notes.map((n) => textRow(n, ["muted"])),
+    // Each note hangs under its first word, so a wrapped note reads as one.
+    ...notes.flatMap((n) =>
+      wrapSpans([{ text: n, style: ["muted"] }], width).map((l, i) => ({
+        mark: "rail" as const,
+        spans: [{ text: i === 0 ? `${bullet} ` : "  " }, ...l],
+      })),
+    ),
   ];
 }
 
@@ -2023,25 +2095,28 @@ export async function updateApplyFlow(
   // A build with no signed update feed cannot decide anything: say so and what to run instead.
   if (!client.update.decidable) {
     const title = t("cli.update.notConfiguredTitle");
-    const message = t("cli.update.notConfigured", {
-      command: cmd(ctx, "update check"),
-    });
+    const command = cmd(ctx, "update check");
+    const message = t("cli.verb.updateCheck");
     show(ctx, [
       ...header(),
-      ...problemRows(
-        "warn",
-        title,
-        unitLine(ctx, "cli.update.notConfigured", {
-          command: cmd(ctx, "update check"),
-        }),
-      ),
+      stepRow("warn", title),
+      ...commandRows(ctx, [
+        {
+          label: [{ text: command, style: ["strong"], keep: true }],
+          value: [{ text: message, style: ["muted"] }],
+        },
+      ]),
       endRow(),
     ]);
     return {
       exitCode: EXIT.failed,
       state: "not-configured",
       result: { state: "not-configured" },
-      error: { code: "not-configured", title, message },
+      error: {
+        code: "not-configured",
+        title,
+        message: `${message}: ${command}`,
+      },
     };
   }
   let r;
@@ -2072,13 +2147,11 @@ export async function updateApplyFlow(
               stepRow(
                 "active",
                 view.version
-                  ? t("update.title", { product, version: view.version })
+                  ? t("cli.update.availableNoSize", { version: view.version })
                   : t("updateProgress.contentTitle"),
               ),
               // The platform installs it: the upgrade command when a package manager does.
-              ...(d.action === "platform"
-                ? platformRows(ctx, client, view.version)
-                : []),
+              ...(d.action === "platform" ? platformRows(ctx, client) : []),
             ]),
       endRow(),
     ]);
@@ -2094,9 +2167,9 @@ export async function updateApplyFlow(
       ...header(),
       stepRow(
         "active",
-        t("update.title", { product, version: d.release.version }),
+        t("cli.update.availableNoSize", { version: d.release.version }),
       ),
-      ...(await downloadRows(ctx, client, d.release.version)),
+      ...(await downloadRows(ctx, client)),
       endRow(),
     ]);
     return {
@@ -2126,7 +2199,7 @@ export async function updateApplyFlow(
   const title = () =>
     stepRow(
       "active",
-      t("update.title", { product, version: d.release.version }),
+      t("cli.update.availableNoSize", { version: d.release.version }),
     );
   // The whole screen, header to key hints, redrawn as one (a resize lays it out again).
   const screen = (): RailRow[] => [
@@ -2275,9 +2348,7 @@ export async function updateApplyFlow(
       // Say why nothing was installed and what to do instead.
       finish([
         ...problemRows("fail", error.title, error.message),
-        ...(d.action === "binary"
-          ? await downloadRows(ctx, client, d.release.version)
-          : []),
+        ...(d.action === "binary" ? await downloadRows(ctx, client) : []),
         endRow(),
       ]);
       return {
@@ -2787,6 +2858,24 @@ function logCommandRefusal(ctx: KitContext, verb: string, arg: string): void {
   );
 }
 
+/** A value that was not printed: a ▲ title, and the command that prints it as a command row. */
+function hiddenRows(
+  ctx: KitContext,
+  title: string,
+  command: string,
+): RailRow[] {
+  return [
+    stepRow("warn", [{ text: title }]),
+    ...commandRows(ctx, [
+      {
+        label: [{ text: command, style: ["strong"], keep: true }],
+        value: [{ text: ctx.copy.t("cli.option.reveal"), style: ["muted"] }],
+      },
+    ]),
+    endRow(),
+  ];
+}
+
 /** `secret`: the value alone on stdout, for a script to read. */
 export function secretFlow(
   ctx: KitContext,
@@ -2812,14 +2901,23 @@ export function secretFlow(
   // a run without `--reveal`: a value reaches a screen, a log or a shell history only when asked.
   if (!quiet(ctx)) {
     if (flags.reveal !== true) {
-      const message = ctx.copy.t("cli.secret.hidden", {
-        name: key,
-        command: `${ctx.bin} secret ${key} --reveal`,
-      });
       ctx.stderr.write(
-        `${ctx.render([stepRow("ok", [{ text: message }])]).join("\n")}\n`,
+        `${ctx
+          .render(
+            hiddenRows(
+              ctx,
+              ctx.copy.t("cli.secret.hidden", { name: key }),
+              `${ctx.bin} secret ${key} --reveal`,
+            ),
+          )
+          .join("\n")}\n`,
       );
-      return { exitCode: EXIT.ok, result: { key, present: true } };
+      // As `mint`: a script that captured the value before must not read an empty one as success.
+      return {
+        exitCode: EXIT.usage,
+        state: "error",
+        result: { key, present: true },
+      };
     }
     if (logCommandWithheld(ctx, value, flags)) {
       logCommandRefusal(ctx, "secret", key);
@@ -2844,11 +2942,16 @@ export async function mintFlow(
   await ensureDiscovery(client);
   // Minting prints a token and nothing else, so without `--reveal` it asks the server for none.
   if (flags.reveal !== true && !quiet(ctx)) {
-    const message = ctx.copy.t("cli.mint.hidden", {
-      command: `${ctx.bin} mint ${recipeId} --reveal`,
-    });
     ctx.stderr.write(
-      `${ctx.render([stepRow("warn", [{ text: message }])]).join("\n")}\n`,
+      `${ctx
+        .render(
+          hiddenRows(
+            ctx,
+            ctx.copy.t("cli.mint.hidden"),
+            `${ctx.bin} mint ${recipeId} --reveal`,
+          ),
+        )
+        .join("\n")}\n`,
     );
     return {
       exitCode: EXIT.usage,

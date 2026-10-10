@@ -304,8 +304,8 @@ export function secret(
   return reveal
     ? { ok: true, message: value, data: { key } }
     : {
-        ok: true,
-        message: `${key} is set. To print its value, run: secret ${key} --reveal`,
+        ok: false,
+        message: `${key} is set but not printed. To print its value, run: secret ${key} --reveal`,
         data: { key },
       };
 }

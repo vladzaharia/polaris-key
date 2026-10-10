@@ -1,69 +1,69 @@
 #### truecolor-80-dark
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
 [2m│[22m
-[32m✓[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2m◇[22m  [1mMara Fennick[22m[2m · [22m[1mmara@fennick.studio[22m
 [38;2;114;202;190m◆[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel[22m
+[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel sign-in[22m
 
 #### truecolor-80-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
 [2m│[22m
-[32m✓[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2m◇[22m  [1mMara Fennick[22m[2m · [22m[1mmara@fennick.studio[22m
 [38;2;20;121;111m◆[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel[22m
+[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel sign-in[22m
 
 #### ansi16-80
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · login[22m
 [2m│[22m
-[32m✓[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2m◇[22m  [1mMara Fennick[22m[2m · [22m[1mmara@fennick.studio[22m
 [36m◆[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel[22m
+[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel sign-in[22m
 
 #### no-color-80
 ┌  [7m Tidewater Studio [27m · login
 │
-✓  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+◇  [1mMara Fennick[22m · [1mmara@fennick.studio[22m
 ◆  [1mUse this device's license key on your account? (y/N)[22m
-└  [1my[22m yes · [1mn[22m no · [1mEsc[22m cancel
+└  [1my[22m yes · [1mn[22m no · [1mEsc[22m cancel sign-in
 
 #### ascii-80
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - login[22m
 [2m|[22m
-[32m+[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2mo[22m  [1mMara Fennick[22m[2m - [22m[1mmara@fennick.studio[22m
 [36m*[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m`[22m  [1my[22m[2m yes[22m[2m - [22m[1mn[22m[2m no[22m[2m - [22m[1mEsc[22m[2m cancel[22m
+[2m`[22m  [1my[22m[2m yes[22m[2m - [22m[1mn[22m[2m no[22m[2m - [22m[1mEsc[22m[2m cancel sign-in[22m
 
 #### truecolor-60-dark
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
 [2m│[22m
-[32m✓[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2m◇[22m  [1mMara Fennick[22m[2m · [22m[1mmara@fennick.studio[22m
 [38;2;114;202;190m◆[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel[22m
+[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel sign-in[22m
 
 #### truecolor-60-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
 [2m│[22m
-[32m✓[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2m◇[22m  [1mMara Fennick[22m[2m · [22m[1mmara@fennick.studio[22m
 [38;2;20;121;111m◆[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel[22m
+[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel sign-in[22m
 
 #### ansi16-60
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · login[22m
 [2m│[22m
-[32m✓[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2m◇[22m  [1mMara Fennick[22m[2m · [22m[1mmara@fennick.studio[22m
 [36m◆[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel[22m
+[2m└[22m  [1my[22m[2m yes[22m[2m · [22m[1mn[22m[2m no[22m[2m · [22m[1mEsc[22m[2m cancel sign-in[22m
 
 #### no-color-60
 ┌  [7m Tidewater Studio [27m · login
 │
-✓  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+◇  [1mMara Fennick[22m · [1mmara@fennick.studio[22m
 ◆  [1mUse this device's license key on your account? (y/N)[22m
-└  [1my[22m yes · [1mn[22m no · [1mEsc[22m cancel
+└  [1my[22m yes · [1mn[22m no · [1mEsc[22m cancel sign-in
 
 #### ascii-60
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - login[22m
 [2m|[22m
-[32m+[39m  [1mSigned in as [22m[1mMara Fennick[22m[1m ([22m[1mmara@fennick.studio[22m[1m)[22m
+[2mo[22m  [1mMara Fennick[22m[2m - [22m[1mmara@fennick.studio[22m
 [36m*[39m  [1mUse this device's license key on your account? (y/N)[22m
-[2m`[22m  [1my[22m[2m yes[22m[2m - [22m[1mn[22m[2m no[22m[2m - [22m[1mEsc[22m[2m cancel[22m
+[2m`[22m  [1my[22m[2m yes[22m[2m - [22m[1mn[22m[2m no[22m[2m - [22m[1mEsc[22m[2m cancel sign-in[22m

@@ -1,6 +1,6 @@
 #### truecolor-80-dark
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
@@ -12,7 +12,7 @@
 
 #### truecolor-80-light
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
@@ -24,7 +24,7 @@
 
 #### ansi16-80
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
@@ -36,7 +36,7 @@
 
 #### no-color-80
 [1mtidewater activate[22m
-Add a license key (prompts; never an argument)
+Add a license key (prompted, or piped on stdin)
 
 Usage  tidewater activate [key] [options]
 
@@ -48,7 +48,7 @@ Usage  tidewater activate [key] [options]
 
 #### ascii-80
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
@@ -60,7 +60,7 @@ Usage  tidewater activate [key] [options]
 
 #### truecolor-60-dark
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
@@ -72,7 +72,7 @@ Usage  tidewater activate [key] [options]
 
 #### truecolor-60-light
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
@@ -84,7 +84,7 @@ Usage  tidewater activate [key] [options]
 
 #### ansi16-60
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
@@ -96,7 +96,7 @@ Usage  tidewater activate [key] [options]
 
 #### no-color-60
 [1mtidewater activate[22m
-Add a license key (prompts; never an argument)
+Add a license key (prompted, or piped on stdin)
 
 Usage  tidewater activate [key] [options]
 
@@ -108,7 +108,7 @@ Usage  tidewater activate [key] [options]
 
 #### ascii-60
 [1mtidewater activate[22m
-[2mAdd a license key (prompts; never an argument)[22m
+[2mAdd a license key (prompted, or piped on stdin)[22m
 
 [2mUsage[22m  tidewater activate [key] [options]
 
