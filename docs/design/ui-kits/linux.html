@@ -9,35 +9,70 @@
     <link rel="stylesheet" href="shared.css" />
     <script src="shared.js"></script>
     <style>
-      /* Adwaita-friendly platform variant: header bar with the close button only, 12 px window
-         radius, 34 px controls, pill suggested action, AdwDialog for focused steps. */
+      /* GNOME 49 / libadwaita variant (theme.platform "gnome"): 8 px controls, pill buttons in
+         forms and dialogs with the suggested action at the end (stacked: first, as AdwAlertDialog
+         does), boxed lists, AdwDialog over a dimmed window for the `sheet` presentation, message
+         screens as AdwStatusPage. Every window is one component that reads its own size
+         (container queries on .wapp): the passport pane beside the form, a one-line strip when
+         narrow, two columns when short, a sheet-scale surface on the product ambient when large.
+         polaris-key resolves the product accent; native (data-ui-preset) takes libadwaita's look
+         with its blue, resolved so the label keeps 4.5:1. */
       :root {
         --g-win: #222226;
-        --g-view: #1d1d20;
         --g-card: #2e2e32;
         --g-hb: #2e2e32;
+        --g-sunk: rgb(0 0 0 / 0.2);
         --g-ctl: rgb(255 255 255 / 0.1);
         --g-text: #ffffff;
         --g-mute: rgb(255 255 255 / 0.62);
         --g-sep: rgb(255 255 255 / 0.08);
+        --g-acc: var(--kit-accent);
+        --g-acc-fg: var(--kit-accent-fg);
+        --g-on: var(--kit-accent-on);
+        --g-ring: var(--kit-focus);
+        --g-amb-a: #9fe3d6;
+        --g-amb-b: rgb(245 211 138 / 0.4);
+        --g-wall-a: #2b3a45;
+        --g-wall: #1a1c22;
+        --g-rim: rgb(0 0 0 / 0.5);
+        --g-shadow: rgb(0 0 0 / 0.45);
+        --g-dim: rgb(0 0 0 / 0.35);
       }
       [data-theme="light"] {
         --g-win: #fafafb;
-        --g-view: #ffffff;
         --g-card: #ffffff;
         --g-hb: #ebebed;
+        --g-sunk: rgb(0 0 6 / 0.05);
         --g-ctl: rgb(0 0 6 / 0.08);
         --g-text: rgb(0 0 6 / 0.82);
         --g-mute: rgb(0 0 6 / 0.55);
         --g-sep: rgb(0 0 6 / 0.08);
+        --g-wall-a: #cfdce4;
+        --g-wall: #e9ebee;
+        --g-rim: rgb(0 0 6 / 0.12);
+        --g-shadow: rgb(0 0 6 / 0.18);
+        --g-dim: rgb(0 0 6 / 0.12);
       }
+      [data-ui-preset="native"] {
+        --g-acc: #1c71d8;
+        --g-acc-fg: #78aeed;
+        --g-on: #ffffff;
+        --g-ring: #78aeed;
+        font-family: "Adwaita Sans", Cantarell, system-ui, sans-serif;
+      }
+      [data-theme="light"] [data-ui-preset="native"] {
+        --g-acc-fg: #1a5fb4;
+        --g-ring: #1c71d8;
+      }
+
       .shot {
         position: relative;
         overflow: hidden;
         border-radius: 12px;
         isolation: isolate;
-        display: grid;
-        place-items: center;
+        display: flex;
+        gap: 48px;
+        align-items: flex-start;
         padding: 48px;
       }
       .shot::before {
@@ -45,36 +80,37 @@
         position: absolute;
         inset: 0;
         z-index: -2;
-        background: linear-gradient(160deg, #2b3a45, #1a1c22 70%);
-      }
-      [data-theme="light"] .shot::before {
-        background: linear-gradient(160deg, #cfdce4, #e9ebee 70%);
+        background: linear-gradient(160deg, var(--g-wall-a), var(--g-wall) 70%);
       }
       .win {
         position: relative;
+        flex: none;
         border-radius: 12px;
         overflow: hidden;
         background: var(--g-win);
         color: var(--g-text);
         font-size: 15px;
         line-height: 21px;
+        display: grid;
+        grid-template-rows: 46px 1fr;
         box-shadow:
-          0 0 0 1px rgb(0 0 0 / 0.5),
-          0 20px 50px rgb(0 0 0 / 0.45);
+          0 0 0 1px var(--g-rim),
+          0 20px 50px var(--g-shadow);
       }
-      [data-theme="light"] .win {
-        box-shadow:
-          0 0 0 1px rgb(0 0 6 / 0.12),
-          0 20px 50px rgb(0 0 6 / 0.18);
-      }
+      /* The host header bar, drawn around the kit. */
       .hb {
-        height: 46px;
         display: flex;
         align-items: center;
         justify-content: center;
         position: relative;
         font-weight: 600;
         font-size: 15px;
+      }
+      .hb.flat {
+        background: transparent;
+      }
+      .hb.bar {
+        background: var(--g-hb);
       }
       .hb .close {
         position: absolute;
@@ -86,6 +122,20 @@
         display: grid;
         place-items: center;
       }
+      .wapp {
+        container: app / size;
+        position: relative;
+        overflow: hidden;
+        min-height: 0;
+      }
+      .stage {
+        height: 100%;
+        display: grid;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ---- Controls ---- */
       .gb {
         height: 34px;
         padding: 0 18px;
@@ -93,90 +143,531 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font: 600 15px/1 var(--pk-font-sans);
+        gap: 8px;
+        font: 500 15px/1 var(--pk-font-sans);
         background: var(--g-ctl);
         color: var(--g-text);
+        white-space: nowrap;
+      }
+      [data-ui-preset="native"] .gb,
+      [data-ui-preset="native"] .gh,
+      [data-ui-preset="native"] .gentry .mono {
+        font-family: inherit;
       }
       .gb.pill {
         border-radius: 999px;
         height: 40px;
-        padding: 0 28px;
+        padding: 0 24px;
       }
       .gb.suggested {
-        background: var(--kit-accent);
-        color: #fff;
+        background: var(--g-acc);
+        color: var(--g-on);
+      }
+      .gb.eq {
+        flex: 1 1 0;
+        min-width: 0;
+        padding-inline: 16px;
+      }
+      .gb.sm {
+        height: 28px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+      .glink {
+        color: var(--g-acc-fg);
+      }
+      .ring {
+        outline: 2px solid var(--g-ring);
+        outline-offset: 2px;
       }
       .gentry {
-        min-height: 34px;
+        min-height: 40px;
         border-radius: 8px;
         background: var(--g-ctl);
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 6px 6px 12px;
+        padding: 4px 6px 4px 12px;
       }
       .gentry.focus {
-        outline: 2px solid
-          color-mix(in oklab, var(--kit-focus) 70%, transparent);
+        outline: 2px solid var(--g-ring);
         outline-offset: -2px;
       }
       .gentry .mono {
         flex: 1;
         font-size: 14px;
-        line-height: 19px;
-        overflow-wrap: anywhere;
+        line-height: 20px;
+      }
+      .glabel {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .gverdict {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        color: var(--g-mute);
+      }
+      .gverdict b {
+        font-weight: 600;
+        color: var(--g-text);
+      }
+      .gmute {
+        color: var(--g-mute);
+      }
+      .gh {
+        font: 600 20px/26px var(--pk-font-sans);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .gh.hero {
+        font-size: 26px;
+        line-height: 32px;
+      }
+      .gp {
+        margin: 0;
+        color: var(--g-mute);
+        text-wrap: pretty;
+      }
+      .gcode {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 12px 12px 20px;
+        border-radius: 12px;
+        background: var(--g-sunk);
+      }
+      .gcode .mono {
+        font-size: 28px;
+        line-height: 36px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+      }
+      .gwait {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--g-mute);
+      }
+      /* DL6: a refusal is neutral text on the sunken surface, with its fix as the one primary. */
+      .gnote {
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: var(--g-sunk);
+        text-wrap: pretty;
+      }
+      .glist {
+        border-radius: 12px;
+        background: var(--g-card);
+        box-shadow: inset 0 0 0 1px var(--g-sep);
+        overflow: hidden;
+      }
+      .gdev {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 56px;
+        padding: 8px 16px;
+        position: relative;
+      }
+      .gdev + .gdev::before {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        top: 0;
+        height: 1px;
+        background: var(--g-sep);
+      }
+      .gdev .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .gdev small,
+      .grow small {
+        display: block;
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--g-mute);
+      }
+
+      /* ---- The window's one layout: passport pane beside the form ---- */
+      .gate {
+        display: grid;
+        grid-template-columns: clamp(240px, 38%, 360px) 1fr;
+        grid-template-areas: "start end";
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+      }
+      .start {
+        grid-area: start;
+        margin: 0 0 16px 16px;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+      }
+      .start .art,
+      .start .art svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .start .iconpane {
+        display: none;
+        position: absolute;
+        inset: 0;
+        place-items: center;
+        background: var(--g-sunk);
+      }
+      [data-ui-preset="native"] .start .art {
+        display: none;
+      }
+      [data-ui-preset="native"] .start .iconpane {
+        display: grid;
+      }
+      .strip {
+        grid-area: strip;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        height: 56px;
+        padding-inline: 24px;
+        font-weight: 600;
+      }
+      .end {
+        grid-area: end;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 32px 48px 32px;
+        overflow: hidden;
+      }
+      .hdr {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+      }
+      .body {
+        display: grid;
+        gap: 16px;
+        align-content: start;
+      }
+      .lines {
+        display: grid;
+        gap: 4px;
+      }
+      .acts {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .acts.stack {
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: stretch;
+        max-width: 320px;
+      }
+      .links {
+        display: flex;
+        gap: 20px;
+        color: var(--g-mute);
+      }
+      .amb {
+        display: none;
+      }
+
+      /* Narrow (under 560): the pane collapses to a one-line strip, actions dock at the bottom
+         and stack with the suggested pill first. */
+      @container app (max-width: 559px) {
+        .gate {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          grid-template-areas: "strip" "end";
+        }
+        .start,
+        .hdr {
+          display: none;
+        }
+        .strip {
+          display: flex;
+        }
+        .end {
+          padding: 16px 24px 24px;
+          gap: 16px;
+        }
+        .acts {
+          margin-top: auto;
+          flex-direction: column-reverse;
+          align-items: stretch;
+        }
+        .acts.stack {
+          max-width: none;
+        }
+        .gb.eq {
+          flex: none;
+        }
+      }
+      /* Short landscape (under 30 rem tall): two columns, secondary lines give way. */
+      @container app (min-width: 560px) and (max-height: 449px) {
+        .gate {
+          grid-template-columns: clamp(200px, 30%, 280px) 1fr;
+        }
+        .start {
+          margin-bottom: 12px;
+        }
+        .end {
+          padding: 8px 32px 16px;
+          gap: 12px;
+        }
+        .body {
+          gap: 12px;
+        }
+        .opt {
+          display: none;
+        }
+        .gh.hero {
+          font-size: 24px;
+          line-height: 30px;
+        }
+        .gdev {
+          min-height: 36px;
+          padding-block: 0;
+        }
+        .gdev small {
+          display: inline;
+          margin-inline-start: 8px;
+        }
+      }
+      /* Large (1100 and up): a sheet-scale row on the product ambient, never stretched. */
+      @container app (min-width: 1100px) and (min-height: 640px) {
+        .stage {
+          place-items: center;
+        }
+        .gate {
+          width: 1040px;
+          height: 560px;
+          border-radius: 14px;
+          background: var(--g-win);
+          box-shadow:
+            0 0 0 1px var(--g-rim),
+            0 16px 40px var(--g-shadow);
+          grid-template-columns: 400px 1fr;
+          padding-top: 16px;
+        }
+        .end {
+          padding: 40px 56px 40px;
+        }
+        .amb {
+          display: block;
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+        .amb > div {
+          position: absolute;
+          inset-inline-start: 50%;
+          top: 42%;
+          translate: -50% -50%;
+          filter: blur(110px) saturate(1.4);
+          opacity: 0.42;
+        }
+        .amb svg {
+          width: 900px;
+          height: 620px;
+          display: block;
+        }
+      }
+      [data-theme="light"] .amb > div {
+        display: none;
+      }
+      [data-theme="light"] .amb {
+        background:
+          radial-gradient(
+            circle 560px at 50% 40%,
+            color-mix(in oklab, var(--kit-accent-subtle), var(--g-amb-a) 30%),
+            transparent 72%
+          ),
+          radial-gradient(
+            circle 300px at 62% 28%,
+            var(--g-amb-b),
+            transparent 70%
+          );
+      }
+      [data-ui-preset="native"] .amb {
+        display: none;
+      }
+
+      /* ---- AdwDialog (the `sheet` presentation, and the update window) ---- */
+      .dim {
+        position: absolute;
+        inset: 0;
+        background: var(--g-dim);
+        z-index: 5;
       }
       .dlg {
         position: absolute;
         inset-inline-start: 50%;
         top: 50%;
         translate: -50% -50%;
-        width: 440px;
+        width: 460px;
         border-radius: 14px;
-        background: var(--g-view);
+        background: var(--g-win);
         box-shadow:
-          0 0 0 1px rgb(0 0 0 / 0.5),
-          inset 0 1px rgb(255 255 255 / 0.07),
-          0 2px 14px 3px rgb(0 0 0 / 0.3),
-          0 16px 40px rgb(0 0 0 / 0.35);
-        padding: 22px 24px 24px;
+          0 0 0 1px var(--g-rim),
+          0 2px 14px 3px var(--g-shadow),
+          0 16px 40px var(--g-shadow);
+        padding: 24px;
         display: grid;
         gap: 16px;
         z-index: 6;
       }
-      .dim {
-        position: absolute;
-        inset: 0;
-        background: rgb(0 0 0 / 0.35);
-        z-index: 5;
+      .tracks {
+        padding: 8px 16px 16px;
+        display: grid;
+        gap: 8px;
+        align-content: start;
       }
-      /* Libadwaita light: a soft drop shadow and a barely-there 7 % edge, no drawn outline. */
-      [data-theme="light"] .dlg {
-        box-shadow:
-          0 0 0 1px rgb(0 0 6 / 0.07),
-          0 1px 5px 1px rgb(0 0 6 / 0.09),
-          0 2px 14px 3px rgb(0 0 6 / 0.05),
-          0 16px 40px rgb(0 0 6 / 0.08);
+      .track {
+        height: 56px;
+        border-radius: 12px;
+        background: var(--g-card);
+        box-shadow: inset 0 0 0 1px var(--g-sep);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 16px;
+        overflow: hidden;
       }
-      [data-theme="light"] .dim {
-        background: rgb(0 0 6 / 0.12);
+      .track b {
+        width: 96px;
+        flex: none;
+        font-weight: 600;
+      }
+      .wave {
+        display: flex;
+        align-items: center;
+        height: 40px;
+        white-space: nowrap;
+      }
+      .wave i {
+        display: inline-block;
+        width: 3px;
+        margin-inline-end: 3px;
+        border-radius: 2px;
+        background: var(--kit-accent);
       }
 
-      .trio {
-        display: flex;
-        gap: 32px;
-        align-items: center;
-      }
-      .sbody {
-        padding: 12px 36px 32px;
+      /* ---- Settings (AdwPreferencesPage) ---- */
+      .prefs {
+        margin-inline: auto;
+        padding: 24px 48px 32px;
         display: grid;
+        gap: 24px;
+        align-content: start;
+        max-width: 640px;
+      }
+      .grp {
+        display: grid;
+        gap: 8px;
+      }
+      .grp > h2 {
+        font: 600 15px/21px var(--pk-font-sans);
+        margin: 0;
+      }
+      .grow {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 56px;
+        padding: 8px 16px;
+        position: relative;
+      }
+      .grow + .grow::before {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        top: 0;
+        height: 1px;
+        background: var(--g-sep);
+      }
+      .grow .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .sw {
+        width: 46px;
+        height: 26px;
+        border-radius: 999px;
+        background: var(--g-acc);
+        position: relative;
+        flex: none;
+      }
+      .sw::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: 3px;
+        top: 3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--g-on);
+      }
+      .val {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--g-mute);
+      }
+
+      /* ---- Boot, status, error: AdwStatusPage, one block at most 560 wide ---- */
+      .msg {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        align-content: center;
         justify-items: center;
         text-align: center;
-        gap: 10px;
-        min-height: 280px;
-        align-content: center;
+        gap: 16px;
+        padding: 16px 40px 32px;
       }
-      .gglyph {
+      .msg .lines {
+        gap: 8px;
+        justify-items: center;
+      }
+      .msg .acts {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        width: 240px;
+      }
+      .shim {
+        position: relative;
+        width: 160px;
+        height: 2px;
+        background: var(--g-ctl);
+        overflow: hidden;
+      }
+      .banner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: var(--pk-warning-subtle);
+        box-shadow: inset 0 -1px 0 var(--pk-warning-border);
+        color: var(--g-text);
+      }
+      .banner .grow2 {
+        flex: 1;
+      }
+      .glyph {
         width: 56px;
         height: 56px;
         border-radius: 50%;
@@ -184,260 +675,323 @@
         place-items: center;
         background: var(--g-ctl);
       }
-      /* AdwSpinner-free boot: a determinate GtkProgressBar in the accent. */
-      .gprog {
-        width: 160px;
-        height: 6px;
-        border-radius: 3px;
-        background: var(--g-ctl);
-        overflow: hidden;
-      }
-      .gprog i {
-        display: block;
-        width: 45%;
-        height: 100%;
-        border-radius: inherit;
-        background: var(--kit-accent);
-      }
     </style>
   </head>
   <body>
-    <main class="board">
-      <figure>
-        <figcaption>
-          linux · gate (header bar, pill suggested action)
-        </figcaption>
-        <div class="shot" data-shot="gate">
-          <div class="win" style="width: 520px">
-            <div class="hb">
-              <span class="close" data-icon="x" data-size="14"></span>
-            </div>
-            <div
-              style="
-                padding: 20px 48px 44px;
-                display: grid;
-                justify-items: center;
-                text-align: center;
-                gap: 22px;
-              "
-            >
-              <div class="k-appicon" data-art="tidewater" data-size="96"></div>
-              <div style="display: grid; gap: 4px">
-                <h1 style="margin: 0; font: 600 26px/32px var(--pk-font-sans)">
-                  Welcome to Tidewater Studio
-                </h1>
-                <span style="color: var(--g-mute); font-size: 13px"
-                  >by Harbor Audio</span
-                >
-                <p style="margin: 8px 0 0; color: var(--g-mute)">
-                  Sign in or add your license to start.
-                </p>
-              </div>
-              <div style="display: grid; gap: 10px; width: 280px">
-                <span class="gb pill suggested">Sign in</span>
-                <span class="gb pill">Use a license key</span>
-              </div>
-              <div
-                style="
-                  display: flex;
-                  gap: 20px;
-                  font-size: 14px;
-                  color: var(--g-mute);
-                "
-              >
-                <span>Start a 14-day trial</span><span>Activate offline</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </figure>
-      <figure>
-        <figcaption>linux · activate (AdwDialog)</figcaption>
-        <div class="shot" data-shot="activate">
-          <div class="win" style="width: 640px; height: 520px">
-            <div class="hb" style="background: var(--g-hb)">
-              Tidewater Studio<span
-                class="close"
-                data-icon="x"
-                data-size="14"
-              ></span>
-            </div>
-            <div class="dim"></div>
-            <div class="dlg">
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 10px;
-                  font-weight: 600;
-                "
-              >
-                <span
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="32"
-                  style="border-radius: 8px"
-                ></span
-                ><span style="white-space: nowrap"
-                  >Tidewater Studio
-                  <span style="color: var(--g-mute); font-weight: 400"
-                    >· Pro</span
-                  ></span
-                >
-              </div>
-              <div style="display: grid; gap: 4px">
-                <h2 style="margin: 0; font: 600 20px/26px var(--pk-font-sans)">
-                  Add your license
-                </h2>
-                <span style="color: var(--g-mute); font-size: 14px"
-                  >Your key is in the purchase email from Harbor Audio.</span
-                >
-              </div>
-              <div>
-                <div
-                  style="font-weight: 600; font-size: 14px; margin-bottom: 6px"
-                >
-                  License key
-                </div>
-                <div class="gentry focus">
-                  <span class="mono"
-                    ><span class="k-key"
-                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
-                      ><span>3WPLDA</span></span
-                    ></span
-                  ><span
-                    class="gb"
-                    style="height: 26px; padding: 0 10px; font-size: 13px"
-                    >Paste</span
-                  >
-                </div>
-                <div
-                  style="
-                    display: flex;
-                    gap: 8px;
-                    align-items: center;
-                    margin-top: 8px;
-                    font-size: 14px;
-                    color: var(--g-mute);
-                  "
-                >
-                  <span
-                    style="color: var(--pk-success)"
-                    data-icon="checkCircle"
-                    data-size="15"
-                  ></span
-                  ><span
-                    ><b style="font-weight: 600; color: var(--g-text)"
-                      >Tidewater Studio Pro</b
-                    >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
-                  >
-                </div>
-              </div>
-              <div
-                style="
-                  display: grid;
-                  grid-template-columns: 1fr 1fr;
-                  gap: 10px;
-                  margin-top: 4px;
-                "
-              >
-                <span class="gb">Cancel</span
-                ><span class="gb suggested">Activate</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </figure>
+    <main class="board" id="board"></main>
+    <script>
+      const NAME = "Tidewater Studio";
+      const artSvg = `<svg viewBox="0 0 300 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="300" height="460" fill="#0b3a48"/><circle cx="210" cy="110" r="30" fill="#f5d38a"/>${[
+        0, 1, 2, 3,
+      ]
+        .map((i) => {
+          const y = 260 + i * 46;
+          let d = `M-20 ${y}`;
+          for (let x = -20; x <= 320; x += 60) d += ` q15 -16 30 0 t30 0`;
+          return `<path d="${d}" stroke="${["#5fe3cf", "#8eeedd", "#bff5ea", "#5fe3cf"][i]}" stroke-width="9" fill="none" stroke-linecap="round" opacity="${(0.95 - i * 0.15).toFixed(2)}"/>`;
+        })
+        .join("")}</svg>`;
+      const appIcon = (s, r) =>
+        `<span class="k-appicon" data-art="tidewater" data-size="${s}" style="border-radius:${r}px"></span>`;
+      const g = (n, s = 16) =>
+        `<span data-icon="${n}" data-size="${s}"></span>`;
+      const key = `<span class="mono"><span class="k-key"><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span><span>3WPLDA</span></span></span>`;
+      const ok = `<span style="color:var(--pk-success)" data-icon="checkCircle" data-size="16"></span>`;
 
-      <figure>
-        <figcaption>
-          linux · boot, status (blocked) and error (offline)
-        </figcaption>
-        <div class="shot" data-shot="states">
-          <div class="trio">
-            <div class="win" style="width: 420px">
-              <div class="hb"></div>
-              <div class="sbody">
-                <div
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="80"
-                ></div>
-                <div class="gprog" style="margin-top: 18px"><i></i></div>
-                <span style="color: var(--g-mute); font-size: 13px"
-                  >Checking your license</span
-                >
-              </div>
+      // The product header (DL5): the icon, and the name once when the title does not say it.
+      const head = (named) =>
+        named ? appIcon(64, 14) : `${appIcon(32, 8)}<span>${NAME}</span>`;
+
+      const FLOW = {
+        gate: () => ({
+          named: true,
+          body: `<div class="lines"><h1 class="gh hero">Welcome to Tidewater Studio</h1><span class="gmute opt" data-ui-no-strings>by Harbor Audio</span></div><p class="gp opt">Sign in or use a license key to continue.</p>`,
+          acts: `<div class="acts stack"><span class="gb pill">Use a license key</span><span class="gb pill suggested">Sign in</span></div>`,
+          after: `<div class="links"><span>Start a free trial</span><span>Activate offline</span></div>`,
+        }),
+        activate: () => ({
+          body: `<div class="lines"><h1 class="gh">Enter your license key</h1><p class="gp opt">You’ll find it in your purchase email.</p></div>
+            <div><span class="glabel">License key</span><div class="gentry focus">${key}<span class="gb sm">Paste</span></div>
+            <div class="gverdict">${ok}<span><b>Tidewater Studio Pro</b> · Lifetime</span></div></div>`,
+          acts: `<div class="acts"><span class="gb pill eq">Cancel</span><span class="gb pill suggested eq">Activate license</span></div>`,
+        }),
+        signin: () => ({
+          body: `<div class="lines"><h1 class="gh">Finish in your browser</h1><p class="gp opt">Check the code there matches this one.</p></div>
+            <div class="gcode"><span class="mono">WDJB-MJHT</span><span class="gb sm">${g("copy", 14)}Copy</span></div>
+            <div class="gmute opt">Or go to key.plrs.im/activate</div>
+            <div class="gwait tnum"><span data-countdown="0.84" data-size="16"></span>Code expires in 4:12</div>`,
+          acts: `<div class="acts"><span class="gb pill eq">Cancel</span><span class="gb pill suggested eq">${g("external", 14)}Open browser again</span></div>`,
+        }),
+        limit: () => ({
+          body: `<div class="lines"><h1 class="gh">Your license is on 3 of 3 devices</h1></div>
+            <div class="glist">
+              <div class="gdev">${g("laptop", 20)}<div class="t">Work laptop<small>Windows 11 · last seen 41 days ago</small></div></div>
+              <div class="gdev">${g("tablet", 20)}<div class="t">Mara’s iPad<small>iPadOS 26 · last seen yesterday</small></div></div>
+              <div class="gdev">${g("laptop", 20)}<div class="t">MacBook Pro<small>macOS 26 · last seen today</small></div></div>
             </div>
-            <div class="win" style="width: 420px">
-              <div class="hb">
-                <span class="close" data-icon="x" data-size="14"></span>
-              </div>
-              <div class="sbody">
-                <div
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="56"
-                ></div>
-                <h1
-                  style="
-                    margin: 8px 0 0;
-                    font: 600 22px/28px var(--pk-font-sans);
-                  "
-                >
-                  Your license has ended
-                </h1>
-                <p style="margin: 0; color: var(--g-mute)">
-                  Tidewater Studio Pro ended on 30 September. Renew to keep
-                  working on your sessions.
-                </p>
-                <div
-                  style="
-                    display: grid;
-                    gap: 10px;
-                    width: 240px;
-                    margin-top: 14px;
-                  "
-                >
-                  <span class="gb pill suggested">Renew</span>
-                  <span class="gb pill">Use a different key</span>
-                </div>
-              </div>
-            </div>
-            <div class="win" style="width: 420px">
-              <div class="hb">
-                <span class="close" data-icon="x" data-size="14"></span>
-              </div>
-              <div class="sbody">
-                <div class="gglyph" data-icon="wifiOff" data-size="24"></div>
-                <h1
-                  style="
-                    margin: 8px 0 0;
-                    font: 600 22px/28px var(--pk-font-sans);
-                  "
-                >
-                  Can’t reach Harbor Audio
-                </h1>
-                <p style="margin: 0; color: var(--g-mute)">
-                  Check your connection. You can keep working offline for 3 more
-                  days.
-                </p>
-                <div
-                  style="
-                    display: grid;
-                    gap: 10px;
-                    width: 240px;
-                    margin-top: 14px;
-                  "
-                >
-                  <span class="gb pill suggested">Try again</span>
-                  <span class="gb pill">Continue offline</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </figure>
-    </main>
+            <div class="gnote">Replace a device in your browser. Tidewater Studio continues when you’re done.</div>`,
+          acts: `<div class="acts"><span class="gb pill eq">Cancel</span><span class="gb pill suggested eq">${g("external", 14)}Open in browser</span></div>`,
+        }),
+      };
+
+      function pane(flow, opt = {}) {
+        const f = FLOW[flow]();
+        if (opt.ring)
+          f.acts = f.acts.replace(
+            "gb pill suggested",
+            "gb pill suggested ring",
+          );
+        const stripName = f.named ? "" : `<span>${NAME}</span>`;
+        return `<div class="gate">
+          <div class="start"><div class="art">${artSvg}</div><div class="iconpane">${appIcon(96, 22)}</div></div>
+          <div class="strip">${appIcon(32, 8)}${stripName}</div>
+          <div class="end"><div class="hdr">${head(f.named)}</div><div class="body">${f.body}</div>${f.acts}${f.after || ""}</div>
+        </div>`;
+      }
+      const hb = (kind, title = "") =>
+        `<div class="hb ${kind}" data-ui-chrome>${title}<span class="close" data-icon="x" data-size="14"></span></div>`;
+      function win({
+        w,
+        h,
+        flow,
+        native,
+        title = "",
+        bar = "flat",
+        dialog,
+        content,
+        ring,
+      }) {
+        const inner =
+          content ??
+          `<div class="amb"><div data-art="tidewater" data-size="64"></div></div><div class="stage">${pane(flow, { ring })}</div>`;
+        return `<div class="win"${native ? ' data-ui-preset="native"' : ""} style="width:${w}px;height:${h}px">${hb(bar, title)}<div class="wapp">${inner}</div>${dialog || ""}</div>`;
+      }
+      // The `sheet` presentation: an AdwDialog over the host window, which dims.
+      function sheetOf(flow) {
+        const f = FLOW[flow]();
+        return `<div class="dim"></div><div class="dlg"><div class="hdr">${head(false)}</div>${f.body.replace(/ opt/g, "")}${f.acts}</div>`;
+      }
+      const tracks = (extra = "") =>
+        `${extra}<div class="tracks">${[
+          "Vocals",
+          "Guitar",
+          "Drums",
+          "Keys",
+          "Bass",
+          "Room mics",
+        ]
+          .map((n, k) => {
+            let w = "";
+            for (let i = 0; i < 104; i++)
+              w += `<i style="height:${(6 + Math.abs(Math.sin(i * 0.55 + k * 1.7)) * 26).toFixed(0)}px"></i>`;
+            return `<div class="track"><b>${n}</b><span class="wave">${w}</span></div>`;
+          })
+          .join("")}</div>`;
+      const msg = (inner, cls = "") => `<div class="msg ${cls}">${inner}</div>`;
+      const sw = (inner, native, w = 480, h = 360, bar = "flat", title = "") =>
+        win({ w, h, content: inner, native, bar, title });
+
+      const settings = () => {
+        const row = (ic, t, small, right) =>
+          `<div class="grow">${g(ic, 20)}<div class="t">${t}${small ? `<small>${small}</small>` : ""}</div>${right || ""}</div>`;
+        return `<div class="prefs">
+          <div class="glist"><div class="grow">${appIcon(40, 10)}<div class="t"><span style="font-weight:600">Tidewater Studio Pro</span><small>Lifetime · mara@fennick.studio</small></div><span class="gb sm">Manage${g("external", 14)}</span></div>
+            ${row("laptop", "<span>Devices</span>", "2 of 3 in use", `<span class="gmute">${g("chevronRight")}</span>`)}</div>
+          <div class="grp"><h2>From Harbor Audio</h2><div class="glist">
+            ${row("download", "<span>Update automatically</span>", "Changed by you", `<span class="sw"></span>`)}</div></div>
+          <div class="grp"><h2>Managed settings</h2><div class="glist">
+            ${row("shield", "<span>Release channel</span>", "Set by Fennick Studio", `<span class="val">${g("lock", 14)}Locked</span>`)}</div></div>
+          <div class="grp"><h2>Updates</h2><div class="glist">
+            ${row("update", "Version <span class=tnum>2.4.1</span>", "You’re up to date", `<span class="gb sm">Check for updates</span>`)}</div></div>
+        </div>`;
+      };
+      const update = `<div class="dim"></div><div class="dlg">
+        <div style="display:flex;gap:16px;align-items:center">${appIcon(48, 12)}<div><h2 class="gh">Tidewater Studio 2.5</h2><span class="gmute tnum">You have 2.4.1 · 61 MB download</span></div></div>
+        <div style="display:grid;gap:4px"><span class="gmute" style="font-size:13px">What’s new</span><span>Stem export in one click, with loudness matching</span><span>Track freeze now works with every plug-in</span><span class="glink">All changes in 2.5</span></div>
+        <div><div style="height:6px;border-radius:3px;background:var(--g-ctl)"><div style="width:62%;height:100%;border-radius:3px;background:var(--g-acc)"></div></div>
+        <div class="gmute tnum" style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px"><span>Downloading · 38 of 61 MB</span><span>About 20 seconds left</span></div></div>
+        <div class="acts"><span class="gb pill eq">Later</span><span class="gb pill suggested eq ring">Restart when ready</span></div></div>`;
+
+      const shots = [];
+      const add = (name, cap, ...wins) => shots.push({ name, cap, wins });
+      const W = 900,
+        H = 600;
+      const fr = (flow, w, h, native) => win({ w, h, flow, native });
+      const host = (extra) => tracks(extra);
+
+      add(
+        "gate",
+        "gate · polaris-key · 900 × 600 · header bar, pill suggested action",
+        fr("gate", W, H),
+      );
+      add(
+        "gate-native",
+        "gate · native · 900 × 600 · libadwaita, its blue",
+        fr("gate", W, H, true),
+      );
+      add(
+        "gate-shapes",
+        "gate · narrow 480 × 640 and short landscape 900 × 400",
+        fr("gate", 480, 640),
+        fr("gate", 900, 400),
+      );
+      add(
+        "gate-large",
+        "gate · large 1440 × 900 · the row on the product ambient",
+        fr("gate", 1440, 900),
+      );
+      add(
+        "activate",
+        "activate · inline · polaris-key · 900 × 600",
+        fr("activate", W, H),
+      );
+      add(
+        "activate-sheet",
+        "activate · presentation: “sheet” · AdwDialog over a dimmed window",
+        win({
+          w: W,
+          h: H,
+          bar: "bar",
+          title: NAME,
+          content: host(),
+          dialog: sheetOf("activate"),
+        }),
+      );
+      add(
+        "activate-shapes",
+        "activate · narrow 480 × 640 and short landscape 900 × 400",
+        fr("activate", 480, 640),
+        fr("activate", 900, 400),
+      );
+      add(
+        "sign-in",
+        "sign-in code · inline · polaris-key · 900 × 600",
+        fr("signin", W, H),
+      );
+      add(
+        "sign-in-native",
+        "sign-in code · inline · native · 900 × 600",
+        fr("signin", W, H, true),
+      );
+      add(
+        "sign-in-sheet",
+        "sign-in code · presentation: “sheet”",
+        win({
+          w: W,
+          h: H,
+          bar: "bar",
+          title: NAME,
+          content: host(),
+          dialog: sheetOf("signin"),
+        }),
+      );
+      add(
+        "sign-in-shapes",
+        "sign-in code · narrow 480 × 640 and short landscape 900 × 400",
+        fr("signin", 480, 640),
+        fr("signin", 900, 400),
+      );
+      add(
+        "sign-in-large",
+        "sign-in code · large 1440 × 900",
+        fr("signin", 1440, 900),
+      );
+      add(
+        "device-limit",
+        "device limit · key path · polaris-key · 900 × 600",
+        fr("limit", W, H),
+      );
+      add(
+        "device-limit-native",
+        "device limit · key path · native · 900 × 600",
+        fr("limit", W, H, true),
+      );
+      add(
+        "device-limit-shapes",
+        "device limit · narrow 480 × 640 and short landscape 900 × 400",
+        fr("limit", 480, 640),
+        fr("limit", 900, 400),
+      );
+      add(
+        "device-limit-large",
+        "device limit · large 1440 × 900",
+        fr("limit", 1440, 900),
+      );
+      add(
+        "focus",
+        "keyboard focus · polaris-key accent ring and libadwaita ring · 480 × 640",
+        win({ w: 480, h: 640, flow: "gate", ring: true }),
+        win({ w: 480, h: 640, flow: "gate", native: true, ring: true }),
+      );
+      add(
+        "update",
+        "update · AdwDialog over the app, focus on the suggested action",
+        win({
+          w: W,
+          h: H,
+          bar: "bar",
+          title: NAME,
+          content: host(),
+          dialog: update,
+        }),
+      );
+      add(
+        "settings",
+        "account and license · provenance groups",
+        win({
+          w: 760,
+          h: 640,
+          bar: "bar",
+          title: "Settings",
+          content: settings(),
+        }),
+      );
+      add(
+        "states",
+        "boot, grace and can’t connect",
+        sw(
+          msg(
+            `${appIcon(96, 22)}<div class="shim"><span class="k-shimmer"></span></div><span class="gmute">Checking your license…</span>`,
+          ),
+        ),
+        sw(
+          host(
+            `<div class="banner">${g("wifiOff", 20)}<span class="grow2">Offline · 3 days left to reconnect</span><span class="gb sm">Try again</span></div>`,
+          ),
+          false,
+          480,
+          360,
+          "bar",
+          NAME,
+        ),
+        sw(
+          msg(
+            `<div class="glyph">${g("wifiOff", 24)}</div><div class="lines"><h1 class="gh">Can’t connect</h1><p class="gp">Can’t reach Polaris Key. Check your connection and try again.</p></div><div class="acts"><span class="gb pill">Continue offline</span><span class="gb pill suggested">Try again</span></div>`,
+          ),
+        ),
+      );
+      add(
+        "revoked",
+        "signed out (revoked) and expired · polaris-key and native",
+        sw(
+          msg(
+            `${appIcon(64, 14)}<div class="lines"><h1 class="gh">Signed out</h1><p class="gp">This device was signed out. Sign in or activate again to continue.</p></div><div class="acts"><span class="gb pill">Use a license key</span><span class="gb pill suggested">Sign in</span></div>`,
+          ),
+        ),
+        sw(
+          msg(
+            `${appIcon(64, 14)}<div class="lines"><h1 class="gh">License expired</h1><p class="gp">Your license has expired. Connect to the internet or renew it to continue.</p></div><div class="acts"><span class="gb pill">Use another license</span><span class="gb pill suggested">Renew${g("external", 14)}</span></div>`,
+          ),
+          true,
+        ),
+      );
+
+      document.getElementById("board").innerHTML = shots
+        .map(
+          (s) =>
+            `<figure><figcaption>linux · ${s.cap}</figcaption><div class="shot" data-shot="${s.name}">${s.wins.join("")}</div></figure>`,
+        )
+        .join("");
+    </script>
   </body>
 </html>

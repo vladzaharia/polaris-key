@@ -89,8 +89,16 @@
         inset: 0;
         z-index: -2;
         background:
-          radial-gradient(80% 90% at 70% 10%, var(--w-wall-a) 0%, transparent 60%),
-          radial-gradient(60% 70% at 10% 100%, var(--w-wall-b) 0%, transparent 60%),
+          radial-gradient(
+            80% 90% at 70% 10%,
+            var(--w-wall-a) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            60% 70% at 10% 100%,
+            var(--w-wall-b) 0%,
+            transparent 60%
+          ),
           var(--w-wall);
       }
       .win {
@@ -457,8 +465,12 @@
           line-height: 32px;
         }
         .wdev {
-          min-height: 40px;
-          padding-block: 4px;
+          min-height: 36px;
+          padding-block: 0;
+        }
+        .wdev small {
+          display: inline;
+          margin-inline-start: 8px;
         }
       }
       /* Large (1100 and up): a sheet-scale row on the product ambient, never stretched. */
@@ -510,7 +522,11 @@
             color-mix(in oklab, var(--kit-accent-subtle), var(--w-amb-a) 30%),
             transparent 72%
           ),
-          radial-gradient(circle 300px at 62% 28%, var(--w-amb-b), transparent 70%);
+          radial-gradient(
+            circle 300px at 62% 28%,
+            var(--w-amb-b),
+            transparent 70%
+          );
       }
       [data-ui-preset="native"] .amb {
         display: none;
@@ -725,12 +741,14 @@
         .join("")}</svg>`;
       const appIcon = (s, r) =>
         `<span class="k-appicon" data-art="tidewater" data-size="${s}" style="border-radius:${r}px"></span>`;
-      const g = (n, s = 16) => `<span data-icon="${n}" data-size="${s}"></span>`;
+      const g = (n, s = 16) =>
+        `<span data-icon="${n}" data-size="${s}"></span>`;
       const key = `<span class="mono"><span class="k-key"><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span><span>3WPLDA</span></span></span>`;
       const ok = `<span style="color:var(--pk-success)" data-icon="checkCircle" data-size="16"></span>`;
 
       // The product header (DL5): the icon, and the name once when the title does not say it.
-      const head = (named) => (named ? appIcon(56, 12) : `${appIcon(32, 8)}<span>${NAME}</span>`);
+      const head = (named) =>
+        named ? appIcon(56, 12) : `${appIcon(32, 8)}<span>${NAME}</span>`;
 
       const FLOW = {
         gate: () => ({
@@ -757,7 +775,7 @@
             <div class="wlist">
               <div class="wdev">${g("laptop", 20)}<div class="t">Work laptop<small>Windows 11 · last seen 41 days ago</small></div></div>
               <div class="wdev">${g("tablet", 20)}<div class="t">Mara’s iPad<small>iPadOS 26 · last seen yesterday</small></div></div>
-              <div class="wdev opt">${g("laptop", 20)}<div class="t">MacBook Pro<small>macOS 26 · last seen today</small></div></div>
+              <div class="wdev">${g("laptop", 20)}<div class="t">MacBook Pro<small>macOS 26 · last seen today</small></div></div>
             </div>
             <div class="wnote">Replace a device in your browser. Tidewater Studio continues when you’re done.</div>`,
           acts: `<div class="acts"><span class="wb primary eq">${g("external", 14)}Open in browser</span><span class="wb eq">Cancel</span></div>`,
@@ -776,7 +794,16 @@
       }
       const tb = (title) =>
         `<div class="tb" data-ui-chrome>${appIcon(16, 4)}<span>${title}</span>${caps}</div>`;
-      function win({ w, h, flow, native, title = NAME, dialog, content, ring }) {
+      function win({
+        w,
+        h,
+        flow,
+        native,
+        title = NAME,
+        dialog,
+        content,
+        ring,
+      }) {
         const inner =
           content ??
           `<div class="amb"><div data-art="tidewater" data-size="64"></div></div><div class="stage">${pane(flow, { ring })}</div>`;
@@ -788,7 +815,14 @@
         return `<div class="smoke"></div><div class="dialog"><div class="dbody"><div class="hdr">${head(false)}</div>${f.body.replace(/ opt/g, "")}</div>${f.acts.replace('class="acts"', 'class="foot"')}</div>`;
       }
       const tracks = (extra = "") =>
-        `${extra}<div class="tracks">${["Vocals", "Guitar", "Drums", "Keys", "Bass", "Room mics"]
+        `${extra}<div class="tracks">${[
+          "Vocals",
+          "Guitar",
+          "Drums",
+          "Keys",
+          "Bass",
+          "Room mics",
+        ]
           .map((n, k) => {
             let w = "";
             for (let i = 0; i < 104; i++)
@@ -813,7 +847,7 @@
             <div class="wgroup"><h2>From Harbor Audio</h2>
               ${row("download", "<span>Update automatically</span>", "Changed by you", `<span class="val">On</span><span class="tog"></span>`)}</div>
             <div class="wgroup"><h2>Managed settings</h2>
-              ${row("shield", "Share crash reports", "Set by Fennick Studio", `<span class="val">${g("lock", 14)}On</span>`)}</div>
+              ${row("shield", "<span>Release channel</span>", "Set by Fennick Studio", `<span class="val">${g("lock", 14)}Locked</span>`)}</div>
             <div class="wgroup"><h2>Updates</h2>
               ${row("update", "Version <span class=tnum>2.4.1</span>", "You’re up to date", `<span class="wb">Check for updates</span>`)}</div>
           </div></div>`;
@@ -827,40 +861,144 @@
 
       const shots = [];
       const add = (name, cap, ...wins) => shots.push({ name, cap, wins });
-      const W = 900, H = 600;
+      const W = 900,
+        H = 600;
       const fr = (flow, w, h, native) => win({ w, h, flow, native });
 
-      add("gate", "gate · polaris-key · 900 × 600 · Mica (opaque on Windows 10, Remote Desktop, Transparency effects off)", fr("gate", W, H));
-      add("gate-native", "gate · native · 900 × 600 · Fluent, Windows accent", fr("gate", W, H, true));
-      add("gate-shapes", "gate · narrow 480 × 640 and short landscape 900 × 400", fr("gate", 480, 640), fr("gate", 900, 400));
-      add("gate-large", "gate · large 1440 × 900 · the row on the product ambient", fr("gate", 1440, 900));
-      add("activate", "activate · inline · polaris-key · 900 × 600", fr("activate", W, H));
-      add("activate-sheet", "activate · presentation: “sheet” · ContentDialog on a smoke layer", win({ w: W, h: H, content: tracks(), dialog: sheetOf("activate") }));
-      add("activate-shapes", "activate · narrow 480 × 640 and short landscape 900 × 400", fr("activate", 480, 640), fr("activate", 900, 400));
-      add("sign-in", "sign-in code · inline · polaris-key · 900 × 600", fr("signin", W, H));
-      add("sign-in-native", "sign-in code · inline · native · 900 × 600", fr("signin", W, H, true));
-      add("sign-in-sheet", "sign-in code · presentation: “sheet”", win({ w: W, h: H, content: tracks(), dialog: sheetOf("signin") }));
-      add("sign-in-shapes", "sign-in code · narrow 480 × 640 and short landscape 900 × 400", fr("signin", 480, 640), fr("signin", 900, 400));
-      add("sign-in-large", "sign-in code · large 1440 × 900", fr("signin", 1440, 900));
-      add("device-limit", "device limit · key path · polaris-key · 900 × 600", fr("limit", W, H));
-      add("device-limit-native", "device limit · key path · native · 900 × 600", fr("limit", W, H, true));
-      add("device-limit-shapes", "device limit · narrow 480 × 640 and short landscape 900 × 400", fr("limit", 480, 640), fr("limit", 900, 400));
-      add("device-limit-large", "device limit · large 1440 × 900", fr("limit", 1440, 900));
-      add("focus", "keyboard focus · polaris-key accent ring and Fluent ring · 480 × 640", win({ w: 480, h: 640, flow: "gate", ring: true }), win({ w: 480, h: 640, flow: "gate", native: true, ring: true }));
-      add("update", "update · ContentDialog over the app, focus on the primary", win({ w: W, h: H, content: tracks(), dialog: update }));
-      add("settings", "account and license · provenance groups", win({ w: 900, h: 640, title: "Settings", content: settings() }));
+      add(
+        "gate",
+        "gate · polaris-key · 900 × 600 · Mica (opaque on Windows 10, Remote Desktop, Transparency effects off)",
+        fr("gate", W, H),
+      );
+      add(
+        "gate-native",
+        "gate · native · 900 × 600 · Fluent, Windows accent",
+        fr("gate", W, H, true),
+      );
+      add(
+        "gate-shapes",
+        "gate · narrow 480 × 640 and short landscape 900 × 400",
+        fr("gate", 480, 640),
+        fr("gate", 900, 400),
+      );
+      add(
+        "gate-large",
+        "gate · large 1440 × 900 · the row on the product ambient",
+        fr("gate", 1440, 900),
+      );
+      add(
+        "activate",
+        "activate · inline · polaris-key · 900 × 600",
+        fr("activate", W, H),
+      );
+      add(
+        "activate-sheet",
+        "activate · presentation: “sheet” · ContentDialog on a smoke layer",
+        win({ w: W, h: H, content: tracks(), dialog: sheetOf("activate") }),
+      );
+      add(
+        "activate-shapes",
+        "activate · narrow 480 × 640 and short landscape 900 × 400",
+        fr("activate", 480, 640),
+        fr("activate", 900, 400),
+      );
+      add(
+        "sign-in",
+        "sign-in code · inline · polaris-key · 900 × 600",
+        fr("signin", W, H),
+      );
+      add(
+        "sign-in-native",
+        "sign-in code · inline · native · 900 × 600",
+        fr("signin", W, H, true),
+      );
+      add(
+        "sign-in-sheet",
+        "sign-in code · presentation: “sheet”",
+        win({ w: W, h: H, content: tracks(), dialog: sheetOf("signin") }),
+      );
+      add(
+        "sign-in-shapes",
+        "sign-in code · narrow 480 × 640 and short landscape 900 × 400",
+        fr("signin", 480, 640),
+        fr("signin", 900, 400),
+      );
+      add(
+        "sign-in-large",
+        "sign-in code · large 1440 × 900",
+        fr("signin", 1440, 900),
+      );
+      add(
+        "device-limit",
+        "device limit · key path · polaris-key · 900 × 600",
+        fr("limit", W, H),
+      );
+      add(
+        "device-limit-native",
+        "device limit · key path · native · 900 × 600",
+        fr("limit", W, H, true),
+      );
+      add(
+        "device-limit-shapes",
+        "device limit · narrow 480 × 640 and short landscape 900 × 400",
+        fr("limit", 480, 640),
+        fr("limit", 900, 400),
+      );
+      add(
+        "device-limit-large",
+        "device limit · large 1440 × 900",
+        fr("limit", 1440, 900),
+      );
+      add(
+        "focus",
+        "keyboard focus · polaris-key accent ring and Fluent ring · 480 × 640",
+        win({ w: 480, h: 640, flow: "gate", ring: true }),
+        win({ w: 480, h: 640, flow: "gate", native: true, ring: true }),
+      );
+      add(
+        "update",
+        "update · ContentDialog over the app, focus on the primary",
+        win({ w: W, h: H, content: tracks(), dialog: update }),
+      );
+      add(
+        "settings",
+        "account and license · provenance groups",
+        win({ w: 900, h: 640, title: "Settings", content: settings() }),
+      );
       add(
         "states",
         "boot, grace and can’t connect",
-        sw(msg(`${appIcon(72, 16)}<div class="shim"><span class="k-shimmer"></span></div><span class="wmute">Checking your license…</span>`, "boot")),
-        sw(tracks(`<div class="banner">${g("wifiOff", 20)}<span class="grow">Offline · 3 days left to reconnect</span><span class="wb sm">Try again</span></div>`)),
-        sw(msg(`<div class="glyph">${g("wifiOff", 20)}</div><div class="lines"><h1 class="wh">Can’t connect</h1><p class="wp">Can’t reach Polaris Key. Check your connection and try again.</p></div><div class="acts"><span class="wb primary eq">Try again</span><span class="wb eq">Continue offline</span></div>`)),
+        sw(
+          msg(
+            `${appIcon(72, 16)}<div class="shim"><span class="k-shimmer"></span></div><span class="wmute">Checking your license…</span>`,
+            "boot",
+          ),
+        ),
+        sw(
+          tracks(
+            `<div class="banner">${g("wifiOff", 20)}<span class="grow">Offline · 3 days left to reconnect</span><span class="wb sm">Try again</span></div>`,
+          ),
+        ),
+        sw(
+          msg(
+            `<div class="glyph">${g("wifiOff", 20)}</div><div class="lines"><h1 class="wh">Can’t connect</h1><p class="wp">Can’t reach Polaris Key. Check your connection and try again.</p></div><div class="acts"><span class="wb primary eq">Try again</span><span class="wb eq">Continue offline</span></div>`,
+          ),
+        ),
       );
       add(
         "revoked",
         "signed out (revoked) and expired · polaris-key and native",
-        sw(msg(`${appIcon(48, 10)}<div class="lines"><h1 class="wh">Signed out</h1><p class="wp">This device was signed out. Sign in or activate again to continue.</p></div><div class="acts"><span class="wb primary eq">Sign in</span><span class="wb eq">Use a license key</span></div>`)),
-        sw(msg(`${appIcon(48, 10)}<div class="lines"><h1 class="wh">License expired</h1><p class="wp">Your license has expired. Connect to the internet or renew it to continue.</p></div><div class="acts"><span class="wb primary eq">Renew${g("external", 14)}</span><span class="wb eq">Use another license</span></div>`), true),
+        sw(
+          msg(
+            `${appIcon(48, 10)}<div class="lines"><h1 class="wh">Signed out</h1><p class="wp">This device was signed out. Sign in or activate again to continue.</p></div><div class="acts"><span class="wb primary eq">Sign in</span><span class="wb eq">Use a license key</span></div>`,
+          ),
+        ),
+        sw(
+          msg(
+            `${appIcon(48, 10)}<div class="lines"><h1 class="wh">License expired</h1><p class="wp">Your license has expired. Connect to the internet or renew it to continue.</p></div><div class="acts"><span class="wb primary eq">Renew${g("external", 14)}</span><span class="wb eq">Use another license</span></div>`,
+          ),
+          true,
+        ),
       );
 
       document.getElementById("board").innerHTML = shots
@@ -869,7 +1007,6 @@
             `<figure><figcaption>windows · ${s.cap}</figcaption><div class="shot" data-shot="${s.name}">${s.wins.join("")}</div></figure>`,
         )
         .join("");
-
     </script>
   </body>
 </html>

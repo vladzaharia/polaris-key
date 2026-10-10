@@ -752,46 +752,6 @@
       "text": "This update is required. Your library moved to a new format, and 2.4.1 can't open it."
     },
     {
-      "board": "linux",
-      "state": "activate",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "linux",
-      "state": "gate",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "linux",
-      "state": "gate",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "linux",
-      "state": "gate",
-      "text": "Start a 14-day trial"
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Can't reach Harbor Audio"
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Check your connection. You can keep working offline for 3 more days."
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Tidewater Studio Pro ended on 30 September. Renew to keep working on your sessions."
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Your license has ended"
-    },
-    {
       "board": "qt",
       "state": "quick-activate",
       "text": "Your key is in the purchase email from Harbor Audio."
@@ -1465,11 +1425,6 @@
       "board": "windows",
       "state": "settings",
       "text": "General"
-    },
-    {
-      "board": "windows",
-      "state": "settings",
-      "text": "Share crash reports Set by Fennick Studio"
     }
   ]
 }
