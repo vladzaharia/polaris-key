@@ -154,7 +154,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <span
               id="health-window"
-              className="text-xs font-bold text-fg-muted"
+              className="text-xs font-medium text-fg-muted"
             >
               Window
             </span>

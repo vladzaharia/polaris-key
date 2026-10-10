@@ -154,7 +154,7 @@ export function SlotBoard({
             aria-label={LISTING_GROUP_LABELS[g] ?? g}
             className="rounded-lg border border-border bg-surface-raised px-4 py-2"
           >
-            <h3 className="py-2 text-sm font-bold text-fg-strong">
+            <h3 className="py-2 text-sm font-semibold text-fg-strong">
               {LISTING_GROUP_LABELS[g] ?? g}
             </h3>
             <ul className="divide-y divide-border">

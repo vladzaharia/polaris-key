@@ -272,7 +272,7 @@ export function StoreRolloutControls({
   const isComplete = pending?.control === "phased-release/complete";
   return (
     <div className="space-y-2 rounded-md bg-surface-sunken p-3">
-      <p className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+      <p className="text-xs font-medium uppercase tracking-wider text-fg-muted">
         Store controls · {connector.label}
       </p>
       {blocked ? (
@@ -602,7 +602,7 @@ export function ConnectorCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3
           id={`connector-${connector.kind}`}
-          className="text-base font-bold text-fg-strong"
+          className="text-base font-semibold text-fg-strong"
         >
           {connector.label}
         </h3>

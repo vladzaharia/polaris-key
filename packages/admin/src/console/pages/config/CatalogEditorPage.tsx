@@ -425,7 +425,7 @@ function Editor({
                 ).length;
                 return (
                   <section key={category} className="space-y-1">
-                    <h2 className="flex items-center gap-2 px-2 text-xs font-bold text-fg-muted">
+                    <h2 className="flex items-center gap-2 px-2 text-xs font-semibold text-fg-muted">
                       <span className="flex-1">{categoryLabel(category)}</span>
                       <span className="tabular-nums">{items.length}</span>
                       {changed ? (
@@ -499,7 +499,7 @@ function Editor({
             )}
             {diff.removed.length ? (
               <section className="space-y-1">
-                <h2 className="px-2 text-xs font-bold text-fg-muted">
+                <h2 className="px-2 text-xs font-semibold text-fg-muted">
                   Removed in this draft
                 </h2>
                 <ul className="px-2 font-mono text-xs text-danger">
@@ -522,7 +522,7 @@ function Editor({
             {selected ? (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-mono text-sm font-bold text-fg-strong">
+                  <h2 className="font-mono text-sm font-semibold text-fg-strong">
                     {selected.key || "(no key)"}
                   </h2>
                   <Button
@@ -868,7 +868,7 @@ function ReviewDrawer({
                   <div className="mt-3 space-y-1">
                     <label
                       htmlFor={reasonId}
-                      className="text-sm font-bold text-fg-strong"
+                      className="text-sm font-medium text-fg-strong"
                     >
                       Reason
                     </label>
@@ -902,7 +902,7 @@ function ReviewDrawer({
                   role="alert"
                   className="rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
                 >
-                  <p className="font-bold text-danger">{copy.title}</p>
+                  <p className="font-semibold text-danger">{copy.title}</p>
                   <p className="text-fg">{copy.description}</p>
                   {copy.fieldErrors?.length ? (
                     <ul className="mt-1 list-disc pl-5 font-mono text-xs">

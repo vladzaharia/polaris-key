@@ -464,7 +464,7 @@ function JobBlock({
   return (
     <section aria-labelledby={id} className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h3 id={id} className="text-sm font-bold text-fg-strong">
+        <h3 id={id} className="text-sm font-semibold text-fg-strong">
           {jobLabel(job)}
         </h3>
         {run ? (
@@ -523,7 +523,9 @@ function CronPanel({ jobs }: { jobs: PlatformOperations["jobs"] }) {
           <JobBlock job="maintenance" run={jobs.latest.maintenance} />
           <JobBlock job="connectorPoll" run={jobs.latest.connectorPoll} />
           <section className="space-y-2">
-            <h3 className="text-sm font-bold text-fg-strong">Recent runs</h3>
+            <h3 className="text-sm font-semibold text-fg-strong">
+              Recent runs
+            </h3>
             <DataTable<RecentRun>
               id="ops-recent-runs"
               caption="Recent cron runs"
@@ -546,7 +548,7 @@ function CronPanel({ jobs }: { jobs: PlatformOperations["jobs"] }) {
           </section>
           {jobs.failures.length > 0 ? (
             <section className="space-y-2">
-              <h3 className="text-sm font-bold text-fg-strong">
+              <h3 className="text-sm font-semibold text-fg-strong">
                 Recent failed steps
               </h3>
               <ul className="divide-y divide-border rounded-md border border-border">
@@ -597,7 +599,7 @@ function HeartbeatsPanel({ op }: { op: PlatformOperations }) {
             return (
               <li key={script} className="space-y-1.5">
                 <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 text-sm font-bold text-fg-strong">
+                  <span className="min-w-0 text-sm font-medium text-fg-strong">
                     {SCRIPT_LABEL[script]}
                   </span>
                   <span className="shrink-0">
@@ -658,7 +660,7 @@ function QueueBlock({
   return (
     <li className="space-y-1.5">
       <div className="flex items-start justify-between gap-3">
-        <span className="min-w-0 text-sm font-bold text-fg-strong">
+        <span className="min-w-0 text-sm font-medium text-fg-strong">
           {title}
         </span>
         {h ? (
@@ -820,7 +822,7 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
         {r2 && r2.byKind.length > 0 ? (
           <div className="min-w-0">
             <table className="w-full text-sm">
-              <caption className="pb-2 text-left text-sm font-bold text-fg-strong">
+              <caption className="pb-2 text-left text-sm font-semibold text-fg-strong">
                 Committed bytes by kind
               </caption>
               <thead>

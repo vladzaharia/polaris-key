@@ -28,7 +28,7 @@ function MarkdownBlock({ block: b }: { block: Block }): React.ReactElement {
     case "heading": {
       const Tag = HEADING_TAGS[Math.min(Math.max(b.level, 3), 6) - 3]!;
       return (
-        <Tag className="pt-1 text-md font-bold text-fg-strong">
+        <Tag className="pt-1 text-md font-semibold text-fg-strong">
           <Inlines nodes={b.children} />
         </Tag>
       );
@@ -114,7 +114,7 @@ function InlineNode({ node: n }: { node: Inline }): React.ReactElement {
       );
     case "strong":
       return (
-        <strong className="font-bold text-fg-strong">
+        <strong className="font-semibold text-fg-strong">
           <Inlines nodes={n.children} />
         </strong>
       );

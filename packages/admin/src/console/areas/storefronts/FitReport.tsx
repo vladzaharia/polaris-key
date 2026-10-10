@@ -172,7 +172,7 @@ export function FitReport({
         {rows.map((s) => (
           <li key={s.store} className="px-4 py-3" data-fit={s.store}>
             <div className="flex min-h-8 items-center justify-between gap-3">
-              <span className="text-sm font-bold text-fg-strong">
+              <span className="text-sm font-medium text-fg-strong">
                 {s.label}
               </span>
               {s.status === "green" ? (

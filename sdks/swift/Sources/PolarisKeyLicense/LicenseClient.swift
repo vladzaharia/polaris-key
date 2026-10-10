@@ -73,20 +73,26 @@ public struct LicenseInfo: Sendable, Equatable {
 }
 
 public typealias LicenseAcquiredListener = @Sendable (ActivationSource) async -> Void
+/// Raised after `deactivate()` ran (whether or not the local wipe succeeded: either way the
+/// licence state may have changed), so a facade can emit its `license` event.
+public typealias LicenseReleasedListener = @Sendable () async -> Void
 
 public actor LicenseClient {
     private let core: CoreContext
     private let fingerprintEnabled: Bool
     private let onAcquired: LicenseAcquiredListener?
+    private let onReleased: LicenseReleasedListener?
 
     public init(
         core: CoreContext,
         options: LicenseClientOptions = LicenseClientOptions(),
-        onAcquired: LicenseAcquiredListener? = nil
+        onAcquired: LicenseAcquiredListener? = nil,
+        onReleased: LicenseReleasedListener? = nil
     ) {
         self.core = core
         self.fingerprintEnabled = options.fingerprint
         self.onAcquired = onAcquired
+        self.onReleased = onReleased
     }
 
     // ── Gate ─────────────────────────────────────────────────────────────────────────────
@@ -225,10 +231,19 @@ public actor LicenseClient {
     ///
     /// The network call is best-effort and the local wipe is not: a device deactivating on a
     /// plane must not be left holding a token because the control plane was unreachable.
+    ///
+    /// Raises the licence change (`onReleased`) when it returns or throws, so `client.events`
+    /// carries the `license` event whichever entry point released the seat.
     public func deactivate() async throws {
-        if let token = await core.token {
-            await LicenseEndpoints.deauthorize(core, token: token)
+        do {
+            if let token = await core.token {
+                await LicenseEndpoints.deauthorize(core, token: token)
+            }
+            try await core.clearAll()
+        } catch {
+            await onReleased?()
+            throw error
         }
-        try await core.clearAll()
+        await onReleased?()
     }
 }

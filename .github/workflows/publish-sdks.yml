@@ -482,6 +482,13 @@ jobs:
               exit 1
             fi
           done
+      # Every maven.* deliverable must find its one POM under its artifacts glob at this version,
+      # exactly as the publisher's extractor looks for it: a mismatch fails here, before any feed
+      # has published, not in a publish leg.
+      - name: Every maven.* deliverable finds its POM
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: node tools/maven-publication-check.mjs --repo sdks/kotlin/build/repo --version "$VERSION"
       - uses: actions/upload-artifact@v7
         with:
           name: maven-repo

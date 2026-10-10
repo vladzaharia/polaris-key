@@ -24,7 +24,7 @@ export function EnvironmentBadge({
     <span
       data-environment={environment}
       className={cn(
-        "inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 text-xs font-bold",
+        "inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 text-xs font-medium",
         environment === "staging"
           ? "border-warning-border bg-warning-subtle text-warning"
           : "border-info-border bg-info-subtle text-info",

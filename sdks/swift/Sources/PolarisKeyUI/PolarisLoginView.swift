@@ -28,7 +28,12 @@ public final class PolarisGateModel: ObservableObject {
     @Published public private(set) var state: LicenseState
     @Published public private(set) var profile: DocProfile?
     @Published public private(set) var isWorking = false
+    /// False until the first `reload()` has read the client: the gate then draws only its ground,
+    /// so a licensed cold launch never flashes the activation card.
+    @Published public private(set) var hasLoaded = false
     @Published public var lastError: String?
+    /// Raised once per activation result, so a repeated identical refusal is still announced.
+    @Published public private(set) var resultSerial = 0
     /// PX-W8: the portal link that frees a seat, after the last activation was refused with
     /// `device_limit`; nil otherwise. It already carries the app's return URL and, on an
     /// `/activate` link, the key as a fragment. Never an auth failure: the gate only offers it.
@@ -102,6 +107,7 @@ public final class PolarisGateModel: ObservableObject {
         state = await client.status()
         profile = await client.profile()
         if let facade { identityEnabled = await facade.core.enabled(.identity) }
+        hasLoaded = true
     }
 
     /// Run a Core sync, then re-snapshot the gate.
@@ -119,6 +125,7 @@ public final class PolarisGateModel: ObservableObject {
         let result = await client.activate(key: key)
         lastResult = result
         lastError = copy.activationMessage(result)
+        resultSerial += 1
         manageURL = nil
         if case .deviceLimit(_, _, let served) = result {
             manageURL = Self.offeredManageURL(
@@ -185,6 +192,8 @@ public struct PolarisLoginView<Content: View>: View {
             isWorking: model.isWorking,
             lastError: model.lastError,
             manageURL: model.manageURL,
+            isLoading: !model.hasLoaded,
+            resultSerial: model.resultSerial,
             licenseKey: $licenseKey,
             theme: theme,
             onSignIn: signIn,
@@ -219,8 +228,18 @@ struct PolarisGateSurface<Content: View>: View {
     let isWorking: Bool
     let lastError: String?
     var manageURL: String? = nil
+    /// The first read of the client has not finished: draw the ground and nothing else.
+    var isLoading = false
+    /// Raised per activation result (see `PolarisKeyModel.resultSerial`).
+    var resultSerial = 0
     /// Called when the person taps Replace a device (the gate retries once when they return).
     var onOpenManage: (() -> Void)? = nil
+    /// Where an expired licence is renewed or managed (`GateOptions.renewURL`), or nil.
+    var renewURL: URL? = nil
+    /// Called when the person taps Renew or manage (the gate re-checks when they return).
+    var onOpenRenew: (() -> Void)? = nil
+    /// The host's own action on a blocking state (`GateOptions.blockedAction`).
+    var blockedAction: (@MainActor @Sendable (LicenseStatus) -> AnyView?)? = nil
     @Binding var licenseKey: String
     let theme: PolarisTheme
     /// nil hides "Sign in" (the product runs no Identity).
@@ -233,6 +252,8 @@ struct PolarisGateSurface<Content: View>: View {
     var onActivateOffline: (() -> Void)? = nil
     /// False hides key entry (a store outlet whose rules forbid it, App Store 3.1.1).
     var showsKeyEntry: Bool = true
+    /// Starts with the form showing (render tests and previews of that step).
+    var showsKeyFormInitially = false
     let content: () -> Content
 
     @Environment(\.colorScheme) private var colorScheme
@@ -248,6 +269,8 @@ struct PolarisGateSurface<Content: View>: View {
     /// The error is cleared from view as soon as the key is edited, so a stale refusal does not sit
     /// under a key the person is fixing.
     @State private var errorDismissed = false
+    /// "Use a different key" was chosen on a blocking state: the activation form shows in its place.
+    @State private var showsKeyForm = false
 
     private var style: PolarisKitStyle {
         PolarisKitStyle(
@@ -265,93 +288,127 @@ struct PolarisGateSurface<Content: View>: View {
     /// The manage URL for a device-limit refusal, as a URL.
     private var manageLink: URL? { manageURL.flatMap(URL.init(string:)) }
 
+    /// What the announcer watches: a new result, or a new message.
+    private struct ErrorEvent: Equatable {
+        var serial: Int
+        var message: String?
+    }
+
     var body: some View {
         Group {
-            switch status {
-            case .ok, .notApplicable:
-                // §5 / D-08 — a product that does not run the license service has no gate to
-                // show. Rendering the activation form there would demand a licence that does not
-                // exist.
-                content()
-            case .grace:
-                graceScreen
-            case .needsActivation:
-                activationScreen(status: .needsActivation)
-            case .revoked:
-                // The copy says "sign in or activate again", so the act is the activation form,
-                // not a Retry that only re-checks and stays revoked.
-                activationScreen(status: .revoked)
-            case .expired, .versionTooOld, .versionTooNew, .channelNotEntitled:
-                // One shared mapping for every terminal "message" surface — see
-                // `PolarisCopy.message(for:allowedRange:)`.
-                if let copy = theme.copy.message(for: status, allowedRange: allowedRange) {
-                    messageScreen(
-                        title: copy.title, subtitle: copy.subtitle, symbol: copy.symbol,
-                        tone: palette.warning)
+            if isLoading {
+                loadingGround
+            } else {
+                switch status {
+                case .ok, .notApplicable:
+                    // §5 / D-08 — a product that does not run the license service has no gate to
+                    // show. Rendering the activation form there would demand a licence that does
+                    // not exist.
+                    content()
+                case .grace:
+                    graceScreen
+                case .needsActivation:
+                    activationScreen()
+                case .revoked, .expired:
+                    // A blocking state gets the actions that can change it (DL6): a different key,
+                    // sign-in, renew or manage, and the host's own. The key form is one tap away
+                    // and Cancel returns here.
+                    if showsKeyForm && showsKeyEntry {
+                        activationScreen(differentKey: true)
+                    } else {
+                        blockedScreen(status)
+                    }
+                case .versionTooOld, .versionTooNew, .channelNotEntitled:
+                    blockedScreen(status)
                 }
             }
         }
-        .onChange(of: lastError) { _, new in
+        .onChange(of: ErrorEvent(serial: resultSerial, message: lastError)) { _, new in
             errorDismissed = false
-            if let new {
-                PolarisAccessibility.announce(new)
+            if let message = new.message {
+                PolarisAccessibility.announce(message)
                 errorFocused = true
             }
         }
         .onChange(of: licenseKey) { _, _ in errorDismissed = true }
+        .onChange(of: status) { _, _ in showsKeyForm = false }
+        .onAppear { if showsKeyFormInitially { showsKeyForm = true } }
     }
 
-    // ── needs-activation (and revoked): the product, then Sign in and the license key ──
+    /// The gate's ground before the first read of the client: no card, no copy (the answer is a
+    /// local read), named for VoiceOver.
+    private var loadingGround: some View {
+        palette.page
+            .ignoresSafeArea()
+            .accessibilityElement()
+            .accessibilityLabel(theme.copy.kit.bootChecking)
+    }
+
+    // ── needs-activation: the product, then Sign in and the license key ──
     //
     // The Welcome leads with the product (its icon at hero size, never a Polaris Key mark: UI-KITS
     // §1.2, §1.6) and lays out for the space it gets (`PolarisAdaptivePage`): one column in
     // portrait, the form beside the welcome in landscape and short windows, and the split Welcome on
-    // landscape-shaped iPad and Mac windows, where the icon moves to the pane.
-    private func activationScreen(status: LicenseStatus) -> some View {
+    // landscape-shaped iPad and Mac windows, where the icon moves to the pane. After "Use a
+    // different key" on a blocking state (`differentKey`) the same form leads with that title and
+    // ends in Cancel.
+    private func activationScreen(differentKey: Bool = false) -> some View {
         let style = self.style
         let identity = PolarisProductIdentity.resolve(theme: theme, presentation: presentation)
-        let revoked = status == .revoked
         return PolarisAdaptivePage(style: style, identity: identity) { layout in
-            VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.s) {
-                if revoked {
-                    Image(systemName: "xmark.seal.fill")
-                        .font(.largeTitle).imageScale(.large)
-                        .foregroundStyle(palette.danger)
-                        .accessibilityHidden(true)
-                } else if layout != .split {
-                    PolarisPageDecoration {
-                        PolarisWelcomeHero(identity: identity, style: style)
+            if differentKey {
+                PolarisPageHeading(
+                    title: theme.copy.kit.useDifferentKeyTitle, identity: identity, style: style,
+                    layout: layout)
+            } else {
+                VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.s) {
+                    if layout != .split {
+                        PolarisPageDecoration {
+                            PolarisWelcomeHero(identity: identity, style: style)
+                        }
+                    }
+                    Text(theme.copy.welcomeTitle(naming: identity.name))
+                        .font(style.font(.welcomeTitle)).foregroundStyle(palette.textStrong)
+                        .multilineTextAlignment(layout.textAlignment)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    if let developer = identity.developer {
+                        Text(developerLine(developer))
+                            .font(style.font(.caption)).foregroundStyle(palette.textMuted)
+                            .multilineTextAlignment(layout.textAlignment)
                     }
                 }
-                Text(
-                    revoked
-                        ? theme.copy.revokedTitle : theme.copy.welcomeTitle(naming: identity.name)
-                )
-                .font(style.font(.welcomeTitle)).foregroundStyle(palette.textStrong)
-                .multilineTextAlignment(layout.textAlignment)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-                if let developer = identity.developer, !revoked {
-                    Text(developerLine(developer))
-                        .font(style.font(.caption)).foregroundStyle(palette.textMuted)
-                        .multilineTextAlignment(layout.textAlignment)
-                }
+                .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+                .modifier(PolarisCompressedType(compressed: false))
             }
-            .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
-            .modifier(PolarisCompressedType(compressed: false))
         } detail: { layout in
             // The integrator's own subtitle is product copy: shown when set, omitted when the page
             // is compressed. The default lede is empty (the buttons say it).
-            if revoked {
-                PolarisPageText(text: Text(theme.copy.revokedSubtitle), style: style, layout: layout)
-            } else if !theme.copy.welcomeSubtitle.isEmpty {
+            if !differentKey, !theme.copy.welcomeSubtitle.isEmpty {
                 PolarisPageDecoration {
                     PolarisPageText(
                         text: Text(theme.copy.welcomeSubtitle), style: style, layout: layout)
                 }
             }
         } act: { layout in
-            PolarisFitReader { fit in activationForm(layout, compact: fit.compressed) }
+            VStack(spacing: PolarisSpace.s) {
+                PolarisFitReader { fit in
+                    activationForm(layout, compact: fit.compressed, keyOnly: differentKey)
+                }
+                if differentKey {
+                    Button {
+                        showsKeyForm = false
+                    } label: {
+                        Text(theme.copy.kit.cancelButton).frame(maxWidth: .infinity)
+                    }
+                    .controlSize(.large)
+                        .modifier(KitTint(color: accentTextTint))
+                        .modifier(PolarisButtonSkin(style: style, prominent: false))
+                        .modifier(PolarisButtonFont(style: style))
+                        .keyboardShortcut(.cancelAction)
+                        .disabled(isWorking)
+                }
+            }
         }
         .modifier(OptionalTint(color: tint))
     }
@@ -362,21 +419,24 @@ struct PolarisGateSurface<Content: View>: View {
     }
 
     /// `compact` (a compressed page, such as a phone in landscape) trims decoration so the whole
-    /// act, including a device-limit callout's action, stays above the fold: no "or" rule, no key
+    /// act, including a device-limit callout's action, stays above the fold: no key
     /// label, regular-size controls and tighter spacing. The structure stays the same either way.
-    @ViewBuilder private func activationForm(_ layout: PolarisKitLayout, compact: Bool = false)
-        -> some View
-    {
+    @ViewBuilder private func activationForm(
+        _ layout: PolarisKitLayout, compact: Bool = false, keyOnly: Bool = false
+    ) -> some View {
         let keyHasText = !licenseKey.trimmingCharacters(in: .whitespaces).isEmpty
         let deviceLimit = manageLink != nil && visibleError != nil
             && PolarisManagePresentation.current == .button
         // One prominent action at a time: the device-limit callout's Replace when it shows, else
         // Activate once the field has text, else Sign in.
-        let activateProminent = showsKeyEntry && keyHasText && !deviceLimit
-        let signInProminent = onSignIn != nil && !activateProminent && !deviceLimit
+        // After "Use a different key" the person has chosen the key: Activate is the one filled
+        // action and Sign in (one step back) is not repeated.
+        let signIn = keyOnly ? nil : onSignIn
+        let activateProminent = showsKeyEntry && (keyHasText || keyOnly) && !deviceLimit
+        let signInProminent = signIn != nil && !activateProminent && !deviceLimit
 
         VStack(spacing: compact ? PolarisSpace.xs : PolarisSpace.s) {
-            if let onSignIn {
+            if let onSignIn = signIn {
                 gateButton(
                     theme.copy.signInButton, prominent: signInProminent, role: .primary,
                     disabled: isWorking, compact: compact, action: onSignIn)
@@ -387,7 +447,6 @@ struct PolarisGateSurface<Content: View>: View {
             }
 
             if showsKeyEntry {
-                if onSignIn != nil, !compact { orDivider }
                 if !compact { keyFieldLabel }
                 // A refusal the person can resolve (device limit) is not a wrong key: no red field.
                 licenseKeyField(hasError: visibleError != nil && !deviceLimit)
@@ -428,7 +487,7 @@ struct PolarisGateSurface<Content: View>: View {
     private enum GateButtonRole { case primary, activate }
     @ViewBuilder private func gateButton(
         _ title: String, prominent: Bool, role: GateButtonRole, disabled: Bool, busy: Bool = false,
-        compact: Bool = false, action: @escaping () -> Void
+        compact: Bool = false, isDefault: Bool = false, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             HStack(spacing: PolarisSpace.xs) {
@@ -443,23 +502,9 @@ struct PolarisGateSurface<Content: View>: View {
         .controlSize(compact ? .regular : (prominent && role == .primary ? .extraLarge : .large))
         .modifier(KitTint(color: prominent ? tint : accentTextTint))
         .modifier(PolarisButtonSkin(style: style, prominent: prominent))
-        .modifier(DefaultActionShortcut(active: role == .activate && prominent))
+        .modifier(DefaultActionShortcut(active: (role == .activate && prominent) || isDefault))
         .disabled(disabled)
         .accessibilityLabel(title)
-    }
-
-    private var orDivider: some View {
-        // The rules use the strong border token: the subtle one is 1.3:1 on the Polaris dark page.
-        let rule = Rectangle().fill(palette.borderStrong.opacity(0.6)).frame(height: 1)
-        return HStack(spacing: PolarisSpace.s) {
-            rule
-            Text(theme.copy.orDividerLabel)
-                .font(font(.caption)).foregroundStyle(palette.textMuted)
-                .layoutPriority(1)
-            rule
-        }
-        .padding(.vertical, PolarisSpace.xxs)
-        .accessibilityHidden(true)
     }
 
     private var keyFieldLabel: some View {
@@ -687,26 +732,138 @@ struct PolarisGateSurface<Content: View>: View {
 
     // ── shared building blocks ──
 
-    /// A terminal state (revoked, expired, version block): its glyph and title, the explanation,
-    /// and Retry, on the same page as the Welcome.
-    private func messageScreen(title: String, subtitle: String, symbol: String, tone: Color)
-        -> some View
-    {
+    /// A blocking state (revoked, expired, a version block): its glyph and title, the explanation
+    /// and the actions that can change it (DL6), on the same page as the Welcome. Exactly one is
+    /// filled. Expired: Renew or manage when the host gave a page, else Try again; then Use a
+    /// different key and Sign in. Revoked: Use a different key (or Sign in without key entry).
+    /// Version blocks: Try again. The host's own action closes the list.
+    private func blockedScreen(_ status: LicenseStatus) -> some View {
         let style = self.style
         let identity = PolarisProductIdentity.resolve(theme: theme, presentation: presentation)
+        let message = theme.copy.message(for: status, allowedRange: allowedRange)
+        let offers = blockedOffers(status)
+        let tone = status == .revoked ? palette.danger : palette.warning
         return PolarisAdaptivePage(style: style, identity: identity) { layout in
             PolarisPageHeading(
-                title: title, identity: identity, style: style, layout: layout, symbol: symbol,
-                symbolTint: tone)
+                title: message?.title ?? "", identity: identity, style: style, layout: layout,
+                symbol: message?.symbol, symbolTint: tone)
         } detail: { layout in
-            PolarisPageText(text: Text(subtitle), style: style, layout: layout)
+            PolarisPageText(
+                text: Text(blockedSubtitle(status, message: message, offers: offers)), style: style,
+                layout: layout)
         } act: { layout in
-            // A single-action page draws it as the prominent button, labelled "Try again".
-            PolarisPageActions(
-                primaryTitle: theme.copy.retryButton, primary: onRefresh, layout: layout,
-                style: style, primaryDisabled: isWorking)
+            blockedActions(status, offers: offers)
         }
         .modifier(OptionalTint(color: tint))
+    }
+
+    /// The ways out a blocking state has right now.
+    private struct BlockedOffers {
+        var renew: Bool
+        var differentKey: Bool
+        var signIn: Bool
+    }
+
+    private func blockedOffers(_ status: LicenseStatus) -> BlockedOffers {
+        switch status {
+        case .expired, .revoked:
+            return BlockedOffers(
+                renew: status == .expired && renewURL != nil, differentKey: showsKeyEntry,
+                signIn: onSignIn != nil)
+        default:
+            return BlockedOffers(renew: false, differentKey: false, signIn: false)
+        }
+    }
+
+    /// The explanation, worded for the actions below it. A subtitle the integrator changed is
+    /// theirs and is shown as given.
+    private func blockedSubtitle(
+        _ status: LicenseStatus, message: PolarisMessageCopy?, offers: BlockedOffers
+    ) -> String {
+        guard let message else { return "" }
+        let defaults = PolarisCopy()
+        let kit = theme.copy.kit
+        switch status {
+        case .expired where theme.copy.expiredSubtitle == defaults.expiredSubtitle:
+            if offers.renew { return kit.expiredWithRenew }
+            return offers.differentKey ? kit.expiredWithKey : kit.expiredCheckOnly
+        case .revoked where theme.copy.revokedSubtitle == defaults.revokedSubtitle:
+            switch (offers.signIn, offers.differentKey) {
+            case (true, true): return message.subtitle
+            case (false, true): return kit.revokedKeyOnly
+            case (true, false): return kit.revokedSignInOnly
+            case (false, false): return kit.revokedContactOnly
+            }
+        default:
+            return message.subtitle
+        }
+    }
+
+    @ViewBuilder private func blockedActions(_ status: LicenseStatus, offers: BlockedOffers)
+        -> some View
+    {
+        let kit = theme.copy.kit
+        // The one filled action.
+        let primary: BlockedAction = {
+            if offers.renew { return .renew }
+            if status == .revoked {
+                if offers.differentKey { return .differentKey }
+                if offers.signIn { return .signIn }
+            }
+            return .retry
+        }()
+        let order: [BlockedAction] = {
+            var list: [BlockedAction] = [primary]
+            let rest: [BlockedAction] =
+                status == .expired
+                ? [.retry, .differentKey, .signIn] : [.signIn, .differentKey, .retry]
+            for action in rest where action != primary { list.append(action) }
+            return list.filter { action in
+                switch action {
+                case .renew: return offers.renew
+                case .differentKey: return offers.differentKey
+                case .signIn: return offers.signIn
+                case .retry: return true
+                }
+            }
+        }()
+        VStack(spacing: PolarisSpace.s) {
+            ForEach(Array(order.enumerated()), id: \.element) { index, action in
+                let isPrimary = index == 0
+                gateButton(
+                    title(of: action, kit: kit), prominent: isPrimary, role: .primary,
+                    disabled: isWorking && action == .retry, isDefault: isPrimary,
+                    action: { perform(action) }
+                )
+                .modifier(GateProbe(role: isPrimary ? .primaryAction : nil))
+            }
+            if let extra = blockedAction?(status) { extra }
+        }
+        .frame(maxWidth: PolarisKitLayout.columnMaxWidth)
+        .frame(maxWidth: .infinity)
+    }
+
+    private enum BlockedAction: Hashable { case renew, differentKey, signIn, retry }
+
+    private func title(of action: BlockedAction, kit: PolarisKitCopy) -> String {
+        switch action {
+        case .renew: return kit.renewButton
+        case .differentKey: return kit.useDifferentKeyButton
+        case .signIn: return theme.copy.signInButton
+        case .retry: return theme.copy.retryButton
+        }
+    }
+
+    private func perform(_ action: BlockedAction) {
+        switch action {
+        case .renew:
+            guard let renewURL else { return }
+            onOpenRenew?()
+            openURL(renewURL)
+        case .differentKey: showsKeyForm = true
+        case .signIn: onSignIn?()
+        case .retry: onRefresh()
+        }
     }
 
     private func banner(title: String, subtitle: String, symbol: String) -> some View {
@@ -871,12 +1028,18 @@ struct PolarisWelcomeHero: View {
     }
 }
 
-/// The extras' button style: a link on macOS (taking the host tint), borderless elsewhere.
+/// The extras' button style: on macOS a plain text button in the resolved accent text colour when
+/// the kit sets one (the system's link style takes the system link blue and ignores the tint),
+/// else the link style under the host's tint; borderless elsewhere.
 private struct ExtrasButtonStyle: ViewModifier {
     let tint: Color?
     func body(content: Content) -> some View {
         #if os(macOS)
-            content.buttonStyle(.link).modifier(OptionalTint(color: tint))
+            if let tint {
+                content.buttonStyle(.plain).foregroundStyle(tint).underline()
+            } else {
+                content.buttonStyle(.link)
+            }
         #else
             content.buttonStyle(.borderless).modifier(OptionalTint(color: tint))
         #endif

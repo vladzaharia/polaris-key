@@ -186,7 +186,7 @@ export function StepUp({
       <Button
         key="email"
         variant="link"
-        className="text-sm font-bold"
+        className="text-sm font-medium"
         onClick={() => {
           setWay("email");
           setError(null);
@@ -200,7 +200,7 @@ export function StepUp({
       <Button
         key="passkey"
         variant="link"
-        className="text-sm font-bold"
+        className="text-sm font-medium"
         onClick={() => {
           setWay("passkey");
           setSent(false);
@@ -221,7 +221,7 @@ export function StepUp({
         id={labelId}
         ref={labelRef}
         tabIndex={-1}
-        className="flex items-center gap-2 text-sm font-bold text-fg-strong outline-none"
+        className="flex items-center gap-2 text-sm font-medium text-fg-strong outline-none"
       >
         <ShieldCheck aria-hidden className="size-4 shrink-0" />
         Confirm it's you first
@@ -257,10 +257,13 @@ export function StepUp({
         >
           <p role="status" className="text-sm text-fg">
             We sent a 6-digit code to{" "}
-            <span className="font-bold text-fg-strong">{email}</span>. It works
-            for 10 minutes.
+            <span className="font-medium text-fg-strong">{email}</span>. It
+            works for 10 minutes.
           </p>
-          <label htmlFor={codeId} className="text-sm font-bold text-fg-strong">
+          <label
+            htmlFor={codeId}
+            className="text-sm font-medium text-fg-strong"
+          >
             Code
           </label>
           <div className="max-w-xs">
@@ -287,7 +290,7 @@ export function StepUp({
             </Button>
             <Button
               variant="link"
-              className="text-sm font-bold"
+              className="text-sm font-medium"
               onClick={() => void sendCode()}
             >
               Send a new code

@@ -144,7 +144,7 @@ function ValueList({
   if (!values.length) return null;
   return (
     <section className="space-y-1.5">
-      <h3 className="text-xs font-bold text-fg-muted">
+      <h3 className="text-xs font-semibold text-fg-muted">
         {title} ({values.length})
       </h3>
       <ul className="flex flex-wrap gap-1.5">
@@ -176,7 +176,7 @@ function CheckRow({
   return (
     <li className="space-y-1 rounded-md border border-border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-bold text-fg-strong">{check.label}</span>
+        <span className="font-medium text-fg-strong">{check.label}</span>
         <StatusPill tone={s.tone}>{s.label}</StatusPill>
       </div>
       {check.message ? (
@@ -272,7 +272,7 @@ export function RepoSyncDrawer({
           <div className="flex items-center justify-between gap-2">
             <h2
               id="repo-sync-health"
-              className="text-sm font-bold text-fg-strong"
+              className="text-sm font-medium text-fg-strong"
             >
               Release health
             </h2>
@@ -323,7 +323,7 @@ export function RepoSyncDrawer({
             <div className="flex items-center justify-between gap-2">
               <h2
                 id="repo-sync-last"
-                className="text-sm font-bold text-fg-strong"
+                className="text-sm font-medium text-fg-strong"
               >
                 Last sync
               </h2>

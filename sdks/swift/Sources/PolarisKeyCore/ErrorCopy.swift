@@ -184,6 +184,6 @@ public enum ErrorCopy {
 extension PolarisError: LocalizedError {
     /// The person-facing sentence for `code` (`ErrorCopy.message`); `message` stays the
     /// developer-facing detail.
-    public var errorDescription: String? { ErrorCopy.message(code) }
+    public var errorDescription: String? { userMessage ?? ErrorCopy.message(code) }
     public var failureReason: String? { message }
 }

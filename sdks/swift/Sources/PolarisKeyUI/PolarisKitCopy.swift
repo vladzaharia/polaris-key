@@ -54,6 +54,24 @@ public struct PolarisKitCopy: Sendable, Equatable {
     public var activateOfflineLink = KitButtonCase.button("Activate offline")
     public var manageDevicesButton = KitButtonCase.button("Manage devices")
 
+    // Blocking states (expired, revoked): the ways out, and the explanation worded for the ones
+    // offered. The default titles and sentences are in `PolarisCopy`/`ErrorCopy`; these are the
+    // variants for the controls a given gate really has.
+    /// Opens the host's renewal or account page (`GateOptions.renewURL`).
+    public var renewButton = KitButtonCase.button("Renew or manage")
+    /// Shows the activation form on an expired or revoked gate.
+    public var useDifferentKeyButton = KitButtonCase.button("Use a different key")
+    /// The activation form's title after "Use a different key".
+    public var useDifferentKeyTitle = "Use a different key"
+    public var expiredWithRenew =
+        "Your license has expired. Renew it, or connect to the internet and try again."
+    public var expiredWithKey =
+        "Your license has expired. Connect to the internet and try again, or use a different key."
+    public var expiredCheckOnly = "Your license has expired. Connect to the internet and try again."
+    public var revokedKeyOnly = "This device was signed out. Use a different key to continue."
+    public var revokedSignInOnly = "This device was signed out. Sign in to continue."
+    public var revokedContactOnly = "This device was signed out. Contact the developer to continue."
+
     // Sign-in (device code). The code view's strings are the catalog's `signin.handoff.*` keys
     // (SIGN-IN.md §3.17).
     public var signInTitle = "Sign in"
@@ -80,6 +98,10 @@ public struct PolarisKitCopy: Sendable, Equatable {
     public var confirmContinue = "Continue"
     public var attachFreeLicense = "Move this device's free license to this account"
     public var signedInAs = "Signed in as"
+    /// The ready heading when the profile names no one (a keyless enrolment).
+    public var signedInTitle = "Signed in"
+    /// Signs out the identity the ready screen showed and starts the sign-in again.
+    public var notYouButton = KitButtonCase.button("Not you?")
     public var startingSignIn = "Starting sign-in…"
     /// `signin.expired.title` / `signin.expired.body`: the device code has run out.
     public var signInExpiredTitle = "That code or link has expired"
@@ -194,7 +216,8 @@ public struct PolarisKitCopy: Sendable, Equatable {
     /// Every button and link label, for the title-case parity test.
     public var buttonLabels: [String] {
         [
-            continueFreeButton, activateOfflineLink, manageDevicesButton, openBrowserButton,
+            continueFreeButton, activateOfflineLink, manageDevicesButton, renewButton,
+            useDifferentKeyButton, notYouButton, openBrowserButton,
             copyLinkButton, cancelButton, tryAgainButton, confirmContinue, importFileButton,
             pasteButton, resetButton, renameButton, removeButton, signOutButton, deactivateButton,
             updateButton, laterButton, downloadButton, notNowButton, buyButton, restoreButton,

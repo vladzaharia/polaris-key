@@ -159,7 +159,7 @@ export function AppToaster({
           error: "border-danger-border",
           icon: "mt-0.5",
           content: "flex min-w-0 flex-1 flex-col gap-0.5",
-          title: "font-bold text-fg-strong",
+          title: "font-semibold text-fg-strong",
           description: "text-fg-muted",
           actionButton:
             "ml-auto inline-flex h-7 shrink-0 items-center rounded-md border border-border-strong px-2 text-xs text-fg-strong hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",

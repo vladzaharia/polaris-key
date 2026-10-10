@@ -81,7 +81,7 @@ export function QuickActionButton({
         aria-label={`${action.label}: ${product.name} for ${osName(action.platform)}`}
         className={className}
       >
-        <span className="font-bold">{action.label}</span>
+        <span className="font-medium">{action.label}</span>
       </Button>
     );
   }
@@ -115,7 +115,7 @@ export function QuickActionButton({
       >
         {twoLine ? (
           <>
-            <span className="flex items-center gap-2 text-base font-bold">
+            <span className="flex items-center gap-2 text-base font-semibold">
               <Download aria-hidden className="size-5" />
               {action.label}
             </span>
@@ -162,11 +162,11 @@ function Label({
   short: boolean;
 }): React.ReactElement {
   if (!short || !label.startsWith("Download for "))
-    return <span className="font-bold">{label}</span>;
+    return <span className="font-medium">{label}</span>;
   return (
     <>
-      <span className="font-bold @[15rem]:hidden">Download</span>
-      <span className="hidden font-bold @[15rem]:inline">{label}</span>
+      <span className="font-medium @[15rem]:hidden">Download</span>
+      <span className="hidden font-medium @[15rem]:inline">{label}</span>
     </>
   );
 }

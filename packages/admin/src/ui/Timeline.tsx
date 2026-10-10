@@ -95,7 +95,7 @@ export function Timeline<T>({
         <ol aria-label={label} className="space-y-5">
           {groups.map((g) => (
             <li key={g.day} className="space-y-2">
-              <Heading className="text-xs font-bold text-fg-muted">
+              <Heading className="text-xs font-semibold text-fg-muted">
                 {dayHeading(g.day, getTime(g.items[0]!), current, opts)}
               </Heading>
               {list(g.items)}
@@ -169,7 +169,7 @@ export function TimelineItem({
     <div className={cn("flex gap-3 py-1.5 text-sm", className)}>
       <span
         aria-hidden
-        className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-xs font-bold text-fg-muted"
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-xs font-medium text-fg-muted"
       >
         {actor === "system" ? (
           <Server className="size-3.5" />
@@ -186,7 +186,7 @@ export function TimelineItem({
             <span aria-hidden>{time}</span>
             <span className="sr-only">{formatDateTime(at, opts)}</span>
           </time>
-          <span className="font-bold text-fg-strong">{name}</span> {verb}
+          <span className="font-medium text-fg-strong">{name}</span> {verb}
           {target ? <> {target}</> : null}
         </p>
         {summary ? (
