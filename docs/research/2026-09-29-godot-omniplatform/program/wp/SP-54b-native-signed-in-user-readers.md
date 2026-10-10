@@ -63,12 +63,18 @@ N/A: no screen, no mockup item and no copy. The Python terminal kit change alter
 2. Confirm SP-54 is merged and `licenseUserCases` is in `conformance/corpus/v2/cases.json`.
 3. Implement the four readers and runners, the feature row, and the Python kit fix; run each SDK's suite; hand off.
 
+## Corrections recorded at build
+
+- The feature id is `license.signedinuser` (registry ids are all lowercase; the schema pattern refuses `signedInUser`). The row was not in `features.json`, so this package added it, and added `PAIRWISE_SUBJECT_PATTERN` to the generated constants (`SIGNED_IN_EXPORTS` in `tools/gen-sdk-constants.ts`).
+- Kotlin was written but not compiled or run: no JDK 17 was available on the build machine (`:conformance:test` not run; CI `ci:kotlin` covers it).
+- `textual_app.py` derived `signed_in` from `bool(profile)`, the same bug as `flows.py`; it reads `license_user` too.
+
 ## Acceptance criteria
 
-- [ ] Python, Swift, Kotlin and Godot return the same result as `licenseUserOf` on all 14 `licenseUserCases` rows and accept the three new `licenseDocCases` rows.
-- [ ] `license.signedinuser` exists in `features.json`, is `implemented` in every `parity.json`, and `pnpm parity:check` and `pnpm gen constants --check` pass.
-- [ ] The Python terminal kit reports `signed_in` false for a key-activated document that has a holder email and no `user`, and true when `user.subject` is present; `flows.py` no longer reads `profile.email` for this.
-- [ ] No corpus, transcript or mirror file changes (`pnpm gen corpus --check` clean without regeneration).
+- [x] Python, Swift, Kotlin and Godot return the same result as `licenseUserOf` on all 14 `licenseUserCases` rows and accept the three new `licenseDocCases` rows.
+- [x] `license.signedinuser` exists in `features.json`, is `implemented` in every `parity.json`, and `pnpm parity:check` and `pnpm gen constants --check` pass.
+- [x] The Python terminal kit reports `signed_in` false for a key-activated document that has a holder email and no `user`, and true when `user.subject` is present; `flows.py` no longer reads `profile.email` for this.
+- [x] No corpus, transcript or mirror file changes (`pnpm gen corpus --check` clean without regeneration).
 - [ ] The green gate passes (`AGENTS.md`), including the SDK suites for what the branch touches.
 
 ## Verify
