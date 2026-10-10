@@ -93,7 +93,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     manifest: { path: "product:fingerprint" },
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
-    readers: ["fingerprint.ts", "services/license/admin/policy.ts"],
+    readers: ["core/fingerprint.ts", "services/license/admin/policy.ts"],
     storage: {
       kind: "column",
       table: "products",

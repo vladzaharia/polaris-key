@@ -274,7 +274,7 @@ function sourceFiles(dir: string): string[] {
 describe("Cloud Sync's principal has no owner fallback", () => {
   it("no Cloud Sync source calls subjectFor, licenseOwnerSubject or reads an account id", () => {
     const files = [
-      join(WORKER_ROOT, "src", "core", "syncAccess.ts"),
+      join(WORKER_ROOT, "src", "core", "accounts", "syncAccess.ts"),
       ...sourceFiles(join(WORKER_ROOT, "src", "services", "sync")),
     ];
     const offenders: string[] = [];

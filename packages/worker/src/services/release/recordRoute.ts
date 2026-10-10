@@ -29,7 +29,7 @@
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, notFound } from "../../core/errors.js";
-import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../core/securityHeaders.js";
 import { bearer } from "../../platform/http.js";
 import { accessRefusal } from "../../core/licensing/entitledAccess.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";

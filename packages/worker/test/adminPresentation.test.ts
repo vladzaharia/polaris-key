@@ -12,7 +12,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
-import { cspImageOrigin } from "../src/platform/securityHeaders.js";
+import { cspImageOrigin } from "../src/core/securityHeaders.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";

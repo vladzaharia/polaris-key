@@ -24,7 +24,7 @@ import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   allowsAnonymousEnroll,
   computeEnrollHwid,
-} from "../../platform/fingerprint.js";
+} from "../../core/fingerprint.js";
 import {
   appendAudit,
   getLicense,

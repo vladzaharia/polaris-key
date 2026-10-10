@@ -49,7 +49,7 @@ import { corsPreflight, withCors } from "../cors.js";
 import { loadProductPublic, type ProductPublic } from "../products.js";
 import { isLandingPath, landingResponse } from "./bytesLanding.js";
 import { hostedImageOrigin } from "./hostedImages.js";
-import { cspImageOrigin } from "../../platform/securityHeaders.js";
+import { cspImageOrigin } from "../securityHeaders.js";
 import {
   buildHooks,
   type DescriptorHooks,

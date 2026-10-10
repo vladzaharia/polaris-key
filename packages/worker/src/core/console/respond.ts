@@ -5,7 +5,7 @@
 
 import { ErrorCode } from "../errors.js";
 import type { WriteRefusal } from "../settings/write.js";
-import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../securityHeaders.js";
 import { BodyTooLargeError, readBodyText } from "../cappedBody.js";
 
 /** JSON response with the admin defaults (no-store, charset). */

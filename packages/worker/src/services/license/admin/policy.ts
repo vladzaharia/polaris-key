@@ -31,7 +31,7 @@ import {
   isFingerprintMode,
   parseAutoIssue,
   parseFingerprintPolicy,
-} from "../../../platform/fingerprint.js";
+} from "../../../core/fingerprint.js";
 import {
   adminJson,
   notFound as adminNotFound,

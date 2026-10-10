@@ -70,7 +70,7 @@ import { accountUsingEmail } from "../accounts/repo.js";
 import { providerVouchesForEmail } from "./vouch.js";
 import { productTerms } from "../productTerms.js";
 import { htmlError, signInPage } from "../portal/auth.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
 import {
   appleAuthorizeUrl,

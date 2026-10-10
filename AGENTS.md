@@ -80,7 +80,7 @@ browser conformance runners. Python, Swift, Godot and Kotlin are standalone tool
 `sdks/`.
 
 Inside the Worker, `src/` is layered: `src/platform/` and `src/db/` hold the primitives (`Env`,
-crypto, KV, the key vault, security headers; the `Db` interface), `src/core/` is the always-on
+crypto, KV, the key vault, encodings; the `Db` interface), `src/core/` is the always-on
 substrate (domain folders `licensing/`, `accounts/`, `notify/`, `trust/`, `assets/`, `registry/`,
 `ops/`, and `core/console/` for what services' admin handlers share with the console), each
 `src/services/<slug>/` is one opt-in service (`license`, `config`, `release`, `distribution`,
@@ -127,7 +127,7 @@ pnpm --filter @polaris-key/admin build
 pnpm --filter @polaris-key/worker assemble  # admin + docs built into the worker's [assets] root
 pnpm --filter @polaris-key/docs check:links # internal link + anchor integrity on the built site
 pnpm --filter @polaris-key/worker test adminCspParity  # console CSP parity (after the admin build):
-                                 # the SPA shells' inline-script hashes == packages/worker/src/platform/adminCsp.ts
+                                 # the SPA shells' inline-script hashes == packages/worker/src/core/adminCsp.ts
                                  # (also inside `pnpm test`; the admin half is test/theme.test.tsx)
 
 # The workerd smoke job. Node permits the runtime code generation workerd forbids, so a green

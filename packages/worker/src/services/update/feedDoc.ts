@@ -54,7 +54,7 @@ import {
 import { scanStrictJson } from "@polaris-key/jws";
 import { feedClaims, feedContent } from "@polaris-key/client-core/feed";
 import type { ServiceContext } from "../../core/registry.js";
-import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../core/securityHeaders.js";
 import { randomId } from "../../platform/crypto.js";
 import { sha256Hex } from "../../platform/hash.js";
 import type { Db } from "../../db/types.js";

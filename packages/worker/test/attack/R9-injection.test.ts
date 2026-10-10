@@ -32,7 +32,7 @@ import { loadProduct } from "../../src/core/products.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
-} from "../../src/platform/fingerprint.js";
+} from "../../src/core/fingerprint.js";
 import {
   DEFAULT_SERVICES,
   serializeServices,
@@ -1646,7 +1646,7 @@ describe("R9-11 edge-mint auth page", () => {
 
   it("REFUTED (today): no code path writes auth_page_template", () => {
     const repoSrc = readFileSync(
-      join(HERE, "..", "..", "src", "repo.ts"),
+      join(HERE, "..", "..", "src", "core", "repo.ts"),
       "utf8",
     );
     // The only INSERT that touches the column hardcodes NULL.
@@ -1761,7 +1761,7 @@ describe("R9-12 escapeHtml coverage", () => {
     // apostrophe is why `style-src 'unsafe-inline'` is the only inline allowance in the
     // static policy — scripts stay fully blocked by `default-src 'none'`.
     const { secureResponse } =
-      await import("../../src/platform/securityHeaders.js");
+      await import("../../src/core/securityHeaders.js");
     const served = secureResponse(
       new Response(html, {
         status: 200,
@@ -1781,7 +1781,7 @@ describe("R9-12 escapeHtml coverage", () => {
 describe("R9-13 dynamic `SET ${col} = ?` builders", () => {
   it("REFUTED: every key reaching updateProduct/patchLicense is a hardcoded literal", () => {
     const products = readFileSync(
-      join(HERE, "..", "..", "src", "admin", "handlers", "products.ts"),
+      join(HERE, "..", "..", "src", "console", "handlers", "products.ts"),
       "utf8",
     );
     // §R1 moved the licence admin handler under the service that owns it

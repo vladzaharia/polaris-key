@@ -39,8 +39,8 @@ import {
   readCookie,
 } from "../core/accounts/accountCookies.js";
 import { adminOidcConfig } from "../platform/platformOidc.js";
-import { brandedHtmlSecurityHeaders } from "../platform/securityHeaders.js";
-import { renderBrandPage } from "../platform/brandHtml.js";
+import { brandedHtmlSecurityHeaders } from "../core/securityHeaders.js";
+import { renderBrandPage } from "../core/brandHtml.js";
 import { escapeHtml } from "../platform/html.js";
 import { pkcePair } from "../platform/pkce.js";
 import { randomToken } from "../platform/random.js";

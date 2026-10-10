@@ -42,7 +42,7 @@ import {
   type OverrideMigrationState,
 } from "../../core/ops/overrideMigration.js";
 import { getProduct } from "../../core/repo.js";
-import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../core/securityHeaders.js";
 import { platformAudit } from "../../core/console/audit.js";
 import {
   adminJson,

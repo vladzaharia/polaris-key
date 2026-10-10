@@ -6,7 +6,7 @@
     <!-- Theme before first paint (BRAND.md §3): a persisted "dark" or "light" becomes data-theme on
          <html>; "system" (or nothing) leaves the attribute off and tokens.css follows the OS.
          Byte-identical in index.html and manage.html; its SHA-256 is allowed by the Worker's CSP
-         (packages/worker/src/platform/adminCsp.ts), so any edit here must update that hash. -->
+         (packages/worker/src/core/adminCsp.ts), so any edit here must update that hash. -->
     <script>(function(){try{var t=localStorage.getItem("pk-admin-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}})();</script>
     <title>Polaris Key — Manage</title>
     <!-- Polaris Key web identity (@polaris-key/brand/web/key, served by vite.config.ts). -->

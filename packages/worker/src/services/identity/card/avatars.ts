@@ -78,7 +78,7 @@ import {
 } from "../../../core/safeFetch.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { sniffContentType, SNIFF_BYTES } from "../../../core/assets/sniff.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 
 /** The R2 prefix every avatar rendition lives under. */
 export const AVATAR_PREFIX = "avatars/";

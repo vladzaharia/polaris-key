@@ -92,7 +92,7 @@ import {
   hostedImages,
 } from "../../../core/assets/hostedImages.js";
 import { getPortalProductSettings } from "./repo.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import type { PortalHooksFor } from "./api.js";
 
 /**

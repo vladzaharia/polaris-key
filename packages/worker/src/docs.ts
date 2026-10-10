@@ -29,7 +29,7 @@ import type { Env } from "./platform/env.js";
 import { isPlatformAdmin } from "./console/authz.js";
 import { sessionFromRequest } from "./core/console/session.js";
 import { isSafeAssetPath } from "./platform/http.js";
-import { staticHtmlSecurityHeaders } from "./platform/securityHeaders.js";
+import { staticHtmlSecurityHeaders } from "./core/securityHeaders.js";
 import {
   DOCS_SCRIPT_HASHES,
   DOCS_STYLE_ATTR_HASHES,

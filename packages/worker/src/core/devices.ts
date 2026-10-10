@@ -90,7 +90,7 @@ import {
   type ComponentMap,
   type PresentedFingerprint,
   type StoredFingerprint,
-} from "../platform/fingerprint.js";
+} from "./fingerprint.js";
 import {
   deleteTokenRecord,
   getTokenRecord,

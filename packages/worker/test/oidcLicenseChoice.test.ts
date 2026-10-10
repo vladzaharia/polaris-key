@@ -64,8 +64,8 @@ import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { artefacts } from "./singleUseMock.js";
 import { handlePortalApi } from "./portalHarness.js";
-import { secureResponse } from "../src/platform/securityHeaders.js";
-import { brandPageStyleSource } from "../src/platform/brandHtml.js";
+import { secureResponse } from "../src/core/securityHeaders.js";
+import { brandPageStyleSource } from "../src/core/brandHtml.js";
 
 const idpKey = vi.hoisted(() => ({
   getKey: null as null | (() => Promise<unknown>),

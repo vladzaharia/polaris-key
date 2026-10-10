@@ -90,7 +90,7 @@ import { parseJsonColumn } from "../../../platform/json.js";
 import {
   allowsAnonymousEnroll,
   allowsOidcDefault,
-} from "../../../platform/fingerprint.js";
+} from "../../../core/fingerprint.js";
 import type { IdentityIssuance } from "../../../core/accounts/identityTrust.js";
 import {
   approvalMismatch,

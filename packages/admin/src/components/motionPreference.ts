@@ -11,7 +11,7 @@ import * as React from "react";
  * Stored like the theme (components/theme.tsx): localStorage, per browser, one key shared by the
  * console and the portal (same origin). It is applied by `applyStoredMotionPreference()` from both
  * entry modules before the first render, not by the hashed pre-paint script in index.html /
- * manage.html, so packages/worker/src/platform/adminCsp.ts does not change. That is early enough: nothing
+ * manage.html, so packages/worker/src/core/adminCsp.ts does not change. That is early enough: nothing
  * animates before the first interaction.
  *
  * The attribute on <html> is the single source of truth after start-up; `useMotionPreference()`

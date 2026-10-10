@@ -26,7 +26,7 @@ const sharp = createRequire(join(repo, "packages/brand/package.json"))(
 const { resolve } = await import(join(ADMIN, "e2e/layoutFixtures.ts"));
 const { artPng, squirclePng } = await import(join(ADMIN, "e2e/artPng.ts"));
 const { appSecurityHeaders } = await import(
-  join(repo, "packages/worker/src/platform/securityHeaders.ts")
+  join(repo, "packages/worker/src/core/securityHeaders.ts")
 );
 
 const IMG = "https://img.built.test";

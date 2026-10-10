@@ -25,7 +25,7 @@
 
 import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
-import { themedLockup } from "../../../platform/brandHtml.js";
+import { themedLockup } from "../../../core/brandHtml.js";
 import type {
   DetectedPlatform,
   PagePlatform,

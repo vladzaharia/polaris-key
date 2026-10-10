@@ -52,7 +52,7 @@ import type { Db, DbStatement } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { isSafeAssetPath } from "../../../platform/http.js";
 import { randomId } from "../../../platform/crypto.js";
-import { appSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../../core/securityHeaders.js";
 import {
   errorResponse,
   ErrorCode,

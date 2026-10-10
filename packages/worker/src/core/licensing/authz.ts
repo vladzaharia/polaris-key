@@ -30,8 +30,7 @@
  * `licenseUsable`, `validateDeviceToken` (`core/devices.ts`), the layer walk
  * (`core/licensing/payload.ts`) and the entitlement algebra (`core/licensing/entitlements.ts`).
  *
- * `services/license/{authz,auth,entitlements}.ts` and the `licenseCore.ts` compat shim
- * re-export from here, so every existing importer is unchanged and the ORDER of side effects is
+ * License, Identity, Release and Update import it from here, and the ORDER of side effects is
  * byte-for-byte what it was: the hardware check still runs before the seat check (a swapped
  * machine gets `hardware_mismatch`, not a confusing `device_limit`), and the rows are still
  * written only after a seat is claimed.
@@ -58,7 +57,7 @@ import {
   type LicenseRow,
   type TierRow,
 } from "../repo.js";
-import type { PresentedFingerprint } from "../../platform/fingerprint.js";
+import type { PresentedFingerprint } from "../fingerprint.js";
 import {
   bindDevice,
   licenseUsable,

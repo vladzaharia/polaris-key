@@ -14,7 +14,7 @@ import type { Product } from "../src/core/products.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
-} from "../src/platform/fingerprint.js";
+} from "../src/core/fingerprint.js";
 import {
   DEFAULT_SERVICES,
   SERVICE_SLUGS,

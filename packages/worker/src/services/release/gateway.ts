@@ -33,7 +33,7 @@
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../core/securityHeaders.js";
 import type { ProductPublic } from "../../core/products.js";
 import { BLOB_CSP } from "../../core/assets/blobs.js";
 import { errorResponse, json, notFound } from "../../core/errors.js";

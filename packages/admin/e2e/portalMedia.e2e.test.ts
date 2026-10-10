@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import {
   MEDIA_CSP,
   MEDIA_IMMUTABLE,

@@ -6,8 +6,9 @@
  *
  * `src/` is layered, lowest first. A layer imports only itself and the layers below it:
  *
- *   platform/, db/   primitives with no domain knowledge (env, crypto, KV, the key vault, HTTP
- *                    and security headers, encodings; the `Db` interface and its adapters)
+ *   platform/, db/   primitives with no domain knowledge and no package imports (env, crypto,
+ *                    KV, the key vault, HTTP helpers, encodings; the `Db` interface and its
+ *                    adapters)
  *   core/            the always-on substrate (products, devices, licensing, accounts, trust,
  *                    assets, the package registry, ops, and `core/console/`, what Core lends
  *                    the console and every service's admin handlers)

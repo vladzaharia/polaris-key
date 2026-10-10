@@ -82,7 +82,7 @@ import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../core/securityHeaders.js";
 import { bearer } from "../../platform/http.js";
 import type { ProductPublic } from "../../core/products.js";
 import type {

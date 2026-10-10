@@ -12,7 +12,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { dispatch } from "../src/dispatch.js";
-import { secureResponse } from "../src/platform/securityHeaders.js";
+import { secureResponse } from "../src/core/securityHeaders.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/core/repo.js";
 import {

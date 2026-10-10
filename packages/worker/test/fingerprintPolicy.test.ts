@@ -30,7 +30,7 @@ import {
   getProduct,
   setFingerprintPolicy,
 } from "../src/core/repo.js";
-import { parseFingerprintPolicy } from "../src/platform/fingerprint.js";
+import { parseFingerprintPolicy } from "../src/core/fingerprint.js";
 import { SETTINGS } from "../src/mount.js";
 import { writeSetting } from "../src/core/settings/write.js";
 

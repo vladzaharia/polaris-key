@@ -357,11 +357,11 @@ describe("outlet-credential reach", () => {
       reachViolations([
         {
           file: "src/core/trust/attestation.ts",
-          text: 'import { openOutletCredential } from "./outletCredentials.js";\n',
+          text: 'import { openOutletCredential } from "../outletCredentials.js";\n',
         },
         {
           file: "src/core/trust/deviceTrust.ts",
-          text: 'import { googleAccessToken } from "./outletTokens.js";\n',
+          text: 'import { googleAccessToken } from "../outletTokens.js";\n',
         },
         {
           file: "src/services/config/mint.ts",

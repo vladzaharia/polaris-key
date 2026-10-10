@@ -34,7 +34,7 @@ import {
   handlePortalDownload,
   type PortalHooksFor,
 } from "./api.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { handlePortalMedia } from "./media.js";
 import { hostedImageOrigin } from "../../../core/assets/hostedImages.js";
 import { serveAvatar } from "../card/avatars.js";

@@ -13,11 +13,11 @@ import {
   BRAND_PAGE_CSS,
   brandPageStyleSource,
   renderBrandPage,
-} from "../src/platform/brandHtml.js";
+} from "../src/core/brandHtml.js";
 import {
   brandedHtmlSecurityHeaders,
   secureResponse,
-} from "../src/platform/securityHeaders.js";
+} from "../src/core/securityHeaders.js";
 import { handleAdminCallback } from "../src/console/auth.js";
 import {
   handleMagicVerify,
@@ -40,7 +40,7 @@ import { artefacts } from "./singleUseMock.js";
 
 /**
  * The Worker's branded pages and email (docs/design/BRAND.md): every server-rendered page on the
- * console host is the one shell (`platform/brandHtml.ts`) under a policy that allows exactly its
+ * console host is the one shell (`core/brandHtml.ts`) under a policy that allows exactly its
  * stylesheet (by hash) and the brand font, with no inline style or script anywhere.
  */
 

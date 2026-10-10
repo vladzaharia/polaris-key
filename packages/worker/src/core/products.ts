@@ -25,7 +25,7 @@ import {
   parseFingerprintPolicy,
   type AutoIssuePolicy,
   type FingerprintPolicy,
-} from "../platform/fingerprint.js";
+} from "./fingerprint.js";
 import {
   parseServices,
   resolveRegistration,

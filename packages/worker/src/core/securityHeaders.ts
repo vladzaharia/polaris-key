@@ -12,7 +12,7 @@
  *     the SPA loads its own bundle, plus the SHA-256 of the shells' one inline script (the
  *     pre-paint theme script, `adminCsp.ts`); never `'unsafe-inline'`.
  *   - `brandedHtmlSecurityHeaders` — the Worker's own branded interstitials (sign-in errors,
- *     the device-authorization pages, the "you're signed in" page; `platform/brandHtml.ts`).
+ *     the device-authorization pages, the "you're signed in" page; `core/brandHtml.ts`).
  *     These pages have no scripts at all, so `default-src 'none'` is achievable: an injected
  *     `<script>` cannot execute and an injected `fetch()` cannot reach `/manage/api/*`. Their
  *     one stylesheet is allowed by its SHA-256 and the brand font by `font-src 'self'`; no
@@ -157,7 +157,7 @@ export function staticHtmlSecurityHeaders(headers = new Headers()): Headers {
 }
 
 /**
- * Headers for the Worker's branded, script-free pages (`platform/brandHtml.ts`): sign-in errors,
+ * Headers for the Worker's branded, script-free pages (`core/brandHtml.ts`): sign-in errors,
  * the device-authorization pages and the "you're signed in" page. Same hardening as
  * `staticHtmlSecurityHeaders`, with a policy that allows only the brand stylesheet and font.
  */

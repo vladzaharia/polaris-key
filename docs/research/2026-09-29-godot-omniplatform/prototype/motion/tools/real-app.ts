@@ -7,7 +7,7 @@ import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { Page } from "playwright";
-import { appSecurityHeaders } from "../../../../../../packages/worker/src/platform/securityHeaders.js";
+import { appSecurityHeaders } from "../../../../../../packages/worker/src/core/securityHeaders.js";
 import {
   portalMedia,
   portalRoutes,

@@ -36,16 +36,20 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // R9-01: the manifest validator's issuer rule, applied again at the SINK. Ingest-only
 // validation would leave every `oidc_config` row written before it landed (or by any future
 // writer that bypasses `parseManifest`) able to steer the token POST that carries this
-// product's client secret. Imported from the shared package rather than through Release, whose
-// `manifest.ts` merely re-exports it — a service may not import a sibling.
+// product's client secret. Imported from the shared package, as Release's ingest does — a
+// service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import { representabilityIssue } from "@polaris-key/catalog";
 import { bearer } from "../../platform/http.js";
 import { hashKey, randomId } from "../../platform/crypto.js";
 import { platformOidcConfig } from "../../platform/platformOidc.js";
 import { secret, type Env } from "../../platform/env.js";
-import { brandedHtmlSecurityHeaders } from "../../platform/securityHeaders.js";
-import { escapeHtmlKeepApostrophe as escapeHtml } from "../../platform/html.js";
+import { brandedHtmlSecurityHeaders } from "../../core/securityHeaders.js";
+import {
+  // The product sign-in pages have always escaped `& < > "` and let an apostrophe through;
+  // every sink is a text node or a double-quoted attribute (R9-12), and the bytes are kept.
+  escapeHtmlKeepApostrophe as escapeHtml,
+} from "../../platform/html.js";
 import { pkcePair } from "../../platform/pkce.js";
 import {
   PRODUCT_SIGNIN_RETURN_TO,
@@ -59,7 +63,7 @@ import {
   type Product,
   type ProductPublic,
 } from "../../core/products.js";
-import { renderBrandPage } from "../../platform/brandHtml.js";
+import { renderBrandPage } from "../../core/brandHtml.js";
 import { accountDisabledPage } from "./card/http.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
@@ -92,7 +96,7 @@ import {
   mergeLicenseInto,
   type LicenseMerge,
 } from "../../core/licensing/licenseMerge.js";
-import { allowsOidcDefault } from "../../platform/fingerprint.js";
+import { allowsOidcDefault } from "../../core/fingerprint.js";
 import {
   authorizeDevice,
   licenseDeviceLimit,

@@ -20,7 +20,7 @@ import {
   type IdTokenVerifier,
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
-import { appSecurityHeaders } from "../platform/securityHeaders.js";
+import { appSecurityHeaders } from "../core/securityHeaders.js";
 import { imgOrigin } from "../core/assets/imgHostname.js";
 import { isPublicSpaAssetPath } from "../platform/http.js";
 

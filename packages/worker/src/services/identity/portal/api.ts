@@ -116,7 +116,7 @@ import {
 } from "./email.js";
 import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
 import { platformSignInEnded } from "../accounts/platformMigration.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { handleProductDownloads } from "./downloads.js";
 import {
   discoverCount,

@@ -24,7 +24,7 @@
 import { createHash } from "node:crypto";
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { lockupMetrics, markParts } from "@polaris-key/brand/svg";
-import { escapeHtml } from "./html.js";
+import { escapeHtml } from "../platform/html.js";
 
 /** Where the admin build emits the brand fonts and the Pinned K web identity. */
 export const BRAND_FONT_PATH = "/assets/branding/fonts";

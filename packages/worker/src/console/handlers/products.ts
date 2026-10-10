@@ -84,7 +84,7 @@ import {
   isFingerprintMode,
   parseAutoIssue,
   parseFingerprintPolicy,
-} from "../../platform/fingerprint.js";
+} from "../../core/fingerprint.js";
 import { audit, platformAudit } from "../../core/console/audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import { requireStepUp } from "../stepUp.js";

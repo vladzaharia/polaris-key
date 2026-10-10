@@ -5,7 +5,7 @@ import {
   ID_TOKEN_CLOCK_TOLERANCE,
   ID_TOKEN_MAX_AGE,
 } from "../idToken.js";
-import { brandedHtmlSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
 import { hashKey } from "../../../platform/crypto.js";
 import { isSameOriginNavigation } from "../../../platform/http.js";
@@ -56,8 +56,8 @@ import {
 } from "../card/emailSignIn.js";
 
 export { portalMagicKey } from "../card/emailSignIn.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
-import { renderBrandPage } from "../../../platform/brandHtml.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
+import { renderBrandPage } from "../../../core/brandHtml.js";
 import {
   LINK_FLOW_COOKIE,
   PORTAL_SSO_COOKIE,
@@ -99,7 +99,7 @@ interface FlowRecord {
 }
 
 /**
- * A sign-in error page: the branded, script-free shell (`platform/brandHtml.ts`) with no surface
+ * A sign-in error page: the branded, script-free shell (`core/brandHtml.ts`) with no surface
  * label (SIGN-IN.md §3.13, D-32). `heading` is a hard-coded literal, escaped anyway; `body` is
  * TRUSTED markup. **Sign in again** is offered where one can help (by default on a 400, 401 or
  * 502).

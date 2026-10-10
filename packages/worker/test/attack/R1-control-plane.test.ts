@@ -33,7 +33,7 @@ import { hasAnyAdminGrant } from "../../src/console/authz.js";
 import { hashKey } from "../../src/platform/crypto.js";
 import { listAudit } from "../../src/core/repo.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
-import { secureResponse } from "../../src/platform/securityHeaders.js";
+import { secureResponse } from "../../src/core/securityHeaders.js";
 import { loadProduct } from "../../src/core/products.js";
 import {
   deviceFlowKey,

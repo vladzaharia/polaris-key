@@ -83,7 +83,7 @@ import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { startAccountSession } from "./accountSessions.js";
 import { sendSecurityNotice } from "./email.js";
 import { displayValue, newDeviceSignInNotice } from "./notices.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 
 /** How long a request (and its code) lives: the "Works for 4:52" countdown starts here. */
 export const DEVICE_LOGIN_TTL_SECONDS = 5 * 60;

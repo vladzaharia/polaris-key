@@ -29,8 +29,7 @@ import type {
 } from "@polaris-key/protocol";
 // The semver algebra and the two entitlement readers live next door in `core/licensing/entitlements.ts`:
 // Release and Update need exactly that computation for the `entitled` access mode (D-13). They
-// are re-exported below so every importer of this module (and of the two shims that point at
-// it) sees one surface.
+// are re-exported below so every importer of this module sees one surface.
 import {
   channelEntitled,
   impliedChannel,

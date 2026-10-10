@@ -53,7 +53,7 @@ const A13_STORE = ["core/platformSettings.ts"] as const;
 const MANIFEST_WRITERS: Readonly<
   Record<string, { why: string; functions?: readonly string[] }>
 > = {
-  "repo.ts": {
+  "core/repo.ts": {
     why: 'product creation, the release_config insert at link, and the ingest\'s statement builders, called with "manifest" (checked below)',
     functions: [
       "insertProduct",
@@ -105,7 +105,7 @@ const OPTIONAL_WRITERS: ReadonlySet<string> = new Set([
 const FIXTURE_WRITERS: Readonly<Record<string, readonly string[]>> = {
   "core/console/repo.ts": ["updateProduct", "stmtUpdateProduct"],
   "core/settingsClaims.ts": ["stmtClaim", "stmtDeleteClaim"],
-  "repo.ts": ["setTrustPolicy"],
+  "core/repo.ts": ["setTrustPolicy"],
 };
 
 /**
@@ -276,7 +276,7 @@ export function nonManifestDualCalls(
 ): string[] {
   const out: string[] = [];
   for (const [file, text] of files) {
-    if (file === "repo.ts") continue;
+    if (file === "core/repo.ts") continue;
     for (const [name, index] of Object.entries(DUAL_BUILDERS))
       for (const args of callArgs(name, text))
         if (args[index] !== '"manifest"')
@@ -329,13 +329,13 @@ describe("settings writes go through writeSetting() (ST-04)", () => {
     ).toEqual([]);
 
     // A new setter beside the manifest writer's builders in `repo.ts` is caught by name.
-    const repo = `${FILES.get("repo.ts")!}
+    const repo = `${FILES.get("core/repo.ts")!}
 export async function revertServicesToManifest(db: Db, product: string, at: number) {
   await db.run(\`UPDATE products SET services_source = 'manifest', modified_at = ? WHERE slug = ?\`, at, product);
 }
 `;
-    expect(offendingWrites(new Map([["repo.ts", repo]]))).toEqual([
-      "repo.ts revertServicesToManifest: products.services_source",
+    expect(offendingWrites(new Map([["core/repo.ts", repo]]))).toEqual([
+      "core/repo.ts revertServicesToManifest: products.services_source",
     ]);
     // A handler handing a dual builder a non-literal (or console) source is caught too.
     expect(
@@ -413,7 +413,7 @@ export async function revertServicesToManifest(db: Db, product: string, at: numb
     expect(nonManifestDualCalls(FILES)).toEqual([]);
     // And there are such calls to check (the ingest, link and resync).
     const calls = [...FILES]
-      .filter(([file]) => file !== "repo.ts")
+      .filter(([file]) => file !== "core/repo.ts")
       .flatMap(([, text]) =>
         Object.keys(DUAL_BUILDERS).flatMap((n) => callArgs(n, text)),
       );

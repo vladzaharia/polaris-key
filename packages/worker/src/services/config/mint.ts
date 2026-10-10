@@ -31,7 +31,7 @@
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { bearer } from "../../platform/http.js";
-import { staticHtmlSecurityHeaders } from "../../platform/securityHeaders.js";
+import { staticHtmlSecurityHeaders } from "../../core/securityHeaders.js";
 import { type Product, openProductSecret } from "../../core/products.js";
 import {
   approvalMismatch,

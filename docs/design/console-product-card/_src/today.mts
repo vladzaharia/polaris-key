@@ -23,7 +23,7 @@ const sharp = createRequire(join(repo, "packages/brand/package.json"))(
 ) as typeof import("sharp");
 const { resolve } = await import(join(ADMIN, "e2e/layoutFixtures.ts"));
 const { appSecurityHeaders } = await import(
-  join(repo, "packages/worker/src/platform/securityHeaders.ts")
+  join(repo, "packages/worker/src/core/securityHeaders.ts")
 );
 const CSP = appSecurityHeaders().get("content-security-policy")!;
 const out = join(here, "..", "shots");

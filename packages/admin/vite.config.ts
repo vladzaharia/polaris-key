@@ -45,7 +45,7 @@ const BRAND_LOCKUP_FILES: readonly string[] = [
 /**
  * Rubik and JetBrains Mono (the brand package's variable WOFF2 files, latin subset, and their
  * licences) at a stable, unhashed path, for the
- * Worker's server-rendered pages (packages/worker/src/platform/brandHtml.ts): their stylesheet is a
+ * Worker's server-rendered pages (packages/worker/src/core/brandHtml.ts): their stylesheet is a
  * build constant allowed by its hash, so it cannot follow Vite's content-hashed font names. The
  * SPAs themselves keep loading the hashed copies their CSS imports.
  */
