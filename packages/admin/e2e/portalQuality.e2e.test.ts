@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, it } from "vitest";
+import { emptyStateStarBreaches } from "./pageChecks.js";
 import {
   axe,
   columnBreaches,
@@ -21,6 +22,7 @@ import { PENDING, SHIPPED } from "./portalStates.js";
  * - exactly one visible `h1`;
  * - no horizontal page scroll, at 1920, 1440 and at 360 px;
  * - at 1440 and 1920 px, a content column no wider than 82rem and centred (`columnBreaches`);
+ * - a page-level first-run empty state carries the still, upright star (BRAND.md §7.7);
  * - its visual baseline (portalHarness.ts explains the platform sets and how to re-record).
  *
  * The key pages in {@link TABLET} also get one tablet baseline, at 768 px in the dark theme, where
@@ -95,6 +97,12 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
             expect
               .soft(await horizontalOverflow(o.page), "horizontal scroll")
               .toBeLessThanOrEqual(0);
+            expect
+              .soft(
+                await emptyStateStarBreaches(o.page),
+                "stationary star (BRAND.md §7.7)",
+              )
+              .toEqual([]);
             if (w.width >= 1440)
               expect
                 .soft(await columnBreaches(o.page), "content column")

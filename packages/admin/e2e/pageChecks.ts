@@ -166,3 +166,31 @@ export async function lintFindings(page: Page): Promise<string[]> {
       .map((v) => `${v.rule}: ${v.target} ${v.detail}`)
   );
 }
+
+/**
+ * BRAND.md §7.7: a page-level first-run empty state carries the stationary star, upright and
+ * still (no rotation, no running animation). One line per state that does not. The inline variant
+ * (a compact block inside a card) has no star by design.
+ */
+export function emptyStateStarBreaches(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    for (const el of document.querySelectorAll("[data-empty=first-run]")) {
+      if (!el.checkVisibility({ visibilityProperty: true })) continue;
+      // The page-level state centres its content; the card variant is left-aligned.
+      if (getComputedStyle(el).alignItems !== "center") continue;
+      const star = el.querySelector("[data-stationary-star]");
+      if (!star) {
+        out.push("a first-run empty state has no stationary star");
+        continue;
+      }
+      for (const e of [star, ...star.querySelectorAll("*")]) {
+        const t = getComputedStyle(e).transform;
+        if (t !== "none") out.push(`the star is transformed (${t})`);
+        if (e.getAnimations().some((a) => a.playState === "running"))
+          out.push("the star is animated");
+      }
+    }
+    return out;
+  });
+}

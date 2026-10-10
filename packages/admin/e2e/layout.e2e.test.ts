@@ -22,6 +22,7 @@ import {
 } from "./layoutFixtures.js";
 import {
   columnBreaches,
+  emptyStateStarBreaches,
   lintFindings,
   forcedColourBreaches,
   unlabelledScrollers,
@@ -516,6 +517,10 @@ for (const vp of VIEWPORTS) {
               // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
               expect(await lintFindings(page), "ui:lint findings").toEqual([]);
             }
+            expect(
+              await emptyStateStarBreaches(page),
+              "stationary star (BRAND.md §7.7)",
+            ).toEqual([]);
             if (vp.forcedColors)
               expect(
                 await forcedColourBreaches(page),

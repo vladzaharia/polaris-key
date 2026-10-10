@@ -60,6 +60,7 @@ export function StationaryStar({
   return (
     <span
       aria-hidden
+      data-stationary-star=""
       className={cn(
         "inline-flex size-20 items-center justify-center rounded-full border border-border text-fg-subtle",
         className,
