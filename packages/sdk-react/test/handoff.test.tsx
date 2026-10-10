@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { PolarisLogin } from "../src/components/PolarisLogin.js";
+import { LicenseGate } from "../src/components/LicenseGate.js";
 import { BrowserAdapter } from "../src/browser/browserAdapter.js";
 import { memoryStore } from "../src/browser/bearer/store.js";
 import { discoveryBody, services } from "./fixtures.js";
@@ -130,41 +131,111 @@ describe("the device-code hand-off (bearer)", () => {
     await startSignIn(container);
     const card = container.querySelector('[data-polaris-handoff="waiting"]')!;
     expect(card).toBeTruthy();
-    expect(card.querySelector("[data-polaris-code]")!.textContent).toBe(
+    const well = container.querySelector("[data-polaris-code-well]")!;
+    expect(well.querySelector("[data-polaris-code]")!.textContent).toBe(
       "WDJB-MJHT",
     );
+    // The code is read once, under its label; Copy is inside the well and named for what it copies.
+    expect(well.getAttribute("aria-label")).toBe("Sign-in code");
     expect(
-      card.querySelector("[data-polaris-code]")!.getAttribute("aria-label"),
-    ).toBe("Sign-in code WDJB-MJHT");
+      well.querySelector("[data-polaris-code]")!.getAttribute("aria-label"),
+    ).toBeNull();
+    const copyBtn = well.querySelector("[data-polaris-handoff-copy]")!;
+    expect(copyBtn.getAttribute("aria-label")).toBe("Copy code");
     expect(card.querySelector("[data-polaris-handoff-url]")!.textContent).toBe(
       "Or go to key.plrs.im/activate",
     );
     expect(
       card.querySelector("[data-polaris-handoff-expires]")!.textContent,
     ).toBe("Code expires in 10:00");
-    // The title is the hand-off's, the methods are gone, and the web draws no QR (DL14).
+    // The title is the hand-off's, headed by the product (icon and name); the methods are gone,
+    // and the web draws no QR (DL14).
     expect(container.querySelector("h2")!.textContent).toBe(
       "Finish in your browser",
     );
+    // The monogram tile (its initial) and the name, on one line.
+    expect(
+      container.querySelector("[data-polaris-handoff-header]")!.textContent,
+    ).toBe("TTidewater");
     expect(container.querySelector("[data-polaris-methods]")).toBeNull();
     expect(container.querySelector("svg[role=img], canvas, img")).toBeNull();
-    // The one primary has focus.
+    // Open browser is the one filled button and has focus; Cancel is a text action.
     const openBtn = card.querySelector(
       "[data-polaris-handoff-open]",
     ) as HTMLButtonElement;
     expect(document.activeElement).toBe(openBtn);
+    const filled = [...container.querySelectorAll("button")].filter(
+      (b) => (b as HTMLElement).style.background === "var(--pk-accent)",
+    );
+    expect(filled).toEqual([openBtn]);
+    expect(
+      (card.querySelector("[data-polaris-handoff-cancel]") as HTMLElement).style
+        .background,
+    ).toBe("transparent");
     fireEvent.click(openBtn);
     expect(open).toHaveBeenCalledWith(
       `${BASE}/activate?code=WDJB-MJHT`,
       "_blank",
       "noopener,noreferrer",
     );
-    fireEvent.click(card.querySelector("[data-polaris-handoff-copy]")!);
+    fireEvent.click(copyBtn);
     await flush(0);
     expect(write).toHaveBeenCalledWith("WDJB-MJHT");
-    expect(card.querySelector("[data-polaris-handoff-copy]")!.textContent).toBe(
-      "Copied",
+    expect(
+      card.querySelector("[data-polaris-handoff-status]")!.textContent,
+    ).toBe("Copied");
+    adapter.dispose();
+  });
+
+  it("the countdown is never announced: its nearest live ancestor is off", async () => {
+    const server = scripted([]);
+    const { container, adapter } = mount(server.fetchImpl);
+    const view = (
+      <PolarisKeyProvider
+        productSlug="acme"
+        adapter={adapter}
+        theme={{ copy: { productName: "Tidewater" } }}
+      >
+        <LicenseGate>
+          <div />
+        </LicenseGate>
+      </PolarisKeyProvider>
     );
+    cleanup();
+    const gated = render(view);
+    void container;
+    await flush(10);
+    fireEvent.click(gated.container.querySelector("[data-polaris-oidc]")!);
+    await flush(10);
+    const countdown = gated.container.querySelector(
+      "[data-polaris-handoff-expires]",
+    )!;
+    // Walk up from the countdown: the first element that sets a live behaviour decides.
+    let live: string | null = null;
+    for (let el: Element | null = countdown; el; el = el.parentElement) {
+      const explicit = el.getAttribute("aria-live");
+      const role = el.getAttribute("role");
+      if (explicit) {
+        live = explicit;
+        break;
+      }
+      if (role === "status" || role === "alert" || role === "log") {
+        live = "polite";
+        break;
+      }
+    }
+    expect(live).toBe("off");
+    // The gate around it is polite (its screens announce); the countdown is carved out of it.
+    expect(
+      gated.container
+        .querySelector("[data-polaris-gate]")!
+        .getAttribute("aria-live"),
+    ).toBe("polite");
+    // And the text really does change every second.
+    const text = () => countdown.textContent;
+    const before = text();
+    await flush(2_000);
+    expect(text()).not.toBe(before);
     adapter.dispose();
   });
 
@@ -181,10 +252,20 @@ describe("the device-code hand-off (bearer)", () => {
     expect(
       container.querySelector('[data-polaris-handoff="expired"]'),
     ).toBeTruthy();
-    expect(container.textContent).toContain("That code or link has expired");
+    // The title names the state; the message is the catalog's, with no fixed lifetime claim.
+    expect(container.querySelector("h2")!.textContent).toBe("Code expired");
+    const message = container.querySelector(
+      "[data-polaris-handoff-expired]",
+    ) as HTMLElement;
+    expect(message.textContent).toBe(
+      "The code expired before sign-in finished. Start again.",
+    );
+    expect(container.textContent).not.toMatch(/10 minutes/);
     const again = container.querySelector(
       "[data-polaris-handoff-again]",
     ) as HTMLElement;
+    expect(again.textContent).toBe("Sign in again");
+    expect(again.getAttribute("aria-describedby")).toBe(message.id);
     expect(document.activeElement).toBe(again);
     adapter.dispose();
   });
@@ -200,7 +281,6 @@ describe("the device-code hand-off (bearer)", () => {
       container.querySelector("[data-polaris-handoff-cancel]") as HTMLElement,
     );
     await flush(0);
-    // The methods are back, with no error and no "cancelled" screen.
     expect(container.querySelector("[data-polaris-handoff]")).toBeNull();
     expect(container.querySelector("[data-polaris-signin-error]")).toBeNull();
     expect(document.activeElement).toBe(
@@ -212,18 +292,51 @@ describe("the device-code hand-off (bearer)", () => {
     adapter.dispose();
   });
 
-  it("Escape cancels like the button", async () => {
+  it("Escape cancels from anywhere on the page, not only from inside the card", async () => {
     const server = scripted([]);
     const { container, adapter } = mount(server.fetchImpl);
     await startSignIn(container);
-    const card = container.querySelector("[data-polaris-handoff]")!;
-    fireEvent.keyDown(card, { key: "Escape" });
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document.body, { key: "Escape" });
     await flush(0);
     expect(container.querySelector("[data-polaris-handoff]")).toBeNull();
     adapter.dispose();
   });
 
-  it("a refusal from the server lands in the card, under Sign in, and ends the hand-off", async () => {
+  it("a Sign in again right after Cancel is not undone by the first flow's late clean-up", async () => {
+    const server = scripted([]);
+    const { container, adapter } = mount(server.fetchImpl);
+    await startSignIn(container);
+    fireEvent.click(
+      container.querySelector("[data-polaris-handoff-cancel]") as HTMLElement,
+    );
+    // The new sign-in begins before the cancelled wait has finished unwinding.
+    fireEvent.click(container.querySelector("[data-polaris-oidc]")!);
+    await flush(50);
+    expect(
+      container.querySelector('[data-polaris-handoff="waiting"]'),
+    ).toBeTruthy();
+    expect(adapter.snapshot().busy.identity).toBe(true);
+    await flush(10_000);
+    expect(adapter.snapshot().busy.identity).toBe(true);
+    adapter.dispose();
+  });
+
+  it("a card that unmounts stops the sign-in it started", async () => {
+    const server = scripted([]);
+    const { container, adapter, unmount } = mount(server.fetchImpl);
+    await startSignIn(container);
+    await flush(5_000);
+    unmount();
+    const before = server.polled();
+    await flush(60_000);
+    expect(server.polled()).toBe(before);
+    expect(adapter.snapshot().busy.identity).toBe(false);
+    adapter.dispose();
+  });
+
+  it("a refusal from the server lands in the card, under Sign in, with a glyph, and ends the hand-off", async () => {
     const server = scripted([{ status: 200, body: { status: "timeout" } }]);
     const { container, adapter } = mount(server.fetchImpl);
     await startSignIn(container);
@@ -232,23 +345,131 @@ describe("the device-code hand-off (bearer)", () => {
     const err = container.querySelector("[data-polaris-signin-error]");
     expect(err).toBeTruthy();
     expect(err!.getAttribute("role")).toBe("alert");
-    // Sign in is there to try again.
+    // An expired code says so (its own sentence), and the line is a word and a glyph.
+    expect(err!.textContent).toBe(
+      "The code expired before sign-in finished. Start again.",
+    );
+    expect(err!.querySelector("svg")).toBeTruthy();
     expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy();
     adapter.dispose();
   });
 
-  it("hides the Open control for a link that is not https, and leaves the code working", async () => {
+  it("links supplied but none usable: sign-in is unavailable, Cancel is the way out, no code", async () => {
     const server = scripted([], {
       verificationUriComplete: "javascript:alert(1)",
       verificationUri: "javascript:alert(1)",
     });
     const { container, adapter } = mount(server.fetchImpl);
     await startSignIn(container);
+    const card = container.querySelector('[data-polaris-handoff="unusable"]')!;
+    expect(card).toBeTruthy();
+    expect(card.textContent).toContain(
+      "Sign-in is unavailable. Try again later.",
+    );
     expect(container.querySelector("[data-polaris-handoff-open]")).toBeNull();
-    expect(container.querySelector("[data-polaris-handoff-url]")).toBeNull();
+    expect(container.querySelector("[data-polaris-code]")).toBeNull();
+    const cancel = container.querySelector(
+      "[data-polaris-handoff-cancel]",
+    ) as HTMLElement;
+    expect(document.activeElement).toBe(cancel);
+    fireEvent.click(cancel);
+    await flush(0);
+    expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy();
+    adapter.dispose();
+  });
+});
+
+describe("the hand-off inside the revoked and expired screens", () => {
+  it("takes the hand-off's title and puts Try again away, and brings both back on Cancel", async () => {
+    const fetchImpl = scripted([]).fetchImpl;
+    const adapter = new BrowserAdapter({
+      productSlug: "acme",
+      baseUrl: BASE,
+      auth: "bearer",
+      trust: { pinnedKeys: PIN },
+      store: memoryStore("acme"),
+      offlineStore: null,
+      fetchImpl,
+      expectServices: services("license", "identity"),
+    });
+    // The signed state of a revoked device is a unit-test of the gate elsewhere; here the gate
+    // is held on its revoked screen by a snapshot override.
+    const real = adapter.snapshot.bind(adapter);
+    let from: ReturnType<typeof real> | null = null;
+    let out: ReturnType<typeof real> | null = null;
+    adapter.snapshot = () => {
+      const s = real();
+      if (s !== from) {
+        from = s;
+        out = { ...s, status: "revoked", phase: "ready" } as typeof s;
+      }
+      return out!;
+    };
+    const { container } = render(
+      <PolarisKeyProvider
+        productSlug="acme"
+        adapter={adapter}
+        theme={{ copy: { productName: "Tidewater" } }}
+      >
+        <LicenseGate>
+          <div />
+        </LicenseGate>
+      </PolarisKeyProvider>,
+    );
+    await flush(10);
+    expect(container.querySelector("h2")!.textContent).toBe("Signed out");
+    const labels = () =>
+      [...container.querySelectorAll("button")].map((b) => b.textContent);
+    expect(labels()).toContain("Try again");
+    fireEvent.click(container.querySelector("[data-polaris-oidc]")!);
+    await flush(10);
+    expect(container.querySelector("h2")!.textContent).toBe(
+      "Finish in your browser",
+    );
+    expect(labels()).not.toContain("Try again");
     expect(container.querySelector("[data-polaris-code]")!.textContent).toBe(
       "WDJB-MJHT",
     );
+    fireEvent.click(container.querySelector("[data-polaris-handoff-cancel]")!);
+    await flush(0);
+    expect(container.querySelector("h2")!.textContent).toBe("Signed out");
+    expect(labels()).toContain("Try again");
     adapter.dispose();
+  });
+});
+
+describe("forced colours", () => {
+  it("draws the primary as a solid system colour, and outlines the code well", async () => {
+    const real = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q === "(forced-colors: active)",
+      media: q,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const server = scripted([]);
+      const { container, adapter } = mount(server.fetchImpl);
+      await startSignIn(container);
+      const open = container.querySelector(
+        "[data-polaris-handoff-open]",
+      ) as HTMLElement;
+      expect(open.style.background.toLowerCase()).toBe("highlight");
+      expect(open.style.color.toLowerCase()).toBe("highlighttext");
+      const cancel = container.querySelector(
+        "[data-polaris-handoff-cancel]",
+      ) as HTMLElement;
+      expect(cancel.style.background.toLowerCase()).not.toBe("highlight");
+      expect(
+        (
+          container.querySelector("[data-polaris-code-well]") as HTMLElement
+        ).style.border.toLowerCase(),
+      ).toContain("canvastext");
+      adapter.dispose();
+    } finally {
+      window.matchMedia = real;
+    }
   });
 });

@@ -164,9 +164,19 @@ describe("PolarisLogin — Replace a device", () => {
     });
     fireEvent.change(input, { target: { value: "k" } });
     fireEvent.submit(input.closest("form")!);
-    await waitFor(() =>
-      expect(container.querySelector("[role=alert]")).toBeTruthy(),
-    );
+    // A full licence is a limit, not an error (DL6), even with no portal link: a neutral callout
+    // that names the fix in words, nothing red, no alert, no invalid field, no button.
+    const callout = await waitFor(() => {
+      const el = container.querySelector(
+        '[data-polaris-device-limit="no-link"]',
+      );
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(callout.textContent).toMatch(/Replace a device/);
+    expect(callout.getAttribute("role")).toBe("status");
+    expect(container.querySelector("[role=alert]")).toBeNull();
+    expect(input.getAttribute("aria-invalid")).toBeNull();
     expect(container.querySelector("[data-polaris-free-device]")).toBeNull();
     adapter.dispose();
   });

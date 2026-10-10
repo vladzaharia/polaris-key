@@ -12,7 +12,7 @@
 // failure carries Try again (and "Replace a device" when the license is full); a version block
 // offers the update when the product runs the Update service. Every string is catalog copy.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   useLicenseGate,
   type GateScreen,
@@ -22,10 +22,15 @@ import { SPACE } from "@polaris-key/brand";
 import { PolarisLogin, openManageUrl } from "./PolarisLogin.js";
 import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
-import { FullWindow, bannerStyle, mutedText } from "./primitives/card.js";
+import {
+  FullWindow,
+  bannerStyle,
+  dangerText,
+  mutedText,
+} from "./primitives/card.js";
 import { REDUCED_MOTION, matches } from "./primitives/media.js";
 import { screenLogo } from "./brand.js";
-import { knownProductName, type PolarisTheme } from "./theme.js";
+import { productLabel, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
 import { openLink, safeLink } from "./links.js";
 import { errorSentence, errorTitle, type ErrorLike } from "./errors.js";
@@ -60,7 +65,7 @@ export interface LicenseGateProps {
 
 /** The product's name for copy that names it, or the theme's placeholder. */
 function productOf(theme: PolarisTheme): string {
-  return knownProductName(theme) ?? theme.copy.productName;
+  return productLabel(theme);
 }
 
 function blockTitleBody(
@@ -88,8 +93,12 @@ function blockTitleBody(
 
 /** A Try again that shows its busy state and never lets the retry's rejection reach the page
  *  (the failure is the screen's to show, through the gate's state). */
-function useRetry(retry: () => Promise<void>): [boolean, () => void] {
+function useRetry(
+  retry: () => Promise<void>,
+): [boolean, () => void, ErrorLike | null] {
   const [busy, setBusy] = useState(false);
+  // What the last attempt failed with, until the next attempt starts.
+  const [failure, setFailure] = useState<ErrorLike | null>(null);
   const alive = useRef(true);
   useEffect(
     () => () => {
@@ -100,13 +109,19 @@ function useRetry(retry: () => Promise<void>): [boolean, () => void] {
   const run = (): void => {
     if (busy) return;
     setBusy(true);
+    setFailure(null);
     void retry()
-      .catch(() => undefined)
+      .catch((e: unknown) => {
+        if (alive.current)
+          setFailure(
+            e && typeof e === "object" ? (e as ErrorLike) : { code: "unknown" },
+          );
+      })
       .finally(() => {
         if (alive.current) setBusy(false);
       });
   };
-  return [busy, run];
+  return [busy, run, failure];
 }
 
 /**
@@ -365,24 +380,55 @@ function StatusScreen(props: {
 }): React.JSX.Element {
   const { ctx, revoked } = props;
   const { theme } = ctx;
-  const [busy, retry] = useRetry(ctx.retry);
+  const [busy, retry, failure] = useRetry(ctx.retry);
+  // While a sign-in's hand-off is up the screen yields to it: its title, and no second button
+  // that reads like Cancel (Try again returns with the methods).
+  const [handoff, setHandoff] = useState<"waiting" | "expired" | null>(null);
+  const failureId = useId();
+  const title = handoff
+    ? handoff === "expired"
+      ? theme.copy.handoffExpiredTitle
+      : theme.copy.handoffTitle
+    : revoked
+      ? theme.copy.revokedTitle
+      : theme.copy.expiredTitle;
   return (
     <MessageScreen
-      title={revoked ? theme.copy.revokedTitle : theme.copy.expiredTitle}
-      body={revoked ? theme.copy.revokedBody : theme.copy.expiredBody}
+      title={title}
+      body={
+        handoff ? "" : revoked ? theme.copy.revokedBody : theme.copy.expiredBody
+      }
       logo={screenLogo(theme)}
       extra={
         <PolarisLogin
           heading={false}
           bare
           differentKey
+          onHandoff={setHandoff}
           {...(props.returnUrl ? { returnUrl: props.returnUrl } : {})}
         />
       }
-      onRetry={retry}
-      retryBusy={busy}
-      retryLabel={theme.copy.retryLabel}
-      retryVariant="quiet"
+      {...(handoff
+        ? {}
+        : {
+            onRetry: retry,
+            retryBusy: busy,
+            retryLabel: theme.copy.retryLabel,
+            retryVariant: "quiet" as const,
+            retryDescribedBy: failure ? failureId : undefined,
+          })}
+      notice={
+        failure && !handoff ? (
+          <p
+            id={failureId}
+            role="alert"
+            style={dangerText}
+            data-polaris-gate-retry-error=""
+          >
+            {errorSentence(failure)}
+          </p>
+        ) : null
+      }
     />
   );
 }

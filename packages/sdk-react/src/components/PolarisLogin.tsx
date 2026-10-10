@@ -51,12 +51,21 @@ import {
 } from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
 import { ExternalGlyph } from "./primitives/glyphs.js";
-import { SignInHandoff } from "./SignInHandoff.js";
+import {
+  HandoffActions,
+  HandoffCode,
+  HandoffHeader,
+  useHandoff,
+} from "./SignInHandoff.js";
 import { openLink, safeLink } from "./links.js";
 import { useWindowLayout } from "./primitives/layout.js";
-import { COARSE_POINTER, useMediaQuery } from "./primitives/media.js";
+import {
+  COARSE_POINTER,
+  FORCED_COLORS,
+  useMediaQuery,
+} from "./primitives/media.js";
 import { screenLogo, themePoweredBy } from "./brand.js";
-import { knownProductName, type PolarisTheme } from "./theme.js";
+import { knownProductName, productLabel, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
 import {
   deviceLimitOf,
@@ -94,6 +103,11 @@ export interface PolarisLoginProps {
    * type, so the key button reads "Use a different key".
    */
   differentKey?: boolean;
+  /**
+   * @internal The gate's expired and revoked screens learn when a hand-off is up (and whether
+   * its code ran out), so they can retitle themselves and put their own Try again away.
+   */
+  onHandoff?: (view: "waiting" | "expired" | null) => void;
 }
 
 /**
@@ -138,6 +152,48 @@ const callout: CSSProperties = {
   lineHeight: mutedText.lineHeight,
 };
 
+/** An error under the control that caused it: the word, and a glyph so the status is never
+ *  colour alone. */
+function ErrorLine(props: {
+  id: string;
+  marker: string;
+  lineRef?: React.Ref<HTMLParagraphElement>;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <p
+      id={props.id}
+      ref={props.lineRef}
+      role="alert"
+      style={{
+        ...dangerText,
+        display: "flex",
+        alignItems: "flex-start",
+        gap: SPACE["2"],
+      }}
+      {...{ [props.marker]: "" }}
+    >
+      <svg
+        aria-hidden="true"
+        focusable="false"
+        width="1em"
+        height="1em"
+        style={{ flex: "none", marginBlockStart: "0.15em" }}
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M8 2.5 14 13H2L8 2.5Z" />
+        <path d="M8 6.5v3M8 11.5v.01" />
+      </svg>
+      <span>{props.children}</span>
+    </p>
+  );
+}
+
 /** The refusal a license error carries for this card, if it is one (`isSignInRefusal`). */
 function keyRefusal(err: PolarisError | null | undefined): PolarisError | null {
   return err && isSignInRefusal(err) ? err : null;
@@ -175,7 +231,17 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
     // The device-code hand-off of a sign-in in progress (bearer mode, and a desktop host that
     // reports a code), and whether its code has run out.
     const [handle, setHandle] = useState<OidcSignInHandle | null>(null);
-    const [handoffExpired, setHandoffExpired] = useState(false);
+    const hand = useHandoff(handle);
+    const handoffExpired = hand?.expired ?? false;
+    const onHandoff = props.onHandoff;
+    const handoffView = hand ? (hand.expired ? "expired" : "waiting") : null;
+    useEffect(() => {
+      onHandoff?.(handoffView);
+    }, [onHandoff, handoffView]);
+    // A card that goes away stops the sign-in it started (a hand-off has no one left to show).
+    const handleRef = useRef(handle);
+    handleRef.current = handle;
+    useEffect(() => () => handleRef.current?.cancel?.(), []);
 
     // A refusal the adapter reports (this card's attempt, or another's) lands in its slot; a
     // slot this card cleared stays clear until the adapter reports a new one.
@@ -203,6 +269,11 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
     const keyErrorRef = useRef<HTMLParagraphElement>(null);
 
     const limit = deviceLimitOf(keyErr);
+    const limitNoLink = !limit && keyErr?.activation?.kind === "deviceLimit";
+    const forced = useMediaQuery(FORCED_COLORS);
+    const calloutStyle: CSSProperties = forced
+      ? { ...callout, border: "1px solid CanvasText" }
+      : callout;
     const keyFormOpen = keyOnly || keyOpened || keyErr !== null;
     const trimmed = key.trim();
 
@@ -291,7 +362,6 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
     function signIn(): void {
       setKeyErr(null);
       setSignInErr(null);
-      setHandoffExpired(false);
       void Promise.resolve(auth.signInWithOidc())
         .then((started) => {
           // The cookie page navigates away and never gets here; a bearer page or a host that
@@ -305,17 +375,15 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
         .catch(() => undefined);
     }
 
-    function cancelHandoff(): void {
-      handle?.cancel?.();
+    const cancelHandoff = useCallback((): void => {
+      handleRef.current?.cancel?.();
       setHandle(null);
-      setHandoffExpired(false);
       setRestoreFocus(true);
-    }
+    }, []);
 
     function signInAgain(): void {
       handle?.cancel?.();
       setHandle(null);
-      setHandoffExpired(false);
       signIn();
     }
 
@@ -328,7 +396,7 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
       });
     }
 
-    const product = knownProductName(theme) ?? theme.copy.productName;
+    const product = productLabel(theme);
     const counts =
       limit?.activation?.deviceCount !== undefined &&
       limit.activation.limit !== undefined
@@ -381,18 +449,24 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
             }}
             data-polaris-head=""
           >
-            {logo ? <div style={{ display: "flex" }}>{logo}</div> : null}
+            {hand ? (
+              <HandoffHeader theme={theme} />
+            ) : logo ? (
+              <div style={{ display: "flex" }}>{logo}</div>
+            ) : null}
             <div>
               <h2
                 id={titleId}
                 style={inWindow ? screenTitle : titleText}
                 dir="auto"
               >
-                {handle && !handoffExpired
-                  ? theme.copy.handoffTitle
+                {hand
+                  ? hand.expired
+                    ? theme.copy.handoffExpiredTitle
+                    : theme.copy.handoffTitle
                   : signInTitle(theme)}
               </h2>
-              {subtitle && !handle ? (
+              {subtitle && !hand ? (
                 <p
                   style={{ ...mutedText, ...prettyText, marginTop: SPACE["2"] }}
                 >
@@ -400,20 +474,23 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
                 </p>
               ) : null}
             </div>
+            {hand ? <HandoffCode theme={theme} hand={hand} /> : null}
           </div>
         ) : null}
         {bleed && heading ? (
           <div aria-hidden="true" style={{ flexGrow: 2, minHeight: 0 }} />
         ) : null}
 
-        {handle ? (
-          <SignInHandoff
-            theme={theme}
-            handle={handle}
-            onCancel={cancelHandoff}
-            onAgain={signInAgain}
-            onExpired={setHandoffExpired}
-          />
+        {hand ? (
+          <>
+            {heading ? null : <HandoffCode theme={theme} hand={hand} />}
+            <HandoffActions
+              theme={theme}
+              hand={hand}
+              onCancel={cancelHandoff}
+              onAgain={signInAgain}
+            />
+          </>
         ) : (
           <div
             style={{ ...actionPanel, gap: SPACE["3"] }}
@@ -434,14 +511,9 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
               </Button>
             ) : null}
             {signInErr ? (
-              <p
-                id={signInErrorId}
-                role="alert"
-                style={dangerText}
-                data-polaris-signin-error=""
-              >
+              <ErrorLine id={signInErrorId} marker="data-polaris-signin-error">
                 {errorSentence(signInErr)}
-              </p>
+              </ErrorLine>
             ) : null}
 
             {showKey && !keyFormOpen ? (
@@ -478,23 +550,34 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
                   }}
                   autoFocus={keyOnly && autoFocus}
                   invalid={keyIsWrong(keyErr)}
-                  errorId={keyErr && !limit ? keyErrorId : undefined}
+                  errorId={
+                    keyErr && !limit && !limitNoLink ? keyErrorId : undefined
+                  }
                   data-polaris-key-input=""
                 />
-                {keyErr && !limit ? (
-                  <p
+                {keyErr && !limit && !limitNoLink ? (
+                  <ErrorLine
                     id={keyErrorId}
-                    ref={keyErrorRef}
-                    role="alert"
-                    style={dangerText}
-                    data-polaris-key-error=""
+                    lineRef={keyErrorRef}
+                    marker="data-polaris-key-error"
                   >
                     {errorSentence(keyErr)}
-                  </p>
+                  </ErrorLine>
+                ) : null}
+                {limitNoLink ? (
+                  // A full licence is a limit, not an error (DL6), even where the product's
+                  // portal is off: the sentence names the fix in words and nothing is red.
+                  <div
+                    style={calloutStyle}
+                    role="status"
+                    data-polaris-device-limit="no-link"
+                  >
+                    {errorSentence(keyErr)}
+                  </div>
                 ) : null}
                 {limit ? (
                   <div
-                    style={callout}
+                    style={calloutStyle}
                     role="status"
                     data-polaris-device-limit=""
                   >

@@ -110,8 +110,8 @@ describe("typed update codes", () => {
 });
 
 describe("<UpdatePrompt showWhenCurrent> never says 'up to date' after a failure", () => {
-  it("a 404 on update/version shows the failure and Try again, not 'You're up to date.'", async () => {
-    let answer: () => Response = () => new Response("{}", { status: 404 });
+  it("a failed check says the check failed, without the vendor, and Try again follows its focus", async () => {
+    let answer: () => Response = () => new Response("{}", { status: 503 });
     const adapter = cookieAdapter(() => answer());
     const { container } = render(
       <PolarisKeyProvider productSlug="acme" adapter={adapter}>
@@ -123,9 +123,10 @@ describe("<UpdatePrompt showWhenCurrent> never says 'up to date' after a failure
       expect(el).toBeTruthy();
       return el as HTMLElement;
     });
-    expect(container.textContent).not.toMatch(/up to date/i);
-    expect(failed.querySelector("button")!.textContent).toBe("Try again");
-    // Try again goes to the network, and a real answer replaces the failure.
+    expect(failed.textContent).toBe("Couldn't check for updates.Try again");
+    expect(container.textContent).not.toMatch(/up to date|Polaris Key/i);
+    const retry = failed.querySelector("button")!;
+    retry.focus();
     answer = () =>
       new Response(
         JSON.stringify({
@@ -134,13 +135,86 @@ describe("<UpdatePrompt showWhenCurrent> never says 'up to date' after a failure
           url: "https://dl.example/1.0.0",
         }),
       );
-    fireEvent.click(failed.querySelector("button")!);
+    fireEvent.click(retry);
+    // The button is gone; focus moved to the status line that replaced it, not to <body>.
     await waitFor(() =>
       expect(
         container.querySelector('[data-polaris-update="current"]')!.textContent,
       ).toBe("You're up to date."),
     );
+    expect(document.activeElement).toBe(
+      container.querySelector('[data-polaris-update="current"]'),
+    );
     adapter.dispose();
+  });
+
+  it("a failed Try again that finds an update focuses the update action", async () => {
+    let answer: () => Response = () => new Response("{}", { status: 503 });
+    const adapter = cookieAdapter(() => answer());
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <UpdatePrompt showWhenCurrent />
+      </PolarisKeyProvider>,
+    );
+    const retry = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-update-retry]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    retry.focus();
+    answer = () =>
+      new Response(
+        JSON.stringify({
+          version: "2.0.0",
+          tag: "v2",
+          url: "https://dl.example/2.0.0",
+        }),
+      );
+    fireEvent.click(retry);
+    const action = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-update-action]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(document.activeElement).toBe(action);
+    adapter.dispose();
+  });
+
+  it("no connection names the cause; a 404 says updates are not available and offers no Try again", async () => {
+    const offline = cookieAdapter(() => {
+      throw new TypeError("Failed to fetch");
+    });
+    const a = render(
+      <PolarisKeyProvider productSlug="acme" adapter={offline}>
+        <UpdatePrompt showWhenCurrent />
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        a.container.querySelector('[data-polaris-update="failed"]'),
+      ).toBeTruthy(),
+    );
+    expect(a.container.textContent).toBe(
+      "Couldn't check for updates. Check your connection.Try again",
+    );
+    offline.dispose();
+    cleanup();
+    const missing = cookieAdapter(() => new Response("{}", { status: 404 }));
+    const b = render(
+      <PolarisKeyProvider productSlug="acme" adapter={missing}>
+        <UpdatePrompt showWhenCurrent />
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        b.container.querySelector('[data-polaris-update="failed"]'),
+      ).toBeTruthy(),
+    );
+    expect(b.container.textContent).toBe(
+      "Couldn't check for updates. Updates aren't available for this app.",
+    );
+    expect(b.container.querySelector("button")).toBeNull();
+    missing.dispose();
   });
 
   it("renders nothing before the first answer", () => {

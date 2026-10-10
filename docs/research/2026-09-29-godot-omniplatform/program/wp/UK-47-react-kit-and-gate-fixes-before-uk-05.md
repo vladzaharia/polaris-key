@@ -107,6 +107,19 @@ The code is the fact; where it differed from the brief, this is what was built.
 - 401 backoff is in the bearer session (the 5xx curve); the Provider's timer refresh waits, a
   person's Try again and a hook's `refresh()` go through.
 
+- Custom product accent (the brief's hierarchy row, "the product accent in kits"): **blocked on
+  UK-03**. The kit does not run `resolveAccent`, so a custom accent can be unreadable (label
+  1.6:1 for a yellow on light, 1.7:1 for a navy on dark; UX review V7). Until UK-03 the README
+  tells integrators to set `accentText` and `ring` with `accent`.
+- Update-check failure copy has no catalog key: "Couldn't check for updates.", "Check your
+  connection." and "Updates aren't available for this app." live in `theme.copy` as proposals for
+  `update.checkFailed`, `update.checkOffline` and `update.checkUnavailable` (UK-02 owns the nine
+  locales).
+- UX review round (F1 to F12, V1 to V9): the countdown is `aria-live="off"`; the hand-off is split
+  so the code stays with the title and only the buttons dock; Try again that fails says so;
+  revoked and expired yield their title and Try again to a live hand-off. Skipped, as agreed: V2
+  (`prefers-contrast`) and V6 (large-window layout).
+
 ## Evidence (built, real Chromium)
 
 The React browser suite (964 renders: 17 sizes in both schemes, host and Polaris Key presets on

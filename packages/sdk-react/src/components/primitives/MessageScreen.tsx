@@ -89,6 +89,8 @@ export interface MessageScreenProps {
   logo?: ReactNode;
   /** Content after the body: the sign-in methods an expired or revoked screen embeds. */
   extra?: ReactNode;
+  /** A message under the actions (a failed Try again says so here), announced when it appears. */
+  notice?: ReactNode;
   /** A second action after the primary, in the same stack (a dialog's "Later"). */
   secondaryAction?: ReactNode;
   /** The primary action's weight: "primary" (default). "quiet" is for a tertiary action. */
@@ -97,6 +99,8 @@ export interface MessageScreenProps {
   onRetry?: () => void;
   /** The primary action's label (and its accessible name). */
   retryLabel?: string;
+  /** The id of a node that describes the primary action (a message under it). */
+  retryDescribedBy?: string;
   /** The primary action is running (`aria-busy`, a ring beside the label). */
   retryBusy?: boolean;
   /** `true` for transient/non-actionable screens (loading): polite `role="status"`, no focus
@@ -120,10 +124,12 @@ export function MessageScreen(props: MessageScreenProps): React.JSX.Element {
     logo,
     extra,
     secondaryAction,
+    notice,
     retryVariant,
     onRetry,
     retryLabel,
     retryBusy,
+    retryDescribedBy,
     transient,
     scrim,
     onDismiss,
@@ -146,10 +152,12 @@ export function MessageScreen(props: MessageScreenProps): React.JSX.Element {
         logo={logo}
         extra={extra}
         secondaryAction={secondaryAction}
+        notice={notice}
         retryVariant={retryVariant}
         onRetry={onRetry}
         retryLabel={retryLabel}
         retryBusy={retryBusy}
+        retryDescribedBy={retryDescribedBy}
         transient={transient}
       />
     </FullWindow>
@@ -166,10 +174,12 @@ function MessageCard(props: MessageScreenProps): React.JSX.Element {
     logo,
     extra,
     secondaryAction,
+    notice,
     retryVariant = "primary",
     onRetry,
     retryLabel = fallbackRetry,
     retryBusy,
+    retryDescribedBy,
     transient,
   } = props;
   const titleId = useId();
@@ -194,7 +204,7 @@ function MessageCard(props: MessageScreenProps): React.JSX.Element {
 
   const hasBody = body.length > 0;
   const hasActions = Boolean(onRetry || secondaryAction);
-  const hasTail = hasActions || Boolean(extra);
+  const hasTail = hasActions || Boolean(extra) || Boolean(notice);
   const bleed = layout?.bleed === true;
   const twoColumn = layout?.twoColumn === true;
   return (
@@ -261,6 +271,7 @@ function MessageCard(props: MessageScreenProps): React.JSX.Element {
                   variant={retryVariant}
                   label={retryLabel}
                   busy={retryBusy}
+                  describedBy={retryDescribedBy}
                   onClick={onRetry}
                   style={actionCell}
                 >
@@ -270,6 +281,7 @@ function MessageCard(props: MessageScreenProps): React.JSX.Element {
               {secondaryAction}
             </div>
           ) : null}
+          {notice}
         </div>
       ) : null}
     </div>

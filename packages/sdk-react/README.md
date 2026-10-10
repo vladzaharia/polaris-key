@@ -498,6 +498,11 @@ without `importBundle` reports bundle import as `bundle-import-unsupported`.
 
 ## Theming
 
+**A product accent: set the label colour yourself.** The kit does not resolve contrast for an
+accent yet (UK-03 brings `resolveAccent`). If you set `theme.tokens.accent`, set `accentText` (the
+label on a filled button) and `ring` (the focus ring) with it, and check the pair is at least 4.5:1
+for the label and 3:1 for the fill against the page, in both schemes. A pale accent such as
+`#f5c518` needs a dark label; a navy one needs a light one. Without an accent the primary is ink.
 Brand through the Provider's `theme` (tokens + copy + logo): no CSS-in-JS dependency. The
 Provider publishes the tokens as `--pk-*` custom properties **twice**: on a wrapper element, so
 two providers can carry different brands without leaking into each other, and on `:root`, so

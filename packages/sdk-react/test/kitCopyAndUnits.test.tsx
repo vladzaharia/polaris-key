@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import * as root from "../src/index.js";
+import { COPY_CODES } from "../src/copy.generated.js";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { PolarisLogin } from "../src/components/PolarisLogin.js";
 import { DeviceManager } from "../src/components/DeviceManager.js";
@@ -50,11 +51,9 @@ describe("the kit's copy defaults are the catalog's words", () => {
     handoffUrl: "signin.handoff.url",
     handoffExpires: "signin.handoff.expires",
     handoffOpenLabel: "signin.handoff.openBrowser",
-    handoffCopyLabel: "common.copy",
+    handoffCopyLabel: "a11y.copyCode",
     handoffCopiedLabel: "common.copied",
     handoffCancelLabel: "common.cancel",
-    handoffExpiredTitle: "signin.expired.title",
-    handoffExpiredBody: "signin.expired.body",
     handoffAgainLabel: "signin.again",
     oidcButtonLabel: "welcome.signIn",
     useKeyLabel: "welcome.useKey",
@@ -98,6 +97,17 @@ describe("the kit's copy defaults are the catalog's words", () => {
     );
     expect(container.textContent).toContain("Nothing to sign in to.");
     adapter.dispose();
+  });
+});
+
+describe("the expired hand-off says what the core copy says", () => {
+  it("its title and message are the `sign-in-expired` entry", () => {
+    expect(defaultTheme.copy.handoffExpiredTitle).toBe(
+      COPY_CODES["sign-in-expired"]!.title,
+    );
+    expect(defaultTheme.copy.handoffExpiredBody).toBe(
+      COPY_CODES["sign-in-expired"]!.message,
+    );
   });
 });
 

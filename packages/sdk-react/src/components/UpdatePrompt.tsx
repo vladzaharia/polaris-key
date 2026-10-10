@@ -32,7 +32,13 @@
 //                                and none for `blocked`. `packs` is applied by the boot's
 //                                fetch and renders nothing, like `none`.
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useCtx, usePolarisTheme } from "../react/hooks.js";
 import {
   useLatestVersion,
@@ -52,7 +58,7 @@ import { screenLogo } from "./brand.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
 import { openLink, safeLink } from "./links.js";
-import { errorSentence, type ErrorLike } from "./errors.js";
+import type { ErrorLike } from "./errors.js";
 
 /** "{product} {version}" once the product's name and the version are known (update.title),
  *  else "An update is available" (update.availableTitle). */
@@ -78,8 +84,16 @@ function UpdateBanner(props: {
   dismissLabel: string;
   onDismiss: () => void;
   marker: string;
+  /** Put focus on the action when the banner appears (after a Try again that found an update). */
+  focusAction?: boolean;
 }): React.JSX.Element {
   const { locked } = props;
+  const action = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (props.focusAction) action.current?.focus();
+    // Once, when it appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div
       className={props.className}
@@ -108,6 +122,7 @@ function UpdateBanner(props: {
       <span style={{ display: "flex", flexWrap: "wrap", gap: SPACE["2"] }}>
         {props.onAction ? (
           <Button
+            ref={action}
             variant="primary"
             size="compact"
             onClick={props.onAction}
@@ -138,6 +153,80 @@ const currentLine: CSSProperties = {
   justifyContent: "flex-start",
   textAlign: "start",
 };
+
+/** "You're up to date.": the status line. It takes focus when it replaces a failure the person
+ *  just retried, so the button they pressed does not take focus with it. */
+function CurrentLine(props: {
+  className?: string;
+  text: string;
+  focusOnMount: boolean;
+}): React.JSX.Element {
+  const line = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (props.focusOnMount) line.current?.focus();
+    // Once, when it appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div
+      ref={line}
+      tabIndex={-1}
+      className={props.className}
+      role="status"
+      aria-live="polite"
+      style={{ ...currentLine, outline: "none" }}
+      data-polaris-update="current"
+    >
+      {props.text}
+    </div>
+  );
+}
+
+/** What a failed check leaves: that the check failed, why when it can say (without naming the
+ *  vendor), and Try again, which is withheld when nothing a retry does could change the answer
+ *  (the product publishes no updates). */
+function FailedLine(props: {
+  className?: string;
+  theme: PolarisTheme;
+  error: ErrorLike;
+  busy: boolean;
+  onRetry: () => void;
+}): React.JSX.Element {
+  const { theme, error } = props;
+  const c = theme.copy;
+  const unavailable = error.code === "not_found";
+  const cause =
+    error.code === "network-error"
+      ? c.updateCheckOffline
+      : unavailable
+        ? c.updateCheckUnavailable
+        : "";
+  return (
+    <div
+      className={props.className}
+      role="status"
+      aria-live="polite"
+      style={currentLine}
+      data-polaris-update="failed"
+    >
+      <span style={{ flex: "1 1 auto", minWidth: 0 }}>
+        {c.updateCheckFailed}
+        {cause ? ` ${cause}` : ""}
+      </span>
+      {unavailable ? null : (
+        <Button
+          variant="secondary"
+          size="compact"
+          busy={props.busy}
+          onClick={props.onRetry}
+          data-polaris-update-retry=""
+        >
+          {c.retryLabel}
+        </Button>
+      )}
+    </div>
+  );
+}
 
 export interface UpdatePromptSlots {
   /** Replace the whole prompt. Receives the live check plus a dismiss callback. */
@@ -203,6 +292,8 @@ function VersionPrompt(
     fetcher,
   });
   const [dismissed, setDismissed] = useState(false);
+  // A Try again was pressed: where it lands, focus follows (DL9).
+  const [retried, setRetried] = useState(false);
 
   if (!check.enabled || dismissed) return null;
   if (!check.updateAvailable && !showWhenCurrent) return null;
@@ -216,38 +307,24 @@ function VersionPrompt(
     // never says it.
     if (check.error)
       return (
-        <div
+        <FailedLine
           className={className}
-          role="status"
-          aria-live="polite"
-          style={currentLine}
-          data-polaris-update="failed"
-        >
-          <span style={{ flex: "1 1 auto", minWidth: 0 }}>
-            {errorSentence(check.error as ErrorLike)}
-          </span>
-          <Button
-            variant="secondary"
-            size="compact"
-            busy={check.busy}
-            onClick={() => void check.check()}
-            data-polaris-update-retry=""
-          >
-            {theme.copy.retryLabel}
-          </Button>
-        </div>
+          theme={theme}
+          error={check.error as ErrorLike}
+          busy={check.busy}
+          onRetry={() => {
+            setRetried(true);
+            void check.check();
+          }}
+        />
       );
     if (!check.latest) return null;
     return (
-      <div
+      <CurrentLine
         className={className}
-        role="status"
-        aria-live="polite"
-        style={currentLine}
-        data-polaris-update="current"
-      >
-        {theme.copy.updateUpToDateLabel}
-      </div>
+        text={theme.copy.updateUpToDateLabel}
+        focusOnMount={retried}
+      />
     );
   }
 
@@ -301,6 +378,7 @@ function VersionPrompt(
       dismissLabel={theme.copy.updateDismissLabel}
       onDismiss={dismiss}
       marker="banner"
+      focusAction={retried}
     />
   );
 }

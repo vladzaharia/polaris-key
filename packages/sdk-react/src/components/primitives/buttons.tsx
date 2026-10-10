@@ -26,6 +26,7 @@ import { typeStep } from "./card.js";
 import { useFocusRing } from "./focus.js";
 import {
   COARSE_POINTER,
+  FORCED_COLORS,
   REDUCED_MOTION,
   matches,
   useMediaQuery,
@@ -174,6 +175,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const name = label ?? (typeof children === "string" ? children : undefined);
     const ring = useFocusRing();
     const coarse = useMediaQuery(COARSE_POINTER);
+    const forced = useMediaQuery(FORCED_COLORS);
     const inert = Boolean(disabled || busy);
     const click = (e: MouseEvent<HTMLButtonElement>): void => {
       // Ignored rather than natively disabled, so focus stays here; preventing the default also
@@ -192,7 +194,18 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         style={{
           ...styles[variant],
           ...(size === "compact" ? compactStyle : null),
-          ...(size === "compact" && coarse ? { minHeight: "2.75rem" } : null),
+          // A touch target is 44 px: the compact, quiet and ghost buttons grow to it.
+          ...((size === "compact" ||
+            variant === "quiet" ||
+            variant === "ghost") &&
+          coarse
+            ? { minHeight: "2.75rem" }
+            : null),
+          // Forced colours drop an author fill, so the one primary is drawn in the system's
+          // selection pair: a solid block no other button has.
+          ...(forced && variant === "primary"
+            ? { background: "Highlight", color: "HighlightText" }
+            : null),
           ...(disabled ? { opacity: 0.42, cursor: "not-allowed" } : null),
           ...(busy && !disabled ? { cursor: "progress" } : null),
           ...style,

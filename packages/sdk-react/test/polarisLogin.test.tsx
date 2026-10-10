@@ -229,10 +229,6 @@ describe("PolarisLogin — key submission", () => {
       { kind: "refused", code: "license_disabled", message: "device limit" },
       /license has been disabled/i,
     ],
-    [
-      { kind: "device-limit", limit: 2, deviceCount: 2 },
-      /already on all its devices/i,
-    ],
   ] as const)(
     "the alert is the copy catalog's sentence for the typed outcome, never the message text (%j)",
     async (outcome, expected) => {

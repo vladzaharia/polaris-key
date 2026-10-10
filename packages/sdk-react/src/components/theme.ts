@@ -129,15 +129,15 @@ export interface PolarisThemeCopy {
   handoffExpires: string;
   /** Opens the sign-in page (signin.handoff.openBrowser). */
   handoffOpenLabel: string;
-  /** Copies the code (common.copy). */
+  /** Copies the code, the icon button's name (a11y.copyCode). */
   handoffCopyLabel: string;
   /** Said after the copy worked (common.copied). */
   handoffCopiedLabel: string;
   /** Stops the sign-in (common.cancel). */
   handoffCancelLabel: string;
-  /** The title once the code has run out (signin.expired.title). */
+  /** The title once the code has run out (core copy `sign-in-expired`). */
   handoffExpiredTitle: string;
-  /** The line under it (signin.expired.body). */
+  /** The line under it (core copy `sign-in-expired`). */
   handoffExpiredBody: string;
   /** Starts a new code (signin.again). */
   handoffAgainLabel: string;
@@ -191,6 +191,12 @@ export interface PolarisThemeCopy {
   updateActionLabel: string;
   updateDismissLabel: string;
   updateUpToDateLabel: string;
+  /** The line a failed update check leaves. No catalog key yet (proposed `update.checkFailed`). */
+  updateCheckFailed: string;
+  /** Its cause when the connection failed, or the server did. */
+  updateCheckOffline: string;
+  /** Its cause when the product publishes no updates (a 404): nothing a retry can fix. */
+  updateCheckUnavailable: string;
   /** wire v4 decisions (`<UpdatePrompt source="decision">`). */
   updateReadyTitle: string;
   /** The ready title once `productName` is set (update.readyTitle). */
@@ -414,11 +420,12 @@ export const defaultTheme: PolarisTheme = {
     handoffUrl: "Or go to {url}",
     handoffExpires: "Code expires in {time}",
     handoffOpenLabel: "Open browser",
-    handoffCopyLabel: "Copy",
+    handoffCopyLabel: "Copy code",
     handoffCopiedLabel: "Copied",
     handoffCancelLabel: "Cancel",
-    handoffExpiredTitle: "That code or link has expired",
-    handoffExpiredBody: "Codes and links work once, for 10 minutes.",
+    handoffExpiredTitle: "Code expired",
+    handoffExpiredBody:
+      "The code expired before sign-in finished. Start again.",
     handoffAgainLabel: "Sign in again",
     errorTitle: "{product} couldn't start",
     graceTitle: "Offline grace",
@@ -463,6 +470,9 @@ export const defaultTheme: PolarisTheme = {
     updateActionLabel: "Get the update",
     updateDismissLabel: "Later",
     updateUpToDateLabel: "You're up to date.",
+    updateCheckFailed: "Couldn't check for updates.",
+    updateCheckOffline: "Check your connection.",
+    updateCheckUnavailable: "Updates aren't available for this app.",
     updateReadyTitle: "An update is ready",
     updateReadyProductTitle: "{product} {version} is ready",
     updateReadyBody: "Restart the app to finish updating.",
@@ -545,6 +555,13 @@ export function knownProductName(theme: PolarisTheme): string | null {
   )
     return null;
   return name;
+}
+
+/** The product's name for copy that says what continues ("{product} continues when you're
+ *  done"): the integrator's, else the neutral placeholder. Never the brand's own "Polaris Key",
+ *  which names the platform and not the app behind the gate (B2). */
+export function productLabel(theme: PolarisTheme): string {
+  return knownProductName(theme) ?? defaultTheme.copy.productName;
 }
 
 /** The one-option preset for the Polaris Key brand: `theme={polarisKeyTheme}`. */

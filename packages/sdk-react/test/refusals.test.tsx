@@ -190,3 +190,128 @@ describe("revoked has a way out", () => {
     adapter.dispose();
   });
 });
+
+describe("a Try again that fails says so under the button", () => {
+  it("revoked: the catalog sentence for the failure, announced, linked to the button, cleared on the next try", async () => {
+    const bridge = makeFakeBridge(
+      okBridgeState({ lastSyncUnauthorized: true }),
+    );
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <LicenseGate>
+          <div data-testid="app">APP</div>
+        </LicenseGate>
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-polaris-gate="revoked"]'),
+      ).toBeTruthy(),
+    );
+    let fail = true;
+    bridge.refresh = async () => {
+      if (fail) throw new Error("offline");
+      return okBridgeState({ lastSyncUnauthorized: true });
+    };
+    const retry = () =>
+      [...container.querySelectorAll("button")].find(
+        (b) => b.textContent === "Try again",
+      )!;
+    fireEvent.click(retry());
+    const message = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-gate-retry-error]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(message.getAttribute("role")).toBe("alert");
+    expect(message.textContent).not.toBe("");
+    expect(retry().getAttribute("aria-describedby")).toBe(message.id);
+    // The screen is still the revoked one: the state did not change, the person was told.
+    expect(
+      container.querySelector('[data-polaris-gate="revoked"]'),
+    ).toBeTruthy();
+    fail = false;
+    fireEvent.click(retry());
+    await waitFor(() =>
+      expect(
+        container.querySelector("[data-polaris-gate-retry-error]"),
+      ).toBeNull(),
+    );
+    adapter.dispose();
+  });
+});
+
+describe("touch targets and the brand's name", () => {
+  it("Cancel and Try again are at least 44 px where the pointer is coarse", async () => {
+    const real = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q === "(pointer: coarse)",
+      media: q,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const bridge = makeFakeBridge(
+        okBridgeState({ lastSyncUnauthorized: true }),
+      );
+      const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+      const { container } = render(
+        <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+          <LicenseGate>
+            <div />
+          </LicenseGate>
+        </PolarisKeyProvider>,
+      );
+      const tryAgain = await waitFor(() => {
+        const el = [...container.querySelectorAll("button")].find(
+          (b) => b.textContent === "Try again",
+        );
+        expect(el).toBeTruthy();
+        return el as HTMLElement;
+      });
+      expect(tryAgain.style.minHeight).toBe("2.75rem");
+      adapter.dispose();
+    } finally {
+      window.matchMedia = real;
+    }
+  });
+
+  it("under polaris-key with no product name the callout says 'This app', never 'Polaris Key'", async () => {
+    const bridge = makeFakeBridge(emptyBridgeState());
+    bridge.submitKey = vi.fn(
+      async () =>
+        ({
+          kind: "device-limit",
+          limit: 3,
+          deviceCount: 3,
+          manageUrl: MANAGE,
+        }) as BridgeActivation,
+    );
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const { container } = render(
+      <PolarisKeyProvider
+        productSlug="acme"
+        adapter={adapter}
+        branding="polaris-key"
+      >
+        <LicenseGate>
+          <div />
+        </LicenseGate>
+      </PolarisKeyProvider>,
+    );
+    const input = await keyField(container);
+    fireEvent.change(input, { target: { value: "pkey_acme_KEY" } });
+    fireEvent.submit(input.closest("form")!);
+    const callout = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-device-limit]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(callout.textContent).toContain("This app continues");
+    expect(container.textContent).not.toMatch(/Polaris Key/);
+    adapter.dispose();
+  });
+});
