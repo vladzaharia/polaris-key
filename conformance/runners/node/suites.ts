@@ -99,6 +99,11 @@
 //                                                                         recordRevoked, verifyFeed
 //   dataOnlyCases     §2.5's data-only rule (content/cases.json)       → dataOnlyRefusal
 //
+// and, from SP-54 (plans/SP-54.md §4, §5 order 0), the signed-in subject:
+//
+//   licenseUserCases  §2.1's `profile.user`, read beside the claims     → verifyLicenseDoc,
+//                                                                         licenseUserOf
+//
 // And `backend-matrix.json`, product backends (WIRE-CONTRACT-V4 §14, plans/SP-53.md §4), through
 // `defineBackendSuites`, which takes the copy catalog's tables from its runner:
 //
@@ -199,6 +204,7 @@ import {
   isDevBuild,
   isUsable,
   licenseState,
+  licenseUserOf,
   mergeTrust,
   verifyBundle,
   verifyConfigDoc,
@@ -395,6 +401,12 @@ interface FeedContentCase extends NonWire {
   };
 }
 
+/** plans/SP-54.md §4: one `licenseUserCases` vector, a licence document that verifies and the
+ *  signed-in user it reads as. I-24a adds `expect.namedUsers`; absent, it is not checked. */
+interface LicenseUserCase extends DocCase {
+  expect: { accept: true; user: { subject: string } | null };
+}
+
 /** plans/P4-13.md §4.2: one `revocationCases` vector. */
 interface RevocationCase extends NonWire {
   id: string;
@@ -526,6 +538,8 @@ export interface Corpus {
   markerCases: MarkerCase[];
   /** plans/P4-19.md §4.1: content-key delegation. */
   delegationCases: DelegationCase[];
+  /** plans/SP-54.md §4: the signed-in subject, `profile.user`. */
+  licenseUserCases: LicenseUserCase[];
 }
 
 export interface MatrixRow {
@@ -950,6 +964,28 @@ export function defineCorpusSuites({
         expect(doc !== null, `${c.id} — ${c.description}`).toBe(
           c.expect.accept,
         );
+      });
+    }
+  });
+
+  // @pkey-feature core.verify
+  describe(`conformance corpus v${corpus.corpusVersion} — the signed-in subject (V4 §2.1, §3.2, plans/SP-54.md)`, () => {
+    it("has every licenseUserCases vector and the three profile.user licence cases", () => {
+      expect(corpus.licenseUserCases.length).toBe(14);
+      const ids = new Set(corpus.licenseDocCases.map((c) => c.id));
+      for (const id of [
+        "license-profile-user-valid",
+        "license-profile-user-not-object",
+        "license-profile-user-extra-members",
+      ])
+        expect(ids.has(id), id).toBe(true);
+    });
+    for (const c of corpus.licenseUserCases) {
+      it(`${c.id} → user:${c.expect.user === null ? "null" : "subject"}`, async () => {
+        // The member never refuses a document: every row verifies on its claims first.
+        const doc = await verifyLicenseDoc(c.jws, docOpts(c));
+        expect(doc, `${c.id} — ${c.description}`).not.toBeNull();
+        expect(licenseUserOf(doc), c.description).toEqual(c.expect.user);
       });
     }
   });

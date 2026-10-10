@@ -344,6 +344,9 @@ export {
   type LicenseState,
 } from "./gate.js";
 
+// WIRE-CONTRACT-V4 §2.1, §3.2 (SP-54): the licence document's members read beside the claims.
+export { licenseUserOf } from "./license.js";
+
 export {
   listUserEntries,
   resolveSource,
