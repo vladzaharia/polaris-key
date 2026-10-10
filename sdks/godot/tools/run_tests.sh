@@ -214,8 +214,9 @@ done
 step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "$@" || exit 1
 
 # 3b. The UI resolution matrix (tests/ui/matrix.gd): every drop-in screen laid out at every size,
-# look and locale, in the editor, as a step of its own (about a minute) so the editor step keeps
-# its budget. Layout is the same engine code on a release template, so it runs once.
+# look and locale, in the editor, as a step of its own so the editor step keeps its budget. It
+# takes 6-10 minutes, past the default 300 s step limit: CI and the local gate set
+# PKEY_TEST_TIMEOUT=900. Layout is the same engine code on a release template, so it runs once.
 if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
   step ui-matrix run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix || exit 1
 fi

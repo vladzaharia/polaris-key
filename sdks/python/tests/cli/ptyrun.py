@@ -69,20 +69,24 @@ class PtyRun:
             if not data:
                 self._reap(block=True)
                 return
-            text = self._decoder.decode(data)
-            self.raw += text
-            self.term.write(text)
-            if "\x1b]11;?" in text:
-                self.osc11_seen = True
-                if self.osc11_at is None:
-                    self.osc11_at = time.monotonic()
-                if self.answer_osc11:
-                    os.write(self.master, b"\x1b]11;rgb:0000/0000/0000\x1b\\")
-            if "\x1b[6n" in text:
-                self.cpr_asked += 1
-                if self.answer_cpr:
-                    s = self.term.screen
-                    os.write(self.master, f"\x1b[{s.cursor.y + 1};{s.cursor.x + 1}R".encode())
+            self._take(data)
+
+    def _take(self, data: bytes) -> None:
+        """Draw what the program wrote and answer its questions."""
+        text = self._decoder.decode(data)
+        self.raw += text
+        self.term.write(text)
+        if "\x1b]11;?" in text:
+            self.osc11_seen = True
+            if self.osc11_at is None:
+                self.osc11_at = time.monotonic()
+            if self.answer_osc11:
+                os.write(self.master, b"\x1b]11;rgb:0000/0000/0000\x1b\\")
+        if "\x1b[6n" in text:
+            self.cpr_asked += 1
+            if self.answer_cpr:
+                s = self.term.screen
+                os.write(self.master, f"\x1b[{s.cursor.y + 1};{s.cursor.x + 1}R".encode())
 
     def _reap(self, block: bool = False) -> None:
         if self.status is not None:
@@ -114,9 +118,47 @@ class PtyRun:
         os.write(self.master, data)
 
     def resize(self, cols: int, rows: int) -> None:
+        """Reflow the window, then tell the program (SIGWINCH). The program is paused between two of
+        its frames meanwhile: a frame laid out for the old size and drawn after the reflow (a busy
+        machine reads it late, or the program was laying it out) leaves rows the kit cannot know
+        about, a race a person's terminal has too and that these tests are not about."""
         self.pump(0.05)
-        self.term.resize(cols, rows)
-        fcntl.ioctl(self.master, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+        self._pause()
+        try:
+            self.pump(0.05)  # what the program wrote before it stopped, drawn at the old size
+            self.term.resize(cols, rows)
+            fcntl.ioctl(self.master, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+        finally:
+            if self.status is None:
+                os.kill(self.pid, signal.SIGCONT)
+
+    def _pause(self) -> None:
+        """SIGSTOP the program while it waits between frames. A live region redraws every 80 ms and
+        then waits: stopped within 40 ms of a frame arriving, it is waiting, not laying one out. A
+        program that draws nothing for 0.3 s is waiting for a key."""
+        for _ in range(50):
+            if self.status is not None:
+                return
+            ready, _, _ = select.select([self.master], [], [], 0.3)
+            seen = time.monotonic()
+            if ready:
+                try:
+                    data = os.read(self.master, 65536)
+                except OSError:
+                    data = b""
+                if not data:
+                    self._reap(block=True)
+                    return
+                self._take(data)
+            os.kill(self.pid, signal.SIGSTOP)
+            _, st = os.waitpid(self.pid, os.WUNTRACED)
+            if not os.WIFSTOPPED(st):
+                self.status = os.waitstatus_to_exitcode(st)
+                self.exited_at = time.monotonic()
+                return
+            if not ready or time.monotonic() - seen < 0.04:
+                return
+            os.kill(self.pid, signal.SIGCONT)
 
     def signal(self, signum: int) -> None:
         os.kill(self.pid, signum)
