@@ -60,6 +60,10 @@ var _plain := ""
 var _fetched: Texture2D = null
 var _fetched_sha := ""
 var _asked := ""
+## The name's type size before `_fit_name` steps it down for a long word, and the override `_size`
+## set for it (0: none, the theme's size).
+var _name_size := 0
+var _name_override := 0
 
 
 func _init() -> void:
@@ -95,6 +99,7 @@ func _init() -> void:
 	_name.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	# The product's name is data, never translated (UI-KITS.md §4.7).
 	_name.set_meta(PKeyUiView.DATA_META, true)
+	_name.resized.connect(_fit_name)
 	add_child(_name)
 	refresh()
 
@@ -166,6 +171,37 @@ func _screen_scale() -> float:
 	return k if is_finite(k) and k > 0.0 else 1.0
 
 
+## A product's long name never breaks a word across lines: in a narrow pane the name steps down from
+## its type size, to the body size at the least, until its widest word fits the label's width.
+## Unspaced CJK breaks between any two characters by design and is left alone.
+func _fit_name() -> void:
+	if _name == null or _name_size <= 0:
+		return
+	var want := _name_size
+	var w := _name.size.x
+	if w > 0.0 and _plain != "":
+		var font := _name.get_theme_font("font")
+		var body := get_theme_font_size("font_size", "Label") if has_theme_font_size("font_size", "Label") else _name_size
+		var least := mini(_name_size, body)
+		var words: Array = Array(_plain.split(" ", false)).filter(func(word: String) -> bool: return word.unicode_at(0) < 0x2e80 and word.unicode_at(word.length() - 1) < 0x2e80)
+		while want > least and font != null and _widest(font, words, want) > w:
+			want -= 1
+	if want < _name_size:
+		_name.add_theme_font_size_override("font_size", want)
+	elif _name_override > 0:
+		_name.add_theme_font_size_override("font_size", _name_override)
+	else:
+		# The theme's own size, which follows the screen's scale.
+		_name.remove_theme_font_size_override("font_size")
+
+
+static func _widest(font: Font, words: Array, size: int) -> float:
+	var most := 0.0
+	for word in words:
+		most = maxf(most, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+	return most
+
+
 ## The monogram's letter: the name's first character that is not a space, a bidi control or a
 ## zero-width mark.
 static func initial_of(title: String) -> String:
@@ -194,8 +230,12 @@ func _size() -> void:
 	# never smaller than the body text, and keeps up with a large title.
 	_name.remove_theme_font_size_override("font_size")
 	var name_size := float(_name.get_theme_font_size("font_size"))
+	_name_override = 0
 	if not splash and not as_title and roundf(title_size * 0.5) > name_size:
-		_name.add_theme_font_size_override("font_size", roundi(title_size * 0.5))
+		_name_override = roundi(title_size * 0.5)
+		_name.add_theme_font_size_override("font_size", _name_override)
+	_name_size = _name.get_theme_font_size("font_size")
+	_fit_name()
 	var ink := get_theme_color("font_color", "PKeyTitle") if has_theme_color("font_color", "PKeyTitle") else get_theme_color("font_color", "Label")
 	var tile := StyleBoxFlat.new()
 	tile.bg_color = Color(ink, 0.12)
