@@ -168,7 +168,7 @@ export function CardHeader({
       <ProductIcon slug={slug} name={name} tint={null} size={48} />
       <div className="min-w-0">
         <p className="text-fg-strong">
-          <span className="font-bold">{name}</span>
+          <span className="font-medium">{name}</span>
           {developer ? ` · ${developer}` : null}
         </p>
         <p className="text-sm text-fg-muted">

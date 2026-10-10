@@ -18,6 +18,10 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/P2-08.md`](../plans/P2-08.md) (2026-10-09) bears on this package: it consumes P2-08's pure `trackFallbackState(newest, fallbackNewest)` for the stale-track state on the Updates page and does not re-derive it; the `dev` track and the default store track maps (`effectiveTrackMap`) are P2-08's.
+
 ## Goal
 
 Updates page: updaters for shipped platforms with Verified status, as scoped below. Done when every acceptance criterion holds and the green gate passes.

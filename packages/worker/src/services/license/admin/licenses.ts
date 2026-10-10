@@ -58,7 +58,6 @@ import {
   patchLicense,
   readBody,
   redactPayload,
-  setLicenseStatus,
   shapeFacts,
   shapeFingerprint,
   type OverrideUpdate,
@@ -84,6 +83,11 @@ import {
   type HolderFilter,
 } from "../../../core/licenseHolders.js";
 import { licenseDeviceLimit, licenseTerms } from "../../../core/authz.js";
+import {
+  licenseEndedReasonOf,
+  licenseStatusOf,
+} from "../../../core/licensing/lifecycle.js";
+import { transitionLicense } from "../../../core/licensing/lifecycleWrites.js";
 import type { LicenseRow } from "../../../core/data.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
@@ -707,12 +711,29 @@ export async function handleLicenses(
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
 
-  // /licenses/<id>/disable | enable
+  // /licenses/<id>/disable | enable — LX-12: Disable revokes the licence (`ended_reason`
+  // `revoked`) and Enable reinstates it, through the lifecycle table. A refunded or charged-back
+  // licence is not reinstated by an operator: only the store's reversal undoes a money end
+  // (`core/licensing/lifecycle.ts` rule 3).
   if (sub === "disable" || sub === "enable") {
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
-    const status = sub === "disable" ? "disabled" : "active";
-    await setLicenseStatus(db, slug, id, status, session.sub, now);
+    const result = await transitionLicense(db, {
+      product: slug,
+      licenseId: id,
+      event: sub === "disable" ? "revoke" : "reinstate",
+      actor: session.sub,
+      now,
+    });
+    if (!result) return adminNotFound();
+    if (result.outcome === "refused")
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        `a license that ended by ${result.from === "chargeback" ? "a chargeback" : "a refund"} is restored only by the store's reversal; issue a new license instead`,
+        { endedReason: result.from },
+      );
+    const status = licenseStatusOf(result.to);
     if (sub === "disable") {
       // Purge hot-path bearer tokens immediately so disabled credentials stop authenticating
       // right away, instead of waiting for the next licenseUsable() check on a cached token.
@@ -721,16 +742,23 @@ export async function handleLicenses(
         if (m.token_hash) await deleteTokenRecord(env, slug, m.token_hash);
       }
     }
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      `license.${sub}`,
-      { kind: "license", id },
-      `${sub === "disable" ? "Disabled" : "Enabled"} license ${id}`,
-    );
-    return adminJson({ ok: true, id, status });
+    // A licence already in the requested state is not changed again, and not audited again.
+    if (result.changed)
+      await audit(
+        db,
+        slug,
+        session,
+        now,
+        `license.${sub}`,
+        { kind: "license", id },
+        `${sub === "disable" ? "Disabled" : "Enabled"} license ${id}`,
+      );
+    return adminJson({
+      ok: true,
+      id,
+      status,
+      endedReason: licenseEndedReasonOf(result.to),
+    });
   }
 
   // /licenses/<id>/overrides (PUT batch)

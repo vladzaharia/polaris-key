@@ -381,13 +381,38 @@ describe("licensed R2 downloads from the portal", () => {
     expect(url.searchParams.get("ticket")).toMatch(/^v1\./);
     expect((await fetchUrl(w, url)).status).toBe(200);
 
-    // The same repository made public: GitHub's own URL, no ticket.
+    // HA-09: the same repository made public still prefers the mirrored copy with a ticket.
+    await seedRepositoryVisibility(w.env, w.db, SLUG, "public");
+    const pub = await ticketedUrl(w, p);
+    expect(pub.origin).toBe(BYTES);
+    expect(pub.searchParams.get("ticket")).toMatch(/^v1\./);
+  });
+
+  it("HA-09: without tickets, a public repo falls back to GitHub's URL; a private repo leaks none", async () => {
+    const w = await world("licensed");
+    await w.db.run(
+      `UPDATE release_artifacts
+          SET source_url = 'https://objects.githubusercontent.com/diceroll/' || artifact_id
+        WHERE product = ?`,
+      SLUG,
+    );
+    w.env.DOWNLOAD_TICKET_KEY = undefined;
+    const p = await account(w);
     await seedRepositoryVisibility(w.env, w.db, SLUG, "public");
     const res = await redeem(w, await token(w, p));
     expect(res.status).toBe(302);
     expect(new URL(res.headers.get("location")!).hostname).toBe(
       "objects.githubusercontent.com",
     );
+    // Private: not offered, nothing minted, so no GitHub address is ever handed out.
+    await seedRepositoryVisibility(w.env, w.db, SLUG, "private");
+    const files = (await listing(w, p)).platforms.flatMap((x) => x.files);
+    expect(files.every((f) => f.reason === "not_hosted")).toBe(true);
+    expect(JSON.stringify(files)).not.toContain("githubusercontent");
+    const { artifact_id } = await artifactOf(w, "app@1.2.0", WIN);
+    const refused = await mint(w, p, "app@1.2.0", artifact_id);
+    expect(refused.status).toBe(409);
+    expect(await refused.text()).not.toContain("githubusercontent");
   });
 
   it("bytes host: GET 200, Range 206 and HEAD, all private and forced to download", async () => {

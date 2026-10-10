@@ -24,6 +24,10 @@ The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) 
 
 - `profile.user` is emitted for every subject-bound device (SP-54 pulls it forward and amends `plans/I-24.md` §2.1 and §2.4).
 
+## Amendments from approved plans (2026-10-09)
+
+- [`plans/SP-54.md`](../plans/SP-54.md) (approved 2026-10-09) amends the plan: the user emission, `licenseUserOf`, the shared types and the `licenseUserCases` section move to SP-54; the native readers move to SP-54b. I-24a keeps the two policy keys and `licenseNamedUsersOf`. See "Amended by plans/SP-54.md" at the top of `plans/I-24.md`.
+
 ## Goal
 
 Named-user seats: a licence can name N users with M devices each, with a user claim in the licence document's `profile` and seat holders recorded on the device binding.

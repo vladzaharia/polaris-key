@@ -4,7 +4,7 @@
 // flow (the rail, masked key entry, spinners and progress, `--json`, grouped help).
 //
 // Three layers (§1.3): (a) the drop-in flows (`flows.ts`, wired by the adapters), (b) the styled
-// parts (`parts.ts`, over `@polaris-key/node/terminal`), (c) the headless views (`models.ts`).
+// parts (`parts.ts`, over `@polaris-key/node/terminal`), (c) the headless views (`@polaris-key/ui-core/terminal`).
 // The plain command core (`commands.ts`, `kit.ts`'s `run`) stays side-effect-free and is what
 // `kit: false` prints. Verbs are grouped by owning service (`CLI_VERBS`).
 
@@ -109,7 +109,7 @@ export {
   type UpdatePromptView,
   type UpdateProgressView,
   type View,
-} from "./models.js";
+} from "@polaris-key/ui-core/terminal";
 
 export {
   codeRows,

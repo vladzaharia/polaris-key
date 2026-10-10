@@ -1,0 +1,54 @@
+{
+  "name": "@polaris-key/ui-core",
+  "version": "0.0.0",
+  "description": "The Polaris Key UI kits' headless layer for JavaScript: one view model per UI-KITS §4.1 component, the sign-in form's state machine, theme and product identity resolution, the copy formatter, and the design language as data. No DOM, no framework.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme/index.d.ts",
+      "default": "./dist/theme/index.js"
+    },
+    "./terminal": {
+      "types": "./dist/terminal.d.ts",
+      "default": "./dist/terminal.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/protocol": "workspace:*"
+  },
+  "peerDependencies": {
+    "@polaris-key/brand": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@polaris-key/brand": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@polaris-key/brand": "workspace:*",
+    "@types/node": "^22.14.0"
+  }
+}

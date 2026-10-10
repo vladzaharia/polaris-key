@@ -12,6 +12,10 @@
 | Human input | none                                                                                                                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                        |
 
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/UK-51.md`](../plans/UK-51.md) (2026-10-09) bears on this package: draw the pipe/non-TTY quadrant on `terminal.html` from UK-51's `gate` rows (four quadrants per refused status; refusals are ▲, never ✗) and refresh the terminal boards.
+
 ## Goal
 
 The boards of the platforms that already have a built kit (web, ios, apple iPad, android, godot, terminal) are redrawn from the reviewed builds and agree with UI-KITS.md, DL1-DL18 and the catalog copy. Each frame says whether it is 'Built today' or a 'UK-11 target'.

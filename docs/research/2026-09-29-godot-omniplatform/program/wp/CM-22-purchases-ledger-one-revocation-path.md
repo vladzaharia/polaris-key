@@ -74,6 +74,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [ ] A refund in any store revokes through one function (grep test)
 - [ ] Steam refunds caught within a day
+- [ ] A reversal must never lift an operator end or a standing chargeback (test). LX-12's lifecycle keeps one reason per licence and one state per grant, so a refund or chargeback reversal written through it as it stands reinstates an item that an operator ended before or after the refund, or one that was also charged back (THREAT-MODEL "Licence and add-on lifecycle (LX-12)").
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/commerce/*` (with `features/ship-builds/commerce` and `channels/storefronts` moved in); `help/restore-purchase`, `help/refunds`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 

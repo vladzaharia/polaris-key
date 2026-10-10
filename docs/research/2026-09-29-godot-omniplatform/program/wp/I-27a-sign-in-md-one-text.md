@@ -49,9 +49,9 @@ SIGN-IN.md gained a layer for each decision round (§F, §G, the 2026-10-05 owne
 
 ## Acceptance criteria
 
-- [ ] No amendment layers left in SIGN-IN.md.
-- [ ] Every frame number, D- and O- id and copy key cited elsewhere in the repo still resolves (`git grep`).
-- [ ] `pnpm format` and the docs link check pass.
+- [x] No amendment layers left in SIGN-IN.md.
+- [x] Every frame number, D- and O- id and copy key cited elsewhere in the repo still resolves (`git grep`).
+- [x] `pnpm format` and the docs link check pass.
 
 ## Verify
 

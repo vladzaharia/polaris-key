@@ -54,11 +54,66 @@ There is no term model beyond one `expires_at` (G8, [S-19 §4.3](../../notes/S-1
 2. Grace.
 3. Tests.
 
+## Corrections found in the code (2026-10-09)
+
+- **No grace, so "after the grace" is "at once".** With `refundGraceHours` dropped, the first
+  criterion is met when a refunded grant stops counting in the second the refund is written. The
+  registered `licensing.refundGraceHours` setting stays registered, unread; LX-40 removes it with
+  the other licensing-model settings.
+- **No migration.** LX-08 already added `ended_reason`, `superseded_by` and both vocabularies
+  (triggers). LX-12 adds no column, trigger or index. It does not backfill the licences disabled
+  before it: rule 5 sends value backfills through P0-49, which is not built. Those rows read as
+  `suspended` (LX-41's table already has that state). The migration gate is therefore not
+  exercised.
+- **The two machines are one module.** `core/licensing/lifecycle.ts` holds the licence and grant
+  tables (pure, imports nothing, as LX-32's `terms.ts`). `lifecycleWrites.ts` derives every
+  guarded UPDATE, the bulk `CASE` form and the grant contribution predicate from those tables.
+  `GRANT_STATES` moved there from `core/grants.ts`, which re-exports it.
+- **The writers.** Four paths disable a licence today, and each now writes its reason. The
+  console's Disable and a batch's Disable unused keys write `revoked`, and so does a product's
+  deletion. The sign-in merge of an enrolled licence (`activateFromIdentity`) writes
+  `superseded`, with `superseded_by`. Enable clears the reason (and a superseded licence's
+  `superseded_by`; an active licence's pointer is kept), and is refused (409) for `refunded` and
+  `chargeback`: only the store's reversal undoes a money end.
+  `admin/repo.ts`'s `setLicenseStatus` is gone. No path refunds or charges back a licence yet:
+  those events are for CM-05 and CM-22.
+- **Grant reads.** The one grant a document reads before LX-09, the licence's `oidc` grant, now
+  goes through the lifecycle's contribution predicate (`active` or `past_due`, inside
+  `expires_at`). No stored row changes value, so documents are byte-identical. The grant writers
+  exclude store-sourced grants until LX-11 retires the dual-write. Store refunds still project as
+  `revoked` until CM-22 routes them through the lifecycle.
+- **Console.** No console file changes. The admin licence summary carries `endedReason` and
+  `supersededBy` (OpenAPI `AdminLicenseSummary`) for LX-14 to show.
+
+## Follow-ups (from review, 2026-10-09)
+
+- **CM-22: a reversal must never lift an operator end or a standing chargeback.** One reason
+  column (one state per grant) holds one end. So a refund that replaced an operator's end, an
+  operator's revoke after a refund (`same`), or a chargeback after a refund (or the reverse) each
+  leave one recorded end. That end's reversal then reinstates the item while the other end
+  stands. Nothing writes a reversal through the lifecycle yet. It becomes a real fail-open when
+  CM-22 wires store reversals, so this is a CM-22 acceptance criterion (added to its brief; see
+  THREAT-MODEL "Licence and add-on lifecycle (LX-12)").
+- **LX-23: align the provisioned-keys move with the contribution predicate.** The document layer
+  (`oidcGrantLayer`) counts an `oidc` grant that is `active` or `past_due` inside `expires_at`.
+  The provisioned-keys move (`moveProvisionedKeys` in `core/grants.ts`, through
+  `activeOidcEntries`) still reads `state = 'active'` only. The two agree while nothing writes
+  `past_due` or an expiry on an `oidc` grant. The package that first does (LX-23) must align them,
+  or a move could plan against keys the document no longer shows.
+- **CM-22 / LX-11:** route store refunds through the lifecycle as `refunded` and lift the
+  store-source exclusion once the dual-write retires.
+- **The operator's suppress (LX-13, LX-14):** make the `oidc` grant's sign-in upsert keep
+  `suppressed`; it writes `active` on every sign-in today.
+
 ## Acceptance criteria
 
-- [ ] A refunded grant stops contributing after the grace (test).
-- [ ] `ended_reason` is set on disable (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] A refunded grant stops contributing after the grace (test). With no grace it stops at once:
+      `test/licenseLifecycle.test.ts` "a refunded grant stops counting at once".
+- [x] `ended_reason` is set on disable (test): `licenseLifecycle.test.ts` (Disable, product
+      deletion), `licenseBatches.test.ts` (Disable unused keys), `enroll.test.ts` (the merge's
+      `superseded`).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header
+      (the lead gate, scope changed, 2026-10-09; the migration gate is not exercised: no migration).
 
 ## Verify
 

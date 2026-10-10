@@ -685,8 +685,9 @@ claim error "owned by another account" (§4.19).
   (§0.3). On a landscape phone the two sit side by side from about 560 px.
 - A closing line: "That's everything linked to <email>. There are 4 more you can add in Discover."
 - **At 761–1023 px** the hero stacks: the art at 16:9 across the full width, the panel underneath.
-  On a short screen from 761 px the two stay side by side with the art at 16:9, and the page's
-  top spacing and the panel tighten, so the primary download is on the first screen (also stacked at 1023 × 900). **Phone:**
+  On a short screen from about 560 px the two stay side by side, and the page's top spacing and
+  the panel tighten, so the primary download is on the first screen (also stacked at 1023 × 900,
+  where the art is capped at 40 % of the screen height, contained over the same blurred copy). **Phone:**
   the primary action becomes the phone action.
 
 ### 4.14 Library: a few products (2–7)
@@ -725,10 +726,10 @@ claim error "owned by another account" (§4.19).
   one solid button; the others are outlined. Actions: device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
   "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
   **Renew**. Never news. Hidden when empty. The card's title names the product, so the reason does
-  not ("Both devices are in use. Remove one to use it on another device."); an ended license's
-  reason names the developer ("Kiln Games can renew it."), since a long name truncates on the
-  action, whose full label shows on hover. A date in a reason never breaks across lines. The copy states the
-  action once: the reason does not repeat the button.
+  not ("Both devices are in use."); an ended license's reason is the fact alone ("Your license
+  ended on 8 Oct 2026."). The action's full label shows on hover, since a long developer name
+  truncates on it. A date in a reason never breaks across lines. The copy states the action once:
+  the reason does not repeat the button.
 - **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
   Status · Latest · Devices · **Quick action for this Mac** · chevron; 72 px rows; the whole row
   opens the product page. A compact tile's status line takes up to two lines. On a tile whose
@@ -1009,8 +1010,8 @@ device counter (on the License card or in Devices); the sign-in licence keeps it
   term fact is **Access**: "Lifetime", "Until 3 Mar 2027" or "Ended 3 Mar 2027". An expired
   licence's callout reads "Ended 3 Mar 2027. Renew with <developer> to use it again." The card
   promises no updates or newer versions until LX-41's "keeps the last version" ships, and neither
-  does the Library's attention shelf: "Your Studio license ends on 3 Mar. Renew with <developer>
-  to keep using it."
+  does the Library's attention shelf: "Your Studio license ends on 3 Mar." (the action says
+  "Renew with <developer>").
 - **What's new.** The notes are Markdown, drawn formatted (headings under the card's `h2`, bold,
   italic, lists, quotes, code, `https:` and `mailto:` links only; raw HTML shows as text; never an
   HTML string). A summary shows at once (the first paragraph or list, cut to three lines or

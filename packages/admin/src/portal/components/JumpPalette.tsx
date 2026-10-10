@@ -59,8 +59,15 @@ export function JumpPalette({
   onActivate: () => void;
 }): React.ReactElement {
   const [query, setQuery] = React.useState("");
+  // At the 320 px floor the full placeholder is cut off; it reads "Jump to…" there.
+  const [narrow, setNarrow] = React.useState(false);
   React.useEffect(() => {
     if (!open) setQuery("");
+    else
+      setNarrow(
+        typeof window.matchMedia === "function" &&
+          window.matchMedia("(max-width: 24rem)").matches,
+      );
   }, [open]);
 
   /** A product was chosen: closing must not hand focus back to the opener (below). */
@@ -111,7 +118,7 @@ export function JumpPalette({
   const item =
     "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-md text-fg data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong";
   const group =
-    "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:text-fg-muted";
+    "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-fg-muted";
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -150,7 +157,9 @@ export function JumpPalette({
                 value={query}
                 onValueChange={setQuery}
                 aria-label="Jump to a product"
-                placeholder="Jump to a product or action"
+                placeholder={
+                  narrow ? "Jump to…" : "Jump to a product or action"
+                }
                 className="h-14 w-full bg-transparent text-base outline-hidden placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <DialogPrimitive.Close className="shrink-0 rounded-md px-2 py-1 text-sm text-fg-muted hover:text-fg-strong desk:hidden">

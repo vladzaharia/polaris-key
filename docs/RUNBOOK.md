@@ -1068,13 +1068,19 @@ nothing to bump and no per-SDK tag:
   shows up here too; rerun the failed jobs, then the drift job. npm's `latest` must be a stable
   release: a prerelease there (no stable release yet) fails a `main` or `beta` build's check.
 - **npm order and closure (P0-52):** the npm packages pin each other exactly, so they publish in
-  five tiers (`npm-tier-0` … `npm-tier-4`), each needing the one below, and `publish-package.yml`
+  six tiers (`npm-tier-0` … `npm-tier-5`), each needing the one below, and `publish-package.yml`
   publishes an npm package only once the feed lists every `@polaris-key` version it pins
   (`tools/feed-closure.mjs requires`, waiting up to ten minutes for the render queue). The drift
   job then checks every pin of the build's version, and `npm-install` installs from the feed in
   empty directories: `pnpm add @polaris-key/node` with pnpm 11's defaults (its one-day age gate
   picks the newest version a day old), `npm install @polaris-key/react react react-dom`, and the
   build's exact set.
+- **The first release after `@polaris-key/ui-core` lands must be a tag deploy.** A package publishes
+  only to a deliverable the system product declares, and the deploy hook (`POST /webhooks/deploy`,
+  `linkSystemProduct`) is what applies the root `.pkey/release.yaml`, `npm.ui-core` included. Until
+  a production deploy has run it, a publish of ui-core is refused (`invalid_descriptor`) and tier 3
+  stops `node`, `react` and `cli` with it, so `main`-channel publishes fail until the tag deploy
+  has registered `npm.ui-core`.
 - **A leg stuck in `waiting`:** GitHub occasionally never advances one deployment to
   `package-registry` (no reviewer or timer can release it). Nothing above its tier publishes.
   Cancel the run, then **Re-run failed jobs**: the stuck leg and every tier above it run again.

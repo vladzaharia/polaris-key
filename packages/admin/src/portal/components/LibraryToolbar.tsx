@@ -131,7 +131,7 @@ export function LibraryToolbar({
                   className={cn(
                     "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-md",
                     on
-                      ? "border-fg-strong bg-fg-strong font-bold text-surface-page"
+                      ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
                       : "border-border-strong text-fg-strong hover:bg-hover",
                   )}
                 >

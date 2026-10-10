@@ -229,11 +229,11 @@ Start-Sleep 4
 Get-Process PKeyE2E_godot -ErrorAction SilentlyContinue | Stop-Process -Force
 $app = "$env:LOCALAPPDATA\PKeyE2E"
 Check "velopack: Setup.exe --silent installed 1.0.0 with the shim as the main exe" ((Test-Path "$app\current\PKeyE2E.exe") -and (Test-Path "$app\current\PKeyE2E_godot.exe") -and (Test-Path "$app\Update.exe"))
-RunCase velopack "$app\current\PKeyE2E.exe" velopack_update "http://127.0.0.1:$Port/velopack/" 120 -WaitTarget
-JCheck "velopack: PKeyVelopackBridge applied on exit and the shim restarted into 1.0.1" velopack target_reached 'True'
+RunCase velopack "$app\current\PKeyE2E.exe" velopack_update "http://127.0.0.1:$Port/velopack/" 30
+JCheck "velopack: unverifiable packages are refused by the bridge" velopack install_and_relaunch 'not d["ok"] and d["code"] == "unsupported" and d["detail"]["reason"] == "runtime"'
+JCheck "velopack: direct native apply cannot bypass verification" velopack direct_apply 'not d["ok"] and d["error"] == "release_verification_unavailable"'
 $http = HttpSince
-Check "velopack: the feed request carried the bearer" (($http | Where-Object { $_ -match '"/velopack/releases.win.json' -and $_ -match 'Bearer e2e-token' }).Count -ge 1) ($http -join "`n")
-Check "velopack: the delta was fetched through the 302 package route, not the full package" (($http | Where-Object { $_ -match '"/velopack/PKeyE2E-1.0.1-delta.nupkg' -and $_ -match '"status": 302' }).Count -ge 1 -and ($http | Where-Object { $_ -match '/bytes/velopack/PKeyE2E-1.0.1-delta.nupkg' }).Count -ge 1 -and ($http | Where-Object { $_ -match 'full.nupkg' }).Count -eq 0) ($http -join "`n")
+Check "velopack: blocked installation performs no feed or package requests" (($http | Where-Object { $_ -match '/velopack/' }).Count -eq 0) ($http -join "`n")
 
 # 4e. WinSparkle.
 @{ case = "idle"; log = (& $fwd "$Work\logs\case-ws-install.jsonl"); quit_after_s = 10 } | ConvertTo-Json | Set-Content "$Work\run\config.json"

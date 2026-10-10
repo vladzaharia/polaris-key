@@ -63,7 +63,6 @@ export {
   listTiers,
   nextSchemaVersion,
   patchLicense,
-  setLicenseStatus,
   upsertProfile,
   upsertTier,
 } from "../admin/repo.js";

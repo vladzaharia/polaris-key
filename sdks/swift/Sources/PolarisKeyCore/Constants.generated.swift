@@ -1222,7 +1222,7 @@ public let DEVICE_LABEL_VERSION = 1
 public let PRESENTATION_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 1
+public let UI_MATRIX_VERSION = 2
 
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2

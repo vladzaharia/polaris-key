@@ -68,6 +68,7 @@
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
+    "@polaris-key/ui-core": "workspace:*",
     "@polaris-key/zstd-wasm": "workspace:*",
     "hash-wasm": "^4.12.0"
   },

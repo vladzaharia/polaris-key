@@ -2,15 +2,20 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 
 /** Initials from a display name, else from the email's local part. */
-export function initialsOf(name: string, email: string): string {
-  const source = name.trim() && name.trim() !== email ? name.trim() : "";
+export function initialsOf(
+  name: string | null | undefined,
+  email: string | null | undefined,
+): string {
+  const n = (name ?? "").trim();
+  const e = (email ?? "").trim();
+  const source = n && n !== e ? n : "";
   if (source) {
     const words = source.split(/\s+/).filter(Boolean);
     const first = words[0]?.[0] ?? "";
     const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? "") : "";
     return (first + last).toUpperCase();
   }
-  return (email.trim()[0] ?? "?").toUpperCase();
+  return (e[0] ?? "?").toUpperCase();
 }
 
 /**
@@ -67,8 +72,8 @@ export function Avatar({
   badge,
   className,
 }: {
-  name: string;
-  email: string;
+  name: string | null | undefined;
+  email: string | null | undefined;
   /** The stored picture's URL (`/media/avatar/<asset>`, 256 px), or null for initials. */
   picture?: string | null;
   size?: AvatarSize;
@@ -99,7 +104,7 @@ export function Avatar({
       ) : (
         <span
           className={cn(
-            "inline-flex select-none items-center justify-center rounded-full bg-accent-subtle font-bold text-accent-fg",
+            "inline-flex select-none items-center justify-center rounded-full bg-accent-subtle font-medium text-accent-fg",
             s.box,
             s.text,
           )}

@@ -32,11 +32,10 @@ import sys
 import webbrowser
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Optional
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 from ..constants_generated import UnsupportedReason
 from ..core.models import UpdateCheck, UpdateDecision
-from ..core.events import listener_failed
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..client import PolarisKeyClient
@@ -185,17 +184,14 @@ class SelfReplaceDriver(InstallDriver):
 
 # ── Velopack ─────────────────────────────────────────────────────────────────────────
 class VelopackDriver(InstallDriver):
-    """Drive Velopack's ``UpdateManager`` over the product's Velopack feed.
+    """Velopack integration; automatic installation is currently disabled.
 
-    ``velopack_channel`` is the channel the app was packed with (``win-x64``, ``osx-arm64``,
-    ``linux-x64``…). ``restart`` (default ``True``) applies and restarts at once
-    (``handed-off``); ``False`` waits for the app to exit and then applies
-    (``restart-required``). ``manager_factory(url, channel)`` builds the manager; the default
-    imports the ``velopack`` package (``pip install velopack``).
+    The manager API cannot expose the exact applied bytes for signed-record verification.
 
-    Licensed or entitled delivery: Velopack fetches the package itself and does not carry the
-    device bearer; a product that gates its app bytes needs the Worker's Velopack route to serve
-    them (S-11 §5.2; parity pass wire item W9)."""
+    ``velopack_channel``, ``restart`` and ``manager_factory`` remain accepted for source
+    compatibility. The factory is not called and no download, apply or journal event occurs.
+    Feed discovery still returns its existing typed unsupported result when unavailable.
+    """
 
     def __init__(
         self,
@@ -228,34 +224,11 @@ class VelopackDriver(InstallDriver):
         feed = client.update.feed_url("velopack", velopack_channel=self.velopack_channel)
         if isinstance(feed, Unsupported):
             return unsupported(feed.reason, feed.detail or "no Velopack feed")
-        # Velopack wants the folder that holds `releases.<channel>.json`.
-        parts = urlsplit(feed)
-        folder = urlunsplit((parts.scheme, parts.netloc, parts.path.rsplit("/", 1)[0] + "/", "", ""))
-        try:
-            manager = self._manager(folder)
-        except ImportError:
-            return unsupported(UnsupportedReason.DEPENDENCY, "the velopack package is not installed")
-        info = manager.check_for_updates()
-        if not info:
-            return unsupported(UnsupportedReason.PRODUCT, "the Velopack feed offers no newer package")
-        version = decision.release.version if decision.release is not None else None
-
-        def progress(pct: Any) -> None:
-            if on_progress is not None:
-                try:
-                    on_progress(int(pct), 100)
-                except Exception:
-                    listener_failed("on_progress")
-
-        try:
-            manager.download_updates(info, progress)
-        except TypeError:
-            manager.download_updates(info)
-        if version:
-            _record(client, "update_downloaded", version)
-            _record(client, "update_applied", version)
-        if self.restart:
-            manager.apply_updates_and_restart(info)
-            return InstallOutcome("handed-off", version=version)
-        manager.wait_exit_then_apply_updates(info)
-        return InstallOutcome("restart-required", version=version)
+        # The manager does not expose the exact package it applies. Feed checksums and
+        # versions cannot substitute for authorization by the pinned release key.
+        # Refuse before constructing a manager (checking may itself download bytes).
+        return unsupported(
+            UnsupportedReason.RUNTIME,
+            "Velopack installation is disabled until the exact applied package can be verified "
+            "against the pinned-key-signed release record (version, size and SHA-256).",
+        )

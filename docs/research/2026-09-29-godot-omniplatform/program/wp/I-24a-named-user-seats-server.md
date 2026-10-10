@@ -3,8 +3,8 @@
 | Field       | Value                                                                                                                                                                                                                                                                                  |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (later)                                                                                                                                                                                                             |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                                   |
-| Depends on  | [I-24](I-24-named-user-seats.md), [I-05](I-05-accounts-core.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                                     |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                                                                                                 |
+| Depends on  | [I-24](I-24-named-user-seats.md), [I-05](I-05-accounts-core.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [SP-54](SP-54-signed-in-subject-in-licence-document.md)                                                                                            |
 | Unblocks    | [I-24b](I-24b-named-user-seats-sdks.md), [LX-24](LX-24-per-seat-features.md)                                                                                                                                                                                                           |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                  |
 | Plan mode   | yes: executes the approved [`plans/I-24.md`](../plans/I-24.md) §2, §3, §4, §6 and the client-core part of §5                                                                                                                                                                           |
@@ -36,11 +36,11 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
 
 - `profile.user` is SP-54's; I-24a adds only its policy keys.
+- Approved [`plans/SP-54.md`](../plans/SP-54.md) (2026-10-09) moves more out of this package: `DocProfile.user`, `SignedInUser`, `PAIRWISE_SUBJECT_PATTERN` in `core.ts`, client-core `licenseUserOf`, the three `licenseDocCases` rows and the `licenseUserCases` section (created with `expect.user`) are SP-54's, and `devicecode-happy.json` is re-recorded there. I-24a depends on SP-54 and adds only `licenseNamedUsersOf` (in the same `src/license.ts`), `expect.namedUsers` and its own rows on `licenseUserCases`, the two policy keys, and the `seats-*.json` transcripts. The seat-holder gate in the Worker (a named-user licence) reads `devices.subject` as before; the emission it needs is SP-54's `docProfile(license, device)`.
 
 ## Goal
 
-A licence can hold named-user seats: the Worker signs `profile.user = {"subject":"ps_…"}` into the
-licence document of a device that holds a seat, injects `license.maxUsers` and
+A licence can hold named-user seats: the Worker (with SP-54's `profile.user`, already in the document of every signed-in device) injects `license.maxUsers` and
 `license.devicesPerUser` on named-user licences, refuses the per-user cap as `device_limit` with
 `scope: "user"`, and the console and portal manage holders and invites. Every licence without
 named-user seats keeps byte-identical documents.
@@ -62,8 +62,8 @@ the split into I-24a (this package) and I-24b (the SDKs) (Q8).
 ## Scope
 
 **In:** plans/I-24.md §2 (contract), §3 (catalog and manifests), §4 (corpus, transcripts, parity),
-§6 (tables, Core, routes, pages, THREAT-MODEL), and the client-core readers `licenseUserOf(doc)` and
-`licenseNamedUsersOf(doc)` from §5.
+§6 (tables, Core, routes, pages, THREAT-MODEL), and the client-core reader `licenseNamedUsersOf(doc)` from §5
+(`licenseUserOf` is SP-54's), all as amended by `plans/SP-54.md`.
 
 **Out:** the six SDKs and four UI kits (→ I-24b); per-seat feature assignment (→ LX-24).
 

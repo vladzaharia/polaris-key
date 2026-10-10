@@ -55,7 +55,7 @@ export function CheckRow({
         {ROW_ICON[state]}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-fg-strong">
+        <p className="text-sm font-medium text-fg-strong">
           <span className="sr-only">{ROW_STATE_TEXT[state]}: </span>
           {title}
         </p>

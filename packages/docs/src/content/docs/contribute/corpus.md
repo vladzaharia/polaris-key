@@ -102,7 +102,7 @@ files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerpr
 `stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
 `feedUrlMatrixVersion` **1**, `syncScenariosVersion` **1**, `deviceLabelVersion` **1**,
-`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **1** — and case counts, generated
+`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **2** — and case counts, generated
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
@@ -274,7 +274,7 @@ is checked against the file like any other SDK, by its own test
 the implementation it checks cannot catch a bug in it.
 
 `ui-matrix.json` (`plans/UK-02.md` §4, `plans/UK-02b.md` §4) is generated from rows authored in
-`tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 1: a new row keeps
+`tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 2: a new row keeps
 the version; a changed row, input member or rule bumps it, and each runner checks the generated
 `UI_MATRIX_VERSION`. There is no reference state machine: the generator checks structure (every
 must state has a row and the rows' copy covers its `components.json` list, every component has a
@@ -288,9 +288,11 @@ reworded or translated key) changes the file only through the computed i18n stri
 
 A variant the matrix cannot pin yet is declared, never left out silently: `GAPS` in
 `tools/ui-matrix.ts` (written to `vocabulary.gaps`) names it, says why and names the work package
-that appends its rows, and the build fails on an entry without an owner. Today it holds DL7's
-delayed response (a loading state slower than 250–300 ms), which needs a time input and so a
-`uiMatrixVersion` bump: UK-03 appends those rows with its model timer, and UK-15 renders the variant.
+that appends its rows, and the build fails on an entry without an owner. It is empty today.
+Version 2 (UK-03) closed the one it held, DL7's delayed response: the `elapsedMs` input and
+`vocabulary.loadingDelay` (`min` 250, `max` 300, and the loading states it applies to) pin a
+loading state that shows nothing before the delay and its usual copy after it, with no row inside
+the window, so each kit's model timer may wait anywhere in it. UK-15 renders the variant.
 
 `update-matrix.json` and `outlet-matrix.json` (wire contract v4) are hand-authored from the
 plan's row lists (`plans/P3-01.md` §4.6, §4.7) and **append-only** as well. The generator carries

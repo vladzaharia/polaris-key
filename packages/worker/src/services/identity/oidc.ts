@@ -91,6 +91,7 @@ import {
   guardedWrite,
   oidcGrantStatements,
 } from "../../core/grants.js";
+import { licenseTransitionStatement } from "../../core/licensing/lifecycleWrites.js";
 import { readSyncTierOnSignIn } from "./settings.js";
 import {
   mergeLicenseInto,
@@ -1362,11 +1363,17 @@ export async function activateFromIdentity(
         // `idx_licenses_enroll_hwid`, which is the only guard on "one free license per machine";
         // clearing it let the same machine enrol again immediately and repeat the merge with a
         // second identity, without limit.
-        {
-          sql: `UPDATE licenses SET status = 'disabled', modified_by = 'oidc',
-                  modified_at = ? WHERE product = ? AND id = ?`,
-          params: [now, product.slug, claimable.id],
-        },
+        //
+        // LX-12: the retired licence ends as `superseded` by the identity's licence. Only an
+        // active one moves; one an operator had already revoked keeps that reason.
+        licenseTransitionStatement({
+          product: product.slug,
+          licenseId: claimable.id,
+          event: "supersede",
+          supersededBy: existing.id,
+          actor: "oidc",
+          now,
+        }),
         auditStatement({
           product: product.slug,
           id: randomId("aud"),

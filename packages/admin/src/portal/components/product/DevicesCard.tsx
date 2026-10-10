@@ -98,7 +98,7 @@ export function DevicesCard({
             <p className="mb-2 text-fg-muted">
               <CountUp
                 value={active.length}
-                className="text-xl font-bold text-fg-strong"
+                className="text-xl font-semibold text-fg-strong"
               />{" "}
               {seatLimit
                 ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
@@ -359,12 +359,12 @@ export function DeviceRow({
         </span>
         <div className="min-w-0">
           {/* Wraps, never cut short: two machines often differ only at the end of the name. */}
+          {/* The line follows the page's start edge; `bdi` shapes the name in its own direction. */}
           <p
             data-device-name=""
-            dir="auto"
-            className="break-words font-bold text-fg-strong"
+            className="break-words text-start font-medium text-fg-strong"
           >
-            {name}
+            <bdi>{name}</bdi>
           </p>
           <p className="text-sm text-fg-muted">{meta}</p>
         </div>
@@ -412,7 +412,7 @@ export function DeviceRow({
             <h3
               ref={headingRef}
               tabIndex={-1}
-              className="font-bold text-fg-strong outline-none"
+              className="font-medium text-fg-strong outline-none"
             >
               Remove {name}?
             </h3>

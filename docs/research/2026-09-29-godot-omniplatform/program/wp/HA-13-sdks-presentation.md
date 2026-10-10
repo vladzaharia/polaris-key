@@ -4,10 +4,10 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs)                                                                                |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                            |
-| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)                                                                                         |
+| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md), [UK-03](UK-03-ui-core.md)                                                              |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-41](ST-41-integration-page-overview-card.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [UK-41](UK-41-must-tier-closeout.md) |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                            |
-| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                                                                                |
+| Plan mode   | yes: executes the approved [`plans/HA-13.md`](../plans/HA-13.md) (2026-10-09) under [`plans/HA-11.md`](../plans/HA-11.md)                                                       |
 | Gates       | plan mode; all SDKs; corpus and transcript runners; UI snapshots                                                                                                                |
 | Human input | none                                                                                                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                       |
@@ -17,6 +17,18 @@
 The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
 
 > SDKs read presentation through the PresentationSource seam the kits consume.
+
+## Approved plan (2026-10-09)
+
+[`plans/HA-13.md`](../plans/HA-13.md) is approved (2026-10-09, recommendation on D1 to D5). Where it differs from the text below, it wins.
+
+- **Sequencing.** Start **after UK-03 merges** (the only corpus owner in flight). No wire change, and no corpus rows are expected: each SDK adds a _runner_, not a file. If a runner finds a gap, the porter does not regenerate; the rows go to one batch after UK-03 (append-only to `tools/presentation-matrix.ts`, one `pnpm gen corpus`, then rerun the six runners).
+- **Stand-in seams (D1).** The UK kits landed with local stand-ins: Node's terminal kit `presentation()`, Python's `current()` lookup in `ui/core/identity.py`, Swift's `PolarisProductPresentation` environment struct. The **client-core shape wins** (`client.presentation()`, `presentationIcon({px, scale})`, `presentationSource()`); the kits keep thin adapters only until UK-03, UK-07, UK-09 and UK-12 import the seam, then delete them. The Python test double is deleted.
+- **Browser icon (D2).** A `blob:` URL (needs `img-src blob:`), documented as an integrator-CSP requirement.
+- **Fetch rules.** From HA-11 §2.1, no new ones; plus a safe-link check: https (or loopback http only) and any `{w}` expansion that stays on `original`'s origin. The SDK never opens a presentation URL. Names render bidi-isolated.
+- **Accent.** The SDK only supplies `accent` and `accentDark`, lower-case, as parsed; resolution stays in the kits and `resolveAccent`, pinned by the `theme` rows (integrator, then product, then icon-derived, then ink). No second resolver.
+- **Out of scope (D4).** The hosted sign-in and branded static pages keep `img-src 'self' data:`. **No shared code with HA-14 (D5).**
+- **Docs and gates.** Its part of `build/ui/theming`; `gen corpus --check`, `gen transcripts --check`, `gen constants --check`, `parity:check` and the docs `gen:check` run with no regeneration; `core.presentation` flips to `implemented` in the five manifests here (Godot stays `planned` until HA-14).
 
 ## Goal
 
@@ -46,7 +58,7 @@ It completes "zero integrator work" for every non-Godot SDK ([S-20 §6.9](../../
 ## Design notes
 
 - A failed or mismatched icon falls back to the letter tile silently.
-- **UI kits (owner decision, 2026-10-05).** This package is the only path by which presentation reaches a kit. Expose it as each SDK's presentation accessor and implement the kit core's `PresentationSource` seam: `@polaris-key/ui-core` (UK-03), the Swift presentation core (UK-07), Kotlin `commonMain` (UK-09) and `polaris_key.ui.core` (UK-12). Where a UK kit has not landed yet, wire today's kit theme as planned; the UK kit then reads the same accessor. No kit fetches discovery or caches the icon itself. UK-41 verifies the default end to end ([UI-KITS.md](../../../../design/UI-KITS.md) §1.2, §10).
+- **UI kits (owner decision, 2026-10-05).** This package is the only path by which presentation reaches a kit. Expose it as each SDK's presentation accessor and implement the kit core's `PresentationSource` seam: `@polaris-key/ui-core` (UK-03), the Swift presentation core (UK-07), Kotlin `commonMain` (UK-09) and `polaris_key.ui.core` (UK-12). Where a UK kit has not landed yet, reconcile its stand-in seam with the client-core shape as `plans/HA-13.md` §3 sets out (thin adapters, removed when the UK kit imports the seam); the UK kit then reads the same accessor. No kit fetches discovery or caches the icon itself. UK-41 verifies the default end to end ([UI-KITS.md](../../../../design/UI-KITS.md) §1.2, §10).
 
 ## Screen acceptance (brand transition, 2026-10-09)
 

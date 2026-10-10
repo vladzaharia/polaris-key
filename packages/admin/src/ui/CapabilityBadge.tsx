@@ -76,7 +76,7 @@ export function CapabilityBadge({
       data-capability={mode}
       title={CAPABILITY_MEANING[mode]}
       className={cn(
-        "inline-flex h-6 shrink-0 items-center gap-1 rounded-sm border px-1.5 text-xs font-bold",
+        "inline-flex h-6 shrink-0 items-center gap-1 rounded-sm border px-1.5 text-xs font-medium",
         mode === "unsupported"
           ? "border-border text-fg-muted"
           : "border-border-strong text-fg",

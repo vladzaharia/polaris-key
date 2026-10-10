@@ -160,7 +160,7 @@ export function GetItPanel({
                 ) : null}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-fg-strong">
+                <p className="font-medium text-fg-strong">
                   {r.platform ? `${osName(r.platform)} · ` : ""}
                   {r.title}
                 </p>
@@ -183,11 +183,15 @@ export function GetItPanel({
           ))}
         </div>
       ) : null}
-      <h3 className="mb-2 text-md font-bold text-fg-strong">All platforms</h3>
+      <h3 className="mb-2 text-md font-semibold text-fg-strong">
+        All platforms
+      </h3>
       <div className="divide-y divide-border border-t border-border">
         {model.groups.map((g) => (
           <div key={g.label} className="py-2">
-            <h4 className="py-2 text-xs font-bold text-fg-muted">{g.label}</h4>
+            <h4 className="py-2 text-xs font-semibold text-fg-muted">
+              {g.label}
+            </h4>
             {g.rows.length ? (
               <ul className="divide-y divide-border">
                 {g.rows.map((r) => (
@@ -211,7 +215,7 @@ export function GetItPanel({
                       {/* Wraps, never cut short (§4.20, like a device's name). */}
                       <p
                         data-platform-name=""
-                        className="break-words font-bold text-fg-strong"
+                        className="break-words font-medium text-fg-strong"
                       >
                         {r.title}
                       </p>
@@ -230,20 +234,20 @@ export function GetItPanel({
                           href={r.elsewhere.href}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex h-10 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-bold text-fg-strong hover:bg-hover"
+                          className="inline-flex h-10 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-medium text-fg-strong hover:bg-hover"
                         >
                           {r.elsewhere.label}
                           <ExternalLink aria-hidden className="size-4" />
                           <span className="sr-only">{C["getIt.newTab"]}</span>
                         </a>
                       ) : (
-                        <span className="text-right text-sm font-bold text-fg-strong">
+                        <span className="text-right text-sm font-medium text-fg-strong">
                           {r.elsewhere.label}
                         </span>
                       )
                     ) : r.notIncluded ? (
                       <span className="text-right text-sm">
-                        <span className="block font-bold text-fg-strong">
+                        <span className="block font-medium text-fg-strong">
                           Not included
                         </span>
                         <span className="block text-fg-muted">
@@ -275,7 +279,7 @@ export function GetItPanel({
         <div className="mt-5 space-y-2">
           <h3
             id={`${product.slug}-also-yours-on`}
-            className="text-md font-bold text-fg-strong"
+            className="text-md font-semibold text-fg-strong"
           >
             {C["getIt.alsoYoursOn"]}
           </h3>

@@ -56,6 +56,10 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/UK-51.md`](../plans/UK-51.md) (2026-10-09) bears on this package: Runs UK-51's `mount`, `help` and `gate` rows for the Textual screens. UK-51 lands first (after UK-03 and UK-45); a `cli` row that a natural adapter fails goes back as a bug against the row.
+
 ## Goal
 
 Textual screens for host apps, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.

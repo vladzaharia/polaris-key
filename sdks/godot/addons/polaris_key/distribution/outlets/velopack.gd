@@ -15,6 +15,9 @@ extends PKeyNativeBridge
 ## answers `unsupported` (`dependency`; `runtime` off Windows or outside a Velopack install) and
 ## the adapter opens the build's download link.
 
+## Automatic installation currently returns unsupported/runtime: feed-controlled checksums
+## cannot authorize executable bytes. The adapter retains its manual download-link fallback.
+
 ## The channel the app was packed with (`vpk pack --channel`).
 var velopack_channel := ""
 

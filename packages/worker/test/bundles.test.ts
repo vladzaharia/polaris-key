@@ -48,7 +48,7 @@ import {
   issueSession,
 } from "../src/admin/session.js";
 import { listAudit, setServices } from "../src/repo.js";
-import { setLicenseStatus } from "../src/admin/repo.js";
+import { transitionLicense } from "../src/core/licensing/lifecycleWrites.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { BUNDLE_IMPORT_WINDOW_SECONDS } from "../src/core/bundles.js";
 
@@ -573,14 +573,13 @@ describe("bundle mint — refusals", () => {
 
     // A dead licence collapses into the SAME refusal as an unknown one: both mean "no grant can
     // be minted for this id", and the distinction only matters to an enumerator.
-    await setLicenseStatus(
-      world.db,
-      SLUG,
-      world.licenseId,
-      "disabled",
-      "test",
-      NOW,
-    );
+    await transitionLicense(world.db, {
+      product: SLUG,
+      licenseId: world.licenseId,
+      event: "revoke",
+      actor: "test",
+      now: NOW,
+    });
     const disabled = await mint(world, {
       deviceId: DEVICE,
       graceDays: 30,

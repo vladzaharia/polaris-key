@@ -22,6 +22,10 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/P2-12.md`](../plans/P2-12.md) §7: it reads yanks only in `loadDeliverableState`. If it is ready before P2-12's switch, it instead patches `legacyPolicyFor` (§6.4), and P2-12b deletes the patch.
 
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/P2-08.md`](../plans/P2-08.md) (2026-10-09) bears on this package: it consumes P2-08's pure `trackFallbackState(newest, fallbackNewest)` for the stale-track state (`packages.release-tracks-stale`) and does not re-derive "behind" or "N builds ahead".
+
 ## Goal
 
 Demote a release down a release track, as scoped below. Done when every acceptance criterion holds and the green gate passes.

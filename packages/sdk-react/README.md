@@ -498,11 +498,13 @@ without `importBundle` reports bundle import as `bundle-import-unsupported`.
 
 ## Theming
 
-**A product accent: set the label colour yourself.** The kit does not resolve contrast for an
-accent yet (UK-03 brings `resolveAccent`). If you set `theme.tokens.accent`, set `accentText` (the
-label on a filled button) and `ring` (the focus ring) with it, and check the pair is at least 4.5:1
-for the label and 3:1 for the fill against the page, in both schemes. A pale accent such as
-`#f5c518` needs a dark label; a navy one needs a light one. Without an accent the primary is ink.
+**A product accent.** Set `theme.tokens.accent` to your product's colour (`#rrggbb`) and the kit
+runs it through the accent resolver (`@polaris-key/brand`'s `resolveAccent`, through
+`@polaris-key/ui-core/theme`) for each scheme, against the theme's own grounds: the fill keeps
+3:1 on every surface, its label 4.5:1, and the focus ring follows the accent. A pale accent gets a
+dark label and a navy one is lifted on dark grounds, with no extra setting. Set `accentText`
+yourself and the kit keeps your accent and label as given; a `var(…)` accent is yours to keep
+readable. Without an accent the primary is ink.
 Brand through the Provider's `theme` (tokens + copy + logo): no CSS-in-JS dependency. The
 Provider publishes the tokens as `--pk-*` custom properties **twice**: on a wrapper element, so
 two providers can carry different brands without leaking into each other, and on `:root`, so
@@ -534,7 +536,7 @@ inherit on a page that sets no font, the kit uses system-ui.
   productSlug="acme"
   colorScheme="system" // "system" (default) | "dark" | "light"
   theme={{
-    tokens: { accent: "#ff5c00", accentText: "#000000" }, // both schemes
+    tokens: { accent: "#ff5c00" }, // both schemes; the label and ring are resolved for it
     lightTokens: { background: "#fbfaf7" }, // one scheme only
     logo: <AcmeLogo />, // your logo atop the screens; null for none
     poweredBy: true, // "Powered by Polaris Key" on the sign-in card and device list (off by default)
@@ -553,8 +555,9 @@ inherit on a page that sets no font, the kit uses system-ui.
   `polarisKeyLightTokens`, `defaultTheme` (neutral dark), `lightTheme` (neutral light),
   `polarisKeyTheme` and `highContrastTheme` (AAA text) are exported. Every token maps to one `--pk-*` variable
   (`themeVars`). If you change a colour, keep text at 4.5:1 and control borders and the focus
-  ring at 3:1 against the surfaces. A host accent in the dark scheme needs `darkTokens.ring` too
-  for a visible focus ring (the ring defaults to the neutral grey).
+  ring at 3:1 against the surfaces. A hex `accent` brings its own ring; a `var(…)` accent in the
+  dark scheme needs `darkTokens.ring` too for a visible focus ring (the ring defaults to the
+  neutral grey).
 - **Identity.** The screens show the product's identity, never a Polaris Key mark: your `logo`;
   otherwise, once `copy.productName` is set, a monogram tile of its initial; otherwise nothing.
 - **Copy.** Every default string is a value from the kit and core copy catalogs; any one is

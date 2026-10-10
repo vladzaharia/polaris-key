@@ -3738,6 +3738,23 @@ guard with P3-12, each of which extends this section.
   model): a compromised Worker or KEK can choose among CI-signed releases, but cannot ship bytes
   no release key signed, because every SDK verifies the record's signature, and then the
   payload's `size` and SHA-256 against the record, before staging.
+- **Velopack automatic installation fails closed.** The Node and Python manager APIs and
+  Godot native bridge do not expose the exact package bytes handed to the installer. Their
+  install entry points return `unsupported` (`runtime`) before checking or downloading a feed;
+  Godot's facade and Windows GDExtension also refuse direct apply calls. A matching version or
+  distribution-controlled checksum is not release-key authorization. Godot retains the adapter's
+  manual download-link fallback. Re-enabling installation requires verifying the exact applied
+  package's version, size and SHA-256 against the pinned-key-verified release record, including
+  delta reconstruction and the deferred apply boundary.
+- **Godot AppImage installs preserve release authorization at the executable boundary.**
+  The direct adapter passes the successful update check to `install_appimage(check)`, which
+  selects the AppImage payload from its verified release record. Bytes are downloaded into a
+  private, randomly named sibling directory, verified against the record's exact size and
+  SHA-256, made executable for the owner only, and atomically renamed over `$APPIMAGE` before
+  relaunch. Download, integrity, permission or rename failure preserves the original executable
+  and never relaunches it. The generic AppImage install hook refuses calls; a custom native
+  plugin cannot bypass this path. `appimageupdatetool -j` is informational only: zsync consistency
+  and an external tool's successful exit are never release authorization.
 - **Release keys are never product keys.** If a product key were pinned or declared as a release
   key, the Worker would hold the private half of a "release key" and the two-signer property
   would be gone without a trace. Three checks keep them apart: `verifyReleaseRecord` refuses at
@@ -6586,6 +6603,11 @@ and expiry (`core/downloadTicket.ts`). The `files` byte route accepts it in plac
 bearer, on the bytes host only. No table, no migration, no new route. With the key unset nothing
 is minted and a presented ticket verifies against nothing, so deleting it is the kill switch.
 
+HA-09: for a non-public deliverable `downloadTarget` tries the ticketed bytes-host copy FIRST,
+public or private repository alike; GitHub's own URL is only the fallback, and only for a public
+repository. A licensed download therefore does not hand out a GitHub address when the bytes host
+can serve the file, and a private repository's address is never handed out at all.
+
 - **Token leakage.** The portal token is unchanged: 300 s, single use (a conditional `UPDATE`,
   R9-05b), bound to the account that minted it and re-checked at redemption.
 - **Ticket leakage.** A ticket opens one file, by content, for at most 120 s. It carries no
@@ -7806,6 +7828,57 @@ expiresAt))` (`core/graceClamp.ts`, `core/documents.ts` `clampGraceUntil`): the 
 - **The affected-licence report** (`graceClampReport`, `scripts/grace-clamp-report.ts`) runs on
   an offline copy, writes nothing (checked) and carries licence ids, tiers and counts only: no
   name, email or key.
+
+### Licence and add-on lifecycle (LX-12)
+
+A licence's `status` stays `active`/`disabled`; `ended_reason` records why it ended (`revoked`,
+`superseded`, `refunded`, `chargeback`). A grant (an add-on) is `active`, `past_due`,
+`suppressed`, `revoked` or `refunded`. Both state machines are one table each
+(`core/licensing/lifecycle.ts`), and every writer's SQL is derived from them
+(`lifecycleWrites.ts`).
+
+- **The database cannot take a transition the table lacks.** Each UPDATE is guarded by its
+  event's source states, so a stale read or a concurrent write changes nothing rather than
+  moving a row along a missing edge. An operator's Enable that races a refund finds the row
+  refunded and leaves it. A test runs every cell of both tables against SQLite.
+- **No refund grace.** A full refund or a chargeback ends the item in the second it is written.
+  The contribution predicate reads only `state` and `expires_at`, never `grace_until`, so no
+  value in that column can extend access. `licensing.refundGraceHours` is still registered and
+  has no effect (LX-40 removes it). A partial refund never reaches the lifecycle.
+- **An operator cannot undo a refund.** Enable on a refunded or charged-back licence answers 409
+  and writes nothing, and `reinstate` of a refunded grant is refused. Only the store's reversal
+  of that refund or chargeback restores the item. To give access anyway an operator issues a new
+  licence or add-on, which is its own audited act.
+- **A store's reversal cannot lift an operator's end.** A refund or chargeback reversal moves only
+  an item that money ended. An item an operator revoked, a merge superseded or a support action
+  suppressed stays ended.
+- **Money ends are recorded over other ends.** A refund or chargeback of an item an operator has
+  already ended replaces that reason, so the record always shows that the money went back.
+  Residual: one reason column holds one end, so a reversal can reinstate an item that a second
+  end should keep ended. Three orders do it:
+  - an operator ends the item, then it is refunded: the refund replaces the operator's reason;
+  - it is refunded, then an operator revokes it: the revoke changes nothing (`same`);
+  - it is refunded, then charged back, or the other way round: the second money end changes
+    nothing. A grant records both as `refunded`.
+
+  In each case a later reversal of the recorded money end reinstates the item, although the
+  operator's end or the other money end still stands. The audit log keeps every step. Today
+  nothing writes a reversal through the lifecycle, so this cannot happen yet. Once CM-22 wires
+  store reversals it becomes a real fail-open. **CM-22 acceptance: a reversal must never lift an
+  operator end or a standing chargeback** (for example by keeping every end an item has, not one
+  reason).
+
+- **Store grants keep their own writer.** Until LX-11 retires the dual-write, a store grant's
+  state is the projection of `license_store_grants`, so the lifecycle's grant writers exclude
+  store sources: an operator cannot reinstate a refunded store purchase through them. Store
+  refunds still revoke through `applyStoreGrant`, as `revoked`, until CM-22 routes them through
+  the lifecycle as `refunded`. The `oidc` grant's sign-in upsert also writes `active` on every
+  sign-in. Nothing suppresses or refunds an `oidc` grant yet; the package that adds an operator's
+  suppress (LX-13, LX-14) must make that upsert keep `suppressed`.
+- **No wire change.** A disabled licence's document request gets the same 401 whatever its
+  reason (tested). The reason reaches devices only with LX-18's wire amendment. `ended_reason` and
+  `superseded_by` are licence metadata, not personal data, and stay on a deleted product's
+  licences with the rest of their shape.
 
 ### Boundaries that are weaker than they look
 

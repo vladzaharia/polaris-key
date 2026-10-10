@@ -102,7 +102,7 @@ export function ProductIcon({
       data-art="fallback"
       style={{ backgroundColor: tintFor(slug, tint) }}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center font-bold text-[#f4f1ff]",
+        "inline-flex shrink-0 items-center justify-center font-medium text-[#f4f1ff]",
         SIZE[size],
         TILE[size],
         RADIUS[size],

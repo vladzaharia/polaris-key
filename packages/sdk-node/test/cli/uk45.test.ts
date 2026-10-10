@@ -22,7 +22,7 @@ import {
   updateApplyFlow,
 } from "../../src/cli/flows.js";
 import { createKitContext } from "../../src/cli/context.js";
-import { statusView, tierName } from "../../src/cli/models.js";
+import { statusView, tierName } from "@polaris-key/ui-core/terminal";
 import { detectTerminal } from "../../src/cli/term/caps.js";
 import { KIT_COPY } from "../../src/kitCopy.generated.js";
 import {

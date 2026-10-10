@@ -79,7 +79,12 @@ The Worker never signs an updater payload and never passes through a value it di
 - **Velopack.** `SHA256` comes from the record. `SHA1` is not in the record, so the Worker
   computes it with a streaming digest that also checks the recorded SHA-256 and size, and
   memoises it by that SHA-256.
-- **MSIX** relies on the publisher certificate, and **AppImage** on the zsync block hashes.
+- **MSIX** relies on the publisher certificate.
+- **AppImage** zsync block hashes check transfer consistency; they do not authorize executable
+  bytes independently of the update host. The Godot SDK downloads the selected AppImage build
+  and verifies its exact size and SHA-256 against the pinned-release-key-verified Polaris record
+  before atomically replacing and relaunching the image. It does not install through the embedded
+  zsync feed or treat an external updater's successful exit as authorization.
 
 Nothing is buffered except a small sidecar or a zsync control file.
 

@@ -103,7 +103,7 @@ export function EmptyState({
         className={cn("flex flex-col items-start gap-2 py-1", className)}
       >
         <div className="space-y-0.5">
-          <Title className="text-sm font-bold text-fg-strong">
+          <Title className="text-sm font-semibold text-fg-strong">
             {title}
             {kind === "no-results" && filters ? (
               <>
@@ -173,7 +173,7 @@ export function EmptyState({
         <SearchX aria-hidden className="size-8 text-fg-subtle" />
       ) : null}
       <div className="max-w-md space-y-1">
-        <Title className="text-base font-bold text-fg-strong">
+        <Title className="text-base font-semibold text-fg-strong">
           {title}
           {kind === "no-results" && filters ? (
             <>

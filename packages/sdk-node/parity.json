@@ -5,6 +5,7 @@
   "traits": ["headless"],
   "testRoots": [
     "packages/sdk-node/test",
+    "packages/ui-core/test",
     "conformance/runners/node",
     "tools/gen-mirrors.test.ts"
   ],

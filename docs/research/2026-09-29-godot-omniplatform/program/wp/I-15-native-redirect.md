@@ -17,7 +17,7 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** §2.5: the request carries `deviceName` under §2.1 and the entry creates a `native` handle.
-- **[`plans/PX-W13.md`](../plans/PX-W13.md):** offer a pushed-request step (RFC 9126 style, `POST /<p>/identity/request` → `{request, authorizeUrl}`), because a label in an `authorize` query string would be a display query parameter.
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** offer a pushed-request step (RFC 9126 style, `POST /<p>/identity/request` → `request_uri`, I-27 §2.1), because a label in an `authorize` query string would be a display query parameter.
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -43,7 +43,7 @@ D-78–D-93. Where this brief differs, they win. **No device-wire version change
 the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
 every row, no "Account-wide"). For this package:
 
-- **Channels with `licenseChoice`.** Loopback, scheme and claimed HTTPS start through the pushed request with `licenseChoice` (`"app"` from a kit's inline or sheet form, `"card"` from the browser presentation and the terminals); `redirect/token` answers `choose` with a grant in app mode (I-04 §G.4). `signIn.start({channel, licenseChoice})`, `session.wait()`, `session.reopen()` and `session.cancel()` in all six SDKs.
+- **Channels with `licenseChoice`.** Loopback, scheme and claimed HTTPS start through the pushed request with `licenseChoice` (`"app"` from a kit's inline or sheet form, `"card"` from the browser presentation and the terminals); `token` answers `choose` with a grant in app mode (I-04 §G.4). `signIn.start({channel, licenseChoice})`, `session.wait()`, `session.reopen()` and `session.cancel()` in all six SDKs.
 - **The desktop ReturnStep** (`/signin/return`) gains the path B variant: "You're signed in · Go back to <App> to choose a license. You can close this tab." (`signin.return.chooseInApp`, frame 26).
 - **Transcript:** `redirect-native-choose-app.json`.
 - Mobile: `ASWebAuthenticationSession` and Custom Tabs stay the platform's own sheet; the kit's form morphs to step 3 when it closes (SIGN-IN.md D-92).

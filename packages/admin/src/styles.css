@@ -273,6 +273,12 @@
     vertical-align: middle;
   }
 
+  /* A header cell without its own weight (the select-all or sr-only Actions column) would take the
+     browser's 700; weights are 400, 500 and 600 (test/fontWeights.test.ts). */
+  th {
+    font-weight: var(--font-weight-medium);
+  }
+
   input::placeholder,
   textarea::placeholder {
     color: var(--pk-text-subtle);

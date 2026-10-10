@@ -85,6 +85,7 @@ const NPM_TIERS = [
   "npm-tier-2",
   "npm-tier-3",
   "npm-tier-4",
+  "npm-tier-5",
 ];
 const LEGACY = [
   "release.yml",
@@ -366,6 +367,22 @@ describe("deploy.yml registers the platform packages on every deploy", () => {
   });
 });
 
+describe("publish-sdks.yml kotlin-build (maven early failure)", () => {
+  it("checks every maven.* deliverable finds its POM before uploading the maven-repo artifact", () => {
+    const steps = workflow(PUBLISH_SDKS).jobs["kotlin-build"]!.steps ?? [];
+    const check = steps.findIndex((s) =>
+      (s.run ?? "").includes("tools/maven-publication-check.mjs"),
+    );
+    const upload = steps.findIndex(
+      (s) =>
+        s.uses?.startsWith("actions/upload-artifact") &&
+        s.with?.name === "maven-repo",
+    );
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(upload);
+  });
+});
+
 describe("publish-package.yml (the trusted publisher)", () => {
   const wf = workflow("publish-package.yml");
   const job = wf.jobs.publish!;
@@ -387,6 +404,25 @@ describe("publish-package.yml (the trusted publisher)", () => {
     });
     expect(raw("publish-package.yml")).toContain(
       'git merge-base --is-ancestor "$GITHUB_SHA" origin/main',
+    );
+  });
+
+  it("verifies the downloaded artifact and retries the download once (a stalled download exits 0 with an empty dir)", () => {
+    const steps = job.steps ?? [];
+    const downloads = steps.filter(
+      (s) => s.uses === "actions/download-artifact@v4",
+    );
+    expect(downloads).toHaveLength(2);
+    const checks = steps.filter((s) =>
+      (s.run ?? "").includes("tools/check-feed-download.sh"),
+    );
+    expect(checks).toHaveLength(2);
+    // Both downloads precede the publish step; the first is allowed to fail so the retry runs.
+    const publishAt = steps.findIndex((s) => s.uses === "./actions/publish");
+    for (const s of [...downloads, ...checks])
+      expect(steps.indexOf(s)).toBeLessThan(publishAt);
+    expect(raw("publish-package.yml")).toMatch(
+      /id: download\n\s+uses: actions\/download-artifact@v4\n\s+continue-on-error: true/,
     );
   });
 
@@ -676,7 +712,7 @@ describe("the npm packages publish in dependency order (P0-52, feed coherence)",
 
   it("installs from the feed as an adopter would, once the whole set is there", () => {
     const job = wf.jobs["npm-install"]!;
-    expect(needsOf(job)).toEqual(["version", "npm-tier-4"]);
+    expect(needsOf(job)).toEqual(["version", "npm-tier-5"]);
     const runs = (job.steps ?? []).map((s) => s.run ?? "");
     const wait = runs.findIndex((r) => r.includes("tools/feed-closure.mjs"));
     expect(runs[wait]).toContain('--version "$VERSION" --complete');
