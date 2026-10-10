@@ -27,6 +27,8 @@ import {
   LICENSING_DUNNING_GRACE_DAYS_MAX,
   LICENSING_REANCHOR_VALUES,
   LICENSING_REFUND_GRACE_HOURS_MAX,
+  IDENTITY_KEY_ENTRY_LIMIT,
+  MAX_IDENTITY_REDIRECT_PATHS,
   parseManifest,
   parseManifestAppDeliverable,
   parseManifestPackDeliverable,
@@ -186,6 +188,219 @@ describe("licensing settings and oidc.syncTierOnSignIn (LX-06)", () => {
     const messages = res.errors.map((e) => e.message).join("\n");
     expect(messages).toContain(`0 to ${LICENSING_REFUND_GRACE_HOURS_MAX}`);
     expect(messages).toContain(LICENSING_REANCHOR_VALUES.join(" or "));
+  });
+});
+
+describe("the identity block (I-09, plans/I-27.md §3)", () => {
+  const IDENTITY_ON = {
+    modules: { license: { enabled: true }, identity: { enabled: true } },
+    web: { origins: ["https://app.acme.example"] },
+  };
+  const validate = (product: Record<string, unknown>) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, ...IDENTITY_ON, ...product },
+      schema: catalogWithSecretDelivery(),
+    });
+  const codes = (r: ReturnType<typeof validate>) => ({
+    errors: r.errors.map((e) => e.code).sort(),
+    warnings: r.warnings.map((w) => w.code).sort(),
+  });
+
+  it("carries the declared settings in their nested shape, and only those", () => {
+    const res = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        ...IDENTITY_ON,
+        identity: {
+          keyEntry: { limit: 3, claimByKey: true },
+          terms: { version: "2026-10" },
+          redirectPaths: ["/auth/callback", "/signin/done"],
+        },
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.identity).toEqual({
+      keyEntry: { limit: 3, claimByKey: true },
+      terms: { version: "2026-10" },
+      redirectPaths: ["/auth/callback", "/signin/done"],
+    });
+    // `claimByKey: false` is declared, not absent.
+    const off = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        ...IDENTITY_ON,
+        identity: { keyEntry: { claimByKey: false } },
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+    expect(off.ok && off.manifest.identity).toEqual({
+      keyEntry: { claimByKey: false },
+    });
+  });
+
+  it("leaves the block absent when nothing is declared", () => {
+    const res = parseManifest({
+      product: JSON.stringify({ ...PRODUCT, ...IDENTITY_ON }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+    expect(res.ok && res.manifest.identity).toBeUndefined();
+  });
+
+  it("no longer needs an oidc block while Identity is on", () => {
+    const res = validate({});
+    expect(res.ok).toBe(true);
+    expect(codes(res).errors).toEqual([]);
+    // A declared oidc block is still checked.
+    expect(codes(validate({ oidc: "platform" })).errors).toContain(
+      "invalid_oidc",
+    );
+  });
+
+  it("allows only keyEntry, terms and redirectPaths", () => {
+    expect(codes(validate({ identity: { native: {} } })).errors).toEqual([
+      "invalid_identity",
+    ]);
+    expect(codes(validate({ identity: { requireTerms: {} } })).errors).toEqual([
+      "invalid_identity",
+    ]);
+    expect(
+      codes(validate({ identity: { keyEntry: { refusals: true } } })).errors,
+    ).toEqual(["invalid_identity"]);
+    expect(codes(validate({ identity: true })).errors).toEqual([
+      "invalid_identity",
+    ]);
+    expect(codes(validate({ identity: { keyEntry: 10 } })).errors).toEqual([
+      "invalid_identity",
+    ]);
+  });
+
+  it("bounds the key-entry limit at 1 to 100 with no unlimited value", () => {
+    expect(IDENTITY_KEY_ENTRY_LIMIT).toEqual({ min: 1, max: 100, default: 10 });
+    for (const limit of [1, 10, 100])
+      expect(validate({ identity: { keyEntry: { limit } } }).ok).toBe(true);
+    for (const limit of [0, 101, 2.5, null, "10", -1])
+      expect(
+        codes(validate({ identity: { keyEntry: { limit } } })).errors,
+        String(limit),
+      ).toEqual(["invalid_identity_key_entry_limit"]);
+  });
+
+  it("takes claimByKey as a boolean only", () => {
+    expect(validate({ identity: { keyEntry: { claimByKey: true } } }).ok).toBe(
+      true,
+    );
+    for (const claimByKey of ["true", 1, null])
+      expect(
+        codes(validate({ identity: { keyEntry: { claimByKey } } })).errors,
+      ).toEqual(["invalid_identity_claim_by_key"]);
+  });
+
+  it("checks the terms version and URL", () => {
+    expect(validate({ identity: { terms: { version: "v1.2_b-3" } } }).ok).toBe(
+      true,
+    );
+    expect(
+      validate({
+        identity: {
+          terms: { version: "2026-10", url: "https://acme.example/eula" },
+        },
+      }).ok,
+    ).toBe(true);
+    for (const terms of [
+      {},
+      { version: "" },
+      { version: "a".repeat(33) },
+      { version: "2026 10" },
+      { version: "2026-10", url: "http://acme.example/eula" },
+      { version: "2026-10", url: "https://user:pw@acme.example/eula" },
+      { version: "2026-10", url: "not a url" },
+      { version: "2026-10", accepted: true },
+      "2026-10",
+    ])
+      expect(
+        codes(validate({ identity: { terms } })).errors,
+        JSON.stringify(terms),
+      ).toEqual(["invalid_identity_terms"]);
+  });
+
+  it("checks redirect paths: rooted, unique, short and plain", () => {
+    expect(
+      validate({ identity: { redirectPaths: ["/", "/auth/callback"] } }).ok,
+    ).toBe(true);
+    for (const path of [
+      "auth/callback",
+      "/auth?x=1",
+      "/auth#top",
+      "/auth/*",
+      "//evil.example/cb",
+      "/a//b",
+      "/a/../b",
+      "/a b",
+      `/${"a".repeat(256)}`,
+      7,
+    ])
+      expect(
+        codes(validate({ identity: { redirectPaths: [path] } })).errors,
+        String(path),
+      ).toEqual(["invalid_identity_redirect_paths"]);
+    expect(
+      codes(validate({ identity: { redirectPaths: ["/cb", "/cb"] } })).errors,
+    ).toEqual(["invalid_identity_redirect_paths"]);
+    const many = Array.from(
+      { length: MAX_IDENTITY_REDIRECT_PATHS + 1 },
+      (_, i) => `/cb${i}`,
+    );
+    expect(
+      codes(validate({ identity: { redirectPaths: many } })).errors,
+    ).toEqual(["invalid_identity_redirect_paths"]);
+    expect(
+      codes(validate({ identity: { redirectPaths: "/cb" } })).errors,
+    ).toEqual(["invalid_identity_redirect_paths"]);
+  });
+
+  it("warns when redirect paths have no web origin to pair with", () => {
+    const res = validateManifestDocuments({
+      product: {
+        ...PRODUCT,
+        modules: IDENTITY_ON.modules,
+        identity: { redirectPaths: ["/auth/callback"] },
+      },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(res.ok).toBe(true);
+    expect(codes(res).warnings).toContain(
+      "identity_redirect_paths_without_origins",
+    );
+    // An empty list pairs with nothing and needs no origin.
+    const none = validateManifestDocuments({
+      product: {
+        ...PRODUCT,
+        modules: IDENTITY_ON.modules,
+        identity: { redirectPaths: [] },
+      },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(codes(none).warnings).not.toContain(
+      "identity_redirect_paths_without_origins",
+    );
+  });
+
+  it("warns when the block is declared while the identity service is off", () => {
+    const res = validateManifestDocuments({
+      product: {
+        ...PRODUCT,
+        modules: { license: { enabled: true } },
+        identity: { keyEntry: { limit: 5 } },
+      },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(res.ok).toBe(true);
+    expect(codes(res).warnings).toContain("identity_block_without_service");
+    expect(
+      codes(validate({ identity: { keyEntry: { limit: 5 } } })).warnings,
+    ).not.toContain("identity_block_without_service");
   });
 });
 

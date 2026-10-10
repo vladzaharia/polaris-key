@@ -67,7 +67,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       the `user` block that makes a config key a user setting, use the `adding-a-catalog-entry`
       skill.
 - [ ] **`product`** (required) — product metadata, the `modules` block (enabled services),
-      `devices.registration`, `web.origins`, OIDC, profiles, tiers, provisioning hooks,
+      `devices.registration`, `web.origins`, OIDC, the `identity:` block, profiles, tiers,
+      provisioning hooks,
       `fingerprint`, `autoIssue`, `secrets.required`, and `cloudSync` (Cloud Sync's `limits`,
       `unlicensed` and `writes`, within the platform ceilings; `byTier` keys must name declared
       tiers, `byEntitlement` values numeric `combine: max` flags). Maps to `products` (incl. `services_json`,
@@ -225,6 +226,25 @@ table, `tools/services.json`.
       `http://127.0.0.1[:port]`. Bad entries are refused, never coerced (`invalid_web_origins`,
       `invalid_web_origin`). Manifest-owned: resync rewrites it and dropping the block clears it.
       Details: `packages/docs/src/content/docs/build/web-cors.md`.
+- [ ] The `identity:` block is optional and applies only while `identity` is on (declared with
+      it off, `pkey validate` warns `identity_block_without_service`). Identity on no longer
+      needs an `oidc` block. Members (I-09; `methods`, `connections` and `claims` come later):
+
+      ```yaml
+      identity:
+        keyEntry: { limit: 10, claimByKey: false } # limit 1–100 (default 10); claimByKey default false
+        terms: { version: "2026-10", url: "https://example.com/terms" } # version [A-Za-z0-9._-]{1,32}; url https
+        redirectPaths: ["/auth/callback"] # ≤ 16 unique, rooted at /, no ? # * // ..
+      ```
+
+      Codes: `invalid_identity` (any other member), `invalid_identity_key_entry_limit`,
+      `invalid_identity_claim_by_key`, `invalid_identity_terms`, `invalid_identity_redirect_paths`,
+      and the warning `identity_redirect_paths_without_origins` (redirect paths need `web.origins`).
+      Each member is a **claimable** setting (`identity.keyEntry.limit`,
+      `identity.keyEntry.claimByKey`, `identity.terms`, `identity.redirectPaths`): a console edit
+      claims it and Revert returns it to the manifest. `claimByKey: true` lets anyone holding a
+      leaked key add an email-bound licence to their own account; leave it off unless the product
+      truly sells keys with no buyer email to check.
 
 ### 5. Validate until clean
 

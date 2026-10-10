@@ -242,6 +242,23 @@ export const LICENSING_DUNNING_GRACE_DAYS_MAX = 30;
 /** `oidc.syncTierOnSignIn`: never, or only towards a higher-ranked tier. */
 export const OIDC_SYNC_TIER_ON_SIGN_IN_VALUES = ["off", "upgradeOnly"] as const;
 
+/**
+ * `identity.keyEntry.limit` (I-09; plans/I-04.md §8 Q7): how many key entries a licence in no
+ * account has on an Identity product. No unlimited value while Identity is on. The Worker's
+ * registry entry (`services/identity/settings.ts`) uses the same bounds.
+ */
+export const IDENTITY_KEY_ENTRY_LIMIT = {
+  min: 1,
+  max: 100,
+  default: 10,
+} as const;
+/** `identity.terms.version`: 1 to 32 characters of `[A-Za-z0-9._-]`. */
+export const IDENTITY_TERMS_VERSION_RE = /^[A-Za-z0-9._-]{1,32}$/;
+/** `identity.redirectPaths`: at most this many paths (plans/I-04.md §3). */
+export const MAX_IDENTITY_REDIRECT_PATHS = 16;
+/** `identity.redirectPaths`: each path at most this many characters. */
+export const MAX_IDENTITY_REDIRECT_PATH_LENGTH = 256;
+
 export type LicensingEntitlementModel =
   (typeof LICENSING_ENTITLEMENT_MODELS)[number];
 export type LicensingEntitlementHolder =
@@ -264,6 +281,21 @@ export interface ManifestLicensingSettings {
   reanchor?: LicensingReanchor;
   refundGraceHours?: number;
   dunningGraceDays?: number;
+}
+
+/**
+ * The `identity:` block (I-09; plans/I-27.md §3): the product's key-entry, terms and redirect-path
+ * settings, as declared. A member is present only when the manifest declares it, so the Worker can
+ * tell "the manifest says the default" from "the manifest says nothing". Each one is a claimable
+ * setting (`identity.keyEntry.limit`, `identity.keyEntry.claimByKey`, `identity.terms`,
+ * `identity.redirectPaths`), named by path.
+ */
+export interface ManifestIdentity {
+  keyEntry?: { limit?: number; claimByKey?: boolean };
+  /** The product's terms: a version, and an https URL (default: the listing's EULA URL). */
+  terms?: { version: string; url?: string };
+  /** Web-redirect callback paths, matched exactly against `web.origins` (I-08). */
+  redirectPaths?: string[];
 }
 
 /** A product-declared companion-application probe the client answers present/absent. */
@@ -583,6 +615,11 @@ export interface ParsedManifest {
    * them back from the stored snapshot of this object.
    */
   licensing?: ManifestLicensingSettings;
+  /**
+   * The `identity:` block's settings (I-09): present only when it declares at least one. The
+   * Worker's registry entries name them by path (`product:identity.keyEntry.limit`, …).
+   */
+  identity?: ManifestIdentity;
   release?: ManifestRelease;
   edgeMint: ManifestEdgeMint[];
   /**
@@ -1551,6 +1588,7 @@ function validateDocuments(
     }
   }
   validateLicensingSettings(licensing, errors);
+  validateIdentityBlock(productRoot, modules, errors, warnings);
 
   if (schemaAlwaysRequired || modules.includes("config")) {
     if (requireSchema(errors, manifest.schema)) {
@@ -1857,7 +1895,9 @@ function validateDocuments(
     }
   }
 
-  if (modules.includes("identity") || productRoot.oidc !== undefined) {
+  // I-09 (plans/I-27.md §3): Identity on no longer needs an `oidc` block; the block is checked
+  // only when it is declared.
+  if (productRoot.oidc !== undefined) {
     if (!isRecord(productRoot.oidc)) {
       add(
         errors,
@@ -4549,6 +4589,8 @@ export function parseManifest(
   }
   const licensingSettings = normalizeLicensingSettings(licensing);
   if (licensingSettings) parsed.licensing = licensingSettings;
+  const identitySettings = normalizeIdentityBlock(productRoot.identity);
+  if (identitySettings) parsed.identity = identitySettings;
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
   if (
     validation.enabledModules.includes("distribution") ||
@@ -5906,6 +5948,234 @@ function normalizeLicensingSettings(
     integerIn(licensing.dunningGraceDays, 0, LICENSING_DUNNING_GRACE_DAYS_MAX)
   )
     out.dunningGraceDays = licensing.dunningGraceDays as number;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Why is this `identity.redirectPaths` entry unacceptable (plans/I-04.md §3)? `null` when it is a
+ * path an exact redirect match can use: rooted at `/`, at most 256 characters, and free of `?`,
+ * `#`, `*`, `//` and `..`.
+ */
+function identityRedirectPathProblem(v: unknown): string | null {
+  if (typeof v !== "string") return "must be strings";
+  if (!v.startsWith("/")) return "must start with /";
+  if (v.length > MAX_IDENTITY_REDIRECT_PATH_LENGTH)
+    return `must be at most ${MAX_IDENTITY_REDIRECT_PATH_LENGTH} characters`;
+  if (/[?#*]/.test(v) || v.includes("//") || v.includes(".."))
+    return "must not contain ?, #, *, // or ..";
+  if (/[\u0000-\u0020\u007f]/.test(v))
+    return "must not contain spaces or control characters";
+  return null;
+}
+
+/** An absolute `https:` URL with no credentials (`identity.terms.url`). */
+function isHttpsUrl(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  try {
+    const url = new URL(v);
+    return (
+      url.protocol === "https:" && url.username === "" && url.password === ""
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * I-09 (plans/I-27.md §3, plans/I-04.md §3): the `identity:` block of `.pkey/product`. I-09 allows
+ * `keyEntry {limit, claimByKey}`, `terms {version, url?}` and `redirectPaths`; I-35 widens it.
+ * Each `add` is written out with literal arguments so the generated validation-codes page lists
+ * it.
+ */
+function validateIdentityBlock(
+  productRoot: Record<string, unknown>,
+  modules: readonly string[],
+  errors: ValidationMessage[],
+  warnings: ValidationMessage[],
+): void {
+  const identity = productRoot.identity;
+  if (identity === undefined) return;
+  if (!isRecord(identity)) {
+    add(
+      errors,
+      "product",
+      "/identity",
+      "invalid_identity",
+      "identity must be an object with keyEntry, terms and redirectPaths.",
+    );
+    return;
+  }
+  for (const key of Object.keys(identity)) {
+    if (!IDENTITY_MEMBERS.includes(key)) {
+      add(
+        errors,
+        "product",
+        `/identity/${key}`,
+        "invalid_identity",
+        "identity takes only keyEntry, terms and redirectPaths.",
+      );
+    }
+  }
+  if (!modules.includes("identity")) {
+    add(
+      warnings,
+      "product",
+      "/identity",
+      "identity_block_without_service",
+      "identity is declared but the identity service is off, so none of it applies.",
+    );
+  }
+
+  const keyEntry = identity.keyEntry;
+  if (keyEntry !== undefined) {
+    if (!isRecord(keyEntry)) {
+      add(
+        errors,
+        "product",
+        "/identity/keyEntry",
+        "invalid_identity",
+        "identity.keyEntry must be an object with limit and claimByKey.",
+      );
+    } else {
+      for (const key of Object.keys(keyEntry)) {
+        if (key !== "limit" && key !== "claimByKey") {
+          add(
+            errors,
+            "product",
+            `/identity/keyEntry/${key}`,
+            "invalid_identity",
+            "identity.keyEntry takes only limit and claimByKey.",
+          );
+        }
+      }
+      if (
+        keyEntry.limit !== undefined &&
+        !integerIn(
+          keyEntry.limit,
+          IDENTITY_KEY_ENTRY_LIMIT.min,
+          IDENTITY_KEY_ENTRY_LIMIT.max,
+        )
+      ) {
+        add(
+          errors,
+          "product",
+          "/identity/keyEntry/limit",
+          "invalid_identity_key_entry_limit",
+          "identity.keyEntry.limit must be an integer from 1 to 100.",
+        );
+      }
+      if (
+        keyEntry.claimByKey !== undefined &&
+        typeof keyEntry.claimByKey !== "boolean"
+      ) {
+        add(
+          errors,
+          "product",
+          "/identity/keyEntry/claimByKey",
+          "invalid_identity_claim_by_key",
+          "identity.keyEntry.claimByKey must be true or false.",
+        );
+      }
+    }
+  }
+
+  const terms = identity.terms;
+  if (terms !== undefined) {
+    const valid =
+      isRecord(terms) &&
+      Object.keys(terms).every((k) => k === "version" || k === "url") &&
+      typeof terms.version === "string" &&
+      IDENTITY_TERMS_VERSION_RE.test(terms.version) &&
+      (terms.url === undefined || isHttpsUrl(terms.url));
+    if (!valid) {
+      add(
+        errors,
+        "product",
+        "/identity/terms",
+        "invalid_identity_terms",
+        "identity.terms must be {version, url?}: a version of 1 to 32 characters of A-Z, a-z, 0-9, ., _ and -, and an https URL when url is given.",
+      );
+    }
+  }
+
+  const paths = identity.redirectPaths;
+  if (paths !== undefined) {
+    if (!Array.isArray(paths) || paths.length > MAX_IDENTITY_REDIRECT_PATHS) {
+      add(
+        errors,
+        "product",
+        "/identity/redirectPaths",
+        "invalid_identity_redirect_paths",
+        `identity.redirectPaths must be an array of at most ${MAX_IDENTITY_REDIRECT_PATHS} paths.`,
+      );
+    } else {
+      const seen = new Set<string>();
+      for (const [i, path] of paths.entries()) {
+        const problem =
+          identityRedirectPathProblem(path) ??
+          (seen.has(path as string)
+            ? "must not repeat an earlier entry"
+            : null);
+        if (problem) {
+          add(
+            errors,
+            "product",
+            `/identity/redirectPaths/${i}`,
+            "invalid_identity_redirect_paths",
+            `identity.redirectPaths entries ${problem}.`,
+          );
+        }
+        if (typeof path === "string") seen.add(path);
+      }
+      const origins = asRecord(productRoot.web).origins;
+      if (paths.length > 0 && !(Array.isArray(origins) && origins.length > 0)) {
+        add(
+          warnings,
+          "product",
+          "/identity/redirectPaths",
+          "identity_redirect_paths_without_origins",
+          "identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths.",
+        );
+      }
+    }
+  }
+}
+
+/** The members of the `identity:` block I-09 allows (I-35 widens the list). */
+const IDENTITY_MEMBERS: readonly string[] = [
+  "keyEntry",
+  "terms",
+  "redirectPaths",
+];
+
+/** The `identity:` block's declared settings, validated above; `undefined` when none. */
+function normalizeIdentityBlock(raw: unknown): ManifestIdentity | undefined {
+  if (!isRecord(raw)) return undefined;
+  const out: ManifestIdentity = {};
+  if (isRecord(raw.keyEntry)) {
+    const keyEntry: NonNullable<ManifestIdentity["keyEntry"]> = {};
+    if (
+      integerIn(
+        raw.keyEntry.limit,
+        IDENTITY_KEY_ENTRY_LIMIT.min,
+        IDENTITY_KEY_ENTRY_LIMIT.max,
+      )
+    )
+      keyEntry.limit = raw.keyEntry.limit as number;
+    if (typeof raw.keyEntry.claimByKey === "boolean")
+      keyEntry.claimByKey = raw.keyEntry.claimByKey;
+    if (Object.keys(keyEntry).length > 0) out.keyEntry = keyEntry;
+  }
+  if (
+    isRecord(raw.terms) &&
+    typeof raw.terms.version === "string" &&
+    IDENTITY_TERMS_VERSION_RE.test(raw.terms.version)
+  ) {
+    out.terms = { version: raw.terms.version };
+    if (isHttpsUrl(raw.terms.url)) out.terms.url = raw.terms.url;
+  }
+  if (Array.isArray(raw.redirectPaths))
+    out.redirectPaths = raw.redirectPaths.filter(isString);
   return Object.keys(out).length > 0 ? out : undefined;
 }
 

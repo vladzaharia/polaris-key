@@ -899,6 +899,32 @@ does not expose whether a product uses platform or custom OIDC.
 is a claimable setting like the [licensing settings](#licensing-settings-licensing): a change on
 **Identity → Sign-in** claims it until you revert it.
 
+### Identity settings: `identity`
+
+An Identity product no longer needs an `oidc` block. The optional `identity:` block declares the
+settings of signing in and of key entry through the product. It applies only while the `identity`
+service is on; declared with it off, `pkey validate` warns `identity_block_without_service`.
+
+```yaml
+identity:
+  keyEntry: { limit: 10, claimByKey: false }
+  terms: { version: "2026-10", url: "https://example.com/terms" }
+  redirectPaths: ["/auth/callback"]
+```
+
+- `keyEntry.limit`: how many times the key of a licence in no account may be entered on new
+  devices (1 to 100, default 10).
+- `keyEntry.claimByKey`: whether a licence that carries a buyer email may join an account by its
+  key alone. Off by default. On, anyone holding a leaked key can add an email-bound licence to
+  their own account.
+- `terms`: the product's terms, accepted once per version by a person signing in through the
+  product. `version` is 1 to 32 characters of `A-Z a-z 0-9 . _ -`; `url` is an https URL.
+- `redirectPaths`: the paths a web app's sign-in may return to, matched exactly with an origin
+  from `web.origins` (up to 16, each rooted at `/`, with no `?`, `#`, `*`, `//` or `..`).
+
+Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntry.claimByKey`,
+`identity.terms`, `identity.redirectPaths`): a console change claims it until you revert it.
+
 ### Admin override vs re-sync
 
 Admins set **management state + values** (per license/device) and operational runtime

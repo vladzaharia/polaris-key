@@ -167,6 +167,12 @@ function base(): Docs {
         groupRoleMap: { staff: { tier: "pro" } },
         syncTierOnSignIn: "upgradeOnly",
       },
+      // I-09: the identity block, every member declared (plans/I-27.md §3).
+      identity: {
+        keyEntry: { limit: 10, claimByKey: false },
+        terms: { version: "2026-10", url: "https://acme.example/terms" },
+        redirectPaths: ["/auth/callback"],
+      },
       provisioning: [
         {
           claim: "vpnAccess",
@@ -1016,6 +1022,91 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (p(d).oidc.provider = "github"),
+  },
+  // I-09: the identity block (plans/I-27.md §3, plans/I-04.md §3).
+  {
+    code: "invalid_identity",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.native = { apple: {} }),
+  },
+  {
+    code: "invalid_identity",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.keyEntry.refusals = true),
+  },
+  {
+    code: "invalid_identity",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity = ["keyEntry"]),
+  },
+  {
+    code: "invalid_identity_terms",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.terms.version = "2026 10"),
+  },
+  {
+    code: "invalid_identity_terms",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.terms.url = "http://acme.example/terms"),
+  },
+  {
+    code: "invalid_identity_key_entry_limit",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.keyEntry.limit = 101),
+  },
+  {
+    code: "invalid_identity_key_entry_limit",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.keyEntry.limit = 0),
+  },
+  {
+    code: "invalid_identity_claim_by_key",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.keyEntry.claimByKey = "yes"),
+  },
+  {
+    code: "invalid_identity_redirect_paths",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.redirectPaths = ["/auth/../callback"]),
+  },
+  {
+    code: "invalid_identity_redirect_paths",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.redirectPaths = ["auth/callback"]),
+  },
+  {
+    code: "invalid_identity_redirect_paths",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.redirectPaths = ["/auth/callback", "/auth/callback"]),
+  },
+  {
+    // A redirect URI is an origin from web.origins plus a path: paths with no origin match nothing.
+    code: "identity_redirect_paths_without_origins",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => delete p(d).web,
+  },
+  {
+    // Declared while the service is off: none of it applies (a warning).
+    code: "identity_block_without_service",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => {
+      p(d).modules.identity = { enabled: false };
+      p(d).modules.sync = { enabled: false };
+    },
   },
   {
     code: "invalid_oidc_issuer",

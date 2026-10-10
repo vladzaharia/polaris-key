@@ -1284,6 +1284,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "deprecated": true
     },
     "oidc": { "$ref": "#/$defs/oidc" },
+    "identity": { "$ref": "#/$defs/identity" },
     "provisioning": {
       "type": "array",
       "items": { "$ref": "#/$defs/provisioningHook" }
@@ -1768,6 +1769,58 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "properties": { "provider": { "const": "custom" } }
       },
       "then": { "required": ["issuer", "clientId"] }
+    },
+    "identity": {
+      "type": "object",
+      "description": "Identity settings (I-09), each a claimable setting: the console can override it and Revert returns it to this file. Takes effect only while the identity service is on; declared with it off, pkey validate warns (identity_block_without_service).",
+      "additionalProperties": false,
+      "properties": {
+        "keyEntry": {
+          "type": "object",
+          "description": "Key entry on this Identity product (WIRE-CONTRACT-V4 §12.2).",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "How many times the key of a licence in no account may be entered on new devices (identity.keyEntry.limit): 1 to 100, default 10, no unlimited value.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "claimByKey": {
+              "description": "Whether a licence that carries a buyer email may join an account by its key alone, without that email verified (identity.keyEntry.claimByKey). Default false; true lets a leaked key claim an email-bound licence.",
+              "type": "boolean"
+            }
+          }
+        },
+        "terms": {
+          "type": "object",
+          "description": "The product's terms, accepted once per version at sign-in (identity.terms). url defaults to the listing's EULA URL.",
+          "additionalProperties": false,
+          "required": ["version"],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,32}$"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^https://[^\\\\u0000-\\\\u0020\\\\u007f]+$"
+            }
+          }
+        },
+        "redirectPaths": {
+          "type": "array",
+          "description": "Web-redirect callback paths (identity.redirectPaths): a redirect URI is a web.origins origin plus one of these paths, matched exactly. Up to 16 unique paths, each rooted at /, at most 256 characters, with no ?, #, *, // or ..; needs web.origins (identity_redirect_paths_without_origins).",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^(?!.*//)(?!.*\\\\.\\\\.)/[^?#*\\\\u0000-\\\\u0020\\\\u007f]*$"
+          }
+        }
+      }
     },
     "provisioningHook": {
       "type": "object",
@@ -13640,7 +13693,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/identity.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-73WXBXB5.js
+// ../shared-protocol/dist/chunk-LNST3HPN.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DISPLAY_TEXT_STRIP = [
   [0, 31],
@@ -18408,6 +18461,14 @@ var LICENSING_REANCHOR_VALUES = ["never", "onActivation"];
 var LICENSING_REFUND_GRACE_HOURS_MAX = 168;
 var LICENSING_DUNNING_GRACE_DAYS_MAX = 30;
 var OIDC_SYNC_TIER_ON_SIGN_IN_VALUES = ["off", "upgradeOnly"];
+var IDENTITY_KEY_ENTRY_LIMIT = {
+  min: 1,
+  max: 100,
+  default: 10
+};
+var IDENTITY_TERMS_VERSION_RE = /^[A-Za-z0-9._-]{1,32}$/;
+var MAX_IDENTITY_REDIRECT_PATHS = 16;
+var MAX_IDENTITY_REDIRECT_PATH_LENGTH = 256;
 var MODULES = Object.keys(MODULE_SERVICES);
 var DEFAULT_ENABLED = DEFAULT_ENABLED_SERVICES;
 var ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -18860,6 +18921,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     }
   }
   validateLicensingSettings(licensing, errors);
+  validateIdentityBlock(productRoot, modules, errors, warnings);
   if (schemaAlwaysRequired || modules.includes("config")) {
     if (requireSchema(errors, manifest.schema)) {
       const catalog = normalizeCatalog(manifest.schema);
@@ -19111,7 +19173,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
   }
-  if (modules.includes("identity") || productRoot.oidc !== void 0) {
+  if (productRoot.oidc !== void 0) {
     if (!isRecord6(productRoot.oidc)) {
       add4(
         errors,
@@ -21259,6 +21321,8 @@ function parseManifest(files, opts = {}) {
   }
   const licensingSettings = normalizeLicensingSettings(licensing);
   if (licensingSettings) parsed.licensing = licensingSettings;
+  const identitySettings = normalizeIdentityBlock(productRoot.identity);
+  if (identitySettings) parsed.identity = identitySettings;
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
   if (validation.enabledModules.includes("distribution") || docs.distribution !== void 0) {
     parsed.distribution = normalizeDistribution(
@@ -22111,6 +22175,184 @@ function normalizeLicensingSettings(licensing) {
     out.refundGraceHours = licensing.refundGraceHours;
   if (integerIn(licensing.dunningGraceDays, 0, LICENSING_DUNNING_GRACE_DAYS_MAX))
     out.dunningGraceDays = licensing.dunningGraceDays;
+  return Object.keys(out).length > 0 ? out : void 0;
+}
+function identityRedirectPathProblem(v) {
+  if (typeof v !== "string") return "must be strings";
+  if (!v.startsWith("/")) return "must start with /";
+  if (v.length > MAX_IDENTITY_REDIRECT_PATH_LENGTH)
+    return `must be at most ${MAX_IDENTITY_REDIRECT_PATH_LENGTH} characters`;
+  if (/[?#*]/.test(v) || v.includes("//") || v.includes(".."))
+    return "must not contain ?, #, *, // or ..";
+  if (/[\u0000-\u0020\u007f]/.test(v))
+    return "must not contain spaces or control characters";
+  return null;
+}
+function isHttpsUrl2(v) {
+  if (typeof v !== "string") return false;
+  try {
+    const url = new URL(v);
+    return url.protocol === "https:" && url.username === "" && url.password === "";
+  } catch {
+    return false;
+  }
+}
+function validateIdentityBlock(productRoot, modules, errors, warnings) {
+  const identity = productRoot.identity;
+  if (identity === void 0) return;
+  if (!isRecord6(identity)) {
+    add4(
+      errors,
+      "product",
+      "/identity",
+      "invalid_identity",
+      "identity must be an object with keyEntry, terms and redirectPaths."
+    );
+    return;
+  }
+  for (const key of Object.keys(identity)) {
+    if (!IDENTITY_MEMBERS.includes(key)) {
+      add4(
+        errors,
+        "product",
+        `/identity/${key}`,
+        "invalid_identity",
+        "identity takes only keyEntry, terms and redirectPaths."
+      );
+    }
+  }
+  if (!modules.includes("identity")) {
+    add4(
+      warnings,
+      "product",
+      "/identity",
+      "identity_block_without_service",
+      "identity is declared but the identity service is off, so none of it applies."
+    );
+  }
+  const keyEntry = identity.keyEntry;
+  if (keyEntry !== void 0) {
+    if (!isRecord6(keyEntry)) {
+      add4(
+        errors,
+        "product",
+        "/identity/keyEntry",
+        "invalid_identity",
+        "identity.keyEntry must be an object with limit and claimByKey."
+      );
+    } else {
+      for (const key of Object.keys(keyEntry)) {
+        if (key !== "limit" && key !== "claimByKey") {
+          add4(
+            errors,
+            "product",
+            `/identity/keyEntry/${key}`,
+            "invalid_identity",
+            "identity.keyEntry takes only limit and claimByKey."
+          );
+        }
+      }
+      if (keyEntry.limit !== void 0 && !integerIn(
+        keyEntry.limit,
+        IDENTITY_KEY_ENTRY_LIMIT.min,
+        IDENTITY_KEY_ENTRY_LIMIT.max
+      )) {
+        add4(
+          errors,
+          "product",
+          "/identity/keyEntry/limit",
+          "invalid_identity_key_entry_limit",
+          "identity.keyEntry.limit must be an integer from 1 to 100."
+        );
+      }
+      if (keyEntry.claimByKey !== void 0 && typeof keyEntry.claimByKey !== "boolean") {
+        add4(
+          errors,
+          "product",
+          "/identity/keyEntry/claimByKey",
+          "invalid_identity_claim_by_key",
+          "identity.keyEntry.claimByKey must be true or false."
+        );
+      }
+    }
+  }
+  const terms = identity.terms;
+  if (terms !== void 0) {
+    const valid = isRecord6(terms) && Object.keys(terms).every((k) => k === "version" || k === "url") && typeof terms.version === "string" && IDENTITY_TERMS_VERSION_RE.test(terms.version) && (terms.url === void 0 || isHttpsUrl2(terms.url));
+    if (!valid) {
+      add4(
+        errors,
+        "product",
+        "/identity/terms",
+        "invalid_identity_terms",
+        "identity.terms must be {version, url?}: a version of 1 to 32 characters of A-Z, a-z, 0-9, ., _ and -, and an https URL when url is given."
+      );
+    }
+  }
+  const paths = identity.redirectPaths;
+  if (paths !== void 0) {
+    if (!Array.isArray(paths) || paths.length > MAX_IDENTITY_REDIRECT_PATHS) {
+      add4(
+        errors,
+        "product",
+        "/identity/redirectPaths",
+        "invalid_identity_redirect_paths",
+        `identity.redirectPaths must be an array of at most ${MAX_IDENTITY_REDIRECT_PATHS} paths.`
+      );
+    } else {
+      const seen = /* @__PURE__ */ new Set();
+      for (const [i, path30] of paths.entries()) {
+        const problem = identityRedirectPathProblem(path30) ?? (seen.has(path30) ? "must not repeat an earlier entry" : null);
+        if (problem) {
+          add4(
+            errors,
+            "product",
+            `/identity/redirectPaths/${i}`,
+            "invalid_identity_redirect_paths",
+            `identity.redirectPaths entries ${problem}.`
+          );
+        }
+        if (typeof path30 === "string") seen.add(path30);
+      }
+      const origins = asRecord(productRoot.web).origins;
+      if (paths.length > 0 && !(Array.isArray(origins) && origins.length > 0)) {
+        add4(
+          warnings,
+          "product",
+          "/identity/redirectPaths",
+          "identity_redirect_paths_without_origins",
+          "identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths."
+        );
+      }
+    }
+  }
+}
+var IDENTITY_MEMBERS = [
+  "keyEntry",
+  "terms",
+  "redirectPaths"
+];
+function normalizeIdentityBlock(raw) {
+  if (!isRecord6(raw)) return void 0;
+  const out = {};
+  if (isRecord6(raw.keyEntry)) {
+    const keyEntry = {};
+    if (integerIn(
+      raw.keyEntry.limit,
+      IDENTITY_KEY_ENTRY_LIMIT.min,
+      IDENTITY_KEY_ENTRY_LIMIT.max
+    ))
+      keyEntry.limit = raw.keyEntry.limit;
+    if (typeof raw.keyEntry.claimByKey === "boolean")
+      keyEntry.claimByKey = raw.keyEntry.claimByKey;
+    if (Object.keys(keyEntry).length > 0) out.keyEntry = keyEntry;
+  }
+  if (isRecord6(raw.terms) && typeof raw.terms.version === "string" && IDENTITY_TERMS_VERSION_RE.test(raw.terms.version)) {
+    out.terms = { version: raw.terms.version };
+    if (isHttpsUrl2(raw.terms.url)) out.terms.url = raw.terms.url;
+  }
+  if (Array.isArray(raw.redirectPaths))
+    out.redirectPaths = raw.redirectPaths.filter(isString);
   return Object.keys(out).length > 0 ? out : void 0;
 }
 function positiveInteger(v) {
