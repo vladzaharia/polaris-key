@@ -51,6 +51,7 @@ describe("reserved entitlement names (S-19 §7.4, LX-05)", () => {
       "app.maxVersion",
       "license.tier",
       "license.tierLabel",
+      "pkey.cloudSync.bytes",
       "license.anything",
       "app.build",
       "pkey.future",
@@ -99,6 +100,11 @@ describe("reserved entitlement names (S-19 §7.4, LX-05)", () => {
         schema: { type: "string", enum: ["free", "pro"] },
       }),
       flag("app.build", { schema: { type: "string" } }),
+      // The Cloud Sync quota: a key the Worker only reads, so a tier can carry it.
+      flag("pkey.cloudSync.bytes", {
+        schema: { type: "integer", minimum: 0 },
+        default: 268435456,
+      }),
     );
     const res = validateIngestDocuments({ product: PRODUCT, schema });
     expect(res.ok).toBe(true);
@@ -211,6 +217,10 @@ describe("reserved entitlement names (S-19 §7.4, LX-05)", () => {
     [
       "a non-string under app.",
       flag("app.build", { schema: { type: "integer" } }),
+    ],
+    [
+      "the Cloud Sync quota as anything but an integer",
+      flag("pkey.cloudSync.bytes", { schema: { type: "string" } }),
     ],
   ])("is incompatible: %s", (_label, entry) => {
     expect(reservedNameProblem(entry)).not.toBeNull();

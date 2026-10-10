@@ -110,14 +110,14 @@ export {
 } from "./services.generated.js";
 
 /**
- * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, rules
- * shape and 1–11 as they apply to `.pkey/schema`) for a catalog published outside a manifest:
- * the console's catalog editor through the admin API. The same code the manifest validator runs.
+ * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, every
+ * rule as it applies to `.pkey/schema`) for a catalog published outside a manifest: the console's
+ * catalog editor through the admin API. The same code the manifest validator runs. Only errors
+ * come back: a warning (a `user` block on a locked key) never blocks a publish.
  */
 export function validateCatalogCloudSync(input: {
   entries: readonly unknown[];
   cloudSync: unknown;
-  tierIds: ReadonlySet<string>;
 }): ValidationMessage[] {
   const errors: ValidationMessage[] = [];
   validateCloudSync(errors, [], {
@@ -125,7 +125,6 @@ export function validateCatalogCloudSync(input: {
     catalogCloudSync: input.cloudSync,
     productCloudSync: undefined,
     catalogChecked: true,
-    tierIds: input.tierIds,
     // Warnings are not reported here; the service toggle is the Services page's concern.
     syncEnabled: true,
   });
@@ -2575,9 +2574,10 @@ function validateDocuments(
     );
   }
 
-  // Cloud Sync (S-17 §5.3; plans/U-01.md §3): the catalog's `user` and `cloudSync` blocks (the
-  // data shape, judged like the rest of the catalog's content only while Config is on) and
-  // `.pkey/product`'s `cloudSync` block (limits and access policy).
+  // Cloud Sync (S-17 §5.3; plans/U-01b.md §3.2): the catalog's `user` and `cloudSync` blocks (the
+  // data shape, judged like the rest of the catalog's content only while Config is on). A
+  // `.pkey/product` `cloudSync` block is retired and always refused: the quota is the
+  // `pkey.cloudSync.bytes` entitlement.
   {
     const catalog =
       manifest.schema === undefined ? null : normalizeCatalog(manifest.schema);
@@ -2588,7 +2588,6 @@ function validateDocuments(
         : undefined,
       productCloudSync: productRoot.cloudSync,
       catalogChecked: catalog !== null && modules.includes("config"),
-      tierIds,
       syncEnabled: modules.includes("sync"),
     });
   }

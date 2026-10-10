@@ -192,20 +192,6 @@ function base(): Docs {
         rateLimitPerHour: 10,
       },
       secrets: { required: ["OIDC_CLIENT_SECRET"] },
-      // U-04: Cloud Sync limits and access policy (plans/U-01.md §3).
-      cloudSync: {
-        limits: {
-          totalBytes: 268435456,
-          settingsBytes: 65536,
-          records: 10000,
-          collectionBytes: 5242880,
-          saves: { slots: 16, maxBytes: 33554432, keepRevisions: 5 },
-          byTier: { pro: { totalBytes: 536870912, saves: { slots: 32 } } },
-          byEntitlement: { totalBytes: "sync.storageBytes" },
-        },
-        unlicensed: { limits: { totalBytes: 1048576 }, saves: false },
-        writes: { requireLicense: false, minTrust: null },
-      },
       // ST-19 row 17: edge-mint recipes belong in `.pkey/product`. The release document's root
       // copy is the deprecated spelling (and a copy under its `release:` wrapper is never read).
       edgeMint: [
@@ -232,7 +218,7 @@ function base(): Docs {
           default: 3,
           managementDefault: "default",
           ui: { widget: "stepper" },
-          // U-04: a user setting (S-17 §5.3).
+          // U-01b: a synced setting tuned by its user block (plans/U-01b.md D2).
           user: { sync: "user", conflict: "max" },
         },
         {
@@ -254,7 +240,7 @@ function base(): Docs {
           schema: { type: "boolean" },
           userGrant: true,
         },
-        // U-04: a merged user setting and the flags Cloud Sync declarations name.
+        // U-01b: a merged synced setting and the flag a collection's requires names.
         {
           key: "input.bindings",
           kind: "config",
@@ -270,14 +256,6 @@ function base(): Docs {
           user: { sync: "user", conflict: "merge", listed: false },
         },
         {
-          key: "sync.storageBytes",
-          kind: "flag",
-          category: "Cloud Sync",
-          label: "Cloud storage",
-          description: "Raises the Cloud Sync storage limit.",
-          schema: { type: "integer", minimum: 0 },
-        },
-        {
           key: "cloudSaves",
           kind: "flag",
           category: "Cloud Sync",
@@ -286,7 +264,7 @@ function base(): Docs {
           schema: { type: "boolean" },
         },
       ],
-      // U-04: the data shape of Cloud Sync data (plans/U-01.md §3).
+      // U-01b: the data shape of Cloud Sync records (plans/U-01b.md §3.1).
       cloudSync: {
         collections: [
           {
@@ -294,29 +272,36 @@ function base(): Docs {
             access: "owner",
             conflict: "revision",
             schema: { type: "object" },
-            onAttach: "prompt",
           },
           {
             name: "unlocks",
-            access: "ownerRead",
+            label: "Unlocks",
             conflict: "union",
             schema: { type: "array", uniqueItems: true },
           },
-          { name: "support_notes", access: "server" },
-          { name: "mod.*", access: "owner", conflict: "merge" },
-        ],
-        open: false,
-        saves: {
-          conflict: "prompt",
-          requiresFlag: "cloudSaves",
-          metadata: {
-            schema: { type: "object" },
-            playtimeField: "playtimeSeconds",
-            progressField: "progress",
+          {
+            name: "saves",
+            template: "saves",
+            requires: "cloudSaves",
+            files: { maxBytes: 33554432, keepRevisions: 5 },
           },
-          thumbnail: { maxBytes: 131072 },
-          format: { refuseNewer: true },
-        },
+          { name: "mod.*", access: "owner", conflict: "merge" },
+          {
+            name: "scores",
+            conflict: "max",
+            conflictField: "best",
+            schema: {
+              type: "object",
+              properties: { best: { type: "integer", minimum: 0 } },
+            },
+            maxRecords: 100,
+          },
+          {
+            name: "session",
+            template: "session",
+            requires: "pkey.cloudSync.bytes",
+          },
+        ],
         migrations: [
           {
             toSchemaVersion: 1,
@@ -605,7 +590,6 @@ const entry = (d: Docs) => app(d).artifacts[0];
 const dist = (d: Docs) => d.distribution as Record<string, any>;
 const cat = (d: Docs) => d.schema as Record<string, any>;
 const csCat = (d: Docs) => cat(d).cloudSync;
-const csProd = (d: Docs) => p(d).cloudSync;
 const bindings = (d: Docs) =>
   cat(d).entries.find((e: { key: string }) => e.key === "input.bindings");
 const outlet = (d: Docs, id: string) => dist(d).outlets[id];
@@ -1216,10 +1200,11 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (cat(d).entries[0].user = { sync: "everywhere" }),
   },
   {
+    // The retired device scope (the message points to local).
     code: "invalid_user_setting",
     file: "schema",
     schema: "rejects",
-    mutate: (d) => (cat(d).entries[0].user = { conflict: "max" }),
+    mutate: (d) => (cat(d).entries[0].user = { sync: "device" }),
   },
   {
     // Rule 1. entries[1] is the secret entry.
@@ -1229,10 +1214,10 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (cat(d).entries[1].user = { sync: "user" }),
   },
   {
-    // Rule 2.
+    // Rule 2, a warning: a user block on a locked key has no effect.
     code: "user_setting_locked_default",
     file: "schema",
-    schema: "rejects",
+    schema: "accepts",
     mutate: (d) => (cat(d).entries[0].managementDefault = "enforced"),
   },
   {
@@ -1248,6 +1233,20 @@ const MUTATIONS: Mutation[] = [
     file: "schema",
     schema: "accepts",
     mutate: (d) => (bindings(d).user.conflict = "max"),
+  },
+  {
+    // Rule 3: merge stays object-only; a list setting cannot combine.
+    code: "user_conflict_type_mismatch",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => {
+      bindings(d).schema = {
+        type: "array",
+        items: { type: "string" },
+        uniqueItems: true,
+      };
+      bindings(d).default = [];
+    },
   },
   {
     // Rule 4.
@@ -1283,16 +1282,14 @@ const MUTATIONS: Mutation[] = [
     code: "collection_name_conflict",
     file: "schema",
     schema: "accepts",
-    mutate: (d) =>
-      csCat(d).collections.push({ name: "progress", access: "owner" }),
+    mutate: (d) => csCat(d).collections.push({ name: "progress" }),
   },
   {
     // Rule 7: a name the `mod.*` pattern already covers.
     code: "collection_name_conflict",
     file: "schema",
     schema: "accepts",
-    mutate: (d) =>
-      csCat(d).collections.push({ name: "mod.maps", access: "owner" }),
+    mutate: (d) => csCat(d).collections.push({ name: "mod.maps" }),
   },
   {
     // Rule 7: outside the key charset (the schema's name pattern catches this one).
@@ -1302,73 +1299,65 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (csCat(d).collections[0].name = "my progress"),
   },
   {
-    // Rule 8: byTier names a tier the product does not declare.
-    code: "cloud_sync_unknown_tier",
-    file: "product",
-    schema: "accepts",
-    mutate: (d) => (csProd(d).limits.byTier.gold = { totalBytes: 1 }),
-  },
-  {
-    // Rule 8: requiresFlag names no catalog flag.
-    code: "cloud_sync_unknown_flag",
+    // Rule 8: requires names neither a catalog flag nor a system entitlement.
+    code: "cloud_sync_unknown_entitlement",
     file: "schema",
     schema: "accepts",
-    mutate: (d) => (csCat(d).saves.requiresFlag = "noSuchFlag"),
+    mutate: (d) => (csCat(d).collections[2].requires = "noSuchFlag"),
   },
   {
-    // Rule 8: byEntitlement names no catalog flag (a cross-document reference).
-    code: "cloud_sync_unknown_flag",
-    file: "product",
-    schema: "accepts",
-    mutate: (d) => (csProd(d).limits.byEntitlement.saveSlots = "sync.slots"),
-  },
-  {
-    // Rule 8b: a boolean flag cannot raise a limit.
-    code: "cloud_sync_entitlement_not_max",
-    file: "product",
-    schema: "accepts",
-    mutate: (d) => (csProd(d).limits.byEntitlement.totalBytes = "acmeVpn"),
-  },
-  {
-    // Rule 8b: a numeric flag combined other than by max.
-    code: "cloud_sync_entitlement_not_max",
-    file: "product",
-    schema: "accepts",
-    mutate: (d) => {
-      const flag = cat(d).entries.find(
-        (e: { key: string }) => e.key === "sync.storageBytes",
-      );
-      flag.combine = "sum";
-    },
-  },
-  {
-    // Rule 9.
-    code: "on_attach_keep_local_forbidden",
+    // Rule 8: a config key is not an entitlement.
+    code: "cloud_sync_unknown_entitlement",
     file: "schema",
     schema: "accepts",
-    mutate: (d) => (csCat(d).collections[2].onAttach = "keepLocal"),
+    mutate: (d) => (csCat(d).collections[2].requires = "run.concurrency"),
   },
   {
-    // Rule 10: above the platform ceiling (settings 256 KiB).
-    code: "cloud_sync_limit_over_ceiling",
-    file: "product",
+    // A max collection without the field the server compares.
+    code: "collection_conflict_field",
+    file: "schema",
     schema: "accepts",
-    mutate: (d) => (csProd(d).limits.settingsBytes = 1048576),
+    mutate: (d) => delete csCat(d).collections[4].conflictField,
   },
   {
-    // Rule 10: a tier's saves above the ceiling (1 GiB).
-    code: "cloud_sync_limit_over_ceiling",
-    file: "product",
+    // A conflictField naming no number property of the schema.
+    code: "collection_conflict_field",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => (csCat(d).collections[4].conflictField = "playtime"),
+  },
+  {
+    // A conflictField on a policy that compares nothing.
+    code: "collection_conflict_field",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => (csCat(d).collections[0].conflictField = "level"),
+  },
+  {
+    // A max on the saves template's own number field passes; on its string field it does not.
+    code: "collection_conflict_field",
+    file: "schema",
     schema: "accepts",
     mutate: (d) =>
-      (csProd(d).limits.byTier.pro.saves.maxBytes = 2 * 1024 * 1024 * 1024),
+      Object.assign(csCat(d).collections[2], {
+        conflict: "max",
+        conflictField: "chapter",
+      }),
   },
   {
-    // Rule 10: unlicensed above licensed.
+    // Rule 10: a collection's record count above the platform's 10,000.
     code: "cloud_sync_limit_over_ceiling",
-    file: "product",
+    file: "schema",
     schema: "accepts",
-    mutate: (d) => (csProd(d).unlicensed.limits.records = 20000),
+    mutate: (d) => (csCat(d).collections[4].maxRecords = 10001),
+  },
+  {
+    // Rule 10: a file above the per-person file ceiling (1 GiB).
+    code: "cloud_sync_limit_over_ceiling",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) =>
+      (csCat(d).collections[2].files.maxBytes = 2 * 1024 * 1024 * 1024),
   },
   {
     // Rule 11: a rename target the catalog does not declare.
@@ -1392,22 +1381,52 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (csCat(d).limits = { totalBytes: 1 }),
   },
   {
+    // Only owner collections exist in v1.
     code: "invalid_cloud_sync",
     file: "schema",
     schema: "rejects",
-    mutate: (d) => delete csCat(d).collections[0].access,
+    mutate: (d) => (csCat(d).collections[0].access = "server"),
+  },
+  {
+    // Retired with no replacement: the first sign-in is an ordinary sync.
+    code: "invalid_cloud_sync",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (csCat(d).collections[0].onAttach = "prompt"),
+  },
+  {
+    // Retired: saves are a collection with template: "saves".
+    code: "invalid_cloud_sync",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (csCat(d).saves = { conflict: "prompt" }),
+  },
+  {
+    // Retired: every collection is declared.
+    code: "invalid_cloud_sync",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (csCat(d).open = false),
   },
   {
     code: "invalid_cloud_sync",
-    file: "product",
+    file: "schema",
     schema: "rejects",
-    mutate: (d) => (csProd(d).collections = []),
+    mutate: (d) => (csCat(d).collections[0].template = "inventory"),
   },
   {
+    // The saves slots are pinned at 16.
+    code: "invalid_cloud_sync",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (csCat(d).collections[2].maxRecords = 32),
+  },
+  {
+    // Retired: the quota is the pkey.cloudSync.bytes entitlement.
     code: "invalid_cloud_sync",
     file: "product",
     schema: "rejects",
-    mutate: (d) => (csProd(d).writes.minTrust = "high"),
+    mutate: (d) => (p(d).cloudSync = { limits: { totalBytes: 1048576 } }),
   },
   {
     // A warning: the declarations are kept, but nothing syncs while the service is off.

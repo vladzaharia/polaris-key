@@ -111,14 +111,13 @@
         "deprecated": { "type": "boolean" },
         "since": { "type": "string" },
         "user": {
-          "description": "CONFIG kinds only: makes the key a user setting — persisted on the device by the Config SDK and, for a signed-in device with Cloud Sync on, synced. sync: user (roams everywhere) · platform (within desktop, mobile, console or web) · device (per device, never roams) · local (never leaves the device). conflict: lastWrite (default) · max · min (number schemas) · merge (object schemas, per top-level member); never union. listed: shown in settings panels (default true).",
+          "description": "CONFIG kinds only: tunes a synced setting. Every Editable config key (no managementDefault of enforced or hidden) syncs for a signed-in person while Cloud Sync is on, with or without this block; on a locked key the block has no effect (a validator warning). sync: user (default; roams everywhere) · platform (within desktop, mobile, console or web) · local (never leaves the device). conflict: lastWrite (default) · max · min (number schemas) · merge (object schemas, per top-level member; a set is an object of booleans); never union or revision. listed: shown in settings panels (default true).",
           "type": "object",
           "properties": {
-            "sync": { "enum": ["user", "platform", "device", "local"] },
+            "sync": { "enum": ["user", "platform", "local"] },
             "conflict": { "enum": ["lastWrite", "max", "min", "merge"] },
             "listed": { "type": "boolean" }
           },
-          "required": ["sync"],
           "additionalProperties": false
         }
       },
@@ -141,20 +140,17 @@
           }
         },
         {
-          "$comment": "user is only valid on config entries (user_setting_wrong_kind), and never on a key whose managementDefault is enforced or hidden (user_setting_locked_default).",
+          "$comment": "user is only valid on config entries (user_setting_wrong_kind). On a key whose managementDefault is enforced or hidden it has no effect, which the validator reports as a warning (user_setting_locked_default).",
           "if": { "required": ["user"] },
           "then": {
-            "properties": {
-              "kind": { "const": "config" },
-              "managementDefault": { "enum": ["default"] }
-            },
+            "properties": { "kind": { "const": "config" } },
             "required": ["kind"]
           }
         }
       ]
     },
     "cloudSync": {
-      "description": "The data shape of the product's Cloud Sync data (the Cloud Sync service): collections of records, save slots, and the migrations the server applies to synced values. Limits and access policy are not here: they are settings in .pkey/product's cloudSync block.",
+      "description": "The data shape of the product's Cloud Sync records (the Cloud Sync service): its collections and the migrations the server applies to synced values. A person's quota is not here: it is the pkey.cloudSync.bytes entitlement a tier, a licence override or an add-on sets.",
       "type": "object",
       "properties": {
         "collections": {
@@ -168,68 +164,70 @@
                 "type": "string",
                 "pattern": "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$"
               },
+              "label": {
+                "description": "Shown in the console and the portal. Default: the template's label, else the name.",
+                "type": "string",
+                "minLength": 1
+              },
+              "template": {
+                "description": "saves (save slots: revision, 16 slots per person, a 32 MiB file with 5 older versions, and playtime, progress, chapter, formatVersion and a base64 thumbnail of about 32 KiB) · session (lastWrite, 16 records, an 8 MiB file with 1 older version). The declaration's own members override the template's, except a saves collection's slot count.",
+                "enum": ["saves", "session"]
+              },
               "access": {
-                "description": "owner (the signed-in person's devices write) · ownerRead (devices read; the console or the developer backend writes) · server (never delivered to devices).",
-                "enum": ["owner", "ownerRead", "server"]
+                "description": "owner, the only value (the signed-in person's devices read and write); omit it.",
+                "enum": ["owner"]
               },
               "conflict": {
-                "description": "revision (compare-and-swap, default) · lastWrite · merge (per top-level field) · union (a set: array schema with uniqueItems).",
-                "enum": ["revision", "lastWrite", "merge", "union"]
+                "description": "revision (compare-and-swap, default) · lastWrite · max · min (the record whose conflictField is larger or smaller) · merge (per top-level field) · union (a set: array schema with uniqueItems). The server applies every policy.",
+                "enum": [
+                  "lastWrite",
+                  "max",
+                  "min",
+                  "merge",
+                  "union",
+                  "revision"
+                ]
+              },
+              "conflictField": {
+                "description": "For max and min only: the number property of the schema the server compares.",
+                "type": "string"
               },
               "schema": {
                 "description": "A Draft-07-subset schema every record value must satisfy.",
                 "type": "object"
               },
-              "onAttach": {
-                "description": "What happens to a device's local records at its first sign-in (default prompt). A server collection cannot keepLocal.",
-                "enum": ["keepCloud", "keepLocal", "merge", "prompt"]
+              "maxRecords": {
+                "description": "The most records one person keeps here (at most 10,000). Not allowed on a saves collection: its 16 slots are a platform constant.",
+                "type": "integer",
+                "minimum": 1
+              },
+              "files": {
+                "description": "The one file a record may carry: its largest size in bytes (at most 1 GiB) and how many older versions are kept.",
+                "type": "object",
+                "properties": {
+                  "maxBytes": { "type": "integer", "minimum": 0 },
+                  "keepRevisions": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "requires": {
+                "description": "An entitlement the anchor licence must grant before a record is written: a catalog flag or a system entitlement.",
+                "type": "string"
               }
             },
-            "required": ["name", "access"],
+            "required": ["name"],
+            "allOf": [
+              {
+                "$comment": "A saves collection's slots are a platform constant (16), so it may not set maxRecords.",
+                "if": {
+                  "properties": { "template": { "const": "saves" } },
+                  "required": ["template"]
+                },
+                "then": { "not": { "required": ["maxRecords"] } }
+              }
+            ],
             "additionalProperties": false
           }
-        },
-        "open": {
-          "description": "true: undeclared collection names are allowed at default limits (default false).",
-          "type": "boolean"
-        },
-        "saves": {
-          "type": "object",
-          "properties": {
-            "conflict": {
-              "description": "How two divergent saves of a slot resolve, in the SDK (default prompt).",
-              "enum": [
-                "prompt",
-                "mostRecent",
-                "longestPlaytime",
-                "highestProgress"
-              ]
-            },
-            "requiresFlag": {
-              "description": "A catalog flag the person's effective entitlements must grant for saves to be written.",
-              "type": "string"
-            },
-            "metadata": {
-              "type": "object",
-              "properties": {
-                "schema": { "type": "object" },
-                "playtimeField": { "type": "string" },
-                "progressField": { "type": "string" }
-              },
-              "additionalProperties": false
-            },
-            "thumbnail": {
-              "type": "object",
-              "properties": { "maxBytes": { "type": "integer", "minimum": 0 } },
-              "additionalProperties": false
-            },
-            "format": {
-              "type": "object",
-              "properties": { "refuseNewer": { "type": "boolean" } },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
         },
         "migrations": {
           "type": "array",

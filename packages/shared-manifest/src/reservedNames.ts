@@ -1,13 +1,16 @@
 /**
  * Reserved entitlement names (S-19 §7.4, decision 15; G13).
  *
- * The Worker injects a few system keys into every licence document's `entitlements` after the
- * profile and override merge (`packages/worker/src/core/entitlements.ts`): `channels`,
- * `deviceLimit`, `app.minVersion`, `app.maxVersion`, `license.tier` and `license.tierLabel`. They
- * share one namespace with the product's own catalog `flag` entries, so a product flag of the same
- * name is silently overwritten. This module is the ONE place that knows which names are reserved
- * and what a compatible declaration of one looks like; the manifest validator, the Worker's
- * console write paths and the platform "Reserved names" report all ask it.
+ * The reserved names are the system keys the Worker injects (and overwrites), plus keys it only
+ * reads. It injects a few into every licence document's `entitlements` after the profile and
+ * override merge (`packages/worker/src/core/entitlements.ts`): `channels`, `deviceLimit`,
+ * `app.minVersion`, `app.maxVersion`, `license.tier` and `license.tierLabel`. They share one
+ * namespace with the product's own catalog `flag` entries, so a product flag of the same name is
+ * silently overwritten. It only reads `pkey.cloudSync.bytes`, the Cloud Sync quota a tier, a
+ * licence override or an add-on sets (`injected: false`). This module is the ONE place that knows
+ * which names are reserved and what a compatible declaration of one looks like; the manifest
+ * validator, the Worker's console write paths and the platform "Reserved names" report all ask
+ * it.
  *
  * A **compatible** declaration stays valid forever: it matches the system key's type (`channels`
  * an array of strings, `deviceLimit` an integer, the `app.*` and `license.*` keys strings), may
@@ -21,7 +24,8 @@
  * The `license.`, `app.` and `pkey.` prefixes are reserved for future system keys. A declaration
  * under `app.` that is a string is compatible (the `app.*` keys are semver strings); any other
  * name under `license.` or `pkey.` that is not a known system key is incompatible, because no
- * declaration can be compatible with a key that does not exist yet.
+ * declaration can be compatible with a key that does not exist yet. A known one such as
+ * `pkey.cloudSync.bytes` (an integer) is compatible when its declaration matches its type.
  *
  * Only `flag` entries are judged: config and secret keys live in their own documents and never
  * collide with an entitlement.
@@ -45,9 +49,13 @@ export interface ReservedEntitlementKey {
   type: ReservedKeyType;
   /** How the Worker sets it (shown read-only in the console). */
   rule: string;
+  /** `false` for a key the Worker only reads: a tier, a licence or an add-on sets it, and the
+   *  merge keeps that value. Absent: injected, overwriting any value of the same name. */
+  injected?: false;
 }
 
-/** The system keys the Worker injects today (S-19 §7.4 "Reserved policy keys"). */
+/** The system keys the Worker injects (and overwrites), plus keys it only reads (S-19 §7.4
+ *  "Reserved policy keys"; plans/U-01b.md §3.2). */
 export const RESERVED_ENTITLEMENT_KEYS: readonly ReservedEntitlementKey[] = [
   {
     key: "channels",
@@ -78,6 +86,12 @@ export const RESERVED_ENTITLEMENT_KEYS: readonly ReservedEntitlementKey[] = [
     key: "license.tierLabel",
     type: "string",
     rule: "The license's tier label.",
+  },
+  {
+    key: "pkey.cloudSync.bytes",
+    type: "integer",
+    rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Sync reads it from the anchor licence as the person's quota in bytes (256 MiB when unset).",
+    injected: false,
   },
 ];
 
