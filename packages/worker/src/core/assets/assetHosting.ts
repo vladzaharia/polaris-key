@@ -14,7 +14,7 @@
  * A-13 store entry under the row and `[vars]` name `ASSET_HOSTING`: `runtime` precedence, so a
  * console value wins, then `[vars]`, then the default `on`. An unreadable store falls to `[vars]`
  * or the default, never to off: an outage must not flip every surface. Reads come from the
- * store's 30-second per-isolate copy (`core/platformSettings.ts`), so a request costs one read at
+ * store's 30-second per-isolate copy (`core/platformSettings.ts`, read through `core/settings/platformRead.ts`), so a request costs one read at
  * most every 30 seconds per isolate, and every isolate follows a change within 30 seconds.
  *
  * Not a security gate: turning it off only restores the earlier behaviour. The blob route's

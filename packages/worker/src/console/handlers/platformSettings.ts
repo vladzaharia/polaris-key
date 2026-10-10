@@ -232,11 +232,12 @@ function constants() {
 }
 
 /** The labels of an enum entry's options (the registry holds the values, not their wording). */
-const CHOICE_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> =
-  {
-    "licensing.reservedNames": { warn: "Warn", error: "Refuse" },
-    "identity.reservedDisplayNames": { warn: "Warn", error: "Refuse" },
-  };
+const CHOICE_LABELS: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  "licensing.reservedNames": { warn: "Warn", error: "Refuse" },
+  "identity.reservedDisplayNames": { warn: "Warn", error: "Refuse" },
+};
 
 /** The row key the console and `env.ts` know the entry by: its A-13 alias, else the registry key. */
 function viewKey(def: SettingDef): string {
@@ -387,7 +388,8 @@ async function write(
       expectedVersion: expectedVersionOf(
         body.expectedVersion ??
           (op === "reset"
-            ? (new URL(req.url).searchParams.get("expectedVersion") ?? undefined)
+            ? (new URL(req.url).searchParams.get("expectedVersion") ??
+              undefined)
             : undefined),
       ),
       // `writeSetting()` refuses a reason that is not text.

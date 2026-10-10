@@ -5,8 +5,8 @@
  * A-13's four editable keys (and LX-05's `licensing.reservedNames`) live here now, under their
  * registry keys, with their old SCREAMING_CASE names as aliases (S-18 §4.1). Their
  * `platform_settings` rows keep the old names (`storage.storedAs`), so no migration rewrites them
- * and the A-13 store and admin route (`core/platformSettings.ts`, which derives `PLATFORM_SETTINGS`
- * from this slice) are unchanged.
+ * and the one path reads and writes them (`resolvePlatformSetting`, `writeSetting`; ST-05a deleted
+ * the A-13 store's own definition list, resolver and writer).
  *
  * Everything here is reviewed against AT-2 (THREAT-MODEL "Platform settings and operations"):
  * `rules.ts` refuses an origin, the privilege root, the admin IdP, a security gate, key
@@ -361,7 +361,8 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     widensWhen: "on",
     ownership: "operator",
     confirm: { on: "L2", off: "L2" },
-    // A `platform_settings` row under the registry key itself (no A-13 alias); ST-05 writes it.
+    // A `platform_settings` row under the registry key itself (no A-13 alias); the platform
+    // settings route writes it through `writeSetting()`.
     storage: { kind: "scalar" },
     since: "PS-02",
     // The storefront engine's candidate set (S-21 §6.3 "Candidates", PS-03).

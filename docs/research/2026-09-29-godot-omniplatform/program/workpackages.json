@@ -9502,7 +9502,7 @@
         "consolidation alias ST-05 (split)"
       ],
       "brief": "wp/ST-05a-one-settings-read-write-path.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-05b",

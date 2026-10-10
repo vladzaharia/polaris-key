@@ -1,5 +1,7 @@
-// A-13: the platform settings store (`src/core/platformSettings.ts`), its admin API
-// (`src/console/handlers/platformSettings.ts`) and the four settings' readers.
+// A-13's platform settings, on the one path (ST-05a): the store cache
+// (`src/core/platformSettings.ts`), the registry resolver and typed readers
+// (`src/core/settings/platformRead.ts`), the admin API (`src/console/handlers/platformSettings.ts`,
+// a strict `writeSetting()`) and the readers.
 
 import { describe, expect, it } from "vitest";
 import type { Env } from "../src/platform/env.js";
@@ -13,19 +15,24 @@ import {
 import {
   invalidatePlatformSettings,
   LAZY_DELTA_MAX_BYTES_CEILING,
-  PLATFORM_SETTINGS,
-  platformSetting,
-  platformSettingDef,
-  platformSettings,
   refreshPlatformSettings,
-  resolveSetting,
-  isHardOffVar,
-  onlyAfterAChange,
-  settingConfirmLevel,
-  unrecognisedCeilingVars,
-  validateSettingValue,
-  type PlatformSettingDef,
 } from "../src/core/platformSettings.js";
+import {
+  aliasedPlatformEntries,
+  coreSettingsRegistry,
+  platformSetting as readPlatformSetting,
+  platformSettingResolved,
+  unrecognisedCeilingVars,
+  type PlatformValues,
+} from "../src/core/settings/platformRead.js";
+import {
+  isHardOffDeploy,
+  isSettingValue,
+  resolvePlatformValue,
+} from "../src/core/settings/resolve.js";
+import { confirmLevelFor } from "../src/core/settings/write.js";
+import type { SettingDef } from "../src/core/settings/types.js";
+import { SETTINGS } from "../src/mount.js";
 import { lazyDeltasOn } from "../src/core/assets/deltaDemand.js";
 import { effectiveBlobGcSettings } from "../src/core/assets/blobGc.js";
 import { listPlatformAudit } from "../src/core/repo.js";
@@ -45,9 +52,96 @@ function adminEnv(extra: Record<string, unknown> = {}): Env {
   }) as Env;
 }
 
-function def(key: string): PlatformSettingDef {
-  return platformSettingDef(key)!;
+/** The A-13 entries: live platform entries stored under a row alias (the page's list). */
+const PLATFORM_SETTINGS = aliasedPlatformEntries();
+
+/** An entry by its A-13 row key (or registry key). */
+function def(key: string): SettingDef {
+  return coreSettingsRegistry().get(key, "platform")!;
 }
+
+/** The row key a platform entry is stored and listed under. */
+function rowKeyOf(d: SettingDef): string {
+  return d.storage.kind === "scalar" && d.storage.storedAs
+    ? d.storage.storedAs
+    : d.key;
+}
+
+/** A value of the entry, or `undefined` (the validator the old store carried). */
+function validateSettingValue(d: SettingDef, value: unknown) {
+  return isSettingValue(d, value) ? value : undefined;
+}
+
+interface StoredShape {
+  value: unknown;
+  version: number;
+  updatedAt: number;
+  updatedBy: string;
+  deleted?: boolean;
+}
+
+/** The resolver, in the old store's answer shape: value, source, forcedOff, stored.valid. */
+function resolveSetting(
+  d: SettingDef,
+  varRaw: unknown,
+  row: StoredShape | undefined,
+  storeOk: boolean,
+) {
+  const r = resolvePlatformValue(d, {
+    deploy: varRaw,
+    row:
+      row && !row.deleted
+        ? {
+            value: row.value,
+            version: row.version,
+            at: row.updatedAt,
+            by: row.updatedBy,
+          }
+        : null,
+    rowKey: rowKeyOf(d),
+    storeOk,
+    version: row?.version ?? 0,
+  });
+  const platform = r.chain.find((c) => c.source === "platform");
+  return {
+    value: r.value,
+    version: r.version,
+    source: r.failsafe
+      ? "failsafe"
+      : r.source === "platform"
+        ? "runtime"
+        : r.source,
+    forcedOff: r.lockedBy === "deploy",
+    stored: platform ? { valid: platform.ignored !== true } : null,
+  };
+}
+
+/** `platformSetting()` by A-13 alias, as the old tests read it. */
+function platformSetting(env: Record<string, unknown>, db: Db, alias: string) {
+  return readPlatformSetting(
+    env,
+    db,
+    coreSettingsRegistry().canonicalKey(alias) as keyof PlatformValues,
+  );
+}
+
+/** Every A-13 setting resolved, by row key. */
+async function platformSettings(
+  env: Record<string, unknown>,
+  db: Db,
+  opts: { fresh?: boolean } = {},
+) {
+  const out: Record<
+    string,
+    Awaited<ReturnType<typeof platformSettingResolved>>
+  > = {};
+  for (const d of PLATFORM_SETTINGS)
+    out[rowKeyOf(d)] = await platformSettingResolved(env, db, d.key, opts);
+  return out;
+}
+
+const settingConfirmLevel = confirmLevelFor;
+const isHardOffVar = isHardOffDeploy;
 
 async function call(
   env: Env,
@@ -120,7 +214,7 @@ function countingDb(inner: Db): { db: Db; count: () => number } {
 
 describe("PLATFORM_SETTINGS", () => {
   it("declares exactly the four background-job settings, the two reserved-names severities, the key-entry refusal switch and the hosted-asset switch", () => {
-    expect(PLATFORM_SETTINGS.map((d) => d.key).sort()).toEqual([
+    expect(PLATFORM_SETTINGS.map(rowKeyOf).sort()).toEqual([
       "ASSET_HOSTING",
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
@@ -132,7 +226,9 @@ describe("PLATFORM_SETTINGS", () => {
     ]);
     // Kill switches are `ceiling`, tunables `runtime` (moving one is a THREAT-MODEL §9 trigger).
     expect(
-      Object.fromEntries(PLATFORM_SETTINGS.map((d) => [d.key, d.precedence])),
+      Object.fromEntries(
+        PLATFORM_SETTINGS.map((d) => [rowKeyOf(d), d.precedence]),
+      ),
     ).toEqual({
       LAZY_DELTAS: "ceiling",
       BLOB_GC_MODE: "ceiling",
@@ -151,7 +247,7 @@ describe("PLATFORM_SETTINGS", () => {
 
   it("the reserved-names severity is warn or error, warn by default (S-19 §7.4, LX-05)", () => {
     const d = def("LICENSING_RESERVED_NAMES");
-    expect(d.kind).toBe("choice");
+    expect(d.value.kind).toBe("enum");
     expect(d.area).toBe("licensing");
     expect(d.defaultValue).toBe("warn");
     expect(validateSettingValue(d, "warn")).toBe("warn");
@@ -224,7 +320,7 @@ describe("PLATFORM_SETTINGS", () => {
       /BUCKET/,
     ];
     for (const d of PLATFORM_SETTINGS) {
-      for (const name of [d.key, d.varName]) {
+      for (const name of [rowKeyOf(d), d.varName!, d.key]) {
         expect(DENIED).not.toContain(name);
         for (const p of DENIED_PATTERNS) expect(name).not.toMatch(p);
       }
@@ -233,7 +329,7 @@ describe("PLATFORM_SETTINGS", () => {
 
   it("bounds the size cap at the measured 32 MiB ceiling: a runtime value may only lower it", () => {
     const cap = def("LAZY_DELTA_MAX_BYTES");
-    expect(cap.kind === "integer" && cap.max).toBe(
+    expect(cap.value.kind === "integer" && cap.value.max).toBe(
       LAZY_DELTA_MAX_BYTES_CEILING,
     );
     expect(cap.defaultValue).toBe(LAZY_DELTA_MAX_BYTES_CEILING);
@@ -379,7 +475,7 @@ describe("platformSetting / platformSettings", () => {
     await storeRow(db, "PLATFORM_ADMIN_GROUP", "attackers");
     const all = await platformSettings({ PLATFORM_ADMIN_GROUP: "admins" }, db);
     expect(Object.keys(all).sort()).toEqual(
-      PLATFORM_SETTINGS.map((d) => d.key).sort(),
+      PLATFORM_SETTINGS.map(rowKeyOf).sort(),
     );
   });
 
@@ -395,9 +491,9 @@ describe("platformSetting / platformSettings", () => {
     const all = await platformSettings({}, broken);
     expect(all.BLOB_GC_MODE).toMatchObject({
       value: "off",
-      source: "failsafe",
+      failsafe: true,
     });
-    expect(all.LAZY_DELTAS.value).toBe("off");
+    expect(all.LAZY_DELTAS!.value).toBe("off");
     expect(all.BLOB_GC_GRACE_DAYS).toMatchObject({ value: 30 });
   });
 });
@@ -757,7 +853,9 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
     expect(latest).toMatchObject({
       action: "platform.setting.set",
       target_kind: "setting",
-      target_id: "BLOB_GC_GRACE_DAYS",
+      // The registry key and the column `setting_key` name the entry (ST-05a), not its A-13 alias.
+      target_id: "blobs.gc.graceDays",
+      setting_key: "blobs.gc.graceDays",
       actor_sub: "admin-1",
       actor_email: "admin@example.com",
     });
@@ -765,13 +863,13 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
       stored: 7,
       version: 1,
       effective: 7,
-      source: "runtime",
+      source: "platform",
     });
     expect(JSON.parse(latest.after_json!)).toEqual({
       stored: 9,
       version: 2,
       effective: 9,
-      source: "runtime",
+      source: "platform",
     });
     expect(JSON.parse(byAfter(1).before_json!)).toEqual({
       stored: null,
@@ -796,7 +894,7 @@ describe("PATCH / DELETE /manage/api/platform/settings/:key", () => {
     expect(raise.status).toBe(422);
     expect(raise.body).toMatchObject({
       reason: "invalid_value",
-      max: LAZY_DELTA_MAX_BYTES_CEILING,
+      value: { kind: "integer", max: LAZY_DELTA_MAX_BYTES_CEILING },
     });
     const lower = await call(
       env,
@@ -1011,12 +1109,8 @@ describe("A-13 hardening", () => {
     );
     const r = (await platformSettings(env, db, { fresh: true }))
       .BLOB_GC_GRACE_DAYS;
-    expect(r).toMatchObject({
-      value: 45,
-      source: "deploy",
-      stored: null,
-      version: 4,
-    });
+    expect(r!).toMatchObject({ value: 45, source: "deploy", version: 4 });
+    expect(r!.chain.some((c) => c.source === "platform")).toBe(false);
   });
 
   it("a write whose version moved before the read answers 409 and records no audit row", async () => {
@@ -1049,75 +1143,144 @@ describe("A-13 hardening", () => {
     ).toBeNull();
   });
 
-  it("settingConfirmLevel and the confirm_required branch honour L2 and L3 on a synthetic definition", () => {
+  it("confirmLevelFor honours L2 and L3 on a synthetic definition", () => {
     const sw = {
       ...def("LAZY_DELTAS"),
       confirm: { on: "L3", off: "L2" },
-    } as PlatformSettingDef;
+    } as SettingDef;
     expect(settingConfirmLevel(sw, "off", "on")).toBe("L3");
     expect(settingConfirmLevel(sw, "on", "off")).toBe("L2");
     expect(settingConfirmLevel(sw, "on", "on")).toBe("L0");
     const int = {
       ...def("BLOB_GC_GRACE_DAYS"),
-      confirm: { raise: "L2", lower: "L3" },
-    } as PlatformSettingDef;
+      confirm: { up: "L2", down: "L3" },
+    } as SettingDef;
     expect(settingConfirmLevel(int, 10, 20)).toBe("L2");
     expect(settingConfirmLevel(int, 20, 10)).toBe("L3");
   });
 
-  it("an L2 definition 400s confirm_required until the key is typed", async () => {
-    // The handler resolves the entry through the registry's own object: swap its confirm levels
-    // in place for the duration of the test.
-    const real = platformSettingDef("BLOB_GC_GRACE_DAYS") as {
-      confirm: { raise: string; lower: string };
-    };
-    const original = real.confirm;
-    real.confirm = { raise: "L2", lower: "L3" };
-    try {
-      const db = makeTestDb();
-      const env = adminEnv();
-      const path = "/api/platform/settings/BLOB_GC_GRACE_DAYS";
-      const refused = await call(env, db, path, {
-        method: "PATCH",
-        body: { value: 60, expectedVersion: 0 },
-      });
-      expect(refused.status).toBe(400);
-      expect(refused.body.reason ?? refused.body.details?.reason).toBe(
-        "confirm_required",
-      );
-      const ok = await call(env, db, path, {
-        method: "PATCH",
-        body: { value: 60, expectedVersion: 0, confirm: "BLOB_GC_GRACE_DAYS" },
-      });
-      expect(ok.status).toBe(200);
-    } finally {
-      real.confirm = original;
-    }
-  });
-});
-
-describe("onlyAfterAChange", () => {
-  it("guards a flat VALUES (...) insert on changes()", () => {
-    const out = onlyAfterAChange({
-      sql: "INSERT INTO t (a, b) VALUES (?, ?)",
-      params: [1, 2],
+  it("an L2 entry 400s confirm_required until its registry key is typed, then writes through the registry", async () => {
+    // `storefront.polarisKey.enabled` (L2 both ways) has no A-13 alias: this route writes it by
+    // its registry key, and `writeSetting()` demands the typed confirmation.
+    const db = makeTestDb();
+    const env = adminEnv();
+    const path = "/api/platform/settings/storefront.polarisKey.enabled";
+    const refused = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: "off", expectedVersion: 0 },
     });
-    expect(out.sql).toBe(
-      "INSERT INTO t (a, b) SELECT ?, ? WHERE changes() > 0",
+    expect(refused.status).toBe(400);
+    expect(refused.body.reason ?? refused.body.details?.reason).toBe(
+      "confirm_required",
     );
-    expect(out.params).toEqual([1, 2]);
+    expect(
+      await db.first(
+        "SELECT 1 FROM platform_settings WHERE key = 'storefront.polarisKey.enabled'",
+      ),
+    ).toBeNull();
+    const ok = await call(env, db, path, {
+      method: "PATCH",
+      body: {
+        value: "off",
+        expectedVersion: 0,
+        confirm: "storefront.polarisKey.enabled",
+      },
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({
+      key: "storefront.polarisKey.enabled",
+      value: "off",
+      source: "runtime",
+      version: 1,
+    });
+    const audit = await listPlatformAudit(db, { limit: 10 });
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({
+      action: "platform.setting.set",
+      setting_key: "storefront.polarisKey.enabled",
+    });
+    // DELETE reverts it through the same path (L2 again: typed).
+    const noConfirm = await call(env, db, path, {
+      method: "DELETE",
+      body: { expectedVersion: 1 },
+    });
+    expect(noConfirm.status).toBe(400);
+    const reverted = await call(env, db, path, {
+      method: "DELETE",
+      body: { expectedVersion: 1, confirm: "storefront.polarisKey.enabled" },
+    });
+    expect(reverted.status).toBe(200);
+    expect(reverted.body).toMatchObject({ value: "on", source: "default" });
+  });
+  it("serves a registry key and its alias as one entry, and nothing the registry does not let an operator edit here", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    // The registry key reaches the A-13 row (stored under the alias) and is audited by it.
+    const byKey = await call(
+      env,
+      db,
+      "/api/platform/settings/blobs.gc.graceDays",
+      {
+        method: "PATCH",
+        body: { value: 12, expectedVersion: 0 },
+      },
+    );
+    expect(byKey.status).toBe(200);
+    expect(byKey.body).toMatchObject({ key: "BLOB_GC_GRACE_DAYS", value: 12 });
+    expect(
+      await db.first<{ value_json: string }>(
+        "SELECT value_json FROM platform_settings WHERE key = 'BLOB_GC_GRACE_DAYS'",
+      ),
+    ).toMatchObject({ value_json: "12" });
+    const byAlias = await call(
+      env,
+      db,
+      "/api/platform/settings/BLOB_GC_GRACE_DAYS",
+      {
+        method: "PATCH",
+        body: { value: 13, expectedVersion: 1 },
+      },
+    );
+    expect(byAlias.status).toBe(200);
+    // Negative controls: a pending entry, a list-valued entry and a non-platform key are 404,
+    // and nothing is stored for them.
+    for (const key of [
+      "identity.keyEntry.limit",
+      "identity.platformTerms",
+      "core.name",
+      "NOT_A_SETTING",
+    ]) {
+      const r = await call(env, db, `/api/platform/settings/${key}`, {
+        method: "PATCH",
+        body: { value: 5, expectedVersion: 0 },
+      });
+      expect(r.status, key).toBe(404);
+    }
+    expect(
+      await db.all("SELECT key FROM platform_settings ORDER BY key"),
+    ).toEqual([{ key: "BLOB_GC_GRACE_DAYS" }]);
   });
 
-  it("throws rather than return a statement it could not guard", () => {
-    // Nested parentheses, a trailing clause and an INSERT ... SELECT all fall outside the shape it
-    // rewrites; returned unchanged, each would insert its audit row even after a no-op write.
-    for (const sql of [
-      "INSERT INTO t (a, b) VALUES (?, lower(?))",
-      "INSERT INTO t (a) VALUES (?) ON CONFLICT DO NOTHING",
-      "INSERT INTO t (a) SELECT ?",
-    ])
-      expect(() => onlyAfterAChange({ sql, params: [1] })).toThrow(
-        /onlyAfterAChange/,
-      );
+  it("refuses a reason that is not text, and a write names no version (strict)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv();
+    const path = "/api/platform/settings/BLOB_GC_GRACE_DAYS";
+    const badReason = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: 7, expectedVersion: 0, reason: 42 },
+    });
+    expect(badReason.status).toBe(422);
+    expect(badReason.body.reason ?? badReason.body.details?.reason).toBe(
+      "invalid_reason",
+    );
+    const noVersion = await call(env, db, path, {
+      method: "PATCH",
+      body: { value: 7 },
+    });
+    expect(noVersion.status).toBe(400);
+    expect(noVersion.body.reason ?? noVersion.body.details?.reason).toBe(
+      "expected_version_required",
+    );
+    expect(await listPlatformAudit(db, { limit: 10 })).toHaveLength(0);
   });
 });

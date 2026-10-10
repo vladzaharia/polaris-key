@@ -9,7 +9,7 @@
  * `@editable <platform setting row key>`. The checks, in both modes:
  *
  *   1. every `Env` member has exactly one valid `@inventory` tag (a known kind and area), and an
- *      `@editable` names a `PLATFORM_SETTINGS` entry whose `varName` is that member;
+ *      `@editable` names the row key of a registry platform entry whose `varName` is that member;
  *   2. the generated file is current (`--check` only; otherwise it is rewritten);
  *   3. `wrangler.toml` and `wrangler.deltas.toml`: every `[vars]` key (commented-out ones too)
  *      is an inventory `var`, every binding name is an inventory `binding`; every inventory

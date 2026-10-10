@@ -26,10 +26,9 @@ import {
 import { RESERVED_ENTITLEMENT_KEYS } from "@polaris-key/manifest";
 import { reservedNamesMode } from "../src/core/licensing/reservedNames.js";
 import { tighterMax, tighterMin } from "../src/core/licensing/entitlements.js";
-import {
-  invalidatePlatformSettings,
-  writePlatformSetting,
-} from "../src/core/platformSettings.js";
+import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
+import { writeSetting } from "../src/core/settings/write.js";
+import { SETTINGS } from "../src/mount.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -181,13 +180,18 @@ describe("LICENSING_RESERVED_NAMES resolution", () => {
     ).toBe("warn");
     const env = { LICENSING_RESERVED_NAMES: "error" };
     expect(await reservedNamesMode(env, db)).toBe("error");
-    const write = await writePlatformSetting(
-      db,
-      "LICENSING_RESERVED_NAMES",
-      "warn",
-      0,
-      NOW,
-      "u1",
+    const write = await writeSetting(
+      { env, db, registry: SETTINGS },
+      {
+        key: "LICENSING_RESERVED_NAMES",
+        value: "warn",
+        expectedVersion: 0,
+      },
+      {
+        actor: { sub: "u1", name: null, email: null },
+        origin: "console",
+        now: NOW,
+      },
     );
     expect(write.ok).toBe(true);
     invalidatePlatformSettings(env, db);

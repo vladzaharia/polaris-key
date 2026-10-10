@@ -4230,8 +4230,9 @@ behind the same gates as the rest of the Platform section (session, `PLATFORM_AD
 per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-admin check). There
 is no new privilege level and no outbound call.
 
-- **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
-  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`,
+- **What is editable is a closed list in code.** The settings registry's platform slice
+  (`core/settings/platform.ts`; ST-05a removed the parallel `PLATFORM_SETTINGS` list) declares
+  `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`,
   `LICENSING_RESERVED_NAMES`, `IDENTITY_RESERVED_DISPLAY_NAMES`, `KEYENTRY_REFUSALS` and
   `ASSET_HOSTING` (below), and nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
   is never applied (the resolver falls through to `[vars]` or the code default). Each is a
@@ -4324,8 +4325,9 @@ contributed through its descriptor (`ServiceDescriptor.settings`), assembled onc
 is data: it reads and writes no value and adds no route. A-13's four keys moved into the platform
 slice under registry keys (`deltas.lazy.mode`, `deltas.lazy.maxBytes`, `blobs.gc.mode`,
 `blobs.gc.graceDays`) with their old names as aliases; their `platform_settings` rows keep the old
-names and `PLATFORM_SETTINGS` is now derived from the slice, so the A-13 store, its route and every
-control above are unchanged. Entries registered ahead of the package that wires them carry
+names. ST-05a folded the A-13 store into the registry: one resolver (`resolvePlatformSetting`),
+one writer (`writeSetting()`, strict on the platform-settings route, so version, reason and typed
+confirmation are its checks) and one definition list, so every control above applies unchanged. Entries registered ahead of the package that wires them carry
 `pending` and are not editable anywhere.
 
 The registry widens what the console will eventually be able to change (the resolver and generic
@@ -8631,7 +8633,7 @@ step gains a credential or a permission beyond the deploy token's D1 edit, a pla
 reporting a binding's resource id or any secret-derived value, a route updates or deletes a
 `platform_audit` row, or a writer puts a secret (or a hash or length of one) in `before_json` or
 `after_json`; or, for the platform settings store (A-13), a setting is added to
-`PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
+the registry's platform slice, a setting's precedence changes from `ceiling` to `runtime`, a registry
 entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
 one day), the settings inventory starts reporting anything about a secret beyond its presence,
 an `Env` member's `@inventory` tag changes from `secret` to `var` (ST-02),

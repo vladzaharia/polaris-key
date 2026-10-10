@@ -6,7 +6,7 @@
  *
  * ST-02 (notes/S-18 §4.13): this interface is the source of the platform inventory. Every member
  * carries one `@inventory <kind> <area>` tag on its own JSDoc line, and a registry-backed var also
- * `@editable <key>` (its `PLATFORM_SETTINGS` key, `core/platformSettings.ts`):
+ * `@editable <key>` (the `platform_settings` row key of its registry entry, `storage.storedAs`):
  *
  *   kind  `binding` a Cloudflare binding (`wrangler.toml`), never a string
  *         `var`     a value the console may show (a `[vars]` entry, a `--var` injected at deploy,

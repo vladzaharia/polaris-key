@@ -416,7 +416,10 @@ function commonChecks(
     Number.isSafeInteger(w.expectedVersion) &&
     w.expectedVersion >= 0;
   // A version that was named must be a version, in any mode; naming one is required in strict mode.
-  if (!versionOk && (w.expectedVersion !== undefined || (opts.requireVersion ?? strict)))
+  if (
+    !versionOk &&
+    (w.expectedVersion !== undefined || (opts.requireVersion ?? strict))
+  )
     return refuse(
       400,
       "expected_version_required",
