@@ -52,6 +52,8 @@ public enum ErrorCode {
     public static let emailInUse = "email_in_use"
     public static let termsRequired = "terms_required"
     public static let licenseOwned = "license_owned"
+    public static let licenseEmailBound = "license_email_bound"
+    public static let accountRequired = "account_required"
     public static let emailMismatch = "email_mismatch"
     public static let linkConflict = "link_conflict"
     public static let lastLink = "last_link"
@@ -210,6 +212,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "email_in_use",
     "terms_required",
     "license_owned",
+    "license_email_bound",
+    "account_required",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -368,6 +372,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "email_in_use": "wire",
     "terms_required": "wire",
     "license_owned": "wire",
+    "license_email_bound": "wire",
+    "account_required": "wire",
     "email_mismatch": "wire",
     "link_conflict": "wire",
     "last_link": "wire",
@@ -525,6 +531,8 @@ public enum Feature {
     public static let identityDevicelabel = "identity.devicelabel"
     public static let identityToggle = "identity.toggle"
     public static let identityKeyentry = "identity.keyentry"
+    public static let identityAttach = "identity.attach"
+    public static let identityAccount = "identity.account"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -568,6 +576,7 @@ public enum Feature {
     public static let uiKit = "ui.kit"
     public static let uiKitManage = "ui.kit.manage"
     public static let uiKitKeyentry = "ui.kit.keyentry"
+    public static let uiKitAccount = "ui.kit.account"
     public static let uiCli = "ui.cli"
     public static let uiGate = "ui.gate"
     public static let uiActivate = "ui.activate"
@@ -624,6 +633,8 @@ public let FEATURE_VALUES: [String] = [
     "identity.devicelabel",
     "identity.toggle",
     "identity.keyentry",
+    "identity.attach",
+    "identity.account",
     "release.changelog",
     "release.download",
     "release.record",
@@ -667,6 +678,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.kit",
     "ui.kit.manage",
     "ui.kit.keyentry",
+    "ui.kit.account",
     "ui.cli",
     "ui.gate",
     "ui.activate",
@@ -1481,6 +1493,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.keyentry": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.attach": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.account": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1524,6 +1538,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.keyentry": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.kit.account": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.gate": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.activate": CapabilityRow(status: "planned", service: "sdk", na: []),
@@ -1539,4 +1554,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "8637775a88a8e331d583a54ca498a3db6dfedab881c71a1ac61c8d705c5e15cd"
+public let CAPABILITY_DIGEST = "e231707ecec1758b33a733cd09244062186b6a60c2bf5c13c4f463626b8432bc"

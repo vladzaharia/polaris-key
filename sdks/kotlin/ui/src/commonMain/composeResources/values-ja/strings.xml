@@ -1541,6 +1541,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_license_owned_message">この%1$sのライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_title">メールアドレスが確認されていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_message">このライセンスは、お使いのPolaris Keyアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_title">サインインが必要です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_message">このデバイスでPolaris Keyアカウントにサインインしてから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">メールアドレスが確認されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。</string>

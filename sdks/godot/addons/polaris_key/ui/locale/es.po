@@ -4114,6 +4114,26 @@ msgstr "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una l
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_email_bound.title"
+msgstr "Correo no verificado"
+
+#. This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_email_bound.message"
+msgstr "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Key no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo."
+
+#. Sign-in needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.account_required.title"
+msgstr "Es necesario iniciar sesión"
+
+#. Sign in to your Polaris Key account on this device, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.account_required.message"
+msgstr "Inicia sesión en tu cuenta de Polaris Key en este dispositivo y vuelve a intentarlo."
+
+#. Email not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
 msgstr "Correo no verificado"
 

@@ -851,6 +851,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
       "This {product} license is already in another Polaris Key account. A license never moves by its key.",
+    "core.codes.license_email_bound.title": "Email not verified",
+    "core.codes.license_email_bound.message":
+      "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.",
+    "core.codes.account_required.title": "Sign-in needed",
+    "core.codes.account_required.message":
+      "Sign in to your Polaris Key account on this device, then try again.",
     "core.codes.email_mismatch.title": "Email not verified",
     "core.codes.email_mismatch.message":
       "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.",
@@ -2141,6 +2147,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "Lizenz in einem anderen Konto",
     "core.codes.license_owned.message":
       "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
+    "core.codes.license_email_bound.title": "E-Mail-Adresse nicht bestätigt",
+    "core.codes.license_email_bound.message":
+      "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Key-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut.",
+    "core.codes.account_required.title": "Anmeldung erforderlich",
+    "core.codes.account_required.message":
+      "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut.",
     "core.codes.email_mismatch.title": "E-Mail-Adresse nicht bestätigt",
     "core.codes.email_mismatch.message":
       "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut.",
@@ -3424,6 +3436,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
       "This {product} license is already in another Polaris Key account. A license never moves by its key.",
+    "core.codes.license_email_bound.title": "Email not verified",
+    "core.codes.license_email_bound.message":
+      "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.",
+    "core.codes.account_required.title": "Sign-in needed",
+    "core.codes.account_required.message":
+      "Sign in to your Polaris Key account on this device, then try again.",
     "core.codes.email_mismatch.title": "Email not verified",
     "core.codes.email_mismatch.message":
       "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.",
@@ -4692,6 +4710,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "Licencia en otra cuenta",
     "core.codes.license_owned.message":
       "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave.",
+    "core.codes.license_email_bound.title": "Correo no verificado",
+    "core.codes.license_email_bound.message":
+      "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Key no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo.",
+    "core.codes.account_required.title": "Es necesario iniciar sesión",
+    "core.codes.account_required.message":
+      "Inicia sesión en tu cuenta de Polaris Key en este dispositivo y vuelve a intentarlo.",
     "core.codes.email_mismatch.title": "Correo no verificado",
     "core.codes.email_mismatch.message":
       "Esta licencia pertenece a una dirección de correo que tu cuenta no ha verificado. Añade y verifica ese correo, y vuelve a intentarlo.",
@@ -5960,6 +5984,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "Licença em outra conta",
     "core.codes.license_owned.message":
       "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave.",
+    "core.codes.license_email_bound.title": "E-mail não verificado",
+    "core.codes.license_email_bound.message":
+      "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Key não verificou. Verifique esse e-mail na sua conta e tente novamente.",
+    "core.codes.account_required.title": "É preciso entrar",
+    "core.codes.account_required.message":
+      "Entre na sua conta do Polaris Key neste dispositivo e tente novamente.",
     "core.codes.email_mismatch.title": "E-mail não verificado",
     "core.codes.email_mismatch.message":
       "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente.",
@@ -7227,6 +7257,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "Licenza in un altro account",
     "core.codes.license_owned.message":
       "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave.",
+    "core.codes.license_email_bound.title": "Email non verificata",
+    "core.codes.license_email_bound.message":
+      "Questa licenza appartiene a un indirizzo email che il tuo account Polaris Key non ha verificato. Verifica quell'email nel tuo account, poi riprova.",
+    "core.codes.account_required.title": "Accesso richiesto",
+    "core.codes.account_required.message":
+      "Accedi al tuo account Polaris Key su questo dispositivo, poi riprova.",
     "core.codes.email_mismatch.title": "Email non verificata",
     "core.codes.email_mismatch.message":
       "Questa licenza appartiene a un indirizzo email che il tuo account non ha verificato. Aggiungi e verifica quell'email, poi riprova.",
@@ -8505,6 +8541,13 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "別のアカウントのライセンス",
     "core.codes.license_owned.message":
       "この{product}のライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。",
+    "core.codes.license_email_bound.title":
+      "メールアドレスが確認されていません",
+    "core.codes.license_email_bound.message":
+      "このライセンスは、お使いのPolaris Keyアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。",
+    "core.codes.account_required.title": "サインインが必要です",
+    "core.codes.account_required.message":
+      "このデバイスでPolaris Keyアカウントにサインインしてから、もう一度お試しください。",
     "core.codes.email_mismatch.title": "メールアドレスが確認されていません",
     "core.codes.email_mismatch.message":
       "このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。",
@@ -9746,6 +9789,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "다른 계정의 라이선스",
     "core.codes.license_owned.message":
       "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
+    "core.codes.license_email_bound.title": "인증되지 않은 이메일",
+    "core.codes.license_email_bound.message":
+      "이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요.",
+    "core.codes.account_required.title": "로그인 필요",
+    "core.codes.account_required.message":
+      "이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요.",
     "core.codes.email_mismatch.title": "인증되지 않은 이메일",
     "core.codes.email_mismatch.message":
       "이 라이선스는 회원님 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 해당 이메일을 추가하고 인증한 후 다시 시도하세요.",
@@ -10914,6 +10963,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_owned.title": "许可证在另一个账户中",
     "core.codes.license_owned.message":
       "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。",
+    "core.codes.license_email_bound.title": "电子邮件未验证",
+    "core.codes.license_email_bound.message":
+      "此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。",
+    "core.codes.account_required.title": "需要登录",
+    "core.codes.account_required.message":
+      "请在此设备上登录你的Polaris Key账户，然后重试。",
     "core.codes.email_mismatch.title": "电子邮件未验证",
     "core.codes.email_mismatch.message":
       "此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。",

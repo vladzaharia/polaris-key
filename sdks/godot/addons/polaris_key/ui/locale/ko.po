@@ -4094,6 +4094,26 @@ msgstr "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_email_bound.title"
+msgstr "인증되지 않은 이메일"
+
+#. This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_email_bound.message"
+msgstr "이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
+
+#. Sign-in needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.account_required.title"
+msgstr "로그인 필요"
+
+#. Sign in to your Polaris Key account on this device, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.account_required.message"
+msgstr "이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+
+#. Email not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
 msgstr "인증되지 않은 이메일"
 

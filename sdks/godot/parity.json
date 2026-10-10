@@ -173,6 +173,14 @@
       "status": "planned",
       "wp": "I-10b"
     },
+    "identity.attach": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
+    "identity.account": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
     "identity.keyentry": {
       "status": "planned",
       "wp": "PX-W9b"
@@ -443,6 +451,10 @@
     "ui.kit.manage": {
       "status": "implemented",
       "note": "PX-W8: the activation panel shows Replace a device on device-limit, or a QR when a joypad is the only input (suite_ui)."
+    },
+    "ui.kit.account": {
+      "status": "planned",
+      "wp": "I-10b"
     },
     "ui.kit.keyentry": {
       "status": "planned",

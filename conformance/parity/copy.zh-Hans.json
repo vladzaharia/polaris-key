@@ -173,6 +173,14 @@
       "title": "许可证在另一个账户中",
       "message": "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。"
     },
+    "license_email_bound": {
+      "title": "电子邮件未验证",
+      "message": "此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。"
+    },
+    "account_required": {
+      "title": "需要登录",
+      "message": "请在此设备上登录你的Polaris Key账户，然后重试。"
+    },
     "email_mismatch": {
       "title": "电子邮件未验证",
       "message": "此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。"

@@ -195,6 +195,14 @@
       "status": "planned",
       "wp": "I-10a"
     },
+    "identity.attach": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
+    "identity.account": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
     "identity.keyentry": {
       "status": "planned",
       "wp": "PX-W9b"
@@ -381,6 +389,10 @@
     "ui.kit.manage": {
       "status": "implemented",
       "note": "PX-W8: a device-limit refusal stays on PolarisLogin's card (screenFor) as a neutral callout (deviceLimit.heading, deviceLimit.browser) with Replace a device as the one filled action, focused, re-trying the key when the person comes back; a failure that reaches the error screen with the portal link leads with Replace a device beside Try again. test/kitLayout.test.tsx, and test/browser in Chromium at every size."
+    },
+    "ui.kit.account": {
+      "status": "planned",
+      "wp": "I-10a"
     },
     "ui.kit.keyentry": {
       "status": "planned",

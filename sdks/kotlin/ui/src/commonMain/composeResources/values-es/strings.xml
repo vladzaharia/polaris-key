@@ -1561,6 +1561,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_license_owned_message">Esta licencia de %1$s ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_title">Correo no verificado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_message">Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Key no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_title">Es necesario iniciar sesión</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_message">Inicia sesión en tu cuenta de Polaris Key en este dispositivo y vuelve a intentarlo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">Correo no verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">Esta licencia pertenece a una dirección de correo que tu cuenta no ha verificado. Añade y verifica ese correo, y vuelve a intentarlo.</string>

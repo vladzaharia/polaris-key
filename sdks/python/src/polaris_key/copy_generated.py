@@ -81,6 +81,8 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "email_in_use": CopyEntry("Email already in use", "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email."),
         "terms_required": CopyEntry("Terms not accepted", "Agree to the terms to continue."),
         "license_owned": CopyEntry("License in another account", "This {product} license is already in another Polaris Key account. A license never moves by its key."),
+        "license_email_bound": CopyEntry("Email not verified", "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again."),
+        "account_required": CopyEntry("Sign-in needed", "Sign in to your Polaris Key account on this device, then try again."),
         "email_mismatch": CopyEntry("Email not verified", "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again."),
         "link_conflict": CopyEntry("Already linked", "That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts."),
         "last_link": CopyEntry("Can't remove", "This is your account's only sign-in method. Add another one before removing it."),

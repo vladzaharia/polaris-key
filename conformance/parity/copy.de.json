@@ -173,6 +173,14 @@
       "title": "Lizenz in einem anderen Konto",
       "message": "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen."
     },
+    "license_email_bound": {
+      "title": "E-Mail-Adresse nicht bestätigt",
+      "message": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Key-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut."
+    },
+    "account_required": {
+      "title": "Anmeldung erforderlich",
+      "message": "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut."
+    },
     "email_mismatch": {
       "title": "E-Mail-Adresse nicht bestätigt",
       "message": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut."

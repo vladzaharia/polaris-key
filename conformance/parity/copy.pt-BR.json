@@ -173,6 +173,14 @@
       "title": "Licença em outra conta",
       "message": "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave."
     },
+    "license_email_bound": {
+      "title": "E-mail não verificado",
+      "message": "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Key não verificou. Verifique esse e-mail na sua conta e tente novamente."
+    },
+    "account_required": {
+      "title": "É preciso entrar",
+      "message": "Entre na sua conta do Polaris Key neste dispositivo e tente novamente."
+    },
     "email_mismatch": {
       "title": "E-mail não verificado",
       "message": "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente."

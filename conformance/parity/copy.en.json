@@ -172,6 +172,14 @@
       "title": "License in another account",
       "message": "This {product} license is already in another Polaris Key account. A license never moves by its key."
     },
+    "license_email_bound": {
+      "title": "Email not verified",
+      "message": "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again."
+    },
+    "account_required": {
+      "title": "Sign-in needed",
+      "message": "Sign in to your Polaris Key account on this device, then try again."
+    },
     "email_mismatch": {
       "title": "Email not verified",
       "message": "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again."

@@ -1541,6 +1541,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_license_owned_message">此%1$s许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_title">电子邮件未验证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_message">此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_title">需要登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_message">请在此设备上登录你的Polaris Key账户，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">电子邮件未验证</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。</string>
