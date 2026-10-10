@@ -54,6 +54,13 @@ struct Ctx {
     }
     var formFactor: CopyArgument { .text(i.platform.formFactor.rawValue) }
 
+    /// DL7: a delayed loading state shows no copy until the delay has passed (`loadingVisible` in
+    /// packages/ui-core/src/loading.ts). `elapsedMs` absent means it has.
+    func delayed(_ lines: [CopyLine]) -> [CopyLine] {
+        guard let elapsed = i.elapsedMs, elapsed < KitLoadingDelay.ms else { return lines }
+        return []
+    }
+
     func line(_ key: String, _ args: [String: CopyArgument] = [:]) -> CopyLine {
         CopyLine(key, args)
     }

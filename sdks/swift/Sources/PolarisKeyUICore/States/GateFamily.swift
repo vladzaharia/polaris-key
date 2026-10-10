@@ -50,7 +50,7 @@ extension KitStates {
                 [c.line("gate.error.title", c.productArg), c.line("common.tryAgain")])
         }
         guard let status = i.gate?.status, i.gate?.checking != true else {
-            return KitScreen(.booting, [c.line("gate.checking")])
+            return KitScreen(.booting, c.delayed([c.line("gate.checking")]))
         }
         switch status {
         case .ok, .notApplicable:

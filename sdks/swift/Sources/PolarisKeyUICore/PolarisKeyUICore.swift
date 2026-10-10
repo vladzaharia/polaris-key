@@ -13,9 +13,10 @@
 // state machine for every language; Tests/PolarisKeyUICoreTests runs every row of every family.
 
 import Foundation
+import PolarisKeyCore
 
 public enum PolarisKeyUICore {
     /// The `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json these state machines
     /// implement. The conformance runner refuses a corpus at another version.
-    public static let uiMatrixVersion = 1
+    public static let uiMatrixVersion = UI_MATRIX_VERSION
 }

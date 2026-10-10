@@ -269,7 +269,9 @@ extension KitStates {
         guard i.isOn(.identity), i.isOn(.license) else { return .hidden }
         let s = i.signIn ?? KitSignIn()
         let title = c.line("signin.choice.title")
-        if i.loading == true { return KitScreen(.loading, [title, c.line("common.loading")]) }
+        if i.loading == true {
+            return KitScreen(.loading, c.delayed([title, c.line("common.loading")]))
+        }
         if s.grantExpired == true {
             return KitScreen(
                 .grantExpired, [c.line("signin.handoff.tooLong"), c.line("signin.again")])

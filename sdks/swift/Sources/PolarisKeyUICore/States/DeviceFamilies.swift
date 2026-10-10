@@ -84,7 +84,9 @@ extension KitStates {
         let c = Ctx(i)
         guard i.isOn(.license) else { return .hidden }
         let title = c.line("devices.title")
-        if i.loading == true { return KitScreen(.loading, [title, c.line("common.loading")]) }
+        if i.loading == true {
+            return KitScreen(.loading, c.delayed([title, c.line("common.loading")]))
+        }
         let device = CopyArgument.text(i.edit?.device ?? "")
         if let error = i.error {
             let key: String

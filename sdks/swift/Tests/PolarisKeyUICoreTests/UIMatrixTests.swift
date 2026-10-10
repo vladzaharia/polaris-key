@@ -9,21 +9,15 @@
 // Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, theme, i18n.
 
 import Foundation
+import PolarisKeyCore
 import PolarisKeyUICore
 import XCTest
 
 final class UIMatrixTests: XCTestCase {
     /// A row the generator wrote against its own vocabulary and the wire: reported, never adopted.
     /// Each entry must still differ from the row exactly as recorded, so a corrected corpus fails
-    /// here until the entry goes.
-    ///
-    /// - `Activate/parsed`: the row's key `pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp` has a 20-character
-    ///   secret, but the vocabulary ("a 22-character secret") and the Worker's
-    ///   `LICENSE_KEY_SHAPE` (`[A-Za-z0-9_-]{22}`) need 22, so the field is still `typing`
-    ///   (Node's `keyVerdict` agrees). The fix is a 22-character `KEY` in `tools/ui-matrix.ts`.
-    static let knownCorpusDefects: [String: (state: String, copy: [String])] = [
-        "Activate/parsed": (state: "typing", copy: ["activate.submit", "part.keyField.label"])
-    ]
+    /// here until the entry goes. None at uiMatrixVersion 2 (Activate/parsed's key is fixed).
+    static let knownCorpusDefects: [String: (state: String, copy: [String])] = [:]
 
     static let families = [
         "gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall",
@@ -31,7 +25,7 @@ final class UIMatrixTests: XCTestCase {
 
     func testTheMatrixIsTheVersionTheCoreImplements() throws {
         let matrix = try UIMatrix.load()
-        XCTAssertEqual(matrix.version, PolarisKeyUICore.uiMatrixVersion)
+        XCTAssertEqual(matrix.version, UI_MATRIX_VERSION)
     }
 
     func testGateFamily() throws { try runFamily("gate") }

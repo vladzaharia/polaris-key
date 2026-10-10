@@ -144,7 +144,8 @@ extension KitStates {
                     c.line("a11y.progress", c.progressArgs),
                 ])
         case "install":
-            return KitScreen(.installing, [c.line("updateProgress.installing")])
+            return KitScreen(
+                .installing, [c.line("updateProgress.installing"), c.line("update.verifying")])
         case "paused":
             return KitScreen(
                 .paused, [c.line("updateProgress.paused"), c.line("updateProgress.resume")])
@@ -163,7 +164,8 @@ extension KitStates {
         guard i.closedServices.contains(.release) else { return .hidden }
         if i.loading == true {
             return KitScreen(
-                .loading, [c.line("releaseNotes.title", c.productArg), c.line("common.loading")])
+                .loading,
+                c.delayed([c.line("releaseNotes.title", c.productArg), c.line("common.loading")]))
         }
         if i.error != nil {
             return KitScreen(.error, [c.line("releaseNotes.error"), c.line("common.tryAgain")])

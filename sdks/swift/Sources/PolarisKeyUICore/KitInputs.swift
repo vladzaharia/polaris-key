@@ -858,6 +858,9 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
     public var gate: KitGate?
     public var pending: KitPending?
     public var loading: Bool?
+    /// Milliseconds since the request a loading state waits on started (DL7). nil: the delay has
+    /// passed. See `KitLoadingDelay`.
+    public var elapsedMs: Double?
     public var keyField: KitKeyField?
     public var activation: KitActivation?
     public var offline: KitOffline?
@@ -886,7 +889,7 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         services: Set<KitService>? = nil, registration: KitRegistration = .requiresLicense,
         capabilities: KitCapabilities = KitCapabilities(), stage: KitStage? = nil,
         gate: KitGate? = nil, pending: KitPending? = nil, loading: Bool? = nil,
-        keyField: KitKeyField? = nil, activation: KitActivation? = nil,
+        elapsedMs: Double? = nil, keyField: KitKeyField? = nil, activation: KitActivation? = nil,
         offline: KitOffline? = nil, signIn: KitSignIn? = nil,
         deviceCode: KitDeviceCode? = nil, choices: KitLicenseChoices? = nil,
         replaceView: KitReplaceView? = nil, selected: String? = nil, devices: [KitDevice]? = nil,
@@ -907,6 +910,7 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         self.gate = gate
         self.pending = pending
         self.loading = loading
+        self.elapsedMs = elapsedMs
         self.keyField = keyField
         self.activation = activation
         self.offline = offline

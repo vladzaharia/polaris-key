@@ -37,7 +37,9 @@ extension KitStates {
         let c = Ctx(i)
         let on = i.closedServices
         let title = c.line("account.title")
-        if i.loading == true { return KitScreen(.loading, [title, c.line("common.loading")]) }
+        if i.loading == true {
+            return KitScreen(.loading, c.delayed([title, c.line("common.loading")]))
+        }
         if i.gate?.status == .grace {
             return KitScreen(.offline, [c.line("account.offline"), c.line("part.status.grace")])
         }
@@ -78,7 +80,9 @@ extension KitStates {
         let c = Ctx(i)
         guard i.closedServices.contains(.config) else { return .hidden }
         let title = c.line("settings.title")
-        if i.loading == true { return KitScreen(.loading, [title, c.line("common.loading")]) }
+        if i.loading == true {
+            return KitScreen(.loading, c.delayed([title, c.line("common.loading")]))
+        }
         if i.error != nil {
             if i.config == nil {
                 return KitScreen(
@@ -131,7 +135,7 @@ extension KitStates {
     public static func paywall(_ i: KitInputs) -> KitScreen<PaywallState> {
         let c = Ctx(i)
         guard i.isOn(.license) else { return .hidden }
-        if i.loading == true { return KitScreen(.loading, [c.line("common.loading")]) }
+        if i.loading == true { return KitScreen(.loading, c.delayed([c.line("common.loading")])) }
         let tierName = i.offers?.tier
         let tier: [String: CopyArgument] = ["product": c.product, "tier": .text(tierName ?? "")]
         if i.pending == .purchase {
@@ -162,7 +166,7 @@ extension KitStates {
     /// (the Must not): only the entitlement decides.
     public static func entitlementGate(_ i: KitInputs) -> KitScreen<EntitlementGateState> {
         let c = Ctx(i)
-        if i.loading == true { return KitScreen(.loading, [c.line("common.loading")]) }
+        if i.loading == true { return KitScreen(.loading, c.delayed([c.line("common.loading")])) }
         let tier: [String: CopyArgument] = i.entitlement?.tier.map { ["tier": .text($0)] } ?? [:]
         // With License off there is no license document, so no entitlement holds, and the Paywall
         // that Unlock opens is hidden.
