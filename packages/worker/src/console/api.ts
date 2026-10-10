@@ -48,6 +48,7 @@ import {
 import {
   can,
   PLATFORM,
+  PRODUCT_AREAS,
   productScope,
   resolvePrincipal,
   type AreaId,
@@ -105,14 +106,29 @@ function scopeName(scope: Scope): string {
 /**
  * The area a row needs. `byKey` (`settings/:key`, `claims/:key`) takes the registry key's
  * `rbacArea`; a key the registry does not know needs `settings`, and its handler answers 404.
+ * `anyArea` is any one of the product's areas; a refusal names `core`, the record's own.
  */
 export function areaFor(
   route: AdminRoute,
   params: Record<string, string>,
 ): AreaId {
+  if (route.area === "anyArea") return "core";
   if (route.area !== "byKey") return route.area;
   const key = params.key ?? "";
   return SETTINGS.get(key, "product")?.rbacArea ?? "settings";
+}
+
+/** Does the principal hold what the row needs, in this scope? */
+function allowedRoute(
+  principal: Principal,
+  scope: Scope,
+  route: AdminRoute,
+  params: Record<string, string>,
+): boolean {
+  const level = levelOf(route);
+  if (route.area === "anyArea")
+    return PRODUCT_AREAS.some((a) => can(principal, scope, a, level));
+  return can(principal, scope, areaFor(route, params), level);
 }
 
 /** The 403 for a principal that lacks the area (P0-16's nested error shape). */
@@ -242,7 +258,7 @@ export async function handleAdminApi(
 
   // 6. The area.
   const area = areaFor(route, match.params);
-  if (!can(principal, scope, area, levelOf(route))) {
+  if (!allowedRoute(principal, scope, route, match.params)) {
     if (scope.kind === "product")
       await auditDenied(env, db, session, scope.slug, area, now);
     return forbiddenArea(scope, area);

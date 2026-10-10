@@ -35,8 +35,10 @@ export interface RouteDecl<H> {
   /**
    * The area `can()` checks. `byKey`: `settings/:key` and `claims/:key` take the registry key's
    * `rbacArea` (a security-widening key is `keys` or `settings`, never its service's area).
+   * `anyArea`: the product's own record, which every holder of any of its areas reads (the shell
+   * needs its name and services to draw anything).
    */
-  area: AreaId | "byKey";
+  area: AreaId | "byKey" | "anyArea";
   /** Default: `view` for GET, else `edit`. */
   level?: Level;
   /** A console step-up (a proven sign-in within 5 minutes) is required. */

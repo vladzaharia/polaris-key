@@ -135,6 +135,27 @@ describe("/me.permissions", () => {
     ).toEqual(["alpha"]);
   });
 
+  it("lets every holder of any of a product's areas read its record, and no one else", async () => {
+    // The shell draws a product's chrome from it, so a Ship-builds-only admin needs it too.
+    expect(
+      (await get(PRINCIPALS.alphaShip.memberId, "/products/alpha")).status,
+    ).toBe(200);
+    expect(
+      (await get(PRINCIPALS.alphaAdmin.memberId, "/products/alpha")).status,
+    ).toBe(200);
+    for (const who of [
+      PRINCIPALS.consoleOnly.memberId,
+      PRINCIPALS.alphaAdmin.memberId,
+      PRINCIPALS.platformAdmin.memberId,
+    ]) {
+      const r = await get(who, "/products/beta");
+      expect(r.status, who).toBe(403);
+      expect(r.body).toMatchObject({
+        error: { reason: "no_access", scope: "product:beta", area: "core" },
+      });
+    }
+  });
+
   it("refuses a session that resolves to no grant, /me included", async () => {
     const r = await get("nobody", "/me", ["staff"]);
     expect(r.status).toBe(403);

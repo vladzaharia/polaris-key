@@ -34,7 +34,7 @@
   "GET /platform/store-connections/**": "platform",
   "GET /platform/version": "platform",
   "GET /products": "console",
-  "GET /products/:slug": "core",
+  "GET /products/:slug": "anyArea",
   "GET /products/:slug/activity": "core",
   "GET /products/:slug/assets": "core",
   "GET /products/:slug/assets/usage": "core",

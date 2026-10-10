@@ -182,7 +182,10 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ),
 
   // ── One product: the record ───────────────────────────────────────────────────────────────
-  ...rows(["GET", "PATCH"], P, "core", registry),
+  // The record every holder of any of the product's areas reads (the shell's name and services);
+  // editing it is Core's.
+  ...rows(["GET"], P, "anyArea", registry),
+  ...rows(["PATCH"], P, "core", registry),
   ...rows(["DELETE"], P, "settings", registry, { stepUp: true }),
 
   // ── One product: the services, by prefix ──────────────────────────────────────────────────

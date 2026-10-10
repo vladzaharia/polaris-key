@@ -130,12 +130,14 @@ describe("the admin route areas", () => {
     ).toEqual([]);
   });
 
-  it("name an area of AREAS, or byKey for settings/:key and claims/:key alone", () => {
+  it("name an area of AREAS, byKey for settings/:key and claims/:key alone, and anyArea for the product record alone", () => {
     for (const r of ADMIN_ROUTES) {
       if (r.area === "byKey")
         expect(r.path, routeKey(r)).toMatch(
           /^\/products\/:slug\/(settings|claims)\/:key$/,
         );
+      else if (r.area === "anyArea")
+        expect(routeKey(r)).toBe("GET /products/:slug");
       else expect(AREA_IDS, routeKey(r)).toContain(r.area);
     }
   });

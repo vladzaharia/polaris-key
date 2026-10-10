@@ -154,12 +154,16 @@ function concrete(path: string, slug: string): string {
     .replace("/**", "/probe");
 }
 
-/** The area the oracle reads for a row. */
+/** The area the oracle reads for a row; the product record's refusal names `core`. */
 function oracleArea(route: { path: string; area: string }): AreaId {
+  if (route.area === "anyArea") return "core";
   return route.area === "byKey"
     ? BY_KEY[route.path]!.area
     : (route.area as AreaId);
 }
+
+/** Who may read the product record on `alpha`: anyone holding any of its areas. */
+const ALPHA_ANY: PrincipalName[] = ALPHA_SHIP;
 
 interface Outcome {
   status: number;
@@ -272,7 +276,8 @@ describe("the route × principal matrix", () => {
     for (const [slug, oracle] of [
       [
         "alpha",
-        (r: (typeof PRODUCT_ROWS)[number]) => ALPHA_ORACLE[oracleArea(r)]!,
+        (r: (typeof PRODUCT_ROWS)[number]) =>
+          r.area === "anyArea" ? ALPHA_ANY : ALPHA_ORACLE[oracleArea(r)]!,
       ],
       [SYSTEM_PRODUCT_SLUG, () => SYSTEM_ORACLE],
     ] as const) {
@@ -307,12 +312,13 @@ describe("the route × principal matrix", () => {
 // ── Negative controls ───────────────────────────────────────────────────────────────────────
 
 describe("negative controls", () => {
-  it("a narrowed admin is refused every area of its product but the two it holds", async () => {
+  it("a narrowed admin is refused every area of its product but the two it holds (and the record)", async () => {
     const e = freshEnv();
     let refused = 0;
     for (const r of PRODUCT_ROWS) {
       const area = oracleArea(r);
-      if (area === "ship" || area === "commerce") continue;
+      if (area === "ship" || area === "commerce" || r.area === "anyArea")
+        continue;
       const o = await call(e, "alphaShip", r.method, concrete(r.path, "alpha"));
       expect(isNoAccess(o), routeKey(r)).toBe(true);
       expect(o.area, routeKey(r)).toBe(area);
