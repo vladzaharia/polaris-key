@@ -272,7 +272,7 @@ export function ServiceOffPage({
  * Pinned K, no bit, BRAND.md §6) above a live "Loading console…", or, when the session cannot
  * load, one card with Retry and Sign in. It shares the customer portal's sign-in look (the
  * centred lockup over a 28 rem card, brand type and spacing, both themes) without any of the
- * portal's customer parts, and matches the Worker's sign-in error pages (`core/brandHtml.ts`).
+ * portal's customer parts, and matches the Worker's sign-in error pages (`platform/brandHtml.ts`).
  */
 export function BootScreen({
   error,

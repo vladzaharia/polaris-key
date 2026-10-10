@@ -70,7 +70,7 @@ export const ADMIN_COOKIE_NAME = "__Host-pkey_admin";
 /** The CSRF header every admin-API mutation must echo `/manage/api/me`'s `csrf` in. */
 export const CSRF_HEADER = "X-PKey-CSRF";
 
-/** The grace ceiling in days — `MAX_GRACE_DAYS` in the Worker's `core/bundles.ts` (§3.3). */
+/** The grace ceiling in days — `MAX_GRACE_DAYS` in the Worker's `console/handlers/bundles.ts` (§3.3). */
 export const MAX_GRACE_DAYS = 365;
 
 /** Wire v3 §6's device id: 32 base64url characters. */
@@ -290,7 +290,7 @@ export async function request(
 
 /**
  * A non-OK admin response, rendered as something worth reading. The admin API answers
- * `{error:{code,message,fields}, code, message, fields}` (`admin/lib/respond.ts`), so the
+ * `{error:{code,message,fields}, code, message, fields}` (`core/console/respond.ts`), so the
  * server's own words are always available — a bare status is never the best we can do.
  */
 export async function httpError(

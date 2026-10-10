@@ -121,7 +121,7 @@ function imgHostAnswer(
   };
 }
 
-/** The image host's paths, as `core/imgHost.ts` answers them: the alias 302s to the copy. */
+/** The image host's paths, as `core/assets/imgHost.ts` answers them: the alias 302s to the copy. */
 function imgHostFor(pathname: string) {
   const alias = /^\/([a-z0-9-]+)\/(icon|header)$/.exec(pathname);
   if (alias)

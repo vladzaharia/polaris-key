@@ -15,7 +15,7 @@
  * are load-bearing here:
  *
  *   1. authentication is `core.validateDeviceToken` — token → device, no licence involved
- *      (`services/license/auth.ts` documents the split) — and the licence is asked about only
+ *      (`requireLicensedDevice` in `core/licensing/authz.ts` is the licence half) — and the licence is asked about only
  *      when the product runs License (R1, below);
  *   2. the payload merge tolerates a null licence (`core/licensing/payload.ts` — the tier, licence
  *      profiles and licence overrides simply contribute no layer);

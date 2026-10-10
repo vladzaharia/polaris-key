@@ -105,9 +105,15 @@ policy with, which is the correct default: an unimplemented hook must not read a
 
 ## Boundary enforcement is a test, not a lint rule
 
+The Worker's `src/` is layered (the table is on [Monorepo layout](/docs/contribute/layout/)):
+`platform/` and `db/` hold the primitives, `core/` the substrate, `services/<slug>/` one service
+each, `console/` the operator console, and `src/*.ts` the entry and composition modules. A layer
+imports only itself and the layers below it, and the console reads a service only through that
+service's `public.ts`.
+
 A file under `src/services/<slug>/` may import exactly four things:
 
-1. `../../core/…` — the always-on substrate.
+1. `../../core/…`, `../../platform/…` and `../../db/…` — the substrate and the primitives.
 2. anything within its own service directory.
 3. a package — `@polaris-key/*` and the worker's other **declared** runtime dependencies. The set
    is read from `package.json` `dependencies`, so widening it requires a reviewed dependency change
@@ -115,13 +121,13 @@ A file under `src/services/<slug>/` may import exactly four things:
 4. node builtins (`node:*`).
 
 Everything else is refused, and two refusals matter most: `services/<a>/` importing `services/<b>/`,
-and reaching back into legacy top-level modules (`../../repo.js`, `../../licensing.js`, …) — the
-seam the whole re-organisation exists to remove, and exactly the import a hurried move leaves
+and reaching up into the console or a composition module (`../../console/…`, `../../router.js`, …)
+— the seam the whole re-organisation exists to remove, and exactly the import a hurried move leaves
 behind.
 
 :::note[The mechanism differs from the design spec]
 The spec called for ESLint `no-restricted-imports` zones. What shipped is
-**`packages/worker/test/boundaries.test.ts`**, a static import walk over `src/services/`. This repo
+**`packages/worker/test/boundaries.test.ts`**, a static import walk over `src/`. This repo
 has no ESLint installed — `pnpm lint` is Prettier — so standing up a flat-config toolchain to
 express one restricted-import zone would have been a larger change than the rule it enforces, and
 it would not run on the gate that already covers every commit. The enforcement is equivalent and
@@ -133,6 +139,13 @@ under `src/services/`, and it separately asserts that every service in the table
 Identity's nested `portal/` directory was walked and not just its top level, and that the rule
 itself still allows what it should and refuses what it should. A rename or a broken walk fails
 loudly instead of passing on an empty set.
+
+One hop is not enough: a service could reach another _through_ Core (a service's admin handler →
+a Core module → a console module → another service's store is legal hop by hop). So the suite also
+walks the runtime import graph (type-only imports are erased at build and skipped) and fails when a
+service reaches another service other than by `update → release`, or when anything under
+`platform/`, `db/` or `core/` reaches a service, the console or a composition module. Each failure
+prints the import chain.
 
 ### The one sanctioned cross-service edge
 

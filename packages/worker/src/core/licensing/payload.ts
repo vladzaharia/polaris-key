@@ -18,7 +18,7 @@
  * exactly the class of divergence the split is supposed to make impossible. So Core owns the
  * merge, and each service takes its own slice of the result:
  *
- *     services/license/entitlements.ts  →  injectAdminPolicy(…) then `.entitlements`
+ *     services/license (document.ts)    →  injectAdminPolicy(…) then `.entitlements`
  *     services/config/document.ts       →  `.config` + `.secrets`
  *
  * `resolveMergedPayload` deliberately does NOT inject admin policy and does NOT open sealed

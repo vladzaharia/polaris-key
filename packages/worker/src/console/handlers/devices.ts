@@ -13,7 +13,7 @@
  *   POST devices/<id>/deauthorize
  *   POST devices/<id>/fingerprint/reset
  *
- * Reads and writes go through `core/data.ts`; nothing here imports a service.
+ * Reads and writes go through `core/repo.ts`; nothing here imports a service.
  *
  * Privacy: only what the license view already shows. Raw hardware values never exist server-side
  * (rule 7), and `lastSeen` is "last seen", not "online".

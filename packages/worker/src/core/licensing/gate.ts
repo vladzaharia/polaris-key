@@ -11,8 +11,7 @@
 // own document for a browser and must refuse exactly the builds `/license/document` refuses. Two
 // services asking the same question of the same rows may not import each other
 // (`test/boundaries.test.ts`), so the predicate lives here, once, beside the entitlement algebra
-// it is built from. `services/license/gate.ts` re-exports it, so every existing importer of that
-// module is unchanged.
+// it is built from, and both services import it from here.
 //
 // R3-01 — this module is fed `X-PKey-Version` / `X-PKey-Channel`, i.e. two strings the caller
 // chooses, over the wire. So:

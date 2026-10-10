@@ -38,7 +38,7 @@ export const ME: Me = {
   ],
 };
 
-/** The product row the shell reads enablement off (worker `admin/lib/shape.ts`). */
+/** The product row the shell reads enablement off (worker `console/lib/shape.ts`). */
 export function productRow(
   slug: string,
   name: string,

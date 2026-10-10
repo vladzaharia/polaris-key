@@ -17,8 +17,8 @@
  *
  * Sub-routing lives here, not in `console/api.ts`: the dispatcher hands over the FULL remaining
  * path and a service routes itself (`ServiceDescriptor.adminHandle`). Session, CSRF, rate limit
- * and the platform-admin gate all ran before this is reached — see `core/adminApi.ts` for why
- * they stay there.
+ * and the platform-admin gate all ran in `console/api.ts` before this is reached, and they stay
+ * there: an access control a service could re-implement is one a service could get wrong.
  */
 
 import type { ServiceContext } from "../../../core/registry.js";

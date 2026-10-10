@@ -83,8 +83,8 @@ both cases — Identity performs them too:
   channel and version blocking: this service's document route, and identity's
   `GET /<product>/identity/session`. They must refuse exactly the same builds.
 
-`services/license/authz.ts` and `services/license/gate.ts` are re-export shims that define
-nothing — a second definition of either is precisely the divergence the move exists to prevent.
+License imports both from `core/licensing/` and defines neither: a second definition of either
+is precisely the divergence the move exists to prevent.
 
 Devices are **Core's** principal, not License's. A device row, its `pkeyt_` token, its
 fingerprint, its facts, and the `GET/PATCH/DELETE /<product>/devices` self-service surface all

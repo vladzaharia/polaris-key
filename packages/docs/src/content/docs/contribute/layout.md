@@ -1,6 +1,6 @@
 ---
 title: "Monorepo layout"
-description: "The package map, the Worker's core/ and services/ split, the boundary test that enforces it, mount.ts as the composition root, the service table, and the checklist for adding a service."
+description: "The package map, the Worker's layers (platform/, core/, services/, console/), the boundary test that enforces them, mount.ts as the composition root, the service table, and the checklist for adding a service."
 sidebar:
   order: 3
 ---
@@ -20,7 +20,7 @@ packages/
   client-core/       @polaris-key/client-core  isomorphic verify/trust/gate/clock floor
   ui-core/           @polaris-key/ui-core      the JS UI kits' headless layer: view models,
                                                the sign-in form's state machine, theme
-  worker/            @polaris-key/worker       the Cloudflare Worker (core/ + services/<slug>/)
+  worker/            @polaris-key/worker       the Cloudflare Worker (platform/ + core/ + services/<slug>/ + console/)
   admin/             @polaris-key/admin        the admin SPA + customer portal (React + Vite)
   cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint)
   sdk-node/          @polaris-key/node         full client + CLI adapters
@@ -44,16 +44,24 @@ site's source; the repo-root `docs/` is long-form markdown, most of it repo-only
 README's Documentation section). Where this page says "the docs site" it means the former;
 where it names a file like `docs/RUNBOOK.md` it means the latter.
 
-## Inside the Worker: `core/` and `services/<slug>/`
+## Inside the Worker: the layers
 
-`src/core/` is the always-on substrate: the product registry, the device principal, trust and
-signing, discovery, rate limiting, the error taxonomy, audit, and manifest-ingest dispatch. Each
-`src/services/<slug>/` is one opt-in service — `license`, `config`, `release`, `distribution`,
-`update`, `identity`.
+`src/` is layered, lowest first, and a layer imports only itself and the layers below it:
+
+| Layer              | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platform/`, `db/` | Primitives with no domain knowledge: `Env`, crypto, KV, the key vault, HTTP and security headers, encodings and hashes; the `Db` interface and its adapters.                                                                                                                                                                                                                                                                                                |
+| `core/`            | The always-on substrate. Flat modules for the product registry, the device principal, signing, discovery, rate limiting, the error taxonomy and `repo.ts`; domain folders `licensing/`, `accounts/`, `notify/`, `trust/`, `assets/`, `registry/` (the package registry) and `ops/`; and `core/console/`, what Core lends the console and every service's admin handlers (the session type, the audit writer, the response envelope, the console's queries). |
+| `services/<slug>/` | One opt-in service each: `license`, `config`, `release`, `distribution`, `update`, `identity`, `sync`.                                                                                                                                                                                                                                                                                                                                                      |
+| `console/`         | The operator console's handlers. It reads a service only through that service's `public.ts`.                                                                                                                                                                                                                                                                                                                                                                |
+| `src/*.ts`         | The entry and composition modules: `index.ts`, `dispatch.ts`, `router.ts`, `mount.ts`, `scheduled.ts`, the Durable Objects and the webhooks.                                                                                                                                                                                                                                                                                                                |
+
+Core never imports a service, the console or a composition module, and nothing below `core/`
+imports `core/`. Type-only imports count.
 
 A service module may import:
 
-1. `../../core/…` — the substrate above.
+1. `../../core/…`, `../../platform/…` and `../../db/…` — the layers below it.
 2. anything within its own service directory.
 3. a declared package dependency (`@polaris-key/*`, or any other entry in the Worker's own
    `package.json` `dependencies`).
@@ -73,8 +81,11 @@ service that provides it is off. Hooks are read-only, and each has exactly one p
 
 ### Enforcement: `boundaries.test.ts`
 
-`packages/worker/test/boundaries.test.ts` walks every file actually present under
-`src/services/` and asserts the rule above holds — exhaustively, not on a sample. It is a test
+`packages/worker/test/boundaries.test.ts` walks every file actually present under `src/` and
+asserts the layer rule and the service rule hold — exhaustively, not on a sample. It then walks
+the runtime import graph: no service may reach another (but `update → release`) and nothing below
+the services may reach a service, the console or a composition module, even through a chain of
+imports each legal on its own. It is a test
 rather than an ESLint rule because this repo has no ESLint installed (`pnpm lint` is Prettier);
 a test runs on the same gate everything else does, needs no new dependency, and can say _why_
 in its failure message.
@@ -82,7 +93,7 @@ in its failure message.
 The identity service is the one that exercised the rule hardest: its OIDC sign-in mints and
 claims licenses, and its browser session enforces the same build gate License's document route
 does. Neither need became an `identity → license` import — both became `core/licensing/authz.ts` and
-`core/licensing/gate.ts`, with License re-exporting them so there is exactly one definition of each. That
+`core/licensing/gate.ts`, which both services import, so there is exactly one definition of each. That
 move is what "cross via a Core-mediated interface" means in practice, and the boundary test is
 what stops the cheaper answer — a direct import — from being taken next time.
 

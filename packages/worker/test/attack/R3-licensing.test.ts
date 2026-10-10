@@ -814,7 +814,7 @@ describe("R3-05 fingerprint is activation-only", () => {
 describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
   it("a stored deviceLimit entitlement overrides the product cap when no tier policy exists", async () => {
     const h = await harness();
-    // No tier → injectAdminPolicy (services/license/entitlements.ts) never overwrites
+    // No tier → injectAdminPolicy (core/licensing/entitlements.ts) never overwrites
     // deviceLimit, so the merged override is authoritative for the seat check.
     const { licenseId, key } = await seedLicenseWithKey(h.db, "djdl", {
       entitlements: {
@@ -898,7 +898,7 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
     );
     expect(doc.entitlements.deviceLimit).toMatchObject({ value: 1 });
 
-    // ...while the seat check resolves with device = null (services/license/authz.ts) and lets
+    // ...while the seat check resolves with device = null (core/licensing/authz.ts) and lets
     // more devices on.
     await activate(h, key, "layer-2");
     expect(await countActiveDevices(h.db, "djdl", licenseId)).toBe(2);

@@ -380,7 +380,7 @@ export const TABLE_OWNERS = {
     "email_suppressions",
     "email_product_caps",
     // LX-08 (plans/LX-01.md §6.1): the licensing model. Written only through
-    // src/core/grants.ts (grants, grant_entitlements) and Core (the rest).
+    // src/core/licensing/grants.ts (grants, grant_entitlements) and Core (the rest).
     "grants",
     "grant_entitlements",
     "device_store_identities",
@@ -470,7 +470,7 @@ export const TABLE_OWNERS = {
     "oidc_config",
     "provisioning_config",
     // I-05 (plans/I-04.md §6.1): the Polaris Key account. Core reads the subject rows through
-    // src/core/accountSubjects.ts only; `licenses.account_id` stays License's column and
+    // src/core/accounts/accountSubjects.ts only; `licenses.account_id` stays License's column and
     // `devices.subject`/`bound_by` Core's.
     "accounts",
     "account_links",

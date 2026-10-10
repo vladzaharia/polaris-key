@@ -114,7 +114,7 @@ function compileSchema(
 ): { ok: true; catalog: Catalog } | { ok: false; message: string } {
   let parsed: unknown = input;
   if (typeof input === "string") {
-    // R7-02, second copy. The webhook-reachable parser in `release/manifest.ts` was capped
+    // R7-02, second copy. The webhook-reachable parser (`parseManifest`, `@polaris-key/manifest`) was capped
     // after a 1.67 MB manifest was measured at 37.7 s (`yaml`'s uniqueKeys check is
     // quadratic) — but this admin-reachable copy was left uncapped, so the same defect was
     // still live one route over. `.length` counts UTF-16 units and is never greater than the

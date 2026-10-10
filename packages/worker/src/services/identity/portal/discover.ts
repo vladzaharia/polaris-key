@@ -32,7 +32,7 @@
  * `previewIdentityIssue` (the same policy function, `identityTier`, plus the read-only
  * provisioning step, and nothing written) and the claim through `activateFromIdentity` itself.
  * No other service's internals are read (rule 6): tiers, licences and seats come from Core
- * (`core/data.ts`, `core/licensing/authz.ts`), presentation, platforms and `openAccess` through the
+ * (`core/repo.ts`, `core/licensing/authz.ts`), presentation, platforms and `openAccess` through the
  * descriptor hooks. License's own auto-issue (`POST /<p>/license/enroll`, the `anonymous` mode) is
  * per MACHINE and keyed by a hardware id, so it is not an account's offer and is never listed.
  *

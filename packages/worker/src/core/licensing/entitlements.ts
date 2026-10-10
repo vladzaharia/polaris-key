@@ -10,9 +10,8 @@
  * pinned artifact. They must agree — a client refused a beta document but handed the beta DMG
  * is not a policy, it is a bug — and they may not import each other (`test/boundaries.test.ts`).
  *
- * So the computation lives here, once, and both sides bind to it. `services/license/gate.ts`
- * re-exports the comparators it always exported, so every existing importer is unchanged;
- * `services/license/entitlements.ts` re-exports `injectAdminPolicy` for the same reason.
+ * So the computation lives here, once, and both sides bind to it: License, Release and Update all
+ * import it from here.
  *
  * Everything in this file is PURE: rows and maps in, values out. No I/O, no clock, no `Env`.
  */

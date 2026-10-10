@@ -42,7 +42,8 @@
  * (the CI release key's `kid` and the record hash; `null` for a legacy release with no record).
  *
  * The session, CSRF, rate-limit and platform-admin gates all run in `console/api.ts` before this
- * is reached — see `core/adminApi.ts` for why they stay there.
+ * is reached, and they stay there: an access control a service could re-implement is one a
+ * service could get wrong.
  */
 
 import { platformFromFileName } from "@polaris-key/manifest";

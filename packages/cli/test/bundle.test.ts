@@ -29,7 +29,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ADMIN_COOKIE_ENV, mintBundle, runPkey } from "../src/index.js";
 
 const PRODUCT = "acme";
-/** 32 base64url characters — the shape wire v3 §6 fixes and `core/bundles.ts` enforces. */
+/** 32 base64url characters — the shape wire v3 §6 fixes and `console/handlers/bundles.ts` enforces. */
 const DEVICE = "AbCdEfGh0123456789_-ijKLmnOPqrst";
 const COOKIE = "__Host-pkey_admin=session-token-value";
 const CSRF = "csrf-token-abc123";
@@ -38,7 +38,7 @@ const JWS = "eyJhbGciOiJFZERTQSJ9.eyJidW5kbGVJZCI6IjAxSlEifQ.c2lnbmF0dXJl";
 const ORIGIN = "https://key.example";
 const DEFAULT_FILE = `${PRODUCT}-AbCdEfGh.pkeybundle`;
 
-/** `/manage/api/me`'s body, as `admin/handlers/me.ts` builds it. */
+/** `/manage/api/me`'s body, as `console/handlers/me.ts` builds it. */
 const ME = {
   sub: "op@example.com",
   name: "Op Erator",
@@ -128,7 +128,7 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-/** The admin API's error envelope (`admin/lib/respond.ts`): flat AND nested, both populated. */
+/** The admin API's error envelope (`core/console/respond.ts`): flat AND nested, both populated. */
 function apiError(
   status: number,
   code: string,

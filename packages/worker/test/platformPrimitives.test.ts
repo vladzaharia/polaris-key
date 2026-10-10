@@ -1,6 +1,6 @@
 /**
  * The platform primitives (P0-15): `src/platform/{bytes,hash,compare,random,pkce,json,hmacToken,
- * html,returnTo,email}.ts`, lent to services through `core/platform.ts`.
+ * html,returnTo,email}.ts`, which services import directly.
  *
  * Three jobs:
  *
@@ -661,7 +661,7 @@ const RULES: Rule[] = [
   },
   {
     id: "local copy by name",
-    use: "the platform export of the same job (core/platform.ts lists them)",
+    use: "the platform/ export of the same job",
     pattern: new RegExp(
       `(?:\\bfunction\\s+(?:${COPY_NAMES})\\s*[<(])|(?:\\b(?:const|let|var)\\s+(?:${COPY_NAMES})\\s*(?::[^=]+)?=\\s*(?:async\\s*)?(?:\\([^)]*\\)|\\w+)\\s*(?::[^=]+)?=>)`,
     ),

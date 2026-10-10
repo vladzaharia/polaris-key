@@ -6,7 +6,7 @@
 The body's ``error`` code decides the kind, never the status alone: an unknown 403 is
 ``refused`` with the server's code and never ``device-limit``. The bodies below are the ones
 the Worker sends today (``services/license/activation.ts`` ``authorizationError``,
-``services/license/enroll.ts``, ``core/deviceTrust.ts``).
+``services/license/enroll.ts``, ``core/trust/deviceTrust.ts``).
 """
 
 from __future__ import annotations

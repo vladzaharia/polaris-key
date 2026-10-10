@@ -19,9 +19,9 @@
  *
  * A repo link IS Release's front door — the coordinates, the installation token, the
  * `.pkey/` read. But what it WRITES is the whole product (catalog, tiers, profiles, OIDC,
- * edge-mint), almost none of which is Release's data. Since a service may only import `core/`,
- * those writers are reached through `core/ingest.ts`, a core-owned COUNTABLE re-export — the
- * same shape `core/data.ts` gives License and Config. See that file's header.
+ * edge-mint), almost none of which is Release's data. Since a service may not import another
+ * service or the console, those writers are Core's (`core/repo.ts`, `core/console/repo.ts`,
+ * `core/settingsClaims.ts`), imported directly.
  */
 
 import type { Db, DbStatement } from "../../db/types.js";

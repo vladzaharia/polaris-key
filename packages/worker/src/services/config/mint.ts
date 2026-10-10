@@ -181,7 +181,7 @@ export async function handleMintToken(
   // is not worth spending on a two-line check.
   //
   // For a licensed product this is byte-identical to what `validateDeviceToken` used to apply on
-  // this handler's behalf before the split (`services/license/auth.ts`). The scope — "iff the
+  // this handler's behalf before the split (`requireLicensedDevice`, `core/licensing/authz.ts`). The scope — "iff the
   // License service is enabled", the same rule Core's own `/devices` and `/devices/report` use —
   // is what makes edge minting reachable at all for a config-only product (D-08): its devices
   // register, hold real `pkeyt_` tokens, and have no licence to be licensed by. Edge minting is
