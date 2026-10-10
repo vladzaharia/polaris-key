@@ -29,6 +29,7 @@ import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
 import { countKeysByLicense } from "../repo.js";
 import { licenseHolder } from "../../core/licenseHolders.js";
+import { licenseEndedReason } from "../../core/licensing/lifecycle.js";
 import {
   countKeyEntries,
   keyEntriesApply,
@@ -174,6 +175,11 @@ export async function licenseSummary(
     name: row.name ?? "",
     email: row.email ?? "",
     status: row.status,
+    // LX-12: why a disabled licence ended (`revoked`, `superseded`, `refunded`, `chargeback`);
+    // `null` while active and for a licence disabled before the reason was recorded.
+    endedReason: licenseEndedReason(row),
+    // The licence that replaced this one (a merge's survivor), else `null`.
+    supersededBy: row.superseded_by ?? null,
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     keyCount: keyCounts.total,

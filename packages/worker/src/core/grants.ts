@@ -36,6 +36,7 @@
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db, DbParam, DbStatement } from "../db/types.js";
 import { STORES, type Store } from "./storeGrants.js";
+import { grantContributesSql } from "./licensing/lifecycleWrites.js";
 // The `entitlement_events` subject store registers with the model's tables (`core/subjectHooks.ts`).
 import "./entitlementEvents.js";
 
@@ -56,15 +57,9 @@ export const GRANT_SOURCES = [
 ] as const;
 export type GrantSource = (typeof GRANT_SOURCES)[number];
 
-/** `grants.state` (trigger `trg_grants_state_{ins,upd}`). */
-export const GRANT_STATES = [
-  "active",
-  "past_due",
-  "revoked",
-  "refunded",
-  "suppressed",
-] as const;
-export type GrantState = (typeof GRANT_STATES)[number];
+/** `grants.state` (trigger `trg_grants_state_{ins,upd}`) and its transitions live with the
+ *  lifecycle (LX-12, `licensing/lifecycle.ts`). */
+export { GRANT_STATES, type GrantState } from "./licensing/lifecycle.js";
 
 /** The grant a store purchase makes: derived from the purchase, so every writer agrees on it. */
 export function storeGrantId(store: Store, purchaseKeyHash: string): string {
@@ -431,7 +426,9 @@ async function activeOidcEntries(
 
 /**
  * The licence's `oidc` grant as a stored-payload layer (`core/payload.ts`), merged right after the
- * licence's own overrides: every entry of its active `oidc` grant, in key order, except a key the
+ * licence's own overrides: every entry of its `oidc` grant while the grant counts at `now`
+ * (LX-12's `grantContributes`: `active` or `past_due` and inside its term; a suppressed, revoked
+ * or refunded grant adds nothing from the moment it is written), in key order, except a key the
  * overrides themselves carry (an operator's override of a provisioned key wins, as it did while
  * the provisioned value sat in the same column). `null` when there is nothing to add. See the file
  * header for why this position reproduces the documents byte for byte.
@@ -441,8 +438,20 @@ export async function oidcGrantLayer(
   product: string,
   licenseId: string,
   overridesJson: string | null,
+  now: number,
 ): Promise<string | null> {
-  const rows = await activeOidcEntries(db, product, licenseId);
+  const counts = grantContributesSql("g", now);
+  const rows = await db.all<GrantEntryRow>(
+    `SELECT ge.key, ge.value_json, ge.state, ge.updated_at
+       FROM grants g JOIN grant_entitlements ge
+         ON ge.product = g.product AND ge.grant_id = g.id
+      WHERE g.product = ? AND g.id = ? AND g.license_id = ? AND ${counts.sql}
+      ORDER BY ge.key`,
+    product,
+    oidcGrantId(licenseId),
+    licenseId,
+    ...counts.params,
+  );
   if (rows.length === 0) return null;
   const shadowed = overrideEntitlements(overridesJson);
   const entitlements: Record<string, ManagedEntry> = {};

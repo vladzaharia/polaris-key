@@ -7,6 +7,7 @@
 import { stmtRevokeProductCiTokens } from "../core/publisher.js";
 import { stmtRevokeProductRegistryTokens } from "../core/registryTokens.js";
 import { productGrantErasureStatements } from "../core/grants.js";
+import { licenseTransitionSetSql } from "../core/licensing/lifecycleWrites.js";
 import {
   holderFilterSql,
   stmtDeleteProductAutoAttachBlocks,
@@ -92,8 +93,10 @@ export async function deleteProduct(
       params: [now, now, slug],
     },
     {
+      // LX-12: deleting the product revokes every licence still active (`ended_reason`
+      // `revoked`); a licence that already ended keeps its status and reason.
       sql: `UPDATE licenses
-               SET status = 'disabled',
+               SET ${licenseTransitionSetSql("revoke")},
                    email = NULL, name = NULL, sub = NULL, groups_json = NULL,
                    enroll_hwid = NULL, account_id = NULL, modified_at = ?
              WHERE product = ?`,
@@ -288,23 +291,8 @@ export async function listLicenses(
   );
 }
 
-export async function setLicenseStatus(
-  db: Db,
-  product: string,
-  id: string,
-  status: string,
-  modifiedBy: string | null,
-  now: number,
-): Promise<void> {
-  await db.run(
-    "UPDATE licenses SET status = ?, modified_by = ?, modified_at = ? WHERE product = ? AND id = ?",
-    status,
-    modifiedBy,
-    now,
-    product,
-    id,
-  );
-}
+// A licence's status changes only through the lifecycle (LX-12): `transitionLicense` in
+// `core/licensing/lifecycleWrites.ts`, which writes `ended_reason` with it.
 
 export async function patchLicense(
   db: Db,

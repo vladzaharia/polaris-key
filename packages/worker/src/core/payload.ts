@@ -195,7 +195,13 @@ export async function resolveMergedPayload(
     // passes `withoutOidcGrant`, so the stored grant is not read twice.
     if (!opts.withoutOidcGrant)
       layers.push(
-        await oidcGrantLayer(db, product, license.id, license.overrides_json),
+        await oidcGrantLayer(
+          db,
+          product,
+          license.id,
+          license.overrides_json,
+          now,
+        ),
       );
   }
 
