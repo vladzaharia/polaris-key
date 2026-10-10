@@ -1,4 +1,4 @@
-// @pkey-feature core.verify core.bundle
+// @pkey-feature core.verify core.bundle license.signedinuser
 //
 // The Kotlin runner for conformance/corpus/v2/cases.json, read in place: the families :core owns,
 // with the Node runner's assertions (conformance/runners/node/suites.ts), vector for vector.
@@ -26,6 +26,7 @@ import im.plrs.key.core.JwsTyp
 import im.plrs.key.core.JwsVerifier
 import im.plrs.key.core.MAX_BUNDLE_BYTES
 import im.plrs.key.core.TrustSet
+import im.plrs.key.core.licenseUser
 import im.plrs.key.core.VerifyOptions
 import im.plrs.key.core.VerifyTrustManifestOptions
 import im.plrs.key.core.ActivationSource
@@ -119,6 +120,28 @@ class CorpusV2Test : ConformanceSuite() {
             f.equal(c["expect"]!!.obj["accept"].boolValue, accept) { "${c["id"].stringValue} — ${c["description"].stringValue}" }
         }
         f.done(25)
+    }
+
+    /** plans/SP-54.md §4: each `licenseUserCases` row verifies on its claims first (the member never
+     *  refuses a document), then `licenseUser` reads the subject or nothing. The three
+     *  `profile.user` rows in `licenseDocCases` replay above. */
+    @Test
+    fun licenseUserCases() {
+        val f = Failures("licenseUserCases")
+        val rows = cases("licenseUserCases")
+        assertEquals(14, rows.size)
+        val docIds = cases("licenseDocCases").map { it["id"].stringValue }.toSet()
+        for (id in listOf("license-profile-user-valid", "license-profile-user-not-object", "license-profile-user-extra-members")) {
+            f.check(id in docIds) { "licenseDocCases lacks $id" }
+        }
+        for (c in rows) {
+            val id = c["id"].stringValue
+            val doc = verifyLicenseDoc(c["jws"].stringValue!!, docOptions(c))
+            f.check(doc != null) { "$id — ${c["description"].stringValue} must verify" }
+            val want = c["expect"]!!.obj["user"]?.let { it as? JsonObject }?.get("subject").stringValue
+            f.equal(want, licenseUser(doc)?.subject) { "$id — ${c["description"].stringValue}" }
+        }
+        f.done(14)
     }
 
     @Test
