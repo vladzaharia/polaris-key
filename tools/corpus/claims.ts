@@ -217,6 +217,70 @@ export async function buildLicenseDocCases(): Promise<DocCaseV2[]> {
     ...(await envelopeCases("license", "pkey-license+jws", licenseDoc)),
     // Wire contract v4 §3: the licence claim cases, after the family's last case.
     ...(await buildLicenseDocCasesV4()).map(placeNonWire),
+    // plans/SP-54.md §4: `profile.user`, which no verifier checks, after the family's last case.
+    ...(await buildLicenseDocCasesSp54()),
+  ];
+}
+
+/** plans/SP-54.md §4: the pairwise subject every `profile.user` row of the corpus carries. */
+export const SIGNED_IN_SUBJECT = "ps_4Xv9Lk2QmT7bNc0RfYp8Zw";
+
+/** The control's profile with `user` set to `user`. */
+export function profileWithUser(user: unknown): Record<string, unknown> {
+  return {
+    ...(licenseDoc().profile as Record<string, unknown>),
+    user,
+  };
+}
+
+// ── plans/SP-54.md §4: the three `profile.user` acceptance cases ─────────────────────────────
+// V4 §3.2 checks nothing inside `profile`, so a verifier that predates SP-54 accepts every shape
+// of the member; these pin that it does. What the member reads as is `licenseUserCases`.
+
+async function buildLicenseDocCasesSp54(): Promise<DocCaseV2[]> {
+  const typ: TypV3 = "pkey-license+jws";
+  const common = {
+    trust: { [PIN_KID]: pub(PIN_KID) },
+    typ,
+    expectedAud: AUD_V3,
+    expectedIss: ISSUER_V3,
+    deviceId: DEVICE_V3,
+    now: V3_NOW,
+  };
+  const mk = async (
+    id: string,
+    description: string,
+    user: unknown,
+  ): Promise<DocCaseV2> => {
+    const jws = await signAs(
+      licenseDoc({ profile: profileWithUser(user) }),
+      PIN_KID,
+      typ,
+    );
+    const c = withNonWire(
+      { ...common, id, description, jws, expect: { accept: true } },
+      jws,
+    );
+    if ("nonWireIntegers" in c)
+      throw new Error(`licenseDocCases ${id}: carries a non-wire number`);
+    return c;
+  };
+  return [
+    await mk(
+      "license-profile-user-valid",
+      "V4 §2.1 (SP-54): `profile.user` names the pairwise subject signed in on the device. A verifier never checks it (§3.2), so a document that carries it verifies exactly as the control does.",
+      { subject: SIGNED_IN_SUBJECT },
+    ),
+    await mk(
+      "license-profile-user-not-object",
+      "V4 §3.2: `profile.user` as a bare string, not an object. Nothing inside `profile` is a claim, so the document still verifies; the member simply reads as no signed-in user.",
+      SIGNED_IN_SUBJECT,
+    ),
+    await mk(
+      "license-profile-user-extra-members",
+      "V4 §3.2: `profile.user` with members beside `subject`. A later Worker may add some; a verifier ignores them and accepts the document.",
+      { subject: SIGNED_IN_SUBJECT, future: { member: true }, tag: "x" },
+    ),
   ];
 }
 

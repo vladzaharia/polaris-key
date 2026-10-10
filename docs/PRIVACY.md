@@ -203,7 +203,7 @@ An app built with a client half (`client.backend`) sends its signed licence docu
 developer's own backend in the `X-PKey-License` header, with its device id in `X-PKey-Device`
 (WIRE-CONTRACT-V4 §14). The document is the one the device already holds: it carries the licence
 holder's name and email (its signed `profile`), the licence id, the device id, the entitlements
-and, once SP-54 ships, the signed-in account's pairwise subject. It goes to the developer's own
+and, when an account is signed in on the device, that account's pairwise subject. It goes to the developer's own
 server, never to Polaris Key: the Worker never receives or reads the header, so nothing about these
 requests is collected or stored by Polaris Key. What that server keeps is the developer's own
 policy. The server drop-ins never log the header, the document or the holder's name and email, and
@@ -269,8 +269,10 @@ What the sections above do not promise, stated plainly:
   reached no address is recorded in the account's activity as counts only. Both follow their
   log's retention, and the account's activity is deleted with the account.
 - **Worker invocation logs** are off: request URLs carry single-use tokens and codes.
-- **Signed licence documents and offline bundles** include the licence's name and email. Once
-  issued they cannot be recalled or erased; they expire with the document.
+- **Signed licence documents and offline bundles** include the licence's name and email. A
+  licence document for a device an account is signed in on also carries that person's pairwise
+  subject for the product (`profile.user`), which is no new personal data: no name, email or
+  account id. Once issued they cannot be recalled or erased; they expire with the document.
 - **Erasure.** Account deletion is a resumable state machine (`account_erasures`). There is no
   self-service data export for the person and no `removeProductData` route: an admin exports and
   deletes a person's data per product from the Users page. Data is not encrypted per person

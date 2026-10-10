@@ -5934,11 +5934,24 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   account only through an existing link, and legacy `sub`-only licences of custom-issuer products
   stay floating (§8 Q6).
 - **The device binding.** `devices.subject` holds the pairwise subject of an account signed in on
-  the device, never the account id, and is never signed. Key entry never sets it. Core's clearing
+  the device, never the account id. Since SP-54 it is signed into the licence document of the
+  device that holds it, as `profile.user.subject` (WIRE-CONTRACT-V4 §2.1), and into no other
+  device's document and no offline bundle. Key entry never sets it. Core's clearing
   hook drops it on sign-out, sign out everywhere, account disable or deletion, per-product removal
   and relink; a plain licence detach does not sign the device out (S-17 §5.8 item 2). Sign-out
   also deauthorizes a device only when the sign-in bound it (`bound_by = 'signin'`) to a licence of
   the signed-out account (§8 Q3).
+- **The signed-in subject in a document (SP-54).** The Worker writes `profile.user` only from the
+  requesting device's binding and only when it wholly matches the pattern; a malformed stored
+  value writes nothing and never fails the route. The member is the subject alone: no name, email
+  or account id (`test/licenseDocUser.test.ts`). A leaked document names that subject, a
+  per-product pseudonym the developer already sees on its own surfaces, beside the holder's name
+  and email it already carried. A signed document cannot be recalled, so sign-out takes effect at
+  the next refresh: a document issued before it keeps naming the subject until it expires, about
+  an hour online and up to `graceUntil` for a device that stays offline. A product backend that
+  requires sign-in accepts such a document until `expiresAt + 300` s (or `maxAgeSeconds + 300`),
+  the same bound as a revoked licence (WIRE-CONTRACT-V4 §14.6). Readers are total (`licenseUserCases`), so a
+  malformed member is no signed-in user, never a refused document.
 - **Migration.** The backfill (`0068_e`) keeps account ids and picks one owner per licence by link
   strength (oidc > email > admin > licence key, then earliest); every other account loses its link,
   is emailed, has its registry tokens for that licence revoked and is listed in the platform audit
@@ -8652,7 +8665,9 @@ CSP's `img-src` widens beyond `'self' data:` and the image host's origin (HA-07)
 backend's verdict (SP-53) reads the licence from `Authorization`, a cookie or a query parameter,
 picks one of several `X-PKey-License` fields, keeps a verified result across a trust-set change or
 past its freshness, logs the header or the holder, gains an anti-replay floor or a proof of
-possession, or widens its window beyond `maxAgeSeconds + 300` s.
+possession, or widens its window beyond `maxAgeSeconds + 300` s; or the licence document's
+`profile.user` (SP-54) carries anything about the account beyond its pairwise subject, is written
+for a device without a binding or into an offline bundle, or a reader of it refuses a document.
 
 ### The shared assets root and the docs gate (SEC-WEB-1)
 

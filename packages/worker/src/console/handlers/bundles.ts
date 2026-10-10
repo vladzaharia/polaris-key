@@ -320,6 +320,7 @@ export async function handleBundleMint(
         now,
         maxOfflineDays: graceDays,
         clampGraceTo,
+        // SP-54: never the device. A bundle names no signed-in user (plans/SP-54.md §6).
         profile: docProfile(license),
         entitlements,
       });

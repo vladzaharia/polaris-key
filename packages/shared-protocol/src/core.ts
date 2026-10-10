@@ -356,6 +356,15 @@ export const BACKEND_TRUST_REFRESH_SECONDS = 900;
 export const POLARIS_REQUEST_HEADERS = [HEADER_LICENSE, HEADER_DEVICE] as const;
 
 /**
+ * WIRE-CONTRACT-V4 §8: a pairwise subject, `ps_` and 16 random bytes in base64url. The one name
+ * a developer-facing surface ever uses for an account, different for every product (S-16 §5.1).
+ * A whole-string pattern with ASCII classes (§3.3 rule 1). The licence document's
+ * `profile.user.subject` (§2.1, SP-54) and Identity's routes (§12, re-exported from `/identity`)
+ * share it; the barrel does not re-export it.
+ */
+export const PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$";
+
+/**
  * The channel vocabulary (WIRE-CONTRACT-V3 §5.1). One set of names for the licence build gate,
  * the `entitled` release check and every SDK's `X-PKey-Channel`: `stable`, `beta`, `pr-<n>`
  * (`pr` is the family; as a grant it covers every PR), a product's manual channels, and `dev`,

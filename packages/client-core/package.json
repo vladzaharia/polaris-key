@@ -106,6 +106,10 @@
     "./backend": {
       "types": "./dist/backend.d.ts",
       "default": "./dist/backend.js"
+    },
+    "./license": {
+      "types": "./dist/license.d.ts",
+      "default": "./dist/license.js"
     }
   },
   "files": [

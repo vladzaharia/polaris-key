@@ -2,14 +2,28 @@
 
 import type { DocClaims, ManagedEntry } from "./core.js";
 
+/**
+ * WIRE-CONTRACT-V4 §2.1 (SP-54): the person signed in on the device a licence document was
+ * issued to. `subject` is the account's pairwise subject for this product
+ * (`PAIRWISE_SUBJECT_PATTERN`); there is no name, email or account id. Read it only through
+ * client-core's `licenseUserOf`, which is total (§3.2).
+ */
+export interface SignedInUser {
+  subject: string;
+}
+
 /** The profile block for the client's offline, tamper-proof greeting (signed, so it
- *  can't be spoofed locally). */
+ *  can't be spoofed locally). `name`, `firstName` and `email` are the licence holder's. */
 export interface DocProfile {
   name: string;
   firstName: string;
   email: string;
   /** Epoch seconds the key was first activated. */
   activatedAt: number;
+  /** SP-54: present only when an account is signed in on the requesting device (V4 §2.1).
+   *  Absent for key-entry and open-enrolment devices and in every offline bundle. A verifier
+   *  never checks it (§3.2); read it with `licenseUserOf`. */
+  user?: SignedInUser;
 }
 
 /**

@@ -217,9 +217,10 @@ export interface KeyPreview {
 
 /**
  * §8: a pairwise subject, `ps_` and 16 random bytes in base64url. The one name a developer-facing
- * surface ever uses for an account, different for every product (S-16 §5.1).
+ * surface ever uses for an account, different for every product (S-16 §5.1). Declared in `/core`
+ * since SP-54, because the licence document's `profile.user.subject` carries it too.
  */
-export const PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$";
+export { PAIRWISE_SUBJECT_PATTERN } from "./core.js";
 
 /**
  * §12.2 step 3: the flat 403 of `POST /<p>/license/activate` and
