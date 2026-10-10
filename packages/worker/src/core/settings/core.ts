@@ -264,7 +264,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     critical: true,
     confirm: { change: "L2" },
-    wire: ["document", "discovery"],
+    wire: ["document"],
     readers: [
       "core/signing.ts",
       "platform/keyvault.ts",
