@@ -103,6 +103,21 @@ describe("a deliberately broken page", () => {
     LONG,
   );
 
+  pyIt(
+    "fails the symbol check in Python",
+    () => {
+      const named = mentions(proseOf(source), "python").map((m) => m.name);
+      expect(named).toEqual(
+        expect.arrayContaining(["NotAnExportEither", "no_such_function"]),
+      );
+      const known = pythonSymbols(python ?? "python3");
+      expect(known.has("NotAnExportEither")).toBe(false);
+      expect(known.has("no_such_function")).toBe(false);
+      expect(known.has("register_argparse")).toBe(true);
+    },
+    LONG,
+  );
+
   it(
     "fails the symbol check",
     () => {

@@ -2,7 +2,7 @@
 title: "Broken on purpose"
 ---
 
-The lane fails each of these. `NotAnExportAtAll` names no export.
+The lane fails each of these. `NotAnExportAtAll` names no export, and neither do `NotAnExportEither` and `no_such_function()`.
 
 ```ts
 import { PolarisKeyClient } from "@polaris-key/node";

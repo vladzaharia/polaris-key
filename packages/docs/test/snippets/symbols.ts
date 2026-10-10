@@ -25,7 +25,16 @@ const PLANNED = /planned|coming in/i;
 
 /** Names that are the reader's own or a host global, not exports: the generated config, the
  *  placeholders of ambient.d.ts, and `window.polarisKey`. */
-const NOT_EXPORTS = new Set(["YourApp", "polarisConfig", "polarisKey"]);
+const NOT_EXPORTS = new Set([
+  "YourApp",
+  "polarisConfig",
+  "polarisKey",
+  // Python built-ins and the one third-party class the docs name.
+  "TimeoutError",
+  "TypeError",
+  "ValueError",
+  "MockTransport",
+]);
 
 /** The names a page's prose claims, minus the lines that label them planned. */
 export function mentions(
@@ -41,7 +50,8 @@ export function mentions(
         const call = /^(?:[A-Za-z_][\w]*\.)*([a-z_][a-z0-9_]*)\(/.exec(raw);
         if (call?.[1]?.includes("_"))
           out.push({ name: call[1], line, text: raw });
-        else if (PY_PASCAL.test(raw)) out.push({ name: raw, line, text: raw });
+        else if (PY_PASCAL.test(raw) && !NOT_EXPORTS.has(raw))
+          out.push({ name: raw, line, text: raw });
         continue;
       }
       const name = raw.replace(/\(.*$/s, "").split(".").pop() ?? "";

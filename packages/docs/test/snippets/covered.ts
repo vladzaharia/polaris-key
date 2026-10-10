@@ -17,6 +17,8 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}sdks/node/your-own-ui.md`, language: "ts" },
   { path: `${BUILD}quickstart/react.md`, language: "ts" },
   { path: `${BUILD}sdks/react/your-own-ui.md`, language: "ts" },
+  { path: `${BUILD}quickstart/python.md`, language: "python" },
+  { path: `${BUILD}sdks/python/your-own-ui.md`, language: "python" },
 ];
 
 export function coveredLanguage(file: string): "ts" | "python" | null {
