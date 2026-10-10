@@ -215,7 +215,7 @@ jobs:
           cache: pnpm
       - if: ${{ env.PICKED == 'true' && matrix.bun }}
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         if: env.PICKED == 'true' && matrix.go
         with:
           go-version: stable
