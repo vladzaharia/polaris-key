@@ -3767,3 +3767,32 @@ was edited.
   middle-elides at rest (the text carries the ellipsis).
 - Order of buttons: macOS Cancel then the default; Windows the primary first; GNOME Cancel then the
   suggested pill at the end.
+
+## Stage frames and the Qt, tvOS and visionOS kits (`uk56-tv-vision-qt-kits`)
+
+Appended at the end of `mockup.css`, in the `uk56-tv-vision-qt-kits` block; no earlier rule was
+edited. `sdk.qt-gate`, `sdk.tvos-gate` and `sdk.visionos-gate` are the references.
+
+- **`.kit-scale`** (`.tv` 1920×1080, `.vision` 1280×800, `.vision-tall` 640×800, at most 420 wide):
+  a size container that holds one `.kit-canvas`, a stage drawn at its true size and scaled to the
+  cell (`scale(tan(atan2(100cqw, stage width)))`), so type, targets and insets keep the platform's
+  real measures. A button's padding on a stage is drawn by `::before` and `::after` spacers, which
+  scale with it. A stage under 24px of target at phone width fails the target-size check, so a
+  board hides its large stages on a phone (`.hide-phone`, with a `.show-phone` note) and keeps the
+  tall one.
+- **`.kit-canvas[data-pk-preset="native"]`**: the system's tint (`#0a60c8`, `#409cff` in dark) in
+  place of the product accent, a flat ground in place of the product's ambient, and on tvOS the
+  system's lifted white focus.
+- **tvOS** (`.kit-canvas.tv`): 90px capsule controls, 38px body, 76px titles, 435px QR tile (whole
+  15px modules, under 42% of the short side), `.tv-safe` (the 90 × 60 title-safe insets, two
+  panes; `.message` for one block), `.tv-start`, `.tv-end`, `.tv-url`, `.tv-code`, `.tv-qr`,
+  `.tv-device`, `.tv-actions` (`.row` for a message screen), `.tv-ground` (the blurred product art),
+  and `.kit-btn.focus` (lift 1.05, a 3px ring at a 2px offset).
+- **visionOS** (`.kit-canvas.vp`): 60px capsule targets, 17pt body, the room, `.vp-window` (glass,
+  `.tall` for the narrow window, `.single` for a host window), `.vp-art` and `.vp-pane` (the product
+  art, or the icon alone under native), `.vp-ornament` (links and banners on the window's bottom
+  edge) and `.kit-btn.gaze` (gaze hover: brightened and lifted, no ring).
+- **`.kit-pairs`**: stage frames two to a row from 1280px (polaris-key beside native).
+- **Qt on KDE Plasma**: `data-pk-platform="kde"` (32px controls at radius 5, Breeze blue under
+  native), `.window.kde`, `.kit-actions.end` (affirmative first, then Cancel, right-aligned) and
+  `.kit-host.plain` (a host with one dialog form, no welcome grid).

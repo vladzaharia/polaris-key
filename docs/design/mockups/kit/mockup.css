@@ -24459,9 +24459,9 @@ tr.chg {
   font: var(--pk-kit-type-body-weight) var(--pk-kit-type-body-size) / var(--pk-kit-type-body-line-height) var(--pk-kit-type-body-family);
 }
 .kit-canvas[data-pk-preset="native"] {
-  --kit-accent: #0a84ff;
+  --kit-accent: #0a60c8;
   --kit-accent-on: #ffffff;
-  --kit-accent-subtle: color-mix(in oklab, #0a84ff 16%, var(--pk-surface-raised));
+  --kit-accent-subtle: color-mix(in oklab, #0a60c8 16%, var(--pk-surface-raised));
 }
 [data-theme="dark"] .kit-canvas[data-pk-preset="native"] {
   --kit-accent: #409cff;
@@ -24473,27 +24473,27 @@ tr.chg {
 
 /* tvOS: 76px capsule controls, TV type, inside the 90 × 60 title-safe area. */
 .kit-canvas.tv {
-  --pk-kit-control-height: 76px;
-  --pk-kit-control-height-compact: 56px;
+  --pk-kit-control-height: 90px;
+  --pk-kit-control-height-compact: 64px;
   --pk-kit-radius-control: 9999px;
   --pk-kit-radius-group: 28px;
   --pk-kit-radius-form: 20px;
   --pk-kit-card-pad: 0px;
-  --pk-kit-type-title-size: 64px;
-  --pk-kit-type-title-line-height: 72px;
+  --pk-kit-type-title-size: 76px;
+  --pk-kit-type-title-line-height: 84px;
   --pk-kit-type-title-weight: 600;
-  --pk-kit-type-body-size: 32px;
-  --pk-kit-type-body-line-height: 44px;
+  --pk-kit-type-body-size: 38px;
+  --pk-kit-type-body-line-height: 52px;
   --pk-kit-type-body-weight: 400;
-  --pk-kit-type-label-size: 32px;
-  --pk-kit-type-label-line-height: 44px;
+  --pk-kit-type-label-size: 38px;
+  --pk-kit-type-label-line-height: 52px;
   --pk-kit-type-label-weight: 500;
-  --pk-kit-type-button-size: 32px;
-  --pk-kit-type-button-line-height: 40px;
+  --pk-kit-type-button-size: 38px;
+  --pk-kit-type-button-line-height: 48px;
   --pk-kit-type-button-weight: 500;
-  --pk-kit-type-meta-size: 28px;
+  --pk-kit-type-meta-size: 29px;
   --pk-kit-type-meta-line-height: 40px;
-  --pk-kit-type-footnote-size: 28px;
+  --pk-kit-type-footnote-size: 29px;
   --pk-kit-type-footnote-line-height: 40px;
 }
 .kit-canvas.tv > .tv-ground {
@@ -24539,31 +24539,31 @@ tr.chg {
   gap: var(--sp-4);
 }
 .kit-canvas.tv .logo.lg {
-  width: 96px;
-  height: 96px;
-  border-radius: 22px;
+  width: 112px;
+  height: 112px;
+  border-radius: 26px;
 }
 .kit-canvas.tv .kit-head {
   gap: var(--sp-4);
 }
 .tv-url {
   margin: 0;
-  font: 500 44px/56px var(--pk-font-mono);
+  font: 500 52px/64px var(--pk-font-mono);
   color: var(--pk-text-strong);
 }
 .tv-code {
-  font: 600 96px/112px var(--pk-font-mono);
+  font: 600 120px/136px var(--pk-font-mono);
   letter-spacing: 0.08em;
   color: var(--pk-text-strong);
 }
 .tv-qr {
   display: block;
-  width: 319px;
-  height: 319px;
-  border-radius: 24px;
+  width: 435px;
+  height: 435px;
+  border-radius: 28px;
   overflow: hidden;
   background: rgb(255 255 255 / 0.92);
-  color: var(--pk-brand-page);
+  color: #060912;
 }
 .tv-qr > svg {
   display: block;
@@ -24591,12 +24591,27 @@ tr.chg {
   flex-direction: row;
   gap: var(--sp-6);
 }
-.kit-canvas.tv .kit-btn {
-  padding: 0 var(--sp-10);
+/* The stage is scaled, so a button's padding is drawn by spacer boxes (they scale with it). */
+.kit-canvas :is(.kit-btn)::before,
+.kit-canvas :is(.kit-btn)::after {
+  content: "";
+  flex: none;
+  width: var(--sp-5);
+}
+.kit-canvas .kit-btn {
+  padding: 0;
+}
+.kit-canvas.tv .kit-btn::before,
+.kit-canvas.tv .kit-btn::after {
+  width: var(--sp-10);
+}
+.kit-canvas .kit-btn.sm::before,
+.kit-canvas .kit-btn.sm::after {
+  width: var(--sp-3);
 }
 .kit-canvas.tv .kit-count > .kit-ring {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
 }
 .kit-canvas.tv .kit-state {
   padding: var(--sp-6);
@@ -24661,13 +24676,13 @@ tr.chg {
 }
 .vp-window {
   position: absolute;
-  top: 88px;
+  top: 72px;
   left: 50%;
   translate: -50% 0;
-  width: 860px;
-  height: 520px;
+  width: 960px;
+  height: 600px;
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 340px minmax(0, 1fr);
   border-radius: 44px;
   overflow: hidden;
   background: color-mix(in oklab, var(--pk-surface-raised) 56%, transparent);
@@ -24701,7 +24716,7 @@ tr.chg {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in oklab, var(--pk-surface-sunken) 60%, transparent);
+  background: color-mix(in oklab, var(--pk-text-strong) 8%, transparent);
 }
 .vp-window > .vp-pane > .logo {
   width: 96px;
@@ -24729,7 +24744,7 @@ tr.chg {
 }
 .vp-ornament {
   position: absolute;
-  top: 620px;
+  top: 700px;
   left: 50%;
   translate: -50% 0;
   display: flex;
@@ -24750,6 +24765,7 @@ tr.chg {
   top: 708px;
 }
 .vp-ornament .kit-link {
+  white-space: nowrap;
   font-weight: 500;
 }
 .vp-ornament .kit-btn {
@@ -24806,7 +24822,8 @@ tr.chg {
 .kit-actions.end {
   justify-content: flex-end;
 }
-.kit-host.dialog > .kit-form {
+.kit-host.plain > .kit-form {
+  width: 100%;
   max-width: 480px;
   margin-inline: auto;
 }
