@@ -77,6 +77,12 @@ const KIT_CSS = String.raw`
   --pk-selected: var(--pk-accent-subtle, color-mix(in srgb, AccentColor 14%, Canvas));
 }
 
+/* DL2, DL18: the drop-in gate's blocking screen owns the window with no layout code from the host. */
+.pk-root[data-fill] {
+  display: grid;
+  min-block-size: 100dvh;
+}
+
 /* ── Stage: a blocking screen owns its box on an opaque ground with the product ambient ───── */
 .stage {
   position: relative;
@@ -137,6 +143,14 @@ const KIT_CSS = String.raw`
 .card:focus {
   outline: none;
 }
+/* DL3: on a card taller than its window the primary stays in reach, on the card's own surface
+   (a halo, so nothing moves while everything fits). */
+.stage[data-kind="screen"] .card > .actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  box-shadow: 0 0 0 var(--pk-space-3) var(--pk-surface-raised);
+}
 @container pk (max-width: 34.99rem) {
   .stage {
     padding: 0;
@@ -156,9 +170,19 @@ const KIT_CSS = String.raw`
     flex-direction: column;
     gap: var(--pk-space-6);
   }
-  /* The actions dock at the bottom of a full-bleed screen (§1.4 Web). */
+  /* The actions dock at the bottom of a full-bleed screen (§1.4 Web), and stay there over
+     content that scrolls (DL1 tall; DL3: the primary never gives way). */
   .stage[data-kind="screen"] .card > .actions {
     margin-block-start: auto;
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 1;
+    margin-inline: calc(-1 * var(--pk-kit-card-pad-full-bleed));
+    padding-inline: var(--pk-kit-card-pad-full-bleed);
+    padding-block: var(--pk-space-3)
+      max(var(--pk-space-3), env(safe-area-inset-bottom));
+    background: var(--pk-surface-raised);
+    box-shadow: none;
   }
 }
 
@@ -200,6 +224,42 @@ const KIT_CSS = String.raw`
 }
 .pk-root[data-shape="short"] .stage {
   padding-block: var(--pk-space-4);
+}
+/* DL1 short landscape (under 30rem tall): two columns as well, with no inner scroll; the start
+   column sticks, so the identity stays in view if the window still scrolls. */
+.pk-root[data-shape="short"] .card {
+  gap: var(--pk-space-3);
+  padding: var(--pk-space-5);
+}
+.pk-root[data-shape="short"] .stage[data-split] .card {
+  inline-size: min(65rem, 100%);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  column-gap: var(--pk-space-6);
+  align-items: start;
+  text-align: start;
+}
+.pk-root[data-shape="short"] .stage[data-split] .passport {
+  grid-row: 1 / span 6;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  border-radius: var(--pk-kit-radius-group);
+  background: var(--pk-accent-subtle, var(--pk-surface-sunken));
+}
+.pk-root[data-shape="short"] .stage[data-split] .passport .identity {
+  display: grid;
+  position: sticky;
+  inset-block-start: var(--pk-space-4);
+}
+.pk-root[data-shape="short"] .stage[data-split] .passport .icon {
+  --pk-icon-size: 4rem;
+}
+.pk-root[data-shape="short"] .stage[data-split] .passport .name,
+.pk-root[data-shape="short"] .stage[data-split] .passport .by {
+  display: none;
+}
+.pk-root[data-shape="short"] .stage[data-split] .actions {
+  justify-content: start;
 }
 
 /* ── Product header (DL5) ─────────────────────────────────────────────────────────────────── */
@@ -691,9 +751,23 @@ bdi {
   background: none;
   box-shadow: none;
 }
+.pane > * {
+  min-inline-size: 0;
+}
 .pane .actions {
   flex-direction: row;
   flex-wrap: wrap;
+}
+/* A narrow box (or large text) puts a row's actions under its text, never squeezing it. */
+@container pk (max-width: 30rem) {
+  .row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .row .row-actions {
+    grid-column: 2;
+    flex-wrap: wrap;
+    margin-inline-start: calc(-1 * var(--pk-space-1));
+  }
 }
 .pane .actions .btn {
   inline-size: auto;

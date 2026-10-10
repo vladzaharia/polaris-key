@@ -47,6 +47,8 @@ export const OPENS: ReadonlySet<string> = new Set([
   "signin.none.get",
   "common.manage",
   "about.licenses",
+  // Replace a device opens the license's page (PX-W8) as Activate's fix, like DeviceLimit's.
+  "deviceLimit.title",
 ]);
 
 /** The vocabulary action a control performs, or `null` (a kit-local control). */
