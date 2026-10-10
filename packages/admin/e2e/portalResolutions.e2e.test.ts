@@ -703,16 +703,19 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
         const hero = o.page.locator("article[aria-labelledby=hero-name]");
         await hero.waitFor();
         const where = await hero.evaluate((article) => {
-          const art = article.firstElementChild!.getBoundingClientRect();
+          const box = article.firstElementChild!;
+          const art = box.getBoundingClientRect();
           const button = article
             .querySelector("button")!
             .getBoundingClientRect();
+          const img = box.querySelector("img:not([data-blur])");
           return {
             bottom: button.bottom,
             // Side by side: the panel starts beside the art, not under it.
             sideBySide: button.left >= art.right - 1,
-            // Never cropped: the art keeps 16:9 below 1180 px.
-            ratio: art.width / art.height,
+            // Never cropped (PX-30): the column stretches to the panel, and the art is contained
+            // in it over a blurred copy.
+            fit: img ? getComputedStyle(img).objectFit : null,
           };
         });
         expect
@@ -720,8 +723,8 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           .toBeLessThanOrEqual(height);
         expect.soft(where.sideBySide, `side by side at ${width}`).toBe(true);
         expect
-          .soft(where.ratio, `the art at ${width}×${height}`)
-          .toBeCloseTo(16 / 9, 1);
+          .soft(where.fit, `the art at ${width}×${height}`)
+          .toBe("contain");
       } finally {
         await o.close();
       }
