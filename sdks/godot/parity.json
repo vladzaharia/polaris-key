@@ -100,6 +100,10 @@
       "status": "implemented",
       "note": "PKeyConfig.set_value/clear/clear_all/setting (S-17 §5.11's Godot names; set is Object's) write through the persisted PKeyConfigFileStore, check the value against the catalog entry's schema (type by value, not Variant: 40.0 is a valid integer), else the document value's JSON type, refuse an enforced or hidden key managed_by_admin, and emit config_changed once per write; setting(key) is a PKeyConfigSetting handle with changed(value, source) (tests/config/test_local.gd)."
     },
+    "config.sync": {
+      "status": "planned",
+      "wp": "U-21"
+    },
     "devices.fingerprint": {
       "status": "implemented",
       "note": "PKeyFingerprint: per-platform readers as pure parsers over captured output, the capture on a WorkerThreadPool task once a session; the desktop device id hashes MachineGuid (Windows), IOPlatformUUID (macOS) and the rule-2 machine-id (Linux).",
@@ -497,6 +501,22 @@
     "commerce.receipt": {
       "status": "implemented",
       "note": "PolarisKey.commerce (services/commerce.gd, P6-01): get_binding() (the licence's purchase binding — P5-05 PKeyApple's appAccountToken, godot-google-play-billing's obfuscatedAccountId, GodotSteam's getAuthTicketForWebApi identity — and the mapped store products) and claim(store, payload) for the StoreKit JWS, the Play purchase token or the Steam web-API ticket; the Worker verifies with the store and grants the licence flag. hidden_here() applies App Store 3.1.3(b) on Apple outlets. suite_commerce and the commerce-claim transcript (suite_transcripts)."
+    },
+    "sync.scenarios": {
+      "status": "planned",
+      "wp": "U-21"
+    },
+    "sync.settings": {
+      "status": "planned",
+      "wp": "U-21"
+    },
+    "sync.conflict": {
+      "status": "planned",
+      "wp": "U-08"
+    },
+    "sync.saves": {
+      "status": "planned",
+      "wp": "U-23"
     }
   }
 }
