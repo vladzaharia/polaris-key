@@ -120,13 +120,11 @@ import {
   type CredentialCheck,
 } from "../../services/distribution/public.js";
 import { storefrontAdapter } from "../../core/storefront/adapter.js";
-import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   AdminBodyError,
   adminJson,
   err,
-  forbidden,
   notFound,
   readBody,
 } from "../../core/console/respond.js";
@@ -175,7 +173,7 @@ export async function handlePlatformStoreConnections(
   rest: string[],
   now: number,
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session)) return forbidden("platform admin only");
+  // ST-29: the dispatcher's route table checked this route's area with `can()` before routing here.
   try {
     return await route(req, env, db, session, rest, now);
   } catch (e) {

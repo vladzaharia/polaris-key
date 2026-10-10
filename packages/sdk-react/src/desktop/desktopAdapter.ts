@@ -39,6 +39,10 @@ import type { CapabilityContext } from "@polaris-key/client-core";
 import { isManageUrl } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
 import {
+  BridgePresentationSource,
+  type ReactPresentationSource,
+} from "../core/presentation.js";
+import {
   PolarisError,
   UnsupportedError,
   capabilityContext,
@@ -156,6 +160,8 @@ export class DesktopAdapter implements PolarisAdapter {
   /** `supports()`'s inputs: the generated table, runtime `desktop-bridge`, and `capabilities`. */
   private readonly capabilityCtx: CapabilityContext;
   private offBridge: (() => void) | null = null;
+  /** The host's presentation member and icon, over the bridge (HA-13). */
+  private readonly presentation_: BridgePresentationSource;
 
   constructor(opts: DesktopAdapterOptions = {}) {
     const bridge = resolveBridge(opts.bridge);
@@ -167,6 +173,9 @@ export class DesktopAdapter implements PolarisAdapter {
     }
     this.bridge = bridge;
     this.clock = opts.now ?? nowSec;
+    this.presentation_ = new BridgePresentationSource(
+      bridge.invoke ? (s, m, a) => bridge.invoke!(s, m, a) : null,
+    );
     const hostOverrides = opts.localOverrides ?? {};
     this.localOverrides = { ...hostOverrides };
     this.fallbackServices = copyServices(
@@ -223,6 +232,8 @@ export class DesktopAdapter implements PolarisAdapter {
       this.config.adopt(s.localConfig);
       this.localOverrides = this.config.merged();
     }
+    // core.presentation (HA-13): the host's member rides every state.
+    if (s.presentation !== undefined) this.presentation_.adopt(s.presentation);
     this.store.set(
       projectState(
         "desktop",
@@ -883,6 +894,12 @@ export class DesktopAdapter implements PolarisAdapter {
         error: noErrors(),
       });
     return r;
+  }
+
+  /** The host's `client.presentationSource()`: the member from each state push, the icon's
+   *  bytes over `invoke("core", "presentationIcon")`. An older host reads as no presentation. */
+  presentationSource(): ReactPresentationSource {
+    return this.presentation_;
   }
 
   /** `invoke("core", "discovery")`, or null on a host that does not answer it. */

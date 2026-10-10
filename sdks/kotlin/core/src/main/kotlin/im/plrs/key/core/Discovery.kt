@@ -4,7 +4,8 @@
 // FAILS CLOSED (D-21): a slug the document omits reads as disabled, a malformed `services` value
 // refuses the whole document, and `enabled` must be a real boolean. The document may grow: fields
 // the SDK does not read are kept. Discovery is explicit (a network read); before it has answered,
-// capabilities come from the host's `expectedServices`, else the suite default.
+// capabilities come from the host's `expectedServices`, else the suite default. `core.presentation`
+// is parsed here too (Presentation.kt): the product's display data, unsigned and never a gate input.
 
 package im.plrs.key.core
 
@@ -58,6 +59,12 @@ public data class ProductDiscoveryDocument(
     val trust: DiscoveryTrust? = null,
     /** Every slug has an entry; absent slugs read as disabled. */
     val services: Map<ServiceSlug, ServiceFragment>,
+    /**
+     * `core.presentation` (WIRE-CONTRACT-V4 §5.5), normalised by [PresentationRules.parsePresentation]:
+     * unsigned display data, never a gate input. Null when the document carries none (or an
+     * invalid one); a malformed field is dropped and never refuses the document.
+     */
+    val presentation: Presentation? = null,
 ) {
     /** The capability map Core gates sub-clients on. */
     val servicesMap: ServicesMap get() = ServiceSlug.entries.associateWith { services[it]?.enabled == true }
@@ -130,6 +137,7 @@ public object Discovery {
                 core = core,
                 trust = trust,
                 services = services,
+                presentation = PresentationRules.parsePresentation(obj["core"], obj["name"], product),
             ),
         )
     }

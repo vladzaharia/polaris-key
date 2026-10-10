@@ -23,7 +23,7 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 ## Plan follow-through (2026-10-09)
 
-Approved [`plans/SP-54.md`](../plans/SP-54.md) (2026-10-09) moves the native `profile.user` readers (Python, Swift, Kotlin, Godot) and the parity row `license.signedInUser` to [SP-54b](SP-54b-native-signed-in-user-readers.md), which this package now depends on. The estimate drops accordingly. Re-read this brief against the code before reviving it.
+Approved [`plans/SP-54.md`](../plans/SP-54.md) (2026-10-09) moves the native `profile.user` readers (Python, Swift, Kotlin, Godot) and the parity row `license.signedinuser` to [SP-54b](SP-54b-native-signed-in-user-readers.md), which this package now depends on. The estimate drops accordingly. Re-read this brief against the code before reviving it.
 
 ## Goal
 

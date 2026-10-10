@@ -517,6 +517,7 @@ public enum Feature {
     public static let coreCopy = "core.copy"
     public static let coreBackend = "core.backend"
     public static let licenseGate = "license.gate"
+    public static let licenseSignedinuser = "license.signedinuser"
     public static let licenseActivate = "license.activate"
     public static let licenseEnroll = "license.enroll"
     public static let licenseDeactivate = "license.deactivate"
@@ -597,6 +598,7 @@ public enum Feature {
     public static let uiKitAccount = "ui.kit.account"
     public static let uiCli = "ui.cli"
     public static let uiCliMount = "ui.cli.mount"
+    public static let uiCliContract = "ui.cli.contract"
     public static let uiGate = "ui.gate"
     public static let uiActivate = "ui.activate"
     public static let uiSignin = "ui.signin"
@@ -630,6 +632,7 @@ public let FEATURE_VALUES: [String] = [
     "core.copy",
     "core.backend",
     "license.gate",
+    "license.signedinuser",
     "license.activate",
     "license.enroll",
     "license.deactivate",
@@ -710,6 +713,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.kit.account",
     "ui.cli",
     "ui.cli.mount",
+    "ui.cli.contract",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1278,7 +1282,7 @@ public let DEVICE_LABEL_VERSION = 1
 public let PRESENTATION_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 2
+public let UI_MATRIX_VERSION = 3
 
 /// `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 public let BACKEND_MATRIX_VERSION = 1
@@ -1378,6 +1382,9 @@ public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
 
 /// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 public let REQUEST_HANDLE_TTL_SECONDS = 600
+
+/// Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
+public let PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$"
 
 /// Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
 public let PRESENTATION_TEXT_MAX_BYTES = 1024
@@ -1504,7 +1511,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.cache": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.bundle": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.discover": CapabilityRow(status: "implemented", service: "core", na: []),
-    "core.presentation": CapabilityRow(status: "planned", service: "core", na: []),
+    "core.presentation": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.sync": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.local": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.headers": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -1514,6 +1521,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.copy": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "core.backend": CapabilityRow(status: "planned", service: "license", na: []),
     "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.signedinuser": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.enroll": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.deactivate": CapabilityRow(status: "implemented", service: "license", na: []),
@@ -1594,6 +1602,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.account": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "ui.cli.contract": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.gate": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.activate": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.signin": CapabilityRow(status: "implemented", service: "sdk", na: []),
@@ -1612,4 +1621,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "809c14d711580a9c088a49f4e0f485efbfa2825aedb813769ca692820427d49f"
+public let CAPABILITY_DIGEST = "1d3e59237b393c0b6fd39a45042bb4ef0b09477ce9ab5b070efbf0a4ca765c66"

@@ -4891,7 +4891,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/I-30-connections-one-oidc-relying-party.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-31",
@@ -9020,7 +9020,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-07-settings-row-v2.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-08",
@@ -9579,7 +9579,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-29-admin-route-table-can-usecan.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-30",
@@ -11955,11 +11955,11 @@
         "plans/SP-54.md (approved 2026-10-09)"
       ],
       "brief": "wp/SP-54-signed-in-subject-in-licence-document.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-54b",
-      "title": "Native signed-in-user readers: Python, Swift, Kotlin and Godot decode `profile.user.subject`, replay `licenseUserCases`, parity row `license.signedInUser`",
+      "title": "Native signed-in-user readers: Python, Swift, Kotlin and Godot decode `profile.user.subject`, replay `licenseUserCases`, parity row `license.signedinuser`",
       "phase": "SP",
       "stage": "framework drop-ins (2026-10-08)",
       "lane": "sdk",
@@ -11977,7 +11977,7 @@
         "docs/research/2026-10-08-sdk-usability/README.md §10.2 (the Python terminal kit signed-in finding)"
       ],
       "brief": "wp/SP-54b-native-signed-in-user-readers.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-55",
@@ -12568,7 +12568,7 @@
         "plans/HA-13.md (approved 2026-10-09)"
       ],
       "brief": "wp/HA-13-sdks-presentation.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "HA-11"
     },
     {
@@ -13002,7 +13002,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-11-godot-kit.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "UK-12",
@@ -16491,7 +16491,7 @@
         "plans/UK-51.md (approved 2026-10-09)"
       ],
       "brief": "wp/UK-51-terminal-drop-in-contract.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-52",

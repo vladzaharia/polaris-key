@@ -5,8 +5,9 @@
 //
 //   1. the integrator's theme: `PolarisCopy.productName` (when set) and `PolarisTheme.logo`;
 //   2. the product's presentation (discovery `core.presentation`): name, developer, accent and the
-//      icon verified by its sha256. The SDK's accessor arrives with HA-13; until then the
-//      environment value below is the seam it plugs into, and it is empty unless a host sets it;
+//      icon verified by its sha256. The SDK's accessor (`client.presentation`) reaches the views
+//      through the environment value below: `PolarisKeyModel` maps it once and the gate sets it
+//      unless the host already did (plans/HA-13.md D1 keeps this struct as the kit's adapter);
 //   3. the app bundle: `CFBundleDisplayName` / `CFBundleName` and the app's icon;
 //   4. with no icon at all, a monogram tile: the product's initial on a neutral sunken surface.
 //
@@ -26,8 +27,9 @@ import SwiftUI
 /// The product's registered presentation, as the SDK reads it from discovery (`core.presentation`,
 /// WIRE-CONTRACT-V4 §5.5): name, developer, accent per scheme and the verified icon bytes.
 ///
-/// The kit reads it from the environment (`.polarisKeyPresentation(_:)`). The SDK's accessor fills
-/// it once HA-13 lands; an integrator's theme always wins over it.
+/// The kit reads it from the environment (`.polarisKeyPresentation(_:)`). `.polarisKey(client)`
+/// fills it from the SDK's accessor (`PolarisKeyModel.presentation`) unless the host sets one; an
+/// integrator's theme always wins over it.
 public struct PolarisProductPresentation: Sendable, Equatable {
     public var name: String?
     public var developerName: String?

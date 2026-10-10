@@ -31,6 +31,19 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **Follow-ups.** UK-46, UK-48, UK-52, UK-53 and UK-54 run the `mount`, `help` and `gate` rows when they build their adapters (a failing row is a bug against the row). UK-59 draws the pipe/non-TTY quadrant on `terminal.html` from the `gate` rows. P0-51 includes the `cli` family in the 1.0 review. `update apply`'s hand-off exit is left to UK-46 and UK-48.
 - **Docs and gates.** `gen-reference.mjs` counts the `cli` family beside the component families, `contribute/corpus.md` and the generated `reference/corpus.mdx`; the drift gates are `gen corpus --check`, `gen constants --check`, `parity:check` and the docs build.
 
+## Build corrections (2026-10-10)
+
+Recorded while building against the code (the code is the fact):
+
+- **Version.** `uiMatrixVersion` was 2 (UK-03's); the `cli` family makes it **3**, in one regeneration.
+- **Python exit literals.** They were in `flows.py`, `verbs.py` and `argparse_cli.py`; `text.py` holds none (its numbers are cell widths). All three now read `polaris_key.ui.terminal.exit.EXIT`.
+- **Capability table.** UK-45's merged table has 14 rows, not 15; the `capabilities` section carries those 14 verbatim.
+- **No-key copy.** Since UK-45's second round a non-terminal stdin that delivers nothing says `cli.activate.noKeyPiped`; `cli.activate.noKey` stays for a terminal that cannot prompt. The `stdin` rows pin both.
+- **Network failure mark.** The Node kit drew a network failure as ▲; it is ✗ now (DL7), as the plan's `outcomes` rows pin.
+- **`stdin` input.** A row's stdin is `lines` (each followed by a newline), since the file carries no control character.
+- **Python rows pending (UK-48).** The Python runner runs every row; those its kit does not pass yet are strict xfails owned by UK-48: CI truthiness (`CI=0`, `CI=false`, `GITHUB_ACTIONS`, `BUILDKITE`), links on a forced-colour pipe and animation following stdout in the capability table; every piped-stdin row (the kit reads stdin only with `--key-stdin`, and says a usage line rather than `cli.activate.noKey` or `noKeyPiped`); and `secret` and `mint` without `--reveal` (the Python kit has no `--reveal`).
+- **Verb sets.** The kits differ from the `verbs` lists in ways the adapters settle: Node has no `boot` verb, Python has no `completion`, and Python's `update download --to <path>` is in neither list (UK-46 and UK-48 add it to `developer` or drop it, by a corpus change).
+
 ## Goal
 
 Terminal drop-in contract: the `cli` family in `ui-matrix.json`, exit 4, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -61,7 +74,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
 
-- [ ] Status's revoked, expired and version refusals print ▲ with the fix command rows, never ✗; the reason and date appear only if the wire carries them; gate refusals exit 4, status exits 1, a network failure exits 1. (sdk-c-08)
+- [x] Status's revoked, expired and version refusals print ▲ with the fix command rows, never ✗; the reason and date appear only if the wire carries them; gate refusals exit 4, status exits 1, a network failure exits 1. (sdk-c-08)
 
 ## Steps
 
@@ -77,13 +90,13 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] The `cli` family pins the verb sets, the collision and help rules, the gate outcomes and exit 4.
-- [ ] A refused gate exits 4 and, with `--json`, prints the `error` code (decision 10).
-- [ ] `parity:check`, `gen constants --check` and `gen corpus --check` pass; the new feature `ui.cli.contract` is required on `node` and `python`.
-- [ ] Node's `EXIT.licenseRequired === 4` and the Python exit table are tested now; a refused gate fixture exits 4 once UK-46 lands.
-- [ ] No refusal fixture carries ✗; each carries ▲ and its fix.
-- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The `cli` family pins the verb sets, the collision and help rules, the gate outcomes and exit 4.
+- [x] A refused gate exits 4 and, with `--json`, prints the `error` code (decision 10).
+- [x] `parity:check`, `gen constants --check` and `gen corpus --check` pass; the new feature `ui.cli.contract` is required on `node` and `python`.
+- [x] Node's `EXIT.licenseRequired === 4` and the Python exit table are tested now; a refused gate fixture exits 4 once UK-46 lands.
+- [x] No refusal fixture carries ✗; each carries ▲ and its fix.
+- [x] The acceptance in "Design language v2 (2026-10-08)" above holds.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

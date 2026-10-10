@@ -5,7 +5,8 @@
 // The default transport is OkHttp, the one HTTP client that runs on Android API 24 and on the JVM
 // (`java.net.http` does not exist on Android). It follows redirects ITSELF: an `Authorization`
 // header is never forwarded across a redirect (OkHttp would keep it on a same-host hop), a redirect
-// from https to plain http is refused, and at most `MAX_REDIRECTS` hops are taken.
+// from https to plain http is refused, and at most `MAX_REDIRECTS` hops are taken. A request with
+// `followRedirects = false` (the presentation icon) sees the 3xx itself.
 //
 // SP-50: `send` is main-safe. OkHttp's callback resumes the caller as soon as the HEADERS arrive, and
 // the body is read after that; on Android, from `Dispatchers.Main`, that read throws
@@ -75,6 +76,11 @@ public data class PolarisRequest(
     val timeoutSeconds: Double = 15.0,
     /** Stop reading the body after this many bytes; null reads it whole. */
     val maxBodyBytes: Int? = null,
+    /**
+     * False returns a 3xx as the response instead of following it (the presentation icon fetch:
+     * plans/HA-13.md, no redirect is followed). A host's own transport should honour it too.
+     */
+    val followRedirects: Boolean = true,
 )
 
 /** Everything the SDK needs from a network stack. Safe to call concurrently. */
@@ -128,7 +134,7 @@ public class OkHttpTransport private constructor(client: OkHttpClient, private v
             val response = client.newCall(build(url, method, headers, body)).await()
             response.use { r ->
                 val location = r.header("location")
-                if (r.code in REDIRECTS && location != null) {
+                if (r.code in REDIRECTS && location != null && request.followRedirects) {
                     if (hop == MAX_REDIRECTS) {
                         throw PolarisException(ErrorCode.tooManyRedirects, "more than $MAX_REDIRECTS redirects")
                     }

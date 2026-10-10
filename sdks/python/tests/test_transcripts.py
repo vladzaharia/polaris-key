@@ -21,6 +21,9 @@ runs a ``discover`` step, and records no discovery exchange in the step, has it 
 the Worker's standard templates (the fallback the Node and React replayers use), so the recording
 only has to hold the feed and record traffic.
 
+``discover`` reports the result's ``kind`` and ``presentation``, ``client.presentation()`` after it
+(the normalised ``core.presentation`` member, or ``None`` once the product drops it).
+
 ``activate`` / ``enroll`` report the ``ActivationResult``'s ``kind`` as ``result`` and, on a
 refusal, its wire ``code``. ``boot`` is ``client.boot()`` (default discovery): its ``outcome`` is
 ``bootOutcome``. ``releaseFetch`` is ``client.release.fetch`` of the build a release record built
@@ -42,6 +45,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 # @pkey-feature license.manage
+# @pkey-feature core.presentation
 
 from __future__ import annotations
 
@@ -174,6 +178,8 @@ def _act(
                 out["reason"] = r.reason
     elif action == "discover":
         out["result"] = client.discover().kind
+        # core.presentation (HA-13): the normalised member the discovery left, or None.
+        out["presentation"] = client.presentation()
     elif action == "sync":
         r = client.sync(force=args.get("force") is True)
         out["applied"] = r.applied

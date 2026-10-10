@@ -10,7 +10,7 @@ extends RefCounted
 # `func run(t: PKeyTestContext) -> void` (it may await); the suite ends with a coverage check
 # that every group ran.
 
-const GROUPS := ["channel", "activation", "reregister", "deactivate", "entitlements", "manage", "license_id_refresh"]
+const GROUPS := ["channel", "activation", "reregister", "deactivate", "entitlements", "manage", "license_id_refresh", "license_user"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

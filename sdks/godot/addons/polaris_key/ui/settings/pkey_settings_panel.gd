@@ -25,6 +25,39 @@ extends PKeyUiView
 
 ## A setting was written (or reset) by the player.
 signal setting_changed(key: String)
+## The player closed a `closable` panel (Close, Escape or a pad's B).
+signal closed()
+
+## Open the settings over the game in one line, closable and freed when the player closes them:
+##
+##   PKeySettingsPanel.open(self)
+##
+## The panel covers its parent (the current scene when `parent` is null), takes the focus from
+## the game and gives it back when it closes. A game that embeds the panel in its own menu adds it
+## like any Control instead (no Close; the menu navigates).
+static func open(parent: Node = null) -> PKeySettingsPanel:
+	var panel := PKeySettingsPanel.new()
+	panel.closable = true
+	panel.set_meta(FREE_ON_CLOSE_META, true)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var host := parent
+	if host == null:
+		var tree := Engine.get_main_loop() as SceneTree
+		host = tree.current_scene if tree != null and tree.current_scene != null else (tree.root if tree != null else null)
+	if host != null:
+		host.add_child(panel)
+	return panel
+
+
+const FREE_ON_CLOSE_META := &"pkey_free_on_close"
+
+## Offer Close (and close on Escape or a pad's B): set by `open()`; off for a panel a game's
+## own menu holds.
+var closable := false:
+	set(value):
+		closable = value
+		if _built:
+			refresh_view()
 
 ## Show advanced rows (the toggle's state).
 var show_advanced := false
@@ -48,6 +81,8 @@ var _scroll: ScrollContainer
 var _fade: TextureRect
 var _inset: MarginContainer
 var _powered_by: TextureRect
+var _close_row: BoxContainer
+var _close: Button
 var _title: Label
 var _empty: Label
 var _advanced: CheckButton
@@ -136,6 +171,8 @@ func _build() -> void:
 	_advanced_row.name = "AdvancedRow"
 	_advanced_row.add_child(_advanced)
 	box.add_child(_advanced_row)
+	_close_row = actions_row(_frame, "Actions", BoxContainer.ALIGNMENT_END)
+	_close = button(_close_row, "Close", close)
 	_powered_by = brand_node(_frame, "PoweredBy", BRAND_POWERED_BY)
 
 
@@ -379,6 +416,7 @@ func _render() -> void:
 	rows = PKeySettingsController.rows(cfg)
 	_product.refresh()
 	_title.text = t.text("settings_title")
+	show_text(_close, t.text("close") if closable else "")
 	var has_advanced := rows.any(func(r): return r["advanced"] and r["visible"])
 	_advanced.visible = has_advanced
 	_advanced_row.visible = has_advanced
@@ -870,7 +908,28 @@ func _focus_chain() -> Array:
 		out.append((input as SpinBox).get_line_edit() if input is SpinBox else input)
 		out.append(n["reset"])
 	out.append(_advanced)
+	out.append(_close)
 	return out
+
+
+## Close a `closable` panel: `closed`, the focus back to the game's control that had it, and the
+## panel freed when `open()` made it.
+func close() -> void:
+	if not closable:
+		return
+	closed.emit()
+	restore_opener()
+	if has_meta(FREE_ON_CLOSE_META):
+		queue_free()
+	else:
+		hide()
+
+
+func _cancel() -> bool:
+	if closable and is_visible_in_tree():
+		close()
+		return true
+	return false
 
 
 ## Left on a row's first control goes to the rail, and right on the rail goes into the rows (a pad).
@@ -906,7 +965,7 @@ func _after_wire() -> void:
 func _initial_focus() -> Control:
 	var chain := focus_order()
 	for ctl in chain:
-		if not _rail_buttons.has(ctl) and ctl != _advanced:
+		if not _rail_buttons.has(ctl) and ctl != _advanced and ctl != _close:
 			return ctl
 	if _rail_panel.visible and not _rail_buttons.is_empty():
 		var rail_btn: Button = _rail_buttons[clampi(section, 0, _rail_buttons.size() - 1)]

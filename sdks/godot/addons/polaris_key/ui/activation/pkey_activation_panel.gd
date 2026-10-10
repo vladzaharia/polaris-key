@@ -80,10 +80,18 @@ var intro: VBoxContainer
 var _intro_panel: PanelContainer
 var _form: VBoxContainer
 var _product: PKeyProductHeader
+## The form's lede on a phone's page, under the product (`lede_text()`).
+var _lede: Label
 var _form_title: Label
 var _key_field: VBoxContainer
 var _key_label: Label
 var _key: LineEdit
+## The key field and Activate: side by side, or stacked (Activate under the field, full width) on a
+## phone's screen and wherever the field would be narrower than its placeholder.
+var _key_row: BoxContainer
+## The field's placeholder, and whether the field can show it whole (else it shows none).
+var _placeholder := ""
+var _hint_fits := true
 var _submit: Button
 var _msg_key: Label
 var _sign_in_block: VBoxContainer
@@ -136,6 +144,8 @@ func _build() -> void:
 	intro = vbox(_intro_panel, "Intro", "PKeyStack")
 	intro.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_product = product_header(intro, "Product", true)
+	_lede = label(intro, "Lede", "PKeyMuted")
+	_lede.visible = false
 	_form = vbox(_main, "Form", "PKeyStack")
 	_form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_form.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -143,11 +153,21 @@ func _build() -> void:
 	_form_title = label(_form, "FormTitle", "PKeyMuted")
 	_key_field = vbox(_form, "KeyField", "PKeyTight")
 	_key_label = label(_key_field, "KeyLabel")
-	var row := hbox(_key_field, "KeyRow")
+	_key_row = BoxContainer.new()
+	_key_row.name = "KeyRow"
+	_key_row.theme_type_variation = "PKeyRow"
+	_key_row.set_meta(AUTO_HIDE_META, true)
+	_key_field.add_child(_key_row)
+	var row := _key_row
 	_key = LineEdit.new()
 	_key.name = "KeyInput"
 	_key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_key.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	# The key is visible and private (UI-KITS B10): drawn in clear so the player can check it, and
+	# typed on a keyboard that neither corrects nor learns it (an on-screen keyboard's password
+	# type). The kit never logs it.
+	_key.secret = false
+	_key.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_PASSWORD
 	_key.text_submitted.connect(func(_t): _on_submit())
 	_key.text_changed.connect(func(_t): _clear_key_error())
 	row.add_child(_key)
@@ -259,6 +279,37 @@ func _apply_width(width: float) -> void:
 	super(minf(preferred_width() + card_padding_x(), card_width(INF)) if width > 0.0 else 0.0)
 
 
+## The key row stacks, Activate under the field at full width, on a phone's screen (its actions
+## stack, the primary on top) and wherever the field beside Activate would be narrower than its
+## placeholder (a game's large type, a narrow column), so the hint is never cut. Returns true when
+## it changed.
+## A placeholder the field cannot hold even on a row of its own (a game's very large type on a
+## phone) is dropped rather than cut: the label above the field says the same.
+func fit_action_rows() -> bool:
+	var changed := super()
+	if _key_row == null or not _key_row.is_visible_in_tree():
+		return changed
+	var room := _key_field.size.x if _key_field.size.x > 1.0 else room_x()
+	var field := _placeholder_width()
+	var beside := field + _submit.get_combined_minimum_size().x + float(_key_row.get_theme_constant("separation"))
+	var stack := phone_screen() or (room > 1.0 and beside > room + 0.5)
+	if _key_row.vertical != stack:
+		_key_row.vertical = stack
+		changed = true
+	_hint_fits = room <= 1.0 or field <= room + 0.5
+	var hint := _placeholder if _hint_fits else ""
+	if _key.placeholder_text != hint:
+		_key.placeholder_text = hint
+	return changed
+
+
+## The width the field needs to show its placeholder whole: the text and the field's own padding.
+func _placeholder_width() -> float:
+	var box := _key.get_theme_stylebox("normal")
+	var pad := (box.get_margin(SIDE_LEFT) + box.get_margin(SIDE_RIGHT)) if box != null else 0.0
+	return text_width(_key, _placeholder) + pad
+
+
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	var two := _two_panes()
@@ -276,6 +327,17 @@ func _arrange(m: Dictionary) -> void:
 	_product.card = false
 	intro.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_form.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# On a phone's own page (this panel outermost) the product and the lede head the page and the
+	# form docks to the bottom, the primary on top (DL1), as the gate's does.
+	var form_docked := phone_bleed() and mode == "main" and limit.is_empty()
+	if form_docked:
+		_product.hero = true
+		_product.as_title = true
+		_form.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_form.alignment = BoxContainer.ALIGNMENT_END if form_docked else BoxContainer.ALIGNMENT_BEGIN
+	show_text(_lede, lede_text() if form_docked and show_product and squeeze_level() < 3 else "")
+	# Under a phone's stacked actions the offline link is centred, as the actions are wide.
+	_offline.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if phone_screen() else Control.SIZE_SHRINK_BEGIN
 	# A full license on a landscape panel: the state on one side, the way out on the other.
 	set_columns(_limit_cols, _limit_side_by_side())
 	_spacer.visible = phone_screen() and not limit.is_empty()
@@ -312,6 +374,21 @@ func _arrange(m: Dictionary) -> void:
 		place(_manage, _remedy, 0)
 
 
+## The form's lede: what the player can do here, by the ways the build offers ("" when it offers
+## neither a key nor a sign-in).
+func lede_text() -> String:
+	var caps := capabilities()
+	var key: bool = caps.get("key_entry", false)
+	var sign_in: bool = caps.get("sign_in", false)
+	if key and sign_in:
+		return c().text("activation_subtitle")
+	if key:
+		return c().text("activation_subtitle_key")
+	if sign_in:
+		return c().text("activation_subtitle_sign_in")
+	return ""
+
+
 ## Fix the capabilities ({key_entry, sign_in, continue_free, offline}) instead of reading them
 ## from the SDK; null goes back to the SDK.
 func set_capabilities(caps: Variant) -> void:
@@ -339,7 +416,8 @@ func _render() -> void:
 	show_text(_form_title, form_title)
 	_key_label.text = t.text("key_label")
 	_key_field.visible = caps["key_entry"]
-	_key.placeholder_text = t.text("key_placeholder")
+	_placeholder = t.text("key_placeholder")
+	_key.placeholder_text = _placeholder if _hint_fits else ""
 	_key.editable = true
 	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]

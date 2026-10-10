@@ -82,7 +82,7 @@ deliberately lightweight. A green hook is not a green gate.
    history are dead.
 9. **A validation rule needs a mutation-table entry.**
 10. **A new route needs an OpenAPI entry and a coverage-table row.**
-11. **The site is gated; the repo is the agent-readable source.** There is no `llms.txt` — see
+11. **The site is tiered; the repo is the agent-readable source.** There is no `llms.txt` — see
     [the section index](/docs/agents/) for why.
 
 ## The drift-gate inventory
@@ -177,9 +177,11 @@ Worth knowing because they fail for reasons that look mysterious:
   modules. It is a test rather than a lint rule because this repo has no ESLint toolchain —
   `pnpm lint` is Prettier — and a test runs on the gate that already covers every commit, needs
   no new dependencies, and can explain _why_ in its failure message.
-- **Docs gate** — `/docs` is served by the worker behind the platform-admin session
-  (`packages/worker/src/docs.ts`); `docsGate.test.ts` pins that. An unauthenticated request gets
-  the login page, not the docs.
+- **Docs gate** — `/docs` is served by the worker by tier (`packages/worker/src/docs.ts`,
+  `DOCS_TIERS`): the developer sections are public, Operate → Console needs a console session,
+  and Operate → Platform, Contribute and the search index need a platform admin.
+  `docsGate.test.ts` pins the tiers to `src/lib/doors.ts`. An unauthenticated request for a gated
+  page gets the login page, not the docs.
 
 ## Writing docs pages
 

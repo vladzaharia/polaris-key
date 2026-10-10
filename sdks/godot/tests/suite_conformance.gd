@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers identity.devicelabel
-# @pkey-feature update.feed release.record update.decide outlet.detect
+# @pkey-feature update.feed release.record update.decide outlet.detect license.signedinuser
 # @pkey-feature update.content packs.revoke packs.delegation packs.delta.feed
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
@@ -78,6 +78,7 @@ const CORPUS_VERSION := 2
 const FLOORS := {
 	"jwsCases": 85,
 	"licenseDocCases": 16,
+	"licenseUserCases": 14,
 	"configDocCases": 18,
 	"trustCases": 30,
 	"clockFloorCases": 7,
@@ -113,6 +114,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("corpusVersion", corpus.get("corpusVersion") is float and int(corpus["corpusVersion"]) == CORPUS_VERSION, str(corpus.get("corpusVersion")))
 	_jws_cases(t, _section(t, corpus, "jwsCases"))
 	await _doc_cases(t, _section(t, corpus, "licenseDocCases"), "licenseDocCases", PKeyClaims.TYP_LICENSE)
+	await _license_user_cases(t, _section(t, corpus, "licenseUserCases"), _section(t, corpus, "licenseDocCases"))
 	await _doc_cases(t, _section(t, corpus, "configDocCases"), "configDocCases", PKeyClaims.TYP_CONFIG)
 	await _trust_cases(t, _section(t, corpus, "trustCases"))
 	await _clock_floor_cases(t, _section(t, corpus, "clockFloorCases"))
@@ -883,6 +885,49 @@ func _doc_cases(t: PKeyTestContext, cases: Array, name: String, typ: String) -> 
 		evaluated += 1
 		t.check("%s → accept:%s" % [c["id"], c["expect"]["accept"]], (doc != null) == c["expect"]["accept"])
 	_coverage(t, name, evaluated, cases.size(), _ms_since(t0))
+
+
+# ── licenseUserCases (plans/SP-54.md §4) ─────────────────────────────────────────────────
+
+## Each row verifies as a licence document first (the member never refuses one), then the total
+## reader gives the subject or null. The three `profile.user` licenceDocCases rows replay above.
+func _license_user_cases(t: PKeyTestContext, cases: Array, doc_cases: Array) -> void:
+	var ids := {}
+	for d in doc_cases:
+		if d is Dictionary and d.get("id") is String:
+			ids[d["id"]] = true
+	for id in ["license-profile-user-valid", "license-profile-user-not-object", "license-profile-user-extra-members"]:
+		t.check("licenseDocCases has %s" % id, ids.has(id))
+	var evaluated := 0
+	var t0 := Time.get_ticks_usec()
+	for i in cases.size():
+		var c = cases[i]
+		var ok_shape: bool = c is Dictionary and c.get("id") is String and c.get("jws") is String \
+				and c.get("trust") is Dictionary and c.get("typ") == PKeyClaims.TYP_LICENSE \
+				and c.get("expectedAud") is String and c.get("expectedIss") is String \
+				and c.get("deviceId") is String and c.get("now") is float \
+				and c.get("expect") is Dictionary and c["expect"].get("accept") == true \
+				and (c["expect"].get("user") == null or c["expect"]["user"] is Dictionary)
+		if not t.check("licenseUserCases %d well-formed" % i, ok_shape):
+			continue
+		var opts := {
+			"trust": c["trust"],
+			"expected_aud": c["expectedAud"],
+			"expected_iss": c["expectedIss"],
+			"device_id": c["deviceId"],
+			"now": c["now"],
+			"last_accepted_issued_at": c.get("lastAcceptedIssuedAt"),
+		}
+		if c.has("checkFreshness"):
+			opts["check_freshness"] = c["checkFreshness"]
+		var doc = await PKeyVerify.verify_doc(c["jws"], PKeyClaims.TYP_LICENSE, opts)
+		evaluated += 1
+		if not t.check("%s verifies" % c["id"], doc != null):
+			continue
+		var got = PKeyLicense.license_user_of(doc)
+		var want = c["expect"].get("user")
+		t.check("%s → user:%s" % [c["id"], "null" if want == null else "subject"], got == want, "%s vs %s" % [got, want])
+	_coverage(t, "licenseUserCases", evaluated, cases.size(), _ms_since(t0))
 
 
 # ── trustCases (§1) ──────────────────────────────────────────────────────────────────────

@@ -524,7 +524,7 @@ Packs appear in the Release section beside the app; there is no separate content
 
 Apart from yanks, channel policy and the delivery gate, everything here is read-only. The console
 never shows where a pack's objects are stored, only their sizes and hashes. Its admin routes, all under `/manage/api/products/<slug>/release/` and
-behind the same platform-admin session as the rest of the console:
+behind the console session and the route table's Ship builds area, as the rest of Release is:
 
 | Method and path                                                  | Answers                                                                                                                                                                                                                                                                    |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

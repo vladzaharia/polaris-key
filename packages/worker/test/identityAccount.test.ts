@@ -193,6 +193,13 @@ async function ownerOf(licenseId: string): Promise<string | null> {
   );
 }
 
+/** A compact JWS's payload, decoded (no verification: the bytes are the Worker's own). */
+function payloadOf(jws: string): Record<string, unknown> {
+  return JSON.parse(
+    Buffer.from(jws.split(".")[1] ?? "", "base64url").toString("utf8"),
+  ) as Record<string, unknown>;
+}
+
 async function licenseDocument(
   token: string,
   now = NOW + 600,
@@ -635,8 +642,16 @@ describe("subject and sign-out (§12.3)", () => {
     expect(await (await subjectOf(token, DEV_A)).json()).toEqual({
       subject: ada.subject,
     });
-    // Nor does the sign-in binding.
-    expect(await licenseDocument(token)).toBe(before);
+    // The sign-in binding adds exactly `profile.user` (SP-54, V4 §2.1), and nothing else.
+    const signedIn = payloadOf(await licenseDocument(token));
+    const unsigned = payloadOf(before);
+    expect(signedIn).toEqual({
+      ...unsigned,
+      profile: {
+        ...(unsigned.profile as Record<string, unknown>),
+        user: { subject: ada.subject },
+      },
+    });
     const out = await signOut(token, DEV_A);
     expect(out.status).toBe(200);
     expect(await out.json()).toEqual({ released: false });

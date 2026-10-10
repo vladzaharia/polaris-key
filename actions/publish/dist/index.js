@@ -13595,7 +13595,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/identity.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-LNST3HPN.js
+// ../shared-protocol/dist/chunk-BKQW4WYJ.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DISPLAY_TEXT_STRIP = [
   [0, 31],
@@ -13608,10 +13608,7 @@ var DISPLAY_TEXT_STRIP = [
   [65279, 65279]
 ];
 
-// ../shared-protocol/dist/core.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// ../shared-protocol/dist/chunk-QT3KVLZX.js
+// ../shared-protocol/dist/chunk-CO4Y3AWN.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var PROTOCOL_VERSION = 4;
 var MAX_JSON_DEPTH = 64;
@@ -13648,6 +13645,9 @@ var CHANNEL_DEV = "dev";
 var CHANNEL_ALIASES = { staging: "beta", latest: "stable" };
 var CHANNEL_NAME_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 var PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$";
+
+// ../shared-protocol/dist/core.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // ../shared-protocol/dist/packs.js
 init_define_PKEY_EMBEDDED_SCHEMAS();

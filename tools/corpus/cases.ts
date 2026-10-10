@@ -9,6 +9,7 @@ import { buildFeedContentCases } from "./content.js";
 import { buildDelegationCases } from "./delegation.js";
 import { buildFeedCases } from "./feed.js";
 import { buildJwsCases } from "./jws.js";
+import { buildLicenseUserCases } from "./license-user.js";
 import {
   buildMarkerCases,
   buildPackRecordCases,
@@ -41,8 +42,10 @@ export async function buildV2(): Promise<unknown> {
     // plans/P4-01.md §4.6 (P4-21): two new JWS families after the record cases.
     packRecordCases: await buildPackRecordCases(),
     markerCases: await buildMarkerCases(),
-    // plans/P4-19.md §4.1: content-key delegation, appended as the last section.
+    // plans/P4-19.md §4.1: content-key delegation.
     delegationCases: await buildDelegationCases(),
+    // plans/SP-54.md §4: the signed-in subject, read beside the claims; the last section.
+    licenseUserCases: await buildLicenseUserCases(),
   };
   checkCorpusV4(corpus as unknown as Record<string, AnyCase[]>);
   checkPackClaimCases(corpus as unknown as Record<string, AnyCase[]>);

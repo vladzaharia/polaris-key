@@ -105,6 +105,7 @@ function writeOpts(
       email: ctx.session.email ?? null,
     },
     origin,
+    principal: ctx.session.principal,
     now: ctx.now,
     product: ctx.product.slug,
     strict: false,

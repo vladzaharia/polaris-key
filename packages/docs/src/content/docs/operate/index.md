@@ -11,10 +11,12 @@ console work, and the procedures behind it. It assumes the platform is live at
 deployment, start at [Deploying to production](/docs/admin/deploy/) instead.
 
 :::note[Why real values are safe here]
-This whole site is served at `/docs`, gated behind the same platform-admin session as the
-console itself — there is no public docs origin. That is a deliberate decision (not an
-oversight), and it is why this section carries the real runbook, the real production shape, and
-real account identifiers where the source documents carry them. See
+The site is served at `/docs` in tiers. The developer sections are public; Operate → Console
+needs a console session; Operate → Platform (the runbook and the production shape among it) and
+Contribute need a platform admin's console session, the same one `/manage` checks. That is a
+deliberate decision (not an oversight), and it is why Operate → Platform carries the real
+runbook, the real production shape, and real account identifiers where the source documents
+carry them. See
 [Where the security material lives](/docs/admin/security-pointers/) for what is kept out even
 of this gate.
 :::

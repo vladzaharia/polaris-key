@@ -8,6 +8,8 @@ only API (no deprecated aliases).
 
 Trust custody and offline bundles.
 
+- **Signed-in user (`license.signedinuser`).** `license_user(doc)`, `client.license.get_license_user()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is `None`. The terminal kit's `status` reads "signed in" from it, no longer from the holder's email, so a key-activated device reads as not signed in.
+
 - **Pin two keys.** A verified manifest signed by one pinned key that lists another pinned key as
   `revoked` (its exact bytes) retires that pin on this install for good. The manifest is stored as
   signed evidence (`pinRevocations`) and re-checked at every start. A manifest that revokes its own
@@ -83,3 +85,10 @@ Fail-closed, leak and error-model fixes (SP-48). Each **breaking** line names wh
   installed version is read on first use, and the CLI front ends import the client only when a
   verb runs: mounting the verbs on a host CLI no longer loads httpx, cryptography or any
   service.
+
+Product presentation.
+
+- **`core.presentation`.** `client.presentation()`, `client.presentation_icon(px, scale=1.0)` and
+  `client.presentation_source` (sync and async): the product's name, developer, accents and
+  SHA-256-verified icon from discovery, cached by hash. The terminal kit reads it with no
+  integrator code.

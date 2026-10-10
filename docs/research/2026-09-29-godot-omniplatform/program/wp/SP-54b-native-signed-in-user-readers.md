@@ -1,4 +1,4 @@
-# SP-54b Native signed-in-user readers: Python, Swift, Kotlin and Godot decode `profile.user.subject`, replay `licenseUserCases`, parity row `license.signedInUser`
+# SP-54b Native signed-in-user readers: Python, Swift, Kotlin and Godot decode `profile.user.subject`, replay `licenseUserCases`, parity row `license.signedinuser`
 
 | Field       | Value                                                                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-The Python, Swift, Kotlin and Godot SDKs read the signed-in subject from the licence document with the same total rule as client-core `licenseUserOf`, replay `licenseUserCases`, and carry the parity row `license.signedInUser`. Python's terminal kit then derives "signed in" from that reader and no longer from the licence holder's email.
+The Python, Swift, Kotlin and Godot SDKs read the signed-in subject from the licence document with the same total rule as client-core `licenseUserOf`, replay `licenseUserCases`, and carry the parity row `license.signedinuser`. Python's terminal kit then derives "signed in" from that reader and no longer from the licence holder's email.
 
 ## Why
 
@@ -38,7 +38,7 @@ The Python, Swift, Kotlin and Godot SDKs read the signed-in subject from the lic
   - Godot: `get_license_user()` using `PKeyClaims.matches_whole`.
   - The pattern constant comes from the generated constants of each SDK, never a literal.
 - **The corpus replay.** Each SDK's conformance runner replays `licenseUserCases` (all 14 rows) and the three SP-54 `licenseDocCases` rows through its reader. No corpus file changes in this package.
-- **The parity row** `license.signedInUser` in `conformance/parity/features.json` (family `license`, proof `corpus` with `file: cases.json` and `family: licenseUserCases`), `implemented` in the four SDKs here and in Node and React (SP-54's type and `licenseUserOf` in client-core). Run `pnpm gen constants` so the feature id reaches every SDK.
+- **The parity row** `license.signedinuser` in `conformance/parity/features.json` (family `license`, proof `corpus` with `file: cases.json` and `family: licenseUserCases`), `implemented` in the four SDKs here and in Node and React (SP-54's type and `licenseUserOf` in client-core). Run `pnpm gen constants` so the feature id reaches every SDK.
 - **The Python terminal kit fix.** `ui/terminal/flows.py:189` derives `signed_in` from `license_user()`, not from `profile.email`; a test with a key-activated document (a holder email, no `user`) proves it reads as not signed in. UK-48 builds the mount on top of this.
 
 **Out** (and where it belongs instead):
@@ -63,12 +63,18 @@ N/A: no screen, no mockup item and no copy. The Python terminal kit change alter
 2. Confirm SP-54 is merged and `licenseUserCases` is in `conformance/corpus/v2/cases.json`.
 3. Implement the four readers and runners, the feature row, and the Python kit fix; run each SDK's suite; hand off.
 
+## Corrections recorded at build
+
+- The feature id is `license.signedinuser` (registry ids are all lowercase; the schema pattern refuses `signedInUser`). The row was not in `features.json`, so this package added it, and added `PAIRWISE_SUBJECT_PATTERN` to the generated constants (`SIGNED_IN_EXPORTS` in `tools/gen-sdk-constants.ts`).
+- Kotlin was written but not compiled or run: no JDK 17 was available on the build machine (`:conformance:test` not run; CI `ci:kotlin` covers it).
+- `textual_app.py` derived `signed_in` from `bool(profile)`, the same bug as `flows.py`; it reads `license_user` too.
+
 ## Acceptance criteria
 
-- [ ] Python, Swift, Kotlin and Godot return the same result as `licenseUserOf` on all 14 `licenseUserCases` rows and accept the three new `licenseDocCases` rows.
-- [ ] `license.signedInUser` exists in `features.json`, is `implemented` in every `parity.json`, and `pnpm parity:check` and `pnpm gen constants --check` pass.
-- [ ] The Python terminal kit reports `signed_in` false for a key-activated document that has a holder email and no `user`, and true when `user.subject` is present; `flows.py` no longer reads `profile.email` for this.
-- [ ] No corpus, transcript or mirror file changes (`pnpm gen corpus --check` clean without regeneration).
+- [x] Python, Swift, Kotlin and Godot return the same result as `licenseUserOf` on all 14 `licenseUserCases` rows and accept the three new `licenseDocCases` rows.
+- [x] `license.signedinuser` exists in `features.json`, is `implemented` in every `parity.json`, and `pnpm parity:check` and `pnpm gen constants --check` pass.
+- [x] The Python terminal kit reports `signed_in` false for a key-activated document that has a holder email and no `user`, and true when `user.subject` is present; `flows.py` no longer reads `profile.email` for this.
+- [x] No corpus, transcript or mirror file changes (`pnpm gen corpus --check` clean without regeneration).
 - [ ] The green gate passes (`AGENTS.md`), including the SDK suites for what the branch touches.
 
 ## Verify

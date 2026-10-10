@@ -1,4 +1,4 @@
-// @pkey-feature core.verify core.bundle update.feed release.record
+// @pkey-feature core.verify core.bundle update.feed release.record license.signedinuser
 // The Swift conformance runner for wire contract v4 (v3's documents, unchanged). It drives EVERY case in
 // `conformance/corpus/v2` through the native CryptoKit verifier and asserts the expected
 // outcome — the Node runner (`conformance/runners/node/corpusV2.test.ts`) mirrors this file
@@ -39,6 +39,7 @@ struct Corpus: Decodable {
     let keys: [CorpusKey]
     let jwsCases: [CorpusJwsCase]
     let licenseDocCases: [CorpusDocCase]
+    let licenseUserCases: [CorpusUserCase]
     let configDocCases: [CorpusDocCase]
     let trustCases: [CorpusTrustCase]
     let clockFloorCases: [CorpusClockFloorCase]
@@ -85,6 +86,31 @@ struct CorpusDocCase: Decodable {
     /// Absent ⇒ the NETWORK path (freshness enforced); `false` ⇒ the cache-reload path.
     let checkFreshness: Bool?
     let expect: DocExpect
+}
+
+/// plans/SP-54.md §4: a licence document that verifies, and the signed-in user it reads as.
+struct CorpusUserCase: Decodable {
+    let id: String
+    let description: String
+    let jws: String
+    let trust: TrustSet
+    let typ: String
+    let expectedAud: String
+    let expectedIss: String
+    let deviceId: String
+    let now: Int
+    let lastAcceptedIssuedAt: Int?
+    let checkFreshness: Bool?
+    let expect: UserExpect
+}
+
+struct UserExpect: Decodable {
+    let accept: Bool
+    let user: UserSubject?
+}
+
+struct UserSubject: Decodable {
+    let subject: String
 }
 
 struct DocExpect: Decodable {
@@ -226,6 +252,29 @@ final class ConformanceTests: XCTestCase {
             XCTAssertEqual(c.typ, JwsTyp.license.rawValue, "\(c.id) typ")
             let doc = verifyLicenseDoc(c.jws, options: options(c))
             assertAccept(doc != nil, c)
+        }
+    }
+
+    /// plans/SP-54.md §4 — the 14 `licenseUserCases` rows: each verifies on its claims first (the
+    /// member never refuses a document), then `licenseUser` reads the subject or nothing. The
+    /// three `licenseDocCases` rows the same work added replay in `testAllLicenseDocCases`.
+    func testAllLicenseUserCases() throws {
+        let corpus = try loadCorpus()
+        XCTAssertEqual(corpus.licenseUserCases.count, 14)
+        let ids = Set(corpus.licenseDocCases.map(\.id))
+        for id in ["license-profile-user-valid", "license-profile-user-not-object", "license-profile-user-extra-members"] {
+            XCTAssertTrue(ids.contains(id), id)
+        }
+        for c in corpus.licenseUserCases {
+            XCTAssertEqual(c.expect.accept, true, c.id)
+            let doc = verifyLicenseDoc(
+                c.jws,
+                options: VerifyOptions(
+                    trust: c.trust, expectedAud: c.expectedAud, deviceId: c.deviceId,
+                    lastAcceptedIssuedAt: c.lastAcceptedIssuedAt, expectedIss: c.expectedIss,
+                    now: c.now, checkFreshness: c.checkFreshness ?? true))
+            XCTAssertNotNil(doc, "\(c.id) — \(c.description)")
+            XCTAssertEqual(licenseUser(doc)?.subject, c.expect.user?.subject, "\(c.id) — \(c.description)")
         }
     }
 

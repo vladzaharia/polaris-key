@@ -168,6 +168,26 @@ client that the customer portal and `provider: platform` products use.
 - **Rolling back.** `wrangler secret delete ADMIN_OIDC_CLIENT_ID --env <env>` returns the console
   to the platform client, which then needs `/manage/callback` back in its callback URLs.
 
+### Who can use the console, and lockout recovery (ST-29)
+
+Every console route checks one rule, `can()`, against the member's roles (Superadmin, Platform
+admin, Product admin, Console access). Today the only source of a role is the **root rule**:
+membership of `PLATFORM_ADMIN_GROUP` at the console's identity provider makes the person a
+Superadmin. It is read from the session on every request and stored nowhere, so it cannot be
+revoked from the console or lost to a bad write.
+
+- **Locked out.** Add the person to `PLATFORM_ADMIN_GROUP` in Pocket ID (the console client's
+  provider, above) and have them sign in again at `/manage`. Their next sign-in carries the group.
+  Nothing in D1 needs to change.
+- **Removing someone.** Take them out of the group. Their console session keeps its role until it
+  ends (8 hours at most) unless they sign out; `wrangler secret put ADMIN_SESSION_SECRET --env
+<env>` ends every console session at once.
+- **Checking.** `GET /manage/api/me` answers `permissions`: the roles and the areas the session
+  holds. A session without the group is refused every route with
+  `{"error":{"code":"forbidden","reason":"no_access","area":"console"}}`.
+- **If `PLATFORM_ADMIN_GROUP` is unset or empty,** no one is a Superadmin and no one can sign in to
+  the console (it fails closed). Set it and redeploy.
+
 ### Moving end users off the platform IdP (I-17)
 
 End users of `provider: platform` products, and customers who use **Continue with single sign-on**

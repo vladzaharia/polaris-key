@@ -80,6 +80,7 @@ from .discovery import (
 from .license.client import LicenseClient
 from .license.endpoints import ActivationOk, reacquire_token
 from .license.gate import LicenseState
+from .presentation import DiscoveryPresentationSource
 from .release.client import ReleaseClient
 from .update.bootguard import BootGuard
 from .update.client import UpdateClient, UpdateClientOptions
@@ -305,6 +306,19 @@ class PolarisKeyClient:
         self.devices.pack_installs = self.update.packs.pack_installs
 
         self._discovery_doc: Optional[Dict[str, Any]] = None
+        #: The product's presentation (discovery's ``core.presentation``, HA-13): the seam the UI
+        #: kits read (``polaris_key.presentation.PresentationSource``). Icons and the last member
+        #: live under ``<cache>/presentation`` when the host named a ``cache_dir`` or the store
+        #: persists to disk, else in memory for the session.
+        self.presentation_source = DiscoveryPresentationSource(
+            product_slug,
+            cache_dir=(
+                os.path.join(self.core.dirs.cache, "presentation")
+                if cache_dir is not None or getattr(self.core.store, "persistent", False) is True
+                else None
+            ),
+            http=self.core.http,
+        )
         # The detectors behind the table's conditional N/As (P1b-10). Checked against the
         # generated table here, so a manifest that gains or loses one fails loudly.
         self._detectors: Dict[DetectorKey, Detector] = {
@@ -350,6 +364,8 @@ class PolarisKeyClient:
         self.core.init()
         self._tokens.load()
         self._cache.load()
+        # The last presentation member, so an offline start still shows the product.
+        self.presentation_source.load_cached()
         # Wire v4's update slices go through the same reload path: every committed feed and
         # record is re-verified against what this load trusts, and each channel's `seq` floor
         # comes from the feed that survives.
@@ -425,7 +441,30 @@ class PolarisKeyClient:
         if isinstance(result, DiscoveryOk):
             self._discovery_doc = result.manifest
             self.core.set_services(result.services)
+            try:
+                self.presentation_source.accept(result.manifest)
+            except Exception:  # display data never fails discovery
+                pass
         return result
+
+    # ── Presentation (core.presentation, HA-13) ─────────────────────────────────────
+    def presentation(self) -> Optional[Dict[str, Any]]:
+        """The product's presentation from the last successful discovery (or, before one, the
+        member cached by an earlier run): ``name``, and ``developerName``, ``accent``,
+        ``accentDark`` and ``icon`` when the product declares them, normalised as
+        ``polaris_key.presentation.parse_presentation`` does. ``None`` when the product serves
+        none. Unsigned display data: nothing gates on it. No network."""
+        return self.presentation_source.current()
+
+    def presentation_icon(
+        self, px: float, scale: float = 1.0, *, decodable: Optional[Iterable[str]] = None
+    ) -> Optional[bytes]:
+        """The product icon's bytes for a hero drawn at ``px`` points on a ``scale`` screen,
+        verified against the SHA-256 discovery names, or ``None`` (no icon, nothing decodable,
+        or a fetch or hash that failed: show the letter tile). Cached by hash; a plain GET with
+        no credential and no redirect. ``decodable``: the content types the host decodes
+        (default every ``PRESENTATION_ICON_TYPES`` entry)."""
+        return self.presentation_source.icon(px, scale, decodable=decodable)
 
     def capabilities(self) -> ServicesMap:
         """What this client currently believes the product runs."""

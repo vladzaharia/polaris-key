@@ -19,6 +19,7 @@ import {
   checkRegistry,
   deniedCategories,
   DENIED_PLATFORM_NAMES,
+  SECURITY_WIDENING_AREAS,
   SYSTEM_LOCKED_KEYS,
 } from "../src/core/settings/rules.js";
 import { CORE_SLICE } from "../src/core/settings/core.js";
@@ -534,6 +535,8 @@ describe("the registry rules refuse", () => {
       securityWidening: true,
       widensWhen: "any" as const,
       critical: true,
+      // Rule 7: a widening key is in `keys` or `settings`, never its service's area.
+      rbacArea: "keys" as const,
     };
     expect(
       issuesWith("identity", [
@@ -745,5 +748,121 @@ describe("the system-lock rule (ST-20, S-18 §4.5 item 8)", () => {
     ).toContain(
       "platform blobs.test.locked: systemLock is declared on product entries only",
     );
+  });
+});
+
+// ── Rule 7: areas (ST-29; ST-28 plan §3) ─────────────────────────────────────────────────────
+
+describe("rule 7: every entry's rbacArea", () => {
+  const widening = {
+    ownership: "operator" as const,
+    value: {
+      kind: "list" as const,
+      of: { kind: "string" as const, maxLength: 9 },
+      max: 3,
+    },
+    defaultValue: [],
+    confirm: { change: "L1" as const },
+    securityWidening: true,
+    widensWhen: "any" as const,
+    critical: true,
+  };
+
+  it("defaults to the owner's area: its service's, Core's, or the platform's", () => {
+    expect(product("license.exampleCount", "license").rbacArea).toBe("license");
+    expect(product("release.exampleCount", "release").rbacArea).toBe("ship");
+    expect(product("update.exampleCount", "update").rbacArea).toBe("ship");
+    expect(product("identity.exampleCount", "identity").rbacArea).toBe(
+      "signin",
+    );
+    expect(product("core.exampleCount", "core").rbacArea).toBe("core");
+    expect(platform("platform.exampleCount").rbacArea).toBe("platform");
+  });
+
+  it("refuses a security-widening key left in its service's area", () => {
+    expect(
+      issuesWith("identity", [
+        product("identity.exampleRedirects", "identity", widening),
+      ]),
+    ).toEqual([
+      expect.stringMatching(/rbacArea is keys or settings.*\(rule 7\)/),
+    ]);
+    for (const area of ["keys", "settings"] as const)
+      expect(
+        issuesWith("identity", [
+          product("identity.exampleRedirects", "identity", {
+            ...widening,
+            rbacArea: area,
+          }),
+        ]),
+      ).toEqual([]);
+  });
+
+  it("refuses an area that is not in AREAS or does not fit the scope", () => {
+    expect(
+      issuesWith("license", [
+        product("license.exampleCount", "license", {
+          rbacArea: "billing" as never,
+        }),
+      ]),
+    ).toEqual([expect.stringMatching(/one of AREAS \(rule 7\)/)]);
+    expect(
+      issuesWith("license", [
+        product("license.exampleCount", "license", { rbacArea: "platform" }),
+      ]),
+    ).toEqual([expect.stringMatching(/a product area \(rule 7\)/)]);
+    expect(
+      issuesWith("license", [], {
+        platform: [platform("platform.exampleCount", { rbacArea: "core" })],
+      }),
+    ).toEqual([expect.stringMatching(/rbacArea is platform \(rule 7\)/)]);
+  });
+
+  it("pins every registered security-widening key to its SECURITY_WIDENING_AREAS area", () => {
+    const widen = SETTINGS.entries.filter(
+      (d) => d.scope !== "platform" && d.securityWidening,
+    );
+    expect(widen.length).toBeGreaterThan(10);
+    const actual = Object.fromEntries(widen.map((d) => [d.key, d.rbacArea]));
+    const pinned = Object.fromEntries(
+      Object.entries(SECURITY_WIDENING_AREAS).filter(([k]) => k in actual),
+    );
+    expect(actual).toEqual(pinned);
+    // The mapping itself (ST-28 plan §3): credentials and trust anchors are `keys`, access
+    // policy is `settings`. Changing a row here is a THREAT-MODEL §9 review.
+    expect(SECURITY_WIDENING_AREAS).toEqual({
+      "core.trustPolicy": "keys",
+      "core.web.origins": "keys",
+      "identity.oidc": "keys",
+      "identity.oidc.syncTierOnSignIn": "keys",
+      "identity.issuer.clients": "keys",
+      "identity.redirectPaths": "keys",
+      "identity.exchange.oidc": "keys",
+      "identity.exchange.firebase": "keys",
+      "release.keys": "keys",
+      "release.sparkleEd25519Pub": "keys",
+      "release.publishing.trustedPublisher": "keys",
+      "release.github": "keys",
+      "core.registration": "settings",
+      "core.adminGroup": "settings",
+      "identity.provisioning": "settings",
+      "identity.keyEntry.claimByKey": "settings",
+      "distribution.access": "settings",
+      "update.metadataAccess": "settings",
+    });
+  });
+
+  it("puts the other access-policy and commerce keys where the plan says", () => {
+    const area = (key: string) => SETTINGS.get(key, "product")?.rbacArea;
+    expect(area("core.manifest.authoritative")).toBe("settings");
+    expect(area("core.secrets")).toBe("keys");
+    expect(area("distribution.commerce")).toBe("commerce");
+    for (const key of [
+      "storefront.polarisKey.listed",
+      "storefront.polarisKey.audience",
+      "storefront.polarisKey.offerPaths",
+      "storefront.polarisKey.groupLabels",
+    ])
+      expect(area(key), key).toBe("commerce");
   });
 });

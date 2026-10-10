@@ -28,6 +28,7 @@ import im.plrs.key.core.JvmFingerprintSource
 import im.plrs.key.core.LicenseDoc
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.SignedInUser
 import im.plrs.key.core.TokenSource
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
@@ -164,6 +165,10 @@ public class LicenseClient(
 
     /** The signed greeting block, or null. Signed so it cannot be spoofed locally. */
     public suspend fun profile(): DocProfile? = doc()?.profile
+
+    /** The account signed in on this device (`profile.user`, SP-54), or null; a key-activated
+     *  device (a holder email, no `user`) is null. Total. */
+    public suspend fun licenseUser(): SignedInUser? = im.plrs.key.core.licenseUser(doc())
 
     public suspend fun licenseId(): String? = doc()?.licenseId
 

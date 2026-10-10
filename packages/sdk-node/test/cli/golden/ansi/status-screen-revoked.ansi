@@ -1,7 +1,7 @@
 #### truecolor-80-dark
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
 [2m│[22m
-[31m✗[39m  [1mSigned out[22m
+[33m▲[39m  [1mSigned out[22m
 [2m│[22m  This device was signed out. Sign in or activate again to continue.
 [2m│[22m
 [2m│[22m  To keep using Tidewater Studio:
@@ -11,7 +11,7 @@
 #### truecolor-80-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
 [2m│[22m
-[31m✗[39m  [1mSigned out[22m
+[33m▲[39m  [1mSigned out[22m
 [2m│[22m  This device was signed out. Sign in or activate again to continue.
 [2m│[22m
 [2m│[22m  To keep using Tidewater Studio:
@@ -21,7 +21,7 @@
 #### ansi16-80
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
 [2m│[22m
-[31m✗[39m  [1mSigned out[22m
+[33m▲[39m  [1mSigned out[22m
 [2m│[22m  This device was signed out. Sign in or activate again to continue.
 [2m│[22m
 [2m│[22m  To keep using Tidewater Studio:
@@ -31,7 +31,7 @@
 #### no-color-80
 ┌  [7m Tidewater Studio [27m · status
 │
-✗  [1mSigned out[22m
+▲  [1mSigned out[22m
 │  This device was signed out. Sign in or activate again to continue.
 │
 │  To keep using Tidewater Studio:
@@ -41,7 +41,7 @@
 #### ascii-80
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
 [2m|[22m
-[31mx[39m  [1mSigned out[22m
+[33m![39m  [1mSigned out[22m
 [2m|[22m  This device was signed out. Sign in or activate again to continue.
 [2m|[22m
 [2m|[22m  To keep using Tidewater Studio:
@@ -51,7 +51,7 @@
 #### truecolor-60-dark
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
 [2m│[22m
-[31m✗[39m  [1mSigned out[22m
+[33m▲[39m  [1mSigned out[22m
 [2m│[22m  This device was signed out. Sign in or activate again
 [2m│[22m  to continue.
 [2m│[22m
@@ -62,7 +62,7 @@
 #### truecolor-60-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
 [2m│[22m
-[31m✗[39m  [1mSigned out[22m
+[33m▲[39m  [1mSigned out[22m
 [2m│[22m  This device was signed out. Sign in or activate again
 [2m│[22m  to continue.
 [2m│[22m
@@ -73,7 +73,7 @@
 #### ansi16-60
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
 [2m│[22m
-[31m✗[39m  [1mSigned out[22m
+[33m▲[39m  [1mSigned out[22m
 [2m│[22m  This device was signed out. Sign in or activate again
 [2m│[22m  to continue.
 [2m│[22m
@@ -84,7 +84,7 @@
 #### no-color-60
 ┌  [7m Tidewater Studio [27m · status
 │
-✗  [1mSigned out[22m
+▲  [1mSigned out[22m
 │  This device was signed out. Sign in or activate again
 │  to continue.
 │
@@ -95,7 +95,7 @@
 #### ascii-60
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
 [2m|[22m
-[31mx[39m  [1mSigned out[22m
+[33m![39m  [1mSigned out[22m
 [2m|[22m  This device was signed out. Sign in or activate again
 [2m|[22m  to continue.
 [2m|[22m

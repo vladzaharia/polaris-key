@@ -33,6 +33,7 @@ import {
 import { parseFingerprintPolicy } from "../src/core/fingerprint.js";
 import { SETTINGS } from "../src/mount.js";
 import { writeSetting } from "../src/core/settings/write.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 const PLATFORM_GROUP = "admins";
 
@@ -115,6 +116,7 @@ describe("fingerprint policy ownership", () => {
         {
           actor: { sub: "u1", name: null, email: null },
           origin: "revert",
+          principal: ROOT_PRINCIPAL,
           now: NOW + 5,
           product: "djdl",
           strict: false,

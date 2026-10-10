@@ -34,8 +34,7 @@
       "status": "implemented"
     },
     "core.presentation": {
-      "status": "planned",
-      "wp": "HA-13"
+      "status": "implemented"
     },
     "core.sync": {
       "status": "implemented",
@@ -72,6 +71,9 @@
       "wp": "SP-59"
     },
     "license.gate": {
+      "status": "implemented"
+    },
+    "license.signedinuser": {
       "status": "implemented"
     },
     "license.activate": {
@@ -412,6 +414,12 @@
         }
       ],
       "note": "The JVM terminal kit on Mordant, with Clikt and picocli."
+    },
+    "ui.cli.contract": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); UK-54's JVM terminal kit makes the contract required on jvm."
     },
     "ui.gate": {
       "status": "planned",

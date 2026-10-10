@@ -10,7 +10,7 @@
  *   resolveEntitlements     the merged entitlement map for one licence/device
  *   authorizeDevice         licence usability → tier → fingerprint MODE → [core]
  *                           reconcileDeviceHardware → seat limit → [core] bindDevice
- *   docProfile              the signed greeting block
+ *   docProfile              the signed greeting block (and the signed-in subject, SP-54)
  *   tierExpiresAt           the `expires_at` a licence gets from its tier
  *   resolveEffective        the legacy FUSED payload (config + secrets + entitlements)
  *
@@ -42,6 +42,7 @@ import type {
   FingerprintMode,
   ManagedEntry,
 } from "@polaris-key/protocol";
+import { PAIRWISE_SUBJECT_PATTERN } from "@polaris-key/protocol/core";
 import type { ManagedPayload } from "./payload.js";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
@@ -199,17 +200,35 @@ export async function resolveEffective(
   return env ? openManagedPayload(env, product, payload) : payload;
 }
 
-/** The signed greeting block: name/email as the licence knows them, so a client can render a
- *  personalised, tamper-proof welcome offline. Tolerates a null name/email (an anonymous
- *  enrolment) by rendering empty strings rather than special-casing the document shape. */
-export function docProfile(license: LicenseRow): DocProfile {
+const SIGNED_IN_SUBJECT = new RegExp(PAIRWISE_SUBJECT_PATTERN);
+
+/**
+ * The signed greeting block: name/email as the licence knows them, so a client can render a
+ * personalised, tamper-proof welcome offline. Tolerates a null name/email (an anonymous
+ * enrolment) by rendering empty strings rather than special-casing the document shape.
+ *
+ * SP-54 (WIRE-CONTRACT-V4 §2.1): given the REQUESTING device, `user: {subject}` is added when
+ * that device's `devices.subject` (the account signed in on it, which only a sign-in writes and
+ * sign-out clears) is a well-formed pairwise subject. Nothing else about the account is added:
+ * no name, no email, no account id. A stored value that does not match the pattern adds nothing
+ * rather than failing the request, and without a device (offline bundles, the browser
+ * session's fused document) the block is exactly the licence's.
+ */
+export function docProfile(
+  license: LicenseRow,
+  device?: Pick<DeviceRow, "subject"> | null,
+): DocProfile {
   const name = license.name ?? "";
-  return {
+  const profile: DocProfile = {
     name,
     firstName: name.split(" ")[0] ?? "",
     email: license.email ?? "",
     activatedAt: license.activated_at,
   };
+  const subject = device?.subject;
+  if (typeof subject === "string" && SIGNED_IN_SUBJECT.test(subject))
+    profile.user = { subject };
+  return profile;
 }
 
 /**

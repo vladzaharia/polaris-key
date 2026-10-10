@@ -280,7 +280,7 @@ export interface ProductIdentityOptions {
   /** `theme.accent`: `"product"`, `"core"`, `"service"` or a colour. */
   accent?: string;
   preset?: Preset;
-  /** The SDK's presentation seam (HA-12's `PresentationSource`); absent until HA-13 lands. */
+  /** The SDK's presentation seam (HA-12's `PresentationSource`): each SDK's `presentationSource()` (HA-13). */
   source?: PresentationSource | null;
   bundle?: BundleProduct;
   /** The presentation icon's pixels (RGBA), once the kit decoded `source.icon()`'s bytes. */

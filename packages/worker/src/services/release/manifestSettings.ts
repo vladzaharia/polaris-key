@@ -38,6 +38,7 @@ const releaseConfig = (column: string) =>
 export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
   setting({
     key: "release.github",
+    rbacArea: "keys",
     scope: "product",
     service: "release",
     area: "release.sync",
@@ -268,6 +269,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
   }),
   setting({
     key: "release.publishing.trustedPublisher",
+    rbacArea: "keys",
     scope: "product",
     service: "release",
     area: "release.publishing",
@@ -299,6 +301,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
   }),
   setting({
     key: "release.keys",
+    rbacArea: "keys",
     scope: "product",
     service: "release",
     area: "release.signing",

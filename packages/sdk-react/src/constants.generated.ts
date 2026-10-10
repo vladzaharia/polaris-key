@@ -517,6 +517,7 @@ export const Feature = {
   coreCopy: "core.copy",
   coreBackend: "core.backend",
   licenseGate: "license.gate",
+  licenseSignedinuser: "license.signedinuser",
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
   licenseDeactivate: "license.deactivate",
@@ -597,6 +598,7 @@ export const Feature = {
   uiKitAccount: "ui.kit.account",
   uiCli: "ui.cli",
   uiCliMount: "ui.cli.mount",
+  uiCliContract: "ui.cli.contract",
   uiGate: "ui.gate",
   uiActivate: "ui.activate",
   uiSignin: "ui.signin",
@@ -631,6 +633,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "core.copy",
   "core.backend",
   "license.gate",
+  "license.signedinuser",
   "license.activate",
   "license.enroll",
   "license.deactivate",
@@ -711,6 +714,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.kit.account",
   "ui.cli",
   "ui.cli.mount",
+  "ui.cli.contract",
   "ui.gate",
   "ui.activate",
   "ui.signin",
@@ -1367,7 +1371,7 @@ export const DEVICE_LABEL_VERSION = 1;
 export const PRESENTATION_MATRIX_VERSION = 1;
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 2;
+export const UI_MATRIX_VERSION = 3;
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 export const BACKEND_MATRIX_VERSION = 1;
@@ -1467,6 +1471,9 @@ export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
 
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 export const REQUEST_HANDLE_TTL_SECONDS = 600;
+
+/** Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`). */
+export const PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$";
 
 /** Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
 export const PRESENTATION_TEXT_MAX_BYTES = 1024;
@@ -1588,7 +1595,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.cache": { status: "implemented", service: "core", na: [] },
   "core.bundle": { status: "implemented", service: "core", na: [] },
   "core.discover": { status: "implemented", service: "core", na: [] },
-  "core.presentation": { status: "planned", service: "core", na: [] },
+  "core.presentation": { status: "implemented", service: "core", na: [] },
   "core.sync": { status: "implemented", service: "core", na: [] },
   "core.local": { status: "planned", service: "core", na: [] },
   "core.headers": { status: "implemented", service: "core", na: [] },
@@ -1602,6 +1609,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.copy": { status: "implemented", service: "sdk", na: [] },
   "core.backend": { status: "planned", service: "license", na: [] },
   "license.gate": { status: "implemented", service: "license", na: [] },
+  "license.signedinuser": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
   "license.enroll": {
     status: "implemented",
@@ -1801,6 +1809,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
+  "ui.cli.contract": {
+    status: "na",
+    service: "sdk",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "ui.gate": { status: "implemented", service: "sdk", na: [] },
   "ui.activate": { status: "implemented", service: "sdk", na: [] },
   "ui.signin": { status: "planned", service: "sdk", na: [] },
@@ -1848,4 +1864,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "16eb445016172ad08ec8bce406eba56cf610d9765fe980664b90afb384979c29";
+  "37bb06aa8db13da9d011eb59cff2ae56744f3f2412bd01e93320352bf4249a8a";

@@ -12,6 +12,8 @@
 //                {name, input, expect: {component, state, copy, actions?}, mustNot?}
 //   theme        {name, input, expect: {name, accentSource, colorScheme, icon, preset}}
 //   i18n         {name, locale, key, args, overrides?, expect}
+//   cli          {verbs, mount, help, gate, outcomes, stdin, capabilities, exit}: the terminal
+//                drop-in contract (plans/UK-51.md), one object with typed sections
 //
 // THE RUNNER CONTRACT (plans/UK-02b.md §5). A runner reads the file from the checkout (Godot from
 // its `res://` mirror), checks `uiMatrixVersion` against its generated `UI_MATRIX_VERSION`, runs
@@ -28,16 +30,17 @@
 // `sdk-node` or ui-core.
 //
 // The file is ASCII only (sign-corpus writes it through `asciiJson`) and append-only within
-// `uiMatrixVersion` 2: a new row keeps the version; a changed row, input member or rule bumps it
+// `uiMatrixVersion` 3: a new row keeps the version; a changed row, input member or rule bumps it
 // (plans/UK-02b.md §4.8). Version 2 (UK-03): the `elapsedMs` input member and DL7's
 // delayed-response rows (the `dl7-delayed-response` gap of version 1), and the fixture key's
-// secret corrected to the 22 characters every license key has.
+// secret corrected to the 22 characters every license key has. Version 3 (UK-51): the `cli`
+// family, a new top-level section every runner learns.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const UI_MATRIX_VERSION = 2;
+export const UI_MATRIX_VERSION = 3;
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -111,6 +114,7 @@ export interface UiMatrix {
   paywall: Row[];
   theme: ThemeRow[];
   i18n: I18nRow[];
+  cli: CliFamily;
 }
 
 // ── Sources (read as data, never imported) ──────────────────────────────────────────────────
@@ -3510,6 +3514,965 @@ function i18nRows(S: UiMatrixSources): I18nRow[] {
   });
 }
 
+// ── The terminal contract: the `cli` family (plans/UK-51.md §3) ─────────────────────────────
+//
+// What every terminal drop-in does, for Node, Python and the JVM alike (DL6 to DL8 in a terminal,
+// docs/design/UI-KITS-LANGUAGE-MATRIX.md "Terminal form"). A `cli` row has no component, so the
+// family is one object with typed sections rather than a COMPONENT_FAMILIES entry:
+//
+//   verbs         the verb ids (a verb's words joined with a space): the end-user set a mount
+//                 offers by default, the developer verbs it offers only by name, the aliases
+//   mount         {host, options} -> the commands mounted, the collision error, the verbs skipped
+//                 and the options hidden
+//   help          {host, options} -> the help page's sections in order
+//   gate          licenseStatus x tty x json x entitled -> run, the inline flow, or a refusal
+//   outcomes      a kit verb in a situation -> its mark, exit, result fields, stdout and fixes
+//   stdin         activate with no key, per kind of stdin -> what it reads
+//   capabilities  environment x streams x flags -> colour, unicode, interactive, animate, links
+//   exit          the exit table
+//
+// Mount, help and the gate are references the adapters run (UK-46, UK-48, UK-52 to UK-54); the
+// rest pins the two terminal kits as they are. The mount, help, gate and capability expectations
+// are computed by the generator-local references below, which import nothing they check.
+
+/** The exit codes of every terminal kit (Node's `EXIT`, Python's exit table). A refused gate is
+ *  4, as `gh` exits for "requires authentication"; `status` and a network failure stay 1. */
+export const CLI_EXIT = {
+  ok: 0,
+  failed: 1,
+  usage: 2,
+  licenseRequired: 4,
+  interrupted: 130,
+} as const;
+
+/** The default mount: the verbs a person using the host's CLI needs. */
+export const CLI_END_USER = [
+  "activate",
+  "deactivate",
+  "devices deauthorize",
+  "devices list",
+  "devices rename",
+  "login",
+  "logout",
+  "status",
+  "update apply",
+  "update check",
+] as const;
+
+/** Opt-in: mounted only when `verbs` names them. */
+export const CLI_DEVELOPER = [
+  "boot",
+  "changelog",
+  "completion",
+  "config get",
+  "config list",
+  "config reset",
+  "config set",
+  "doctor",
+  "enroll",
+  "import-bundle",
+  "mint",
+  "offline-request",
+  "packs ensure",
+  "packs status",
+  "register",
+  "secret",
+] as const;
+
+/** Other names a one-word verb answers to, kept so older scripts still run. */
+export const CLI_ALIASES: Readonly<Record<string, string>> = {
+  "sign-in": "login",
+  "sign-out": "logout",
+};
+
+/** The registration error a host command equal to a mounted one raises, and the two options that
+ *  resolve it. */
+export const CLI_COLLISION = "polaris-verb-collision";
+export const CLI_COLLISION_FIXES = ["namespace", "verbs"] as const;
+/** The kit copy key of the one help heading the mounted verbs sit under. */
+export const CLI_HELP_GROUP = "cli.help.group";
+/** The options a mount hides once the host gives it its `config`. */
+export const CLI_CONFIG_OPTIONS = [
+  "--base-url",
+  "--product",
+  "--trust",
+] as const;
+/** How long `activate` waits on a piped stdin that sends nothing (DL16). */
+export const CLI_STDIN_WAIT_MS = 2000;
+
+/** A step's mark, by its symbol name in the terminal tokens: `ok` (a check), `fail` (a cross,
+ *  a failure: what happened), `warn` (a triangle, a refusal: what resolves it). */
+export const CLI_MARKS = ["fail", "ok", "warn"] as const;
+/** The gate statuses the host's action runs on (with the entitlement held). */
+export const CLI_USABLE = ["grace", "not-applicable", "ok"] as const;
+/** The statuses an interactive run resolves inline: activating another key or signing in fixes
+ *  them; activating fixes neither version refusal nor a channel. */
+export const CLI_INLINE_FLOW = [
+  "expired",
+  "needs-activation",
+  "revoked",
+] as const;
+/** The host command the gate rows gate. */
+const CLI_GATE_COMMAND = "export";
+
+/** What each outcome row sets up. A runner drives the kit's verb with a stub client in that
+ *  state, on a Unicode terminal 80 columns wide (`json: false`) or with `--json`. */
+export const CLI_SITUATIONS: Readonly<Record<string, string>> = {
+  "status-revoked":
+    "`status` on a device signed in to an account, whose license the server revoked.",
+  "status-expired": "`status`: the license expired.",
+  "status-version-too-old":
+    "`status`: this version is below the license's allowed range.",
+  "status-version-too-new":
+    "`status`: this version is above the license's allowed range.",
+  network:
+    "`devices list`: the request fails with the registry code `network`.",
+  "key-refused":
+    "`activate`, a well-formed key on a piped stdin: the server answers 401 `unauthorized`.",
+  "device-limit":
+    "`activate`, a well-formed key on a piped stdin: the server answers `device_limit` with a `manageUrl`; no key reader, so the flow ends.",
+  "secret-hidden":
+    "`secret api_key` for a secret that is set, without `--reveal`.",
+  "mint-hidden": "`mint cdn` without `--reveal`.",
+  usage: "`devices rename` with no device id.",
+  interrupt:
+    "`activate` on an interactive terminal with no key: Ctrl-C at the key prompt.",
+  "sign-in-cancelled":
+    "`login` on an interactive terminal: Esc while it waits for the browser.",
+};
+
+/** What `activate` with no key may find on stdin (DL16). */
+export const CLI_STDIN_KINDS: Readonly<Record<string, string>> = {
+  tty: "A terminal, on an interactive run.",
+  "tty-noninteractive":
+    "A terminal, on a run that cannot prompt (`CI` is truthy).",
+  file: "A regular file.",
+  fifo: "A FIFO: a shell pipe.",
+  socket:
+    "A socket: what a Node parent's pipe is (`spawn`, `execSync({ input })`, execa).",
+  "char-device": "A character device such as /dev/null: never read.",
+};
+
+/** `vocabulary.cli`: how a runner reads each section. */
+const CLI_VOCABULARY = {
+  sections: {
+    verbs:
+      "Verb ids are a verb's words joined with a space. endUser is the default mount; developer verbs mount only when options.verbs names them; aliases maps another name to a one-word verb.",
+    mount:
+      "Register the kit's verbs into a host CLI whose own top-level commands are input.host, with input.options. mounted: the commands the host gains, as typed (namespace first). error: the registration error (nothing is mounted): every host command equal to a namespace, a verb's first word or an alias, and the two options that resolve it. skipped: the verbs onCollision skip dropped; the kit warns once, naming them. hidden: the options help hides once config is given. The host's own commands are never renamed, removed or re-described.",
+    help: "The root help page's sections in order: the host's, under its headings, then one section whose heading is the kit copy key `copy` with what the mount added at the top level (a namespace is one entry). commands is each section's set; within a section the kit keeps its order.",
+    gate: "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the copy keys and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; with --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
+    outcomes:
+      "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set.",
+    stdin:
+      "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds).",
+    capabilities:
+      "detectTerminal over input.env, the streams (tty or pipe) and the flags (color false is --no-color), to colour, unicode, interactive, animate and links.",
+    exit: "The exit codes every terminal kit uses.",
+  },
+  marks: {
+    ok: "A check: done.",
+    fail: "A cross: a failure, with what happened.",
+    warn: "A triangle: a refusal the person can resolve, with its fix (DL6).",
+  },
+  collision: { code: CLI_COLLISION, fixes: [...CLI_COLLISION_FIXES] },
+  helpGroup: CLI_HELP_GROUP,
+  configOptions: [...CLI_CONFIG_OPTIONS],
+  usable: [...CLI_USABLE],
+  inlineFlow: [...CLI_INLINE_FLOW],
+  errors: {
+    license_required:
+      "A refused gate: the license is not usable, or the version is outside its allowed range.",
+    not_entitled:
+      "A refused gate: the license does not include the channel, or the entitlement the gate asks for.",
+    usage: "An argument error (exit 2).",
+    interrupted: "Ctrl-C (exit 130).",
+    internal: "An unexpected exception (exit 1).",
+  },
+  situations: CLI_SITUATIONS,
+  stdinKinds: CLI_STDIN_KINDS,
+  stdinWaitMs: CLI_STDIN_WAIT_MS,
+};
+
+export interface CliMountInput {
+  /** The host's own top-level commands. */
+  host: string[];
+  options: {
+    namespace?: string;
+    /** The verb ids to mount; absent: the end-user set. */
+    verbs?: string[];
+    onCollision?: "error" | "skip";
+    /** The host passed its `config` (product, trust and base URL) at registration. */
+    config?: boolean;
+  };
+}
+export interface CliMountExpect {
+  /** The commands the host gains, as typed (namespace first), sorted; none when it fails. */
+  mounted: string[];
+  /** The registration error, or null: the colliding words, sorted, and the two fixes. */
+  error: null | { code: string; words: string[]; fixes: string[] };
+  /** Verb ids `onCollision: "skip"` dropped, sorted; the kit warns once, naming them. */
+  skipped: string[];
+  /** The options the mount hides, sorted. */
+  hidden: string[];
+}
+export interface CliHelpSection {
+  /** A host heading, as the host wrote it. */
+  heading?: string;
+  /** The kit copy key of the mounted verbs' heading. */
+  copy?: string;
+  /** The section's entries as a set (sorted); within a section the kit keeps its own order. */
+  commands: string[];
+}
+export interface CliGateInput {
+  status: string;
+  /** stdin and stdout are terminals and the capability table answers interactive. */
+  tty: boolean;
+  json: boolean;
+  /** The entitlement the gate asks for is held, or it asks for none. */
+  entitled: boolean;
+  command: string;
+}
+export interface CliGateExpect {
+  outcome: "run" | "flow" | "refuse";
+  mark?: string;
+  exit?: number;
+  error?: string;
+  copy?: string[];
+  fix?: string[];
+  stream?: "stderr" | "stdout";
+  result?: Obj;
+}
+export interface CliOutcomeExpect {
+  exit: number;
+  mark?: string;
+  /** The result's `error`; absent on a row that pins one means the result carries none. */
+  error?: string | null;
+  /** The result's `code` (an activation's registry code, `kind`'s wire code). */
+  code?: string;
+  stdout?: "empty" | "screen" | "result";
+  fix?: string[];
+}
+export interface CliStdinExpect {
+  read: "prompt" | "key" | "none";
+  key?: string;
+  exit?: number;
+  error?: string;
+  copy?: string[];
+  withinMs?: number;
+}
+export interface CliCapabilityInput {
+  env: Record<string, string>;
+  stdout: "tty" | "pipe";
+  stdin: "tty" | "pipe";
+  flags: { color?: boolean; ascii?: boolean; json?: boolean };
+}
+export interface CliCapabilityExpect {
+  color: "none" | "ansi16" | "truecolor";
+  unicode: boolean;
+  interactive: boolean;
+  animate: boolean;
+  links: boolean;
+}
+
+export interface CliFamily {
+  verbs: { endUser: string[]; developer: string[]; aliases: Obj };
+  mount: { name: string; input: CliMountInput; expect: CliMountExpect }[];
+  help: {
+    name: string;
+    input: {
+      host: { heading: string; commands: string[] }[];
+      options: CliMountInput["options"];
+    };
+    expect: { sections: CliHelpSection[] };
+  }[];
+  gate: { name: string; input: CliGateInput; expect: CliGateExpect }[];
+  outcomes: {
+    name: string;
+    input: { verb: string; situation: string; json: boolean };
+    expect: CliOutcomeExpect;
+  }[];
+  stdin: {
+    name: string;
+    /** The lines written to stdin, each ending in a newline; null: nothing is written and the
+     *  writer stays open. */
+    input: { stdin: string; lines: string[] | null };
+    expect: CliStdinExpect;
+  }[];
+  capabilities: {
+    name: string;
+    input: CliCapabilityInput;
+    expect: CliCapabilityExpect;
+  }[];
+  exit: typeof CLI_EXIT;
+}
+
+const sorted = (xs: Iterable<string>): string[] => [...xs].sort();
+const cliVerbs = (): string[] => sorted([...CLI_END_USER, ...CLI_DEVELOPER]);
+const aliasesOf = (verb: string): string[] =>
+  sorted(
+    Object.entries(CLI_ALIASES)
+      .filter(([, v]) => v === verb)
+      .map(([a]) => a),
+  );
+
+/** The mount rule (UK-51 §3 `mount`): the top-level words a mount takes are the namespace, or each
+ *  verb's first word and its aliases. A host command equal to one fails the whole registration
+ *  (nothing is mounted) naming every colliding word, unless `onCollision: "skip"` drops the verbs
+ *  that use those words. The host's own commands are never renamed, removed or re-described. */
+export function refMount(input: CliMountInput): CliMountExpect {
+  const o = input.options;
+  const verbs = o.verbs ?? [...CLI_END_USER];
+  const wordsOf = (v: string): string[] =>
+    o.namespace !== undefined
+      ? [o.namespace]
+      : [v.split(" ")[0]!, ...aliasesOf(v)];
+  const host = new Set(input.host);
+  const colliding = new Set(
+    verbs.flatMap((v) => wordsOf(v).filter((w) => host.has(w))),
+  );
+  const hidden = o.config ? [...CLI_CONFIG_OPTIONS] : [];
+  if (colliding.size > 0 && o.onCollision !== "skip")
+    return {
+      mounted: [],
+      error: {
+        code: CLI_COLLISION,
+        words: sorted(colliding),
+        fixes: [...CLI_COLLISION_FIXES],
+      },
+      skipped: [],
+      hidden,
+    };
+  const skipped = verbs.filter((v) => wordsOf(v).some((w) => colliding.has(w)));
+  const kept = verbs.filter((v) => !skipped.includes(v));
+  return {
+    mounted: sorted(
+      kept.map((v) => (o.namespace !== undefined ? `${o.namespace} ${v}` : v)),
+    ),
+    error: null,
+    skipped: sorted(skipped),
+    hidden,
+  };
+}
+
+/** The help rule: the host's sections first, in its order and under its headings; then one
+ *  section under `cli.help.group` with what the mount added at the top level. */
+export function refHelp(input: CliFamily["help"][number]["input"]): {
+  sections: CliHelpSection[];
+} {
+  const m = refMount({
+    host: input.host.flatMap((s) => s.commands),
+    options: input.options,
+  });
+  const top =
+    input.options.namespace !== undefined
+      ? m.mounted.length > 0
+        ? [input.options.namespace]
+        : []
+      : m.mounted;
+  return {
+    sections: [
+      ...input.host.map((s) => ({
+        heading: s.heading,
+        commands: sorted(s.commands),
+      })),
+      { copy: CLI_HELP_GROUP, commands: sorted(top) },
+    ],
+  };
+}
+
+/** The gate rule (UK-51 §3 `gate`; DL6): a usable license with the entitlement runs the action;
+ *  an interactive run resolves needs-activation, expired and revoked inline; everything else is a
+ *  refusal, a triangle with its fix, exit 4, on stderr (once, no escape off a terminal) or, with
+ *  `--json`, as the result line on stdout. */
+export function refGate(i: CliGateInput): CliGateExpect {
+  const usable = (CLI_USABLE as readonly string[]).includes(i.status);
+  if (usable && i.entitled) return { outcome: "run" };
+  if (
+    !usable &&
+    i.tty &&
+    !i.json &&
+    (CLI_INLINE_FLOW as readonly string[]).includes(i.status)
+  )
+    return { outcome: "flow" };
+  const notEntitled = usable || i.status === "channel-not-entitled";
+  const error = notEntitled ? "not_entitled" : "license_required";
+  const copy = usable
+    ? ["core.codes.not_entitled.message", "core.codes.not_entitled.title"]
+    : [`core.gate.${i.status}.message`, `core.gate.${i.status}.title`];
+  const fix = notEntitled
+    ? ["status"]
+    : i.status.startsWith("version-")
+      ? ["update apply"]
+      : ["activate", "login"];
+  return {
+    outcome: "refuse",
+    mark: "warn",
+    exit: CLI_EXIT.licenseRequired,
+    error,
+    copy,
+    fix,
+    stream: i.json ? "stdout" : "stderr",
+    ...(i.json
+      ? {
+          result: {
+            v: 1,
+            command: i.command,
+            event: "result",
+            ok: false,
+            exit: CLI_EXIT.licenseRequired,
+            error,
+          },
+        }
+      : {}),
+  };
+}
+
+/** The capability rule (DL13, DL16), the one both kits follow: CI is truthy over `CI`,
+ *  `GITHUB_ACTIONS` and `BUILDKITE` (`0` and `false` are not); `FORCE_COLOR` forces colour on a
+ *  pipe but never links; interaction needs both streams; animation and links follow stdout. */
+export function refCapabilities(i: CliCapabilityInput): CliCapabilityExpect {
+  const e = i.env;
+  const truthy = (k: string) =>
+    e[k] !== undefined && !["", "0", "false"].includes(e[k]!.toLowerCase());
+  const ci = truthy("CI") || truthy("GITHUB_ACTIONS") || truthy("BUILDKITE");
+  const dumb = e.TERM === "dumb";
+  const out = i.stdout === "tty";
+  const json = i.flags.json === true;
+  const color: CliCapabilityExpect["color"] =
+    json || i.flags.color === false || e.NO_COLOR || dumb
+      ? "none"
+      : truthy("FORCE_COLOR")
+        ? "ansi16"
+        : !out
+          ? "none"
+          : ["truecolor", "24bit"].includes(e.COLORTERM ?? "")
+            ? "truecolor"
+            : "ansi16";
+  const live = out && !ci && !json && !dumb;
+  return {
+    color,
+    unicode: !(i.flags.ascii === true || dumb || e.TERM === "linux"),
+    interactive: live && i.stdin === "tty",
+    animate: live,
+    links: live,
+  };
+}
+
+function cliFamily(): CliFamily {
+  const mountRows: { name: string; input: CliMountInput }[] = [
+    {
+      name: "the end-user set mounts at the root",
+      input: { host: ["build", "export"], options: {} },
+    },
+    {
+      name: "a namespace nests every verb",
+      input: { host: ["build", "export"], options: { namespace: "license" } },
+    },
+    {
+      name: "verbs picks a subset",
+      input: {
+        host: ["export"],
+        options: { verbs: ["activate", "login", "logout", "status"] },
+      },
+    },
+    {
+      name: "developer verbs mount only by name",
+      input: {
+        host: ["export"],
+        options: { verbs: ["activate", "doctor", "secret", "status"] },
+      },
+    },
+    {
+      name: "a host command equal to a mounted verb fails at registration",
+      input: { host: ["export", "status"], options: {} },
+    },
+    {
+      name: "the error names every colliding word",
+      input: { host: ["devices", "export", "status"], options: {} },
+    },
+    {
+      name: "an alias collides as its verb",
+      input: { host: ["sign-in"], options: {} },
+    },
+    {
+      name: "a namespace avoids the collision",
+      input: { host: ["status"], options: { namespace: "license" } },
+    },
+    {
+      name: "the namespace's own word can collide",
+      input: { host: ["license"], options: { namespace: "license" } },
+    },
+    {
+      name: "onCollision skip drops the verb and warns once",
+      input: { host: ["status"], options: { onCollision: "skip" } },
+    },
+    {
+      name: "skip drops every verb under a colliding word",
+      input: { host: ["devices"], options: { onCollision: "skip" } },
+    },
+    {
+      name: "verbs without the colliding one needs no skip",
+      input: {
+        host: ["status"],
+        options: { verbs: ["activate", "login", "logout"] },
+      },
+    },
+    {
+      name: "config hides the product, trust and base URL options",
+      input: { host: ["export"], options: { config: true } },
+    },
+  ];
+  const helpRows: {
+    name: string;
+    input: CliFamily["help"][number]["input"];
+  }[] = [
+    {
+      name: "the host's commands first, then the license verbs under one heading",
+      input: {
+        host: [{ heading: "Commands", commands: ["export", "import"] }],
+        options: {},
+      },
+    },
+    {
+      name: "the host's headings keep their order",
+      input: {
+        host: [
+          { heading: "Build", commands: ["build", "watch"] },
+          { heading: "Export", commands: ["export"] },
+        ],
+        options: {},
+      },
+    },
+    {
+      name: "a namespace is one entry under the heading",
+      input: {
+        host: [{ heading: "Commands", commands: ["export"] }],
+        options: { namespace: "license" },
+      },
+    },
+    {
+      name: "verbs lists only the verbs it mounts",
+      input: {
+        host: [{ heading: "Commands", commands: ["export"] }],
+        options: { verbs: ["activate", "status"] },
+      },
+    },
+    {
+      name: "a skipped verb is not listed",
+      input: {
+        host: [{ heading: "Commands", commands: ["export", "status"] }],
+        options: { onCollision: "skip" },
+      },
+    },
+    {
+      name: "with no host commands only the license heading",
+      input: { host: [], options: {} },
+    },
+  ];
+  const gateRows: CliFamily["gate"] = [];
+  for (const status of [
+    "ok",
+    "grace",
+    "expired",
+    "revoked",
+    "needs-activation",
+    "version-too-old",
+    "version-too-new",
+    "channel-not-entitled",
+    "not-applicable",
+  ])
+    for (const tty of [true, false])
+      for (const json of [false, true])
+        for (const entitled of [true, false]) {
+          const input: CliGateInput = {
+            status,
+            tty,
+            json,
+            entitled,
+            command: CLI_GATE_COMMAND,
+          };
+          gateRows.push({
+            name: `${status}, ${tty ? "tty" : "no tty"}, ${json ? "--json" : "text"}, ${entitled ? "entitled" : "not entitled"}`,
+            input,
+            expect: refGate(input),
+          });
+        }
+  const outcome = (
+    situation: string,
+    verb: string,
+    text: CliOutcomeExpect,
+    json?: CliOutcomeExpect,
+  ): CliFamily["outcomes"] => [
+    {
+      name: situation,
+      input: { verb, situation, json: false },
+      expect: text,
+    },
+    ...(json
+      ? [
+          {
+            name: `${situation}, --json`,
+            input: { verb, situation, json: true },
+            expect: { ...json, stdout: "result" as const },
+          },
+        ]
+      : []),
+  ];
+  const statusRow = (status: string, fix: string[]) =>
+    outcome(
+      `status-${status}`,
+      "status",
+      { mark: "warn", exit: 1, error: null, stdout: "screen", fix },
+      { exit: 1, error: null },
+    );
+  const outcomeRows: CliFamily["outcomes"] = [
+    ...statusRow("revoked", ["activate", "login"]),
+    ...statusRow("expired", ["activate", "login"]),
+    ...statusRow("version-too-old", ["update apply"]),
+    ...statusRow("version-too-new", []),
+    ...outcome(
+      "network",
+      "devices list",
+      { mark: "fail", exit: 1, error: "network", stdout: "screen" },
+      { exit: 1, error: "network" },
+    ),
+    ...outcome(
+      "key-refused",
+      "activate",
+      { mark: "warn", exit: 1, code: "unauthorized", stdout: "screen" },
+      { exit: 1, error: null, code: "unauthorized" },
+    ),
+    ...outcome(
+      "device-limit",
+      "activate",
+      { mark: "warn", exit: 1, code: "device_limit", stdout: "screen" },
+      { exit: 1, error: null, code: "device_limit" },
+    ),
+    // The value reaches a screen, a log or a shell history only when asked (UK-45); a script
+    // that read the value before must not read an empty stdout as success.
+    ...outcome(
+      "secret-hidden",
+      "secret",
+      { mark: "warn", exit: 2, error: null, stdout: "empty" },
+      { exit: 0, error: null },
+    ),
+    ...outcome(
+      "mint-hidden",
+      "mint",
+      { mark: "warn", exit: 2, error: null, stdout: "empty" },
+      { exit: 0, error: null },
+    ),
+    ...outcome(
+      "usage",
+      "devices rename",
+      { exit: 2 },
+      { exit: 2, error: "usage" },
+    ),
+    ...outcome("interrupt", "activate", { exit: 130, error: "interrupted" }),
+    // A cancel is the person's choice, not a refusal: it keeps the cross.
+    ...outcome("sign-in-cancelled", "login", {
+      mark: "fail",
+      exit: 1,
+      error: null,
+      stdout: "screen",
+    }),
+  ];
+  const noKey = (copy: string, withinMs?: number): CliStdinExpect => ({
+    read: "none",
+    exit: CLI_EXIT.usage,
+    error: "usage",
+    copy: [copy],
+    ...(withinMs !== undefined ? { withinMs } : {}),
+  });
+  const stdinRows: CliFamily["stdin"] = [
+    {
+      name: "a terminal: the masked prompt",
+      input: { stdin: "tty", lines: null },
+      expect: { read: "prompt" },
+    },
+    {
+      name: "a terminal that cannot prompt: no key",
+      input: { stdin: "tty-noninteractive", lines: null },
+      expect: noKey("cli.activate.noKey"),
+    },
+    {
+      name: "a file: its first line",
+      input: { stdin: "file", lines: [KEY] },
+      expect: { read: "key", key: KEY },
+    },
+    {
+      name: "a file: the first non-empty line",
+      input: { stdin: "file", lines: ["", "", KEY, "second line"] },
+      expect: { read: "key", key: KEY },
+    },
+    {
+      name: "an empty file: no key",
+      input: { stdin: "file", lines: [] },
+      expect: noKey("cli.activate.noKeyPiped"),
+    },
+    {
+      name: "a shell pipe left open: the line, without waiting for the writer",
+      input: { stdin: "fifo", lines: [KEY] },
+      expect: { read: "key", key: KEY },
+    },
+    {
+      name: "a socket left open: the line, without waiting for the writer",
+      input: { stdin: "socket", lines: [KEY] },
+      expect: { read: "key", key: KEY },
+    },
+    {
+      name: "a silent open pipe: no key within the bound, and the process exits",
+      input: { stdin: "fifo", lines: null },
+      expect: noKey("cli.activate.noKeyPiped", CLI_STDIN_WAIT_MS),
+    },
+    {
+      name: "a silent open socket: no key within the bound, and the process exits",
+      input: { stdin: "socket", lines: null },
+      expect: noKey("cli.activate.noKeyPiped", CLI_STDIN_WAIT_MS),
+    },
+    {
+      name: "/dev/null: never read",
+      input: { stdin: "char-device", lines: null },
+      expect: noKey("cli.activate.noKeyPiped"),
+    },
+  ];
+  // The capability table of UK-45, verbatim.
+  const TERM = { TERM: "xterm-256color" };
+  const capRows: { name: string; input: CliCapabilityInput }[] = [
+    ["a terminal", TERM, "tty", "tty", {}],
+    ["CI=true", { ...TERM, CI: "true" }, "tty", "tty", {}],
+    ["CI=0 is not CI", { ...TERM, CI: "0" }, "tty", "tty", {}],
+    ["CI=false is not CI", { ...TERM, CI: "false" }, "tty", "tty", {}],
+    ["GITHUB_ACTIONS", { ...TERM, GITHUB_ACTIONS: "true" }, "tty", "tty", {}],
+    ["BUILDKITE", { ...TERM, BUILDKITE: "true" }, "tty", "tty", {}],
+    [
+      "NO_COLOR keeps links on a terminal",
+      { ...TERM, NO_COLOR: "1" },
+      "tty",
+      "tty",
+      {},
+    ],
+    ["--no-color", TERM, "tty", "tty", { color: false }],
+    ["a pipe", TERM, "pipe", "pipe", {}],
+    [
+      "FORCE_COLOR on a pipe: colour, never links",
+      { ...TERM, FORCE_COLOR: "1" },
+      "pipe",
+      "pipe",
+      {},
+    ],
+    ["animation follows stdout, not stdin", TERM, "tty", "pipe", {}],
+    ["TERM=dumb", { TERM: "dumb" }, "tty", "tty", {}],
+    ["--ascii", TERM, "tty", "tty", { ascii: true }],
+    ["--json", TERM, "tty", "tty", { json: true }],
+  ].map(([name, env, stdout, stdin, flags]) => ({
+    name: name as string,
+    input: {
+      env: env as Record<string, string>,
+      stdout: stdout as "tty" | "pipe",
+      stdin: stdin as "tty" | "pipe",
+      flags: flags as CliCapabilityInput["flags"],
+    },
+  }));
+  return {
+    verbs: {
+      endUser: [...CLI_END_USER],
+      developer: [...CLI_DEVELOPER],
+      aliases: { ...CLI_ALIASES },
+    },
+    mount: mountRows.map((r) => ({ ...r, expect: refMount(r.input) })),
+    help: helpRows.map((r) => ({ ...r, expect: refHelp(r.input) })),
+    gate: gateRows,
+    outcomes: outcomeRows,
+    stdin: stdinRows,
+    capabilities: capRows.map((r) => ({
+      ...r,
+      expect: refCapabilities(r.input),
+    })),
+    exit: { ...CLI_EXIT },
+  };
+}
+
+/** The `cli` family's checks: closed vocabularies, sorted sets, the references' answers, and DL6
+ *  (a refusal is a triangle with its fix, never a cross; a refused gate exits 4). */
+export function checkCli(
+  cli: CliFamily | undefined,
+  S: UiMatrixSources,
+): string[] {
+  const errors: string[] = [];
+  if (!cli) return ["cli: the family is missing"];
+  const coreEn = S.core.en ?? {};
+  const kitEn = S.kit.en ?? {};
+  const verbs = cliVerbs();
+  const isSorted = (xs: readonly string[]) =>
+    xs.join("\u0000") === sorted(xs).join("\u0000");
+  const same = (a: unknown, b: unknown) =>
+    JSON.stringify(a) === JSON.stringify(b);
+  const exitCodes = new Set<number>(Object.values(CLI_EXIT));
+  const envelopeErrors = new Set(["usage", "interrupted", "internal"]);
+  const knownError = (e: string) =>
+    envelopeErrors.has(e) || `core.codes.${e}.title` in coreEn;
+  const names = (where: string, rows: { name: string }[]) => {
+    const seen = new Set<string>();
+    if (rows.length === 0) errors.push(`cli.${where}: no rows`);
+    for (const r of rows) {
+      if (seen.has(r.name))
+        errors.push(`cli.${where} "${r.name}": duplicate name`);
+      seen.add(r.name);
+    }
+  };
+
+  // verbs and exit.
+  const { endUser, developer, aliases } = cli.verbs;
+  if (!isSorted(endUser) || !isSorted(developer))
+    errors.push("cli.verbs: the sets are not sorted");
+  for (const v of endUser)
+    if (developer.includes(v))
+      errors.push(`cli.verbs: ${v} is both end-user and developer`);
+  for (const [a, v] of Object.entries(aliases)) {
+    if (!verbs.includes(v as string))
+      errors.push(`cli.verbs.aliases ${a}: ${String(v)} is not a verb`);
+    if (verbs.includes(a)) errors.push(`cli.verbs.aliases ${a}: is a verb id`);
+    if ((v as string).includes(" "))
+      errors.push(`cli.verbs.aliases ${a}: only a one-word verb has aliases`);
+  }
+  if (!same(cli.exit, CLI_EXIT))
+    errors.push("cli.exit: not the exit table (licenseRequired is 4)");
+
+  // mount and help.
+  names("mount", cli.mount);
+  for (const r of cli.mount) {
+    const where = `cli.mount "${r.name}"`;
+    for (const v of r.input.options.verbs ?? [])
+      if (!verbs.includes(v)) errors.push(`${where}: ${v} is not a verb`);
+    if (!same(r.expect, refMount(r.input)))
+      errors.push(`${where}: expectation is not the mount rule's`);
+  }
+  if (!cli.mount.some((r) => r.expect.error !== null))
+    errors.push("cli.mount: no row pins the collision error");
+  if (!cli.mount.some((r) => r.expect.skipped.length > 0))
+    errors.push("cli.mount: no row pins onCollision skip");
+  if (!cli.mount.some((r) => r.expect.hidden.length > 0))
+    errors.push("cli.mount: no row pins the hidden options");
+  names("help", cli.help);
+  if (!(CLI_HELP_GROUP in kitEn))
+    errors.push(`cli.help: ${CLI_HELP_GROUP} is not in kit-copy/en.json`);
+  for (const r of cli.help)
+    if (!same(r.expect, refHelp(r.input)))
+      errors.push(`cli.help "${r.name}": expectation is not the help rule's`);
+
+  // gate: the whole cross product, DL6 on every refusal.
+  names("gate", cli.gate);
+  const statuses = S.enums.licenseStatus ?? [];
+  const cells = new Set<string>();
+  for (const r of cli.gate) {
+    const where = `cli.gate "${r.name}"`;
+    const i = r.input;
+    if (!statuses.includes(i.status))
+      errors.push(`${where}: ${i.status} is not a licenseStatus`);
+    cells.add(`${i.status}|${i.tty}|${i.json}|${i.entitled}`);
+    if (!same(r.expect, refGate(i)))
+      errors.push(`${where}: expectation is not the gate rule's`);
+    const e = r.expect;
+    if (e.outcome === "refuse") {
+      if (e.mark !== "warn" || e.exit !== CLI_EXIT.licenseRequired)
+        errors.push(`${where}: a refusal is a triangle and exits 4 (DL6)`);
+      if (!e.fix?.length || e.fix.some((v) => !verbs.includes(v)))
+        errors.push(`${where}: a refusal names its fix as verbs`);
+      for (const k of e.copy ?? [])
+        if (!(k in coreEn)) errors.push(`${where}: ${k} is not core copy`);
+      if (!isSorted(e.copy ?? [])) errors.push(`${where}: copy is not sorted`);
+      if (!knownError(e.error ?? ""))
+        errors.push(`${where}: error ${String(e.error)} has no core copy`);
+    }
+  }
+  for (const s of statuses)
+    for (const tty of [true, false])
+      for (const json of [false, true])
+        for (const entitled of [true, false])
+          if (!cells.has(`${s}|${tty}|${json}|${entitled}`))
+            errors.push(
+              `cli.gate: no row for ${s}, tty ${tty}, json ${json}, entitled ${entitled}`,
+            );
+
+  // outcomes.
+  names("outcomes", cli.outcomes);
+  const refusals = new Set([
+    "status-revoked",
+    "status-expired",
+    "status-version-too-old",
+    "status-version-too-new",
+    "key-refused",
+    "device-limit",
+    "secret-hidden",
+    "mint-hidden",
+  ]);
+  for (const r of cli.outcomes) {
+    const where = `cli.outcomes "${r.name}"`;
+    const { verb, situation, json } = r.input;
+    const e = r.expect;
+    if (!(situation in CLI_SITUATIONS))
+      errors.push(`${where}: unknown situation ${situation}`);
+    if (!verbs.includes(verb)) errors.push(`${where}: ${verb} is not a verb`);
+    if (!exitCodes.has(e.exit))
+      errors.push(`${where}: exit ${e.exit} is not in the exit table`);
+    if (
+      e.mark !== undefined &&
+      !(CLI_MARKS as readonly string[]).includes(e.mark)
+    )
+      errors.push(`${where}: mark ${e.mark}`);
+    if (json && e.mark !== undefined)
+      errors.push(`${where}: a --json row draws no mark`);
+    if (json && e.stdout !== "result")
+      errors.push(`${where}: a --json row's stdout is its result lines`);
+    if (!json && refusals.has(situation) && e.mark !== "warn")
+      errors.push(
+        `${where}: a refusal is a triangle with its fix, never a cross (DL6)`,
+      );
+    if (typeof e.error === "string" && !knownError(e.error))
+      errors.push(`${where}: error ${e.error} has no core copy`);
+    if (e.code !== undefined && !(`core.codes.${e.code}.title` in coreEn))
+      errors.push(`${where}: code ${e.code} has no core copy`);
+    for (const v of e.fix ?? [])
+      if (!verbs.includes(v)) errors.push(`${where}: fix ${v} is not a verb`);
+  }
+  for (const s of Object.keys(CLI_SITUATIONS))
+    if (!cli.outcomes.some((r) => r.input.situation === s))
+      errors.push(`cli.outcomes: no row for ${s}`);
+
+  // stdin.
+  names("stdin", cli.stdin);
+  for (const r of cli.stdin) {
+    const where = `cli.stdin "${r.name}"`;
+    if (!(r.input.stdin in CLI_STDIN_KINDS))
+      errors.push(`${where}: unknown stdin ${r.input.stdin}`);
+    const e = r.expect;
+    if (e.read === "key" && e.key !== KEY)
+      errors.push(`${where}: a read key is the fixture key`);
+    if (e.read === "none") {
+      if (e.exit !== CLI_EXIT.usage || e.error !== "usage")
+        errors.push(`${where}: no key is a usage error, exit 2`);
+      for (const k of e.copy ?? [])
+        if (!(k in kitEn)) errors.push(`${where}: ${k} is not kit copy`);
+    }
+    if (e.withinMs !== undefined && e.withinMs !== CLI_STDIN_WAIT_MS)
+      errors.push(`${where}: the bound is ${CLI_STDIN_WAIT_MS} ms`);
+  }
+  for (const kind of Object.keys(CLI_STDIN_KINDS))
+    if (!cli.stdin.some((r) => r.input.stdin === kind))
+      errors.push(`cli.stdin: no row for ${kind}`);
+
+  // capabilities.
+  names("capabilities", cli.capabilities);
+  for (const r of cli.capabilities)
+    if (!same(r.expect, refCapabilities(r.input)))
+      errors.push(
+        `cli.capabilities "${r.name}": expectation is not the capability rule's`,
+      );
+  return errors;
+}
+
 // ── Checks (plans/UK-02b.md §4.7, UK-02 §4) ─────────────────────────────────────────────────
 
 const isObj = (v: unknown): v is Obj =>
@@ -4081,6 +5044,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
       for (const [k, x] of Object.entries(v)) walk(x, `${at}.${k}`);
   };
   walk(doc, "ui-matrix.json");
+  errors.push(...checkCli(doc.cli, S));
   return errors;
 }
 
@@ -4123,7 +5087,8 @@ const DESCRIPTION = [
   "Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6).",
   "theme rows pin UI-KITS §1.2 and §3.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter).",
   "vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy.",
-  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 2: a changed row, input member or rule bumps it.",
+  "cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references.",
+  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 3: a changed row, input member or rule bumps it.",
 ].join(" ");
 
 export function buildUiMatrix(
@@ -4212,10 +5177,12 @@ export function buildUiMatrix(
       icons: [...ICONS],
       presets: [...PRESETS],
       locales: [...LOCALES],
+      cli: CLI_VOCABULARY as unknown as Obj,
     },
     ...out,
     theme: themeRows(),
     i18n: i18nRows(S),
+    cli: cliFamily(),
   };
   const errors = checkUiMatrix(doc, S);
   if (errors.length > 0)

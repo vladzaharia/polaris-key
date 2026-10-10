@@ -129,19 +129,77 @@ def test_a_fake_presentation_source_gives_the_product_accent_with_no_integrator_
     assert k.palette().chip == "1;38;2;255;255;255;48;2;38;132;122"
 
 
-def test_the_kit_reads_the_sdk_accessor_when_the_client_has_one() -> None:
+def _sdk_client(presentation):
+    """A real ``PolarisKeyClient`` after one discovery that serves ``presentation`` (or none)."""
+    import httpx
+
+    from polaris_key import InMemoryStore, PolarisKeyClient
+
+    core = {"registration": "open"}
+    if presentation is not None:
+        core["presentation"] = presentation
+    doc = {"version": 2, "product": "tidewater", "name": "tidewater", "core": core, "services": {}}
+    client = PolarisKeyClient(
+        product_slug="tidewater",
+        version="1.0.0",
+        trust={"pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"},
+        base_url="https://key.plrs.im",
+        store=InMemoryStore(),
+        client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=doc))),
+        expected_services=[],
+        request_timeout=None,
+    )
+    client.init()
+    assert client.discover().kind == "ok"
+    return client
+
+
+def test_the_kit_reads_the_sdk_accessor_with_no_integrator_code() -> None:
+    """HA-13: the real client is the seam (``client.presentation_source``), unchanged."""
+    from polaris_key.presentation import PresentationSource
     from polaris_key.ui.core import presentation_source
 
-    class Client:
-        product = "tidewater"
-
-        def presentation(self):
-            return {"name": "Tidewater Studio", "accentDark": "#72cabe"}
-
-    src = presentation_source(Client())
+    client = _sdk_client({"name": "Tidewater Studio", "accentDark": "#72CABE"})
+    src = presentation_source(client)
+    assert src is client.presentation_source and isinstance(src, PresentationSource)
     ident = resolve_identity(source=src, slug="tidewater")
     assert ident.name == "Tidewater Studio" and ident.accent_dark == "#72cabe" and ident.accent_light is None
+    assert ident.accent_source == "product"
     assert presentation_source(object()) is None
+    client.close()
+
+
+@pytest.mark.parametrize("theme", ["dark", "light"])
+def test_snapshot_with_and_without_presentation(theme: str) -> None:
+    """With presentation the kit draws exactly the fake source's goldens (the product's name and
+    accent chip; a terminal draws no icon); without it, today's output: the slug and ink."""
+    member = Presentation().current()
+    with_p = _sdk_client(member)
+    without = _sdk_client(None)
+    for fx in FIXTURES[:6]:
+        e = env("truecolor", "unicode", 80, theme)
+        golden = Kit.create(e, product="tidewater", source=Presentation(), prog="tidewater")
+        real = Kit.create(e, product="tidewater", source=presentation_source_of(with_p), prog="tidewater")
+        assert render_lines(fx, real) == render_lines(fx, golden), fx.name
+        bare = Kit.create(e, product="tidewater", source=presentation_source_of(without), prog="tidewater")
+        assert bare.palette().chip == "1;7"
+        assert "Tidewater Studio" not in render_lines(fx, bare)
+    assert real.palette().chip == golden.palette().chip != "1;7"
+    with_p.close()
+    without.close()
+
+
+def presentation_source_of(client):
+    from polaris_key.ui.core import presentation_source
+
+    return presentation_source(client)
+
+
+def render_lines(fx, k: Kit) -> str:
+    from polaris_key.ui.terminal.text import to_ansi
+
+    pal = k.palette()
+    return "\n".join(to_ansi(ln, pal) for ln in fx.draw(k))
 
 
 def test_the_integrator_wins_then_presentation_then_icon_then_ink() -> None:

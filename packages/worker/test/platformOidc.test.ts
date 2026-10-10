@@ -4,6 +4,7 @@
 // so a customer sign-in can never go through the operators' client.
 
 import { bindAdminFlow } from "./flowBinderHelper.js";
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -143,6 +144,9 @@ async function adminTokenExchange(
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      // I-30: the one client discovers the issuer first; only the token request is recorded.
+      const meta = await issuerMetadataResponse(String(input), null);
+      if (meta) return meta;
       seen.push({
         url: String(input),
         body: new URLSearchParams(String(init?.body ?? "")),

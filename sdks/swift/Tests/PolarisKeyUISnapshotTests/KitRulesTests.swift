@@ -109,6 +109,7 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(KitArrangement.topInset(height: 2000), 88)
     }
 
+    @MainActor
     func testAKeyAtRestKeepsItsPrefixAndLastSix() {
         XCTAssertEqual(
             KeyField.shortened("pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpQQ"), "pkey_tidewater_…ZUhpQQ")

@@ -47,6 +47,7 @@ import { getManifestSnapshot } from "./manifestSnapshot.js";
 import { CORE_COLUMN_ADAPTERS } from "./settings/columns.js";
 import { snapshotValue, type SnapshotManifest } from "./settings/snapshot.js";
 import type { SettingOrigin, SqlGuard } from "./settings/types.js";
+import type { Principal } from "./rbac/can.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
   BREAK_GLASS_REASON_MAX,
@@ -381,7 +382,7 @@ export function stmtSettingAudit(
 export type RevertResult =
   | { ok: true; applied: true; value: unknown }
   | { ok: true; applied: false; message: string }
-  | { ok: false; status: 404 | 409; reason: string; message: string };
+  | { ok: false; status: 403 | 404 | 409; reason: string; message: string };
 
 const NEXT_RESYNC = "applies at the next resync";
 
@@ -489,6 +490,7 @@ export async function revertClaim(
   key: string,
   actor: AuditActor,
   now: number,
+  principal?: Principal,
 ): Promise<RevertResult> {
   const { db } = ctx;
   if (!isClaimKey(key))
@@ -539,12 +541,20 @@ export async function revertClaim(
           : `Reverted ${key} to the manifest: ${NEXT_RESYNC}`,
       },
     },
-    { actor, origin: "revert", now, product: product.slug, strict: false },
+    {
+      actor,
+      origin: "revert",
+      principal,
+      now,
+      product: product.slug,
+      strict: false,
+    },
   );
   if (!result.ok)
     return {
       ok: false,
-      status: result.status === 404 ? 404 : 409,
+      status:
+        result.status === 404 || result.status === 403 ? result.status : 409,
       reason: result.reason,
       message: result.message,
     };

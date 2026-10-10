@@ -62,6 +62,7 @@ import {
 import { sweepAvatars } from "./services/identity/card/avatars.js";
 import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.js";
 import { pruneAccountMerges } from "./services/identity/accounts/mergeUndo.js";
+import { recheckConnectionDomains } from "./services/identity/connections/domains.js";
 import {
   stuckErasures,
   sweepErasures,
@@ -480,6 +481,14 @@ export async function runScheduledMaintenance(
 
   // PX-W12: a join whose 72-hour undo window ended keeps no snapshot of the absorbed account.
   await step(report, "accountMerges", () => pruneAccountMerges(db, now));
+
+  // I-30: every DNS-verified connection domain is asked again (plans/I-27.md §2.3 "Domains"). An
+  // answer without the token unverifies it at once; resolver errors keep it for 72 h, then
+  // unverify it, so a lapsed or taken-over domain stops routing, vouching and enforcing.
+  await step(report, "connectionDomains", async () => {
+    const r = await recheckConnectionDomains(db, now);
+    return r.checked;
+  });
 
   if (env) await runBlobGc(report, env, db, now);
 

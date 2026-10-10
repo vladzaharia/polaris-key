@@ -11,6 +11,7 @@
  * sign-in is exactly what it was.
  */
 
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportJWK,
@@ -108,6 +109,8 @@ function installIdp(claims: Record<string, unknown>): void {
   vi.spyOn(globalThis, "fetch").mockImplementation(
     async (input: RequestInfo | URL) => {
       const u = typeof input === "string" ? input : input.toString();
+      const meta = await issuerMetadataResponse(u, idpKey.getKey);
+      if (meta) return meta;
       if (u.includes("/api/oidc/token")) {
         return new Response(
           JSON.stringify({ id_token: await signIdToken(claims) }),

@@ -223,6 +223,7 @@ def offline_request(client: Any, ns: Dict[str, Any]) -> CommandResult:
 def doctor(client: Any, ns: Dict[str, Any]) -> CommandResult:
     from ..constants_generated import FEATURE_VALUES
     from ..ui.terminal import screens
+    from ..ui.terminal.exit import EXIT
     from ..ui.terminal.flows import Outcome
 
     t = _term(client, ns, "doctor")
@@ -262,7 +263,7 @@ def doctor(client: Any, ns: Dict[str, Any]) -> CommandResult:
         "gate": gate,
         "supports": supports,
     }
-    return _done(Outcome(0, screens.diagnostic(t.kit, "doctor", rows), data), ns)
+    return _done(Outcome(EXIT.ok, screens.diagnostic(t.kit, "doctor", rows), data), ns)
 
 
 _KEY_SOURCE = (
@@ -334,6 +335,7 @@ def run(
 ) -> CommandResult:
     """Build a client, run ``verb`` through the terminal kit with the flags in ``ns``, close the
     client. The result's :meth:`~CommandResult.emit` draws it, or prints its JSON."""
+    from ..ui.terminal.exit import EXIT
     from ..ui.terminal.flows import Terminal
 
     try:
@@ -342,7 +344,7 @@ def run(
         if not ns.get("json"):
             raise
         term = Terminal.create(product=opts.product, verb=verb.name, json=True)
-        return CommandResult(1, [], terminal=term, data={"error": "internal"})
+        return CommandResult(EXIT.failed, [], terminal=term, data={"error": "internal"})
     try:
         term = Terminal.create(
             product=opts.product,
@@ -360,12 +362,12 @@ def run(
         try:
             result = verb.run(client, ns)
         except KeyboardInterrupt:
-            return CommandResult(130, [], terminal=term if term.env.json else None, data={"error": "interrupted"})
+            return CommandResult(EXIT.interrupted, [], terminal=term if term.env.json else None, data={"error": "interrupted"})
         except Exception:
             if not term.env.json:
                 raise
             # --json always ends with a result line, whatever went wrong.
-            return CommandResult(1, [], terminal=term, data={"error": "internal"})
+            return CommandResult(EXIT.failed, [], terminal=term, data={"error": "internal"})
         if result.terminal is None:
             result.terminal = term
         return result

@@ -189,6 +189,17 @@ A product with the license service disabled gates `not-applicable` — `isLicens
 and the gate renders your UI. That is the point of D-08: a config-only product boots usable
 rather than sitting on `needs-activation` forever.
 
+### Product presentation
+
+After `await client.discover()`, `client.presentation` is the product's registered presentation
+(discovery's unsigned `core.presentation`: `name`, `developerName`, `accent`, `accentDark`, `icon`),
+or nil. `await client.presentationIcon(points: 48, scale: 2)` returns the icon's bytes for that hero
+size, verified against the SHA-256 discovery names, or nil. The icon is fetched with no credential,
+cookie or redirect, within 10 s and 10 MiB, and cached by hash under the product's data directory
+with the last member (`presentation.json`), so an offline start still shows it. A failure is
+silent. `client.presentationSource` is the seam the kits read; `.polarisKey(client)` and
+`PolarisKeyGateModel` use it by default, and your theme's name, logo and accent always win.
+
 ### Where the trust set comes from
 
 > [!WARNING]

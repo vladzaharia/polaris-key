@@ -19,6 +19,7 @@
 // the monotonic clock floor and `lastVerifiedAt` are recomputed on every load. There is no
 // unsigned field left for a local attacker to poison.
 
+import { join } from "node:path";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type {
   ActivationSource,
@@ -78,6 +79,14 @@ import {
   type ClientBootOptions,
   type EnsureActivatedResult,
 } from "./boot.js";
+import {
+  PresentationStore,
+  type PresentationIconOptions,
+} from "./core/presentation.js";
+import type {
+  PresentationSource,
+  ProductPresentation,
+} from "@polaris-key/client-core/presentation";
 import {
   discoverProduct,
   type DiscoverProductResult,
@@ -174,6 +183,8 @@ export class PolarisKeyClient {
   private readonly probes: DevicesClientOptions["probes"];
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
+  /** Discovery's `core.presentation` and its verified icon (HA-13). */
+  private readonly presentationStore: PresentationStore;
   /** Whether the host pinned `expectedServices` (then boot skips discovery). */
   private readonly pinnedServices: boolean;
   /** The token store's last `status()`, read at `init()` and before every report, so
@@ -198,6 +209,11 @@ export class PolarisKeyClient {
       (ctx, current, source) => this.reacquire(ctx, current, source),
     );
     this.probes = opts.devices?.probes;
+    this.presentationStore = new PresentationStore({
+      product: this.product,
+      dir: join(this.core.dirs.cache, "presentation"),
+      fetcher: () => this.core.plainFetcher(),
+    });
 
     this.devices = new DevicesClient(
       this.core,
@@ -330,6 +346,7 @@ export class PolarisKeyClient {
     await this.storeStatus();
     await this.tokens.load();
     await this.cache.load();
+    await this.presentationStore.load();
     this.lastStatus = this.license.status().status;
     // Wire v4's update slices go through the same reload path: every committed feed and record
     // is re-verified against what this load trusts, and each channel's `seq` floor comes from
@@ -362,8 +379,34 @@ export class PolarisKeyClient {
     if (result.kind === "ok") {
       this.discoveryDoc = result.manifest;
       this.core.setServices(result.services);
+      await this.presentationStore.accept(result.manifest);
     }
     return result;
+  }
+
+  // ── Presentation (core.presentation, HA-13) ────────────────────────────────────────────
+  /**
+   * The product's presentation from discovery (WIRE-CONTRACT-V4 §5.5): name, developer, accents
+   * and icon, normalised by client-core's `parsePresentation`, or null when discovery served
+   * none. Unsigned display data: nothing gates on it. Before this session's first discovery it is
+   * the last member persisted (`presentation.json`).
+   */
+  presentation(): ProductPresentation | null {
+    return this.presentationStore.current();
+  }
+
+  /**
+   * Verified icon bytes for a hero drawn at `px` points on a `scale` screen, or null: no icon,
+   * nothing decodable, or a fetch or hash check that failed (silently; the kit then shows its
+   * monogram). Cached by hash.
+   */
+  presentationIcon(o: PresentationIconOptions): Promise<Uint8Array | null> {
+    return this.presentationStore.iconFor(o);
+  }
+
+  /** client-core's `PresentationSource` seam over this client, for the UI kits. */
+  presentationSource(): PresentationSource {
+    return this.presentationStore;
   }
 
   /** The discovery document this session loaded, or null. */

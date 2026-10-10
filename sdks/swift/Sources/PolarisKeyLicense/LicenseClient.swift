@@ -172,6 +172,12 @@ public actor LicenseClient {
         await doc()?.profile
     }
 
+    /// The account signed in on this device (`profile.user`, SP-54), or nil. A key-activated
+    /// device (a holder email, no `user`) is nil. Total: never throws.
+    public func licenseUser() async -> SignedInUser? {
+        PolarisKeyCore.licenseUser(await doc())
+    }
+
     public func licenseId() async -> String? {
         await doc()?.licenseId
     }

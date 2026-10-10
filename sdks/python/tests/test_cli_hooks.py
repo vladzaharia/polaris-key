@@ -22,7 +22,7 @@ import pytest
 from polaris_key.cli import core
 from polaris_key.ui.core import Copy
 from polaris_key.core.errors import PolarisError
-from polaris_key.core.models import AllowedRange
+from polaris_key.core.models import AllowedRange, DocProfile, SignedInUser
 from polaris_key.devices.client import RegisterClosed, RegisterOk
 from polaris_key.core.store import StoreDegraded, StoreStatus
 from polaris_key.license.endpoints import (
@@ -41,10 +41,14 @@ class _State:
     allowedRange: Optional[AllowedRange] = None
 
 
-class _FakeProfile:
-    def __init__(self, name: str, email: str) -> None:
-        self.name = name
-        self.email = email
+_SUBJECT = "ps_" + "a" * 22
+
+
+def _FakeProfile(name: str, email: str, *, signed_in: bool = True) -> DocProfile:
+    """A real decoded profile. ``signed_in`` adds ``user`` (SP-54): a key-activated device
+    carries the holder's email too, and must not read as signed in."""
+    user = SignedInUser(subject=_SUBJECT) if signed_in else None
+    return DocProfile(name=name, email=email, user=user)
 
 
 @dataclass
@@ -242,6 +246,24 @@ def test_status_licensed_with_profile():
     assert any(ln.startswith("License") and "grace@example.com" in ln for ln in r.lines)
     assert r.data["status"] == "ok" and r.data["usable"] is True and r.data["graceUntil"] == 123
     assert r.data["profile"] == {"name": "Grace Hopper", "email": "grace@example.com"}
+
+
+def test_status_key_activated_profile_is_not_signed_in():
+    # A holder email without profile.user (a key-activated device) is not a signed-in account.
+    key_only = FakeClient(
+        state=_State(status="ok"),
+        licensed=True,
+        profile=_FakeProfile("Grace Hopper", "grace@example.com", signed_in=False),
+    )
+    signed = FakeClient(
+        state=_State(status="ok"),
+        licensed=True,
+        profile=_FakeProfile("Grace Hopper", "grace@example.com"),
+    )
+    a = core.status(key_only)
+    b = core.status(signed)
+    assert a.data["state"] == "key-only" and b.data["state"] == "signed-in"
+    assert not any(ln.startswith("License") and "grace@example.com" in ln for ln in a.lines)
 
 
 def test_status_shows_the_allowed_range_when_blocked():

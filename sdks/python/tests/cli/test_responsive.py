@@ -24,6 +24,7 @@ from typing import Any, Callable, List, Optional
 import pytest
 
 from polaris_key.core.errors import PolarisError
+from polaris_key.core.models import DocProfile, SignedInUser
 from polaris_key.license.endpoints import ActivationDeviceLimit
 from polaris_key.ui.core import Theme
 from polaris_key.ui.terminal import flows
@@ -712,7 +713,9 @@ def _status_client(status: str, *, tier: Optional[str] = "Pro") -> Any:
     return SimpleNamespace(
         status=lambda: SimpleNamespace(status=status, graceUntil=_PARITY_NOW + 14 * 86_400, allowedRange=None),
         license=SimpleNamespace(
-            get_profile=lambda: SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"),
+            get_profile=lambda: DocProfile(
+                name="Mara Fennick", email="mara@fennick.studio", user=SignedInUser(subject="ps_" + "a" * 22)
+            ),
             license_info=lambda: info,
         ),
         identity=SimpleNamespace(current=lambda: None),
@@ -737,6 +740,20 @@ def test_a_key_only_status_reads_the_same_in_both_kits(monkeypatch: pytest.Monke
     client.license.get_profile = lambda: None  # activated with a key: no account, no holder
     t.finish(flows.status(client, t))
     assert _drawn(term) == PARITY["status-key-only"]
+
+
+def test_a_key_activated_holder_email_is_not_a_signed_in_account(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A key-activated licence carries the holder's email but no profile.user (SP-54): the
+    # kit reads sign-in from the signed user, never from the email.
+    monkeypatch.setattr(flows, "_now", lambda: _PARITY_NOW)
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="status", keys=[])
+    client = _status_client("ok")
+    client.license.get_profile = lambda: DocProfile(email="mara@fennick.studio")
+    out = flows.status(client, t)
+    t.finish(out)
+    assert out.data["state"] == "key-only"
+    assert "Signed in" not in _drawn(term)
 
 
 def test_a_status_with_no_licence_reads_the_same_in_both_kits(monkeypatch: pytest.MonkeyPatch) -> None:

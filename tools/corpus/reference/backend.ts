@@ -3,12 +3,14 @@
 //
 // The generator's independent reference implementation, restated from the spec rather than
 // taken from client-core or an SDK: it imports nothing it checks. Step 3 reuses the reference
-// JWS verifier and claim checks (`jws.ts`, `claims.ts`), which are themselves restated from the
-// spec. Every constant below is a literal.
+// JWS verifier and claim checks (`jws.ts`, `claims.ts`) and step 6 the reference reader of the
+// signed-in subject (`license-user.ts`, SP-54), which are themselves restated from the spec.
+// Every constant below is a literal.
 
 import { CLOCK_SKEW, ISSUER_V3, type TypV3 } from "../common.js";
 import { ctxOf, hasOwn, isObj, refDocClaims } from "./claims.js";
 import { refVerifyJws } from "./jws.js";
+import { refLicenseUserOf } from "./license-user.js";
 
 /** §14.1, restated. */
 export const REF_HEADER_LICENSE = "X-PKey-License";
@@ -17,8 +19,8 @@ export const REF_LICENSE_MAX_BYTES = 16384;
 export const REF_AUTH_SCHEME = "PKey-License";
 /** §5 `REFRESH_MARGIN_SECONDS`, half the one-hour document. */
 export const REF_REFRESH_MARGIN = 1800;
-/** §8: the pairwise subject. */
-export const REF_SUBJECT_RE = /^ps_[A-Za-z0-9_-]{22}$/;
+/** §8: the pairwise subject (declared beside its reader, `license-user.ts`). */
+export { REF_SUBJECT_RE } from "./license-user.js";
 /** §14.3: the problem `type` is the error-codes page with the code as its fragment. */
 export const REF_TYPE_BASE = "https://key.plrs.im/docs/reference/error-codes/#";
 /** §14.3: the copy locales, English first (`conformance/parity/copy.<locale>.json`). */
@@ -101,18 +103,6 @@ export function refHeaderElements(
 
 const SEGMENTS_RE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
-/** §14.2: the private total decoder of `profile.user.subject` (SP-54 owns the member). */
-function refUserOf(doc: Record<string, unknown>): { subject: string } | null {
-  const profile = doc.profile;
-  if (!isObj(profile) || !hasOwn(profile, "user")) return null;
-  const user = profile.user;
-  if (!isObj(user) || !hasOwn(user, "subject")) return null;
-  const subject = user.subject;
-  return typeof subject === "string" && REF_SUBJECT_RE.test(subject)
-    ? { subject }
-    : null;
-}
-
 function refContextOf(
   product: string,
   doc: Record<string, unknown>,
@@ -142,7 +132,8 @@ function refContextOf(
       ageSeconds: Math.max(0, now - issuedAt),
       holder,
     },
-    user: refUserOf(doc),
+    // §14.2 step 6: SP-54's reader of the signed-in subject (V4 §2.1, §3.2).
+    user: refLicenseUserOf(doc),
   };
 }
 

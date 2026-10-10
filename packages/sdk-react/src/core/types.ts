@@ -512,6 +512,15 @@ export interface PolarisAdapter {
   ): Promise<CommerceClaimResult>;
   /** The verified discovery document, once it answered (null before, or on a failure). */
   discovery(): Promise<Record<string, unknown> | null>;
+  /**
+   * Discovery's `core.presentation` (core.presentation, HA-13): client-core's
+   * `PresentationSource` seam the UI kits read (the product's name, developer, accents and
+   * verified icon), plus `iconUrl()`, a `blob:` URL of the icon. Browser: parsed from this page's
+   * discovery, the icon fetched and verified in-page. Desktop: the host's Node client answers
+   * (`invoke("core", "presentation")`), so the renderer reuses its cache. Never throws; no
+   * presentation reads as `current() === null`.
+   */
+  presentationSource(): import("./presentation.js").ReactPresentationSource;
   /** The id an operator mints an offline bundle against (`OfflineActivation`), or null where
    *  this transport keeps none. */
   offlineDeviceId(): Promise<string | null>;

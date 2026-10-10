@@ -26,7 +26,7 @@ import {
   type DataColumn,
   type TableState,
 } from "../../ui/data-table/index.js";
-import { Input } from "../../ui/Input.js";
+import { SettingRow } from "../../ui/settings/SettingRow.js";
 import { SourceBadge } from "../../ui/SourceBadge.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Timestamp } from "../../ui/Timestamp.js";
@@ -236,6 +236,75 @@ function DashboardDemo(): React.ReactElement {
   );
 }
 
+const KIT_CONFLICT = new Error("stale");
+
+/** One engine row with local state standing in for the API. */
+function KitSetting({
+  id,
+  label,
+  help,
+  unit,
+  initial,
+  max,
+  source,
+  revertible,
+  fail,
+  conflictOnce,
+}: {
+  id: string;
+  label: string;
+  help: string;
+  unit: string;
+  initial: number;
+  max: number;
+  source: React.ReactNode;
+  revertible?: boolean;
+  fail?: string;
+  conflictOnce?: boolean;
+}): React.ReactElement {
+  const [row, setRow] = React.useState({ value: initial, version: 1 });
+  const stale = React.useRef(conflictOnce === true);
+  return (
+    <SettingRow
+      id={id}
+      settingKey={id}
+      label={label}
+      help={help}
+      spec={{ kind: "integer", unit, min: 1, max }}
+      confirm={{ up: "L0", down: "L1" }}
+      value={row.value}
+      version={row.version}
+      source={source}
+      isConflict={(e) => e === KIT_CONFLICT}
+      describeError={(e) => ({
+        title: e instanceof Error ? e.message : "Something went wrong.",
+      })}
+      reload={async () => {
+        stale.current = false;
+        setRow((r) => ({ value: r.value + 5, version: r.version + 1 }));
+      }}
+      save={async (value) => {
+        if (fail) throw new Error(fail);
+        if (stale.current) throw KIT_CONFLICT;
+        setRow((r) => ({ value: value as number, version: r.version + 1 }));
+      }}
+      revertPlan={
+        revertible
+          ? () => ({
+              level: "L1",
+              title: `Revert ${label.toLowerCase()}?`,
+              confirmLabel: `Revert to ${initial} ${unit}`,
+              consequences: [
+                `It returns to the code default, ${initial} ${unit}.`,
+              ],
+              run: async () => setRow({ value: initial, version: 1 }),
+            })
+          : undefined
+      }
+    />
+  );
+}
+
 function SettingsDemo(): React.ReactElement {
   return (
     <SettingsTemplate
@@ -256,39 +325,65 @@ function SettingsDemo(): React.ReactElement {
         title="Sessions"
         description="How long an operator stays signed in."
       >
-        <SettingsRow
+        <KitSetting
+          id="kit-t4-lifetime"
           label="Session lifetime"
-          htmlFor="kit-t4-lifetime"
           help="Hours before the console asks to sign in again."
+          unit="hours"
+          initial={12}
+          max={72}
           source={
             <SourceBadge
               source="runtime"
               by="ops@example.com"
               at={NOW - 3 * HOUR}
-              onRevert={() => undefined}
             />
           }
-        >
-          <Input
-            id="kit-t4-lifetime"
-            defaultValue="12"
-            inputMode="numeric"
-            suffix="hours"
-          />
-        </SettingsRow>
-        <SettingsRow
+          revertible
+        />
+        <KitSetting
+          id="kit-t4-idle"
           label="Idle timeout"
-          htmlFor="kit-t4-idle"
           help="Minutes of inactivity before a session ends."
+          unit="minutes"
+          initial={60}
+          max={240}
           source={<SourceBadge source="default" />}
-        >
-          <Input
-            id="kit-t4-idle"
-            defaultValue="60"
-            inputMode="numeric"
-            suffix="minutes"
-          />
-        </SettingsRow>
+        />
+        <KitSetting
+          id="kit-t4-retries"
+          label="Sign-in attempts"
+          help="Saving fails here, to show the error slot: the input stays."
+          unit="attempts"
+          initial={5}
+          max={20}
+          source={<SourceBadge source="default" />}
+          fail="The settings store did not answer."
+        />
+        <KitSetting
+          id="kit-t4-window"
+          label="Link window"
+          help="The first save is refused as stale, to show the conflict and Reload."
+          unit="minutes"
+          initial={15}
+          max={60}
+          source={<SourceBadge source="default" />}
+          conflictOnce
+        />
+        <SettingRow
+          id="kit-t4-lock"
+          settingKey="SIGNIN_LINKS"
+          label="Email sign-in links"
+          help="Lets operators sign in from a link."
+          spec={{ kind: "switch" }}
+          confirm={{ on: "L1", off: "L0" }}
+          value="off"
+          version={1}
+          source={<SourceBadge source="deploy" />}
+          locked="Turned off at deploy time: change the deploy var and redeploy."
+          isConflict={() => false}
+          save={async () => undefined}
+        />
       </SettingsSection>
       <SettingsSection
         id="kit-t4-mail"

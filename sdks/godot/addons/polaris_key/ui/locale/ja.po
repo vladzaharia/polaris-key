@@ -3087,6 +3087,11 @@ msgstr "{product}のライセンスとアップデート"
 msgid "cli.help.more"
 msgstr "コマンドごとのオプションは{command}で確認できます。"
 
+#. License
+#. Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings.
+msgid "cli.help.group"
+msgstr "ライセンス"
+
 #. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
 msgid "cli.verb.activate"

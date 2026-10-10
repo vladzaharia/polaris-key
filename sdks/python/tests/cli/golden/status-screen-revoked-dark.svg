@@ -7,7 +7,7 @@
 <text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
 <text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· status</text>
 <rect x="20.5" y="30.8" width="1" height="16.8" fill="#d7dae0"/>
-<text x="21" y="60.2" text-anchor="middle" fill="#ef6b73">✗</text>
+<text x="21" y="60.2" text-anchor="middle" fill="#e5c07b">▲</text>
 <text x="42" y="60.2" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Signed out</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
 <text x="42" y="77" textLength="554.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">This device was signed out. Sign in or activate again to continue.</text>

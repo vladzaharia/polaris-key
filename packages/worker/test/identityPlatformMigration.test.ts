@@ -14,6 +14,7 @@
  *   - The email-less count: `GET /manage/api/platform/identity-migration`, counts only.
  */
 
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportJWK,
@@ -129,6 +130,8 @@ function installIdp(claims: Record<string, unknown>): void {
           ? input.toString()
           : input.url;
     fetched.push(u);
+    const meta = await issuerMetadataResponse(u, idpKey.getKey);
+    if (meta) return meta;
     if (u === `${ISSUER}/api/oidc/token`) {
       const idToken = await new SignJWT(claims)
         .setProtectedHeader({ alg: "ES256", kid: "test-idp" })
@@ -1416,7 +1419,7 @@ describe("the portal's single sign-on", () => {
     return finishPortalLogin(d, await startPortalLogin(d), claims);
   }
 
-  it("claim: an email another account uses opens the email step; joining needs that account proven here", async () => {
+  it("claim: an email another account uses opens the email step, which proves the address by code (I-30)", async () => {
     const w = await portalWorld({ PLATFORM_OIDC_MIGRATION: "claim" });
     const other = await emailAccount(w.db, ADA);
     await insertSubLicense(w.db, "acme", "lic-pocket", SUB, { email: ADA });
@@ -1433,38 +1436,23 @@ describe("the portal's single sign-on", () => {
     expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
     expect(await count(w.db, "SELECT COUNT(*) AS n FROM accounts")).toBe(1);
 
-    // The email step: the IdP's verified address is another account's.
+    // I-30: the seeded connection has no verified domain, so it vouches for no address: taking
+    // the IdP's address at the email step sends a code to it instead of skipping the proof. The
+    // join offer that follows the code is the gate's own (test/identityCardGate.test.ts), and
+    // nothing has moved yet.
     const chosen = await d.send("POST", "/api/signin/confirm-email", {
       choice: "provider",
     });
-    expect(chosen.status).toBe(409);
-    expect(await chosen.json()).toEqual(
-      expect.objectContaining({ error: "email_in_use", proven: false }),
-    );
-    // Taking the offer without proving that account is refused, and nothing moves.
-    const early = await d.send("POST", "/api/signin/confirm-email/join");
-    expect(early.status).toBe(403);
+    expect(chosen.status).toBe(200);
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
     expect(await linksOf(w.db, other)).toEqual([`email:email:${ADA}`]);
-
-    // The person signs in to that account in this browser, then joins.
-    expect((await d.signInWithCode(ADA)).status).toBe(200);
-    const joined = await d.send("POST", "/api/signin/confirm-email/join");
-    expect(joined.status).toBe(200);
-    expect(await joined.json()).toEqual(
-      expect.objectContaining({ status: "signed_in", joined: true }),
-    );
-    expect(await count(w.db, "SELECT COUNT(*) AS n FROM accounts")).toBe(1);
-    expect(await linksOf(w.db, other)).toEqual([
-      `email:email:${ADA}`,
-      `oidc:${ISSUER}:${SUB}`,
-    ]);
-    const lic = await w.db.first<{ account_id: string }>(
+    const lic = await w.db.first<{ account_id: string | null }>(
       "SELECT account_id FROM licenses WHERE id = 'lic-pocket'",
     );
-    expect(lic?.account_id).toBe(other);
+    expect(lic?.account_id ?? null).toBeNull();
   });
 
-  it("off: the same sign-in keeps the old answer and writes nothing", async () => {
+  it("off: the same sign-in opens the email step too, and writes nothing (I-30)", async () => {
     const w = await portalWorld();
     await emailAccount(w.db, ADA);
     const d = new Device(w);
@@ -1473,12 +1461,14 @@ describe("the portal's single sign-on", () => {
       email: ADA,
       email_verified: true,
     });
-    expect(res.status).toBe(409);
-    expect(d.jar.has(EMAIL_GATE_COOKIE)).toBe(false);
+    // I-30: /callback goes through the connection and the gate whatever I-17's mode says.
+    expect(res.status).toBe(302);
+    expect(d.jar.has(EMAIL_GATE_COOKIE)).toBe(true);
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
     expect(await count(w.db, "SELECT COUNT(*) AS n FROM accounts")).toBe(1);
   });
 
-  it("claim: a new verified address makes one account, with the subject as a method", async () => {
+  it("claim: a new address waits at the email step: no account and no licence move until it passes (I-30)", async () => {
     const w = await portalWorld({ PLATFORM_OIDC_MIGRATION: "claim" });
     await insertSubLicense(w.db, "acme", "lic-pocket", SUB);
     const d = new Device(w);
@@ -1488,19 +1478,16 @@ describe("the portal's single sign-on", () => {
       email_verified: true,
     });
     expect(res.status).toBe(302);
-    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(true);
-    const account = await w.db.first<{ id: string }>("SELECT id FROM accounts");
-    expect(await linksOf(w.db, account!.id)).toEqual([
-      `email:email:${ADA}`,
-      `oidc:${ISSUER}:${SUB}`,
-    ]);
-    const lic = await w.db.first<{ account_id: string }>(
+    expect(res.headers.get("location")).toBe(EMAIL_GATE_LANDING);
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+    expect(await count(w.db, "SELECT COUNT(*) AS n FROM accounts")).toBe(0);
+    const lic = await w.db.first<{ account_id: string | null }>(
       "SELECT account_id FROM licenses WHERE id = 'lic-pocket'",
     );
-    expect(lic?.account_id).toBe(account!.id);
+    expect(lic?.account_id ?? null).toBeNull();
   });
 
-  it("claim: an address the IdP did not verify is neither offered nor kept", async () => {
+  it("claim: an address the IdP did not verify opens the email step and attaches nothing (I-30)", async () => {
     const w = await portalWorld({ PLATFORM_OIDC_MIGRATION: "claim" });
     const other = await emailAccount(w.db, ADA);
     const d = new Device(w);
@@ -1510,17 +1497,12 @@ describe("the portal's single sign-on", () => {
       email_verified: false,
     });
     expect(res.status).toBe(302);
-    expect(d.jar.has(EMAIL_GATE_COOKIE)).toBe(false);
-    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(true);
-    const link = await w.db.first<{
-      account_id: string;
-      email: string | null;
-    }>("SELECT account_id, email FROM account_links WHERE kind = 'oidc'");
-    expect(link?.account_id).not.toBe(other);
-    expect(link?.email).toBeNull();
-    expect(await linksOf(w.db, link!.account_id)).toEqual([
-      `oidc:${ISSUER}:${SUB}`,
-    ]);
+    expect(d.jar.has(EMAIL_GATE_COOKIE)).toBe(true);
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+    expect(
+      await w.db.first("SELECT id FROM account_links WHERE kind = 'oidc'"),
+    ).toBeNull();
+    expect(await linksOf(w.db, other)).toEqual([`email:email:${ADA}`]);
   });
 
   it("operators-only: a moved subject signs in; one that never moved is refused", async () => {
@@ -1529,7 +1511,11 @@ describe("the portal's single sign-on", () => {
     const moved = new Device(w);
     const ok = await portalCallback(w, moved, { sub: "moved-1" });
     expect(ok.status).toBe(302);
-    expect(moved.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(true);
+    // I-30: the moved subject's account has no confirmed email, so it goes on to the email step
+    // (never refused); a subject that never moved is refused below.
+    expect(
+      moved.jar.has(ACCOUNT_SESSION_COOKIE) || moved.jar.has(EMAIL_GATE_COOKIE),
+    ).toBe(true);
 
     const stranger = new Device(w, "203.0.113.99");
     const refused = await portalCallback(w, stranger, {

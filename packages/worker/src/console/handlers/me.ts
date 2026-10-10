@@ -11,7 +11,17 @@
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { listProducts, getActiveSchema } from "../../core/repo.js";
-import { isPlatformAdmin } from "../authz.js";
+import {
+  AREAS,
+  can,
+  canSeeProduct,
+  PLATFORM,
+  PRODUCT_AREAS,
+  productScope,
+  type AreaId,
+  type Principal,
+  type Scope,
+} from "../authz.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   type AdminSession,
@@ -35,14 +45,10 @@ export async function handleMe(
   db: Db,
   session: AdminSession,
 ): Promise<Response> {
+  const principal = session.principal ?? null;
   const products = await listProducts(db);
-  const platform = isPlatformAdmin(env, session);
-  // Admin authority is platform-wide: `hasAnyAdminGrant` (the login gate) and
-  // `isPlatformAdmin` (the product gate) are the SAME predicate, so a session that exists at
-  // all administers every product. The old `p.admin_group != null && groups.includes(...)`
-  // arm was unreachable dead code — it made `/api/me` look like it reported a per-product
-  // grant that no longer exists anywhere in the system. A non-platform session sees nothing.
-  const visible = platform ? products : [];
+  // Only the products the principal holds an area of; the rest are absent, not listed as locked.
+  const visible = products.filter((p) => canSeeProduct(principal, p));
   const adminProducts = await Promise.all(
     visible.map(async (p) => {
       const schema = await getActiveSchema(db, p.slug);
@@ -58,8 +64,11 @@ export async function handleMe(
     name: session.name,
     email: session.email,
     csrf: session.csrf,
-    platformAdmin: platform,
+    // The Platform area (instance settings, deployment, store connections): Superadmin and
+    // Platform admin. Kept for the screens that read it before `permissions` existed.
+    platformAdmin: can(principal, PLATFORM, "platform", "view"),
     products: adminProducts,
+    permissions: permissionsOf(principal, visible),
     environment: consoleEnvironment(env),
     sessionExpiresAt: session.exp,
     // I-12: when the operator last signed in interactively, for the relink tool's step-up (a
@@ -67,4 +76,59 @@ export async function handleMe(
     authAt: session.stepUpAt ?? null,
     stepUpMaxAgeSeconds: STEP_UP_MAX_AGE_SECONDS,
   });
+}
+
+/** The areas `can()` allows at each level in one scope. */
+export interface AreaLevels {
+  view: AreaId[];
+  edit: AreaId[];
+}
+
+/** `/me.permissions`: everything `useCan` reads. No account id: grants name roles and scopes. */
+export interface MePermissions {
+  roles: {
+    role: string;
+    scope: string;
+    areas: readonly AreaId[] | null;
+    source: string;
+  }[];
+  platform: AreaLevels;
+  products: Record<string, AreaLevels>;
+}
+
+const PLATFORM_AREAS: readonly AreaId[] = AREAS.filter(
+  (a) =>
+    a.scope === "membership" || a.scope === "platform" || a.scope === "both",
+).map((a) => a.id);
+
+function levels(
+  p: Principal | null,
+  scope: Scope,
+  areas: readonly AreaId[],
+): AreaLevels {
+  return {
+    view: areas.filter((a) => can(p, scope, a, "view")),
+    edit: areas.filter((a) => can(p, scope, a, "edit")),
+  };
+}
+
+export function permissionsOf(
+  p: Principal | null,
+  products: readonly { slug: string; system?: number | null }[],
+): MePermissions {
+  return {
+    roles: (p?.grants ?? []).map((g) => ({
+      role: g.role,
+      scope: g.scope,
+      areas: g.areas,
+      source: g.source,
+    })),
+    platform: levels(p, PLATFORM, PLATFORM_AREAS),
+    products: Object.fromEntries(
+      products.map((row) => [
+        row.slug,
+        levels(p, productScope(row), PRODUCT_AREAS),
+      ]),
+    ),
+  };
 }

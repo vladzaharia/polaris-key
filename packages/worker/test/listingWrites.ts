@@ -15,6 +15,7 @@ import {
   type PortalProductSettingsRow,
 } from "../src/services/identity/portal/repo.js";
 import { NOW } from "./seed.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 export async function writeListing(
   db: Db,
@@ -29,6 +30,7 @@ export async function writeListing(
     {
       actor: { sub: "test", name: null, email: null },
       origin: "console",
+      principal: ROOT_PRINCIPAL,
       now,
       product: slug,
       strict: false,

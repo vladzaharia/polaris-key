@@ -358,6 +358,7 @@ class Feature:
 	const CORE_COPY := "core.copy"
 	const CORE_BACKEND := "core.backend"
 	const LICENSE_GATE := "license.gate"
+	const LICENSE_SIGNEDINUSER := "license.signedinuser"
 	const LICENSE_ACTIVATE := "license.activate"
 	const LICENSE_ENROLL := "license.enroll"
 	const LICENSE_DEACTIVATE := "license.deactivate"
@@ -438,6 +439,7 @@ class Feature:
 	const UI_KIT_ACCOUNT := "ui.kit.account"
 	const UI_CLI := "ui.cli"
 	const UI_CLI_MOUNT := "ui.cli.mount"
+	const UI_CLI_CONTRACT := "ui.cli.contract"
 	const UI_GATE := "ui.gate"
 	const UI_ACTIVATE := "ui.activate"
 	const UI_SIGNIN := "ui.signin"
@@ -456,7 +458,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.cli.mount", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -885,7 +887,7 @@ const DEVICE_LABEL_VERSION := 1
 const PRESENTATION_MATRIX_VERSION := 1
 
 ## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-const UI_MATRIX_VERSION := 2
+const UI_MATRIX_VERSION := 3
 
 ## `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 const BACKEND_MATRIX_VERSION := 1
@@ -985,6 +987,9 @@ const REQUEST_HANDLE_PATTERN := "^rq_[A-Za-z0-9_-]{22}$"
 
 ## Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 const REQUEST_HANDLE_TTL_SECONDS := 600
+
+## Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
+const PAIRWISE_SUBJECT_PATTERN := "^ps_[A-Za-z0-9_-]{22}$"
 
 ## Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
 const PRESENTATION_TEXT_MAX_BYTES := 1024
@@ -1100,6 +1105,7 @@ static func capabilities() -> Dictionary:
 		"core.copy": {"status": "implemented", "service": "sdk", "na": []},
 		"core.backend": {"status": "planned", "service": "license", "na": []},
 		"license.gate": {"status": "implemented", "service": "license", "na": []},
+		"license.signedinuser": {"status": "implemented", "service": "license", "na": []},
 		"license.activate": {"status": "implemented", "service": "license", "na": []},
 		"license.enroll": {"status": "implemented", "service": "license", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"license.deactivate": {"status": "implemented", "service": "license", "na": []},
@@ -1180,16 +1186,17 @@ static func capabilities() -> Dictionary:
 		"ui.kit.account": {"status": "planned", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.cli.mount": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"ui.gate": {"status": "planned", "service": "sdk", "na": []},
-		"ui.activate": {"status": "planned", "service": "sdk", "na": []},
-		"ui.signin": {"status": "planned", "service": "sdk", "na": []},
-		"ui.devicelimit": {"status": "planned", "service": "sdk", "na": []},
-		"ui.devices": {"status": "planned", "service": "sdk", "na": []},
-		"ui.update": {"status": "planned", "service": "sdk", "na": []},
-		"ui.settings": {"status": "planned", "service": "sdk", "na": []},
-		"ui.paywall": {"status": "planned", "service": "sdk", "na": []},
-		"ui.theme": {"status": "planned", "service": "sdk", "na": []},
-		"ui.i18n": {"status": "planned", "service": "sdk", "na": []},
+		"ui.cli.contract": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"ui.gate": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.activate": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.signin": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.devicelimit": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.devices": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.update": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.settings": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.paywall": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.theme": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.i18n": {"status": "implemented", "service": "sdk", "na": []},
 		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
 		"server.license": {"status": "na", "service": "license", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"server.signin": {"status": "na", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -1198,4 +1205,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "4cb7b7a1eb1bcf790bcb713b8504f9e1fb24ba26f97cfab6f08e7995e7d08fe0"
+const CAPABILITY_DIGEST := "94887d62e9331d40dbc4fa4ebcc8b0b43e3984414eadc8158ad4847af5241ebf"

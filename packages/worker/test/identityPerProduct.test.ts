@@ -7,7 +7,8 @@
  *     surface (`ownerSubject` on the console's licences, `subject` on its devices);
  *   - every app-sign-in entry refuses a product with Identity off: a person's navigation gets the
  *     `303` to the friendly card, every device and JSON caller keeps `404 not_found`;
- *   - turning Identity off clears every device binding (no seat released, documents unchanged),
+ *   - turning Identity off clears every device binding (no seat released, every grant unchanged;
+ *     SP-54: the licence document drops the cleared `profile.user`),
  *     after a dry run that counts them;
  *   - Core refuses to write a binding while the toggle is off;
  *   - licences still attach to accounts with Identity off.
@@ -522,7 +523,8 @@ describe("turning Identity off clears every binding (PX-W17)", () => {
         "SELECT product FROM account_product_grants WHERE product = 'djdl'",
       ),
     ).toEqual([{ product: "djdl" }]);
-    // The device's licence document is byte-identical (legacy entitlement model).
+    // The device's licence document keeps every grant (legacy entitlement model). The one
+    // change is SP-54's: the cleared binding drops `profile.user` (V4 §2.1), and nothing else.
     const docAfter = await (
       await route(w, "GET", "/djdl/license/document", {
         authorization: `Bearer ${token}`,
@@ -530,7 +532,22 @@ describe("turning Identity off clears every binding (PX-W17)", () => {
         "x-pkey-version": "1.0.0",
       })
     ).text();
-    expect(docAfter).toBe(docBefore);
+    const payloadOf = (jws: string): Record<string, unknown> =>
+      JSON.parse(
+        Buffer.from(jws.split(".")[1] ?? "", "base64url").toString("utf8"),
+      ) as Record<string, unknown>;
+    const before = payloadOf(docBefore);
+    const { user, ...profileWithoutUser } = before.profile as Record<
+      string,
+      unknown
+    >;
+    expect(user).toEqual({
+      subject: expect.stringMatching(PAIRWISE_SUBJECT_PATTERN),
+    });
+    expect(payloadOf(docAfter)).toEqual({
+      ...before,
+      profile: profileWithoutUser,
+    });
   });
 
   it("the transition is idempotent and heals a straggler on every write, without a second audit row", async () => {

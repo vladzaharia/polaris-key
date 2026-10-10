@@ -1383,7 +1383,9 @@ func _scrim_wanted() -> bool:
 
 
 func _apply_scrim() -> void:
-	if outer_view() == self and _scrim_wanted():
+	# DL16: under reduced transparency a dialog over the game sits on the opaque page the gate and
+	# the boot use, not on the see-through scrim.
+	if outer_view() == self and _scrim_wanted() and not PKeyUiTheme.reduce_transparency():
 		if theme_type_variation != &"PKeyScrim":
 			theme_type_variation = &"PKeyScrim"
 	elif theme_type_variation == &"PKeyScrim":
@@ -1411,18 +1413,28 @@ func _size_controls(n: Node) -> void:
 			if not is_equal_approx(ctl.custom_minimum_size.y, h):
 				ctl.custom_minimum_size.y = h
 		if ch.get_class() == "Button":
-			_fit_label(ch as Button)
+			_fit_label(ch as Button, room_x())
 		if not (ch is SpinBox):
 			_size_controls(ch)
 
 
 ## A button at least as wide as its label measures plus its padding, with a little slack: at
-## exactly its own minimum width the engine drops a bold label's last glyph.
-static func _fit_label(b: Button) -> void:
+## exactly its own minimum width the engine drops a bold label's last glyph. A label wider than
+## `room` (a long German action on a 375 pt phone, a game's large type) wraps at its words inside
+## a button exactly `room` wide, instead of pushing the screen wider (DL11).
+static func _fit_label(b: Button, room := INF) -> void:
 	var w := 0.0
+	var wrap := false
 	if b.text != "":
 		var box := b.get_theme_stylebox("normal")
 		w = ceilf(text_width(b, b.text) + 0.1 * b.get_theme_font_size("font_size") + (box.get_minimum_size().x if box != null else 0.0))
+		if room > 1.0 and w > room and "autowrap_mode" in b:
+			w = floorf(room)
+			wrap = true
+	if "autowrap_mode" in b:
+		var mode := TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
+		if int(b.get("autowrap_mode")) != mode:
+			b.set("autowrap_mode", mode)
 	if not is_equal_approx(b.custom_minimum_size.x, w):
 		b.custom_minimum_size.x = w
 
@@ -1622,7 +1634,69 @@ func label(parent: Node, node_name: String, variation := "", data := false) -> L
 	if data:
 		l.set_meta(DATA_META, true)
 	parent.add_child(l)
+	if variation == "PKeyTitle":
+		l.resized.connect(fit_words.bind(l))
+		l.theme_changed.connect(_refit_words.bind(l))
 	return l
+
+
+## The meta holding a title's own type size while `fit_words()` overrides it.
+const FIT_NATURAL_META := &"pkey_fit_natural"
+
+
+## DL11: a word never breaks across lines. A title too narrow for its widest word (German on a
+## 375 pt phone, a game's large type) steps its type down, one size at a time and never under the
+## body size, until that word fits. Unspaced CJK text breaks between characters by design and is
+## left alone. Only a change is applied: the override re-lays the label out and calls this again.
+static func fit_words(l: Label) -> void:
+	if not is_instance_valid(l) or l.size.x <= 1.0:
+		return
+	var held := l.get_theme_font_size("font_size") if l.has_theme_font_size_override("font_size") else 0
+	var natural: int = int(l.get_meta(FIT_NATURAL_META, 0)) if held > 0 else l.get_theme_font_size("font_size")
+	if natural <= 0:
+		return
+	var body := l.get_theme_default_font_size() if held == 0 else int(l.get_meta(&"pkey_fit_body", natural))
+	var least := mini(natural, body)
+	var font := l.get_theme_font("font")
+	var words: Array = []
+	for raw in l.text.split(" ", false):
+		var word := raw.trim_prefix(String.chr(0x2068)).trim_suffix(String.chr(0x2069))
+		if word != "" and word.unicode_at(0) < 0x2E80 and word.unicode_at(word.length() - 1) < 0x2E80:
+			words.append(word)
+	var want := natural
+	while want > least and font != null and _widest_word(font, words, want) > l.size.x:
+		want -= 1
+	var target := want if want < natural else 0
+	if target == held:
+		return
+	# The override's own theme_changed is not a new theme (`_refit_words()`).
+	l.set_meta(&"pkey_fitting", true)
+	if target > 0:
+		l.set_meta(FIT_NATURAL_META, natural)
+		l.set_meta(&"pkey_fit_body", body)
+		l.add_theme_font_size_override("font_size", target)
+	else:
+		l.remove_theme_font_size_override("font_size")
+	l.remove_meta(&"pkey_fitting")
+
+
+## A new theme (another screen scale) measures the title afresh from its own size.
+static func _refit_words(l: Label) -> void:
+	if not is_instance_valid(l) or l.has_meta(&"pkey_fitting"):
+		return
+	if l.has_theme_font_size_override("font_size") and l.has_meta(FIT_NATURAL_META):
+		l.set_meta(&"pkey_fitting", true)
+		l.remove_meta(FIT_NATURAL_META)
+		l.remove_theme_font_size_override("font_size")
+		l.remove_meta(&"pkey_fitting")
+		fit_words.call_deferred(l)
+
+
+static func _widest_word(font: Font, words: Array, size: int) -> float:
+	var most := 0.0
+	for word in words:
+		most = maxf(most, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+	return most
 
 
 func button(parent: Node, node_name: String, pressed: Callable, variation := "") -> Button:
@@ -1789,7 +1863,21 @@ func set_loading(on: bool) -> void:
 		return
 	if _loading_since == 0:
 		_loading_since = Time.get_ticks_msec()
+	_hold_still(_loading_bar)
 	_loading_bar.visible = Time.get_ticks_msec() - _loading_since >= 250
+
+
+## DL16: under reduced motion the indeterminate shimmer holds still (a quiet full-width line, never
+## a part-filled bar); otherwise it moves.
+static func _hold_still(b: ProgressBar) -> void:
+	var still := PKeyUiTheme.reduce_motion()
+	if b.indeterminate == not still:
+		return
+	b.indeterminate = not still
+	b.min_value = 0.0
+	b.max_value = 1.0
+	b.value = 1.0 if still else 0.0
+	b.self_modulate.a = 0.55 if still else 1.0
 
 
 ## The loading bar's delay needs a timer when nothing else re-renders.

@@ -13,6 +13,7 @@
  *    own body shape, never as a throw.
  */
 
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -766,7 +767,10 @@ describe("OIDC sign-in stores an unsignable name or email as null", () => {
       .setExpirationTime("1h")
       .sign(pair.privateKey as KeyLike);
     vi.spyOn(globalThis, "fetch").mockImplementation(
-      async () =>
+      async (input: RequestInfo | URL) =>
+        (await issuerMetadataResponse(String(input), idpKey.getKey, {
+          kid: "idp",
+        })) ??
         new Response(JSON.stringify({ id_token: idToken }), {
           status: 200,
           headers: { "content-type": "application/json" },

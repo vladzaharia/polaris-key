@@ -60,6 +60,9 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _focus(t, all)
 	await _copy(t, all)
 	await _behaviour(t)
+	await _motion_and_transparency(t)
+	await _settings_open(t)
+	await _key_field(t)
 	await _layout(t, all)
 	t.check("coverage: states", all.size() >= 60, str(all.size()))
 	return true
@@ -80,6 +83,90 @@ func _build(c: Array) -> Control:
 func _free(v: Control) -> void:
 	v.get_parent().remove_child(v)
 	v.queue_free()
+
+
+## The key field: visible and private (drawn in clear, typed on a keyboard that neither corrects
+## nor learns it); Activate goes under the field when the field beside it could not hold its
+## placeholder, and a placeholder the field cannot hold even then is dropped, never cut (the label
+## says the same).
+func _key_field(t: PKeyTestContext) -> void:
+	var p: Control = _sc.activation(true, true, false, false)
+	await _tree().process_frame
+	var key := p.find_child("KeyInput", true, false) as LineEdit
+	var row := p.find_child("KeyRow", true, false) as BoxContainer
+	t.check("key field: visible and private", key != null and not key.secret and key.virtual_keyboard_type == LineEdit.KEYBOARD_TYPE_PASSWORD)
+	# (Beside the field where it fits; under it on a phone's screen, the actions stacked.)
+	t.check("key field: Activate beside the field where it fits, under it on a phone", row != null and row.vertical == p.phone_screen() and key.placeholder_text == "Paste your key", "vertical %s phone %s" % [row.vertical if row != null else null, p.phone_screen()])
+	# A game's very large type on a narrow panel.
+	p.size = Vector2(330, 1400)
+	key.add_theme_font_size_override("font_size", 64)
+	for i in 6:
+		await _tree().process_frame
+	var box := key.get_theme_stylebox("normal")
+	var pad := box.get_margin(SIDE_LEFT) + box.get_margin(SIDE_RIGHT)
+	var whole := key.placeholder_text == "" or PKeyUiView.text_width(key, key.placeholder_text) + pad <= key.size.x + 0.5
+	t.check("key field: Activate goes under the field when the hint would not fit beside it", row.vertical, "row %s field %s" % [row.size, key.size])
+	t.check("key field: the placeholder shows whole or not at all", whole, "'%s' in %.0f px" % [key.placeholder_text, key.size.x])
+	_free(p)
+
+
+## DL18: `PKeySettingsPanel.open()` is the one line that shows the settings over the game: it
+## covers its parent, offers Close (and Escape or a pad's B), gives the focus back and frees itself.
+## A panel a game's own menu holds has no Close.
+func _settings_open(t: PKeyTestContext) -> void:
+	var holder := Control.new()
+	holder.size = Vector2(1280, 720)
+	_tree().root.add_child(holder)
+	var game_button := Button.new()
+	game_button.text = "Settings"
+	holder.add_child(game_button)
+	game_button.grab_focus()
+	var p := PKeySettingsPanel.open(holder)
+	p.auto_sdk = false
+	p.sdk = await _sc.settings_sdk({})
+	await _tree().process_frame
+	await _tree().process_frame
+	var close := p.find_child("Close", true, false) as Button
+	t.check("DL18: open() covers its parent, closable, with Close", p.get_parent() == holder and p.closable and close != null and close.is_visible_in_tree() and close.text == "Close", "close %s" % close)
+	var closed := [false]
+	p.closed.connect(func() -> void: closed[0] = true)
+	t.check("DL18: Escape (ui_cancel) closes it", p._cancel() and closed[0])
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("DL18: closed, it is freed and the game's control has the focus back", not is_instance_valid(p) and game_button.has_focus())
+	var embedded: Control = await _sc.settings(false, {})
+	await _tree().process_frame
+	var none := embedded.find_child("Close", true, false) as Button
+	t.check("DL18: a panel the game's menu holds offers no Close", none != null and not none.visible and not embedded._cancel())
+	_free(embedded)
+	holder.queue_free()
+
+
+## DL16: the options (and the system where it reports them) hold the shimmer still and draw a
+## dialog over the game on an opaque page.
+func _motion_and_transparency(t: PKeyTestContext) -> void:
+	var opts := PKeyOptions.new()
+	opts.ui_reduce_motion = "on"
+	opts.ui_reduce_transparency = "on"
+	PKeyUiTheme.apply_options(opts)
+	t.check("DL16: ui_reduce_motion and ui_reduce_transparency reach the kit", PKeyUiTheme.reduce_motion() and PKeyUiTheme.reduce_transparency())
+	var d: Control = _sc.offline(false, "")
+	d.busy = true
+	d.refresh_view()
+	await _tree().process_frame
+	var bar := d.find_child("Loading", true, false) as ProgressBar
+	t.check("DL16: reduced motion holds the loading shimmer still (a full, quiet line)", bar != null and not bar.indeterminate and is_equal_approx(bar.value, bar.max_value), "indeterminate %s" % (bar.indeterminate if bar != null else null))
+	t.check("DL16: reduced transparency puts a dialog over the game on the opaque page", d.theme_type_variation != &"PKeyScrim", String(d.theme_type_variation))
+	opts.ui_reduce_motion = "off"
+	opts.ui_reduce_transparency = "off"
+	PKeyUiTheme.apply_options(opts)
+	d.refresh_view()
+	await _tree().process_frame
+	t.check("DL16: with motion the shimmer moves", bar != null and bar.indeterminate)
+	t.check("DL16: without reduced transparency the dialog sits on the scrim", d.theme_type_variation == &"PKeyScrim", String(d.theme_type_variation))
+	_free(d)
+	PKeyUiTheme.reset()
+	t.check("DL16: auto follows the system (off where the engine reports nothing)", PKeyUiTheme.reduce_motion_mode == "auto" and PKeyUiTheme.reduce_motion() == (DisplayServer.has_method("accessibility_should_reduce_animation") and bool(DisplayServer.call("accessibility_should_reduce_animation"))))
 
 
 # ── Snapshots ────────────────────────────────────────────────────────────────────────────

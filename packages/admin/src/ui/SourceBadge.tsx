@@ -2,6 +2,8 @@ import * as React from "react";
 import {
   Code2,
   FileCode2,
+  Layers,
+  Link2,
   PencilLine,
   Server,
   type LucideIcon,
@@ -22,8 +24,19 @@ import type { Tone } from "../lib/status.js";
  * - `default`: the value built into Polaris Key (platform settings).
  * - `deploy`: set by the deployment's environment (wrangler vars).
  * - `runtime`: a console override of a deploy var or default, with who set it and when.
+ * - `platform`: inherited from the platform's default for every product.
+ * - `derived`: worked out from other settings; nothing to edit here.
+ *
+ * An override is neutral ink: a set value is not a status, so no tone colours it (B17).
  */
-export type Source = "manifest" | "admin" | "default" | "deploy" | "runtime";
+export type Source =
+  | "manifest"
+  | "admin"
+  | "default"
+  | "deploy"
+  | "runtime"
+  | "platform"
+  | "derived";
 
 const LABEL: Record<Source, string> = {
   manifest: "From manifest",
@@ -31,6 +44,8 @@ const LABEL: Record<Source, string> = {
   default: "Code default",
   deploy: "Deploy var",
   runtime: "Set in console",
+  platform: "Platform default",
+  derived: "Derived",
 };
 
 // Each source names its owner by glyph, never the neutral tone's hollow circle (which reads as an
@@ -41,14 +56,18 @@ const ICON: Record<Source, LucideIcon> = {
   default: Code2,
   deploy: Server,
   runtime: PencilLine,
+  platform: Layers,
+  derived: Link2,
 };
 
 const TONE: Record<Source, Tone> = {
   manifest: "neutral",
-  admin: "info",
+  admin: "neutral",
   default: "neutral",
   deploy: "neutral",
-  runtime: "info",
+  runtime: "neutral",
+  platform: "neutral",
+  derived: "neutral",
 };
 
 export interface SourceBadgeProps {
@@ -88,6 +107,10 @@ function explanation(source: Source, path?: string): React.ReactNode {
       return "Set by the deployment's environment (wrangler vars). A console value overrides it; Revert hands it back.";
     case "runtime":
       return "Set in console: overrides the deploy var and the code default. Revert removes the override.";
+    case "platform":
+      return "Inherited from the platform's default. Set it for this product to override it.";
+    case "derived":
+      return "Worked out from other settings. Change those instead.";
   }
 }
 

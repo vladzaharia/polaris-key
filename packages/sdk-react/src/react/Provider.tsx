@@ -39,6 +39,8 @@ import {
 } from "../components/theme.js";
 import { useIsomorphicLayoutEffect } from "../components/primitives/layout.js";
 import { PolarisContext } from "./context.js";
+import { usePresentationOf } from "./usePresentation.js";
+import { iconAccent, withPresentation } from "./presentationTheme.js";
 import { DARK_QUERY, resolveSystemScheme } from "./hostScheme.js";
 
 /** Disposals waiting out a possible immediate re-run of the Provider's effect. */
@@ -229,10 +231,6 @@ export function PolarisKeyProvider(
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scheme = useResolvedScheme(colorScheme, rootRef);
-  const theme = useMemo(
-    () => mergeTheme(branding ? { ...themeProp, branding } : themeProp, scheme),
-    [themeProp, scheme, branding],
-  );
 
   // Serialize the expectation list so a caller passing an inline array literal does not
   // rebuild (and re-authenticate) the adapter on every render.
@@ -371,6 +369,42 @@ export function PolarisKeyProvider(
     }, refreshIntervalSeconds * 1000);
     return () => clearInterval(id);
   }, [adapter, refreshIntervalSeconds]);
+
+  // Discovery's presentation (HA-13): the product's name, accent and verified icon fill what the
+  // integrator's theme leaves unset; the integrator's value always wins.
+  const presentationSource = useMemo(() => {
+    try {
+      return typeof adapter.presentationSource === "function"
+        ? adapter.presentationSource()
+        : null;
+    } catch {
+      return null;
+    }
+  }, [adapter]);
+  const { presentation, iconUrl } = usePresentationOf(presentationSource);
+  const [derivedAccent, setDerivedAccent] = useState<string | null>(null);
+  const productAccent = presentation?.accent ?? presentation?.accentDark;
+  useEffect(() => {
+    setDerivedAccent(null);
+    if (!iconUrl || productAccent) return;
+    let live = true;
+    void iconAccent(iconUrl).then((a) => {
+      if (live) setDerivedAccent(a);
+    });
+    return () => {
+      live = false;
+    };
+  }, [iconUrl, productAccent]);
+  const theme = useMemo(() => {
+    const partial = branding ? { ...themeProp, branding } : themeProp;
+    const merged = mergeTheme(
+      withPresentation(partial, presentation, derivedAccent),
+      scheme,
+    );
+    return iconUrl && merged.logo === undefined
+      ? { ...merged, productIcon: iconUrl }
+      : merged;
+  }, [themeProp, scheme, branding, presentation, iconUrl, derivedAccent]);
 
   const value = useMemo(() => ({ adapter, theme }), [adapter, theme]);
   // `inherit` takes the host's font; on a page that sets none, that would be Times, so the kit

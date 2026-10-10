@@ -27,6 +27,7 @@ import {
   type AttentionTone,
   type ProductAttention,
 } from "../model/attention.js";
+import { useWriteGate } from "../../../access/useCan.js";
 
 /** Home shows the most recently changed products; Products is the whole registry (EXPERIENCE C17). */
 export const HOME_PRODUCT_LIMIT = 6;
@@ -102,6 +103,8 @@ function worstTone(items: ProductAttention[]): AttentionTone {
  */
 export function Home(): React.ReactElement {
   const products = useProducts();
+  // ST-29: creating a product is the Platform area's.
+  const create = useWriteGate("platform");
 
   const list = React.useMemo(() => products.data ?? [], [products.data]);
   const attention = React.useMemo(() => attentionAcross(list), [list]);
@@ -135,7 +138,7 @@ export function Home(): React.ReactElement {
       primaryAction={
         // With no products, the empty state's own two calls to action are the way in.
         loading || list.length > 0 ? (
-          <Button asChild>
+          <Button asChild disabledReason={create.disabledReason}>
             <Link to={r.productNew()}>
               <Plus aria-hidden />
               New product

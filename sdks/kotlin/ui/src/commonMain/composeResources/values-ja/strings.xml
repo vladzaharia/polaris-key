@@ -1138,6 +1138,8 @@
     <string name="cli_help_lede">%1$sのライセンスとアップデート</string>
     <!-- Terminal help footer. {command} is a command line such as 'tidewater activate -help'. Arguments: 1=command. -->
     <string name="cli_help_more">コマンドごとのオプションは%1$sで確認できます。</string>
+    <!-- Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings. -->
+    <string name="cli_help_group">ライセンス</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">ライセンスキーを追加（入力、または stdin から）</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->

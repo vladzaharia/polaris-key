@@ -85,6 +85,34 @@ public protocol DocClaims: Sendable, Codable, Equatable {
     var graceUntil: Int { get }
 }
 
+/// The person signed in on this device: `profile.user` (V4 §2.1, plans/SP-54.md). Carries the
+/// pairwise subject only: no name, email or account id.
+public struct SignedInUser: Sendable, Codable, Equatable {
+    public let subject: String
+
+    public init(subject: String) { self.subject = subject }
+
+    /// Whole-string match of `PAIRWISE_SUBJECT_PATTERN` (V4 §3.3 rule 1): `$` would also match
+    /// before a trailing newline, so the match must span the entire string.
+    static func isSubject(_ value: String) -> Bool {
+        guard let re = try? NSRegularExpression(pattern: PAIRWISE_SUBJECT_PATTERN) else { return false }
+        let whole = NSRange(location: 0, length: (value as NSString).length)
+        guard let m = re.firstMatch(in: value, options: [], range: whole) else { return false }
+        return m.range == whole
+    }
+
+    private struct Raw: Decodable { let subject: String }
+
+    /// Total over any value: an object whose `subject` is a matching string, else nil. Unknown
+    /// members are ignored.
+    static func decode(from container: KeyedDecodingContainer<DocProfile.CodingKeys>) -> SignedInUser? {
+        guard let raw = try? container.decode(Raw.self, forKey: .user), isSubject(raw.subject) else {
+            return nil
+        }
+        return SignedInUser(subject: raw.subject)
+    }
+}
+
 /// The signed profile block — a tamper-proof, offline greeting.
 public struct DocProfile: Sendable, Codable, Equatable {
     public let name: String
@@ -92,15 +120,21 @@ public struct DocProfile: Sendable, Codable, Equatable {
     public let email: String
     /// Epoch seconds the key was first activated.
     public let activatedAt: Int
+    /// The account signed in on this device (`profile.user`, SP-54); nil on a key-activated
+    /// device even though `email` (the licence holder's) is set.
+    public let user: SignedInUser?
 
-    public init(name: String, firstName: String, email: String, activatedAt: Int) {
+    public init(
+        name: String, firstName: String, email: String, activatedAt: Int, user: SignedInUser? = nil
+    ) {
         self.name = name
         self.firstName = firstName
         self.email = email
         self.activatedAt = activatedAt
+        self.user = user
     }
 
-    private enum CodingKeys: String, CodingKey { case name, firstName, email, activatedAt }
+    enum CodingKeys: String, CodingKey { case name, firstName, email, activatedAt, user }
 
     /// Total over the members (V4 §3): a non-string member reads "", a non-integer
     /// `activatedAt` reads 0. Only a profile that is not an object throws, which refuses the
@@ -111,8 +145,20 @@ public struct DocProfile: Sendable, Codable, Equatable {
             name: (try? c.decode(String.self, forKey: .name)) ?? "",
             firstName: (try? c.decode(String.self, forKey: .firstName)) ?? "",
             email: (try? c.decode(String.self, forKey: .email)) ?? "",
-            activatedAt: (try? c.decode(Int.self, forKey: .activatedAt)) ?? 0)
+            activatedAt: (try? c.decode(Int.self, forKey: .activatedAt)) ?? 0,
+            user: SignedInUser.decode(from: c))
     }
+}
+
+/// Port of client-core `licenseUserOf`: the signed-in subject of a VERIFIED licence document,
+/// or nil. Total: a malformed or absent member is nil, never an error.
+public func licenseUser(_ doc: LicenseDoc?) -> SignedInUser? {
+    doc?.profile?.user
+}
+
+/// The same reader over a decoded profile.
+public func licenseUser(_ profile: DocProfile?) -> SignedInUser? {
+    profile?.user
 }
 
 /// The license document (`pkey-license+jws`, §2.1) — the ONLY carrier of grant data (D-20).

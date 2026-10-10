@@ -77,6 +77,62 @@ export interface Me {
   authAt?: number | null;
   /** How recent that sign-in must be for a step-up action (the relink tool). */
   stepUpMaxAgeSeconds?: number;
+  /**
+   * ST-29: what the worker's `can()` allows this member, which `useCan` reads (never decides).
+   * Absent from a worker older than ST-29: the console then treats `platformAdmin` as every area.
+   */
+  permissions?: MePermissions;
+}
+
+/** The console's authorization areas (worker `core/rbac/areas.ts`; append-only). */
+export type AreaId =
+  | "console"
+  | "platform"
+  | "members"
+  | "docs"
+  | "core"
+  | "license"
+  | "config"
+  | "ship"
+  | "signin"
+  | "sync"
+  | "commerce"
+  | "keys"
+  | "settings";
+
+/** The areas allowed at each level in one scope. */
+export interface AreaLevels {
+  view: AreaId[];
+  edit: AreaId[];
+}
+
+/** One role the member holds. `scope` is `platform`, `products:*` or `product:<slug>`. */
+export interface MeRole {
+  role: "superadmin" | "platform_admin" | "product_admin" | "console_access";
+  scope: string;
+  /** `null`: every area. */
+  areas: AreaId[] | null;
+  source: string;
+}
+
+export interface MePermissions {
+  roles: MeRole[];
+  platform: AreaLevels;
+  /** Per product the member can see, by slug. */
+  products: Record<string, AreaLevels>;
+}
+
+/** Someone who can give access to an area (NoAccessPage, a disabled control's reason). */
+export interface AccessAdmin {
+  name: string;
+  email: string;
+  role: "superadmin" | "product_admin";
+}
+
+export interface AccessAdmins {
+  scope: string;
+  area: AreaId;
+  admins: AccessAdmin[];
 }
 
 // ── platform (A-11 deploy identity, A-12 platform audit) ─────────────────────────
@@ -4320,6 +4376,11 @@ const feedPackagePath = (
 const rawApi = {
   // ── identity ────────────────────────────────────────────────────────────────
   me: () => call<Me>("/manage/api/me"),
+  /** Who can give the member access to `area` in `scope` (`platform` or `product:<slug>`). */
+  accessAdmins: (scope: string, area: AreaId) =>
+    call<AccessAdmins>(
+      `/manage/api/access/admins?scope=${encodeURIComponent(scope)}&area=${encodeURIComponent(area)}`,
+    ),
   logout: () => call<{ ok: true }>("/manage/api/logout", { method: "POST" }),
 
   // ── platform (instance-wide, product-less; A-11/A-12, notes/S-13 §9.2) ─────────

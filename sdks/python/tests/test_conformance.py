@@ -62,6 +62,7 @@ from polaris_key.core.trust import (
     usable_pins,
     verify_trust_manifest,
 )
+from polaris_key.core.models import license_user
 from polaris_key.core.verify import verify_config_doc, verify_license_doc
 from polaris_key.license.gate import license_state
 from polaris_key.update.packs import verify_marker
@@ -73,6 +74,7 @@ _CORPUS_PATH = _CORPUS_DIR / "cases.json"
 _CORPUS: Dict[str, Any] = json.loads(_CORPUS_PATH.read_text(encoding="utf-8"))
 _JWS_CASES: List[Dict[str, Any]] = _CORPUS["jwsCases"]
 _LICENSE_DOC_CASES: List[Dict[str, Any]] = _CORPUS["licenseDocCases"]
+_LICENSE_USER_CASES: List[Dict[str, Any]] = _CORPUS["licenseUserCases"]
 _CONFIG_DOC_CASES: List[Dict[str, Any]] = _CORPUS["configDocCases"]
 _TRUST_CASES: List[Dict[str, Any]] = _CORPUS["trustCases"]
 _CLOCK_FLOOR_CASES: List[Dict[str, Any]] = _CORPUS["clockFloorCases"]
@@ -146,6 +148,35 @@ def test_license_doc_case(case: Dict[str, Any]) -> None:
     assert (doc is not None) is case["expect"]["accept"], (
         f"{case['id']} — {case['description']}"
     )
+
+
+# @pkey-feature license.signedinuser
+@pytest.mark.parametrize(
+    "case", _LICENSE_USER_CASES, ids=[c["id"] for c in _LICENSE_USER_CASES]
+)
+def test_license_user_case(case: Dict[str, Any]) -> None:
+    # plans/SP-54.md §4: every row verifies on its claims (the member never refuses a
+    # document), then the total reader gives the signed-in subject or none.
+    assert len(_LICENSE_USER_CASES) == 14
+    doc = verify_license_doc(case["jws"], case["trust"], **_doc_kwargs(case))
+    assert doc is not None, f"{case['id']} — {case['description']}"
+    user = license_user(doc)
+    want = case["expect"]["user"]
+    assert (None if user is None else {"subject": user.subject}) == want, case["description"]
+    # The raw payload reads the same as the decoded document.
+    payload = verify_jws(case["jws"], case["trust"], typ=case.get("typ"))
+    assert payload is not None
+    raw = license_user(payload.payload)
+    assert (None if raw is None else {"subject": raw.subject}) == want
+
+
+def test_license_doc_cases_carry_the_three_profile_user_rows() -> None:
+    ids = {c["id"] for c in _LICENSE_DOC_CASES}
+    assert {
+        "license-profile-user-valid",
+        "license-profile-user-not-object",
+        "license-profile-user-extra-members",
+    } <= ids
 
 
 @pytest.mark.parametrize(

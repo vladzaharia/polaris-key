@@ -18,6 +18,15 @@ export {
   type DeviceInfo,
   type SyncState,
 } from "./client.js";
+// Discovery's `core.presentation` (HA-13): the client's `presentation()`, `presentationIcon()`
+// and `presentationSource()`; the parse, pick and verify rules stay in client-core.
+export { type PresentationIconOptions } from "./core/presentation.js";
+export type {
+  PresentationIcon,
+  PresentationIconSize,
+  PresentationSource,
+  ProductPresentation,
+} from "@polaris-key/client-core/presentation";
 
 export {
   CoreContext,

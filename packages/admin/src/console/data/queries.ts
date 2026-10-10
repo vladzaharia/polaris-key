@@ -30,6 +30,12 @@ const product = (slug: string, ...rest: (string | number)[]): QueryKey => [
 
 export const qk = {
   me: (): QueryKey => ["me"],
+  /** ST-29: who can give access to an area in a scope (NoAccessPage). */
+  accessAdmins: (scope: string, area: string): QueryKey => [
+    "access-admins",
+    scope,
+    area,
+  ],
   products: (): QueryKey => ["products"],
   /** Every product's per-service facts (`GET /summary`); no reader since the 2026-10-07 polish. */
   summary: (): QueryKey => ["summary"],

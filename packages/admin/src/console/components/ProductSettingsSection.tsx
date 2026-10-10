@@ -17,71 +17,33 @@
  * read-only and muted and the page's note on what devices do today; a console claim can still be
  * reverted.
  *
- * ST-07's `SettingsRow` v2 (history drawer, pre-save diff) replaces the per-row chrome here.
+ * Each row is the shared `SettingRow` engine (ST-07, `ui/settings/`): value, owner, draft with
+ * "Not saved · was", the confirmation, the version guard with Reload, Revert.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  api,
-  type ProductSetting,
-  type SettingConfirmLevel,
-  type SettingConfirmSpec,
-  type SettingValueSpec,
-} from "../../api.js";
-import { confirmFor } from "../../lib/actions.js";
-import { errorCopy } from "../../lib/errorCopy.js";
-import { Button } from "../../ui/Button.js";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
+import { api, ApiError, type ProductSetting } from "../../api.js";
 import { ErrorState } from "../../ui/ErrorState.js";
-import { NumberInput } from "../../ui/NumberInput.js";
-import { Select } from "../../ui/Select.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge, type Source } from "../../ui/SourceBadge.js";
-import { Switch } from "../../ui/Switch.js";
-import { Textarea } from "../../ui/Textarea.js";
+import { SettingRow } from "../../ui/settings/SettingRow.js";
+import {
+  formatSettingValue,
+  type ValueLabels,
+} from "../../ui/settings/model.js";
 import { toast } from "../../ui/toast.js";
 import { useProduct } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
-import { SettingsRow, SettingsSection } from "../templates/Settings.js";
+import { SettingsSection } from "../templates/Settings.js";
 
 /** Per-setting copy a page supplies: value labels, and what a change to a value means. */
 export interface SettingCopy {
   /** Display labels for enum values (the raw value is shown when absent). */
-  values?: Record<string, string>;
+  values?: ValueLabels;
   /** Extra lines for the confirmation when the setting changes to `to`. */
   consequences?: (to: unknown) => string[];
-}
-
-/** The confirm level a change from `from` to `to` needs (the registry's `confirm`). */
-export function confirmLevel(
-  spec: SettingValueSpec,
-  confirm: SettingConfirmSpec,
-  from: unknown,
-  to: unknown,
-): SettingConfirmLevel {
-  if ("change" in confirm) return confirm.change;
-  if ("on" in confirm)
-    return to === true || to === "on" ? confirm.on : confirm.off;
-  const rank = (v: unknown): number =>
-    spec.kind === "enum" ? spec.values.indexOf(String(v)) : Number(v);
-  return rank(to) > rank(from) ? confirm.up : confirm.down;
-}
-
-/** A value as the console shows it. */
-export function formatSettingValue(
-  spec: SettingValueSpec,
-  value: unknown,
-  copy?: SettingCopy,
-): string {
-  if (spec.kind === "boolean") return value === true ? "On" : "Off";
-  if (spec.kind === "switch") return value === "on" ? "On" : "Off";
-  if (spec.kind === "integer")
-    return `${String(value)} ${spec.unit === "count" ? "" : spec.unit}`.trim();
-  if (spec.kind === "enum")
-    return copy?.values?.[String(value)] ?? String(value);
-  return JSON.stringify(value);
 }
 
 const BADGE: Record<ProductSetting["source"], Source> = {
@@ -90,12 +52,9 @@ const BADGE: Record<ProductSetting["source"], Source> = {
   default: "default",
 };
 
-const INTENT: Record<SettingConfirmLevel, "neutral" | "caution" | "danger"> = {
-  L0: "neutral",
-  L1: "caution",
-  L2: "danger",
-  L3: "danger",
-};
+/** A write refused because the setting changed since the row was read. */
+const isConflict = (e: unknown): boolean =>
+  e instanceof ApiError && e.status === 409;
 
 /** `product:licensing.anchorPolicy` → `.pkey/product`'s `licensing.anchorPolicy`. */
 function manifestFile(path: string | null): string {
@@ -218,195 +177,93 @@ function ProductSettingRow({
   pendingNote?: string;
   onConflict: () => void;
 }): React.ReactElement {
-  const [draft, setDraft] = React.useState<unknown>(s.value);
-  const [confirming, setConfirming] = React.useState(false);
-  const [reverting, setReverting] = React.useState(false);
-  const [reason, setReason] = React.useState("");
-  const controlId = React.useId();
-  // A new value from the server (a save, a revert, a resync) replaces the draft.
-  React.useEffect(() => setDraft(s.value), [s.value, s.version]);
-
-  const dirty = JSON.stringify(draft) !== JSON.stringify(s.value);
-  const level = confirmLevel(s.spec, s.confirm, s.value, draft);
-  const fmt = (v: unknown) => formatSettingValue(s.spec, v, copy);
-
-  const save = async () => {
-    try {
-      const res = await mutate("updateProductSetting", slug, s.key, {
-        value: draft,
-        expectedVersion: s.version,
-        ...(reason.trim() ? { reason: reason.trim() } : {}),
-      });
-      setReason("");
-      toast.success(`${s.label} saved`, {
-        description: res.claimed
-          ? "Set in the console: resyncs leave it alone until you revert it."
-          : undefined,
-      });
-    } catch (e) {
-      onConflict();
-      throw e;
-    }
-  };
-
-  const onSave = () => {
-    if (level === "L0" && !s.critical)
-      void save().catch((e: unknown) => toast.error(errorCopy(e).title));
-    else setConfirming(true);
-  };
-
+  const fmt = (v: unknown) => formatSettingValue(s.spec, v, copy?.values);
   const pendingRow = pendingNote !== undefined;
-  let control: React.ReactNode;
-  if (pendingRow)
-    control = <span className="text-sm text-fg-muted">{fmt(s.value)}</span>;
-  else if (s.spec.kind === "enum")
-    control = (
-      <Select
-        id={controlId}
-        value={String(draft)}
-        onChange={(v) => v !== null && setDraft(v)}
-        options={s.spec.values.map((v) => ({
-          value: v,
-          label: copy?.values?.[v] ?? v,
-        }))}
-        className="min-w-56"
-      />
-    );
-  else if (s.spec.kind === "boolean")
-    control = (
-      <Switch
-        id={controlId}
-        checked={draft === true}
-        onCheckedChange={setDraft}
-        aria-label={s.label}
-      />
-    );
-  else if (s.spec.kind === "integer")
-    control = (
-      <NumberInput
-        id={controlId}
-        value={typeof draft === "number" ? draft : null}
-        onChange={(v) => setDraft(v ?? s.value)}
-        integer
-        min={s.spec.min}
-        max={s.spec.max}
-        unit={s.spec.unit === "count" ? undefined : s.spec.unit}
-        className="w-36"
-      />
-    );
-  else control = <code className="font-mono text-xs">{fmt(s.value)}</code>;
-
-  const revertTarget =
+  const target =
     s.manifestValue !== undefined
       ? `the manifest's value, ${fmt(s.manifestValue)}`
       : `the default, ${fmt(s.defaultValue)}`;
-
+  const claim =
+    linked && s.manifestPath
+      ? [
+          `This claims it from ${manifestFile(s.manifestPath)}: later resyncs leave it alone until you revert it.`,
+        ]
+      : [];
   return (
-    <>
-      <SettingsRow
-        label={s.label}
-        help={
-          pendingRow ? (
-            <>
-              {s.description} <span className="text-fg">{pendingNote}</span>
-            </>
-          ) : (
-            s.description
-          )
-        }
-        htmlFor={pendingRow ? undefined : controlId}
-        source={
-          <SourceBadge
-            source={BADGE[s.source]}
-            path={manifestFile(s.manifestPath)}
-            onRevert={
-              s.source === "console" ? () => setReverting(true) : undefined
+    <SettingRow
+      id={`setting-${s.key}`}
+      settingKey={s.key}
+      label={s.label}
+      help={
+        pendingRow ? (
+          <>
+            {s.description} <span className="text-fg">{pendingNote}</span>
+          </>
+        ) : (
+          s.description
+        )
+      }
+      spec={s.spec}
+      confirm={s.confirm}
+      labels={copy?.values}
+      value={s.value}
+      version={s.version}
+      critical={s.critical}
+      commit="explicit"
+      display={pendingRow ? "text" : "control"}
+      source={
+        <SourceBadge
+          source={BADGE[s.source]}
+          path={manifestFile(s.manifestPath)}
+        />
+      }
+      isConflict={isConflict}
+      reload={async () => onConflict()}
+      consequences={(to) => [...(copy?.consequences?.(to) ?? []), ...claim]}
+      save={(value, ctx) =>
+        mutate("updateProductSetting", slug, s.key, {
+          value,
+          expectedVersion: ctx.expectedVersion,
+          ...(ctx.reason ? { reason: ctx.reason } : {}),
+        })
+      }
+      onSaved={(res) => {
+        const r = res as { claimed?: boolean };
+        toast.success(`${s.label} saved`, {
+          description: r.claimed
+            ? "Set in the console: resyncs leave it alone until you revert it."
+            : undefined,
+        });
+      }}
+      revertPlan={() =>
+        s.source !== "console"
+          ? null
+          : {
+              level: "L1",
+              title: linked
+                ? `Return ${s.label.toLowerCase()} to the manifest?`
+                : `Reset ${s.label.toLowerCase()} to its default?`,
+              consequences: [
+                `${target.charAt(0).toUpperCase()}${target.slice(1)}, replaces ${fmt(s.value)} now.`,
+                ...(linked
+                  ? ["Later resyncs keep it in line with the manifest."]
+                  : []),
+              ],
+              confirmLabel: linked ? "Revert to manifest" : "Reset to default",
+              run: ({ expectedVersion }) =>
+                mutate("revertProductSetting", slug, s.key, {
+                  expectedVersion,
+                }),
+              onDone: (res) => {
+                const r = res as { applied?: boolean };
+                toast.success(
+                  r.applied
+                    ? `${s.label} restored`
+                    : `${s.label} returns to the manifest at the next resync`,
+                );
+              },
             }
-          />
-        }
-        footer={
-          dirty ? (
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setDraft(s.value)}
-              >
-                Discard
-              </Button>
-              <Button size="sm" onClick={onSave}>
-                Save…
-              </Button>
-            </div>
-          ) : undefined
-        }
-      >
-        {control}
-      </SettingsRow>
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={setConfirming}
-        intent={INTENT[level]}
-        title={`Change ${s.label.toLowerCase()} to ${fmt(draft)}?`}
-        consequences={[
-          ...(copy?.consequences?.(draft) ?? []),
-          ...(linked && s.manifestPath
-            ? [
-                `This claims it from ${manifestFile(s.manifestPath)}: later resyncs leave it alone until you revert it.`,
-              ]
-            : []),
-        ]}
-        confirmLabel={`Change ${s.label.toLowerCase()}`}
-        confirmDisabled={s.critical && reason.trim() === ""}
-        describeError={(e) => errorCopy(e)}
-        onConfirm={save}
-      >
-        {s.critical ? (
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-fg-strong">Reason</span>
-            <Textarea
-              value={reason}
-              onValueChange={setReason}
-              maxLength={500}
-              rows={2}
-              placeholder="Why this changes (kept in the activity log)"
-            />
-          </label>
-        ) : null}
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={reverting}
-        onOpenChange={setReverting}
-        intent={confirmFor("manifest.revert").intent as "caution"}
-        title={
-          linked
-            ? `Return ${s.label.toLowerCase()} to the manifest?`
-            : `Reset ${s.label.toLowerCase()} to its default?`
-        }
-        consequences={[
-          `${revertTarget.charAt(0).toUpperCase()}${revertTarget.slice(1)}, replaces ${fmt(s.value)} now.`,
-          ...(linked
-            ? ["Later resyncs keep it in line with the manifest."]
-            : []),
-        ]}
-        confirmLabel={linked ? "Revert to manifest" : "Reset to default"}
-        describeError={(e) => errorCopy(e)}
-        onConfirm={async () => {
-          try {
-            const res = await mutate("revertProductSetting", slug, s.key, {
-              expectedVersion: s.version,
-            });
-            toast.success(
-              res.applied
-                ? `${s.label} restored`
-                : `${s.label} returns to the manifest at the next resync`,
-            );
-          } catch (e) {
-            onConflict();
-            throw e;
-          }
-        }}
-      />
-    </>
+      }
+    />
   );
 }

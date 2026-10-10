@@ -171,7 +171,8 @@ export async function handleLicenseDocument(
       now,
       maxOfflineDays,
     ),
-    profile: docProfile(valid.license),
+    // SP-54 (V4 §2.1): the requesting device's signed-in subject joins the profile, if any.
+    profile: docProfile(valid.license, valid.device),
     entitlements,
   });
 

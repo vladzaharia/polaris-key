@@ -33,11 +33,9 @@ separately, and nothing needs network access to resolve.
 
 Each schema's `$id` is `https://key.plrs.im/docs/schemas/v1/<name>.schema.json` — a real,
 browsable copy of the file, mirrored onto this site's `public/schemas/v1/` at build time from
-the same source. But `key.plrs.im/docs` sits behind the platform-admin session gate
-(`packages/worker/src/docs.ts`); there is no public docs origin. An editor's JSON Schema
-resolver cannot authenticate through that gate, so the `$id` exists for what JSON Schema uses
-`$id` for — a stable, canonical name a schema can `$ref` and a human can cite — and not as
-something a tool should ever try to fetch. Every real consumer (an editor, `pkey init`'s
+the same source, and served publicly with the developer docs. Still, the `$id` exists for what
+JSON Schema uses `$id` for — a stable, canonical name a schema can `$ref` and a human can cite —
+and not as something a tool should ever have to fetch. Every real consumer (an editor, `pkey init`'s
 scaffold headers, the parity test below) reads the file that ships in the npm package, by
 **path**.
 

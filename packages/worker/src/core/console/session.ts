@@ -24,6 +24,7 @@ import { importHmacKey } from "../../platform/hash.js";
 import { signHmacToken, verifyHmacToken } from "../../platform/hmacToken.js";
 import { randomToken } from "../../platform/random.js";
 import { isAdminSessionRevoked } from "./sessionRevocation.js";
+import type { Principal } from "../rbac/can.js";
 
 /**
  * Cookie name for the admin session.
@@ -78,6 +79,12 @@ export interface AdminSession {
    * satisfies `isSteppedUp`.
    */
   stepUpAt?: number;
+  /**
+   * ST-29: the principal the console dispatcher resolved for THIS request (`console/routes.ts`).
+   * Never part of the cookie: `issueSession` does not write it and `verifySession` drops it, so
+   * only the dispatcher sets it, after the cookie verifies. Handlers hand it to `writeSettings()`.
+   */
+  principal?: Principal;
 }
 
 /** I-12 (S-16 §5.4 item 9): the relink tool needs an operator sign-in no older than this. */
@@ -184,6 +191,8 @@ export async function verifySession(
   const session = payload as AdminSession;
   if (typeof session.exp !== "number" || session.exp <= now) return null;
   if (!session.sub || !Array.isArray(session.groups)) return null;
+  // The principal is resolved per request, never carried: a cookie body naming one is ignored.
+  delete session.principal;
   return session;
 }
 

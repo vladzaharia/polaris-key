@@ -173,6 +173,9 @@ describe("the account id never reaches a developer (PX-W17)", () => {
         `/api/products/${slug}/license/licenses/${p.licenseId}`,
         `/api/products/${slug}/license/licenses/${p.licenseId}/devices`,
         `/api/products/${slug}/license/licenses/${p.licenseId}/keys`,
+        // ST-29: the signed-in member's permissions and NoAccessPage's "who can give you access".
+        `/api/me`,
+        `/api/access/admins?scope=product:${slug}&area=license`,
       ]) {
         const res = await handleAdmin(
           new Request(`${ORIGIN}/manage${path}`, {

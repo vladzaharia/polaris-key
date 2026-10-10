@@ -9,6 +9,7 @@ import type { SettingsEnv } from "../src/core/platformSettings.js";
 import { assetSettingsRegistry } from "../src/core/assets/assetSettings.js";
 import { writeSetting } from "../src/core/settings/write.js";
 import { NOW } from "./seed.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 /**
  * HA-10: set one of a product's hosted-asset settings (`assets.releases.mirror`,
@@ -28,6 +29,7 @@ export async function setProductAssetSetting(
     {
       actor: { sub: "admin-1", name: "Ops", email: "ops@example.test" },
       origin: "console",
+      principal: ROOT_PRINCIPAL,
       now: NOW,
       product,
       strict: false,
@@ -52,6 +54,7 @@ export async function setAssetHosting(
     {
       actor: { sub: "admin-1", name: "Ops", email: "ops@example.test" },
       origin: "console",
+      principal: ROOT_PRINCIPAL,
       now: NOW,
       strict: false,
     },

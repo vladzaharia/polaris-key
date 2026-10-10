@@ -120,6 +120,7 @@ __all__ = [
     "DEVICE_LABEL_MAX_CODEPOINTS",
     "REQUEST_HANDLE_PATTERN",
     "REQUEST_HANDLE_TTL_SECONDS",
+    "PAIRWISE_SUBJECT_PATTERN",
     "PRESENTATION_TEXT_MAX_BYTES",
     "PRESENTATION_URL_MAX_BYTES",
     "PRESENTATION_MAX_ICON_SIZES",
@@ -662,6 +663,7 @@ class Feature:
     CORE_COPY: Final = "core.copy"
     CORE_BACKEND: Final = "core.backend"
     LICENSE_GATE: Final = "license.gate"
+    LICENSE_SIGNEDINUSER: Final = "license.signedinuser"
     LICENSE_ACTIVATE: Final = "license.activate"
     LICENSE_ENROLL: Final = "license.enroll"
     LICENSE_DEACTIVATE: Final = "license.deactivate"
@@ -742,6 +744,7 @@ class Feature:
     UI_KIT_ACCOUNT: Final = "ui.kit.account"
     UI_CLI: Final = "ui.cli"
     UI_CLI_MOUNT: Final = "ui.cli.mount"
+    UI_CLI_CONTRACT: Final = "ui.cli.contract"
     UI_GATE: Final = "ui.gate"
     UI_ACTIVATE: Final = "ui.activate"
     UI_SIGNIN: Final = "ui.signin"
@@ -775,6 +778,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "core.copy",
     "core.backend",
     "license.gate",
+    "license.signedinuser",
     "license.activate",
     "license.enroll",
     "license.deactivate",
@@ -855,6 +859,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.kit.account",
     "ui.cli",
     "ui.cli.mount",
+    "ui.cli.contract",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1553,7 +1558,7 @@ PRESENTATION_MATRIX_VERSION: Final[int] = 1
 
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 2
+UI_MATRIX_VERSION: Final[int] = 3
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
@@ -1686,6 +1691,10 @@ REQUEST_HANDLE_PATTERN: Final[str] = "^rq_[A-Za-z0-9_-]{22}$"
 
 #: Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
+
+
+#: Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
+PAIRWISE_SUBJECT_PATTERN: Final[str] = "^ps_[A-Za-z0-9_-]{22}$"
 
 
 #: Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
@@ -1838,7 +1847,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.cache": CapabilityRow("implemented", "core", ()),
         "core.bundle": CapabilityRow("implemented", "core", ()),
         "core.discover": CapabilityRow("implemented", "core", ()),
-        "core.presentation": CapabilityRow("planned", "core", ()),
+        "core.presentation": CapabilityRow("implemented", "core", ()),
         "core.sync": CapabilityRow("implemented", "core", ()),
         "core.local": CapabilityRow("implemented", "core", ()),
         "core.headers": CapabilityRow("implemented", "core", ()),
@@ -1848,6 +1857,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.copy": CapabilityRow("implemented", "sdk", ()),
         "core.backend": CapabilityRow("planned", "license", ()),
         "license.gate": CapabilityRow("implemented", "license", ()),
+        "license.signedinuser": CapabilityRow("implemented", "license", ()),
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
         "license.deactivate": CapabilityRow("implemented", "license", ()),
@@ -1928,6 +1938,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit.account": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.mount": CapabilityRow("planned", "sdk", ()),
+        "ui.cli.contract": CapabilityRow("implemented", "sdk", ()),
         "ui.gate": CapabilityRow("planned", "sdk", ()),
         "ui.activate": CapabilityRow("planned", "sdk", ()),
         "ui.signin": CapabilityRow("planned", "sdk", ()),
@@ -1947,4 +1958,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "c00eee481737af0b49d831c99a5ca4826c33f7fa313243498aa7f7a349846e84"
+CAPABILITY_DIGEST: Final[str] = "2ba5bcbb8c3e52a40407ec45b6afcae219617a6714b836cb6279112adf295918"

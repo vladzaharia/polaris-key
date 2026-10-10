@@ -209,3 +209,52 @@ UK-29, UK-36 and UK-37 extend the kit; HA-14 plugs the Godot presentation into `
 
 The role agent sets `--set UK-11 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-11 done`.
+
+## Progress and continuation (2026-10-10)
+
+Branch `wp/UK-11-godot-kit`. Three slices landed; the package continues from here.
+
+**Done:**
+
+1. **Headless layer** (`sdks/godot/addons/polaris_key/ui/model/`): a GDScript port of ui-core. One
+   view model per §4.1 component (`models.gd`, `view_of(component, input)`), the sign-in form's
+   state machine (`sign_in_session.gd`), the theme resolver (`theme.gd`) and the catalog formatter
+   over brand's `.po` tables (`copy_format.gd`). `suite_ui_core` (in `ci`) runs all ten families of
+   `ui-matrix.json` (460 rows) on 4.7.2 and 4.4.1. The ten `ui.*` rows in `sdks/godot/parity.json`
+   are `implemented` with that proof.
+2. **Phone and copy fixes** from the final5 review: the gate and the activation panel dock their
+   form at the bottom of a phone's page under the product and a lede; Activate stacks under the key
+   field on a phone and wherever the placeholder would not fit beside it; a placeholder that cannot
+   show whole is dropped. Titles step down rather than break a word; button labels wrap rather than
+   widen the view. The key field is visible and private. DL12 weights: headings 600 and the primary
+   500 (`rubik_600.tres`, `rubik_500.tres`). DL16 `ui_reduce_motion` and `ui_reduce_transparency`.
+   DL18 `PKeySettingsPanel.open()`, which the minimal example now uses. The 375 pt and 844x390 pt
+   rows apply to every screen except `HELD_BACK` in `tests/ui/matrix.gd`.
+3. **Docs:** `build/ui/frameworks/godot.mdx`.
+
+**Next, in order:**
+
+1. The landscape phone: bleed the gate card at 844x390 pt (or squeeze it) so `gate.presented_long`,
+   `gate.device_limit` (de) and `gate.unavailable` (de, ja) fit without the scroll fallback in the
+   Polaris Key look, then empty `HELD_BACK`.
+2. A 28 or 36 px game font at 390 pt (add `1170x2532@3` to `HOST_FONT_SIZES`): 18 screens fail,
+   mostly a view wider than the screen (the product header and the sign-in code at host size) and
+   the primary below the fold. The failure list is in the 2026-10-10 run of `ui_matrix`.
+3. Move the drop-in screens onto the view models: each scene renders `view_of()`'s state, copy keys
+   and decisions, and its strings come from `copy_format.gd` with catalog keys instead of
+   `PKeyUiCopy`'s snake_case keys (the acceptance's "every visible string is a catalog key"; the
+   UK-15 string lint). The export filter must then carry `addons/polaris_key/ui/locale/*.po` for
+   games too (the conformance preset already does).
+4. The new scenes on those models: DeviceLimit and Devices on their own, Paywall,
+   `PKeyAccountTab`, CloudSyncStatus, About, Toast and UpdateProgress at `toast_anchor` inside 5 %
+   title-safe, ReleaseNotes.
+5. The modern-game look: glass `PKeySheet` with the scrim and the opaque fallback
+   (`gl_compatibility`, web, `ui_reduce_transparency`); `product.wordmark`, `product.backdrop` and
+   `typography.display`; `PKeyInputGlyphs` and the hint bar with the confirm swap; the console focus
+   ring with glow; Tween motion per SIGN-IN.md §3.18 (instant under `ui_reduce_motion`); the
+   `colorScheme: system` follow (`DisplayServer.is_dark_mode()`); UI sound hooks and haptics;
+   every engine control icon themed (the §7.3 lint); 60 px controls at TV distance.
+6. Baselines: PNGs per `components.json` state, dark and light, at the §7.1 sizes, under
+   `sdks/godot/tests/ui/snapshots/` (promote `tools/ui_screenshots.gd` to a compared suite), and the
+   kit in ui-qa's `BASELINE_DIRS`.
+7. The design review against `godot.html` and the `pkey-ux-reviewer` BUILT review, recorded in the PR.

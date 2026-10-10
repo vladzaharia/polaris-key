@@ -9,7 +9,8 @@ import {
 } from "./common.js";
 import { P13_COUNTS } from "./content-fixture.js";
 import { markerRelease, PACK_PER_CLAIM } from "./packs.js";
-import { record, RECORDS, ROLLOUT_SALT } from "./release-records.js";
+import { LICENSE_USER_CASES_COUNT } from "./license-user.js";
+import { leafDiff, record, RECORDS, ROLLOUT_SALT } from "./release-records.js";
 import {
   claimPathOf,
   ctxOf,
@@ -119,6 +120,13 @@ const JWS_FAMILIES: Record<
     jws: markerRelease(c.marker) ?? "",
     keys: c.releaseKeys,
     typ: "pkey-release+jws",
+    cap: 65536,
+  }),
+  // plans/SP-54.md §4: licence documents read for `profile.user`.
+  licenseUserCases: (c) => ({
+    jws: c.jws,
+    keys: c.trust,
+    typ: c.typ,
     cap: 65536,
   }),
 };
@@ -329,6 +337,7 @@ const FAMILY_CLAIM_KEYS: Record<string, string[]> = {
   revocationCases: ["record"],
   packRecordCases: ["record", "pack", "content"],
   markerCases: ["record", "pack", "content"],
+  licenseUserCases: ["envelope"],
 };
 
 export function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
@@ -347,7 +356,8 @@ export function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
   }
   const counts: Record<string, number> = {
     jwsCases: 85,
-    licenseDocCases: 25,
+    // plans/SP-54.md §4: three `profile.user` acceptance cases appended to the 25.
+    licenseDocCases: 28,
     configDocCases: 21,
     trustCases: 30,
     bundleCases: 23,
@@ -357,6 +367,7 @@ export function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
     revocationCases: P13_COUNTS.revocationCases,
     packRecordCases: 170,
     markerCases: 17,
+    licenseUserCases: LICENSE_USER_CASES_COUNT,
   };
   for (const [family, n] of Object.entries(counts))
     if (corpus[family]!.length !== n)
@@ -526,5 +537,42 @@ export function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
     const text = payloadTextOf(byId.get(id)![1].jws)!;
     for (const t of refNumberTokens(text).values())
       if (!refNumberInRange(t)) fail(`${id}: ${t} out of range`);
+  }
+
+  // plans/SP-54.md §4: every `licenseUserCases` row is the valid row with `profile.user`
+  // changed and nothing else (the no-profile row drops `profile` as a whole), and both ends of
+  // the family are byte-identical to a `licenseDocCases` case.
+  {
+    const payloadOf = (jws: string): unknown =>
+      JSON.parse(payloadTextOf(jws)!) as unknown;
+    const rows = corpus.licenseUserCases!;
+    const valid = rows.find((c) => c.id === "user-valid");
+    if (!valid) fail("licenseUserCases has no user-valid row");
+    const base = payloadOf(valid!.jws);
+    for (const c of rows) {
+      if (c.expect?.accept !== true) fail(`${c.id}: not an accepted document`);
+      const user = c.expect.user;
+      if (
+        user !== null &&
+        JSON.stringify(user) !== JSON.stringify(valid!.expect.user)
+      )
+        fail(`${c.id}: reads a subject other than user-valid's`);
+      const within = c.id === "user-no-profile" ? "/profile" : "/profile/user";
+      const diff = leafDiff(base, payloadOf(c.jws));
+      if (c.id !== "user-valid" && diff.length === 0)
+        fail(`${c.id}: identical to user-valid`);
+      for (const p of diff)
+        if (p !== within && !p.startsWith(`${within}/`))
+          fail(`${c.id}: differs from user-valid at ${p}, outside ${within}`);
+    }
+    const docJws = (id: string): string | undefined =>
+      corpus.licenseDocCases!.find((c) => c.id === id)?.jws;
+    if (valid!.jws !== docJws("license-profile-user-valid"))
+      fail("user-valid is not license-profile-user-valid");
+    if (
+      rows.find((c) => c.id === "user-profile-without-user")?.jws !==
+      docJws("license-valid-control")
+    )
+      fail("user-profile-without-user is not license-valid-control");
   }
 }

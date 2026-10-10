@@ -23,13 +23,19 @@
 import { constantTimeEqual } from "../../platform/compare.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "./passthrough/request.js";
-import { createRemoteJWKSet, jwtVerify } from "jose";
-import { outboundFetch } from "../../core/outboundGuard.js";
 import {
-  ALLOWED_ID_TOKEN_ALGS,
-  ID_TOKEN_CLOCK_TOLERANCE,
-  ID_TOKEN_MAX_AGE,
-} from "./idToken.js";
+  authorizationUrl,
+  checkAuthorizationIss,
+  discover,
+  exchangeCode,
+  issuerRelyingParty,
+  newFlowSecrets,
+  OidcGrantRefusedError,
+  OidcNetworkError,
+  verifyIdToken,
+  type DiscoveredIssuer,
+  type RelyingParty,
+} from "../../core/oidc/client.js";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { ManagedPayload } from "../../core/licensing/payload.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
@@ -50,7 +56,6 @@ import {
   // every sink is a text node or a double-quoted attribute (R9-12), and the bytes are kept.
   escapeHtmlKeepApostrophe as escapeHtml,
 } from "../../platform/html.js";
-import { pkcePair } from "../../platform/pkce.js";
 import {
   PRODUCT_SIGNIN_RETURN_TO,
   safeReturnTo,
@@ -1499,9 +1504,15 @@ async function beginAuthFlow(
       ? platformSignInEndedPage()
       : errorResponse(404, "disabled", "platform sign-in has ended");
   }
-  const state = randomToken(16);
-  const nonce = randomToken(16);
-  const { verifier, challenge } = await pkcePair();
+  // I-30: the one relying-party client discovers the issuer (no hard-coded Pocket ID paths).
+  const rp = legacyRelyingParty(oidc);
+  let discovered: DiscoveredIssuer;
+  try {
+    discovered = await discover(rp);
+  } catch {
+    return errorResponse(502, "oidc_error", "issuer discovery failed");
+  }
+  const { state, nonce, verifier, challenge } = await newFlowSecrets();
   // §R1: the callback moved under the service namespace with the rest of Identity. This is the
   // value the IdP must have REGISTERED — `redirectUriAllowed` below refuses anything else the
   // moment `redirect_uris_json` is set — so an operator upgrading a product with a custom (or
@@ -1534,22 +1545,29 @@ async function beginAuthFlow(
     FLOW_TTL_SECONDS,
   );
 
-  const authorize = new URL(`${oidc.issuer.replace(/\/$/, "")}/authorize`);
-  authorize.searchParams.set("response_type", "code");
-  authorize.searchParams.set("client_id", oidc.clientId);
-  authorize.searchParams.set("redirect_uri", redirectUri);
-  authorize.searchParams.set("scope", "openid email profile groups");
-  authorize.searchParams.set("state", state);
-  authorize.searchParams.set("nonce", nonce);
-  authorize.searchParams.set("code_challenge", challenge);
-  authorize.searchParams.set("code_challenge_method", "S256");
   return {
     ok: true,
     state,
-    authorizeUrl: authorize.toString(),
+    authorizeUrl: authorizationUrl(discovered, rp, {
+      redirectUri,
+      scope: "openid email profile groups",
+      state,
+      nonce,
+      codeChallenge: challenge,
+    }),
     redirectUri,
     ...(binderCookie ? { binderCookie } : {}),
   };
+}
+
+/** The resolved product IdP as a relying party of the one client (its allowlist: the issuer's
+ *  host; a custom issuer already passed `OIDC_ISSUER_ALLOWLIST` in `resolveOidcConfig`). */
+function legacyRelyingParty(oidc: {
+  issuer: string;
+  clientId: string;
+  clientSecret?: string | null;
+}): RelyingParty {
+  return issuerRelyingParty("product-idp", oidc);
 }
 
 /** GET /<product>/identity/auth/start — begin PKCE, redirect to the IdP authorize endpoint. */
@@ -2180,71 +2198,53 @@ export async function handleAuthCallback(
     return platformSignInEndedPage();
   }
 
-  // The issuer is repo-written and this POST carries the client secret, so it goes
-  // through the shared outbound guard (no redirects with the body, timeout, size cap).
-  let tokenRes: { ok: boolean; body: string };
+  // I-30: the one relying-party client. Discovery, the token POST (it carries the client
+  // secret; the issuer may be repo-written) and the JWKS all go through its gated fetch: https,
+  // the issuer's host only, no redirects, a timeout and a byte cap; keys are verified with
+  // `createLocalJWKSet`, and RFC 9207's `iss` is checked when the IdP sends one.
+  const rp = legacyRelyingParty(oidc);
+  let discovered: DiscoveredIssuer;
+  let idToken: string;
   try {
-    const r = await outboundFetch(
-      `${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`,
-      {
-        init: {
-          method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            grant_type: "authorization_code",
-            code,
-            redirect_uri: flow.redirectUri,
-            client_id: oidc.clientId,
-            code_verifier: flow.verifier,
-            ...(oidc.clientSecret ? { client_secret: oidc.clientSecret } : {}),
-          }),
-        },
-      },
-    );
-    tokenRes = { ok: r.status >= 200 && r.status < 300, body: r.body };
+    discovered = await discover(rp);
   } catch {
     await deleteArtefact(env, stateKey);
     return errorResponse(502, "oidc_error", "token exchange failed");
   }
-  if (!tokenRes.ok) {
+  try {
+    checkAuthorizationIss(discovered, url.searchParams.get("iss"));
+  } catch {
+    await deleteArtefact(env, stateKey);
+    return errorResponse(401, "unauthorized", "id token invalid");
+  }
+  try {
+    idToken = (
+      await exchangeCode(discovered, rp, {
+        code,
+        redirectUri: flow.redirectUri,
+        codeVerifier: flow.verifier,
+      })
+    ).id_token;
+  } catch (err) {
     // Delete the flow rather than recording a reason — pollers must not be able to
     // enumerate IdP failure modes (D8). The poll surface returns a generic error.
     await deleteArtefact(env, stateKey);
-    return errorResponse(502, "oidc_error", "token exchange failed");
+    return errorResponse(
+      502,
+      "oidc_error",
+      err instanceof OidcNetworkError || err instanceof OidcGrantRefusedError
+        ? "token exchange failed"
+        : "no id_token",
+    );
   }
-  let tokens: { id_token?: string };
-  try {
-    tokens = JSON.parse(tokenRes.body) as { id_token?: string };
-  } catch {
-    await deleteArtefact(env, stateKey);
-    return errorResponse(502, "oidc_error", "token response invalid");
-  }
-  if (!tokens.id_token) {
-    await deleteArtefact(env, stateKey);
-    return errorResponse(502, "oidc_error", "no id_token");
-  }
-
-  // The JWKS GET carries no secret; jose 5's remote set takes no custom fetch, so it keeps
-  // jose's own fetch (deferred: the guard covers the secret-bearing token POST).
-  const jwks = createRemoteJWKSet(
-    new URL(`${oidc.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
-  );
   let claims: Record<string, unknown>;
   try {
-    const verified = await jwtVerify(tokens.id_token, jwks, {
-      issuer: oidc.issuer,
-      audience: oidc.clientId,
-      algorithms: ALLOWED_ID_TOKEN_ALGS,
-      // Freshness is ours to enforce: `exp` is entirely the IdP's choice, so a token minted
-      // long before this exchange must not be replayable into a sign-in (R8-05d).
-      clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
-      maxTokenAge: ID_TOKEN_MAX_AGE,
-    });
-    claims = verified.payload as Record<string, unknown>;
     // Reject unconditionally on a missing or mismatched nonce — a token with no nonce must
     // never satisfy the binding to this flow (replay / token-injection defense).
-    if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce)
-      throw new Error("nonce mismatch");
+    claims = (await verifyIdToken(discovered, rp, idToken, {
+      audience: oidc.clientId,
+      nonce: flow.nonce,
+    })) as Record<string, unknown>;
   } catch {
     await deleteArtefact(env, stateKey);
     return errorResponse(401, "unauthorized", "id token invalid");

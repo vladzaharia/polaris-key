@@ -38,12 +38,15 @@ export function ProductSwitcher({
   page,
   open,
   onOpenChange,
+  platform = true,
 }: {
   products: ProductLike[];
   current: ProductLike;
   page: ProductPageId;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** ST-29: the member holds the Platform area (its pages and New product). Default: yes. */
+  platform?: boolean;
 }): React.ReactElement {
   const [query, setQuery] = React.useState("");
   React.useEffect(() => {
@@ -188,22 +191,26 @@ export function ProductSwitcher({
               <Boxes aria-hidden className="size-4 shrink-0" />
               All products
             </a>
-            <a
-              href={r.platform()}
-              onClick={() => onOpenChange(false)}
-              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <Server aria-hidden className="size-4 shrink-0" />
-              Platform
-            </a>
-            <a
-              href={r.productNew()}
-              onClick={() => onOpenChange(false)}
-              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <Plus aria-hidden className="size-4 shrink-0" />
-              New product
-            </a>
+            {platform ? (
+              <>
+                <a
+                  href={r.platform()}
+                  onClick={() => onOpenChange(false)}
+                  className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <Server aria-hidden className="size-4 shrink-0" />
+                  Platform
+                </a>
+                <a
+                  href={r.productNew()}
+                  onClick={() => onOpenChange(false)}
+                  className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <Plus aria-hidden className="size-4 shrink-0" />
+                  New product
+                </a>
+              </>
+            ) : null}
           </div>
         </Popover.Content>
       </Popover.Portal>

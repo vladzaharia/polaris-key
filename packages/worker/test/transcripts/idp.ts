@@ -1,13 +1,13 @@
 /// <reference types="@cloudflare/workers-types" />
 // The mocked identity provider the device-code transcripts sign in through (P1b-08).
 //
-// The Worker's `/identity/auth/callback` talks to an IdP twice: it POSTs the authorization code
-// to `<issuer>/api/oidc/token` (plain `fetch`), and it verifies the returned ID token against
-// `<issuer>/.well-known/jwks.json` through jose's `createRemoteJWKSet`, which does NOT go through
-// `globalThis.fetch`. `transcripts.test.ts` therefore swaps only jose's JWKS getter for
-// `idpKeyResolver` below — exactly as `oidcEdge.test.ts` does — while the REAL `jwtVerify` still
-// checks issuer, audience, signature, freshness and nonce, and `answerTokenExchange` stands in
-// for the token endpoint while one callback runs.
+// The Worker's `/identity/auth/callback` talks to an IdP through the one relying-party client
+// (`src/core/oidc/client.ts`, I-30): it discovers the issuer, POSTs the authorization code to the
+// discovered token endpoint (`<issuer>/api/oidc/token`) and verifies the returned ID token against
+// the discovered `<issuer>/.well-known/jwks.json`, all through `globalThis.fetch`. Discovery at
+// the flow's start is answered by the suite's default fetch (`test/setup/oidcClient.ts`);
+// `answerTokenExchange` stands in for the token endpoint and the JWKS while one callback runs,
+// and the REAL `jwtVerify` checks issuer, audience, signature, freshness and nonce.
 //
 // This module must not import `jose` itself: it is loaded from inside the `vi.mock("jose")`
 // factory. It signs with `@polaris-key/jws` (EdDSA, one of `ALLOWED_ID_TOKEN_ALGS`), so an ID
@@ -37,7 +37,15 @@ const IDP_PEM = ed25519Pem("pkey-transcripts:idp");
 
 let publicKey: Promise<CryptoKey> | null = null;
 
-/** What the mocked `createRemoteJWKSet` resolves to: the IdP's public key. */
+/** The IdP's public key as its JWKS document. */
+export function idpJwks(): { keys: Record<string, unknown>[] } {
+  const jwk = createPublicKey(createPrivateKey(IDP_PEM)).export({
+    format: "jwk",
+  }) as Record<string, unknown>;
+  return { keys: [{ ...jwk, kid: IDP_KID, alg: "EdDSA", use: "sig" }] };
+}
+
+/** The IdP's public key, as a CryptoKey. */
 export function idpKeyResolver(): Promise<CryptoKey> {
   publicKey ??= crypto.subtle.importKey(
     "jwk",
@@ -88,6 +96,11 @@ export async function answerTokenExchange<T>(
             : input.url;
       if (url === `${IDP_ISSUER}/api/oidc/token`)
         return new Response(JSON.stringify({ id_token: idToken }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      if (url === `${IDP_ISSUER}/.well-known/jwks.json`)
+        return new Response(JSON.stringify(idpJwks()), {
           status: 200,
           headers: { "content-type": "application/json" },
         });

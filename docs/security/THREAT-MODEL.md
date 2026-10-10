@@ -5335,8 +5335,9 @@ group-assignment mistake on that client crossed from customer to operator (notes
   shows `console_oidc_shared`, naming the admin variables still unset. Until the owner sets them
   the pre-I-03 exposure stands: the residual this package closes only once the secrets are set
   and `/manage/callback` is removed from the platform client (DEPLOYMENT §2).
-- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` in the ID
-  token's `groups` (§5); a product's `adminGroup` grants no console access. A separate client narrows who can obtain a token
+- **Authorisation is unchanged.** Console access is a role `can()` resolves (ST-29, AT-2); today
+  the only source of one is `PLATFORM_ADMIN_GROUP` in the ID token's `groups` (the root rule,
+  §5); a product's `adminGroup` grants no console access. A separate client narrows who can obtain a token
   for the console's audience; it does not change what the token grants. Where Pocket ID can
   restrict a client to user groups, allowing only the admin group on the console client adds a
   second check at the IdP.
@@ -5408,6 +5409,16 @@ directory holds operators only, which closes G5 (operator and customer in one di
   later asserts an address another account uses, `signIn` keeps it on the method as unverified
   (as the gate's `createAccount` does), so no address is verified on two accounts and no licence
   waiting on it moves.
+  - _Since I-30 (plans/I-27.md §2.3)._ The env trio is seeded once as a platform connection, and
+    that row is the only source for the login card and the portal's `/callback`, which now end at
+    the email gate through `beginProviderSignIn`. On those gate paths the narrowed rule applies
+    (`connectionVouchesForEmail`): the connection vouches only for an address inside one of its
+    DNS-verified domains, so until the owner verifies one, a new identity, or an account with no
+    confirmed email, meets one email code at the gate. The legacy product callback
+    (`services/identity/oidc.ts`, the claim above) keeps today's rule
+    (`providerVouchesForEmail({kind: "oidc"})`) until I-32b retires that engine: it has no email
+    gate, and narrowing it there would land each claim on an account with no email (no join
+    offer, a second account, no association of waiting licences).
 - **Licences.** The subject's `sub`-keyed licences attach only through the link it now holds,
   only on products whose provider is `platform` (R5-02), only while floating (an owned licence
   never moves) and only where the product's auto-link resolves on; the portal's link sweep does
@@ -5934,11 +5945,24 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   account only through an existing link, and legacy `sub`-only licences of custom-issuer products
   stay floating (§8 Q6).
 - **The device binding.** `devices.subject` holds the pairwise subject of an account signed in on
-  the device, never the account id, and is never signed. Key entry never sets it. Core's clearing
+  the device, never the account id. Since SP-54 it is signed into the licence document of the
+  device that holds it, as `profile.user.subject` (WIRE-CONTRACT-V4 §2.1), and into no other
+  device's document and no offline bundle. Key entry never sets it. Core's clearing
   hook drops it on sign-out, sign out everywhere, account disable or deletion, per-product removal
   and relink; a plain licence detach does not sign the device out (S-17 §5.8 item 2). Sign-out
   also deauthorizes a device only when the sign-in bound it (`bound_by = 'signin'`) to a licence of
   the signed-out account (§8 Q3).
+- **The signed-in subject in a document (SP-54).** The Worker writes `profile.user` only from the
+  requesting device's binding and only when it wholly matches the pattern; a malformed stored
+  value writes nothing and never fails the route. The member is the subject alone: no name, email
+  or account id (`test/licenseDocUser.test.ts`). A leaked document names that subject, a
+  per-product pseudonym the developer already sees on its own surfaces, beside the holder's name
+  and email it already carried. A signed document cannot be recalled, so sign-out takes effect at
+  the next refresh: a document issued before it keeps naming the subject until it expires, about
+  an hour online and up to `graceUntil` for a device that stays offline. A product backend that
+  requires sign-in accepts such a document until `expiresAt + 300` s (or `maxAgeSeconds + 300`),
+  the same bound as a revoked licence (WIRE-CONTRACT-V4 §14.6). Readers are total (`licenseUserCases`), so a
+  malformed member is no signed-in user, never a refused document.
 - **Migration.** The backfill (`0068_e`) keeps account ids and picks one owner per licence by link
   strength (oidc > email > admin > licence key, then earliest); every other account loses its link,
   is emailed, has its registry tokens for that licence revoked and is listed in the platform audit
@@ -7951,6 +7975,83 @@ A licence's `status` stays `active`/`disabled`; `ended_reason` records why it en
 
 plans/I-27.md §6: one row per threat, each written by the package that builds it.
 
+- **Rogue connection (I-30; I-32 for product scope).** A connection is an upstream OIDC provider
+  the platform signs people in through (`identity_connections`). Only a platform admin creates or
+  changes a platform connection (I-31's console; until then only the `source: env` seed of the
+  `PLATFORM_OIDC_*` trio exists). A product connection is tenant-scoped: it signs in only inside
+  its product (`tenant_scope = product:<slug>`), its issuer must pass `OIDC_ISSUER_ALLOWLIST`, its
+  audience is always `customers` (a table CHECK), and it never vouches for an address, so its
+  identities always meet the email gate's code (`connectionVouchesForEmail`, tests). An operator
+  audience (`operators`, `both`) is a platform connection's only, and a console write of either
+  is refused until ST-32's Superadmin gate; the env seed is exempt.
+- **Domain takeover or lapse (I-30).** A domain counts only once a TXT record at
+  `_pkey-challenge.<domain>` holds `pkey-domain-verification=<token>`, with one random token per
+  connection and domain, so one connection's record proves nothing for another
+  (`services/identity/connections/domains.ts`). Domains are exact: `example.com` never covers
+  `sub.example.com`, `evil-example.com` or `example.com.evil.net`, and a domain or address that is
+  not plain ASCII before it is lower-cased is refused, so a lookalike (the Kelvin sign folds into
+  `k` under `toLowerCase`, a Cyrillic letter, a punycode label) never matches a verified domain.
+  Each `(scope, domain)` has at most one verified owner: a second connection's proof is refused as
+  taken, and a partial unique index backs the rule. The maintenance cron re-checks every verified
+  domain daily: an answer without the token unverifies it at once, and resolver errors keep the
+  state for 72 hours after the last conclusive answer, then unverify it. An unverified domain does
+  not route, vouch or enforce (tests: verified, absent and erroring answers, the 72-hour lapse,
+  takeover with the other connection's record and with its own, subdomain, suffix and homograph).
+  Residual: whoever controls a domain's DNS controls its proof, which is the point; a registrar
+  or DNS-provider compromise is out of scope, and the window after a hostile DNS change is at most
+  one day.
+- **Group and claim injection (I-30; LX-36 and ST-32 read them).** Groups and access-rule claims
+  come only from the claims a connection's claim map names, in an ID token the one client verified
+  (signature, `iss`, exact `aud` and `azp`, nonce, freshness). Groups are capped at 100 names, each
+  a printable name; claims are kept only for the names the map lists under `claims[]`. Both are
+  replaced at every sign-in through the link, in one `UPDATE` (`groups_json`, `claims_json`), and
+  every group or claim rule names its connection, so one IdP's `groups` never satisfies a rule
+  written for another. A connection's `name`, `picture` and `birthdate` feed only the sign-in's
+  imported profile and are never stored on the link.
+- **The rewritten `/callback` (I-30).** Every connection, the env-seeded platform IdP included,
+  finishes at `/callback`, whose flow record (single-use, bound to the starting browser) names the
+  connection. The seeded row first applies I-17's policy (`ended` refuses, `operators-only`
+  refuses an unknown subject); every identity then goes through `beginProviderSignIn`, so an
+  address the connection does not vouch for meets the email gate's code and never lands on an
+  email-less account. Because the seeded row has no verified domain, Pocket ID vouches for no
+  address on the card and `/callback` until a domain is verified: a known link whose account has
+  a confirmed email signs in as before, and anyone else sees one email code (announced in the
+  release notes). The legacy product callback keeps today's rule until I-32b (the I-17 section).
+  The seeded row is the only source for the card and `/callback` from this release: a changed
+  `PLATFORM_OIDC_*` does not rewrite it, and its client secret is sealed under `PLATFORM_KEK` with
+  the AAD `pkey:v2:_platform:identity-connection:<id>`. The session's `amr` is
+  `connection:<id>`.
+- **SSRF (I-30).** Discovery, the JWKS, the token request and the DNS-over-HTTPS lookups all go
+  through the one gated fetch (`core/oidc/client.ts`): `https:` only, no credentials in the URL,
+  the default port only, no private, loopback, link-local or reserved address literal, and a host
+  on the relying party's own allowlist (a connection's issuer host and its configured `jwks_uri`
+  host; `cloudflare-dns.com` alone for domain proofs). A URL inside a discovery document on any
+  other host is refused, not followed; redirects are never followed; bodies are capped and every
+  call has a timeout. Keys are verified with jose's `createLocalJWKSet` over the gated JWKS;
+  `createRemoteJWKSet`, which dialled outside any guard, is gone (a source test). Product issuers
+  are tenant-supplied and must also pass `OIDC_ISSUER_ALLOWLIST`.
+- **Routing enumeration (I-30).** `POST /api/signin/email/start` routes an address to a connection
+  when its domain is verified by an active connection whose audience covers the surface. The
+  answer (`next: {kind: "sso", connection: {id, label}, enforced}`) depends on the domain only,
+  never on whether an account exists (a test compares the bytes for a known and an unknown address
+  in the same domain, routed, enforced and unrouted), and the start keeps its Turnstile check and
+  rate limits. A routed start sends no email until the person picks the code; an enforced domain
+  never gets an email code or magic link, at the start, on resend, or when an earlier code is
+  redeemed after the domain became enforced. What routing reveals is that a domain uses single
+  sign-on, which its verification already made public in DNS.
+
+- **Auto-link through a verified domain (I-30; Owner decisions Q1, 2026-10-08).** The rule "never
+  join by email match" is narrowed to one case (`connections/autoLink.ts`): a sign-in through a
+  PLATFORM connection whose address is inside one of its DNS-verified domains with
+  `email_verified`, for an identity with no link yet, where exactly one active account has
+  verified that exact address. The identity is then linked to that account, every verified
+  address of the account is mailed ("<label> was connected to your Polaris Key account"), and the
+  link is audited (`account.link.auto`). A product connection, an unverified domain, a subdomain or
+  lookalike, an unverified claim, or an address on two accounts never auto-links: those keep the
+  email gate's join offer, with proof of both identities (tests). Residual: the domain's IdP is
+  trusted for its own domain's addresses, which is what verifying the domain asserts; an IdP that
+  mints `email_verified` for an address it does not control can take over that address's account,
+  so only platform admins verify domains, and the mail tells the owner at once.
 - **Birth date (I-33).** `accounts.birthdate` and `birthdate_source` (`accounts/birthdate.ts`).
   Never released to an app, and never stored without the person's acceptance.
   - _Stored only on acceptance._ A connection's mapped `birthdate` claim rides only in the
@@ -7984,9 +8085,9 @@ privacyUrl}` with https URLs reads as unset, and an unreadable store fails the s
   than creating an account without the acceptance published terms require. The acceptance is
   written in the same batch that creates the account, on both new-account paths (a provider's
   first sign-in and a new address's email code), and records the version the gate opened with.
-  Residual: until I-30 sends the platform IdP's `/callback` through the gate and I-32b retires the
-  legacy product callback, those two paths create accounts without the step, so publishing waits
-  for them (docs/RUNBOOK.md).
+  Residual: I-30 sends the platform IdP's `/callback` through the gate (an identity with no
+  account always opens it), so only the legacy product callback still creates accounts without
+  the step until I-32b retires it, and publishing waits for that (docs/RUNBOOK.md).
 
 ### Product backends: `X-PKey-License` (SP-53)
 
@@ -8426,8 +8527,48 @@ Obtain admin authority
 ├── Forge the session cookie ─────────────► needs ADMIN_SESSION_SECRET
 ├── Plant your own session in an operator's browser (login CSRF — no state↔browser binding)
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
-└── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
+├── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
+├── Reach an unguarded route ─────────────► deny-by-default route table; route × principal matrix test (ST-29)
+├── Write a key outside your area ────────► writeSettings() checks can() on the key's rbacArea (ST-29)
+└── Read operator docs without a session ─► the docs tiers: Operate and Contribute stay gated (ST-29)
 ```
+
+**AT-2 amended (ST-29; ST-28 plan §5.3).** Console authority is now a role, and one predicate,
+`can(principal, scope, area, level)` (`core/rbac/can.ts`), decides every admin request. The root
+of it is unchanged: the deploy-time `PLATFORM_ADMIN_GROUP` at the console IdP, read from the
+verified session on every request and stored nowhere, makes the holder a Superadmin (the root
+rule, `core/rbac/principal.ts`). Until ST-30 to ST-32 add bindings and SSO rules it is the only
+source of a role, so every session the callback can mint holds exactly the authority it held
+before. What ST-29 adds:
+
+- **One route table, deny by default.** Every `/manage/api` route is a row of `console/routes.ts`
+  with an area, a level and its step-up. The dispatcher (`console/api.ts`) reads the session
+  (the only caller of `sessionFromRequest`, pinned by `consoleSessionReader.test.ts`), resolves
+  the principal, then runs the limiter, the membership check (a principal with no grant is
+  refused every route before any is matched), CSRF, the match (404, or 405 with `Allow`), one
+  product load, `can()` (a 403 `no_access` naming the scope and area, with the budgeted
+  `access.denied` row on a product) and the step-up, before any handler. The handlers' own
+  "platform admin only" re-checks are gone; `rbacRouteMatrix.test.ts` drives every row with eight
+  principals against a hand-written oracle, with negative controls for no session, no role, the
+  wrong area, a missing or expired step-up and a missing CSRF token.
+- **Areas are stored values.** The thirteen ids are append-only (`rbacAreas.test.ts`), and a
+  route that changes area fails `rbacRouteAreas.test.ts` unless `AREA_MOVES` lists it; a move
+  that rewrites bindings into an existing area is refused (it would widen every holder).
+- **Settings writes check their own area.** Every registry entry declares `rbacArea`, and a
+  security-widening product key is in `keys` (credentials and trust anchors) or `settings`
+  (access policy), never its service's area, so an admin narrowed to one area cannot widen that
+  area's trust through any route. `writeSettings()` refuses a console or revert write that has no
+  principal (fail closed).
+- **The console only reads the answer.** `/me.permissions` is `can()`'s output; `useCan`, the
+  sidebar, the palette and NoAccessPage hide and explain, and decide nothing. `GET
+/access/admins` names up to three people who can give access (name, role, address; never a
+  subject), the same answer for a product that does not exist.
+- **Four product routes were "platform admin only".** `trust-policy`, `outlet-credentials` and
+  `ci-publisher` (and `ci-tokens`) are now product area `keys` (ST-28 Q5, security checklist
+  item 18): a Product admin holding `keys` on that product may write them. Moot while the root
+  rule is the only grant.
+- **Step-up precedes the handler.** A step-up row answers `step_up_required` before the handler's
+  own refusals (deleting the system product asks for the step-up before its 409).
 
 Holding the admin plane must not let the session widen itself or every product at once through a
 setting: the settings registry keeps every widening knob deploy-time at platform scope, and product
@@ -8652,7 +8793,18 @@ CSP's `img-src` widens beyond `'self' data:` and the image host's origin (HA-07)
 backend's verdict (SP-53) reads the licence from `Authorization`, a cookie or a query parameter,
 picks one of several `X-PKey-License` fields, keeps a verified result across a trust-set change or
 past its freshness, logs the header or the holder, gains an anti-replay floor or a proof of
-possession, or widens its window beyond `maxAgeSeconds + 300` s.
+possession, or widens its window beyond `maxAgeSeconds + 300` s; or the licence document's
+`profile.user` (SP-54) carries anything about the account beyond its pairwise subject, is written
+for a device without a binding or into an offline bundle, or a reader of it refuses a document.
+
+For console authority (ST-29): a route is served outside the admin route table, or
+`sessionFromRequest` gains a caller beside the dispatcher; a role or an area is added, or a role
+is added to `can()`'s rules; a route changes area through an `AREA_MOVES` entry that rewrites
+bindings, or any move into an existing area; `products:*` starts covering the system product; a
+security-widening key's `rbacArea` leaves `keys` or `settings`; `writeSettings()` accepts a
+console write without a principal; a docs path under `operate/` or `contribute/`, or the search
+index, becomes public; `GET /access/admins` names a Platform admin, an account id or a product's
+admins to someone without an area of that product.
 
 ### The shared assets root and the docs gate (SEC-WEB-1)
 
@@ -8663,11 +8815,17 @@ dotted path from that root, so `GET /manage/docs/<file>` served gated docs with 
 
 **Control.** `isPublicSpaAssetPath` (`http.ts`) is an allowlist: the proxies fetch only
 `/assets/<literal file>`, and every other path is the SPA shell. Docs are served only by
-`handleDocs`, which checks the admin session first for every path under `/docs`. Tests:
+`handleDocs`. Since ST-29 it serves by tier (`DOCS_TIERS`, docs plan §3.1 and D2): the landing
+page, the developer sections and the site's shared assets need no session; Operate → Console (and
+Help, until the owner's support address exists, D4) need a console member; Operate → Platform,
+Contribute, the search index (one bundle holds every tier's text until DOC-03b splits it) and
+every path no row names need `can(platform, docs)`. The gate runs before anything is fetched. Tests:
 `test/docsGateBypass.test.ts` walks every file in the assembled tree through encoded, cased,
-doubled-slash, traversal, HEAD and Range variants, anonymously (denied) and with an admin
-session (served at `/docs` only).
+doubled-slash, traversal, HEAD and Range variants: a gated file is denied anonymously by every
+route, a public one is served at `/docs` only, and with an admin session every file is served at
+`/docs` only; `test/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES`.
 
 **Residual.** Anything placed under `/assets/` in the admin build is public by design. The
-developer docs become public with DOC-03b; that change flips the gate in `docs.ts`, not this
-allowlist.
+developer door is public since ST-29, and a file under `/docs/_astro/` that only a gated page
+uses (an imported image) is public with it until DOC-03b gives assets their pages' tier; the
+repository that builds them is public too.

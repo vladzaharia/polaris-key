@@ -207,7 +207,8 @@ describe("server-side sign-out", () => {
     const s = await issueSession(env, { sub: "op", groups: [GROUP] }, NOW);
     const docs = () =>
       handleDocs(
-        new Request("https://key.plrs.im/docs/", {
+        // A gated page: Operate → Platform (the landing page is public since ST-29).
+        new Request("https://key.plrs.im/docs/operate/platform/", {
           headers: { cookie: `${ADMIN_COOKIE}=${s.token}` },
         }) as unknown as Request,
         env,

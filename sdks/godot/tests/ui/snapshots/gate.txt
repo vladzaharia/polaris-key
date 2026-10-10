@@ -13,6 +13,7 @@ Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 1]
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Signed out"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -21,6 +22,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 == needs-activation ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -38,6 +40,7 @@ Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "This build is newer than your license allows."
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -50,6 +53,7 @@ Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license doesn't cover this build."
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -72,6 +76,7 @@ Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Checking your lice
 == needs-activation after an error ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -106,6 +111,7 @@ Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key 
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "This build is newer than your license allows."
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Detail: Label "Your license covers versions up to 1.4.0."
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -159,6 +165,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/C
 == needs-activation, presented: Drift Kart's icon ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Drift Kart\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -167,6 +174,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 == needs-activation, presented without an icon ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "D"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Drift Kart\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -175,6 +183,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 == needs-activation, presented, the integrator's name wins ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Tidewater\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -183,6 +192,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 == needs-activation, presented, a long name ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Tidewater Studio Professional Edition for Teams and Classrooms\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -191,6 +201,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 == needs-activation, presented, a right-to-left name ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068סטודיו גל\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Lede: Label "Enter a license key or sign in to continue."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]

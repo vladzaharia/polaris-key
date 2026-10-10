@@ -495,6 +495,7 @@
   "cli.help.options": "选项",
   "cli.help.lede": "{product}许可证与更新",
   "cli.help.more": "运行{command}查看单个命令的选项。",
+  "cli.help.group": "许可证",
   "cli.verb.activate": "添加许可证密钥（提示输入，或通过 stdin）",
   "cli.verb.enroll": "获取免费许可证（如果{product}提供）",
   "cli.verb.deactivate": "停止在此设备上使用你的许可证并释放席位",

@@ -6,6 +6,7 @@
 // @pkey-feature license.reregister devices.register devices.report identity.devicecode config.mint
 // @pkey-feature commerce.receipt license.refusals telemetry.updates
 // @pkey-feature ui.boot release.fetch release.distribution
+// @pkey-feature core.presentation
 //
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
 // device token run through the browser's bearer engine, `BearerSession`
@@ -92,6 +93,10 @@ import type {
   StagedUpdate,
 } from "@polaris-key/protocol/update";
 import { fetchCatalog } from "../src/browser/catalog.js";
+import {
+  BrowserPresentationSource,
+  memoryPresentationCache,
+} from "../src/core/presentation.js";
 import {
   buildDownloadUrl,
   buildInstallUrl,
@@ -295,11 +300,19 @@ async function replay(t: Transcript): Promise<void> {
       { capabilities: belief },
     ).status;
   };
+  // core.presentation (HA-13): the browser adapter's source, fed each discovery as the adapter
+  // feeds it (`loadCapabilities`), with a page-lived cache.
+  const presentation = new BrowserPresentationSource({
+    product: t.product,
+    fetchImpl: () => fetch,
+    cache: memoryPresentationCache(),
+  });
   const discover = async () => {
     const r = await discoverProduct(base);
     if (r.kind === "ok") {
       belief = copyServices(r.services);
       discovered = r.document;
+      await presentation.accept(r.document);
     }
     return r;
   };
@@ -482,6 +495,7 @@ async function replay(t: Transcript): Promise<void> {
         const r = await discover();
         observed.result =
           r.kind === "error" && r.status === 404 ? "not-found" : r.kind;
+        observed.presentation = presentation.current() as JsonValue;
         break;
       }
       case "fetchSchema":
@@ -624,13 +638,11 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // Planned here, so its transcript does not apply: identity.toggle (PX-W17's identity-disabled
     // transcript; React's port is I-10a) and identity.keyentry (PX-W9's three keyentry-*
     // transcripts; React's port is PX-W9b). commerce.receipt is SP-16's, telemetry.updates SP-14's.
-    // core.presentation is HA-12's discovery-presentation transcript; React's port is HA-13.
     // identity.attach and identity.account are I-09's attach, subject and sign-out transcripts
     // (and discovery-identity); React's port is I-10a.
     const plannedHere = [
       "identity.toggle",
       "identity.keyentry",
-      "core.presentation",
       "identity.attach",
       "identity.account",
     ];

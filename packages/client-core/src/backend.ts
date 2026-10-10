@@ -17,10 +17,10 @@ import {
   HEADER_DEVICE,
   HEADER_LICENSE,
 } from "@polaris-key/protocol/core";
-import { PAIRWISE_SUBJECT_PATTERN } from "@polaris-key/protocol/identity";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { CLOCK_SKEW_SECONDS, REFRESH_MARGIN_SECONDS } from "./claims.js";
 import { isUsable, licenseState } from "./gate.js";
+import { licenseUserOf } from "./license.js";
 import { LICENSE_DOC, validateDocClaims } from "./verify.js";
 
 /** The codes a backend answers with (§14.2). `not_entitled` is the existing wire code. */
@@ -132,20 +132,7 @@ export function backendHeaderElements(
 }
 
 const SEGMENTS = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-const SUBJECT = new RegExp(PAIRWISE_SUBJECT_PATTERN);
 const utf8 = new TextEncoder();
-
-/** The private total decoder of `profile.user.subject` (SP-54 replaces it with its reader). */
-function userOf(doc: LicenseDoc): { subject: string } | null {
-  const profile: unknown = doc.profile;
-  if (!isPlainObject(profile) || !hasOwn(profile, "user")) return null;
-  const user = profile.user;
-  if (!isPlainObject(user) || !hasOwn(user, "subject")) return null;
-  const subject = user.subject;
-  return typeof subject === "string" && SUBJECT.test(subject)
-    ? { subject }
-    : null;
-}
 
 function contextOf(
   product: string,
@@ -175,7 +162,8 @@ function contextOf(
           ? { name: profile.name, email: profile.email }
           : null,
     },
-    user: userOf(doc),
+    // §14.2 step 6: SP-54's reader of the signed-in subject (V4 §2.1, §3.2).
+    user: licenseUserOf(doc),
   };
 }
 

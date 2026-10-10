@@ -17,6 +17,7 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
   entries: [
     setting({
       key: "update.metadataAccess",
+      rbacArea: "settings",
       scope: "product",
       service: "update",
       area: "update.access",

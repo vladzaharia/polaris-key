@@ -143,6 +143,8 @@ if TYPE_CHECKING:  # pragma: no cover
         DocProfile,
         LicenseDoc,
         ManagedEntry,
+        SignedInUser,
+        license_user,
     )
     from .core.decide import (
         OutletCapabilities,
@@ -433,6 +435,8 @@ _EXPORTS: Dict[str, Tuple[str, ...]] = {
         "ConfigDoc",
         "DocClaims",
         "DocProfile",
+        "SignedInUser",
+        "license_user",
         "LicenseDoc",
         "ManagedEntry",
         "ChannelFeedDoc",
@@ -908,6 +912,8 @@ __all__ = [
     # models + constants
     "ManagedEntry",
     "DocProfile",
+    "SignedInUser",
+    "license_user",
     "DocClaims",
     "LicenseDoc",
     "ConfigDoc",

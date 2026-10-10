@@ -21,7 +21,7 @@ PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Pol
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license doesn't cover this build."
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
-PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [focus 1]
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/FormTitle: Label "Use another license"
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 3]
@@ -30,7 +30,7 @@ PKeyGate/Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [f
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
-PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [focus 1]
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 3]
 == syncing ==

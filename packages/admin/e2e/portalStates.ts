@@ -97,8 +97,11 @@ async function typeEmail(page: Page, email: string): Promise<void> {
 
 async function openActivate(page: Page): Promise<void> {
   await h1(page, "Your library");
-  // The header action on desktop, the bar's middle pill on a phone: the same name.
+  // The header action on desktop, the bar's middle pill on a phone: the same name. Not the
+  // Library's key tile (PX-27) in the page: on a phone it is first in the document and clicking
+  // it scrolls the page by however far it loaded, so the screenshots would move.
   await page
+    .locator("header, nav[aria-label='Phone']")
     .getByRole("button", { name: /Activate( a)? license|^Activate$/ })
     .first()
     .click();

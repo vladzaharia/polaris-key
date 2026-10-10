@@ -208,6 +208,17 @@ public class CoreContext(options: CoreOptions) {
 
     /** True when the transport refuses to dial (§7.3). */
     public val localOnly: Boolean = transport === NoNetworkTransport
+
+    /**
+     * The product's presentation (`core.presentation`, plans/HA-13.md): the member the last
+     * successful [discover] carried (or the cold-start copy), and its icon, verified and cached under
+     * the store's state directory (`presentation/`). The seam the UI kit reads.
+     */
+    public val presentation: DiscoveryPresentationSource = DiscoveryPresentationSource(
+        product = options.productSlug,
+        directory = { store.stateDirectory?.let { File(it, "presentation") } },
+        transport = transport,
+    )
     private val expectedServices = options.expectedServices
     private val deviceNameOption = options.deviceName
     private val defaultDeviceNameHook: () -> String? = options.defaultDeviceName ?: ::jvmDefaultDeviceName
@@ -299,6 +310,8 @@ public class CoreContext(options: CoreOptions) {
         }
         preferred = channelPreference?.trim()?.takeIf { CHANNEL_PREFERENCE.matches(it) }
         preferenceLoaded = true
+        // An offline start still knows the product: the last member from `presentation.json`.
+        presentation.loadCached()
     }
 
     // ── Identity and credential ────────────────────────────────────────────────────────────
@@ -487,6 +500,8 @@ public class CoreContext(options: CoreOptions) {
                 discoveryDocumentValue = result.document
                 discoveredServices = result.document.servicesMap
             }
+            // No member (or an invalid one) clears the last; a failed discovery keeps it.
+            presentation.accept(result.document.presentation)
         }
         return result
     }

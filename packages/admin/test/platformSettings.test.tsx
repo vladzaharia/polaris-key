@@ -761,7 +761,7 @@ describe("Background jobs", () => {
     const bar = await within(jobs).findByRole("region", {
       name: "Unsaved changes in Lazy delta size cap",
     });
-    await userEvent.click(within(bar).getByRole("button", { name: "Save" }));
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
     expect(await within(jobs).findByText("Use 32 or less.")).toBeTruthy();
     expect(writes(log, "PATCH")).toHaveLength(0);
 
@@ -791,7 +791,7 @@ describe("Background jobs", () => {
     const bar = await within(jobs).findByRole("region", {
       name: "Unsaved changes in Blob collector grace period",
     });
-    await userEvent.click(within(bar).getByRole("button", { name: "Save" }));
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(/unreferenced for 14 days become eligible/),

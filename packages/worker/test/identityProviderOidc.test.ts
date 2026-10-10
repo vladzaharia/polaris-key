@@ -542,7 +542,7 @@ describe("discovery gates (SSRF and the allowlist)", () => {
     expect(providerUrlProblem("https://localhost/token", hosts)).not.toBeNull();
     expect(
       providerUrlProblem("https://appleid.apple.com/auth/token", hosts),
-    ).toBe("host not on the provider allowlist");
+    ).toBe("host not on the allowlist");
     expect(providerUrlProblem("ftp://oauth2.googleapis.com/x", hosts)).toBe(
       "not https",
     );

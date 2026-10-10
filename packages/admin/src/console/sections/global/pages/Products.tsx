@@ -26,6 +26,7 @@ import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { attentionFor } from "../model/attention.js";
 import { runningServices, runsSentence } from "./Home.js";
+import { useWriteGate } from "../../../access/useCan.js";
 
 /** A registry row with what the table derives from it. */
 interface ProductRow {
@@ -195,6 +196,8 @@ const COLUMNS: DataColumn<ProductRow>[] = [
  */
 export function Products(): React.ReactElement {
   const products = useProducts();
+  // ST-29: creating a product is the Platform area's.
+  const create = useWriteGate("platform");
   const [state, setState] = useTableUrlState("products", { facets: FACETS });
   // The console's one resync flow (UX-78): the dry run's plan, then a focused result panel
   // above the table, named for the row's product.
@@ -242,7 +245,7 @@ export function Products(): React.ReactElement {
           }
           refetching={products.isFetching && !products.isPending}
           primaryAction={
-            <Button asChild>
+            <Button asChild disabledReason={create.disabledReason}>
               <Link to={r.productNew()}>
                 <Plus aria-hidden />
                 New product

@@ -1,14 +1,12 @@
 // @pkey-feature ui.cli
 // The Node terminal kit's 0.8.x fixes (UK-45): what a real client's status and roster read as, the
 // key-held login question, discovery before a capability is decided, the update apply next steps,
-// the terminal capability table, a bounded piped key, and the catalog-only strings.
+// a bounded piped key, and the catalog-only strings. The capability table and the real-process
+// stdin cases are the `cli` family's rows now (cliContract.test.ts).
 
 import { closeSync, openSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   activateFlow,
@@ -23,7 +21,6 @@ import {
 } from "../../src/cli/flows.js";
 import { createKitContext } from "../../src/cli/context.js";
 import { statusView, tierName } from "@polaris-key/ui-core/terminal";
-import { detectTerminal } from "../../src/cli/term/caps.js";
 import { KIT_COPY } from "../../src/kitCopy.generated.js";
 import {
   FakeStdin,
@@ -528,231 +525,8 @@ describe("update apply ends in an actionable line", () => {
   });
 });
 
-describe("the terminal capability table", () => {
-  const tty = { isTTY: true, columns: 100, rows: 30, write: () => true };
-  const pipe = { isTTY: false, write: () => true };
-  const term = { TERM: "xterm-256color" };
-
-  /** Environment × streams × flags → colour, unicode, interactive, animate, links (the
-   *  cross-kit table; the Python kit must match each row). */
-  const rows: Array<{
-    name: string;
-    env: Record<string, string>;
-    out: typeof tty | typeof pipe;
-    stdin?: boolean;
-    flags?: { color?: boolean; ascii?: boolean; json?: boolean };
-    expect: {
-      color: string;
-      unicode: boolean;
-      interactive: boolean;
-      animate: boolean;
-      links: boolean;
-    };
-  }> = [
-    {
-      name: "a terminal",
-      env: term,
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: true,
-        animate: true,
-        links: true,
-      },
-    },
-    {
-      name: "CI=true",
-      env: { ...term, CI: "true" },
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: false,
-        animate: false,
-        links: false,
-      },
-    },
-    {
-      name: "CI=0 is not CI",
-      env: { ...term, CI: "0" },
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: true,
-        animate: true,
-        links: true,
-      },
-    },
-    {
-      name: "CI=false is not CI",
-      env: { ...term, CI: "false" },
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: true,
-        animate: true,
-        links: true,
-      },
-    },
-    {
-      name: "GITHUB_ACTIONS",
-      env: { ...term, GITHUB_ACTIONS: "true" },
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: false,
-        animate: false,
-        links: false,
-      },
-    },
-    {
-      name: "BUILDKITE",
-      env: { ...term, BUILDKITE: "true" },
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: false,
-        animate: false,
-        links: false,
-      },
-    },
-    {
-      name: "NO_COLOR keeps links on a terminal",
-      env: { ...term, NO_COLOR: "1" },
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "none",
-        unicode: true,
-        interactive: true,
-        animate: true,
-        links: true,
-      },
-    },
-    {
-      name: "--no-color",
-      env: term,
-      out: tty,
-      stdin: true,
-      flags: { color: false },
-      expect: {
-        color: "none",
-        unicode: true,
-        interactive: true,
-        animate: true,
-        links: true,
-      },
-    },
-    {
-      name: "a pipe",
-      env: term,
-      out: pipe,
-      stdin: false,
-      expect: {
-        color: "none",
-        unicode: true,
-        interactive: false,
-        animate: false,
-        links: false,
-      },
-    },
-    {
-      name: "FORCE_COLOR on a pipe: colour, never links",
-      env: { ...term, FORCE_COLOR: "1" },
-      out: pipe,
-      stdin: false,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: false,
-        animate: false,
-        links: false,
-      },
-    },
-    {
-      name: "animation follows stdout, not stdin",
-      env: term,
-      out: tty,
-      stdin: false,
-      expect: {
-        color: "ansi16",
-        unicode: true,
-        interactive: false,
-        animate: true,
-        links: true,
-      },
-    },
-    {
-      name: "TERM=dumb",
-      env: { TERM: "dumb" },
-      out: tty,
-      stdin: true,
-      expect: {
-        color: "none",
-        unicode: false,
-        interactive: false,
-        animate: false,
-        links: false,
-      },
-    },
-    {
-      name: "--ascii",
-      env: term,
-      out: tty,
-      stdin: true,
-      flags: { ascii: true },
-      expect: {
-        color: "ansi16",
-        unicode: false,
-        interactive: true,
-        animate: true,
-        links: true,
-      },
-    },
-    {
-      name: "--json",
-      env: term,
-      out: tty,
-      stdin: true,
-      flags: { json: true },
-      expect: {
-        color: "none",
-        unicode: true,
-        interactive: false,
-        animate: false,
-        links: false,
-      },
-    },
-  ];
-
-  it.each(rows)("$name", (r) => {
-    const caps = detectTerminal({
-      env: r.env,
-      stdout: r.out,
-      stdin: { isTTY: r.stdin ?? false },
-      flags: r.flags ?? {},
-      platform: "linux",
-    });
-    expect({
-      color: caps.color,
-      unicode: caps.unicode,
-      interactive: caps.interactive,
-      animate: caps.animate,
-      links: caps.links,
-    }).toEqual(r.expect);
-  });
-});
+// The terminal capability table moved to the `cli` family of ui-matrix.json (UK-51), which both
+// kits run: test/cli/cliContract.test.ts.
 
 describe("OSC 11 is asked only when nothing has decided the theme", () => {
   /** A truecolor, interactive terminal; returns what was written to it. */
@@ -909,85 +683,8 @@ describe("no kit string names Polaris Key where the product fits", () => {
   });
 });
 
-describe("activate on a real process's stdin", () => {
-  const tsx = join(HERE, "../../../../node_modules/.bin/tsx");
-  const flow = join(HERE, "stdin-flow.ts");
-  const key = "pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA";
-
-  interface Ran {
-    code: number | null;
-    out: string;
-    ms: number;
-    killed: boolean;
-  }
-  /** Run the program with `stdin` as its stdin; `feed` writes to it. Killed at 15 s. */
-  function run(
-    stdin: "pipe" | number,
-    feed: (w: NodeJS.WritableStream | null) => void = () => undefined,
-  ): Promise<Ran> {
-    return new Promise((resolve) => {
-      const t0 = Date.now();
-      const child = spawn(tsx, [flow], { stdio: [stdin, "pipe", "pipe"] });
-      let out = "";
-      child.stdout!.on("data", (d) => (out += d));
-      let killed = false;
-      const guard = setTimeout(() => {
-        killed = true;
-        child.kill("SIGKILL");
-      }, 15_000);
-      feed(child.stdin);
-      child.on("close", (code) => {
-        clearTimeout(guard);
-        resolve({ code, out, ms: Date.now() - t0, killed });
-      });
-    });
-  }
-
-  it.skipIf(!existsSync(tsx))(
-    "an open, silent pipe ends in no key (exit 2) and the process exits by itself",
-    async () => {
-      // The writer holds its end open and never writes: only the bound can end the wait.
-      const r = await run("pipe");
-      expect(r.killed).toBe(false);
-      expect(r.code).toBe(2);
-      expect(r.out).toContain("No license key arrived on stdin");
-    },
-    30_000,
-  );
-
-  it.skipIf(!existsSync(tsx))(
-    "a key written by a Node parent (a socket) is read, without the writer closing",
-    async () => {
-      const r = await run("pipe", (w) => w!.write(`${key}\n`));
-      expect(r.killed).toBe(false);
-      expect(r.code).toBe(0);
-      expect(r.out).not.toContain("7Q2Mx9cLr4TbV0aZ3WPLDA");
-    },
-    30_000,
-  );
-
-  it.skipIf(!existsSync(tsx))(
-    "a key on a file, and on a shell pipe, is read",
-    async () => {
-      const dir = mkdtempSync(join(tmpdir(), "uk45-"));
-      const file = join(dir, "key");
-      writeFileSync(file, `${key}\n`);
-      const viaFile = spawnSync(tsx, [flow], {
-        input: undefined,
-        stdio: [openSync(file, "r"), "pipe", "pipe"],
-        encoding: "utf8",
-      });
-      expect(viaFile.status).toBe(0);
-      const viaShell = spawnSync(
-        "sh",
-        ["-c", `printf '%s\\n' '${key}' | '${tsx}' '${flow}'`],
-        { encoding: "utf8" },
-      );
-      expect(viaShell.status).toBe(0);
-    },
-    30_000,
-  );
-});
+// The real-process stdin cases (a file, a shell pipe, a Node parent's socket, a silent open pipe,
+// /dev/null) are the `cli` family's `stdin` rows (UK-51): test/cli/cliContract.test.ts.
 
 describe("the pre-kit output (kit: false) prints a value only with --reveal", () => {
   const factory = async () =>

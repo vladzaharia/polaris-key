@@ -7,6 +7,7 @@
  * A source owns its rows and nothing else: it never filters, re-ranks or re-labels another's.
  */
 
+import { canIn, canOpenHref } from "../../access/can.js";
 import { actionsPaletteSource } from "./actions.js";
 import {
   navigationPaletteSource,
@@ -50,6 +51,19 @@ export function usePaletteItems(
   for (const source of PALETTE_SOURCES)
     rows.push(...source.useItems(ctx, query));
   return dedupe([...rows, ...extra]).filter(
-    (i) => !(ctx.slug && i.product?.slug === ctx.slug),
+    (i) => !(ctx.slug && i.product?.slug === ctx.slug) && allowed(ctx, i),
   );
+}
+
+/**
+ * ST-29: a row the member could not use is left out. A link is checked by the page it opens; the
+ * two actions that write without a link by the area they write.
+ */
+function allowed(ctx: PaletteContext, item: PaletteItem): boolean {
+  if (item.href) return canOpenHref(ctx.me, item.href);
+  if (item.id.startsWith("action:turn-on:"))
+    return canIn(ctx.me, "core", ctx.slug, "edit");
+  if (item.id === "action:create-license")
+    return canIn(ctx.me, "license", ctx.slug, "edit");
+  return true;
 }

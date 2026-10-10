@@ -899,6 +899,10 @@ export const IDENTITY_EXPORTS = [
   "REQUEST_HANDLE_TTL_SECONDS",
 ] as const;
 
+/** The signed-in subject's shape every SDK reader matches (WIRE-CONTRACT-V4 §2.1, §3.2,
+ *  plans/SP-54.md; `@polaris-key/protocol/core`). */
+export const SIGNED_IN_EXPORTS = ["PAIRWISE_SUBJECT_PATTERN"] as const;
+
 /** The product-presentation limits every SDK carries (WIRE-CONTRACT-V4 §5.5, plans/HA-12.md
  *  §2.5 and Q6; `@polaris-key/protocol/core`). */
 export const PRESENTATION_EXPORTS = [
@@ -1125,6 +1129,11 @@ export function buildModel(sources: Sources): Model {
         value,
       };
     }),
+    ...SIGNED_IN_EXPORTS.map((name) => ({
+      name,
+      doc: `Signed-in subject: \`${name}\` (WIRE-CONTRACT-V4 §3.2, \`@polaris-key/protocol/core\`).`,
+      value: scalarValue(name, protocol[name]),
+    })),
     ...PRESENTATION_EXPORTS.map((name) => ({
       name,
       doc: `Product presentation: \`${name}\` (WIRE-CONTRACT-V4 §5.5, \`@polaris-key/protocol/core\`).`,

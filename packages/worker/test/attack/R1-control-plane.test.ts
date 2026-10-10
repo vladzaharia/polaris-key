@@ -29,7 +29,7 @@ import {
   issuePortalSession,
   verifyPortalSession,
 } from "../../src/services/identity/portal/session.js";
-import { hasAnyAdminGrant } from "../../src/console/authz.js";
+import { can, PLATFORM, resolvePrincipal } from "../../src/console/authz.js";
 import { hashKey } from "../../src/platform/crypto.js";
 import { listAudit } from "../../src/core/repo.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
@@ -42,6 +42,12 @@ import {
 } from "../../src/services/identity/oidc.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
 import { adminFlowKey } from "../../src/console/auth.js";
+
+/** The console sign-in gate (ST-29): the principal these groups resolve to is a member. */
+async function signInGate(env: Env, groups: string[]): Promise<boolean> {
+  const p = await resolvePrincipal(env, null, { sub: "probe", groups }, NOW);
+  return can(p, PLATFORM, "console", "view");
+}
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -494,12 +500,11 @@ describe("R1-04 audit-write amplification", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    // `hasAnyAdminGrant` (login gate) === `isPlatformAdmin` (product gate), so no session
-    // that the OIDC callback can mint today can ever reach the audited 403 branch. Since the
-    // per-product scaffolding was deleted, that is now visible in the SIGNATURES: neither
-    // predicate accepts a product argument at all.
-    expect(hasAnyAdminGrant(env, ["djdl-admins"])).toBe(false);
-    expect(hasAnyAdminGrant(env, [PLATFORM_GROUP])).toBe(true);
+    // The login gate and the product gate are one `can()` over one principal, and today the only
+    // grant is the root rule (ST-29), so no session the OIDC callback can mint can reach the
+    // audited 403 branch: a member without the group is no member at all.
+    expect(await signInGate(env, ["djdl-admins"])).toBe(false);
+    expect(await signInGate(env, [PLATFORM_GROUP])).toBe(true);
     // Unauthenticated requests are rejected before any D1 write.
     const before = (await listAudit(db, "djdl", {})).length;
     for (let i = 0; i < 5; i++) {
@@ -875,11 +880,11 @@ describe("REFUTED hypotheses", () => {
     const env = adminEnv(new KvMock());
     delete (env as { PLATFORM_ADMIN_GROUP?: string }).PLATFORM_ADMIN_GROUP;
     await seedProduct(db, "djdl");
-    expect(hasAnyAdminGrant(env, [PLATFORM_GROUP])).toBe(false);
-    expect(hasAnyAdminGrant(env, [""])).toBe(false);
+    expect(await signInGate(env, [PLATFORM_GROUP])).toBe(false);
+    expect(await signInGate(env, [""])).toBe(false);
 
     env.PLATFORM_ADMIN_GROUP = "";
-    expect(hasAnyAdminGrant(env, [""])).toBe(false);
+    expect(await signInGate(env, [""])).toBe(false);
 
     // A session forged with an empty group still fails the product gate.
     env.PLATFORM_ADMIN_GROUP = "";

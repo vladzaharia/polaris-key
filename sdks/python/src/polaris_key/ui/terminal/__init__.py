@@ -14,6 +14,9 @@ layers, as in every kit (§1.3):
 * **(c) headless models** (``polaris_key.ui.core.models``): SDK results in, a component and a
   state out.
 
+The exit codes are :data:`EXIT` (:mod:`.exit`): the ``cli`` family's table in the corpus's
+``ui-matrix.json``, as the Node kit's ``EXIT``.
+
 Colour is ANSI-16 for status roles, truecolor only for the product accent; ``NO_COLOR``, pipes and
 ``TERM=dumb`` get plain lines. rich (``pip install polaris-key[cli]``) renders when installed;
 without it the kit writes the same bytes itself. The optional Textual app is
@@ -25,12 +28,14 @@ from __future__ import annotations
 from . import flows, screens
 from .device import Device, rich_available
 from .env import TermEnv, detect
+from .exit import EXIT
 from .flows import JSON_VERSION, Outcome, Terminal
 from .parts import Kit
 from .text import Line, Palette, Span, to_ansi
 
 __all__ = [
     "Device",
+    "EXIT",
     "JSON_VERSION",
     "Kit",
     "Line",

@@ -1,9 +1,14 @@
 import * as React from "react";
+import { Trash2 } from "lucide-react";
 import { errorCopy } from "../../lib/errorCopy.js";
+import { Button } from "../../ui/Button.js";
 import { confirmFor } from "../../lib/actions.js";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
 import { toast } from "../../ui/toast.js";
 import { mutate } from "../data/mutations.js";
+import { useWriteGate } from "../access/useCan.js";
+import { navigate } from "../router.js";
+import { r } from "../routes.js";
 
 /**
  * Delete product: the console's one L3 confirmation for it (ADMIN.md §5.2), shared by the
@@ -55,5 +60,41 @@ export function DeleteProductDialog({
         onDeleted?.(slug);
       }}
     />
+  );
+}
+
+/**
+ * The product Settings danger zone's "Delete product…" and its dialog. ST-29: deleting a product
+ * is the Settings area's (and a step-up route); a member without the area sees the button
+ * disabled, its reason naming who can delete it.
+ */
+export function DeleteProductAction({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: { slug: string; name: string };
+}): React.ReactElement {
+  const [open, setOpen] = React.useState(false);
+  const gate = useWriteGate("settings", slug);
+  return (
+    <>
+      <Button
+        variant="danger"
+        iconStart={<Trash2 aria-hidden />}
+        disabledReason={gate.disabledReason}
+        onClick={() => setOpen(true)}
+      >
+        Delete product…
+      </Button>
+      {/* One wording and one guard for Delete product, here and in the Products registry. It
+          sends the typed slug as `confirmSlug`. */}
+      <DeleteProductDialog
+        product={product}
+        open={open}
+        onOpenChange={setOpen}
+        onDeleted={() => navigate(r.home())}
+      />
+    </>
   );
 }

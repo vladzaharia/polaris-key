@@ -77,6 +77,9 @@ export interface BridgeState {
   /** v4 (`config.local`): the host's persisted device-local overrides,
    *  `client.config.localValues()`. Absent ⇒ the renderer keeps what it last knew. */
   localConfig?: Record<string, JSONValue>;
+  /** Discovery's `core.presentation` as the host's Node client holds it
+   *  (`client.presentation()`), null for none. Absent ⇒ an older host: no presentation. */
+  presentation?: unknown;
 }
 
 /** The result of a desktop OIDC begin — a verification URL/code to render while polling. */

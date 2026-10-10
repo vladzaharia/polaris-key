@@ -81,6 +81,7 @@ byte-identical, and the surfaces v3 introduced speak the nested shape from their
     "firstName": "Ada",
     "email": "ada@example.com",
     "activatedAt": 1750000000,
+    "user": { "subject": "ps_4Xv9Lk2QmT7bNc0RfYp8Zw" }, // only while an account is signed in here
   },
   "entitlements": {
     "…": { "state": "enforced", "value": "…", "updatedAt": 0 },
@@ -121,6 +122,16 @@ personalised, tamper-proof welcome with no network. It tolerates an anonymous li
 special-casing the document shape.
 
 This is `DocProfile`, and it is **not** the reusable managed-payload profile a tier attaches.
+
+The name and email are the **license holder's**. `user` is the person signed in **on this
+device**: the pairwise subject of the account whose sign-in bound it, and nothing else about that
+account. It is present only while an account is signed in on the requesting device, so a device
+activated by key, an enrolled device, a signed-out device and every offline bundle get no `user`.
+It appears at the first refresh after a sign-in and is gone from the first one after sign-out.
+
+A verifier never checks `profile`'s members, so a document with `user` verifies wherever one
+without it does. Read it with `licenseUserOf(doc)` from `@polaris-key/client-core`, which returns
+`{ subject }` or `null` and never throws. A malformed member reads as `null`.
 
 ### `entitlements`
 

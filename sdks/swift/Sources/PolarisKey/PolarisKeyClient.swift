@@ -343,6 +343,22 @@ public actor PolarisKeyClient {
         await core.discover()
     }
 
+    // ── Presentation (plans/HA-13.md) ────────────────────────────────────────────────────
+    /// The product's presentation from discovery (`core.presentation`: name, developer, accents,
+    /// icon), or nil when discovery carried none or has not run (the last member is loaded from
+    /// disk at `start()`). Display data only: the integrator's theme always wins over it.
+    public nonisolated var presentation: Presentation? { core.presentationSource.current() }
+
+    /// The verified icon for a hero drawn at `points` on a `scale` screen, or nil (no member, no
+    /// icon, nothing decodable here, or a fetch or hash that failed: the kit then shows its
+    /// fallback). Cached by hash; never sends a credential.
+    public nonisolated func presentationIcon(points: Double, scale: Double = 1) async -> Data? {
+        await core.presentationSource.icon(px: points, scale: scale)
+    }
+
+    /// The seam the UI kits read: `current()`, `icon(px:scale:)` and `subscribe(_:)`.
+    public nonisolated var presentationSource: any PresentationSource { core.presentationSource }
+
     /// What this client currently believes the product runs.
     public func capabilities() async -> ServicesMap {
         await core.services()

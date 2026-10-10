@@ -6,6 +6,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage
+// @pkey-feature core.presentation
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -38,6 +39,9 @@
 // earlier call would have left (the payload's first bytes in `<to>.part` and the build route's ETag,
 // the quoted SHA-256, beside it), so the SDK resumes with Range and If-Range. `downloadModel` is
 // `client.distribution.thisPlatform(initial.platform)`.
+//
+// `discover` also reports `presentation`, the member `client.presentation()` exposes after it (null
+// when the document carries none: the client drops what it showed rather than keep a stale one).
 //
 // `chunkRange` (P4-32, plans/P4-32.md §5) is `chunkRangeFetch` over the packs facet's own object
 // fetch (`client.packs`'s private `fetchObject`, reached by reflection as the Node replayer reaches
@@ -202,14 +206,18 @@ object KotlinReplay {
                     out["code"] = JsonPrimitive(e.code)
                 }
             }
-            "discover" -> out["result"] = JsonPrimitive(
-                when (client.discover()) {
-                    is DiscoveryResult.Ok -> "ok"
-                    DiscoveryResult.NotFound -> "not-found"
-                    is DiscoveryResult.Invalid -> "invalid"
-                    is DiscoveryResult.Error -> "error"
-                },
-            )
+            "discover" -> {
+                out["result"] = JsonPrimitive(
+                    when (client.discover()) {
+                        is DiscoveryResult.Ok -> "ok"
+                        DiscoveryResult.NotFound -> "not-found"
+                        is DiscoveryResult.Invalid -> "invalid"
+                        is DiscoveryResult.Error -> "error"
+                    },
+                )
+                // core.presentation: the member the client now exposes (null when it went away).
+                out["presentation"] = client.presentation()?.toJson() ?: JsonNull
+            }
             "sync" -> {
                 val r = client.sync(force = args["force"].boolValue == true)
                 out["applied"] = JsonPrimitive(r.applied)

@@ -509,6 +509,7 @@ export type KitCopyKey =
   | "cli.help.options"
   | "cli.help.lede"
   | "cli.help.more"
+  | "cli.help.group"
   | "cli.verb.activate"
   | "cli.verb.enroll"
   | "cli.verb.deactivate"

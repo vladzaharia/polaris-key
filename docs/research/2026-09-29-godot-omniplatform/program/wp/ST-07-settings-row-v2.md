@@ -94,8 +94,8 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ## Acceptance criteria
 
-- [ ] Unit and a11y tests pass.
-- [ ] Visual baselines exist for both themes and phone width.
+- [x] Unit and a11y tests pass.
+- [x] Visual baselines exist for both themes and phone width. (Real-browser renders of the kit gallery's T4 settings story, dark and light at 1440 and 390: default, changed, locked, error, invalid, conflict, reloaded, confirm. No console or portal baseline changed.)
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
@@ -111,3 +111,16 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 The role agent sets `--set ST-07 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-07 done`.
+
+## Build notes (ST-07)
+
+- Corrections to the brief: there was no `ui/settings/` and no `useSettingWrite`; the row logic was
+  duplicated in `ProductSettingsSection` and `platformSettings.tsx`. The engine now lives in
+  `packages/admin/src/ui/settings/` (`model`, `useSettingWrite`, `SettingRow`, `SettingsRow` layout,
+  history drawer, conflict note). Both scopes use it; the duplicated `confirmLevel` and
+  `formatSettingValue` are deleted. `templates/Settings.tsx` re-exports the layout row.
+- One source vocabulary in `SourceBadge`, neutral ink (B17); `platform` and `derived` added.
+- Not done, no owner in this package: read-only through `useCan` with Request access (no permission
+  hook exists yet; rows take `locked` and `lockedAction` slots for it, ST-29/ST-48); a product-scope
+  history drawer (no per-setting history API; platform rows have one from `platform_audit`).
+- Save reads "Save…" when a confirmation follows and "Save" when it does not.

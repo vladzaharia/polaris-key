@@ -86,13 +86,12 @@ import {
   parseFingerprintPolicy,
 } from "../../core/fingerprint.js";
 import { audit, platformAudit } from "../../core/console/audit.js";
-import { isPlatformAdmin } from "../authz.js";
+import { canSeeProduct } from "../authz.js";
 import { requireStepUp } from "../stepUp.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   err,
-  forbidden,
   notFound,
   readBody,
   settingRefused,
@@ -159,13 +158,13 @@ export async function handleProducts(
   segments: string[],
   now: number,
 ): Promise<Response> {
-  // /api/products/slug-check — W24. Before the platform-admin gate: anyone may fill in the New
-  // Product wizard (F16), and whether a slug is taken is already public (`/<slug>/.well-known/
+  // ST-29: the route table (`console/routes.ts`) has checked each route's area before routing
+  // here: the product list is any member's (and filtered below), creating, linking, the slug check
+  // and the KEK keyring are `platform`, and `/products/<slug>` is that product's.
+
+  // /api/products/slug-check — W24: whether a slug is taken is already public (`/<slug>/.well-known/
   // polaris.json` answers for every product).
   if (segments.length === 1 && segments[0] === "slug-check") {
-    // The CURRENT platform group, not whatever the cookie was minted with.
-    if (!isPlatformAdmin(env, session))
-      return forbidden("platform admin required");
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     const slug = (new URL(req.url).searchParams.get("slug") ?? "").trim();
@@ -175,9 +174,6 @@ export async function handleProducts(
       });
     return adminJson(await checkSlug(db, slug));
   }
-
-  if (!isPlatformAdmin(env, session))
-    return forbidden("platform admin required");
 
   // /api/products/kek — the platform KEK keyring. Like `link-repo` below, this is a reserved
   // one-segment ACTION, not a product slug, and is matched before the slug lookup. A new action
@@ -270,7 +266,9 @@ export async function handleProducts(
   // /api/products
   if (segments.length === 0) {
     if (req.method === "GET") {
-      const rows = await listProducts(db);
+      const rows = (await listProducts(db)).filter((row) =>
+        canSeeProduct(session.principal, row),
+      );
       // Every product's logo in one statement, not one per product.
       const icons = await productIcons(env, db);
       return adminJson({
@@ -445,6 +443,7 @@ export async function handleProducts(
           email: session.email ?? null,
         },
         origin: "console",
+        principal: session.principal,
         now,
         product: row,
         // A bespoke route (ST-05 makes it an alias of the generic API): no version in its
@@ -1304,11 +1303,17 @@ async function handleClaimRevert(
       email: session.email ?? null,
     },
     now,
+    session.principal,
   );
   if (!result.ok)
-    return err(result.status, ErrorCode.BadRequest, result.message, {
-      reason: result.reason,
-    });
+    return err(
+      result.status,
+      result.status === 403 ? ErrorCode.Forbidden : ErrorCode.BadRequest,
+      result.message,
+      {
+        reason: result.reason,
+      },
+    );
   return adminJson(
     result.applied
       ? { ok: true, key, applied: true, value: result.value }

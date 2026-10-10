@@ -67,6 +67,7 @@ import {
 import { listAudit, setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { reportOnCopy } from "../scripts/grace-clamp-report.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 const SLUG = "djdl";
 const DAY = 86_400;
@@ -81,7 +82,14 @@ async function setClamp(db: Db, on: boolean, product = SLUG): Promise<void> {
   const out = await writeSetting(
     { env: {}, db, registry: SETTINGS },
     { key: CLAMP_GRACE_SETTING, value: on },
-    { actor: ACTOR, origin: "console", now: NOW, product, strict: false },
+    {
+      actor: ACTOR,
+      origin: "console",
+      principal: ROOT_PRINCIPAL,
+      now: NOW,
+      product,
+      strict: false,
+    },
   );
   expect(out).toMatchObject({ ok: true });
 }

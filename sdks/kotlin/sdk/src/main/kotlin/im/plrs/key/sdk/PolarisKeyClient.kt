@@ -481,6 +481,27 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
     public suspend fun discover(): DiscoveryResult = core.discover()
 
+    // ── Presentation (core.presentation, plans/HA-13.md) ────────────────────────────────────────
+    /**
+     * The product's presentation seam (client-core's `PresentationSource`): the UI kit reads it
+     * (`PolarisTheme(presentation = client.presentationSource)`) and never fetches discovery or the
+     * icon itself.
+     */
+    public val presentationSource: im.plrs.key.core.PresentationSource get() = core.presentation
+
+    /**
+     * Discovery's `core.presentation`, normalised: the product's name, developer, accents and icon,
+     * from the last successful [discover] (or the copy a cold start read back), or null. Unsigned
+     * display data: an integrator's own name, logo or accent always wins over it in the kit.
+     */
+    public fun presentation(): im.plrs.key.core.Presentation? = core.presentation.current()
+
+    /**
+     * The verified icon's bytes for a hero drawn at [px] points on a [scale] screen (the platform's
+     * density), or null; fetched once, SHA-256 checked and cached by hash. Never throws.
+     */
+    public suspend fun presentationIcon(px: Double, scale: Double = 1.0): ByteArray? = core.presentation.icon(px, scale)
+
     /** What this client currently believes the product runs. */
     public suspend fun capabilities(): ServicesMap = core.services()
 

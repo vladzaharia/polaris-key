@@ -665,6 +665,12 @@ describe("the Worker reads the birth date in the person's own paths only", () =>
       "services/identity/card/gate.ts",
       "services/identity/card/profile.ts",
       "services/identity/portal/profile.ts",
+      // I-30: the seam's other side. A connection's claim map may name a `birthdate` claim
+      // (core/oidc/connections.ts); /callback reads it into FinishStep's offer only
+      // (connections/claims.ts, portal/auth.ts), never onto the link.
+      "core/oidc/connections.ts",
+      "services/identity/connections/claims.ts",
+      "services/identity/portal/auth.ts",
     ]);
     const src = join(WORKER, "src");
     const walk = (dir: string): string[] =>

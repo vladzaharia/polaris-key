@@ -519,6 +519,7 @@ public object Feature {
     public const val coreCopy: String = "core.copy"
     public const val coreBackend: String = "core.backend"
     public const val licenseGate: String = "license.gate"
+    public const val licenseSignedinuser: String = "license.signedinuser"
     public const val licenseActivate: String = "license.activate"
     public const val licenseEnroll: String = "license.enroll"
     public const val licenseDeactivate: String = "license.deactivate"
@@ -599,6 +600,7 @@ public object Feature {
     public const val uiKitAccount: String = "ui.kit.account"
     public const val uiCli: String = "ui.cli"
     public const val uiCliMount: String = "ui.cli.mount"
+    public const val uiCliContract: String = "ui.cli.contract"
     public const val uiGate: String = "ui.gate"
     public const val uiActivate: String = "ui.activate"
     public const val uiSignin: String = "ui.signin"
@@ -632,6 +634,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "core.copy",
     "core.backend",
     "license.gate",
+    "license.signedinuser",
     "license.activate",
     "license.enroll",
     "license.deactivate",
@@ -712,6 +715,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.kit.account",
     "ui.cli",
     "ui.cli.mount",
+    "ui.cli.contract",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1318,7 +1322,7 @@ public const val DEVICE_LABEL_VERSION: Int = 1
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-public const val UI_MATRIX_VERSION: Int = 2
+public const val UI_MATRIX_VERSION: Int = 3
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 public const val BACKEND_MATRIX_VERSION: Int = 1
@@ -1418,6 +1422,9 @@ public const val REQUEST_HANDLE_PATTERN: String = "^rq_[A-Za-z0-9_-]{22}\$"
 
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
+
+/** Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`). */
+public const val PAIRWISE_SUBJECT_PATTERN: String = "^ps_[A-Za-z0-9_-]{22}\$"
 
 /** Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
 public const val PRESENTATION_TEXT_MAX_BYTES: Int = 1024
@@ -1526,7 +1533,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.cache" to CapabilityRow("implemented", "core", listOf()),
     "core.bundle" to CapabilityRow("implemented", "core", listOf()),
     "core.discover" to CapabilityRow("implemented", "core", listOf()),
-    "core.presentation" to CapabilityRow("planned", "core", listOf()),
+    "core.presentation" to CapabilityRow("implemented", "core", listOf()),
     "core.sync" to CapabilityRow("implemented", "core", listOf()),
     "core.local" to CapabilityRow("implemented", "core", listOf()),
     "core.headers" to CapabilityRow("implemented", "core", listOf()),
@@ -1536,6 +1543,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.copy" to CapabilityRow("implemented", "sdk", listOf()),
     "core.backend" to CapabilityRow("planned", "license", listOf()),
     "license.gate" to CapabilityRow("implemented", "license", listOf()),
+    "license.signedinuser" to CapabilityRow("implemented", "license", listOf()),
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
     "license.deactivate" to CapabilityRow("implemented", "license", listOf()),
@@ -1616,6 +1624,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.kit.account" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.cli.mount" to CapabilityRow("planned", "sdk", listOf(CapabilityNa("android", "runtime"))),
+    "ui.cli.contract" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.gate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.activate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.signin" to CapabilityRow("planned", "sdk", listOf()),
@@ -1634,4 +1643,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "4cd3437189744b9bbbc09a3e650d22d6f7f527239e44d5d2d1bcd8d2954b514e"
+public const val CAPABILITY_DIGEST: String = "fc00ce79414b1b71e9fb53c20a06f9bd0f277ba397cdb9b2607038e5ee5ad85c"

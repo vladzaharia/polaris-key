@@ -1807,6 +1807,48 @@
       "description": "V4 §3 minimums: `expiresAt` −1, with the control's `issuedAt` and `graceUntil`, on the reload path.",
       "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjotMSwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwibGljZW5zZUlkIjoibGljXzNmOGE5YiIsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImFjdGl2YXRlZEF0IjoxNjkwMDAwMDAwfSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.KuJxeUgC4KMmMS5E_Q-cFOwyYrjjVFJ_snJUX3j3TaDVuXhQfgIE5t4JBaV3d1iWjUgj3AL73GKbZXPBjh-qBA",
       "expect": { "accept": false }
+    },
+    {
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "id": "license-profile-user-valid",
+      "description": "V4 §2.1 (SP-54): `profile.user` names the pairwise subject signed in on the device. A verifier never checks it (§3.2), so a document that carries it verifies exactly as the control does.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WncifX0sImVudGl0bGVtZW50cyI6eyJsaWNlbnNlLnRpZXIiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoicHJvIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX19.MBRAOrucavzVcdDjQOHQF5GN4VYubimoNw-6ih0PWmHhOVScckpQqXECsVkXWyaoisH3OSIqsiiNf_sfU78oDg",
+      "expect": { "accept": true }
+    },
+    {
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "id": "license-profile-user-not-object",
+      "description": "V4 §3.2: `profile.user` as a bare string, not an object. Nothing inside `profile` is a claim, so the document still verifies; the member simply reads as no signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOiJwc180WHY5TGsyUW1UN2JOYzBSZllwOFp3In0sImVudGl0bGVtZW50cyI6eyJsaWNlbnNlLnRpZXIiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoicHJvIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX19.1d-hh55R9KzdNxawn8hstzp-6CkNah_1iCmRhr0ZQGMrJE460NSoRSURgwuLqGaq7J6FjVph88HI-O8C3zQdDg",
+      "expect": { "accept": true }
+    },
+    {
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "id": "license-profile-user-extra-members",
+      "description": "V4 §3.2: `profile.user` with members beside `subject`. A later Worker may add some; a verifier ignores them and accepts the document.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WnciLCJmdXR1cmUiOnsibWVtYmVyIjp0cnVlfSwidGFnIjoieCJ9fSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.81U7rPAlVVBUzdJKXJiQvrQusBy2ZgCWQu2z8TMfiNSexxaDu1leaMyZ08ef28h7-t_YHWWX4e1WAm77CUGRDw",
+      "expect": { "accept": true }
     }
   ],
   "configDocCases": [
@@ -18801,6 +18843,210 @@
       "expect": {
         "verify": "ok",
         "content": { "packSets": null, "packFloors": null, "revocations": null }
+      }
+    }
+  ],
+  "licenseUserCases": [
+    {
+      "id": "user-valid",
+      "description": "The control: `profile.user` is an object whose `subject` wholly matches `^ps_[A-Za-z0-9_-]{22}$`, so the device's signed-in account reads as that subject.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WncifX0sImVudGl0bGVtZW50cyI6eyJsaWNlbnNlLnRpZXIiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoicHJvIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX19.MBRAOrucavzVcdDjQOHQF5GN4VYubimoNw-6ih0PWmHhOVScckpQqXECsVkXWyaoisH3OSIqsiiNf_sfU78oDg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": {
+        "accept": true,
+        "user": { "subject": "ps_4Xv9Lk2QmT7bNc0RfYp8Zw" }
+      }
+    },
+    {
+      "id": "user-no-profile",
+      "description": "No `profile` at all (V4 §3.2: absent or an object). A document without a profile names no signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.pW-MlWeJFgaW3D82z1ZpqFSVamd9iZt8FLjtwHbQrLK403qrCBQuIoXQPzMHS6OQNeHypwGCUUskzYEOz_G0Bg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-profile-without-user",
+      "description": "A `profile` without `user`: what the Worker signs for a key-entry or open-enrolment device, and in every offline bundle. No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.9W90kkX4A3UnLrTEy4gc2GDCLoM5btUMXq59TrSi_8DH3oosdRDXWLNazImNe7xdctUueHEkRZbOpAJ94Vc2Bw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-null",
+      "description": "`profile.user` is `null`. The document verifies (nothing inside `profile` is a claim) and reads as no signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOm51bGx9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.rO3jKkBiwGQqx9XMFft0R-i9wwChljQp7Ccy2t46fVr8obb5VzQJqzyw2PLQ2zBLJkZvM07WOaBCEPsQKGlJCw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-array",
+      "description": "`profile.user` is an array holding a valid user object. An array is not an object, so no signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOlt7InN1YmplY3QiOiJwc180WHY5TGsyUW1UN2JOYzBSZllwOFp3In1dfSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.7I-R1DBmWjS8a_XC_sDJn06KzCVgtM_OXH5rKP6sV17HYNAs_qWc64XaXf1MSVATUBDOWt9KfgZDYW3s004CCA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-string",
+      "description": "`profile.user` is the subject string itself, not an object holding it. No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOiJwc180WHY5TGsyUW1UN2JOYzBSZllwOFp3In0sImVudGl0bGVtZW50cyI6eyJsaWNlbnNlLnRpZXIiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoicHJvIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX19.1d-hh55R9KzdNxawn8hstzp-6CkNah_1iCmRhr0ZQGMrJE460NSoRSURgwuLqGaq7J6FjVph88HI-O8C3zQdDg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-subject-missing",
+      "description": "`profile.user` is an empty object: no `subject`. No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnt9fSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.k3kiBn73vWaSY19dV4Kfv2BmBvFF6dTMWgbOfiVOb6sNjt9AlCkUKPb6RyjDBaRFdFLKiNM5KFWAuJ98tJ4ECg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-subject-number",
+      "description": "`profile.user.subject` is a number, not a string. No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6N319LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.ci5u46WycMMCpZQJXzBZ45KGyGD6D6lqSuifo0yJFqgQVJk1D4wigO5SUzKB2AMNas6sdOCWpqIqSXEz2T_IDQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-subject-21-chars",
+      "description": "`ps_` and 21 base64url characters, one short of the pattern's 22. No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WiJ9fSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.3WMvcWUQiLaACjh_jvDWTIBK3fllsk9t7Dd0BPy8f77JkKN8S6Z-beNqdRy1WVfUI0EpRFILYmuRp222OxoADA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-subject-23-chars",
+      "description": "`ps_` and 23 base64url characters, one over. A pattern that matches a prefix rather than the whole string reads a subject here (V4 §3.3 rule 1). No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WndBIn19LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.37uigN9gucVAvk6J4v67mck5nnBHylRcl1kuaorjMpB8akE94vWvYeACSepizM0Qiy8iSXtR6eFwDbtpK24gBQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-subject-trailing-newline",
+      "description": "The valid subject followed by `\\n`. A `$` that matches before a final line terminator (Python `re.match`, Swift without `\\z`) reads a subject here; a whole-string match does not (V4 §3.3 rule 1). No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WndcbiJ9fSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.DSuJ-X9n0Dr87hq4Whr2tnIlBejTPt3j8kjodaSKE6ZxADXvWNHVdyWxmmyLPodLayCW2YNg7vAwDNaAtmC9Cg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-subject-non-ascii-digit",
+      "description": "One character of the subject is U+0664 ARABIC-INDIC DIGIT FOUR, still 22 code points after `ps_`. A Unicode `\\d` or `\\w` reads a subject here; the pattern's classes are ASCII (V4 §3.3 rule 1). No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzX9mkWHY5TGsyUW1UN2JOYzBSZllwOFp3In19LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.uR-Tf5jEsgl8vM01qjPTnZGobBIfotbYbAC_Nz0ZCMb0GokHXFc-z6S1J0OTyCLjwAhr_ojRoTIu3PXjp51TDA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-subject-prefix-us",
+      "description": "`us_` and 22 base64url characters: the right length and alphabet under the wrong prefix. No signed-in user.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InVzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WncifX0sImVudGl0bGVtZW50cyI6eyJsaWNlbnNlLnRpZXIiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoicHJvIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiY2hhbm5lbHMiOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjpbInN0YWJsZSIsInN0YWdpbmciXSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwiYXBwLm1pblZlcnNpb24iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjoiMS4wLjAiLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJwb2xhcmlzVnBuIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6dHJ1ZSwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfX19.TD3NlQR89noXxtQOl9GXM7PaKZK6ZQTgprAZcn1cG68dZJ4djNtFCu5VoC_X6fN-yV5v6uvtLMbUBGEFGB0jDA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": { "accept": true, "user": null }
+    },
+    {
+      "id": "user-extra-members-ignored",
+      "description": "`profile.user` with members beside `subject`. A reader ignores them, so the device's signed-in account still reads as the subject alone.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfM2Y4YTliIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDAsInVzZXIiOnsic3ViamVjdCI6InBzXzRYdjlMazJRbVQ3Yk5jMFJmWXA4WnciLCJmdXR1cmUiOnsibWVtYmVyIjp0cnVlfSwidGFnIjoieCJ9fSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX0.81U7rPAlVVBUzdJKXJiQvrQusBy2ZgCWQu2z8TMfiNSexxaDu1leaMyZ08ef28h7-t_YHWWX4e1WAm77CUGRDw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expectedAud": "djdl",
+      "expectedIss": "key.plrs.im",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "expect": {
+        "accept": true,
+        "user": { "subject": "ps_4Xv9Lk2QmT7bNc0RfYp8Zw" }
       }
     }
   ]

@@ -56,6 +56,7 @@ import {
   ensureSystemProduct,
   linkSystemProduct,
 } from "../src/console/systemProduct.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 // The kill switch, controllable per test (HA-10's settings read, `assetHostingEnabled(env, db)`).
 const hosting = vi.hoisted(() => ({ on: true }));
@@ -500,6 +501,7 @@ describe("products.presentation_json: manifest-only", () => {
       {
         actor: { sub: "u1", name: null, email: null },
         origin: "console",
+        principal: ROOT_PRINCIPAL,
         now: NOW,
         product: "tidewater",
         strict: false,

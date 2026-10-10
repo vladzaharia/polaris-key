@@ -24,8 +24,7 @@
       "status": "implemented"
     },
     "core.presentation": {
-      "status": "planned",
-      "wp": "HA-13"
+      "status": "implemented"
     },
     "core.sync": {
       "status": "implemented"
@@ -63,6 +62,9 @@
       "wp": "SP-58"
     },
     "license.gate": {
+      "status": "implemented"
+    },
+    "license.signedinuser": {
       "status": "implemented"
     },
     "license.activate": {
@@ -363,6 +365,10 @@
     "ui.cli.mount": {
       "status": "planned",
       "wp": "UK-46"
+    },
+    "ui.cli.contract": {
+      "status": "implemented",
+      "note": "test/cli/cliContract.test.ts runs the cli family's exit, capabilities, stdin and outcomes rows of ui-matrix.json against the terminal kit (EXIT.licenseRequired is 4; refusals are a triangle with their fix). The mount, help and gate rows are ui.cli.mount's (UK-46)."
     },
     "ui.gate": {
       "status": "planned",

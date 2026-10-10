@@ -1,3 +1,11 @@
+import {
+  activePlatformConnections,
+  audienceCovers,
+} from "../../../core/oidc/connections.js";
+import {
+  PLATFORM_ENV_CONNECTION_ID,
+  platformEnvConnection,
+} from "../connections/seed.js";
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
 import { licenseAccess } from "../../../core/licensing/anchor.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
@@ -684,14 +692,25 @@ async function handleCapabilities(
   now: number,
 ): Promise<Response> {
   const caps = await portalAuthCapabilities(db, product);
+  // I-30: the seeded platform connection is the single sign-on button's only source, and every
+  // other active platform connection for customers is a "Continue with <label>" entry.
+  const sso = caps.portalEnabled && caps.oidcEnabled;
+  const seeded = sso ? await platformEnvConnection(env, db, now) : null;
+  const connections = sso
+    ? (await activePlatformConnections(db, "customers"))
+        .filter((c) => c.id !== PLATFORM_ENV_CONNECTION_ID)
+        .map((c) => ({ id: c.id, label: c.label }))
+    : [];
   return portalJson({
     auth: {
       // I-17: past the platform IdP's sunset the card stops offering single sign-on.
       oidc:
-        caps.portalEnabled &&
-        caps.oidcEnabled &&
-        Boolean(platformOidcConfig(env)) &&
+        sso &&
+        seeded !== null &&
+        seeded.status === "active" &&
+        audienceCovers(seeded.audience, "customers") &&
         !platformSignInEnded(env, now),
+      connections,
       magic:
         caps.portalEnabled && caps.magicEnabled && portalEmailConfigured(env),
       // I-16: passkeys are an account sign-in method, platform-level (no product toggle).
