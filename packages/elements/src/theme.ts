@@ -204,9 +204,10 @@ export function themeVars(r: Resolved): Record<string, string> {
   return vars;
 }
 
-/** Resolve once; `watch` re-resolves when the presentation changes or its icon decodes. */
+/** Resolve once; `watch` re-resolves when the presentation changes or its icon decodes. `host`
+ *  is the element the kit sits in (`null` before it mounts, or on a server: the OS preference). */
 export function resolveFor(
-  host: Element,
+  host: Element | null,
   options: ElementsTheme,
   identity: ResolvedIdentity,
   iconUrl: string | null,
@@ -214,7 +215,7 @@ export function resolveFor(
   const native = options.preset === "native";
   const scheme = resolveTheme(options, {
     kit: "elements",
-    prefersDark: native ? groundPrefersDark(host) : osPrefersDark(),
+    prefersDark: native && host ? groundPrefersDark(host) : osPrefersDark(),
     reducedMotion: osReducedMotion(),
   });
   const accent = accentFor(identity, scheme.scheme as Scheme);

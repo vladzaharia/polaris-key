@@ -11,6 +11,8 @@ import { stylesCss } from "./styles.js";
 export { LAYOUTS, TAGS, isTitleKey, type Kind, type Layout } from "./layout.js";
 export { stylesCss } from "./styles.js";
 export { tokenCss } from "./tokens.js";
+// DL14's QR, for the states that may draw one (a TV or console code, an offline request).
+export { encodeQr } from "@polaris-key/node/qr";
 // The theme and copy resolution both renderers run (§1.2, §3.1, §4.7): one copy table per locale
 // on the page, one identity path through ui-core.
 export { copyFor, ensureLocale, onCopyLoaded, provideTable } from "./copy.js";
