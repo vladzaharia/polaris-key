@@ -85,9 +85,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Baselines at 1024, 1180, 1440, 1920, 844x390 and 390 in both themes.
-- [ ] A unit test that the chosen variant is at least drawn width times DPR; UX review in BUILT mode.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Baselines at 1024, 1180, 1440, 1920, 844x390 and 390 in both themes. (Real-browser geometry assertions and screenshots at every size, plus 1023x900, both themes, with art, without and with a long name: e2e/portalArtHero.e2e.test.ts; committed linux baselines updated for the changed library screens, the contested ones left to the integration regeneration.)
+- [x] A unit test that the chosen variant is at least drawn width times DPR (test/portalArtVariant.test.tsx); [ ] UX review in BUILT mode (the lead runs it).
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -98,3 +98,13 @@ mise exec node@22 -- pnpm <the package's own tests>
 ## Hand-off
 
 What downstream packages rely on from this one is listed in its Unblocks row. The role agent sets `--set PX-30 in-review` when it hands off; after review the lead adds the last commit `--set PX-30 done`.
+
+## Implementation notes (PX-30)
+
+- Verified against the code: the Worker hands the library one ladder width (1280); `ProductArt` now
+  rewrites a ladder variant URL to the narrowest rung (640 / 1280 / 1920) at least drawn width times
+  devicePixelRatio (`portal/model/artVariant.ts`), never down on resize, with one retry on the URL as
+  given before the tint fallback. No canvas read in ProductArt. (`ProductIcon`'s corner-pixel
+  `iconShape` is a separate icon mask, outside this package.)
+- `ProductArt fit="contain"` draws a blurred cover copy behind the uncropped art; no text over art.
+- Evidence (real Chromium, built SPA): /Users/vlad/Repos/pk-wt/\_evidence/PX-30/hero-<art|noart|long>-<size>-<theme>.png.
