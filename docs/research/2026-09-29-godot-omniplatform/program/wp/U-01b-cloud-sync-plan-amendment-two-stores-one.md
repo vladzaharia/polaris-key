@@ -101,12 +101,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every command in `plans/U-01b.md` §10 passes.
-- [ ] No signed corpus file changes; `sync-scenarios.json` is v2 with its Godot mirror.
-- [ ] Every §3.2 row has its rule-9 mutation entry and schema change.
-- [ ] The §7 precondition result is recorded in the PR.
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] Every command in `plans/U-01b.md` §10 passes (Kotlin's mirror test needs a JDK and is left to CI).
+- [x] No signed corpus file changes; `sync-scenarios.json` is v2 with its Godot mirror.
+- [x] Every §3.2 row has its rule-9 mutation entry and schema change.
+- [ ] The §7 precondition result is recorded in the PR. It is read-only on production, so the lead runs it before merge (see the corrections above).
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`. They land at their current homes until DOC-03a, DOC-05b and DOC-09c build those trees (see the corrections above).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
