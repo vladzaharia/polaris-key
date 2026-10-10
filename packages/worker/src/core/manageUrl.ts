@@ -22,6 +22,11 @@
  * The link exists only while the product's customer portal is on; otherwise the member is
  * omitted (PORTAL §4.19). It sits outside every signed document, so `legacy` and `combined`
  * products alike get it with no document byte changing.
+ *
+ * I-09 adds two more links built from the same origin: `license_owned`'s `signInUrl`
+ * (`<portal>/signin?product=<slug>`, the platform-level login card, so always present) and
+ * discovery's `accountPortal` (`<portal>/#/p/<slug>`, while the product's portal is on). Neither
+ * carries a key, an account or a holder hint.
  */
 
 import {
