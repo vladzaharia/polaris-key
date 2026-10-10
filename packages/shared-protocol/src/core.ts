@@ -296,7 +296,16 @@ export type PolarisErrorCode =
   | "identity_disabled"
   /** PX-W9 (WIRE-CONTRACT-V4 §12.2): the licence has no key entries left on an Identity product.
    *  The flat 403 carries `keyEntries` and, while the portal is on, `manageUrl`. */
-  | "key_entry_limit";
+  | "key_entry_limit"
+  /** I-09 (WIRE-CONTRACT-V4 §12.2 step 3, §12.3): the licence is in an account. On key entry by
+   *  a device not enrolled on it, a flat 403 with `signInUrl`; on attach, nested and bare. Never
+   *  says which account. */
+  | "license_owned"
+  /** I-09 (§12.3): attach of a licence that carries an email this account has not verified, on a
+   *  product that does not set `identity.keyEntry.claimByKey`. */
+  | "license_email_bound"
+  /** I-09 (§12.3): the request needs an account signed in on the device (attach). */
+  | "account_required";
 
 export interface PolarisErrorBody {
   error: {

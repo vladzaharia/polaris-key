@@ -247,7 +247,19 @@
       "code": "license_owned",
       "kind": "wire",
       "service": "license",
-      "description": "403: the licence is attached to another Polaris Key account, and an owned licence never moves by presenting its key (S-16 §5.1; plans/I-04.md §4). Answered by the customer portal's POST /api/claim/license-key (and the activate preview's verdict of the same name, I-05); I-09 adds it to key entry on a new device of an Identity product (with `signInUrl`) and to the device attach. Carries no detail of the other account."
+      "description": "403: the licence is in a Polaris Key account, and an owned licence never moves by presenting its key (S-16 §5.1; plans/I-04.md §4). Answered by the customer portal's POST /api/claim/license-key (and the activate preview's verdict of the same name, I-05); by POST /<p>/license/activate and POST /<p>/identity/session/license on a device not enrolled on the licence, on a product with Identity on while identity.keyEntryRefusals is on, as a flat body with `signInUrl` (<origin>/signin?product=<slug>; WIRE-CONTRACT-V4 §12.2 step 3, I-09); and nested, with no link, by POST /<p>/identity/attach when another account holds the licence (§12.3). Carries no detail of the account and never the key. Not an auth failure: a client keeps its state."
+    },
+    {
+      "code": "license_email_bound",
+      "kind": "wire",
+      "service": "identity",
+      "description": "403 from POST /<p>/identity/attach (WIRE-CONTRACT-V4 §12.3; I-09): the device's licence carries a buyer email that the account signed in on the device has not verified, and the product does not set identity.keyEntry.claimByKey. Nested; names no address. Verifying that email on the account attaches the licence."
+    },
+    {
+      "code": "account_required",
+      "kind": "wire",
+      "service": "core",
+      "description": "403: the request needs a Polaris Key account signed in on the device and none is (WIRE-CONTRACT-V4 §12.3; I-09). POST /<p>/identity/attach answers it until the device signs in; Cloud Sync reuses it for a device with no sign-in binding. Nested; not an auth failure, so a client keeps its token."
     },
     {
       "code": "email_mismatch",

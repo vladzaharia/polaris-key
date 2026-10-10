@@ -48,6 +48,15 @@ export const ErrorCode = {
    *  Identity product while `identity.keyEntryRefusals` is on. The flat 403 carries `keyEntries`
    *  and, while the portal is on, `manageUrl`. Never sent to an enrolled device. */
   KeyEntryLimit: "key_entry_limit",
+  /** I-09 (WIRE-CONTRACT-V4 §12.2 step 3, §12.3): the licence is in an account. Key entry on a
+   *  device not enrolled on it answers the flat 403 with `signInUrl` (Identity on, refusals on);
+   *  attach answers it nested, with no link, when another account holds the licence. */
+  LicenseOwned: "license_owned",
+  /** I-09 (§12.3): attach of a licence whose buyer email the signed-in account has not verified,
+   *  on a product without `identity.keyEntry.claimByKey`. */
+  LicenseEmailBound: "license_email_bound",
+  /** I-09 (§12.3): the request needs an account signed in on the device. */
+  AccountRequired: "account_required",
 } as const;
 
 export function json(

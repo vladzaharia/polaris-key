@@ -329,6 +329,34 @@ describe("@polaris-key/protocol layout", () => {
     expect("REQUEST_HANDLE_PATTERN" in barrel).toBe(false);
   });
 
+  it("the /identity subpath (plans/I-09.md §2, WIRE-CONTRACT-V4 §8, §12.2, §12.3)", () => {
+    // 16 random bytes are 22 base64url characters; the subject is only ever matched whole.
+    expect(identity.PAIRWISE_SUBJECT_PATTERN).toBe("^ps_[A-Za-z0-9_-]{22}$");
+    const subject = new RegExp(identity.PAIRWISE_SUBJECT_PATTERN);
+    expect(subject.test(`ps_${"A".repeat(22)}`)).toBe(true);
+    expect(subject.test(`ps_${"A".repeat(21)}`)).toBe(false);
+    expect(subject.test(`ps_${"A".repeat(22)}x`)).toBe(false);
+    expect("PAIRWISE_SUBJECT_PATTERN" in barrel).toBe(false);
+    // The three account codes are registry codes (errors.json), so a client types them.
+    const codes: core.PolarisErrorCode[] = [
+      "license_owned",
+      "license_email_bound",
+      "account_required",
+      "key_entry_limit",
+    ];
+    expect(codes).toHaveLength(4);
+    const owned: identity.LicenseOwnedBody = {
+      error: "license_owned",
+      signInUrl: "https://key.plrs.im/signin?product=djdl",
+    };
+    expect(owned.signInUrl).not.toContain("pkey_");
+    const preview: identity.AttachPreview = {
+      status: "confirm",
+      license: { id: "lic_1", tierId: null, name: null },
+    };
+    expect(preview.status).toBe("confirm");
+  });
+
   it("the presentation limits (WIRE-CONTRACT-V4 §5.5, plans/HA-12.md §2.5)", () => {
     expect(core.PRESENTATION_TEXT_MAX_BYTES).toBe(1024);
     expect(core.PRESENTATION_URL_MAX_BYTES).toBe(2048);
