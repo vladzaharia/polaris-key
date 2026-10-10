@@ -1,11 +1,11 @@
 == catalog ==
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Control/Line/Input: Label "On"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
@@ -35,12 +35,12 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedRow/AdvancedToggle: CheckButton "
 Card/Frame/Body/Pane/Fade: TextureRect
 == advanced shown ==
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Control/Line/Input: Label "On"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
@@ -76,12 +76,12 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedRow/AdvancedToggle: CheckButton "
 Card/Frame/Body/Pane/Fade: TextureRect
 == local override, dependsOn hidden ==
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Control/Line/Input: Label "On"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
@@ -112,7 +112,42 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedRow/AdvancedToggle: CheckButton "
 Card/Frame/Body/Pane/Fade: TextureRect
 == empty ==
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Empty: Label "There are no settings to show."
+Card/Frame/Body/Pane/Fade: TextureRect
+== catalog, presented by its developer ==
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "D"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "\u2068Drift Kart\u2069"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Lanternworks\u2069"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Control/Line/Input: Label "On"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Description: Label "Master volume."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Minus: Button "−"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Plus: Button "+"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Value: Label "60 %"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Label: Label "Mute"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Status: Label "Set by the environment"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Control/Line/Input: CheckButton [pressed, focus 2]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_pitch/Text/Label: Label "Pitch"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_pitch/Text/Description: Label "Any number."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_pitch/Control/Line/Minus: Button "−"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_pitch/Control/Line/Input: SpinBox [value 1.5, focus 3]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_pitch/Control/Line/Plus: Button "+"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/Category: Label "Interface"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Label: Label "Theme"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Description: Label "Colour theme."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Control/Line/Input: OptionButton "Dark" [items [Dark, Light], focus 4]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Text/Label: Label "Reduce motion"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Text/Description: Label "Only with the dark theme."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Control/Line/Input: CheckButton [focus 5]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 6]
+Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedRow/AdvancedToggle: CheckButton "Show advanced settings" [focus 7]
 Card/Frame/Body/Pane/Fade: TextureRect

@@ -5,13 +5,13 @@ BannerSlot/PKeyStatusBanner/Card/Row/Glyph: TextureRect
 BannerSlot/PKeyStatusBanner/Card/Row/Lines/Line0: Label "Offline — 2 days left"
 == expired ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Connect to keep playing"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license needs an online check."
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 1]
 == revoked ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Signed out"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
@@ -20,7 +20,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
 == needs-activation ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -28,14 +28,14 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
 == version-too-old ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Update required"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "This version is no longer supported."
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Detail: Label "Minimum version: 1.4.0"
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 1]
 == version-too-new ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "This build is newer than your license allows."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
@@ -47,7 +47,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 5]
 == channel-not-entitled ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license doesn't cover this build."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
@@ -61,17 +61,17 @@ Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 5]
 <hidden>
 == grace (allow_grace false) ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "You're offline"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Polaris Key SDK needs to check your license online now."
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 1]
 == loading ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Checking your license…"
 == needs-activation after an error ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
@@ -80,14 +80,14 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
 == version-too-old with a store action ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Update required"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "This version is no longer supported."
 Center/Card/Scroll/Body/Split/Form/Actions/UpdateAction: Button "Get the update" [focus 1]
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 2]
 == network error ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Glyph: TextureRect
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Couldn't start"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Check your connection and try again."
@@ -95,14 +95,14 @@ Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 1]
 Center/Card/Scroll/Body/Split/Form/Actions/ContinueOffline: Button "Continue offline" [focus 2]
 == network error, no lease ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Glyph: TextureRect
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Couldn't start"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Check your connection and try again."
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 1]
 == not available (version-too-new) ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "This build is newer than your license allows."
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Detail: Label "Your license covers versions up to 1.4.0."
@@ -115,7 +115,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Fo
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 5]
 == sign-in pending ==
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Go to"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "key.plrs.im/device"
@@ -127,7 +127,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySig
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == offline activation ==
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Head/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Head/Title: Label "Offline activation"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
@@ -142,7 +142,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOff
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 4]
 == device limit ==
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Title: Label "Your license is on 3 of 3 devices"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Lede: Label "To use it on this device, replace one. You can add it back later."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Right/Actions/FreeDevice: Button "Replace a device" [focus 1]
@@ -150,9 +150,49 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/C
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 3]
 == device limit, replace a device (QR) ==
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "Polaris Key SDK"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Title: Label "Your license is on 3 of 3 devices"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Lede: Label "To use it on this device, replace one. You can add it back later."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Right/Actions/FreeDevice: Button "Replace a device" [focus 1]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Try again" [focus 2]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 3]
+== needs-activation, presented: Drift Kart's icon ==
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Drift Kart\u2069"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
+== needs-activation, presented without an icon ==
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "D"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Drift Kart\u2069"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
+== needs-activation, presented, the integrator's name wins ==
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Tidewater\u2069"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
+== needs-activation, presented, a long name ==
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Tidewater Studio Professional Edition for Teams and Classrooms\u2069"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
+== needs-activation, presented, a right-to-left name ==
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Icon: TextureRect
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068סטודיו גל\u2069"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]

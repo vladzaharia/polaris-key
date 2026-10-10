@@ -1,6 +1,6 @@
 == native ==
 Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Head/Title: Label "Offline activation"
 Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
 Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
@@ -15,7 +15,7 @@ Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 4]
 Card/Scroll/Stack/Actions/Close: Button "Close" [focus 5]
 == web ==
 Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Head/Title: Label "Offline activation"
 Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
 Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
@@ -28,7 +28,7 @@ Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 3]
 Card/Scroll/Stack/Actions/Close: Button "Close" [focus 4]
 == rejected signature ==
 Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Head/Title: Label "Offline activation"
 Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
 Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."

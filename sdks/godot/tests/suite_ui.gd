@@ -1,6 +1,7 @@
 extends RefCounted
 # @pkey-feature ui.kit
 # @pkey-feature ui.kit.manage
+# @pkey-feature core.presentation
 # The UI kit v1 (P1-10), headless. There is no renderer, so the scenes are pinned as structural
 # text: every scene in every state of tests/ui/scenarios.gd against the committed fixtures in
 # tests/ui/snapshots/<scene>.txt (visible controls, texts, disabled flags, focus order). Then, for
@@ -18,11 +19,31 @@ extends RefCounted
 # PKeyActivationResult kind and sign-in ending has its own copy, and COPY DIAGNOSTICS never holds a
 # credential.
 #
+# The product's presentation (core.presentation, plans/HA-14.md §6): the header's name, icon and
+# monogram and the accent's source follow the theme rows of ui-matrix.json (the integrator's
+# options, then the presentation, then the project), the dark accent applies in the dark scheme,
+# the built theme's primary and accent text keep their contrast, the header re-renders on
+# `changed` and keeps the texture it shows until the next size resolves, and the names are drawn
+# bidi-isolated.
+#
 #   godot --headless --path sdks/godot -- --pkey-test ui           # check
 #   godot --headless --path sdks/godot -- --pkey-test ui update    # rewrite the fixtures (editor)
 
 const SCENARIOS := preload("res://tests/ui/scenarios.gd")
+const PRESENTATION := preload("res://tests/support/presentation_fixtures.gd")
 const SNAPSHOTS := "res://tests/ui/snapshots"
+const UI_MATRIX := "res://tests/corpus/v2/ui-matrix.json"
+## The ui-matrix.json theme rows the Godot kit holds: its own, and the presentation and integrator
+## rows of the other kits (their `colorScheme` aside: the Godot kit is dark by default).
+const THEME_ROWS := [
+	"godot: Drift Kart's own accent, dark by default",
+	"godot: Drift Kart in the light scheme the game asks for",
+	"react: the integrator's accent wins over presentation",
+	"qt: no presentation, the bundle names it, ink and a monogram",
+	"compose: no accent and no icon falls to ink",
+	"react: a long product name",
+	"react: the integrator's name and icon win",
+]
 const PSEUDO_LOCALE := "eo"
 
 var _sc
@@ -32,6 +53,8 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	_sc = SCENARIOS.new()
 	var update := args.has("update")
 	TranslationServer.set_locale("en")
+	# An earlier suite's SDK may still be bound to the kit.
+	PKeyUiTheme.use_presentation(null)
 	var all: Array = _sc.all()
 	await _snapshots(t, all, update)
 	await _focus(t, all)
@@ -306,6 +329,7 @@ func _behaviour(t: PKeyTestContext) -> void:
 	await _gate(t)
 	_dev_menu(t)
 	_controllers(t)
+	await _presentation(t)
 
 
 func _row_nodes(p: PKeySettingsPanel, key: String) -> Dictionary:
@@ -324,7 +348,7 @@ func _settings(t: PKeyTestContext) -> void:
 	var kill := _row_nodes(p, "game.killSwitch")
 	var kill_input: Control = kill.get("input")
 	t.check("settings: an enforced setting is text, never a dimmed control", kill_input is Label and not (kill_input as Label).text.is_empty() and not kill_input is BaseButton, str(kill_input))
-	t.check("settings: an enforced setting says who set it (the product's name) with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by %s" % PKeySettingsController.product_name(sdk) and not PKeySettingsController.product_name(sdk).is_empty() and (kill["lock"] as Control).visible and (kill["lock_row"] as Control).visible)
+	t.check("settings: an enforced setting says who set it (the product's name) with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by %s" % PKeyUiTheme.isolate(PKeySettingsController.product_name(sdk)) and not PKeySettingsController.product_name(sdk).is_empty() and (kill["lock"] as Control).visible and (kill["lock_row"] as Control).visible)
 	var before: StringName = sdk.config.get_source("audio.volume")
 	var vol := _row_nodes(p, "audio.volume")
 	var spin: Range = vol.get("input")
@@ -809,3 +833,212 @@ func _controllers(t: PKeyTestContext) -> void:
 	t.check("gate: not-applicable precedes an error", PKeyGateController.screen_for("not-applicable", false, "boom") == "usable" and PKeyGateController.screen_for("needs-activation", false, "boom") == "error")
 	var lines := PKeyBannerController.lines({"status": "grace", "grace_until": 1000.0 + 3 * 86400, "last_verified_at": 1000.0 - 7200}, 1000.0)
 	t.check("banner: grace days and last checked", lines == [["banner_grace", "3 days"], ["banner_checked", "2 hours"]], str(lines))
+
+
+# ── The product's presentation ───────────────────────────────────────────────────────────
+
+## The gate's hero header after a render.
+func _header(v: Control) -> PKeyProductHeader:
+	return v.find_child("Product", true, false) as PKeyProductHeader
+
+
+func _icon_kind(h: PKeyProductHeader) -> String:
+	if h.find_child("Icon", false, false).visible:
+		return "image"
+	return "monogram" if h.find_child("Monogram", false, false).visible else "none"
+
+
+func _presentation(t: PKeyTestContext) -> void:
+	await _theme_rows(t)
+	_accent_dark(t)
+	_contrast(t)
+	await _rerender(t)
+	await _keeps_texture(t)
+	await _identity_order(t)
+	await _set_by(t)
+	PKeyUiTheme.reset()
+
+
+## ui-matrix.json's theme rows, applied to the Godot kit.
+func _theme_rows(t: PKeyTestContext) -> void:
+	var m = PKeyTestFixtures.read_json(UI_MATRIX)
+	var rows := {}
+	for r in (m["theme"] if m is Dictionary else []):
+		rows[r["name"]] = r
+	var ran := 0
+	for name in THEME_ROWS:
+		if not t.check("theme row present: %s" % name, rows.has(name)):
+			continue
+		var input: Dictionary = rows[name]["input"]
+		var want: Dictionary = rows[name]["expect"]
+		PKeyUiTheme.reset()
+		PKeyUiTheme.scheme = "light" if input.get("colorScheme") == "light" else "dark"
+		var p = input.get("presentation")
+		if p is Dictionary:
+			var fields := {}
+			for k in ["name", "developerName", "accent"]:
+				if p.has(k):
+					fields[k] = p[k]
+			PRESENTATION.present(fields, p.get("icon") == true)
+		var integrator: Dictionary = input.get("integrator", {})
+		if integrator.get("accent") is String:
+			PKeyUiTheme.accent = Color(integrator["accent"])
+		if integrator.get("name") is String:
+			PKeyUiTheme.product_name = integrator["name"]
+		if integrator.get("icon") == true:
+			PKeyUiTheme.product_icon = ImageTexture.create_from_image(PRESENTATION.icon_image(64, Color("#2f6fde")))
+		var v: Control = await _sc.gate("needs-activation", true, "")
+		v.refresh_view()
+		await _tree().process_frame
+		var h := _header(v)
+		var got := {"name": h.product_name(), "accentSource": PKeyUiTheme.accent_source(), "icon": _icon_kind(h)}
+		# A row the bundle names: this project stands in for the bundle (user:// follows the
+		# project's name, so it is not renamed for the row).
+		var bundle: bool = not (p is Dictionary and p.has("name")) and not integrator.has("name")
+		var expect := {"name": str(ProjectSettings.get_setting("application/config/name")) if bundle else want["name"], "accentSource": want["accentSource"], "icon": want["icon"]}
+		if String(input.get("kit")) == "godot":
+			got["colorScheme"] = PKeyUiTheme.scheme
+			expect["colorScheme"] = want["colorScheme"]
+		if t.check("theme row: %s" % name, got == expect, "got %s, want %s" % [got, expect]):
+			ran += 1
+		_free(v)
+	PKeyUiTheme.reset()
+	t.check("theme rows: coverage", ran == THEME_ROWS.size(), "%d/%d" % [ran, THEME_ROWS.size()])
+
+
+## accentDark is the product's accent in the dark scheme; accent in the light one.
+func _accent_dark(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reset()
+	PRESENTATION.present({"name": "Drift Kart", "accent": "#ff6a3d", "accentDark": "#5ee6f0"}, false)
+	PKeyUiTheme.scheme = "dark"
+	t.check("accent: the dark scheme takes accentDark", PKeyUiTheme.accent_hex() == "#5ee6f0" and PKeyUiTheme.accent_source() == "product", PKeyUiTheme.accent_hex())
+	PKeyUiTheme.scheme = "light"
+	t.check("accent: the light scheme takes accent", PKeyUiTheme.accent_hex() == "#ff6a3d" and PKeyUiTheme.accent_source() == "product", PKeyUiTheme.accent_hex())
+	PRESENTATION.present({"name": "Drift Kart", "accentDark": "#5ee6f0"}, false)
+	t.check("accent: accentDark alone does not colour the light scheme (ink without an icon)", PKeyUiTheme.accent_source() == "ink", PKeyUiTheme.accent_source())
+	PKeyUiTheme.scheme = "dark"
+	t.check("accent: accentDark alone colours the dark scheme", PKeyUiTheme.accent_hex() == "#5ee6f0")
+	PKeyUiTheme.accent = Color("#2f6fde")
+	t.check("accent: ui_accent wins over both", PKeyUiTheme.accent_hex() == "#2f6fde" and PKeyUiTheme.accent_source() == "integrator")
+	PKeyUiTheme.reset()
+
+
+## Drift Kart's accent on the built theme: the primary's label on its fill (4.5:1), the fill on the
+## page (3:1) and the accent's text on the page (4.5:1), in both schemes.
+func _contrast(t: PKeyTestContext) -> void:
+	for scheme in ["dark", "light"]:
+		PKeyUiTheme.reset()
+		PRESENTATION.present(PRESENTATION.DRIFT_KART, false)
+		PKeyUiTheme.scheme = scheme
+		var th := PKeyUiTheme.current()
+		var page := "#" + Color(PKeyUiTheme.palette(scheme == "dark")["page"]).to_html(false)
+		var fill := "#" + (th.get_stylebox("normal", "PKeyPrimary") as StyleBoxFlat).bg_color.to_html(false)
+		var label := "#" + th.get_color("font_color", "PKeyPrimary").to_html(false)
+		var link := "#" + th.get_color("font_color", "PKeyLink").to_html(false)
+		var detail := "fill %s label %s link %s page %s" % [fill, label, link, page]
+		t.check("contrast (%s): the primary's label on Drift Kart's fill is at least 4.5:1" % scheme, PKeyAccent.contrast(label, fill) >= 4.5, detail)
+		t.check("contrast (%s): the fill on the page is at least 3:1" % scheme, PKeyAccent.contrast(fill, page) >= 3.0, detail)
+		t.check("contrast (%s): accent text on the page is at least 4.5:1" % scheme, PKeyAccent.contrast(link, page) >= 4.5, detail)
+	PKeyUiTheme.reset()
+
+
+## A new member re-renders every kit view (PKeyUiTheme.refresh_views on `changed`).
+func _rerender(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reset()
+	var src := PRESENTATION.present(PRESENTATION.DRIFT_KART, true)
+	var v: Control = await _sc.gate("needs-activation", true, "")
+	await _tree().process_frame
+	var h := _header(v)
+	var label := h.find_child("Name", false, false) as Label
+	t.check("header: the presented name and icon", h.product_name() == "Drift Kart" and _icon_kind(h) == "image" and label.text == PKeyUiTheme.isolate("Drift Kart"), label.text)
+	var renamed := PRESENTATION.member({"name": PRESENTATION.RTL_NAME, "accent": "#3d9bff"}, src.current()["icon"])
+	src.accept(PRESENTATION.manifest(renamed))
+	for i in 3:
+		await _tree().process_frame
+	t.check("header: re-renders on changed", h.product_name() == PRESENTATION.RTL_NAME and label.text == PKeyUiTheme.isolate(PRESENTATION.RTL_NAME) and _icon_kind(h) == "image", label.text)
+	t.check("header: a right-to-left name is drawn between FSI and PDI", label.text.begins_with(String.chr(0x2068)) and label.text.ends_with(String.chr(0x2069)))
+	t.check("theme: the new accent", PKeyUiTheme.accent_hex() == "#3d9bff")
+	src.accept(PRESENTATION.manifest(null))
+	for i in 3:
+		await _tree().process_frame
+	t.check("header: a member that goes away falls back to the project", h.product_name() == str(ProjectSettings.get_setting("application/config/name")) and _icon_kind(h) == "monogram" and PKeyUiTheme.accent_source() == "ink")
+	_free(v)
+	PKeyUiTheme.reset()
+
+
+## The header asks for its own size, and keeps the texture it shows while (and if) the next one
+## does not resolve.
+func _keeps_texture(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reset()
+	PKeyTestFixtures.remove_tree(PRESENTATION.UI_CACHE)
+	DirAccess.make_dir_recursive_absolute(PRESENTATION.UI_CACHE)
+	var small := PRESENTATION.webp(16, Color("#ff6a3d"))
+	var large := PRESENTATION.webp(32, Color("#ff6a3d"))
+	var ic := PRESENTATION.icon(PRESENTATION.png(64), "image/png", [[64, small], [128, large]], PRESENTATION.ORIGIN, 64)
+	# Only the 64 px size is on disk; with no transport the 128 px one never resolves.
+	var f := FileAccess.open(PRESENTATION.UI_CACHE.path_join(PRESENTATION.sha(small)), FileAccess.WRITE)
+	f.store_buffer(small)
+	f.close()
+	var src := PKeyPresentationSource.new()
+	src.cache_dir = PRESENTATION.UI_CACHE
+	src.product = "djdl"
+	src.decodable = ["image/webp"]
+	src.accept(PRESENTATION.manifest(PRESENTATION.member(PRESENTATION.DRIFT_KART, ic)))
+	PKeyUiTheme.use_presentation(src)
+	var header := PKeyProductHeader.new()
+	header.hero = true
+	_tree().root.add_child(header)
+	await _tree().process_frame
+	var icon := header.find_child("Icon", false, false) as TextureRect
+	t.check("header: a 64 px hero takes the 64 px size", icon.visible and icon.texture != null and icon.texture.get_width() == 16, str(icon.texture))
+	var shown := icon.texture
+	header.splash = true
+	header.refresh()
+	for i in 3:
+		await _tree().process_frame
+	t.check("header: a larger size that does not resolve keeps the texture shown", icon.visible and icon.texture == shown)
+	header.queue_free()
+	PKeyUiTheme.reset()
+
+
+## The identity order: the integrator's name and icon, then the presentation, then the project (the
+## development project's name hidden only there).
+func _identity_order(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reset()
+	PKeyUiTheme.hide_dev_project_name = true
+	var header := PKeyProductHeader.new()
+	_tree().root.add_child(header)
+	header.refresh()
+	t.check("identity: no presentation, the development project's name stays hidden", header.product_name() == "" and not header.visible)
+	PRESENTATION.present(PRESENTATION.DRIFT_KART, true)
+	header.refresh()
+	t.check("identity: a presented name shows even in the development project", header.product_name() == "Drift Kart" and header.visible and _icon_kind(header) == "image")
+	PKeyUiTheme.hide_dev_project_name = false
+	PKeyUiTheme.product_name = "Tidewater"
+	var own := ImageTexture.create_from_image(PRESENTATION.icon_image(32, Color("#2f6fde")))
+	PKeyUiTheme.product_icon = own
+	header.refresh()
+	var icon := header.find_child("Icon", false, false) as TextureRect
+	t.check("identity: ui_product_name and ui_product_icon win over the presentation", header.product_name() == "Tidewater" and icon.texture == own)
+	t.check("identity: the integrator's icon is never replaced by a fetch", PKeyUiTheme.product_identity()["icon"] == own and icon.texture == own)
+	header.queue_free()
+	PKeyUiTheme.reset()
+
+
+## "Set by" names the presented developer, else the presented name, bidi-isolated.
+func _set_by(t: PKeyTestContext) -> void:
+	var sdk: Node = await _sc.settings_sdk({})
+	sdk.presentation_source.cache_dir = PRESENTATION.UI_CACHE
+	sdk.presentation_source.accept(PRESENTATION.manifest(PRESENTATION.member({"name": "Drift Kart", "developerName": PRESENTATION.RTL_NAME})))
+	t.check("set by: the presented developer", PKeySettingsController.product_name(sdk) == PRESENTATION.RTL_NAME)
+	var p := PKeySettingsPanel.new()
+	p.sdk = sdk
+	_sc.add(p)
+	await _tree().process_frame
+	var kill := _row_nodes(p, "game.killSwitch")
+	t.check("set by: drawn bidi-isolated", (kill["set_by"] as Label).text == "Set by %s" % PKeyUiTheme.isolate(PRESENTATION.RTL_NAME), (kill["set_by"] as Label).text)
+	sdk.presentation_source.accept(PRESENTATION.manifest(PRESENTATION.member({"name": "Drift Kart"})))
+	t.check("set by: else the presented name", PKeySettingsController.product_name(sdk) == "Drift Kart")
+	_free(p)
+	sdk.queue_free()
+	PKeyUiTheme.reset()
