@@ -198,8 +198,10 @@
       .wlink {
         color: var(--w-acc-fg);
       }
+      /* The polaris-key ring is the text colour, so it holds 3:1 against the accent fill and the
+         page (an accent ring on an accent button disappears). */
       .ring {
-        outline: 2px solid var(--w-ring);
+        outline: 2px solid var(--w-text);
         outline-offset: 2px;
       }
       [data-ui-preset="native"] .ring {
@@ -291,6 +293,9 @@
       }
       /* DL6: a refusal is neutral text on the sunken surface, with its fix as the one primary. */
       .wnote {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
         padding: 12px 16px;
         border-radius: 4px;
         background: var(--w-sunk);
@@ -411,7 +416,7 @@
       .links {
         display: flex;
         gap: 20px;
-        color: var(--w-mute);
+        color: var(--w-acc-fg);
       }
       .amb {
         display: none;
@@ -479,17 +484,17 @@
           place-items: center;
         }
         .gate {
-          width: 1040px;
+          width: 880px;
           height: 560px;
           border-radius: 8px;
           background: var(--w-layer);
           box-shadow:
             0 0 0 1px var(--w-stroke),
             0 16px 32px var(--w-shadow);
-          grid-template-columns: 400px 1fr;
+          grid-template-columns: 360px 1fr;
         }
         .end {
-          padding: 56px 56px 40px;
+          padding: 56px 48px 40px;
         }
         .amb {
           display: block;
@@ -542,9 +547,9 @@
       }
       .dialog {
         position: absolute;
-        inset-inline-start: 50%;
-        top: 50%;
-        translate: -50% -50%;
+        inset: 0;
+        margin: auto;
+        height: fit-content;
         width: 480px;
         border-radius: 8px;
         overflow: hidden;
@@ -567,7 +572,7 @@
         gap: 8px;
       }
       .tracks {
-        padding: 20px;
+        padding: 28px 20px 20px;
         display: grid;
         gap: 4px;
         align-content: start;
@@ -761,24 +766,24 @@
           body: `<div class="lines"><h1 class="wh">Enter your license key</h1><p class="wp opt">You’ll find it in your purchase email.</p></div>
             <div><span class="wlabel">License key</span><div class="wfield focus">${key}<span class="wb sm">Paste</span></div>
             <div class="wverdict">${ok}<span><b>Tidewater Studio Pro</b> · Lifetime</span></div></div>`,
-          acts: `<div class="acts"><span class="wb primary eq">Activate license</span><span class="wb eq">Cancel</span></div>`,
+          acts: `<div class="acts"><span class="wb primary eq">Activate license</span><span class="wb eq">Back</span></div>`,
         }),
         signin: () => ({
           body: `<div class="lines"><h1 class="wh">Finish in your browser</h1><p class="wp opt">Check the code there matches this one.</p></div>
             <div class="wcode"><span class="mono">WDJB-MJHT</span><span class="wb sm">${g("copy", 14)}Copy</span></div>
             <div class="wmute opt">Or go to key.plrs.im/activate</div>
             <div class="wwait tnum"><span data-countdown="0.84" data-size="16"></span>Code expires in 4:12</div>`,
-          acts: `<div class="acts"><span class="wb primary eq">${g("external", 14)}Open browser again</span><span class="wb eq">Cancel</span></div>`,
+          acts: `<div class="acts"><span class="wb primary eq">${g("external", 14)}Open browser again</span><span class="wb eq">Back</span></div>`,
         }),
         limit: () => ({
-          body: `<div class="lines"><h1 class="wh">Your license is on 3 of 3 devices</h1></div>
+          body: `<div class="lines"><h1 class="wh">Your license is on 3 of 3 devices</h1><p class="wp opt">To use it on this computer, replace one. You can add it back later.</p></div>
             <div class="wlist">
               <div class="wdev">${g("laptop", 20)}<div class="t">Work laptop<small>Windows 11 · last seen 41 days ago</small></div></div>
               <div class="wdev">${g("tablet", 20)}<div class="t">Mara’s iPad<small>iPadOS 26 · last seen yesterday</small></div></div>
               <div class="wdev">${g("laptop", 20)}<div class="t">MacBook Pro<small>macOS 26 · last seen today</small></div></div>
             </div>
-            <div class="wnote">Replace a device in your browser. Tidewater Studio continues when you’re done.</div>`,
-          acts: `<div class="acts"><span class="wb primary eq">${g("external", 14)}Open in browser</span><span class="wb eq">Cancel</span></div>`,
+            <div class="wnote">${g("info", 16)}<span>Replace a device in your browser. Tidewater Studio continues when you’re done.</span></div>`,
+          acts: `<div class="acts"><span class="wb primary eq">${g("external", 14)}Open in browser</span><span class="wb eq">Back</span></div>`,
         }),
       };
 
@@ -812,7 +817,7 @@
       // The `sheet` presentation: a ContentDialog over the host window and a smoke layer.
       function sheetOf(flow) {
         const f = FLOW[flow]();
-        return `<div class="smoke"></div><div class="dialog"><div class="dbody"><div class="hdr">${head(false)}</div>${f.body.replace(/ opt/g, "")}</div>${f.acts.replace('class="acts"', 'class="foot"')}</div>`;
+        return `<div class="smoke"></div><div class="dialog"><div class="dbody"><div class="hdr">${head(false)}</div>${f.body.replace(/ opt/g, "")}</div>${f.acts.replace('class="acts"', 'class="foot"').replace(">Back<", ">Cancel<")}</div>`;
       }
       const tracks = (extra = "") =>
         `${extra}<div class="tracks">${[
@@ -987,7 +992,7 @@
       );
       add(
         "revoked",
-        "signed out (revoked) and expired · polaris-key and native",
+        "signed out (revoked) and expired · polaris-key",
         sw(
           msg(
             `${appIcon(48, 10)}<div class="lines"><h1 class="wh">Signed out</h1><p class="wp">This device was signed out. Sign in or activate again to continue.</p></div><div class="acts"><span class="wb primary eq">Sign in</span><span class="wb eq">Use a license key</span></div>`,
@@ -997,7 +1002,6 @@
           msg(
             `${appIcon(48, 10)}<div class="lines"><h1 class="wh">License expired</h1><p class="wp">Your license has expired. Connect to the internet or renew it to continue.</p></div><div class="acts"><span class="wb primary eq">Renew${g("external", 14)}</span><span class="wb eq">Use another license</span></div>`,
           ),
-          true,
         ),
       );
 

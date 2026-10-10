@@ -610,14 +610,14 @@
           background: var(--m-ambient);
         }
         .row {
-          width: 1040px;
-          height: 640px;
+          width: 880px;
+          height: 600px;
           border-radius: 24px;
           background: var(--m-win);
           box-shadow:
             0 0 0 0.5px var(--m-sep),
             0 18px 40px -12px rgb(0 0 0 / 0.35);
-          grid-template-columns: 380px 1fr;
+          grid-template-columns: 340px 1fr;
         }
         .end {
           padding-top: 80px;
@@ -702,6 +702,9 @@
         place-items: center;
         background: var(--m-bezel);
         color: var(--m-text);
+      }
+      .swin .btnrow {
+        justify-content: center;
       }
       .swin .lede {
         text-wrap: balance;
@@ -817,6 +820,7 @@
         </div>
         <div style="display: grid; gap: 10px">
           <div class="codebox"><span class="mono">WDJB-MJHT</span><span class="mb">${sym("copy")}Copy</span></div>
+          <p class="lede" style="margin: 0">Or go to key.plrs.im/activate</p>
           <div class="wait tnum"><span data-countdown="0.84" data-size="14"></span>Code expires in 4:12</div>
         </div>`;
       const limitKeyBody = `
@@ -955,7 +959,9 @@
       );
 
       // 3. Sign-in code view: inline, no QR on any desktop surface
-      const sigRow = `<div class="btnrow"><span class="mb">Cancel</span><span class="mb default">Open Browser Again${ext}</span></div>`;
+      const sigRowOf = (back) =>
+        `<div class="btnrow"><span class="mb">${back}</span><span class="mb default">Open Browser Again${ext}</span></div>`;
+      const sigRow = sigRowOf("Back");
       out.push(
         fig(
           "sign-in",
@@ -972,13 +978,13 @@
         fig(
           "sign-in-sheet",
           '<b>Sign in</b> · polaris-key · <code>presentation: "sheet"</code>',
-          sheetOver("w900", sheetBody(signInBody, sigRow), 460),
+          sheetOver("w900", sheetBody(signInBody, sigRowOf("Cancel")), 460),
           false,
         ),
       );
 
       // 4. Device limit: the key path is browser mode; the fix is the one primary
-      const limRow = `<div class="btnrow"><span class="mb">Cancel</span><span class="mb default">Replace a Device${ext}</span></div>`;
+      const limRow = `<div class="btnrow"><span class="mb">Back</span><span class="mb default">Replace a Device${ext}</span></div>`;
       out.push(
         fig(
           "device-limit",
@@ -1127,7 +1133,7 @@
           `<div class="win" style="width: 760px; height: 460px">
             <div class="titlebar">${lights()}<span class="name">Tidewater Studio</span></div>
             <div class="hostrows"><i></i><i></i><i></i><i></i></div>
-            <div class="banner">${sym("wifiOff", 16)}<span class="grow">Offline · 3 days left to reconnect</span><span class="mb default">Reconnect</span></div>
+            <div class="banner">${sym("wifiOff", 16)}<span class="grow">Offline · 3 days left to reconnect</span><span class="mb default">Try Again</span></div>
           </div>`,
           false,
         ),
