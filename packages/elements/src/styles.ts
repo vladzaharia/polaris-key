@@ -862,6 +862,64 @@ dialog[open] .card {
     transform: scale(var(--pk-motion-scale-enter));
   }
 }
+dialog[open]::backdrop {
+  transition: opacity var(--pk-duration-base) var(--pk-ease-standard);
+}
+@starting-style {
+  dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+/* presentation="sheet" (D-79): the one form in a modal dialog over the scrim, the host inert. */
+dialog.sheet {
+  margin: auto;
+  inline-size: min(27.5rem, 100% - 2 * var(--pk-space-4));
+  max-block-size: calc(100% - 2 * var(--pk-space-6));
+  overflow: auto;
+  color: inherit;
+}
+dialog.sheet .stage {
+  min-block-size: 0;
+  padding: 0;
+  background: none;
+  overflow: visible;
+}
+dialog.sheet .ambient,
+dialog.sheet .passport-ambient {
+  display: none;
+}
+dialog.sheet .card,
+.pk-root[data-shape] dialog.sheet .stage[data-split] .card {
+  inline-size: 100%;
+  min-block-size: 0;
+  grid-template-columns: none;
+  border-radius: var(--pk-kit-radius-card);
+  padding: var(--pk-kit-card-pad);
+  box-shadow:
+    inset 0 0 0 1px var(--pk-border-subtle),
+    var(--pk-elevation-3);
+}
+dialog.sheet .passport {
+  display: contents;
+}
+/* Under 35rem the sheet docks to the bottom edge, past the home indicator (DL2, DL17). */
+@media (max-width: 35rem) {
+  dialog.sheet {
+    margin-block-end: 0;
+    inline-size: 100%;
+    max-inline-size: 100%;
+  }
+  dialog.sheet .card,
+  .pk-root[data-shape] dialog.sheet .stage[data-split] .card {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    padding-block-end: max(var(--pk-kit-card-pad), env(safe-area-inset-bottom));
+  }
+}
+.pk-root[data-motion="reduced"] dialog[open] .card,
+.pk-root[data-motion="reduced"] dialog[open]::backdrop {
+  transition: none;
+}
 
 /* ── Motion: the step morph (View Transitions, §4.8) ─────────────────────────────────────── */
 @keyframes pk-sweep {
@@ -886,7 +944,70 @@ dialog[open] .card {
 .step {
   animation: pk-enter var(--pk-duration-base) var(--pk-ease-standard);
 }
-.pk-root[data-motion="reduced"] .step {
+/* stagger-list (§3.18): rows rise in, a step apart, at most six steps. */
+@keyframes pk-rise {
+  from {
+    opacity: 0;
+    translate: 0 var(--pk-motion-distance-sm);
+  }
+}
+.pk-stagger > * {
+  animation: pk-rise var(--pk-duration-base) var(--pk-ease-enter) backwards;
+}
+.pk-stagger > :nth-child(2) {
+  animation-delay: var(--pk-stagger-step);
+}
+.pk-stagger > :nth-child(3) {
+  animation-delay: calc(2 * var(--pk-stagger-step));
+}
+.pk-stagger > :nth-child(4) {
+  animation-delay: calc(3 * var(--pk-stagger-step));
+}
+.pk-stagger > :nth-child(5) {
+  animation-delay: calc(4 * var(--pk-stagger-step));
+}
+.pk-stagger > :nth-child(n + 6) {
+  animation-delay: calc(5 * var(--pk-stagger-step));
+}
+/* success (§3.18): the check draws once, the mark settles from 0.9; never the accent. */
+.success {
+  justify-self: center;
+  inline-size: 3.5rem;
+  block-size: 3.5rem;
+  color: var(--pk-success);
+}
+.card[data-align="start"] .success {
+  justify-self: start;
+}
+.success svg {
+  inline-size: 100%;
+  block-size: 100%;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: pk-pop var(--pk-duration-moderate) var(--pk-ease-enter);
+}
+.success path {
+  stroke-dasharray: 40;
+  animation: pk-draw var(--pk-duration-moderate) var(--pk-ease-enter) var(--pk-duration-micro) backwards;
+}
+@keyframes pk-draw {
+  from {
+    stroke-dashoffset: 40;
+  }
+}
+@keyframes pk-pop {
+  from {
+    opacity: 0;
+    scale: var(--pk-motion-scale-pop);
+  }
+}
+/* Reduced motion (DL16): every step an instant swap, no fade, rise, draw or scale. */
+.pk-root[data-motion="reduced"] .step,
+.pk-root[data-motion="reduced"] .pk-stagger > *,
+.pk-root[data-motion="reduced"] .success svg,
+.pk-root[data-motion="reduced"] .success path {
   animation: none;
 }
 

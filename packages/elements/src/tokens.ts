@@ -38,6 +38,8 @@ function scales(): Record<string, string | number> {
     out[`--pk-motion-distance-${k}`] = v;
   out["--pk-motion-scale-press"] = MOTION.scale.press;
   out["--pk-motion-scale-enter"] = MOTION.scale.enter;
+  out["--pk-motion-scale-pop"] = MOTION.scale.pop;
+  out["--pk-stagger-step"] = MOTION.stagger.step;
 
   const web = KIT_TOKENS.components.web;
   out["--pk-kit-control-height"] = rem(web.controlHeight.default);

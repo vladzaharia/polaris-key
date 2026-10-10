@@ -26,6 +26,7 @@ import {
   progressBar,
   seatMeter,
   shimmer,
+  successMark,
   text,
   titles,
   type RenderCtx,
@@ -105,7 +106,7 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
     case "DeviceLimit":
       return deviceLimitContent(c);
     case "LicenseChoice":
-      return licenseRows(c);
+      return c.view.state === "replace-open" ? replaceRows(c) : licenseRows(c);
     case "Devices":
       return deviceRows(c);
     case "ReleaseNotes":
@@ -244,6 +245,9 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
             })
           : nothing}
       </div>
+      ${view.component === "SignIn" && view.state === "done"
+        ? successMark()
+        : nothing}
       <div class="texts" data-part="texts">
         ${titles(
           c,
@@ -531,7 +535,13 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
     : nothing}`;
 }
 
-function radioKeys(e: KeyboardEvent, c: RenderCtx, i: number, n: number): void {
+function radioKeys(
+  e: KeyboardEvent,
+  c: RenderCtx,
+  i: number,
+  n: number,
+  idOf: (index: number) => string = String,
+): void {
   const next =
     e.key === "ArrowDown" || e.key === "ArrowRight"
       ? (i + 1) % n
@@ -540,10 +550,10 @@ function radioKeys(e: KeyboardEvent, c: RenderCtx, i: number, n: number): void {
         : null;
   if (e.key === " " || e.key === "Enter") {
     e.preventDefault();
-    c.pick(String(i));
+    c.pick(idOf(i));
   } else if (next !== null) {
     e.preventDefault();
-    c.pick(String(next));
+    c.pick(idOf(next));
     const host = (e.currentTarget as HTMLElement).parentElement;
     queueMicrotask(() =>
       (host?.children[next] as HTMLElement | undefined)?.focus(),
@@ -648,7 +658,7 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
           (keys.has("signin.choice.tag.full") && r.state !== "free"),
       );
   return html`<div
-    class="list"
+    class="list pk-stagger"
     role="radiogroup"
     aria-label=${keys.has("signin.choice.group")
       ? plain(c, "signin.choice.group")
@@ -709,6 +719,107 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
       </div>`;
     })}
   </div>`;
+}
+
+/** "3 days ago", "last month": a relative time from epoch seconds (the server's `lastSeen`). */
+function since(epochSeconds: number, locale: string): string {
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - epochSeconds * 1000) / 86_400_000),
+  );
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  if (days < 45) return rtf.format(-days, "day");
+  if (days < 365) return rtf.format(-Math.round(days / 30), "month");
+  return rtf.format(-Math.round(days / 365), "year");
+}
+
+/** The Replace step (SIGN-IN.md §3.7): the license's devices, the least recent preselected, and
+ *  the one confirm under the list that names the picked device. */
+function replaceRows(c: RenderCtx): TemplateResult | typeof nothing {
+  const rv = c.input.replaceView;
+  if (!rv) return nothing;
+  const keys = new Set(c.view.copy);
+  const pickId = (c.input as { replacePick?: string }).replacePick;
+  const devices = rv.devices;
+  const pick =
+    devices.find((d) => d.id === pickId) ??
+    devices.find((d) => d.leastRecent) ??
+    devices[0];
+  const name = (d: (typeof devices)[number]) =>
+    d.label ?? plain(c, "devices.unnamed");
+  const thisDevice = plain(c, "part.thisDevice", {
+    formFactor: c.input.platform?.formFactor ?? "computer",
+  });
+  const tag = (k: string) =>
+    html` <span class="pill" data-key=${k}>${text(c, k)}</span>`;
+  return html`<div
+      class="list pk-stagger"
+      role="radiogroup"
+      aria-labelledby="pk-title"
+      data-part="device-list"
+    >
+      ${devices.map(
+        (d, i) =>
+          html`<div
+            class="row"
+            role="radio"
+            part="device-row"
+            data-part="device-row"
+            tabindex=${d === pick ? "0" : "-1"}
+            aria-checked=${d === pick ? "true" : "false"}
+            @click=${() => c.pick(d.id)}
+            @keydown=${(e: KeyboardEvent) =>
+              radioKeys(e, c, i, devices.length, (n) => devices[n]!.id)}
+          >
+            <span
+              role="img"
+              aria-label=${plain(c, "a11y.formFactor", {
+                formFactor: d.deviceType ?? "other",
+              })}
+              >${GLYPHS.device(d.deviceType)}</span
+            >
+            <span>
+              <span class="row-title"><bdi>${name(d)}</bdi></span
+              >${d.leastRecent
+                ? tag("signin.replace.leastRecent")
+                : nothing}${d.activeNow
+                ? tag("signin.replace.activeNow")
+                : nothing}${d.thisBrowser
+                ? tag("signin.replace.thisBrowser")
+                : nothing}<br />
+              <span class="meta"
+                >${text(c, "signin.replace.meta", {
+                  platform: platformLabel(d.platform),
+                  when: since(d.lastSeen, c.copy.locale),
+                })}</span
+              >
+            </span>
+            ${d === pick ? GLYPHS.check() : html`<span></span>`}
+          </div>`,
+      )}
+    </div>
+    ${pick && keys.has("signin.replace.title")
+      ? html`<div class="callout" data-part="confirm" role="status">
+          <span class="callout-title" data-key="signin.replace.title"
+            >${text(c, "signin.replace.title", { device: name(pick) })}</span
+          >
+          ${keys.has("signin.replace.consequence")
+            ? html`<span data-key="signin.replace.consequence"
+                >${text(c, "signin.replace.consequence", {
+                  device: name(pick),
+                  thisDevice,
+                })}</span
+              >`
+            : nothing}
+          ${pick.activeNow
+            ? html`<span class="message" data-tone="warning"
+                >${text(c, "signin.replace.inUse", {
+                  device: name(pick),
+                })}</span
+              >`
+            : nothing}
+        </div>`
+      : nothing}`;
 }
 
 function deviceRows(c: RenderCtx): TemplateResult | typeof nothing {

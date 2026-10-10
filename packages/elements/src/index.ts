@@ -13,6 +13,13 @@ import { setTheme, type ElementsTheme } from "./theme.js";
 
 export { defineElements, ELEMENTS, PkGate, PkProvider } from "./components.js";
 export { PkElement, type PkActionDetail } from "./element.js";
+export {
+  PkSignIn,
+  STEP_ELEMENTS,
+  formStep,
+  type FormInput,
+  type FormStep,
+} from "./signin.js";
 export { LAYOUTS, TAGS, type Kind, type Layout } from "./layout.js";
 export { stylesCss, sharedSheet } from "./styles.js";
 export { tokenCss } from "./tokens.js";

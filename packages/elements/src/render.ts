@@ -69,12 +69,26 @@ const CLOSE = "";
  * One catalog string, with each argument that carries someone's own text (`view.isolate`) in a
  * `<bdi>` run (plans/HA-12.md Q5). A missing argument stays visible as `{name}`.
  */
+/** The view's arguments, plus the kit-side phrase a message may name: `{thisDevice}`, the current
+ *  device in the platform's own word (part.thisDevice, by form factor). */
+function argsOf(
+  c: RenderCtx,
+  extra: Record<string, string | number>,
+): Record<string, string | number> {
+  const args: Record<string, string | number> = { ...c.view.args, ...extra };
+  if (args.thisDevice === undefined && c.copy.has("part.thisDevice"))
+    args.thisDevice = c.copy.format("part.thisDevice", {
+      formFactor: c.input.platform?.formFactor ?? "other",
+    });
+  return args;
+}
+
 export function text(
   c: RenderCtx,
   key: string,
   extra: Record<string, string | number> = {},
 ): TemplateResult {
-  const args: Record<string, string | number> = { ...c.view.args, ...extra };
+  const args = argsOf(c, extra);
   const isolated = new Set(c.view.isolate);
   const marked: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(args))
@@ -100,7 +114,7 @@ export function plain(
   key: string,
   extra: Record<string, string | number> = {},
 ): string {
-  return c.copy.format(key, { ...c.view.args, ...extra });
+  return c.copy.format(key, argsOf(c, extra));
 }
 
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────
@@ -331,6 +345,17 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
     style=${styleMap({ "--pk-fraction": String(pct / 100) })}
   >
     <span></span>
+  </div>`;
+}
+
+/** The success mark (SIGN-IN.md §3.18 success): the check draws once; static under reduced
+ *  motion. Decorative: the title says what happened. */
+export function successMark(): TemplateResult {
+  return html`<div class="success" part="success" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="22"></circle>
+      <path d="m14 25 7 7 13-15"></path>
+    </svg>
   </div>`;
 }
 
@@ -592,6 +617,7 @@ export function titles(
   if (keys.length === 0) return nothing;
   const [first, ...more] = keys;
   return html`<h1
+      id="pk-title"
       class="title"
       part="title"
       data-part="title"

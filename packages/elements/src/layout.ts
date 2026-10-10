@@ -197,11 +197,18 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.again",
       "signin.choice.keep",
       "signin.choice.create",
-      "signin.replace.open",
       "signin.replace.back",
       "signin.none.otherAccount",
     ],
-    links: ["signin.choice.keyInstead"],
+    // Replace a device names the step it opens; in the Replace step itself it is a quiet link.
+    // The elements confirm inline everywhere (D-80: the web has no system confirm), so macOS's
+    // Replace… is quiet too.
+    links: [
+      "signin.replace.open",
+      "signin.replace.openSystem",
+      "signin.choice.keyInstead",
+    ],
+    titles: ["deviceLimit.title"],
     meta: ["common.loading"],
     content: [
       "signin.choice.group",
@@ -226,6 +233,8 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.choice.metaNew",
       "signin.choice.keepMeta",
       "signin.choice.createMeta",
+      "signin.replace.title",
+      "signin.replace.consequence",
     ],
   },
   Devices: {
