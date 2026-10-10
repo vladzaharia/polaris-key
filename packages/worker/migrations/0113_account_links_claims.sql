@@ -8,7 +8,7 @@
 -- home in `profile_json` (0079), and the birth date rides only in the sign-in's gate record.
 --
 -- Expand only: the Worker deployed before I-30 never names it. Rollback:
--- scripts/rollback/00XX_account_links_claims.down.sql.
+-- scripts/rollback/0113_account_links_claims.down.sql.
 --
 -- ONE statement per file (R11-04).
 ALTER TABLE account_links ADD COLUMN claims_json TEXT;

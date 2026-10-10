@@ -32,7 +32,7 @@
 --
 -- Expand only: the Worker deployed before I-30 never names either table. Each statement is
 -- `IF NOT EXISTS`, so the file converges on replay. Rollback:
--- scripts/rollback/00XX_identity_connections.down.sql. Identity owns both tables; other code reads
+-- scripts/rollback/0112_identity_connections.down.sql. Identity owns both tables; other code reads
 -- them only through `src/core/oidc/connections.ts`.
 
 CREATE TABLE IF NOT EXISTS identity_connections (
