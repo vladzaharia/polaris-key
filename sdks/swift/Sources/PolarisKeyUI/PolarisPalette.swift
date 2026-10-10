@@ -32,7 +32,7 @@ public struct PolarisPalette: Sendable, Equatable {
     public var textStrong: Color
     /// Body copy.
     public var textDefault: Color
-    /// Secondary copy (subtitles, the "or" divider).
+    /// Secondary copy (subtitles).
     public var textMuted: Color
     /// The card edge and the divider rules.
     public var borderSubtle: Color

@@ -735,7 +735,11 @@
 
             let integrator = PolarisTheme(accent: .orange).resolvedPalette(
                 for: .dark, branding: .polarisKey, presentation: teal)
-            XCTAssertEqual(integrator.accent, .orange)
+            // The integrator's colour leads, and goes through the resolver like any other accent.
+            let orange = try XCTUnwrap(Color.orange.polarisHex(for: .dark))
+            let orangeResolved = try XCTUnwrap(PolarisAccent.resolve(orange, dark: true))
+            XCTAssertEqual(integrator.accent, BrandColor(hexString: orangeResolved.solid)?.color)
+            XCTAssertNotEqual(integrator.accent, branded.accent)
 
             var dark = teal
             dark.accentDark = "#9a5cff"

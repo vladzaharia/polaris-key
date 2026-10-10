@@ -7,18 +7,22 @@
 import PolarisKeyCore
 import PolarisKeyLicense
 import SwiftUI
+#if canImport(UIKit)
+    import UIKit
+#elseif canImport(AppKit)
+    import AppKit
+#endif
 
 /// User-facing copy for the gate. Defaults read for the generic "this app" case; a product
 /// overrides `productName` (and any string it wants to brand) at construction.
 ///
-/// Every string the gate renders lives here (including the divider/retry/reconnect chrome), so a
+/// Every string the gate renders lives here (including the retry/reconnect chrome), so a
 /// product can fully localize/brand the surface and so VoiceOver reads product copy.
 public struct PolarisCopy: Sendable {
     public var productName: String
     public var welcomeTitle: String
     public var welcomeSubtitle: String
     public var signInButton: String
-    public var orDividerLabel: String
     public var licenseKeyPlaceholder: String
     public var activateButton: String
     public var retryButton: String
@@ -52,7 +56,6 @@ public struct PolarisCopy: Sendable {
         welcomeTitle: String? = nil,
         welcomeSubtitle: String = "",
         signInButton: String = KitButtonCase.button("Sign in"),
-        orDividerLabel: String = "or",
         licenseKeyPlaceholder: String = "License key",
         activateButton: String = "Activate",
         retryButton: String = KitButtonCase.button("Try again"),
@@ -78,7 +81,6 @@ public struct PolarisCopy: Sendable {
         self.welcomeTitle = welcomeTitle ?? "Welcome to \(productName)"
         self.welcomeSubtitle = welcomeSubtitle
         self.signInButton = signInButton
-        self.orDividerLabel = orDividerLabel
         self.licenseKeyPlaceholder = licenseKeyPlaceholder
         self.activateButton = activateButton
         self.retryButton = retryButton
@@ -132,7 +134,8 @@ public struct PolarisCopy: Sendable {
 /// here wins over what the branding or the presentation would pick:
 ///
 /// - `accent` (and `accentOn` for the text on it) re-points the primary button and the accent
-///   text in both colour schemes, leaving the rest of the palette alone;
+///   text in both colour schemes, through the contrast resolver (`PolarisAccent`), leaving the
+///   rest of the palette alone;
 /// - `palette` replaces every colour, per colour scheme;
 /// - `typography` picks the system font, Rubik or the product's own faces;
 /// - `logo` replaces the product icon the kit would show;
@@ -199,8 +202,25 @@ public struct PolarisTheme: Sendable {
             palette?(scheme)
             ?? PolarisPalette.standard(resolvedBranding(environment), for: scheme)
         if let accent = accentOverride {
-            resolved.accent = accent
-            resolved.accentText = accent
+            // The integrator's colour goes through the same contrast resolver as a presentation
+            // accent: the fill and its label clear 4.5:1 (white on #FF6A3D is 2.85:1), the text
+            // form clears 4.5:1 on the page, in this scheme. A colour that cannot be read as sRGB
+            // (a clear or pattern colour) is used as given.
+            if let input = accent.polarisHex(for: scheme),
+                let resolvedAccent = PolarisAccent.resolve(input, dark: scheme != .light),
+                let solid = BrandColor(hexString: resolvedAccent.solid),
+                let fg = BrandColor(hexString: resolvedAccent.fg),
+                let on = BrandColor(hexString: resolvedAccent.on),
+                let focus = BrandColor(hexString: resolvedAccent.focus)
+            {
+                resolved.accent = solid.color
+                resolved.accentText = fg.color
+                resolved.onAccent = on.color
+                resolved.focus = focus.color
+            } else {
+                resolved.accent = accent
+                resolved.accentText = accent
+            }
         } else if palette == nil, resolvedBranding(environment) == .polarisKey,
             let input = presentation?.accent(for: scheme),
             let accent = PolarisAccent.resolve(input, dark: scheme != .light),
@@ -329,5 +349,39 @@ extension BrandColor {
             let value = UInt32(hexString.dropFirst(), radix: 16)
         else { return nil }
         self.init(hex: value)
+    }
+}
+
+extension Color {
+    /// This colour as `#rrggbb` in sRGB as it renders in `scheme`, or nil when it has no fixed
+    /// value (fully transparent, or a colour the platform cannot convert).
+    func polarisHex(for scheme: ColorScheme) -> String? {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        #if canImport(UIKit)
+            let traits = UITraitCollection(userInterfaceStyle: scheme == .dark ? .dark : .light)
+            let resolved = UIColor(self).resolvedColor(with: traits)
+            guard resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
+        #elseif canImport(AppKit)
+            var converted: NSColor?
+            let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            let native = NSColor(self)
+            if let appearance {
+                appearance.performAsCurrentDrawingAppearance {
+                    converted = native.usingColorSpace(.sRGB)
+                }
+            } else {
+                converted = native.usingColorSpace(.sRGB)
+            }
+            guard let converted else { return nil }
+            converted.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        #else
+            return nil
+        #endif
+        guard alpha > 0.01 else { return nil }
+        func byte(_ v: CGFloat) -> Int { Int((min(1, max(0, v)) * 255).rounded()) }
+        return String(format: "#%02x%02x%02x", byte(red), byte(green), byte(blue))
     }
 }
