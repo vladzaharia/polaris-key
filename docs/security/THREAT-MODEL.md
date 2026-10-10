@@ -7839,7 +7839,9 @@ A licence's `status` stays `active`/`disabled`; `ended_reason` records why it en
   state is the projection of `license_store_grants`, so the lifecycle's grant writers exclude
   store sources: an operator cannot reinstate a refunded store purchase through them. Store
   refunds still revoke through `applyStoreGrant`, as `revoked`, until CM-22 routes them through
-  the lifecycle as `refunded`.
+  the lifecycle as `refunded`. The `oidc` grant's sign-in upsert also writes `active` on every
+  sign-in. Nothing suppresses or refunds an `oidc` grant yet; the package that adds an operator's
+  suppress (LX-13, LX-14) must make that upsert keep `suppressed`.
 - **No wire change.** A disabled licence's document request gets the same 401 whatever its
   reason (tested). The reason reaches devices only with LX-18's wire amendment. `ended_reason` and
   `superseded_by` are licence metadata, not personal data, and stay on a deleted product's
