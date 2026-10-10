@@ -39,6 +39,12 @@
 // snapshot is shape-identical to a desktop one.
 
 import type { ManagedEntry } from "@polaris-key/protocol/core";
+import {
+  BrowserPresentationSource,
+  memoryPresentationCache,
+  type PresentationCache,
+  type ReactPresentationSource,
+} from "../core/presentation.js";
 import { DELEGATED_KID_PATTERN } from "@polaris-key/protocol/release";
 import {
   HEADER_PLATFORM,
@@ -331,6 +337,9 @@ export interface BrowserAdapterOptions {
   /** Where the random device id and an imported bundle live. Defaults to IndexedDB; `null`
    *  (or a runtime without IndexedDB) makes bundle import unsupported. */
   offlineStore?: OfflineStore | null;
+  /** Where discovery's presentation member and its icon are kept (HA-13). Defaults to IndexedDB
+   *  (its own database); memory when there is none, or when `offlineStore` is given. */
+  presentationCache?: PresentationCache | null;
   /** Wire v4 update decisions (`decideUpdate()`). Absent ⇒ it throws `not-configured`. Needs
    *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
   update?: BrowserUpdateConfig;
@@ -459,6 +468,8 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly updateDetected: DetectedOutlet | null;
   /** The verified discovery document, once it answered. */
   private discovery_: DiscoveryDocument | null = null;
+  /** Discovery's `core.presentation` and its verified icon (HA-13). */
+  private readonly presentation_: BrowserPresentationSource;
   private discovered: Promise<void> = Promise.resolve();
   /** The discovery fetch on the wire now, if any. */
   private discovering: Promise<void> | null = null;
@@ -506,6 +517,17 @@ export class BrowserAdapter implements PolarisAdapter {
     );
     this.capabilities = copyServices(this.expectedServices);
     this.capabilityCtx = capabilityContext("web", () => this.capabilities);
+    this.presentation_ = new BrowserPresentationSource({
+      product: this.product,
+      fetchImpl: () => this.fetchImpl,
+      cache:
+        opts.presentationCache !== undefined
+          ? opts.presentationCache
+          : opts.offlineStore !== undefined
+            ? memoryPresentationCache()
+            : undefined,
+    });
+    void this.presentation_.load();
     this.pinned = opts.trust?.pinnedKeys ?? null;
     this.offline =
       opts.offlineStore === undefined
@@ -820,6 +842,7 @@ export class BrowserAdapter implements PolarisAdapter {
       if (result.kind === "ok") {
         this.capabilities = result.services;
         this.discovery_ = result.document;
+        await this.presentation_.accept(result.document);
       } else if (
         result.kind === "error" &&
         result.status === 0 &&
@@ -1798,6 +1821,10 @@ export class BrowserAdapter implements PolarisAdapter {
       this.applyBearer({ busy: noBusy(), error: noErrors() });
     }
     return r;
+  }
+
+  presentationSource(): ReactPresentationSource {
+    return this.presentation_;
   }
 
   async discovery(): Promise<Record<string, unknown> | null> {

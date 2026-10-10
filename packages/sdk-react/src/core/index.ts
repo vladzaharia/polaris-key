@@ -177,3 +177,19 @@ export {
   type LocalConfig,
   type LocalConfigBackend,
 } from "./localConfig.js";
+// Discovery's `core.presentation` (HA-13): the adapters' `presentationSource()`.
+export {
+  BridgePresentationSource,
+  BrowserPresentationSource,
+  fetchIconBytes,
+  indexedDbPresentationCache,
+  memoryPresentationCache,
+  namedIcons,
+  safeIconUrl,
+  type BridgeInvoke,
+  type BrowserPresentationOptions,
+  type PresentationCache,
+  type PresentationSource,
+  type ProductPresentation,
+  type ReactPresentationSource,
+} from "./presentation.js";
