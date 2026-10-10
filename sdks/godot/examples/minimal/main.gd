@@ -11,7 +11,6 @@ extends Control
 ## Replace SKINS_FLAG with a flag your product maps to a store product, and "difficulty" with a
 ## key from your config catalog.
 
-const SettingsPanel := preload("res://addons/polaris_key/ui/settings/pkey_settings_panel.tscn")
 const SKINS_FLAG := "extras.diceSkins"
 const SKINS_ENTITLEMENT := "dice-skins"
 const DIFFICULTY_KEY := "difficulty"
@@ -57,15 +56,10 @@ func _render() -> void:
 
 
 ## Settings: the kit's panel lists every user-adjustable config key and persists the player's
-## choices (user://pkey_settings.cfg).
+## choices (user://pkey_settings.cfg). One line opens it over the game; Close, Escape or a pad's B
+## closes it and gives the focus back.
 func _open_settings() -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = "Settings"
-	dialog.add_child(SettingsPanel.instantiate())
-	dialog.confirmed.connect(dialog.queue_free)
-	dialog.canceled.connect(dialog.queue_free)
-	add_child(dialog)
-	dialog.popup_centered(Vector2i(560, 420))
+	PKeySettingsPanel.open(self)
 
 
 ## Commerce: one call buys the flag in this build's store (App Store, Steam), claims it and syncs.

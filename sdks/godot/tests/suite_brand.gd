@@ -213,7 +213,9 @@ func _theme(t: PKeyTestContext) -> void:
 	t.check("font: Rubik Bold loads", bold != null and bold.get_font_name() == "Rubik" and bold.get_font_style() & TextServer.FONT_BOLD != 0)
 	t.check("font: Rubik measures text", regular != null and regular.get_string_size("Polaris Key", HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x > 50.0)
 	t.check("font: the brand's body face is Rubik Regular", dark.default_font == regular and light.default_font == regular)
-	t.check("font: brand titles and codes are Rubik Bold", dark.get_font("font", "PKeyTitle") == bold and dark.get_font("font", "PKeyCode") == bold)
+	# DL12: three weights, from the variable Rubik; Rubik Bold (700) is the wordmark fallback only.
+	t.check("font: brand titles and codes are Rubik at 600", _weight_of(dark.get_font("font", "PKeyTitle")) == 600 and _weight_of(dark.get_font("font", "PKeyCode")) == 600 and _weight_of(light.get_font("font", "PKeySection")) == 600, "%s" % _weight_of(dark.get_font("font", "PKeyTitle")))
+	t.check("font: the brand's primary button is Rubik at 500", _weight_of(dark.get_font("font", "PKeyPrimary")) == 500 and _weight_of(light.get_font("font", "PKeyPrimary")) == 500)
 	if OS.has_feature("editor"):
 		# Non-resource files are not in an exported pack; the addon zip carries them.
 		var ofl := FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/fonts/OFL.txt")
@@ -404,7 +406,7 @@ func _overrides(t: PKeyTestContext) -> void:
 	var bgate: Control = boot.get("gate")
 	bgate.call("show_state", {"status": "needs-activation"})
 	var title := bgate.find_child("Title", true, false) as Label
-	t.check("boot flow: the gate title is in the brand face", title != null and title.get_theme_font("font") == load(PKeyUiTheme.BOLD_PATH))
+	t.check("boot flow: the gate title is in the brand face", title != null and _weight_of(title.get_theme_font("font")) == 600)
 	t.check("boot flow: the product leads the brand gate", product.call(bgate) and not shown.call(bgate, "Mark"))
 	PKeyUiTheme.apply_options(none)
 	await tree.process_frame
@@ -513,3 +515,17 @@ static func _box_key(sb: StyleBox) -> String:
 	for corner in [CORNER_TOP_LEFT, CORNER_TOP_RIGHT, CORNER_BOTTOM_RIGHT, CORNER_BOTTOM_LEFT]:
 		parts.append(f.get_corner_radius(corner))
 	return str(parts)
+
+
+## The weight a FontVariation of the variable Rubik draws at (0 for any other font).
+static func _weight_of(f: Font) -> int:
+	if not (f is FontVariation):
+		return 0
+	var v := f as FontVariation
+	if v.base_font == null or v.base_font.resource_path != PKeyKitTokens.RUBIK_VARIABLE_PATH:
+		return 0
+	var tag := TextServerManager.get_primary_interface().name_to_tag("wght")
+	for k in v.variation_opentype:
+		if (k is String and k == "wght") or (k is int and k == tag):
+			return int(v.variation_opentype[k])
+	return 0
