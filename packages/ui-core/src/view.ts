@@ -54,8 +54,26 @@ export interface View<C extends ComponentName = ComponentName, S = string> {
   actions: Action[];
   /** The arguments the copy's messages take (`{product}`, `{count}`, …). */
   args: Record<string, string | number>;
+  /**
+   * The arguments that carry a product's, a developer's or a person's own text (names, device
+   * labels, tiers): a renderer draws each in an isolated run (`<bdi>` or `dir="auto"`), because
+   * presentation text keeps its bidi controls (plans/HA-12.md Q5).
+   */
+  isolate: string[];
   decisions: Decisions;
 }
+
+/** The argument names whose values are someone's own text, never the catalog's. */
+const ISOLATED_ARGS = new Set([
+  "product",
+  "app",
+  "developer",
+  "device",
+  "thisDevice",
+  "name",
+  "org",
+  "tier",
+]);
 
 /** The copy keys of fields: never focused on appear under a coarse pointer (DL9). */
 const FIELDS = new Set([
@@ -119,6 +137,9 @@ export function makeView<C extends ComponentName, S extends string>(
     copy,
     actions: actionsFor(copy, spec.extraActions),
     args,
+    isolate: Object.keys(args)
+      .filter((k) => ISOLATED_ARGS.has(k))
+      .sort(),
     decisions: {
       primary,
       tone: spec.tone ?? null,

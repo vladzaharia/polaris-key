@@ -18,6 +18,8 @@ packages/
   shared-catalog/    @polaris-key/catalog      data-driven config catalog + Ajv validation
   shared-manifest/   @polaris-key/manifest     `.pkey/` manifest parsing + validation
   client-core/       @polaris-key/client-core  isomorphic verify/trust/gate/clock floor
+  ui-core/           @polaris-key/ui-core      the JS UI kits' headless layer: view models,
+                                               the sign-in form's state machine, theme
   worker/            @polaris-key/worker       the Cloudflare Worker (core/ + services/<slug>/)
   admin/             @polaris-key/admin        the admin SPA + customer portal (React + Vite)
   cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint)

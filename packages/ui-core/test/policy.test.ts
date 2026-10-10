@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   Copy,
+  DELAYED_LOADING_STATES,
   LOADING_DELAY_MS,
   LOADING_DELAY_WINDOW,
   codeExpired,
@@ -20,6 +21,7 @@ import {
   startLoadingTimer,
   validLink,
   viewOf,
+  ViewModel,
   type Platform,
 } from "../src/index.js";
 import { readMatrix } from "./matrix.js";
@@ -158,6 +160,11 @@ describe("DL7: the loading delay is a model timer", () => {
     expect(LOADING_DELAY_WINDOW).toEqual({ min: window.min, max: window.max });
     expect(LOADING_DELAY_MS).toBeGreaterThanOrEqual(window.min);
     expect(LOADING_DELAY_MS).toBeLessThanOrEqual(window.max);
+  });
+
+  it("delays the loading states ui-matrix.json names", () => {
+    const window = readMatrix().vocabulary.loadingDelay as { states: string[] };
+    expect([...DELAYED_LOADING_STATES]).toEqual(window.states);
   });
 
   it("shows nothing before the delay, the label after it", () => {
@@ -326,5 +333,42 @@ describe("the copy formatter", () => {
       },
     });
     expect(copy.strings(view)["devices.count"]).toBe("1 device");
+  });
+});
+
+describe("ViewModel: a component's view as a live value", () => {
+  it("runs DL7's delay itself: nothing before it, the label after, the list when loaded", () => {
+    let t = 0;
+    const fired: (() => void)[] = [];
+    const delivered: string[] = [];
+    const m = new ViewModel(
+      "Devices",
+      { loading: true },
+      {
+        now: () => t,
+        schedule: (fn) => {
+          fired.push(fn);
+          return () => {};
+        },
+      },
+    );
+    m.subscribe((v) => delivered.push(`${v.state}:${v.copy.length}`));
+    expect(m.view.state).toBe("loading");
+    expect(m.view.copy).toEqual([]);
+    t = 260;
+    fired.splice(0).forEach((f) => f());
+    expect(m.view.copy).toEqual(["common.loading", "devices.title"]);
+    m.update({ loading: false, devices: [] });
+    expect(m.view.state).toBe("empty");
+    expect(delivered).toEqual(["loading:2", "empty:1"]);
+    m.dispose();
+  });
+
+  it("marks the arguments that are someone's own text for an isolated run", () => {
+    const v = viewOf("Welcome", {
+      presentation: { name: "‮Tidewater", developerName: "Harbor", icon: true },
+    });
+    expect(v.isolate).toEqual(["developer", "product"]);
+    expect(v.args.product).toBe("‮Tidewater");
   });
 });

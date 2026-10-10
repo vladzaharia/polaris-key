@@ -7,6 +7,7 @@
 //                              arguments, and the design language's decisions (DL4, DL6, DL7,
 //                              DL9, DL14) as data
 //   SignInModel                the one sign-in form's state machine over the SDK primitives
+//   ViewModel                  any component's view as a live value, DL7's delay included
 //   createStore                snapshot + subscribe, with the UI-thread delivery hook
 //   Copy, formatMessage        the catalog lookup and ICU-subset formatter (tables injected)
 //   linkVerdict, validLink     DL14's one validating opener
@@ -26,3 +27,4 @@ export * from "./store.js";
 export * from "./copy.js";
 export * from "./models/index.js";
 export * from "./signInModel.js";
+export * from "./viewModel.js";

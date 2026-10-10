@@ -47,6 +47,8 @@ export interface ThemeOptions {
   /** The integrator's ProductIdentity: it wins over the presentation and the bundle. */
   product?: IntegratorIdentity;
   poweredBy?: false | "line" | "badge";
+  /** Web and Qt Quick kits: the platform variant to render (`auto`: the one the kit runs on). */
+  platform?: "auto" | "ios" | "android" | "macos" | "windows" | "linux" | "web";
 }
 
 /** What a kit resolves a theme against. */
@@ -79,6 +81,8 @@ export interface ResolvedTheme extends ThemeSummary {
   /** `full`, or `reduced` (every duration 0, the shimmer still; DL16). */
   motion: "full" | "reduced";
   ambient: boolean;
+  /** The platform variant the kit renders (§3.1 `platform`), `null` when nothing says. */
+  platform: string | null;
 }
 
 /**
@@ -145,6 +149,10 @@ export function resolveTheme(
           ? "reduced"
           : "full",
     ambient: options.ambient ?? preset !== "native",
+    platform:
+      options.platform && options.platform !== "auto"
+        ? options.platform
+        : (ctx.platform?.os ?? null),
   };
 }
 

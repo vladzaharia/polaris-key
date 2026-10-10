@@ -13,6 +13,19 @@ export const LOADING_DELAY_WINDOW = { min: 250, max: 300 } as const;
 /** This core's delay: the window's start. */
 export const LOADING_DELAY_MS = LOADING_DELAY_WINDOW.min;
 
+/** The states the delay applies to (`Component.state`; ui-matrix.json `vocabulary.loadingDelay`):
+ *  every must component's loading state, and the gate's license check, which never flashes. */
+export const DELAYED_LOADING_STATES: readonly string[] = [
+  "PolarisKeyGate.booting",
+  "LicenseChoice.loading",
+  "Devices.loading",
+  "ReleaseNotes.loading",
+  "AccountAndLicense.loading",
+  "Settings.loading",
+  "Paywall.loading",
+  "EntitlementGate.loading",
+];
+
 /** True once a loading state shows its content; `elapsedMs` absent means the delay has passed. */
 export function loadingVisible(
   elapsedMs: number | undefined,
