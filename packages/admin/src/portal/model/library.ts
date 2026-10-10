@@ -1146,20 +1146,19 @@ export function platformsOnlyNote(
 
 export interface AttentionItem {
   product: LibraryProduct;
-  /** "Your Studio license ends on 13 Oct. Renew with Lumen Labs to keep using it." */
+  /** "Your Studio license ends on 13 Oct." The action says what to do. */
   text: string;
   action: { label: string; href: string; external: boolean };
 }
 
 /**
  * The device-limit reason. The card's title already names the product, so the text does not.
- * "Both devices are in use. Remove one to use it on another device."
+ * "Both devices are in use." The card's action ("Free a device") says what to do, once.
  */
 function devicesInUse(limit: number): string {
-  if (limit === 1)
-    return "Its one device is in use. Remove it to use another device.";
+  if (limit === 1) return "Its one device is in use.";
   const all = limit === 2 ? "Both devices" : `All ${limit} devices`;
-  return `${all} are in use. Remove one to use it on another device.`;
+  return `${all} are in use.`;
 }
 
 /** A date that never breaks across lines ("11 Sep 2026"): its spaces are non-breaking. */
@@ -1201,14 +1200,13 @@ export function attentionItems(
     if (p.status.kind === "expiresSoon" && p.best.expiresAt) {
       out.push({
         product: p,
-        text: `Your ${tier ? `${tier} ` : ""}license ends on ${unbroken(formatDay(p.best.expiresAt, false))}. Renew with ${who} to keep using it.`,
+        text: `Your ${tier ? `${tier} ` : ""}license ends on ${unbroken(formatDay(p.best.expiresAt, false))}.`,
         action: { label: `Renew with ${who}`, href: link, external: true },
       });
     } else if (p.status.kind === "expired") {
       out.push({
         product: p,
-        // The developer by name in the reason too: a long name truncates on the action.
-        text: `Your license ended on ${unbroken(formatDay(p.best.expiresAt ?? 0))}. ${who[0]!.toUpperCase()}${who.slice(1)} can renew it.`,
+        text: `Your license ended on ${unbroken(formatDay(p.best.expiresAt ?? 0))}.`,
         action: { label: `Renew with ${who}`, href: link, external: true },
       });
     } else if (p.status.kind === "suspended") {

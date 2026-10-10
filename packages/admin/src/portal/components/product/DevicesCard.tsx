@@ -359,12 +359,12 @@ export function DeviceRow({
         </span>
         <div className="min-w-0">
           {/* Wraps, never cut short: two machines often differ only at the end of the name. */}
+          {/* The line follows the page's start edge; `bdi` shapes the name in its own direction. */}
           <p
             data-device-name=""
-            dir="auto"
-            className="break-words font-bold text-fg-strong"
+            className="break-words text-start font-bold text-fg-strong"
           >
-            {name}
+            <bdi>{name}</bdi>
           </p>
           <p className="text-sm text-fg-muted">{meta}</p>
         </div>
