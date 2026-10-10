@@ -25,15 +25,10 @@ import {
   isReservedProductSlug,
   type ManifestDocumentName,
 } from "@polaris-key/manifest";
-import {
-  generateEd25519,
-  seal,
-  secret,
-  sha256Hex,
-  type Db,
-  type DbStatement,
-  type Env,
-} from "../../core/platform.js";
+import { generateEd25519, seal } from "../../keyvault.js";
+import { secret, type Env } from "../../env.js";
+import { sha256Hex } from "../../platform/hash.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import {
   getProduct,
   setAutoIssuePolicy,
@@ -47,8 +42,8 @@ import {
   stmtInsertReleaseConfig,
   stmtInsertSchema,
   stmtInsertTier,
-} from "../../core/ingest.js";
-import { parseManifest, type ParsedManifest } from "./manifest.js";
+} from "../../repo.js";
+import { parseManifest, type ParsedManifest } from "@polaris-key/manifest";
 import {
   discoverInstallation,
   type FetchImpl,

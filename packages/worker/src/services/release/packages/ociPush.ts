@@ -74,8 +74,9 @@ import {
   type RegistryPublisher,
 } from "../../../core/registryTokens.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
-import { appendAudit } from "../../../core/data.js";
-import { randomId, sha256Hex } from "../../../core/platform.js";
+import { appendAudit } from "../../../repo.js";
+import { randomId } from "../../../crypto.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import {
   classifyChannel,
   isMovingSelector,

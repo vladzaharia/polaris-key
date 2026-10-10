@@ -17,7 +17,8 @@
  *     carries the token anywhere.
  */
 
-import type { Db, Env } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import { gitShaOrNull } from "../../core/manifestSnapshot.js";
 import type {
   RepoBlobLookup,

@@ -41,7 +41,7 @@ import { errorResponse, wireError } from "./errors.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { ProductPublic } from "./products.js";
-import type { DeviceRow, LicenseRow } from "./data.js";
+import type { DeviceRow, LicenseRow } from "../repo.js";
 import {
   licenseUsable,
   validateDeviceToken,

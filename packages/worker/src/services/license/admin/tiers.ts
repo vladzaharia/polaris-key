@@ -6,25 +6,25 @@
  * resync never overwrites or deletes it; a manifest tier edited here is claimed.
  */
 
-import {
-  parseJsonStringList,
-  randomId,
-  type Db,
-} from "../../../core/platform.js";
+import { parseJsonStringList } from "../../../platform/json.js";
+import { randomId } from "../../../crypto.js";
+import type { Db } from "../../../db/types.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
   adminJson,
-  adminNotFound,
-  audit,
+  notFound as adminNotFound,
+  err,
+  readBody,
+} from "../../../admin/lib/respond.js";
+import { audit } from "../../../admin/audit.js";
+import {
   countLicensesUsingTier,
   deleteTier,
-  err,
   listProfiles,
   listTiers,
-  readBody,
   upsertTier,
-  WriteChecks,
-} from "../../../core/adminApi.js";
+} from "../../../admin/repo.js";
+import { WriteChecks } from "../../../admin/lib/writeChecks.js";
 import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 

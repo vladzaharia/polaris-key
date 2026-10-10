@@ -17,8 +17,8 @@
 import { stmtMoveLicenseAccount } from "../../../core/accountSubjects.js";
 import { onLicenseOwnershipEnded } from "../../../core/subjectHooks.js";
 import { appendPlatformEvent } from "../../../core/platformEvents.js";
-import type { Db } from "../../../core/platform.js";
-import { getProduct } from "../../../core/data.js";
+import type { Db } from "../../../db/types.js";
+import { getProduct } from "../../../repo.js";
 import { sendSecurityNotice } from "../portal/email.js";
 import { licenseLinkSupersededNotice } from "../portal/notices.js";
 import { portalAudit } from "../portal/repo.js";

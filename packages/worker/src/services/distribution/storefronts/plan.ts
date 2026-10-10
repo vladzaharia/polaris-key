@@ -10,7 +10,7 @@
  * `api` steps, which need a binding to run.
  */
 
-import { parseJsonColumn } from "../../../core/platform.js";
+import { parseJsonColumn } from "../../../platform/json.js";
 import type { Support } from "../../../core/adapters/contract.js";
 import {
   READ_OPS,

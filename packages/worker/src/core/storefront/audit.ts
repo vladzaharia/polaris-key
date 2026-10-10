@@ -18,8 +18,9 @@
  *     ledger row, whose `op_id` the summary names.
  */
 
-import type { Db } from "../platform.js";
-import { audit, type AdminSession } from "../adminApi.js";
+import type { Db } from "../../db/types.js";
+import { audit } from "../../admin/audit.js";
+import type { AdminSession } from "../../admin/session.js";
 import { appendPlatformEvent } from "../platformEvents.js";
 import { storefrontAdapter, type StorefrontId } from "./adapter.js";
 

@@ -55,15 +55,14 @@
 
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../admin/session.js";
 import {
   adminJson,
-  audit,
-  auditStatementFor,
   err,
   readBody,
   settingRefused,
-} from "../../core/adminApi.js";
+} from "../../admin/lib/respond.js";
+import { audit, auditStatementFor } from "../../admin/audit.js";
 import { getCompatWindow } from "../../core/products.js";
 import {
   writeSettings,

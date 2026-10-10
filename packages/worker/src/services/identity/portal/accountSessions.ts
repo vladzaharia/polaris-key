@@ -18,13 +18,11 @@
  * reaches a product route: the dispatcher strips it (`core/accountCookies.ts`).
  */
 
-import {
-  hashKey,
-  parseJsonStringList,
-  randomToken,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { hashKey } from "../../../crypto.js";
+import { parseJsonStringList } from "../../../platform/json.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { getPortalAccount } from "./repo.js";
 import {
   buildPortalSessionCookie,

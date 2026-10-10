@@ -19,7 +19,7 @@
  * copies (`mirror.ts`, `core/hostedAssets.ts`), never the serving of the ones already made.
  */
 
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import { parseServices } from "../../core/services.js";
 import { assetHostingEnabled } from "../../core/assetHosting.js";
 import { productAssetSettings } from "../../core/assetSettings.js";

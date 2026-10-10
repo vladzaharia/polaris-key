@@ -29,7 +29,7 @@
  * `If-Range` and `If-None-Match` straight from R2.
  */
 
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,

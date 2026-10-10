@@ -17,7 +17,8 @@
  *     admin who asked (the platform audit's actor). A product's connector never uses this path.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import {
   platformGoogleAccessToken,
   TokenExchangeError,

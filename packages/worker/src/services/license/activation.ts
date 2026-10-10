@@ -16,13 +16,11 @@
  */
 
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
-import {
-  bearer,
-  deleteTokenRecord,
-  hashKey,
-  type Db,
-  type Env,
-} from "../../core/platform.js";
+import { bearer } from "../../http.js";
+import { deleteTokenRecord } from "../../kv.js";
+import { hashKey } from "../../crypto.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import type { Product } from "../../core/products.js";
 import {
   errorResponse,
@@ -36,7 +34,7 @@ import {
   setDeviceStatus,
   touchKey,
   type LicenseRow,
-} from "../../core/data.js";
+} from "../../repo.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   deviceMetadata,
@@ -47,8 +45,8 @@ import {
   shapeDevice,
   shapeLicense,
 } from "../../core/devices.js";
-import { requireLicensedDevice } from "./auth.js";
-import { authorizeDevice, type AuthzError } from "./authz.js";
+import { requireLicensedDevice } from "../../core/authz.js";
+import { authorizeDevice, type AuthzError } from "../../core/authz.js";
 import { logRefusal, type WaitUntil } from "../../core/refusals.js";
 import { buildManageUrl } from "../../core/manageUrl.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";

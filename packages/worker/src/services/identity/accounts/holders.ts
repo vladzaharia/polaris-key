@@ -15,14 +15,15 @@
  * account has verified leaves the licence waiting.
  */
 
-import { getLicense } from "../../../core/data.js";
+import { getLicense } from "../../../repo.js";
 import { licenseEmail } from "../../../core/accountSubjects.js";
 import {
   autoAttachBlockedAccounts,
   registerLicenseHolderHooks,
   type LicenseHolderContext,
 } from "../../../core/licenseHolders.js";
-import { normalizeEmail, type Db } from "../../../core/platform.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import type { Db } from "../../../db/types.js";
 import {
   attachWaitingLicensesByEmail,
   autoLinkEnabled,

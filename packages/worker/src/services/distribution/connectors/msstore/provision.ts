@@ -28,8 +28,8 @@
  * that has not been committed, so the CI allow-list can refuse `publish` over it.
  */
 
-import type { Db } from "../../../../core/platform.js";
-import type { AdminSession } from "../../../../core/adminApi.js";
+import type { Db } from "../../../../db/types.js";
+import type { AdminSession } from "../../../../admin/session.js";
 import {
   typedConfirmationRefusal,
   type ConfirmationRefusal,

@@ -26,7 +26,7 @@
  * extracted metadata through Release like every other package.
  */
 
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,

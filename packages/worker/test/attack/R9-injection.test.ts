@@ -60,10 +60,7 @@ import {
   fetchRepoFile,
   MAX_REPO_FILE_BYTES,
 } from "../../src/services/release/github.js";
-import {
-  MAX_MANIFEST_BYTES,
-  parseManifest,
-} from "../../src/services/release/manifest.js";
+import { MAX_MANIFEST_BYTES, parseManifest } from "@polaris-key/manifest";
 import { extractSummary } from "../../src/services/release/changelog.js";
 import {
   proseToHtml,

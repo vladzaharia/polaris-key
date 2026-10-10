@@ -12,7 +12,7 @@
 
 import type { ManifestAppDeliverable } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import { hasArtifactMap } from "./artifactMap.js";
 
 export interface ReleaseConfigRow {

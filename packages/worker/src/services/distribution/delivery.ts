@@ -41,7 +41,8 @@
  * Read-only by contract: a hook never writes.
  */
 
-import { parseJsonColumn, type Env } from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import type { Env } from "../../env.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import {
   DEFAULT_TRANSPORT,

@@ -12,7 +12,8 @@
  */
 
 import { IDENTITY_TERMS_VERSION_RE } from "@polaris-key/manifest";
-import type { Db, Env } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { resolveProductSetting } from "../../core/settings/resolve.js";
 import type { TermsRequirement } from "./accounts/terms.js";

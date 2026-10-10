@@ -52,12 +52,10 @@ import type { ServiceContext } from "../../../core/registry.js";
 import type { ByteRoute, ByteRouteContext } from "../../../core/bytesHost.js";
 import { bytesHostname } from "../../../core/bytesHost.js";
 import { normalizeHostname } from "../../../core/bytesHostname.js";
-import {
-  cspImageOrigin,
-  sha256Base64,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { cspImageOrigin } from "../../../securityHeaders.js";
+import { sha256Base64 } from "../../../platform/hash.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { errorResponse, notFound } from "../../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
@@ -68,7 +66,7 @@ import {
   feedStateStamp,
 } from "../feeds/cache.js";
 import { feedResponse } from "../feeds/index.js";
-import { detectPlatform } from "./detect.js";
+import { detectPlatform } from "../../../core/platformDetect.js";
 import {
   PRESENTATION_ICON_SLOTS,
   firstHostedImage,

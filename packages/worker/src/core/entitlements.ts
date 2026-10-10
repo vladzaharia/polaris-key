@@ -19,7 +19,7 @@
 
 import type { AllowedRange, ManagedEntry } from "@polaris-key/protocol";
 import type { ManagedPayload } from "./payload.js";
-import type { LicenseRow, TierRow } from "./data.js";
+import type { LicenseRow, TierRow } from "../repo.js";
 import { resolveLicenseTerms, type LicenseTerms } from "./licensing/terms.js";
 
 interface ParsedSemver {

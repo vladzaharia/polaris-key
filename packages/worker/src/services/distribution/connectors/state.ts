@@ -13,8 +13,10 @@
  * staged rollout through P2b-04's `mirrorRollout`. Nothing here opens a credential.
  */
 
-import { parseJsonObject, randomId, type Db } from "../../../core/platform.js";
-import { appendAudit } from "../../../core/data.js";
+import { parseJsonObject } from "../../../platform/json.js";
+import { randomId } from "../../../crypto.js";
+import type { Db } from "../../../db/types.js";
+import { appendAudit } from "../../../repo.js";
 import type { AvailabilityWriter } from "../availability.js";
 
 // ── Audit ────────────────────────────────────────────────────────────────────────────────────

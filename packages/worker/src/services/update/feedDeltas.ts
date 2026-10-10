@@ -29,7 +29,8 @@ import type {
   FeedPackSets,
 } from "@polaris-key/protocol/update";
 import type { CatalogLazyDelta, ServiceHooks } from "../../core/hooks.js";
-import type { Db, Env } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import { lazyDeltasOn } from "../../core/deltaDemand.js";
 
 /** What the composer read for a channel's menu: the candidate set, and each target's records.

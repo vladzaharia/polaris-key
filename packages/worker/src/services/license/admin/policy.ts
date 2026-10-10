@@ -23,22 +23,22 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import type { ProductRow } from "../../../core/data.js";
-import { getProduct, getTier } from "../../../core/data.js";
+import type { ProductRow } from "../../../repo.js";
+import { getProduct, getTier } from "../../../repo.js";
 import { writeSettings } from "../../../core/settings/write.js";
 import {
   isAutoIssueMode,
   isFingerprintMode,
   parseAutoIssue,
   parseFingerprintPolicy,
-} from "../../../core/fingerprint.js";
+} from "../../../fingerprint.js";
 import {
   adminJson,
-  adminNotFound,
+  notFound as adminNotFound,
   err,
   readBody,
   settingRefused,
-} from "../../../core/adminApi.js";
+} from "../../../admin/lib/respond.js";
 import { invalidateWidenedEdgeMintApprovals } from "../../../core/edgeMintApproval.js";
 import type { LicenseAdminContext } from "./index.js";
 

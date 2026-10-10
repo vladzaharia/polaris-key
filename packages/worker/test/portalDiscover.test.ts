@@ -21,7 +21,7 @@ import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
-import { getLicense, getLicenseBySub } from "../src/core/data.js";
+import { getLicense, getLicenseBySub } from "../src/repo.js";
 import { licenseDeviceLimit, resolveEntitlements } from "../src/core/authz.js";
 import { loadProductPublic } from "../src/core/products.js";
 import {

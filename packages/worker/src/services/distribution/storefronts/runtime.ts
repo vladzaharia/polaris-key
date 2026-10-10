@@ -29,9 +29,10 @@
  * the platform-admin check, the store's write gate and its ledger.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
-import type { AdminSession } from "../../../core/adminApi.js";
+import type { AdminSession } from "../../../admin/session.js";
 import type {
   StorefrontAdapter,
   StorefrontOp,

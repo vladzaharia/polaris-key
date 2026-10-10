@@ -45,16 +45,13 @@
  * an hour and 20 a day per recipient, per-IP and per-network hourly caps.
  */
 
-import {
-  CARD_RETURN_TO,
-  escapeHtml,
-  hashKey,
-  parseJsonColumn,
-  randomToken,
-  safeReturnTo,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { CARD_RETURN_TO, safeReturnTo } from "../../../platform/returnTo.js";
+import { escapeHtml } from "../../../platform/html.js";
+import { hashKey } from "../../../crypto.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,

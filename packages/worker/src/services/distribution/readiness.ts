@@ -51,10 +51,12 @@
  * effect at once through the computation, and reach the snapshot on the next cron tick.
  */
 
-import { parseJsonColumn, randomId, type Db } from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import { randomId } from "../../crypto.js";
+import type { Db } from "../../db/types.js";
 import { APP_DELIVERABLE_ID, assetPackId } from "@polaris-key/manifest";
 import { OUTLET_PLATFORMS } from "@polaris-key/protocol/distribution";
-import { appendAudit } from "../../core/data.js";
+import { appendAudit } from "../../repo.js";
 import { referencedKeys, storedObjects } from "../../core/blobs.js";
 import {
   DEFAULT_TRANSPORT,

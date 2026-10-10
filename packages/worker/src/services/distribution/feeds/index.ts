@@ -31,7 +31,8 @@
 
 import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, notFound } from "../../../core/errors.js";
-import { appSecurityHeaders, sha256Hex } from "../../../core/platform.js";
+import { appSecurityHeaders } from "../../../securityHeaders.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import { bytesHostname } from "../../../core/bytesHost.js";
 import { readCiJson, requireCiScope } from "../../../core/ciScope.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";

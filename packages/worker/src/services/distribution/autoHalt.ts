@@ -48,9 +48,9 @@
  * and one `reading` (`last`) with every rollout judged on the last tick, which the console shows.
  */
 
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import type { ServiceHooks } from "../../core/hooks.js";
-import type { Env } from "../../core/platform.js";
+import type { Env } from "../../env.js";
 import { countsFor, readUpdateHealth } from "../../core/updateHealth.js";
 import { applyRollout, listRollouts, type DistRolloutRow } from "./rollouts.js";
 import {

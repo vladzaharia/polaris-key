@@ -6,7 +6,7 @@
  * files the PR wrote and the verifier's verdict. The Worker re-checks the repository against the
  * outlet identity and every file against the store's path templates.
  *
- * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the other CI-route suites.
+ * The `pkeyci_` lookup (`lookupCiToken` in `core/publisher.ts`) is mocked, as in the other CI-route suites.
  */
 
 import { createHash } from "node:crypto";
@@ -19,7 +19,8 @@ const tokens = vi.hoisted(
       { product: string; subject: string; scopes: readonly string[] }
     >(),
 );
-vi.mock("../../src/core/ciTokens.js", () => ({
+vi.mock("../../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));

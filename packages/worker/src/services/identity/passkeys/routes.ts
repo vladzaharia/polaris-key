@@ -28,13 +28,10 @@
  *     id: one "Polaris Key" entry per authenticator.
  */
 
-import {
-  CARD_RETURN_TO,
-  randomToken,
-  safeReturnTo,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { CARD_RETURN_TO, safeReturnTo } from "../../../platform/returnTo.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { readGuardedJsonObject } from "../../../core/browserRequestGuard.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {

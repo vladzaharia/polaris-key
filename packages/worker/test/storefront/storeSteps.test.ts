@@ -5,7 +5,7 @@
  * `plane = 'ci'`; the Worker re-checks the command against the store's allow-list and the outlet
  * identity; msstore's publish is refused while the ledger shows a Worker-staged draft.
  *
- * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the availability suite.
+ * The `pkeyci_` lookup (`lookupCiToken` in `core/publisher.ts`) is mocked, as in the availability suite.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +17,8 @@ const tokens = vi.hoisted(
       { product: string; subject: string; scopes: readonly string[] }
     >(),
 );
-vi.mock("../../src/core/ciTokens.js", () => ({
+vi.mock("../../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));

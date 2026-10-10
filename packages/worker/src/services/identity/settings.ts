@@ -34,8 +34,8 @@ import {
   type OidcSyncTierOnSignIn,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import type { Db, DbStatement } from "../../core/platform.js";
-import { randomId } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import { randomId } from "../../crypto.js";
 import {
   manifestRowSettingStatements,
   manifestValueAt,

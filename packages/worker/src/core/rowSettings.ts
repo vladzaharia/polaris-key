@@ -31,7 +31,7 @@
  */
 
 import type { Db, DbStatement } from "../db/types.js";
-import { randomId } from "./platform.js";
+import { randomId } from "../crypto.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
 import {
   auditValue,

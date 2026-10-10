@@ -5,19 +5,19 @@ import {
   ID_TOKEN_CLOCK_TOLERANCE,
   ID_TOKEN_MAX_AGE,
 } from "../idToken.js";
+import { brandedHtmlSecurityHeaders } from "../../../securityHeaders.js";
+import { escapeHtml } from "../../../platform/html.js";
+import { hashKey } from "../../../crypto.js";
+import { isSameOriginNavigation } from "../../../http.js";
+import { pkcePair } from "../../../platform/pkce.js";
+import { platformOidcConfig } from "../../../platformOidc.js";
 import {
-  brandedHtmlSecurityHeaders,
-  escapeHtml,
-  hashKey,
-  isSameOriginNavigation,
-  pkcePair,
-  platformOidcConfig,
   PORTAL_SIGNIN_RETURN_TO,
-  randomToken,
   safeReturnTo,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+} from "../../../platform/returnTo.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -56,7 +56,7 @@ import {
 } from "../card/emailSignIn.js";
 
 export { portalMagicKey } from "../card/emailSignIn.js";
-import { portalSecurityHeaders } from "./headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
 import {
   LINK_FLOW_COOKIE,

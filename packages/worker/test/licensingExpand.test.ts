@@ -35,7 +35,7 @@ import {
 } from "../src/core/grants.js";
 import { runLicensingCatchUp } from "../src/core/licensingCatchUp.js";
 import { resolveMergedPayload } from "../src/core/payload.js";
-import { getLicense } from "../src/core/data.js";
+import { getLicense } from "../src/repo.js";
 import { SERVICES } from "../src/mount.js";
 import {
   activateFromIdentity,

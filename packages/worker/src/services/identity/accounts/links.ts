@@ -11,7 +11,8 @@
  * the proof it collected in the same session.
  */
 
-import type { Db, DbStatement, Env } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { onAccountEmailVerified } from "../../../core/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
 import { sendSecurityNotice } from "../portal/email.js";

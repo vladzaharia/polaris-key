@@ -16,7 +16,7 @@ import type {
   ServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../admin/session.js";
 import { handleReleaseRoutes } from "./routes.js";
 import { handleReleaseAdmin } from "./admin.js";
 import { getReleaseConfig } from "./config.js";

@@ -21,18 +21,14 @@
  */
 
 import { isSameOriginRequest } from "../../core/browserRequestGuard.js";
-import { constantTimeEqual } from "../../core/platform.js";
+import { constantTimeEqual } from "../../platform/compare.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { Catalog } from "@polaris-key/catalog";
-import {
-  bearer,
-  deleteTokenRecord,
-  hashKey,
-  mintOpaqueToken,
-  randomId,
-  type Db,
-  type Env,
-} from "../../core/platform.js";
+import { bearer } from "../../http.js";
+import { deleteTokenRecord } from "../../kv.js";
+import { hashKey, mintOpaqueToken, randomId } from "../../crypto.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import type { Product } from "../../core/products.js";
 import {
   errorResponse,
@@ -48,7 +44,7 @@ import {
   setDeviceStatus,
   touchKey,
   type LicenseRow,
-} from "../../core/data.js";
+} from "../../repo.js";
 import { deviceMetadata } from "../../core/devices.js";
 import { buildManageUrl } from "../../core/manageUrl.js";
 import {

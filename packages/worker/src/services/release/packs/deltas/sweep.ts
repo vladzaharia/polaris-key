@@ -13,7 +13,8 @@
  * The sweep never reads a payload: the queue's consumer Worker does the byte work.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import {
   DEMAND_RETENTION_SECONDS,
   hotPairs,

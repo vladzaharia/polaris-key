@@ -28,12 +28,10 @@
  * every `src/` file from calling it).
  */
 
-import {
-  b64urlDecodeStrict,
-  parseJsonObject,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { b64urlDecodeStrict } from "../../../platform/bytes.js";
+import { parseJsonObject } from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,

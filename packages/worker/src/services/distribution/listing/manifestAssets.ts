@@ -42,9 +42,9 @@
  * serve nothing.
  */
 
-import type { Db, DbStatement } from "../../../core/platform.js";
-import { randomId } from "../../../core/platform.js";
-import { appendAudit } from "../../../core/data.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import { randomId } from "../../../crypto.js";
+import { appendAudit } from "../../../repo.js";
 import { blobKey } from "../../../core/blobs.js";
 import { HOSTED_ASSET_REF } from "../../../core/hostedAssets.js";
 import { IMG_HOST_TYPES } from "../../../core/imgHost.js";

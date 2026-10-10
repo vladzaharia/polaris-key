@@ -16,7 +16,8 @@
  *     live or about to be — the phased release. Cached briefly (`platformApps.ts`).
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import {
   platformAscToken,
   transientAscToken,

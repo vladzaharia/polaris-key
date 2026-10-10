@@ -67,7 +67,9 @@
  * the deployment's `storefront.polarisKey.enabled` is off.
  */
 
-import { randomId, type Db, type Env } from "../../../core/platform.js";
+import { randomId } from "../../../crypto.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type { ProductPublic } from "../../../core/products.js";
 import {
   appendAudit,
@@ -75,7 +77,7 @@ import {
   getLicenseBySub,
   getTier,
   type LicenseRow,
-} from "../../../core/data.js";
+} from "../../../repo.js";
 import { licenseDeviceLimit } from "../../../core/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {

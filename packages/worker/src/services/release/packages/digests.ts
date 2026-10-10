@@ -12,7 +12,7 @@
  */
 
 import { createHash } from "node:crypto";
-import type { Env } from "../../../core/platform.js";
+import type { Env } from "../../../env.js";
 import type { PackageFileRow } from "./ingest.js";
 
 export interface FileDigests {

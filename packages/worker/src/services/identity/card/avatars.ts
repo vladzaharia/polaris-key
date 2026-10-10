@@ -64,12 +64,10 @@
  * a deleted account's picture must be gone at once, not in 180 days.
  */
 
-import {
-  hashKey,
-  sha256Hex,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { hashKey } from "../../../crypto.js";
+import { sha256Hex } from "../../../platform/hash.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   cappedStream,
   guardUrl,
@@ -80,7 +78,7 @@ import {
 } from "../../../core/safeFetch.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { sniffContentType, SNIFF_BYTES } from "../../../core/sniff.js";
-import { portalSecurityHeaders } from "../portal/headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
 
 /** The R2 prefix every avatar rendition lives under. */
 export const AVATAR_PREFIX = "avatars/";

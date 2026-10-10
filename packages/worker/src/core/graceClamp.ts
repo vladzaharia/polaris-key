@@ -33,7 +33,7 @@
  */
 
 import type { Db } from "../db/types.js";
-import type { LicenseRow } from "./data.js";
+import type { LicenseRow } from "../repo.js";
 import { clampGraceUntil, offlineWindowEnd } from "./documents.js";
 import type { SettingsEnv } from "./platformSettings.js";
 import { parseServices } from "./services.js";

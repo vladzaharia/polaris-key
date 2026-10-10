@@ -18,25 +18,21 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import {
-  deleteTokenRecord,
-  hashKey,
-  mintLicenseKey,
-  randomId,
-} from "../../../core/platform.js";
-import { getTier } from "../../../core/data.js";
+import { deleteTokenRecord } from "../../../kv.js";
+import { hashKey, mintLicenseKey, randomId } from "../../../crypto.js";
+import { getTier } from "../../../repo.js";
 import {
   adminJson,
-  adminNotFound,
-  auditStatementFor,
+  notFound as adminNotFound,
   err,
   readBody,
-  WriteChecks,
-  type AdminSession,
-} from "../../../core/adminApi.js";
-import type { Db, DbStatement } from "../../../core/platform.js";
+} from "../../../admin/lib/respond.js";
+import { auditStatementFor } from "../../../admin/audit.js";
+import { WriteChecks } from "../../../admin/lib/writeChecks.js";
+import type { AdminSession } from "../../../admin/session.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import { describeHolder, licenseHolder } from "../../../core/licenseHolders.js";
-import { tierExpiresAt } from "../authz.js";
+import { tierExpiresAt } from "../../../core/authz.js";
 import {
   BATCH_PAGE_MAX,
   batchDisabledDeviceTokens,

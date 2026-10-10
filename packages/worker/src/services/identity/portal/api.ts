@@ -1,17 +1,15 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
 import { licenseAccess } from "../../../core/anchor.js";
-import { constantTimeEqual } from "../../../core/platform.js";
+import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import {
-  isAllowedDownloadRedirectHost,
-  isAllowedStorageHost,
-  parseJsonOr,
-  platformOidcConfig,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { isAllowedDownloadRedirectHost } from "../../../core/bytesHostname.js";
+import { isAllowedStorageHost } from "../../../http.js";
+import { parseJsonOr } from "../../../platform/json.js";
+import { platformOidcConfig } from "../../../platformOidc.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type { Delivery, ServiceHooks } from "../../../core/hooks.js";
 import {
   loadProductPublic,
@@ -25,7 +23,7 @@ import {
   mintDownloadTicket,
 } from "../../../core/downloadTicket.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getProduct } from "../../../core/data.js";
+import { getProduct } from "../../../repo.js";
 import { licenseUsable } from "../../../core/devices.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import { registryOrigin } from "../../../core/registryHostname.js";
@@ -118,7 +116,7 @@ import {
 } from "./email.js";
 import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
 import { platformSignInEnded } from "../accounts/platformMigration.js";
-import { portalSecurityHeaders } from "./headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
 import { handleProductDownloads } from "./downloads.js";
 import {
   discoverCount,

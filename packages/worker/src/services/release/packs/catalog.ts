@@ -44,7 +44,8 @@ import {
   readStoredSets,
 } from "./sets.js";
 import { PackResolver } from "./resolve.js";
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { blobKey } from "../../../core/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
 import { packObjects, storedRecordPayload, variantBuildId } from "./ingest.js";

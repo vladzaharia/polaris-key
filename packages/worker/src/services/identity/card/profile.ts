@@ -22,12 +22,10 @@
  * BCP 47 tag; nothing is ever rendered as markup.
  */
 
-import {
-  hashKey,
-  parseJsonColumn,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { hashKey } from "../../../crypto.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   AVATAR_ASSET_PATTERN,
   avatarView,

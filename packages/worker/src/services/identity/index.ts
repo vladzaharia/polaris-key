@@ -38,7 +38,7 @@ import type {
   ServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../admin/session.js";
 import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";

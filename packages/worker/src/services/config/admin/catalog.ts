@@ -36,14 +36,21 @@ import {
 } from "../../../core/configDelivery.js";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
-import { getActiveSchema } from "../../../core/data.js";
+import { getActiveSchema } from "../../../repo.js";
 import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,
+  reservedNamesResponse,
+} from "../../../admin/lib/writeChecks.js";
+import {
   adminJson,
-  adminNotFound,
-  audit,
+  notFound as adminNotFound,
   err,
+  readBody,
+  settingRefused,
+} from "../../../admin/lib/respond.js";
+import { audit } from "../../../admin/audit.js";
+import {
   getSchemaVersion,
   listLicenses,
   listProfiles,
@@ -51,11 +58,8 @@ import {
   listSchemaVersions,
   listTiers,
   nextSchemaVersion,
-  parsePayload,
-  readBody,
-  reservedNamesResponse,
-  settingRefused,
-} from "../../../core/adminApi.js";
+} from "../../../admin/repo.js";
+import { parsePayload } from "../../../admin/lib/redact.js";
 import { reservedNamesMode } from "../../../core/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";
 

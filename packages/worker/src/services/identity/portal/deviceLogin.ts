@@ -51,14 +51,12 @@ import {
   detectPlatform,
 } from "../../../core/platformDetect.js";
 import { qrSvg } from "../../../core/qr.js";
-import {
-  constantTimeEqual,
-  hashKey,
-  parseJsonColumn,
-  randomToken,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { constantTimeEqual } from "../../../platform/compare.js";
+import { hashKey } from "../../../crypto.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -85,7 +83,7 @@ import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { startAccountSession } from "./accountSessions.js";
 import { sendSecurityNotice } from "./email.js";
 import { displayValue, newDeviceSignInNotice } from "./notices.js";
-import { portalSecurityHeaders } from "./headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
 
 /** How long a request (and its code) lives: the "Works for 4:52" countdown starts here. */
 export const DEVICE_LOGIN_TTL_SECONDS = 5 * 60;

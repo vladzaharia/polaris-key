@@ -55,7 +55,7 @@ import {
   seatActiveSince,
   type DeviceRow,
   type LicenseRow,
-} from "./data.js";
+} from "../repo.js";
 import { licenseUsable } from "./devices.js";
 import { identityEnabled } from "./identityGate.js";
 import type { Product, ProductPublic } from "./products.js";

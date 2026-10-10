@@ -27,7 +27,7 @@
  * the feed-level check, so it discloses nothing.
  */
 
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,

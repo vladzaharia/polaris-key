@@ -42,7 +42,7 @@ import {
   parseRepoUrl,
   productsByRepository,
 } from "../../services/release/linkRepo.js";
-import { secret } from "../../core/platform.js";
+import { secret } from "../../env.js";
 
 /** How long the App's inventory and a page's probe stay fresh, in seconds. */
 export const REPOSITORY_CACHE_SECONDS = 60;

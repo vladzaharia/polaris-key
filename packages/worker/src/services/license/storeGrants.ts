@@ -26,9 +26,9 @@ import type {
   StoreGrantOutcome,
 } from "../../core/storeGrants.js";
 import type { LicenseMergeChange } from "../../core/licenseMerge.js";
-import type { DbStatement } from "../../core/platform.js";
-import { appendAudit, getLicense } from "../../core/data.js";
-import { randomId } from "../../core/platform.js";
+import type { DbStatement } from "../../db/types.js";
+import { appendAudit, getLicense } from "../../repo.js";
+import { randomId } from "../../crypto.js";
 import {
   grantMergeStatements,
   storeGrantProjection,

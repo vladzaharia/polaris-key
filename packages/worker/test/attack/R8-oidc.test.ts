@@ -67,7 +67,7 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // and `requireLicensedDevice` adds back the licence-usability check core used to apply inline.
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
 // these tests assert against.
-import { requireLicensedDevice } from "../../src/services/license/auth.js";
+import { requireLicensedDevice } from "../../src/core/authz.js";
 import { licenseMergeFor } from "../../src/core/licenseMerge.js";
 import { SERVICES } from "../../src/mount.js";
 import { authorizeDevice } from "../../src/core/authz.js";

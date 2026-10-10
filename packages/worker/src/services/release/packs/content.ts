@@ -56,7 +56,7 @@ import {
   APP_DELIVERABLE_ID,
   type ReleaseDescriptor,
 } from "@polaris-key/manifest";
-import type { Db, DbStatement } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import type { ReleaseConfigRow } from "../config.js";
 import type { RecordRefusalReason } from "../records.js";
 import { checkAppPublish, type CheckCache } from "./checks.js";

@@ -6,7 +6,7 @@
  * deletes a row: a version is unique forever.
  */
 
-import type { Db, DbStatement } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import { stmtEnqueuePackageRender } from "../../../core/registryQueue.js";
 
 /** The package row of a release, or null when the release is not a package version. */

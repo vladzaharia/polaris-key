@@ -40,14 +40,14 @@ import {
   runSubjectExport,
   subjectDataSize,
 } from "../../../core/subjectHooks.js";
-import { getLicense, getProduct, type LicenseRow } from "../../../core/data.js";
+import { getLicense, getProduct, type LicenseRow } from "../../../repo.js";
 import {
   b64urlDecodeBinary,
   b64urlEncodeBinary,
-  normalizeEmail,
-  randomId,
-  type Db,
-} from "../../../core/platform.js";
+} from "../../../platform/bytes.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import { randomId } from "../../../crypto.js";
+import type { Db } from "../../../db/types.js";
 import { sendNotice, sendSecurityNotice } from "../portal/email.js";
 import {
   licenseAssignedToYouNotice,

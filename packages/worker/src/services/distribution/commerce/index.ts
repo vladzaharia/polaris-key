@@ -32,11 +32,12 @@
 
 import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, json, wireError } from "../../../core/errors.js";
-import { bearer, parseJsonObject } from "../../../core/platform.js";
+import { bearer } from "../../../http.js";
+import { parseJsonObject } from "../../../platform/json.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
 import { trustRefusal } from "../../../core/deviceTrust.js";
-import type { DeviceRow } from "../../../core/data.js";
-import { sha256Hex } from "../../../core/platform.js";
+import type { DeviceRow } from "../../../repo.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { isStore, type Store } from "../../../core/storeGrants.js";

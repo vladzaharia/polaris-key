@@ -59,8 +59,9 @@
 
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { sha256Base64Url } from "@polaris-key/jws";
-import type { Env, Db } from "../../core/platform.js";
-import { bearer } from "../../core/platform.js";
+import type { Env } from "../../env.js";
+import type { Db } from "../../db/types.js";
+import { bearer } from "../../http.js";
 import type { Product } from "../../core/products.js";
 import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
 import {

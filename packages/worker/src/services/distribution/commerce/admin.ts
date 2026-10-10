@@ -29,14 +29,10 @@
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../core/adminApi.js";
-import {
-  adminJson,
-  audit,
-  err,
-  readActiveCatalog,
-  readBody,
-} from "../../../core/adminApi.js";
+import type { AdminSession } from "../../../admin/session.js";
+import { adminJson, err, readBody } from "../../../admin/lib/respond.js";
+import { audit } from "../../../admin/audit.js";
+import { readActiveCatalog } from "../../../core/activeCatalog.js";
 import { isStore, STORES, type Store } from "../../../core/storeGrants.js";
 import { entitlementOf } from "../access.js";
 import { listEvents } from "../connectors/state.js";

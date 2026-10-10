@@ -42,7 +42,10 @@ import type {
   SignOutResponse,
   SubjectResponse,
 } from "@polaris-key/protocol/identity";
-import { bearer, randomId, type Db, type Env } from "../../core/platform.js";
+import { bearer } from "../../http.js";
+import { randomId } from "../../crypto.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import type { Product } from "../../core/products.js";
 import {
   ErrorCode,
@@ -67,7 +70,7 @@ import {
   resolveSubject,
 } from "../../core/accountSubjects.js";
 import { clearDeviceSubjects } from "../../core/subjectHooks.js";
-import { appendAudit, type LicenseRow } from "../../core/data.js";
+import { appendAudit, type LicenseRow } from "../../repo.js";
 import { portalOriginOf } from "../../core/manageUrl.js";
 import { readBodyJson } from "../../core/cappedBody.js";
 import { attachLicense, evaluateAttach } from "./accounts/claim.js";

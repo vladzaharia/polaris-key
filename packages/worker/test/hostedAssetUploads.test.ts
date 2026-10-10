@@ -26,7 +26,8 @@ const tokens = vi.hoisted(
       }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));

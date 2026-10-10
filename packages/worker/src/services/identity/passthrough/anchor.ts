@@ -20,11 +20,12 @@
  */
 
 import type { ConsentItem } from "@polaris-key/protocol/identity";
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { resolveProductSetting } from "../../../core/settings/resolve.js";
 import type { ProductPublic } from "../../../core/products.js";
-import { getTier } from "../../../core/data.js";
+import { getTier } from "../../../repo.js";
 import { rankAnchorCandidates } from "../../../core/anchor.js";
 
 /** S-19's `licensing.entitlementModel`. `legacy` reproduces today's documents byte for byte. */

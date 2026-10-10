@@ -22,7 +22,7 @@ import {
   prepareCreate,
   slugFromName,
 } from "../src/services/release/linkRepo.js";
-import { stmtInsertReleaseConfig } from "../src/core/ingest.js";
+import { stmtInsertReleaseConfig } from "../src/repo.js";
 import { getProduct } from "../src/repo.js";
 import { handleAdmin } from "../src/admin/index.js";
 import { resetGithubRepositoryCache } from "../src/admin/handlers/github.js";

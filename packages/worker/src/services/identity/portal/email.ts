@@ -22,7 +22,9 @@
  */
 
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import { escapeHtml, type Db, type Env } from "../../../core/platform.js";
+import { escapeHtml } from "../../../platform/html.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { deliverEmail } from "../../../core/emailDelivery.js";
 import type { NoticeMessage } from "./notices.js";
 import { listVerifiedAccountEmails, portalAudit } from "./repo.js";

@@ -23,7 +23,8 @@
  */
 
 import { subjectFor } from "../../../core/accountSubjects.js";
-import { normalizeEmail, type Db } from "../../../core/platform.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import type { Db } from "../../../db/types.js";
 import { portalAudit } from "../portal/repo.js";
 import {
   EMAIL_ISSUER,

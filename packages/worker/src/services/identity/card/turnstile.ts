@@ -11,7 +11,7 @@
  * the test suites); production and staging set it (RUNBOOK "Login card", a human input).
  */
 
-import type { Env } from "../../../core/platform.js";
+import type { Env } from "../../../env.js";
 import { clientIp } from "../../../core/rateLimit.js";
 
 export const TURNSTILE_VERIFY_URL =

@@ -20,16 +20,15 @@
 
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../admin/session.js";
 import {
   adminJson,
-  adminNotFound,
-  audit,
-  auditStatementFor,
+  notFound as adminNotFound,
   err,
   readBody,
   settingRefused,
-} from "../../core/adminApi.js";
+} from "../../admin/lib/respond.js";
+import { audit, auditStatementFor } from "../../admin/audit.js";
 import { writeSettings } from "../../core/settings/write.js";
 import {
   planSignInSettingsPatch,

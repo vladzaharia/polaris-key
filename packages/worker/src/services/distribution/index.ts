@@ -52,7 +52,8 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { ParsedManifest } from "@polaris-key/manifest";
-import { parseJsonColumn, type DbStatement } from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import type { DbStatement } from "../../db/types.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
 import { registryMaterialiser } from "./registryMaterialiser.js";

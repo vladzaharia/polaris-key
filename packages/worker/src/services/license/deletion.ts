@@ -9,7 +9,7 @@
  *     (`license_profiles`).
  */
 
-import type { Db, DbStatement } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import {
   idChunks,
   LicenseDeleteReason,

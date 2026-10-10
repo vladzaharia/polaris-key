@@ -24,11 +24,11 @@
  * still undo a join of its own (`merge_pending`), so each undo stays possible and exact.
  */
 
-import type { DbStatement } from "../../../core/platform.js";
+import type { DbStatement } from "../../../db/types.js";
 import { stmtMoveAccountLicenses } from "../../../core/accountSubjects.js";
 import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/subjectHooks.js";
-import { randomId } from "../../../core/platform.js";
+import { randomId } from "../../../crypto.js";
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsMergedNotice } from "../portal/notices.js";
 import { stmtSubjectEvent } from "./events.js";

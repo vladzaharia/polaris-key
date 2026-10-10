@@ -1,5 +1,5 @@
 // Nightly removal of personal data that outlives its purpose.
-import type { Db } from "./core/platform.js";
+import type { Db } from "./db/types.js";
 
 const DAY = 24 * 60 * 60;
 /** Merge tombstones only redirect for 30 days (MERGE_REDIRECT_SECONDS); kept 90 for the audit. */

@@ -48,9 +48,11 @@ import {
   typedConfirmationRefusal,
 } from "../../../../core/storefront/confirm.js";
 import { APP_STORE_ADAPTER } from "../../../../core/storefront/stores/appStore.js";
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
-import { audit, type AdminSession } from "../../../../core/adminApi.js";
+import { audit } from "../../../../admin/audit.js";
+import type { AdminSession } from "../../../../admin/session.js";
 import { openOutletCredential } from "../../../../core/outletCredentials.js";
 import { getRollout, rolloutRecord } from "../../rollouts.js";
 import { upsertObject } from "../state.js";

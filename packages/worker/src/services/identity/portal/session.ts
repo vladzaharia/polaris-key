@@ -1,10 +1,7 @@
-import {
-  importHmacKey,
-  randomToken,
-  signHmacToken,
-  verifyHmacToken,
-  type Env,
-} from "../../../core/platform.js";
+import { importHmacKey } from "../../../platform/hash.js";
+import { randomToken } from "../../../platform/random.js";
+import { signHmacToken, verifyHmacToken } from "../../../platform/hmacToken.js";
+import type { Env } from "../../../env.js";
 import { ACCOUNT_SESSION_COOKIE } from "../../../core/accountCookies.js";
 
 /**

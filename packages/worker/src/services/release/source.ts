@@ -27,8 +27,9 @@
  * caller hardens the answer, exactly as the gateway's `runSurface` did.
  */
 
-import { isAllowedStorageHost } from "../../core/platform.js";
-import type { Db, Env } from "../../core/platform.js";
+import { isAllowedStorageHost } from "../../http.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import type { ProductPublic } from "../../core/products.js";
 import type { CatalogLocation, CatalogSourceRef } from "../../core/hooks.js";
 import { notFound } from "../../core/errors.js";

@@ -47,7 +47,8 @@ import {
   HOMEBREW_CASK_PATTERN,
   NUMERIC_ID_PATTERN,
 } from "@polaris-key/manifest";
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type {
   Delivery,
   ReleaseCatalog,
@@ -71,7 +72,7 @@ import {
   PAGE_PLATFORMS,
   PLATFORM_LABELS,
   type PagePlatform,
-} from "./detect.js";
+} from "../../../core/platformDetect.js";
 import { QR_MAX_VERSION, qrCapacity } from "../../../core/qr.js";
 
 /** The model's own version: bumped when a field changes meaning (SDKs read this document). */

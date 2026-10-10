@@ -63,7 +63,12 @@ export const licenseService: ServiceDescriptor = {
 };
 
 // ── Compat surface for the not-yet-carved modules ────────────────────────────────────────────
-export { requireLicensedDevice, type LicensedDeviceToken } from "./auth.js";
-export { authorizeDevice, docProfile, tierExpiresAt } from "./authz.js";
-export type { AuthzError } from "./authz.js";
+export { requireLicensedDevice } from "../../core/authz.js";
+export type { LicensedDeviceToken } from "../../core/devices.js";
+export {
+  authorizeDevice,
+  docProfile,
+  tierExpiresAt,
+} from "../../core/authz.js";
+export type { AuthzError } from "../../core/authz.js";
 export { authorizationError, shapeLicense } from "./activation.js";

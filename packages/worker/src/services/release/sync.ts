@@ -24,7 +24,8 @@
  * same shape `core/data.ts` gives License and Config. See that file's header.
  */
 
-import type { Db, DbStatement, Env } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import type { FetchImpl } from "./githubApp.js";
 import { listReleasePages, RELEASE_PAGE_CAP, type Release } from "./github.js";
 import {
@@ -59,7 +60,7 @@ export {
   MANIFEST_FILES,
 } from "./manifestFiles.js";
 export type { ManifestFileName } from "./manifestFiles.js";
-export { MAX_MANIFEST_BYTES, parseManifest } from "./manifest.js";
+export { MAX_MANIFEST_BYTES, parseManifest } from "@polaris-key/manifest";
 export type { FetchImpl } from "./githubApp.js";
 export { checkReleaseHealth } from "./health.js";
 export type { ReleaseHealth } from "./health.js";

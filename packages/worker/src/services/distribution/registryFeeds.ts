@@ -16,11 +16,8 @@ import {
 } from "@polaris-key/manifest";
 import type { PackageFeedSettings } from "../../core/hooks.js";
 import { isAccessMode } from "./access.js";
-import {
-  parseJsonObject,
-  type Db,
-  type DbStatement,
-} from "../../core/platform.js";
+import { parseJsonObject } from "../../platform/json.js";
+import type { Db, DbStatement } from "../../db/types.js";
 
 /** One ecosystem's feed of `product`, under the owner switch and the platform policy. */
 export async function packageFeedOf(

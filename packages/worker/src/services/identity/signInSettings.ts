@@ -25,7 +25,7 @@
  * "test sign-in" dry run belong with the native verifiers (I-13, I-14).
  */
 
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import {
   checkSenderAppName,
   type SenderNameRefusal,

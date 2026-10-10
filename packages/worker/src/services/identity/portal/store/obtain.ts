@@ -62,16 +62,14 @@
  */
 
 import { representabilityIssue } from "@polaris-key/catalog";
-import {
-  platformOidcConfig,
-  type Db,
-  type Env,
-} from "../../../../core/platform.js";
+import { platformOidcConfig } from "../../../../platformOidc.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import {
   loadProductPublic,
   type ProductPublic,
 } from "../../../../core/products.js";
-import { getTier, type LicenseRow } from "../../../../core/data.js";
+import { getTier, type LicenseRow } from "../../../../repo.js";
 import { licenseDeviceLimit } from "../../../../core/authz.js";
 import type { Delivery } from "../../../../core/hooks.js";
 import { polarisKeyStorefrontEnabled } from "../../../../core/storefrontSwitch.js";

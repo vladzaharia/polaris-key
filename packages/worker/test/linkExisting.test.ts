@@ -26,7 +26,7 @@ import {
   planResync,
   prepareLink,
 } from "../src/services/release/linkExisting.js";
-import { parseManifest } from "../src/services/release/manifest.js";
+import { parseManifest } from "@polaris-key/manifest";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
 import { getActiveSchema, getProduct, setServices } from "../src/repo.js";

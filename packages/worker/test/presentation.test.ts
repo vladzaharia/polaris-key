@@ -51,7 +51,7 @@ import { clientRecordFor } from "../src/services/identity/passthrough/client.js"
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
-import { parseManifest } from "../src/services/release/manifest.js";
+import { parseManifest } from "@polaris-key/manifest";
 import {
   ensureSystemProduct,
   linkSystemProduct,

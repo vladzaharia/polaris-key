@@ -31,8 +31,9 @@
  */
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Env, Db } from "../../core/platform.js";
-import { appSecurityHeaders } from "../../core/platform.js";
+import type { Env } from "../../env.js";
+import type { Db } from "../../db/types.js";
+import { appSecurityHeaders } from "../../securityHeaders.js";
 import type { ProductPublic } from "../../core/products.js";
 import { BLOB_CSP } from "../../core/blobs.js";
 import { errorResponse, json, notFound } from "../../core/errors.js";

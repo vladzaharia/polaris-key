@@ -91,18 +91,18 @@
  * two read-only here (CI and, later, connectors write them), the inventory operator-owned.
  */
 
-import { parseJsonColumn } from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../admin/session.js";
 import {
   adminJson,
-  adminNotFound,
-  audit,
+  notFound as adminNotFound,
   err,
   readBody,
-} from "../../core/adminApi.js";
+} from "../../admin/lib/respond.js";
+import { audit } from "../../admin/audit.js";
 import {
   CAPABILITY_KEYS,
   defaultCapabilities,

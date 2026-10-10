@@ -5,7 +5,7 @@
  * rule, the model's validator (fixed slots, numbered per-store screenshots, packs), an operator's
  * row never replaced, refs replaced with their rows, and the audit row.
  *
- * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the other CI-route suites.
+ * The `pkeyci_` lookup (`lookupCiToken` in `core/publisher.ts`) is mocked, as in the other CI-route suites.
  */
 
 import { createHash } from "node:crypto";
@@ -24,7 +24,8 @@ const tokens = vi.hoisted(
       }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));

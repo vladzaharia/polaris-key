@@ -15,10 +15,11 @@
  * it is open), never from who holds what.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import type { ProductPublic } from "../../../../core/products.js";
 import type { Delivery } from "../../../../core/hooks.js";
-import { getTier } from "../../../../core/data.js";
+import { getTier } from "../../../../repo.js";
 import { licenseTermsOf } from "../../../../core/entitlements.js";
 import { polarisKeyStorefrontEnabled } from "../../../../core/storefrontSwitch.js";
 import type { FitStatus } from "../../../../core/storefront/projection.js";

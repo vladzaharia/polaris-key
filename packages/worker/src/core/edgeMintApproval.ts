@@ -33,7 +33,7 @@ import {
   allowsOidcDefault,
   parseAutoIssue,
   type AutoIssuePolicy,
-} from "./fingerprint.js";
+} from "../fingerprint.js";
 import {
   readIdentityIssuance,
   sameGroupRoleMap,

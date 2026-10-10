@@ -62,7 +62,8 @@ import { rolloutBucket, selectPackRows } from "@polaris-key/client-core/decide";
 import { holdsOf, packSetId } from "@polaris-key/client-core/packs";
 import type { ServiceContext } from "../../core/registry.js";
 import { signDoc } from "../../core/signing.js";
-import { base64Encode, b64urlEncode, randomHex } from "../../core/platform.js";
+import { base64Encode, b64urlEncode } from "../../platform/bytes.js";
+import { randomHex } from "../../platform/random.js";
 import { getReleaseConfig } from "../release/config.js";
 import {
   getRecordByHash,

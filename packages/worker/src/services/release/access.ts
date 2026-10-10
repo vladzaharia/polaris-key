@@ -34,8 +34,9 @@
 
 import { CHANNEL_BETA, CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Env, Db } from "../../core/platform.js";
-import { bearer } from "../../core/platform.js";
+import type { Env } from "../../env.js";
+import type { Db } from "../../db/types.js";
+import { bearer } from "../../http.js";
 import type { ProductPublic } from "../../core/products.js";
 import {
   accessRefusal,

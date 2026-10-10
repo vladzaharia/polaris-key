@@ -1,20 +1,14 @@
-import {
-  hashKey,
-  mintOpaqueToken,
-  normalizeEmail,
-  parseJsonColumn,
-  randomId,
-  type Db,
-  type DbParam,
-  type DbStatement,
-  type Env,
-} from "../../../core/platform.js";
+import { hashKey, mintOpaqueToken, randomId } from "../../../crypto.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import type { Db, DbParam, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type {
   DeviceRow,
   KeyRow,
   LicenseRow,
   ProductRow,
-} from "../../../core/data.js";
+} from "../../../repo.js";
 import { parseServices } from "../../../core/services.js";
 import {
   resolveListing,

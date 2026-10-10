@@ -46,10 +46,12 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db, DbStatement, Env } from "../../core/platform.js";
-import { randomId } from "../../core/platform.js";
-import { appendAudit } from "../../core/data.js";
-import { audit, type AdminSession } from "../../core/adminApi.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../env.js";
+import { randomId } from "../../crypto.js";
+import { appendAudit } from "../../repo.js";
+import { audit } from "../../admin/audit.js";
+import type { AdminSession } from "../../admin/session.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import { parseManualChannels } from "./channels.js";
 import type { ReleaseConfigRow } from "./config.js";

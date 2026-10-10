@@ -27,9 +27,11 @@
  * (Console only, decision 4), live permission checks (A-18k).
  */
 
-import { hexEncode, type Db, type Env } from "../../../../core/platform.js";
+import { hexEncode } from "../../../../platform/bytes.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
-import type { AdminSession } from "../../../../core/adminApi.js";
+import type { AdminSession } from "../../../../admin/session.js";
 import { parsePlatformCredentialHandle } from "../../../../core/platformCredentials.js";
 import {
   budgetAllows,

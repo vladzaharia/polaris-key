@@ -10,7 +10,7 @@
  * two weeks after the Coming Soon page went live.
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
 import { renderDeepLink } from "../../../../core/storefront/deeplinks.js";
 import { storefrontAdapter } from "../../../../core/storefront/adapter.js";
 import {

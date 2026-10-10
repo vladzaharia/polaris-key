@@ -32,7 +32,7 @@
  * was bound before it runs is never disabled.
  */
 
-import type { Db, DbParam, DbStatement } from "../../core/platform.js";
+import type { Db, DbParam, DbStatement } from "../../db/types.js";
 import {
   licenseEventSourceSql,
   licenseTargetSetSql,

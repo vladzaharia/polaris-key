@@ -27,7 +27,9 @@ import {
   type PackageEcosystem,
   type PackageReleaseDescriptor,
 } from "@polaris-key/manifest";
-import { randomId, type Db, type Env } from "../../../../core/platform.js";
+import { randomId } from "../../../../crypto.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import type { RegistryRouteContext } from "../../../../core/registryHost.js";
 import type { PackageFeedSettings } from "../../../../core/hooks.js";
 import type { PublishPrincipal } from "../../../../core/registryPublish.js";
@@ -37,7 +39,7 @@ import {
   putVerified,
   stagingKey,
 } from "../../../../core/blobs.js";
-import { appendAudit } from "../../../../core/data.js";
+import { appendAudit } from "../../../../repo.js";
 import { bumpReleaseGeneration } from "../../ghCache.js";
 import {
   ingestPackageDescriptor,

@@ -23,7 +23,7 @@ import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
-import { getLicense } from "../src/core/data.js";
+import { getLicense } from "../src/repo.js";
 import { authorizeDevice } from "../src/core/authz.js";
 import { loadProduct } from "../src/core/products.js";
 import { sha256Hex } from "../src/platform/hash.js";

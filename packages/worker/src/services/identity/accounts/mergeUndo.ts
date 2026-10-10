@@ -62,12 +62,8 @@
  *     and deleting the survivor deletes its rows (docs/PRIVACY.md).
  */
 
-import {
-  randomId,
-  type Db,
-  type DbParam,
-  type DbStatement,
-} from "../../../core/platform.js";
+import { randomId } from "../../../crypto.js";
+import type { Db, DbParam, DbStatement } from "../../../db/types.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,

@@ -17,15 +17,13 @@
  * list filters on it (`?batch=`). Batches themselves are `batches.ts`.
  */
 
+import { deleteTokenRecord } from "../../../kv.js";
+import { hashKey, mintLicenseKey, randomId } from "../../../crypto.js";
 import {
-  deleteTokenRecord,
-  hashKey,
-  mintLicenseKey,
   parseJsonColumn,
   parseJsonStringList,
-  randomId,
-  type Db,
-} from "../../../core/platform.js";
+} from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
   countActiveDevices,
@@ -40,30 +38,37 @@ import {
   listKeysByLicense,
   listLicenseProfiles,
   setLicenseProfiles,
-} from "../../../core/data.js";
+} from "../../../repo.js";
 import {
   adminJson,
-  adminNotFound,
-  applyOverrides,
-  audit,
+  notFound as adminNotFound,
   err,
+  readBody,
+} from "../../../admin/lib/respond.js";
+import {
+  applyOverrides,
+  type OverrideUpdate,
+} from "../../../admin/lib/overrides.js";
+import { audit } from "../../../admin/audit.js";
+import {
   keyEntryListContext,
   licenseSummary,
   type KeyEntryListContext,
+} from "../../../core/licensing/summary.js";
+import {
   listLicenses,
   listProfiles,
   listTiers,
-  loadCatalog,
-  parsePayload,
   patchLicense,
-  readBody,
-  redactPayload,
+} from "../../../admin/repo.js";
+import { loadCatalog } from "../../../core/activeCatalog.js";
+import { parsePayload, redactPayload } from "../../../admin/lib/redact.js";
+import {
   shapeFacts,
   shapeFingerprint,
-  type OverrideUpdate,
-  WriteChecks,
-} from "../../../core/adminApi.js";
-import { tierExpiresAt } from "../authz.js";
+} from "../../../admin/lib/deviceShape.js";
+import { WriteChecks } from "../../../admin/lib/writeChecks.js";
+import { tierExpiresAt } from "../../../core/authz.js";
 import {
   licenseEmail,
   subjectForOrNull,
@@ -88,7 +93,7 @@ import {
   licenseStatusOf,
 } from "../../../core/licensing/lifecycle.js";
 import { transitionLicense } from "../../../core/licensing/lifecycleWrites.js";
-import type { LicenseRow } from "../../../core/data.js";
+import type { LicenseRow } from "../../../repo.js";
 import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";

@@ -23,7 +23,7 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import type { DbStatement } from "../../core/platform.js";
+import type { DbStatement } from "../../db/types.js";
 import {
   getAccountOverrides,
   parseAccountOverridePayload,
@@ -36,9 +36,9 @@ import {
   registerSubjectStore,
   type SubjectStore,
 } from "../../core/subjectHooks.js";
-import { isSealedEnvelope } from "../../core/adminApi.js";
-import { randomId } from "../../core/platform.js";
-import { auditStatement, getActiveSchema } from "../../core/data.js";
+import { isSealedEnvelope } from "../../admin/lib/managedSecrets.js";
+import { randomId } from "../../crypto.js";
+import { auditStatement, getActiveSchema } from "../../repo.js";
 
 /** The registry name (stable: the export document is keyed by it). */
 export const ACCOUNT_OVERRIDE_STORE = "config.accountOverrides";

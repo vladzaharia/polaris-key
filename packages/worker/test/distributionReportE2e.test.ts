@@ -4,7 +4,7 @@
  * `fetchImpl` that hands every request to the Worker's dispatcher, and the test asserts the rows
  * the Worker wrote and what the CLI made of the answers.
  *
- * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the rollout and availability
+ * The `pkeyci_` lookup (`lookupCiToken` in `core/publisher.ts`) is mocked, as in the rollout and availability
  * suites; the token exchange itself is P2-06's (`publishE2e.test.ts`). A static token is what CI
  * that is not GitHub Actions uses, through `PKEY_CI_TOKEN`.
  */
@@ -18,7 +18,8 @@ const tokens = vi.hoisted(
       { product: string; subject: string; scopes: readonly string[] }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));

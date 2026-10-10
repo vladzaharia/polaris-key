@@ -72,13 +72,11 @@ import {
   listingImageUrl,
   listingScreenshotUrls,
 } from "@polaris-key/manifest";
-import {
-  hexEncode,
-  isAllowedStorageHost,
-  sha256,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { hexEncode } from "../../../platform/bytes.js";
+import { isAllowedStorageHost } from "../../../http.js";
+import { sha256 } from "../../../platform/hash.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { loadProductPublic } from "../../../core/products.js";
 import {
   SAFE_FETCH_MAX_REDIRECTS,
@@ -94,7 +92,7 @@ import {
   hostedImages,
 } from "../../../core/hostedImages.js";
 import { getPortalProductSettings } from "./repo.js";
-import { portalSecurityHeaders } from "./headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
 import type { PortalHooksFor } from "./api.js";
 
 /**

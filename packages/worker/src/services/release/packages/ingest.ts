@@ -43,12 +43,9 @@ import {
   type PackageEcosystem,
   type PackageReleaseDescriptor,
 } from "@polaris-key/manifest";
-import {
-  sha256Hex,
-  type Db,
-  type DbStatement,
-  type Env,
-} from "../../../core/platform.js";
+import { sha256Hex } from "../../../platform/hash.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { ErrorCode } from "../../../core/errors.js";
 import type { PackageFeedSettings } from "../../../core/hooks.js";
 import {

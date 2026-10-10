@@ -33,7 +33,7 @@
  * (§6.6 step 3), and its own documents answer the ladder's refusal.
  */
 
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import type { ReleaseCatalog } from "../../../../core/hooks.js";
 import { blobKey, blobResponse, hasRef } from "../../../../core/blobs.js";
 import {

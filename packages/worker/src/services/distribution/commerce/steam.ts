@@ -28,7 +28,8 @@
  * query (`ISteamApps/GetPartnerAppListForWebAPIKey/v2`) plus the operator-entered `steam.appIds`.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,

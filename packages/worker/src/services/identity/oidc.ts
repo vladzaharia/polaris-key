@@ -20,7 +20,7 @@
 // carried over: a compatibility alias for a path nobody can still be calling is a second code
 // path for free.
 
-import { constantTimeEqual } from "../../core/platform.js";
+import { constantTimeEqual } from "../../platform/compare.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -40,25 +40,20 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // `manifest.ts` merely re-exports it — a service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import { representabilityIssue } from "@polaris-key/catalog";
+import { bearer } from "../../http.js";
+import { hashKey, randomId } from "../../crypto.js";
+import { platformOidcConfig } from "../../platformOidc.js";
+import { secret, type Env } from "../../env.js";
+import { brandedHtmlSecurityHeaders } from "../../securityHeaders.js";
+import { escapeHtmlKeepApostrophe as escapeHtml } from "../../platform/html.js";
+import { pkcePair } from "../../platform/pkce.js";
 import {
-  bearer,
-  hashKey,
-  platformOidcConfig,
-  secret,
-  brandedHtmlSecurityHeaders,
-  // The product sign-in pages have always escaped `& < > "` and let an apostrophe through;
-  // every sink is a text node or a double-quoted attribute (R9-12), and the bytes are kept.
-  escapeHtmlKeepApostrophe as escapeHtml,
-  pkcePair,
   PRODUCT_SIGNIN_RETURN_TO,
-  randomBytes,
-  randomId,
-  randomToken,
   safeReturnTo,
-  tryParseJson,
-  type Db,
-  type Env,
-} from "../../core/platform.js";
+} from "../../platform/returnTo.js";
+import { randomBytes, randomToken } from "../../platform/random.js";
+import { tryParseJson } from "../../platform/json.js";
+import type { Db } from "../../db/types.js";
 import {
   openProductSecret,
   type Product,
@@ -85,7 +80,7 @@ import {
   stmtInsertLicense,
   type LicenseRow,
   type TierRow,
-} from "../../core/data.js";
+} from "../../repo.js";
 import {
   guardedInsert,
   guardedWrite,
@@ -97,7 +92,7 @@ import {
   mergeLicenseInto,
   type LicenseMerge,
 } from "../../core/licenseMerge.js";
-import { allowsOidcDefault } from "../../core/fingerprint.js";
+import { allowsOidcDefault } from "../../fingerprint.js";
 import {
   authorizeDevice,
   licenseDeviceLimit,

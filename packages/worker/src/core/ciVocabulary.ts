@@ -1,9 +1,9 @@
 /**
  * The CI credential vocabulary (P2-02): the token prefix, the scope set and the principal shape.
  *
- * A leaf module on purpose. `core/ciScope.ts` (the route guard), `core/ciTokens.ts` (the lookup
- * seam P2-05's suite mocks) and `core/publisher.ts` (the store) all need these, and keeping them
- * here means none of the three imports another for a constant.
+ * A leaf module on purpose. `core/ciScope.ts` (the route guard) and `core/publisher.ts` (the
+ * store, whose `lookupCiToken` the CI-route suites mock) both need these, and keeping them here
+ * means neither imports the other for a constant.
  */
 
 /** Every CI token starts with this; anything else is not a CI credential. */

@@ -32,12 +32,10 @@
  * the flow's cookie.
  */
 
-import {
-  hashKey,
-  randomToken,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { hashKey } from "../../../crypto.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import {
   LINK_FLOW_COOKIE,

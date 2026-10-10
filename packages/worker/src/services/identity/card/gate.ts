@@ -58,15 +58,11 @@
  *     creates the account. Polaris Key's are asked only while `identity.platformTerms` is set.
  */
 
-import {
-  hashKey,
-  normalizeEmail,
-  randomId,
-  randomToken,
-  type Db,
-  type DbStatement,
-  type Env,
-} from "../../../core/platform.js";
+import { hashKey, randomId } from "../../../crypto.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   artefactRef,
   consumeArtefact,

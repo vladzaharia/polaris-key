@@ -39,7 +39,7 @@ import {
   issueSession,
 } from "../src/admin/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
-import { parseManifest } from "../src/services/release/manifest.js";
+import { parseManifest } from "@polaris-key/manifest";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";

@@ -23,7 +23,7 @@ import type { Db, DbStatement } from "../src/db/types.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
-import { parseManifest } from "../src/services/release/manifest.js";
+import { parseManifest } from "@polaris-key/manifest";
 import { MAX_REPO_FILE_BYTES } from "../src/services/release/github.js";
 import {
   ensureSystemProduct,

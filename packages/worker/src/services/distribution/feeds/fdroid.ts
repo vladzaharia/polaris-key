@@ -48,9 +48,11 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db, DbStatement, Env } from "../../../core/platform.js";
-import { isSafeAssetPath, randomId } from "../../../core/platform.js";
-import { appSecurityHeaders } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
+import { isSafeAssetPath } from "../../../http.js";
+import { randomId } from "../../../crypto.js";
+import { appSecurityHeaders } from "../../../securityHeaders.js";
 import {
   errorResponse,
   ErrorCode,
@@ -77,7 +79,7 @@ import {
 import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
 import type { ReleaseCatalog } from "../../../core/hooks.js";
 import { publicKeyIsPublic } from "../blobAccess.js";
-import { appendAudit } from "../../../core/data.js";
+import { appendAudit } from "../../../repo.js";
 import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
 import {
   feedReaders,

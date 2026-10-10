@@ -23,7 +23,7 @@
  * Returns the number of refs changed.
  */
 
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import { PACKAGE_FILE_REF } from "../../../core/blobs.js";
 
 export const CRON_BATCH = 500;

@@ -4,15 +4,13 @@
  * script-free shell (`core/brandHtml.ts`) under the branded-page CSP.
  */
 
-import {
-  brandedHtmlSecurityHeaders,
-  escapeHtml,
-  type Env,
-} from "../../../core/platform.js";
+import { brandedHtmlSecurityHeaders } from "../../../securityHeaders.js";
+import { escapeHtml } from "../../../platform/html.js";
+import type { Env } from "../../../env.js";
 import { strictEmail } from "../../../core/strictEmail.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
 import { readGuardedJsonObject } from "../../../core/browserRequestGuard.js";
-import { portalSecurityHeaders } from "../portal/headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
 
 /** A JSON answer. `cookies` become separate `Set-Cookie` fields. */
 export function cardJson(

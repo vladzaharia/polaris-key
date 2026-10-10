@@ -35,7 +35,9 @@
  *   - Changes share 10 a minute per account (`portalMethodChange`).
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import { hashKey } from "../../../crypto.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,

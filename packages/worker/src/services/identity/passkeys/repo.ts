@@ -16,7 +16,9 @@
  * and the user handle are not derived from it.
  */
 
-import { randomId, randomToken, type Db } from "../../../core/platform.js";
+import { randomId } from "../../../crypto.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
 import { PASSKEY_ISSUER } from "../accounts/repo.js";
 
 /** Passkeys one account may hold. Rate limits bound how fast they are added; this bounds rows. */

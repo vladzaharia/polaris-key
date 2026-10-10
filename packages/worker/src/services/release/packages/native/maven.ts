@@ -38,7 +38,7 @@ import {
   stageFile,
   type StagedFile,
 } from "./publish.js";
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import { publishRoute, refusalResponse, type PublishCall } from "./route.js";
 import {
   finalizeSession,

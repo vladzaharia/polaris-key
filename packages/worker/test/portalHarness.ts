@@ -13,7 +13,7 @@ import { buildHooks } from "../src/core/hooks.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import { SERVICES } from "../src/mount.js";
-import { kvKey } from "../src/core/platform.js";
+import { pk as kvKey } from "../src/kv.js";
 import {
   handlePortalApi as portalApi,
   handlePortalDownload as portalDownload,

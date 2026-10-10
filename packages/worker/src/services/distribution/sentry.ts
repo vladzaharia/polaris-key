@@ -38,19 +38,14 @@
  * mapping, so no crash payload is stored (docs/PRIVACY.md).
  */
 
-import {
-  constantTimeEqualBytes,
-  hexDecode,
-  hexEncode,
-  hmacSha256,
-  importHmacKey,
-  sha256Hex,
-  type Db,
-} from "../../core/platform.js";
+import { constantTimeEqualBytes } from "../../platform/compare.js";
+import { hexDecode, hexEncode } from "../../platform/bytes.js";
+import { hmacSha256, importHmacKey, sha256Hex } from "../../platform/hash.js";
+import type { Db } from "../../db/types.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { ServiceHooks } from "../../core/hooks.js";
-import type { AdminSession } from "../../core/adminApi.js";
-import { audit } from "../../core/adminApi.js";
+import type { AdminSession } from "../../admin/session.js";
+import { audit } from "../../admin/audit.js";
 import { errorResponse, json } from "../../core/errors.js";
 import { rateLimitOk } from "../../core/rateLimit.js";
 import {

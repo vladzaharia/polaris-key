@@ -19,7 +19,8 @@ import {
   stmtDetachAccountLicenses,
 } from "../../../core/accountSubjects.js";
 import { stmtDeleteAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
-import { randomId, type Db, type DbStatement } from "../../../core/platform.js";
+import { randomId } from "../../../crypto.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import {
   forgetRegistryTokens,
   stmtRevokeAccountRegistryTokens,

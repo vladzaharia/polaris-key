@@ -12,7 +12,8 @@
  *   - **Tokens.** From `platformMsStoreToken` for a TEAM-WIDE purpose, on behalf of the admin.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../env.js";
 import {
   recordPlatformCredentialResult,
   resolvePlatformCredential,

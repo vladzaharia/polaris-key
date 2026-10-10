@@ -42,15 +42,15 @@
  * the callback to the browser that started it.
  */
 
+import { hashKey } from "../../../crypto.js";
+import { pkceChallenge } from "../../../platform/pkce.js";
 import {
-  hashKey,
-  pkceChallenge,
   PORTAL_SIGNIN_RETURN_TO,
-  randomToken,
   safeReturnTo,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+} from "../../../platform/returnTo.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { identityEnabled } from "../../../core/identityGate.js";
@@ -70,7 +70,7 @@ import { accountUsingEmail } from "../accounts/repo.js";
 import { providerVouchesForEmail } from "./vouch.js";
 import { productTerms } from "../productTerms.js";
 import { htmlError, signInPage } from "../portal/auth.js";
-import { portalSecurityHeaders } from "../portal/headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
 import {
   appleAuthorizeUrl,

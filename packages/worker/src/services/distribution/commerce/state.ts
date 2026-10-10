@@ -30,11 +30,8 @@
 
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { isDeliverableId } from "@polaris-key/manifest";
-import {
-  sha256Hex,
-  type Db,
-  type DbStatement,
-} from "../../../core/platform.js";
+import { sha256Hex } from "../../../platform/hash.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import type { LicenseMergeChange } from "../../../core/licenseMerge.js";
 import {
   idChunks,

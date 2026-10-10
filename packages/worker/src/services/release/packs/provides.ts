@@ -39,7 +39,7 @@ import {
 } from "@polaris-key/manifest";
 import { base64UrlDecode } from "@polaris-key/jws";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import type { ReleaseConfigRow } from "../config.js";
 import type { PackRefusal } from "./ingest.js";
 import { channelClosure, compareVersions } from "../resolve.js";

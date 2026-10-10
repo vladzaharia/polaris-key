@@ -4,7 +4,7 @@
  * P4-14's collector. The primary key (product, from, to, method) is the idempotency key.
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
 import type { LazyDeltaDescriptor, LazyDeltaRefusal } from "./policy.js";
 import { LAZY_DELTA_METHOD } from "./policy.js";
 

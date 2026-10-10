@@ -15,7 +15,7 @@
  */
 
 import type { ProductPublic } from "../../../core/products.js";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import type { PurchaseSourceKind } from "../../../core/hooks.js";
 import type { PortalHooksFor } from "./api.js";
 import { visibleCatalogFlags } from "./entitlements.js";

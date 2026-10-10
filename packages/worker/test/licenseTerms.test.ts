@@ -18,7 +18,7 @@ import {
   tighterMin,
 } from "../src/core/entitlements.js";
 import { resolveLicenseTerms } from "../src/core/licensing/terms.js";
-import type { LicenseRow, TierRow } from "../src/core/data.js";
+import type { LicenseRow, TierRow } from "../src/repo.js";
 import type { ManagedPayload } from "../src/core/payload.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

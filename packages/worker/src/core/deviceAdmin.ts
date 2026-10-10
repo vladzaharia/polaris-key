@@ -15,8 +15,9 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { DeviceRow } from "../repo.js";
-import { audit, type AdminSession } from "./adminApi.js";
-import { clearFingerprint } from "./data.js";
+import { audit } from "../admin/audit.js";
+import type { AdminSession } from "../admin/session.js";
+import { clearFingerprint } from "../repo.js";
 import { retireDeviceBinding } from "./devices.js";
 
 interface DeviceAdminCtx {

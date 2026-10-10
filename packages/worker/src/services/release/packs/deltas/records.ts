@@ -9,7 +9,7 @@ import type {
   PackVariant,
   PayloadDelta,
 } from "@polaris-key/protocol/packs";
-import type { Db } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
 import { blobKey } from "../../../../core/blobs.js";
 import { storedRecordPayload, variantBuildId } from "../ingest.js";
 import { LAZY_DELTA_METHOD } from "./policy.js";

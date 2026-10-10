@@ -20,7 +20,8 @@
  */
 
 import { APP_DELIVERABLE_ID, parseAssetPackId } from "@polaris-key/manifest";
-import { parseJsonObject, type Db } from "../../core/platform.js";
+import { parseJsonObject } from "../../platform/json.js";
+import type { Db } from "../../db/types.js";
 import type { ReleaseCatalog } from "../../core/hooks.js";
 
 /** Apple's per-app limits (ASC Help "Apple-hosted asset pack size limits"; notes/S-07 row 16). */

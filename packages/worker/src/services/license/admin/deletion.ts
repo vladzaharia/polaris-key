@@ -29,12 +29,12 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import { deleteTokenRecord } from "../../../core/platform.js";
+import { deleteTokenRecord } from "../../../kv.js";
 import {
   getLicense,
   listDevicesByLicense,
   type LicenseRow,
-} from "../../../core/data.js";
+} from "../../../repo.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   existingSubjectFor,
@@ -49,11 +49,11 @@ import {
 } from "../../../core/licenseDelete.js";
 import {
   adminJson,
-  adminNotFound,
-  auditStatementFor,
+  notFound as adminNotFound,
   err,
   readBody,
-} from "../../../core/adminApi.js";
+} from "../../../admin/lib/respond.js";
+import { auditStatementFor } from "../../../admin/audit.js";
 import type { LicenseAdminContext } from "./index.js";
 
 /** Origins a licence may be deleted from while still active: minted by a flow, not by a person. */

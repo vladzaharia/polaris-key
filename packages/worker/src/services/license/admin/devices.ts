@@ -14,14 +14,16 @@ import {
   getDeviceFacts,
   getFingerprint,
   listDevicesByLicense,
-} from "../../../core/data.js";
+} from "../../../repo.js";
 import {
   adminJson,
-  adminNotFound,
+  notFound as adminNotFound,
   err,
+} from "../../../admin/lib/respond.js";
+import {
   shapeFacts,
   shapeFingerprint,
-} from "../../../core/adminApi.js";
+} from "../../../admin/lib/deviceShape.js";
 import type { LicenseAdminContext } from "./index.js";
 
 export async function handleAdminDevices(

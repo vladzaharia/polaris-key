@@ -18,7 +18,8 @@
  *   POST /api/signin/passkey/verify        the passkey's assertion (I-16, `../passkeys/`)
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   handleSigninEmailResend,
   handleSigninEmailStart,

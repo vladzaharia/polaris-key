@@ -43,11 +43,12 @@ import {
   seatActiveSince,
   type DeviceRow,
   type LicenseRow,
-} from "../../core/data.js";
+} from "../../repo.js";
 import { licenseUsable } from "../../core/devices.js";
 import { compareCandidates } from "../../core/anchor.js";
 import { licenseDeviceLimit, tierFingerprintMode } from "../../core/authz.js";
-import { escapeHtml, type Db } from "../../core/platform.js";
+import { escapeHtml } from "../../platform/html.js";
+import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import type { PurchaseSourceKind, ServiceHooks } from "../../core/hooks.js";
 import { getAccountRow } from "./accounts/repo.js";

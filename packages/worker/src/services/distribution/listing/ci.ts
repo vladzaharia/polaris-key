@@ -21,7 +21,7 @@ import {
   type FitReportRow,
 } from "../../../core/storefront/projection.js";
 import type { ListingModel } from "../../../core/storefront/listingModel.js";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import { readListing } from "./store.js";
 
 const FALLBACK_LOCALE = "en-US";

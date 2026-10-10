@@ -6,7 +6,9 @@
  * The account id is INTERNAL: it lives in Identity and Core and never reaches a developer.
  */
 
-import { normalizeEmail, randomId, type Db } from "../../../core/platform.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import { randomId } from "../../../crypto.js";
+import type { Db } from "../../../db/types.js";
 import { MERGE_REDIRECT_SECONDS } from "../../../core/accountSubjects.js";
 
 export interface AccountRow {

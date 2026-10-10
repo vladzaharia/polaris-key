@@ -32,20 +32,26 @@ import {
   SYSTEM_PRODUCT_SLUG,
   type ManifestPresentation,
 } from "@polaris-key/manifest";
-import { parseJsonColumn, type Db, type Env } from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import {
   claimsForApply,
   type BreakGlassClaim,
+  type ClaimKey,
+} from "../../core/settingsClaims.js";
+import {
   countLicensesUsingTier,
-  getActiveSchema,
-  getManifestSnapshot,
-  getProduct,
   listProfiles,
   listTiers,
-  liveRowClaimKeys,
+} from "../../admin/repo.js";
+import {
+  getActiveSchema,
+  getProduct,
   stmtInsertReleaseConfig,
-  type ClaimKey,
-} from "../../core/ingest.js";
+} from "../../repo.js";
+import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
+import { liveRowClaimKeys } from "../../core/rowSettings.js";
 import { parseServices } from "../../core/services.js";
 import {
   parseStoredPresentation,
@@ -54,7 +60,7 @@ import {
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import { getPublisherPolicy } from "../../core/publisher.js";
 import { getReleaseConfig } from "./config.js";
-import { parseManifest, type ParsedManifest } from "./manifest.js";
+import { parseManifest, type ParsedManifest } from "@polaris-key/manifest";
 import {
   discoverInstallation,
   type FetchImpl,

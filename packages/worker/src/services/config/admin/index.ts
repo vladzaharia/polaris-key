@@ -16,7 +16,7 @@
  */
 
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../core/adminApi.js";
+import type { AdminSession } from "../../../admin/session.js";
 import { handleCatalog } from "./catalog.js";
 import { handleProfiles } from "./profiles.js";
 import { handleMintAdmin } from "./mint.js";

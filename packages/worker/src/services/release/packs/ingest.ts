@@ -76,13 +76,9 @@ import type {
   PayloadDelta,
 } from "@polaris-key/protocol/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
-import {
-  b64urlDecodeUtf8,
-  parseJsonObject,
-  type Db,
-  type DbParam,
-  type DbStatement,
-} from "../../../core/platform.js";
+import { b64urlDecodeUtf8 } from "../../../platform/bytes.js";
+import { parseJsonObject } from "../../../platform/json.js";
+import type { Db, DbParam, DbStatement } from "../../../db/types.js";
 import { blobKey } from "../../../core/blobs.js";
 import type { RecordRefusalReason } from "../records.js";
 

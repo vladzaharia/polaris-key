@@ -28,8 +28,10 @@
 //      it (`invalidateWidenedEdgeMintApprovals`, core/edgeMintApproval.ts). No approval, or one
 //      that no longer applies, answers exactly like an unknown recipe (404).
 
-import type { Env, Db } from "../../core/platform.js";
-import { bearer, staticHtmlSecurityHeaders } from "../../core/platform.js";
+import type { Env } from "../../env.js";
+import type { Db } from "../../db/types.js";
+import { bearer } from "../../http.js";
+import { staticHtmlSecurityHeaders } from "../../securityHeaders.js";
 import { type Product, openProductSecret } from "../../core/products.js";
 import {
   approvalMismatch,

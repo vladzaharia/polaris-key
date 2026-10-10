@@ -22,7 +22,7 @@
  * copied: a status, an enum-like error token at most, mapped to sentences composed here.
  */
 
-import type { Env } from "../../../core/platform.js";
+import type { Env } from "../../../env.js";
 import { rateLimitOk, type RateLimit } from "../../../core/rateLimit.js";
 
 export type CheckVerdict =

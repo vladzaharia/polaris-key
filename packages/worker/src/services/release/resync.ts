@@ -22,7 +22,8 @@ import {
   catalogDeliveryIssues,
   declassifyRefusal,
 } from "../../core/configDelivery.js";
-import type { Db, DbStatement, Env } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import {
   auditValue,
   claimGuardParams,
@@ -31,20 +32,20 @@ import {
   endBreakGlassStatements,
   systemResyncRefusal,
   type BreakGlassClaim,
+  RESYNC_ACTOR,
+  stmtSettingAudit,
+  unlessClaimed,
+  type ClaimKey,
+} from "../../core/settingsClaims.js";
+import {
   countLicensesUsingTier,
-  getActiveSchema,
-  getManifestSnapshot,
-  getProduct,
-  invalidateWidenedEdgeMintApprovals,
-  isManagedSecretKey,
-  isSealedEnvelope,
   listProfiles,
   listTiers,
-  liveRowClaimKeys,
   nextSchemaVersion,
-  parsePayload,
-  parseWebOrigins,
-  RESYNC_ACTOR,
+} from "../../admin/repo.js";
+import {
+  getActiveSchema,
+  getProduct,
   stmtDeleteManifestProfile,
   stmtDeleteManifestTier,
   stmtDeleteOrphanEdgeMintApprovals,
@@ -57,20 +58,26 @@ import {
   stmtSetAutoIssuePolicy,
   stmtSetFingerprintPolicy,
   stmtSetServices,
-  stmtSettingAudit,
   stmtUpsertManifestProfile,
   stmtUpsertManifestTier,
-  unlessClaimed,
-  type ClaimKey,
   type ProductRow,
   type TierRow,
-} from "../../core/ingest.js";
+} from "../../repo.js";
+import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
+import { invalidateWidenedEdgeMintApprovals } from "../../core/edgeMintApproval.js";
+import {
+  isManagedSecretKey,
+  isSealedEnvelope,
+} from "../../admin/lib/managedSecrets.js";
+import { liveRowClaimKeys } from "../../core/rowSettings.js";
+import { parsePayload } from "../../admin/lib/redact.js";
+import { parseWebOrigins } from "../../core/cors.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "./config.js";
 import {
   parseManifest,
   type ManifestProfile,
   type ParsedManifest,
-} from "./manifest.js";
+} from "@polaris-key/manifest";
 import {
   discoverInstallation,
   type FetchImpl,
@@ -103,7 +110,7 @@ import {
   stmtDeleteManifestPublisher,
   stmtUpsertManifestPublisher,
 } from "../../core/publisher.js";
-import { randomId } from "../../core/platform.js";
+import { randomId } from "../../crypto.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import { reservedDisplayNamesMode } from "../../core/reservedDisplayNames.js";

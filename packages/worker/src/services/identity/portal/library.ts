@@ -48,14 +48,15 @@
  * `GET /api/licenses`. Downloads, stores and feeds on the product view are PX-W2's (G2, G4).
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   loadProductPublic,
   type ProductPublic,
 } from "../../../core/products.js";
 import { licenseDeviceLimit } from "../../../core/authz.js";
-import { seatActiveSince } from "../../../core/data.js";
-import type { DeviceRow } from "../../../core/data.js";
+import { seatActiveSince } from "../../../repo.js";
+import type { DeviceRow } from "../../../repo.js";
 import {
   PRESENTATION_HEADER_SLOTS,
   PRESENTATION_ICON_SLOTS,

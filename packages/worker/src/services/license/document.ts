@@ -24,8 +24,9 @@
 
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { sha256Base64Url } from "@polaris-key/jws";
-import type { Env, Db } from "../../core/platform.js";
-import { bearer } from "../../core/platform.js";
+import type { Env } from "../../env.js";
+import type { Db } from "../../db/types.js";
+import { bearer } from "../../http.js";
 import type { Product } from "../../core/products.js";
 import {
   ErrorCode,
@@ -37,10 +38,10 @@ import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { deviceMetadata, touchDeviceMetadata } from "../../core/devices.js";
 import { isStrictJsonError, signDoc } from "../../core/signing.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
-import { requireLicensedDevice } from "./auth.js";
-import { docProfile } from "./authz.js";
-import { resolveEntitlements } from "./entitlements.js";
-import { checkBuildGate, type GateResult } from "./gate.js";
+import { requireLicensedDevice } from "../../core/authz.js";
+import { docProfile } from "../../core/authz.js";
+import { resolveEntitlements } from "../../core/authz.js";
+import { checkBuildGate, type GateResult } from "../../core/gate.js";
 
 // The envelope stamper moved to `core/documents.ts` when offline bundles landed (§7): one bundle
 // carries a license document AND a config document, so Core has to be able to build both, and a

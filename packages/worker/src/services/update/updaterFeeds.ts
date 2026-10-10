@@ -56,7 +56,8 @@ import type {
   ReleaseCatalog,
 } from "../../core/hooks.js";
 import { errorResponse, notFound } from "../../core/errors.js";
-import { bearer, sha256Hex } from "../../core/platform.js";
+import { bearer } from "../../http.js";
+import { sha256Hex } from "../../platform/hash.js";
 import {
   accessRefusal,
   fixedReleaseSelector,

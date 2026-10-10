@@ -42,15 +42,12 @@
  * (`gateway.ts` `releaseCacheKey` explains why). Every KV failure is a miss, never an error.
  */
 
-import type { Env } from "../../core/platform.js";
+import type { Env } from "../../env.js";
 import type { FetchImpl } from "./githubApp.js";
-import {
-  isAllowedStorageHost,
-  kvKey,
-  open,
-  randomId,
-  seal,
-} from "../../core/platform.js";
+import { isAllowedStorageHost } from "../../http.js";
+import { pk as kvKey } from "../../kv.js";
+import { open, seal } from "../../keyvault.js";
+import { randomId } from "../../crypto.js";
 
 /** Seconds a resolution is reused (README §3.5: 60–120 s). KV's floor is 60. */
 export const RESOLUTION_TTL = 90;

@@ -67,7 +67,7 @@ import { audit } from "../admin/audit.js";
 import { adminJson, err, notFound, readBody } from "../admin/lib/respond.js";
 import { ErrorCode } from "./errors.js";
 import { getDevice, getLicense } from "../repo.js";
-import type { LicenseRow } from "./data.js";
+import type { LicenseRow } from "../repo.js";
 import { licenseUsable } from "./devices.js";
 import { docProfile, resolveEntitlements } from "./authz.js";
 import { loadProduct } from "./products.js";

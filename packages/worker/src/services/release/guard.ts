@@ -8,7 +8,7 @@
  * attaches a check to a statement built elsewhere (`model.ts`, `core/blobs.ts`).
  */
 
-import type { DbParam, DbStatement } from "../../core/platform.js";
+import type { DbParam, DbStatement } from "../../db/types.js";
 
 /**
  * True when the release has an ingested descriptor. Params: product, release id. A described

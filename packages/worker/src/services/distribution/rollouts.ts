@@ -41,14 +41,17 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import { randomHex, randomId, type Db } from "../../core/platform.js";
+import { randomHex } from "../../platform/random.js";
+import { randomId } from "../../crypto.js";
+import type { Db } from "../../db/types.js";
 import type {
   RolloutRecord,
   RolloutState,
   ServiceHooks,
 } from "../../core/hooks.js";
-import { appendAudit } from "../../core/data.js";
-import { audit, type AdminSession } from "../../core/adminApi.js";
+import { appendAudit } from "../../repo.js";
+import { audit } from "../../admin/audit.js";
+import type { AdminSession } from "../../admin/session.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import { getOutlet } from "./outlets.js";
 

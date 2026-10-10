@@ -5,7 +5,7 @@
  * self-hosted outlets), and the console's admin API (read-only availability and submissions, the
  * operator-owned key inventory).
  *
- * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the P2b-04 rollout suite.
+ * The `pkeyci_` lookup (`lookupCiToken` in `core/publisher.ts`) is mocked, as in the P2b-04 rollout suite.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +17,8 @@ const tokens = vi.hoisted(
       { product: string; subject: string; scopes: readonly string[] }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));

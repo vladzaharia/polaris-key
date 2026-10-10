@@ -25,8 +25,9 @@
  * no "unset audience" state in which a token for any audience would pass.
  */
 
-import { open, type Env, type SealContext } from "../../../core/platform.js";
-import { secret } from "../../../core/platform.js";
+import { open, type SealContext } from "../../../keyvault.js";
+import type { Env } from "../../../env.js";
+import { secret } from "../../../env.js";
 
 export const SIGNIN_PROVIDER_KINDS = ["google", "apple", "steam"] as const;
 export type SignInProviderKind = (typeof SIGNIN_PROVIDER_KINDS)[number];

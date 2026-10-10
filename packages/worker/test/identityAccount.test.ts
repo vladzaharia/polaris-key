@@ -34,10 +34,10 @@ import {
 } from "../src/core/anchor.js";
 import { enrollFate } from "../src/services/license/enroll.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import { getLicense } from "../src/core/data.js";
+import { getLicense } from "../src/repo.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { LicenseRow } from "../src/core/data.js";
+import type { LicenseRow } from "../src/repo.js";
 
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";

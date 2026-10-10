@@ -65,8 +65,10 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db, DbStatement, Env } from "../../core/platform.js";
-import { isAllowedStorageHost, randomId } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../env.js";
+import { isAllowedStorageHost } from "../../http.js";
+import { randomId } from "../../crypto.js";
 import { blobKey } from "../../core/blobs.js";
 import {
   hostedAssetRefId,

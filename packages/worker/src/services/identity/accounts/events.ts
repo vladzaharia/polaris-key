@@ -4,7 +4,8 @@
  * webhooks come later. A row carries pairwise subjects and licence ids only, never an account id.
  */
 
-import { randomId, type DbStatement } from "../../../core/platform.js";
+import { randomId } from "../../../crypto.js";
+import type { DbStatement } from "../../../db/types.js";
 
 export type SubjectEvent =
   | {

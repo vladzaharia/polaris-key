@@ -34,7 +34,7 @@
  * the drain.
  */
 
-import { sha256Hex } from "../../../core/platform.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import type {
   RegistryEcosystem,
   RegistryRoute,

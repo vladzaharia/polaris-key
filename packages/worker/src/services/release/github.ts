@@ -11,9 +11,9 @@
  */
 
 import type { FetchImpl } from "./githubApp.js";
-import { isAllowedStorageHost } from "../../core/platform.js";
+import { isAllowedStorageHost } from "../../http.js";
 import { readCappedText } from "../../core/readCapped.js";
-import { MAX_MANIFEST_BYTES } from "./manifest.js";
+import { MAX_MANIFEST_BYTES } from "@polaris-key/manifest";
 
 /**
  * The storage-host allowlist, re-exported for this module's own callers.
@@ -23,7 +23,7 @@ import { MAX_MANIFEST_BYTES } from "./manifest.js";
  * import a sibling. Re-exported rather than repointed so every existing importer — and the
  * suites that pin this predicate — sees an unchanged surface.
  */
-export { isAllowedStorageHost } from "../../core/platform.js";
+export { isAllowedStorageHost } from "../../http.js";
 
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";

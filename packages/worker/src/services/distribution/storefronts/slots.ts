@@ -25,10 +25,11 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../core/adminApi.js";
-import { adminJson, audit, err, readBody } from "../../../core/adminApi.js";
+import type { AdminSession } from "../../../admin/session.js";
+import { adminJson, err, readBody } from "../../../admin/lib/respond.js";
+import { audit } from "../../../admin/audit.js";
 import {
   LISTING_ASSET_SLOTS,
   listingAssetRule,

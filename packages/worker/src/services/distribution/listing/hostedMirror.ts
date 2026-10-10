@@ -18,7 +18,7 @@
  * Masters a person uploads have no `derivedFrom`; the text rule is the slot's own.
  */
 
-import type { Db, DbStatement } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import { blobKey } from "../../../core/blobs.js";
 import { listingAssetRule } from "../../../core/storefront/listingModel.js";
 import type {

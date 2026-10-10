@@ -48,20 +48,17 @@
 import { platformFromFileName } from "@polaris-key/manifest";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../admin/session.js";
 import {
   adminJson,
-  adminNotFound,
-  audit,
+  notFound as adminNotFound,
   err,
   readBody,
-} from "../../core/adminApi.js";
+} from "../../admin/lib/respond.js";
+import { audit } from "../../admin/audit.js";
 import { compareSemver, parseSemver } from "../../core/entitlements.js";
-import {
-  getProduct,
-  systemResyncRefusal,
-  upsertProductSyncState,
-} from "../../core/ingest.js";
+import { getProduct, upsertProductSyncState } from "../../repo.js";
+import { systemResyncRefusal } from "../../core/settingsClaims.js";
 import {
   classifyChannel,
   floorChannelOf,

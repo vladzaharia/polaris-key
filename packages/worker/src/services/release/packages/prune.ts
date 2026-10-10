@@ -57,9 +57,10 @@
  */
 
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
-import type { Db, DbStatement, Env } from "../../../core/platform.js";
-import { randomId } from "../../../core/platform.js";
-import { appendAudit, auditStatement } from "../../../core/data.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
+import { randomId } from "../../../crypto.js";
+import { appendAudit, auditStatement } from "../../../repo.js";
 import {
   PACKAGE_FILE_REF,
   heldObjects,

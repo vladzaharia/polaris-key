@@ -47,7 +47,7 @@ import type {
 } from "@polaris-key/protocol/identity";
 import type { Db, DbStatement } from "../db/types.js";
 import { randomId } from "../crypto.js";
-import type { LicenseRow } from "./data.js";
+import type { LicenseRow } from "../repo.js";
 import { licenseUsable } from "./devices.js";
 import { ErrorCode, errorResponse } from "./errors.js";
 import { identityEnabled } from "./identityGate.js";

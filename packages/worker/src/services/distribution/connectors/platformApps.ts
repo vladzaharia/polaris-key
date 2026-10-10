@@ -10,7 +10,7 @@
  * cached: the admin handler joins them fresh from D1 on every read.
  */
 
-import type { Env } from "../../../core/platform.js";
+import type { Env } from "../../../env.js";
 import type {
   PlatformCredentialId,
   PlatformCredentialSource,

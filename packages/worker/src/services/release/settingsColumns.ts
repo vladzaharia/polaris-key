@@ -11,11 +11,8 @@
  * Every statement ANDs the write's guard into its `WHERE` (`ColumnWriteArgs.guard`).
  */
 
-import {
-  parseJsonObject,
-  tryParseJson,
-  type DbStatement,
-} from "../../core/platform.js";
+import { parseJsonObject, tryParseJson } from "../../platform/json.js";
+import type { DbStatement } from "../../db/types.js";
 import type {
   ColumnWriteArgs,
   SettingColumnAdapter,

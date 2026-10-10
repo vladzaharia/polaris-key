@@ -29,7 +29,7 @@ import {
   mintApprovalBasis,
   type MintPolicyProduct,
 } from "../../services/config/mint.js";
-import { parseAutoIssue } from "../../core/fingerprint.js";
+import { parseAutoIssue } from "../../fingerprint.js";
 import {
   productIcons,
   type ProductIconView,

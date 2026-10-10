@@ -23,7 +23,7 @@
  *     `PYPI_DOCUMENT_CSP`, which `inertDocumentPolicy` accepts.
  */
 
-import { escapeHtml } from "../../../../core/platform.js";
+import { escapeHtml } from "../../../../platform/html.js";
 import type {
   PackageFile,
   PackageVersion,

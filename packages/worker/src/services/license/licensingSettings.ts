@@ -40,7 +40,7 @@ import {
   type LicensingEntitlementModel,
   type LicensingReanchor,
 } from "@polaris-key/manifest";
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import {
   readRowSettings,
   type RowSettingProduct,

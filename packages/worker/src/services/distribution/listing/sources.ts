@@ -14,7 +14,9 @@
  *   - `product`: `.pkey/product`'s product name.
  */
 
-import { parseJsonColumn, type Db, type Env } from "../../../core/platform.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { FetchImpl } from "../../../core/outletTokens.js";
 import { AscError, AscWriteDenied } from "../../../core/asc/client.js";

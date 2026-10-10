@@ -62,7 +62,7 @@
 import { APP_DELIVERABLE_ID, isDeliverableId } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { ReleaseCatalog } from "../../core/hooks.js";
-import { bearer } from "../../core/platform.js";
+import { bearer } from "../../http.js";
 import { notFound, wireError } from "../../core/errors.js";
 import {
   blobKey,
@@ -82,7 +82,7 @@ import {
   entitlementFlagRefusal,
   fixedReleaseSelector,
 } from "../../core/entitledAccess.js";
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import { readAccessTable, stricter, type AccessTable } from "./access.js";
 import type { ByteContext } from "./bytes.js";
 

@@ -26,12 +26,10 @@
  */
 
 import { assetRefUrl, normalizeAssetRef } from "@polaris-key/manifest";
-import {
-  hexEncode,
-  sha256,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { hexEncode } from "../../../platform/bytes.js";
+import { sha256 } from "../../../platform/hash.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../env.js";
 import {
   HOSTED_REF_HELD,
   hostedImageOrigin,

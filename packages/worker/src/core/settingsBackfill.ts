@@ -54,7 +54,7 @@ import type {
   TierRow,
 } from "../repo.js";
 import { stmtInsertTier, TIER_COMPARED_PARAMS } from "../repo.js";
-import { randomId } from "./platform.js";
+import { randomId } from "../crypto.js";
 import { parseWebOrigins, serializeWebOrigins } from "./cors.js";
 import { parseServices } from "./services.js";
 import { isSealedEnvelope } from "../admin/lib/managedSecrets.js";

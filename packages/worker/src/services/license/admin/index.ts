@@ -22,7 +22,7 @@
  */
 
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../core/adminApi.js";
+import type { AdminSession } from "../../../admin/session.js";
 import { handleLicenses } from "./licenses.js";
 import { handleTiers } from "./tiers.js";
 import { handleFingerprintPolicy } from "./policy.js";

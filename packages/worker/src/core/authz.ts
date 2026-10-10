@@ -57,8 +57,8 @@ import {
   type DeviceRow,
   type LicenseRow,
   type TierRow,
-} from "./data.js";
-import type { PresentedFingerprint } from "./fingerprint.js";
+} from "../repo.js";
+import type { PresentedFingerprint } from "../fingerprint.js";
 import {
   bindDevice,
   licenseUsable,

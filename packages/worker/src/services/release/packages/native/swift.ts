@@ -21,7 +21,8 @@
 import { json } from "../../../../core/errors.js";
 import type { RegistryRoute } from "../../../../core/registryHost.js";
 import { registryOrigin } from "../../../../core/registryHost.js";
-import { randomId, sha256Hex } from "../../../../core/platform.js";
+import { randomId } from "../../../../crypto.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import { readCappedBody } from "./body.js";
 import { multipartBoundary, parseMultipart, part } from "./multipart.js";
 import {

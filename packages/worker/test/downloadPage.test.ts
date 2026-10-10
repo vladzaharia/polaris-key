@@ -34,7 +34,7 @@ import {
 import { notFound } from "../src/core/errors.js";
 import { BYTE_ROUTES } from "../src/mount.js";
 import { encodeQr, qrCapacity, qrRows, qrSvg } from "../src/core/qr.js";
-import { detectPlatform } from "../src/services/distribution/page/detect.js";
+import { detectPlatform } from "../src/core/platformDetect.js";
 import { escapeHtmlDecimalApostrophe as esc } from "../src/platform/html.js";
 import {
   renderDownloadPage,
