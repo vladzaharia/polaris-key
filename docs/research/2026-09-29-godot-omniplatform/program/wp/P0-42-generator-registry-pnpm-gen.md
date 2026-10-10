@@ -75,7 +75,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [x] One pnpm gen --check replaces per-family checks in CI and gate.sh (CI and the hook are done here; the lead's gate.sh is outside the repo)
 - [x] Every GENERATED banner maps to a registry entry (test)
 - [x] No removed gen:\* script name remains in the repo (git grep)
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
