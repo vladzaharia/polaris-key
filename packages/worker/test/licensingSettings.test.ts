@@ -525,16 +525,20 @@ describe("the settings API refuses what the registry refuses", () => {
       value: "onActivation",
     });
     expect(save.status).toBe(422);
-    expect(save.json).toMatchObject({
-      reason: "invalid_expected_version",
-      fields: ["expectedVersion"],
-    });
-    const revert = await call(ctx, "DELETE", "licensing.reanchor", {});
-    expect(revert.status).toBe(422);
-    expect(revert.json.reason).toBe("invalid_expected_version");
-    // Nothing was written.
+    // `writeSetting()` refuses it (ST-05a): the route no longer carries its own copy of the check.
+    expect(save.json.reason).toBe("expected_version_required");
     expect((await settings(ctx)).reanchor).toBe("never");
     expect(await audits(ctx, "setting.claim")).toEqual([]);
+    // A claimed key: a revert that names no version is refused too, and keeps the claim.
+    const claim = await call(ctx, "PATCH", "licensing.reanchor", {
+      value: "onActivation",
+      expectedVersion: 1,
+    });
+    expect(claim.status).toBe(200);
+    const revert = await call(ctx, "DELETE", "licensing.reanchor", {});
+    expect(revert.status).toBe(422);
+    expect(revert.json.reason).toBe("expected_version_required");
+    expect((await settings(ctx)).reanchor).toBe("onActivation");
   });
 
   it("two concurrent saves at the same version: one wins, the loser writes no audit row", async () => {
@@ -625,7 +629,7 @@ describe("the settings API refuses what the registry refuses", () => {
       expectedVersion: 1,
     });
     expect(write.status).toBe(409);
-    expect(write.json.reason).toBe("setting_pending");
+    expect(write.json.reason).toBe("pending_setting");
     for (const key of ["license.defaults.deviceLimit", "nope.missing"]) {
       const res = await call(ctx, "PATCH", key, {
         value: 1,

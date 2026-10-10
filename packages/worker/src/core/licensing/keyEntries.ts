@@ -52,7 +52,8 @@ import { licenseUsable } from "../devices.js";
 import { ErrorCode, errorResponse } from "../errors.js";
 import { identityEnabled } from "../accounts/identityGate.js";
 import { buildManageUrl, buildSignInUrl } from "./manageUrl.js";
-import { platformSetting, type SettingsEnv } from "../platformSettings.js";
+import type { SettingsEnv } from "../platformSettings.js";
+import { platformSetting } from "../settings/platformRead.js";
 import type { ServicesMap } from "../services.js";
 import type { SettingsRegistry } from "../settings/registry.js";
 import { resolveProductSetting } from "../settings/resolve.js";
@@ -176,7 +177,7 @@ export async function keyEntryRefusalsOn(
   env: SettingsEnv,
   db: Db,
 ): Promise<boolean> {
-  return (await platformSetting(env, db, "KEYENTRY_REFUSALS")) === "on";
+  return (await platformSetting(env, db, "identity.keyEntryRefusals")) === "on";
 }
 
 /**

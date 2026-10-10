@@ -8,8 +8,9 @@
  *                                         the read-only inventory: deploy-time values, secrets as
  *                                         presence ONLY, code constants that act as policy, and
  *                                         the S-13 warnings.
- *   PATCH  /api/platform/settings/:key  — `{ value, expectedVersion, confirm? }`: store a runtime
- *                                         value. 404 for a key outside `PLATFORM_SETTINGS`, 422
+ *   PATCH  /api/platform/settings/:key  — `{ value, expectedVersion, confirm?, reason? }`: store a
+ *                                         runtime value through `writeSetting()` (strict). 404 for
+ *                                         a key that is no live platform setting, 422
  *                                         for a value outside its bounds, 409 when the row is no
  *                                         longer at `expectedVersion` (0 = no row).
  *   DELETE /api/platform/settings/:key  — `{ expectedVersion }` (body or `?expectedVersion=`):
@@ -29,7 +30,6 @@ import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
 import type { AdminSession } from "../../core/console/session.js";
 import { ADMIN_SESSION_TTL_SECONDS } from "../../core/console/session.js";
-import { platformAuditStatementFor } from "../../core/console/audit.js";
 import {
   adminJson,
   err,
@@ -38,23 +38,19 @@ import {
 } from "../../core/console/respond.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { describeKeyring } from "../../platform/keyvault.js";
+import { SETTINGS } from "../../mount.js";
 import {
-  deletePlatformSetting,
-  invalidatePlatformSettings,
   LAZY_DELTA_MAX_BYTES_CEILING,
-  PLATFORM_SETTINGS,
-  platformSettingDef,
-  platformSettings,
-  resolveSetting,
   SETTINGS_CACHE_MS,
-  settingConfirmLevel,
-  TOMBSTONE_JSON,
-  unrecognisedCeilingVars,
-  validateSettingValue,
-  writePlatformSetting,
-  type PlatformSettingDef,
-  type ResolvedSetting,
 } from "../../core/platformSettings.js";
+import {
+  aliasedPlatformEntries,
+  platformSettingResolved,
+  unrecognisedCeilingVars,
+} from "../../core/settings/platformRead.js";
+import type { ResolvedSetting } from "../../core/settings/resolve.js";
+import type { ConfirmLevel, SettingDef } from "../../core/settings/types.js";
+import { writeSetting } from "../../core/settings/write.js";
 import { AUDIT_RETENTION_SECONDS } from "../../scheduled.js";
 import { PLATFORM_INVENTORY } from "../../platformInventory.generated.js";
 import type { InventoryArea } from "../../platformInventory.js";
@@ -62,7 +58,6 @@ import {
   BLOB_LOCK_AGE_SECONDS,
   MIN_GC_GRACE_SECONDS,
 } from "../../core/assets/blobGc.js";
-import { tryParseJson } from "../../platform/json.js";
 
 /**
  * Secrets the page reports as present or absent. Presence only. ST-02: every `Env` member tagged
@@ -236,46 +231,97 @@ function constants() {
   ];
 }
 
-function settingView(def: PlatformSettingDef, r: ResolvedSetting) {
+/** The labels of an enum entry's options (the registry holds the values, not their wording). */
+const CHOICE_LABELS: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  "licensing.reservedNames": { warn: "Warn", error: "Refuse" },
+  "identity.reservedDisplayNames": { warn: "Warn", error: "Refuse" },
+};
+
+/** The row key the console and `env.ts` know the entry by: its A-13 alias, else the registry key. */
+function viewKey(def: SettingDef): string {
+  return (def.storage.kind === "scalar" && def.storage.storedAs) || def.key;
+}
+
+/** The registry's confirm levels in the page's wording, by value kind. */
+function confirmView(def: SettingDef): unknown {
+  const c = def.confirm;
+  if (def.value.kind === "switch" && "on" in c) return c;
+  if (def.value.kind === "integer" && "up" in c)
+    return { raise: c.up, lower: c.down };
+  if (def.value.kind === "enum" && "up" in c) {
+    // An ordered enum: `up` confirms a change toward the last value, `down` toward the first.
+    const out: Record<string, ConfirmLevel> = {};
+    def.value.values.forEach((v, i) => (out[v] = i === 0 ? c.down : c.up));
+    return out;
+  }
+  if (def.value.kind === "enum" && "change" in c)
+    return Object.fromEntries(def.value.values.map((v) => [v, c.change]));
+  return c;
+}
+
+function settingView(def: SettingDef, r: ResolvedSetting, env: Env) {
+  const v = def.value;
+  const platformStep = r.chain.find((s) => s.source === "platform");
+  const stored =
+    platformStep && platformStep.value !== null
+      ? {
+          value: platformStep.value ?? null,
+          valid: platformStep.ignored !== true,
+          updatedAt: platformStep.at ?? 0,
+          updatedBy: platformStep.by ?? "",
+        }
+      : null;
+  const raw = def.varName === undefined ? undefined : env[def.varName];
   return {
-    key: def.key,
+    key: viewKey(def),
     area: def.area,
     label: def.label,
     description: def.description,
-    kind: def.kind,
-    ...(def.kind === "integer"
-      ? { unit: def.unit, min: def.min, max: def.max }
-      : {}),
-    ...(def.kind === "choice" ? { options: def.options } : {}),
-    scripts: def.scripts,
-    precedence: def.precedence,
-    default: def.defaultValue,
-    deployValue: r.deployValue,
-    value: r.value,
-    source: r.source,
-    forcedOff: r.forcedOff,
-    stored: r.stored
+    kind: v.kind === "enum" ? "choice" : v.kind,
+    ...(v.kind === "integer" ? { unit: v.unit, min: v.min, max: v.max } : {}),
+    ...(v.kind === "enum"
       ? {
-          value: r.stored.value ?? null,
-          valid: r.stored.valid,
-          updatedAt: r.stored.updatedAt,
-          updatedBy: r.stored.updatedBy,
+          options: v.values.map((value) => ({
+            value,
+            label: CHOICE_LABELS[def.key]?.[value] ?? value,
+          })),
         }
-      : null,
+      : {}),
+    scripts: def.readers.some((p) =>
+      p.startsWith("services/release/packs/deltas/"),
+    )
+      ? ["main", "deltas"]
+      : ["main"],
+    precedence: def.precedence ?? "runtime",
+    default: def.defaultValue,
+    deployValue: typeof raw === "string" ? raw : null,
+    value: r.value,
+    source: r.failsafe
+      ? "failsafe"
+      : r.source === "platform"
+        ? "runtime"
+        : r.source === "deploy"
+          ? "deploy"
+          : "default",
+    forcedOff: r.lockedBy === "deploy",
+    stored,
     // The `expectedVersion` the next write must carry (0: the key never had a runtime value; a
     // removed value keeps counting, so this is not 0 after a revert).
     version: r.version,
-    confirm: def.confirm,
+    confirm: confirmView(def),
   };
 }
 
 async function list(env: Env, db: Db): Promise<Response> {
-  const resolved = await platformSettings(env, db, { fresh: true });
-  const storeAvailable = !Object.values(resolved).some(
-    (r) => r.source === "failsafe",
+  const defs = aliasedPlatformEntries();
+  const resolved = await Promise.all(
+    defs.map((d) => platformSettingResolved(env, db, d.key, { fresh: true })),
   );
+  const storeAvailable = !resolved.some((r) => r.failsafe);
   return adminJson({
-    settings: PLATFORM_SETTINGS.map((d) => settingView(d, resolved[d.key])),
+    settings: defs.map((d, i) => settingView(d, resolved[i]!, env)),
     storeAvailable,
     propagationSeconds: SETTINGS_CACHE_MS / 1000,
     deployTime: deployValues(env),
@@ -288,185 +334,83 @@ async function list(env: Env, db: Db): Promise<Response> {
   });
 }
 
-function expectedVersionOf(raw: unknown): number | null {
+function expectedVersionOf(raw: unknown): number | undefined {
   const n = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : raw;
-  return typeof n === "number" && Number.isSafeInteger(n) && n >= 0 ? n : null;
+  return typeof n === "number" ? n : undefined;
 }
 
-async function storedRow(db: Db, key: string) {
-  return db.first<{
-    value_json: string;
-    version: number;
-    updated_at: number;
-    updated_by: string;
-  }>(
-    "SELECT value_json, version, updated_at, updated_by FROM platform_settings WHERE key = ?",
-    key,
-  );
+/**
+ * The registry entries this route serves, by key or alias: a live platform setting an operator
+ * edits, whose value is a switch, an integer or one of a short list. Anything else is a 404.
+ */
+function servedDef(key: string): SettingDef | undefined {
+  const def = SETTINGS.get(key, "platform");
+  if (
+    !def ||
+    def.pending ||
+    def.ownership !== "operator" ||
+    def.storage.kind !== "scalar" ||
+    !["switch", "integer", "enum"].includes(def.value.kind)
+  )
+    return undefined;
+  return def;
 }
 
-/** The audit snapshot of one side of a change: the stored value and what took effect. */
-function snapshot(r: ResolvedSetting) {
-  return {
-    stored: r.stored ? (r.stored.value ?? null) : null,
-    version: r.version,
-    effective: r.value,
-    source: r.source,
-  };
+function refused(r: {
+  status: number;
+  reason: string;
+  message: string;
+  details?: Record<string, unknown>;
+}): Response {
+  return err(r.status, ErrorCode.BadRequest, r.message, {
+    reason: r.reason,
+    ...r.details,
+  });
 }
 
-function conflict(currentVersion: number): Response {
-  return err(
-    409,
-    ErrorCode.BadRequest,
-    "the setting changed since it was loaded; reload and review it",
-    { reason: "version_conflict", currentVersion },
-  );
-}
-
+/** Every write of this route is `writeSetting()`, strict: version, reason, typed confirmation. */
 async function write(
   req: Request,
   env: Env,
   db: Db,
   session: AdminSession,
-  def: PlatformSettingDef,
+  def: SettingDef,
   now: number,
+  op: "set" | "reset",
 ): Promise<Response> {
   const body = await readBody(req);
-  const expected = expectedVersionOf(body.expectedVersion);
-  if (expected === null)
-    return err(400, ErrorCode.BadRequest, "expectedVersion is required", {
-      reason: "expected_version_required",
-    });
-  const value = validateSettingValue(def, body.value);
-  if (value === undefined)
-    return err(
-      422,
-      ErrorCode.BadRequest,
-      def.kind === "switch"
-        ? `${def.key} must be "on" or "off"`
-        : def.kind === "choice"
-          ? `${def.key} must be one of ${def.options.map((o) => `"${o.value}"`).join(", ")}`
-          : `${def.key} must be an integer from ${def.min} to ${def.max}`,
-      {
-        reason: "invalid_value",
-        ...(def.kind === "integer" ? { min: def.min, max: def.max } : {}),
-      },
-    );
-
-  const before = await resolvedNow(env, db, def);
-  // The row is already past the version the caller loaded: refuse before anything is recorded, so
-  // the audit snapshot below is always of the state the write replaces.
-  if (before.version !== expected) return conflict(before.version);
-  const level = settingConfirmLevel(def, before.value, value);
-  if ((level === "L2" || level === "L3") && body.confirm !== def.key)
-    return err(400, ErrorCode.BadRequest, `type ${def.key} to confirm`, {
-      reason: "confirm_required",
-      level,
-    });
-
-  const afterRow = {
-    value,
-    version: expected + 1,
-    updatedAt: now,
-    updatedBy: session.sub,
-  };
-  const after = resolveSetting(def, env[def.varName], afterRow, true);
-  const res = await writePlatformSetting(
-    db,
-    def.key,
-    value,
-    expected,
-    now,
-    session.sub,
-    platformAuditStatementFor(
-      session,
-      now,
-      "platform.setting.set",
-      { kind: "setting", id: def.key },
-      `Set ${def.key} to ${String(value)}`,
-      { before: snapshot(before), after: snapshot(after) },
-    ),
-  );
-  if (!res.ok) return conflict(res.currentVersion);
-  invalidatePlatformSettings(env, db);
-  return adminJson(settingView(def, after));
-}
-
-async function revert(
-  req: Request,
-  env: Env,
-  db: Db,
-  session: AdminSession,
-  def: PlatformSettingDef,
-  now: number,
-): Promise<Response> {
-  const body = await readBody(req);
-  const expected = expectedVersionOf(
-    body.expectedVersion ??
-      new URL(req.url).searchParams.get("expectedVersion") ??
-      undefined,
-  );
-  if (expected === null)
-    return err(400, ErrorCode.BadRequest, "expectedVersion is required", {
-      reason: "expected_version_required",
-    });
-  const before = await resolvedNow(env, db, def);
-  if (!before.stored) return notFound();
-  if (before.version !== expected) return conflict(before.version);
-  const after = resolveSetting(
-    def,
-    env[def.varName],
+  const res = await writeSetting(
+    { env, db, registry: SETTINGS },
     {
-      value: undefined,
-      deleted: true,
-      version: expected + 1,
-      updatedAt: now,
-      updatedBy: session.sub,
+      key: def.key,
+      op,
+      ...(op === "set" ? { value: body.value } : {}),
+      expectedVersion: expectedVersionOf(
+        body.expectedVersion ??
+          (op === "reset"
+            ? (new URL(req.url).searchParams.get("expectedVersion") ??
+              undefined)
+            : undefined),
+      ),
+      // `writeSetting()` refuses a reason that is not text.
+      reason: body.reason as string | null | undefined,
     },
-    true,
-  );
-  const res = await deletePlatformSetting(
-    db,
-    def.key,
-    expected,
-    now,
-    session.sub,
-    platformAuditStatementFor(
-      session,
+    {
+      actor: {
+        sub: session.sub,
+        name: session.name ?? null,
+        email: session.email ?? null,
+      },
+      origin: "console",
       now,
-      "platform.setting.revert",
-      { kind: "setting", id: def.key },
-      `Reverted ${def.key} to ${after.source === "deploy" ? "the deploy value" : "the code default"} (${String(after.value)})`,
-      { before: snapshot(before), after: snapshot(after) },
-    ),
+      ...(typeof body.confirm === "string" ? { confirm: body.confirm } : {}),
+    },
   );
-  if (!res.ok) return conflict(res.currentVersion);
-  invalidatePlatformSettings(env, db);
-  return adminJson(settingView(def, after));
-}
-
-/** One setting resolved from a direct read of its row (no cache): what the write compares. */
-async function resolvedNow(
-  env: Env,
-  db: Db,
-  def: PlatformSettingDef,
-): Promise<ResolvedSetting> {
-  const row = await storedRow(db, def.key);
-  return resolveSetting(
-    def,
-    env[def.varName],
-    row
-      ? {
-          value: tryParseJson(row.value_json),
-          deleted: row.value_json === TOMBSTONE_JSON,
-          version: row.version,
-          updatedAt: row.updated_at,
-          updatedBy: row.updated_by,
-        }
-      : undefined,
-    true,
-  );
+  if (!res.ok) return refused(res);
+  const after = await platformSettingResolved(env, db, def.key, {
+    fresh: true,
+  });
+  return adminJson(settingView(def, after, env));
 }
 
 export async function handlePlatformSettings(
@@ -483,9 +427,11 @@ export async function handlePlatformSettings(
     return list(env, db);
   }
   if (rest.length !== 1) return notFound();
-  const def = platformSettingDef(rest[0]!);
+  const def = servedDef(rest[0]!);
   if (!def) return notFound();
-  if (req.method === "PATCH") return write(req, env, db, session, def, now);
-  if (req.method === "DELETE") return revert(req, env, db, session, def, now);
+  if (req.method === "PATCH")
+    return write(req, env, db, session, def, now, "set");
+  if (req.method === "DELETE")
+    return write(req, env, db, session, def, now, "reset");
   return err(405, "method_not_allowed", "method not allowed");
 }

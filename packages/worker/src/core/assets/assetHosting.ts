@@ -14,7 +14,7 @@
  * A-13 store entry under the row and `[vars]` name `ASSET_HOSTING`: `runtime` precedence, so a
  * console value wins, then `[vars]`, then the default `on`. An unreadable store falls to `[vars]`
  * or the default, never to off: an outage must not flip every surface. Reads come from the
- * store's 30-second per-isolate copy (`core/platformSettings.ts`), so a request costs one read at
+ * store's 30-second per-isolate copy (`core/platformSettings.ts`, read through `core/settings/platformRead.ts`), so a request costs one read at
  * most every 30 seconds per isolate, and every isolate follows a change within 30 seconds.
  *
  * Not a security gate: turning it off only restores the earlier behaviour. The blob route's
@@ -27,17 +27,16 @@
  */
 
 import type { Db } from "../../db/types.js";
-import { platformSetting, type SettingsEnv } from "../platformSettings.js";
+import type { SettingsEnv } from "../platformSettings.js";
+import { platformSetting } from "../settings/platformRead.js";
 
 /** The registry key (`core/settings/platform.ts`). */
 export const ASSET_HOSTING_KEY = "assets.hosting.enabled";
-/** Its A-13 row key and `[vars]` name. */
-export const ASSET_HOSTING_ROW = "ASSET_HOSTING";
 
 /** Is hosted-asset serving on? (See the file comment.) */
 export async function assetHostingEnabled(
   env: SettingsEnv,
   db: Db,
 ): Promise<boolean> {
-  return (await platformSetting(env, db, ASSET_HOSTING_ROW)) === "on";
+  return (await platformSetting(env, db, ASSET_HOSTING_KEY)) === "on";
 }

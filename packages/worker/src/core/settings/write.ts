@@ -126,6 +126,13 @@ export interface WriteOptions {
   product?: string | ProductFacts;
   /** Default `true`: version, reason and typed confirmation are required (see the header). */
   strict?: boolean;
+  /**
+   * Require `expectedVersion` even when `strict` is off (a route with no typed confirmation
+   * still checks the version it read). Default: `strict`.
+   */
+  requireVersion?: boolean;
+  /** Require a reason on a critical or security-widening key even when `strict` is off. Default: `strict`. */
+  requireReason?: boolean;
   /** The typed confirmation an L2/L3 change needs in strict mode: the key itself. */
   confirm?: string;
   /** Caller statements committed in the same batch, each ANDing `guard` into its `WHERE`. */
@@ -185,6 +192,7 @@ export type WriteRefusalReason =
   | "setting_out_of_bounds"
   | "expected_version_required"
   | "reason_required"
+  | "invalid_reason"
   | "confirm_required"
   | "nothing_stored"
   | "version_conflict"
@@ -382,6 +390,9 @@ export async function writeSettings(
     : writeProduct(ctx, writes, opts);
 }
 
+/** The longest reason a write may carry (stored on the row and in the audit summary). */
+export const MAX_SETTING_REASON = 500;
+
 /** The checks every write shares (value, strict-mode version, reason and confirmation). */
 function commonChecks(
   def: SettingDef,
@@ -399,21 +410,40 @@ function commonChecks(
       def.key,
       { value: def.value },
     );
-  if (opts.strict === false) return null;
+  const strict = opts.strict !== false;
+  const versionOk =
+    w.expectedVersion !== undefined &&
+    Number.isSafeInteger(w.expectedVersion) &&
+    w.expectedVersion >= 0;
+  // A version that was named must be a version, in any mode; naming one is required in strict mode.
   if (
-    w.expectedVersion === undefined ||
-    !Number.isSafeInteger(w.expectedVersion) ||
-    w.expectedVersion < 0
+    !versionOk &&
+    (w.expectedVersion !== undefined || (opts.requireVersion ?? strict))
   )
     return refuse(
       400,
       "expected_version_required",
-      "expectedVersion is required",
+      "expectedVersion is required: the version the setting was read at (0 when unset)",
+      def.key,
+    );
+  const hasReason =
+    w.reason !== undefined && w.reason !== null && w.reason !== "";
+  if (
+    hasReason &&
+    (typeof w.reason !== "string" ||
+      w.reason.trim() === "" ||
+      w.reason.length > MAX_SETTING_REASON)
+  )
+    return refuse(
+      422,
+      "invalid_reason",
+      `reason must be text of at most ${MAX_SETTING_REASON} characters`,
       def.key,
     );
   if (
+    (opts.requireReason ?? strict) &&
     (def.critical || def.securityWidening) &&
-    !(typeof w.reason === "string" && w.reason.trim() !== "")
+    !hasReason
   )
     return refuse(
       400,
@@ -421,6 +451,7 @@ function commonChecks(
       `${def.key} is critical: a reason is required`,
       def.key,
     );
+  if (!strict) return null;
   const level = confirmLevelFor(def, before, after);
   if ((level === "L2" || level === "L3") && opts.confirm !== def.key)
     return refuse(

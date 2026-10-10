@@ -48,6 +48,6 @@ export interface PlatformInventoryEntry {
   area: InventoryArea;
   /** `true` when the member is optional in `Env` (`NAME?:`). */
   optional: boolean;
-  /** The `PLATFORM_SETTINGS` key a console value is stored under, or `null` (deploy-time only). */
+  /** The `platform_settings` row key a console value is stored under, or `null` (deploy-time only). */
   editable: string | null;
 }

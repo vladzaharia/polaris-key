@@ -6,9 +6,10 @@
  * auto-issue keep working: the switch narrows what the portal SHOWS, never a policy.
  *
  * Storage is the registry's `scalar` kind with no row alias: a `platform_settings` row keyed by
- * the registry key itself, holding the JSON string `"on"` or `"off"`. It is not an A-13 store key
- * (`core/platformSettings.ts`), so the A-13 route cannot write it; ST-05's generic settings API
- * is its writer. Until then no row exists and the default (`on`) applies.
+ * the registry key itself, holding the JSON string `"on"` or `"off"`. Its writer is the platform
+ * settings route (`console/handlers/platformSettings.ts`), which is `writeSetting()` (ST-05a), by
+ * its registry key and behind the typed level-2 confirmation. With no row the default (`on`)
+ * applies.
  *
  * Read like an A-13 kill switch, fail-safe: no row, or a tombstone (`null`), is the default `on`;
  * `"off"` is off; and so is any other stored value or an unreadable table, so a hand-edited row or

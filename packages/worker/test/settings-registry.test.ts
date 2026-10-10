@@ -31,10 +31,7 @@ import {
 } from "../src/core/settings/platform.js";
 import type { SettingDef } from "../src/core/settings/types.js";
 import { LICENSING_SETTINGS } from "../src/services/license/licensingSettings.js";
-import {
-  PLATFORM_SETTINGS,
-  platformSettingDef,
-} from "../src/core/platformSettings.js";
+import { aliasedPlatformEntries } from "../src/core/settings/platformRead.js";
 import { MAX_OFFLINE_DAYS } from "../src/core/console/writeChecks.js";
 import { DEPRECATED_SPELLINGS, spellingPath } from "@polaris-key/manifest";
 
@@ -212,24 +209,20 @@ describe("the settings registry (ST-03)", () => {
       expect(SETTINGS.get(alias)?.key).toBe(key);
       expect(SETTINGS.get(alias, "platform")?.key).toBe(key);
       expect(SETTINGS.get(alias, "product")).toBeUndefined();
-      // The A-13 store is derived from the registry: same entry, row key = the alias.
-      const a13 = platformSettingDef(alias)!;
-      expect(a13.registryKey).toBe(key);
+      // The row key is the alias: the entry is stored under it.
       const reg = SETTINGS.get(key, "platform")!;
       expect(reg.storage).toEqual({ kind: "scalar", storedAs: alias });
-      expect(a13.label).toBe(reg.label);
-      expect(a13.precedence).toBe(reg.precedence);
-      expect(a13.defaultValue).toBe(reg.defaultValue);
     }
-    expect(PLATFORM_SETTINGS.map((d) => d.key)).toEqual(pairs.map(([a]) => a));
+    expect(
+      aliasedPlatformEntries().map(
+        (d) => d.storage.kind === "scalar" && d.storage.storedAs,
+      ),
+    ).toEqual(pairs.map(([a]) => a));
     expect(SETTINGS.canonicalKey("NOT_A_SETTING")).toBeUndefined();
-    // LX-05's ordered enum becomes the A-13 store's choice kind: up (toward error) is L1.
-    const reserved = platformSettingDef("LICENSING_RESERVED_NAMES")!;
-    expect(reserved.kind).toBe("choice");
-    if (reserved.kind === "choice") {
-      expect(reserved.options.map((o) => o.value)).toEqual(["warn", "error"]);
-      expect(reserved.confirm).toEqual({ warn: "L0", error: "L1" });
-    }
+    // LX-05's ordered enum: up (toward error) is L1.
+    const reserved = SETTINGS.get("LICENSING_RESERVED_NAMES", "platform")!;
+    expect(reserved.value).toEqual({ kind: "enum", values: ["warn", "error"] });
+    expect(reserved.confirm).toEqual({ up: "L1", down: "L0" });
   });
 
   it("registers the key-entry settings for I-09 and I-10a", () => {
@@ -332,8 +325,14 @@ describe("the settings registry (ST-03)", () => {
       "services/identity/portal/store/obtain.ts",
     ]);
     expect(enabled.productLink).toBeUndefined(); // platform-only
-    // Not an A-13 store key: it has no row alias, so the A-13 route cannot write it.
-    expect(platformSettingDef("storefront.polarisKey.enabled")).toBeUndefined();
+    // No row alias: stored under the registry key itself, and written by the platform settings
+    // route through `writeSetting()` like every platform key.
+    expect(enabled.storage).toEqual({ kind: "scalar" });
+    expect(
+      aliasedPlatformEntries().some(
+        (d) => d.key === "storefront.polarisKey.enabled",
+      ),
+    ).toBe(false);
 
     const listed = SETTINGS.get("storefront.polarisKey.listed", "product")!;
     expect(listed).toMatchObject({

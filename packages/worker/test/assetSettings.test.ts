@@ -29,7 +29,6 @@ import {
   ASSET_MEDIA_QUOTA_DEFAULT,
   ASSET_RELEASE_QUOTA_DEFAULT,
 } from "../src/core/settings/platform.js";
-import { platformSettingDef } from "../src/core/platformSettings.js";
 import {
   assetHostingEnabled,
   ASSET_HOSTING_KEY,
@@ -73,10 +72,8 @@ describe("the registry entries", () => {
     });
     expect(hosting.productLink).toBeUndefined(); // platform-only
     expect(hosting.securityWidening).toBeUndefined();
-    // An A-13 store entry: the console's Platform → Settings switches it.
-    expect(platformSettingDef("ASSET_HOSTING")).toMatchObject({
-      registryKey: "assets.hosting.enabled",
-      kind: "switch",
+    // An aliased platform entry: the console's Platform → Settings switches it.
+    expect(hosting).toMatchObject({
       area: "delivery",
       defaultValue: "on",
       precedence: "runtime",

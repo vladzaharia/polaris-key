@@ -40,7 +40,7 @@
 import { isDeliverableId } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { platformSetting } from "../platformSettings.js";
+import { platformSetting } from "../settings/platformRead.js";
 
 /** At most this many `packInstalls` entries per report; the rest are dropped. */
 export const MAX_PACK_INSTALLS = 8;
@@ -137,7 +137,7 @@ export async function lazyDeltasOn(
   env: Pick<Env, "LAZY_DELTAS">,
   db: Db,
 ): Promise<boolean> {
-  return (await platformSetting(env, db, "LAZY_DELTAS")) === "on";
+  return (await platformSetting(env, db, "deltas.lazy.mode")) === "on";
 }
 
 export interface LazyDeltaSettings {

@@ -94,7 +94,7 @@ import {
   recordRefused,
   type PairKey,
 } from "./store.js";
-import { platformSetting } from "../../../../core/platformSettings.js";
+import { platformSetting } from "../../../../core/settings/platformRead.js";
 
 /** Pair jobs one R2 event fans out into, at most. */
 export const EVENT_FANOUT = 3;
@@ -244,7 +244,7 @@ async function runPair(
     await pairDemand(db, m.product, m.deliverable, m.from, m.to, since),
     await payloadDevices(db, m.product, m.deliverable, m.from, since),
   );
-  const maxBytes = await platformSetting(env, db, "LAZY_DELTA_MAX_BYTES");
+  const maxBytes = await platformSetting(env, db, "deltas.lazy.maxBytes");
   const verdict = shouldQueue({
     from: {
       sha256: m.from,
