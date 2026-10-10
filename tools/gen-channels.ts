@@ -374,10 +374,7 @@ export async function renderAll(
     ...options,
     parser: "typescript",
   });
-  const doc = await prettier.format(renderDoc(table), {
-    ...options,
-    parser: "mdx",
-  });
+  const doc = renderDoc(table);
   return new Map([
     [OUTPUT_PATH, content],
     [DOC_PATH, doc],

@@ -3,31 +3,31 @@ title: "Channels"
 description: "Every distribution channel Polaris Key knows: its id, plane, platforms, formats and what the customer does."
 ---
 
-{/_ GENERATED PAGE — do not edit. Regenerate with `pnpm gen channels`.
-Source of truth: tools/channels.json; emitter: tools/gen-channels.ts. _/}
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm gen channels`.
+    Source of truth: tools/channels.json; emitter: tools/gen-channels.ts. */}
 
 A channel is a place builds reach customers. The catalogue holds ids, aliases, platforms, formats and deliverable kinds once; the Worker, the CLI and the console read it. An alias is another spelling that names the same channel, such as a wire outlet kind.
 
-| Channel             | Id                | Aliases               | Family          | Plane  | Platforms                                     | Formats                                                     | Deliverables             | Customer        |
-| ------------------- | ----------------- | --------------------- | --------------- | ------ | --------------------------------------------- | ----------------------------------------------------------- | ------------------------ | --------------- |
-| Polaris Key         | `polaris-key`     | `direct`              | first-party     | worker | `macos`, `windows`, `linux`, `android`, `ios` | `dmg`, `zip`, `msi`, `exe`, `appimage`, `deb`, `apk`, `ipa` | `app`, `pack`, `package` | install         |
-| App Store           | `app-store`       | `appstore`            | apple           | worker | `ios`, `macos`                                | `ipa`, `pkg`                                                | `app`                    | open-listing    |
-| TestFlight          | `testflight`      | none                  | apple           | worker | `ios`, `macos`                                | `ipa`, `pkg`                                                | `app`                    | open-listing    |
-| AltStore            | `altstore`        | none                  | sideload        | feed   | `ios`                                         | `ipa`                                                       | `app`                    | add-source      |
-| AltStore PAL        | `altstore-pal`    | none                  | sideload        | feed   | `ios`                                         | `ipa`                                                       | `app`                    | open-listing    |
-| Google Play         | `google-play`     | `play`                | google          | worker | `android`                                     | `aab`, `apk`                                                | `app`, `pack`            | open-listing    |
-| Google Play testing | `play-testing`    | `google-play-testing` | google          | worker | `android`                                     | `aab`, `apk`                                                | `app`                    | open-listing    |
-| Obtainium           | `obtainium`       | none                  | sideload        | feed   | `android`                                     | `apk`                                                       | `app`                    | add-source      |
-| F-Droid repository  | `fdroid`          | `fdroid-repo`         | sideload        | feed   | `android`                                     | `apk`                                                       | `app`                    | add-source      |
-| Microsoft Store     | `microsoft-store` | `ms-store`            | microsoft       | worker | `windows`                                     | `msix`, `msixbundle`, `msi`, `exe`                          | `app`                    | open-listing    |
-| App Installer       | `app-installer`   | none                  | microsoft       | feed   | `windows`                                     | `msix`, `msixbundle`, `appinstaller`                        | `app`                    | download        |
-| winget              | `winget`          | none                  | package-manager | pr     | `windows`                                     | `msi`, `exe`, `msix`                                        | `app`                    | run-command     |
-| Steam               | `steam`           | `steamworks`          | pc-store        | worker | `windows`, `macos`, `linux`                   | `depot`                                                     | `app`, `pack`            | open-listing    |
-| itch.io             | `itch`            | `itch.io`             | pc-store        | ci     | `windows`, `macos`, `linux`                   | `zip`, `tar.gz`                                             | `app`                    | open-listing    |
-| Flathub             | `flathub`         | none                  | linux           | pr     | `linux`                                       | `flatpak`                                                   | `app`                    | run-command     |
-| Snap Store          | `snap`            | `snap-store`          | linux           | ci     | `linux`                                       | `snap`                                                      | `app`                    | run-command     |
-| Homebrew            | `homebrew`        | none                  | package-manager | pr     | `macos`, `linux`                              | `tar.gz`, `zip`                                             | `app`, `package`         | run-command     |
-| Scoop               | `scoop`           | none                  | package-manager | pr     | `windows`                                     | `zip`, `exe`                                                | `app`, `package`         | run-command     |
-| Web                 | `web`             | none                  | web             | feed   | `web`                                         | `html`                                                      | `app`                    | open-in-browser |
+| Channel | Id | Aliases | Family | Plane | Platforms | Formats | Deliverables | Customer |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Polaris Key | `polaris-key` | `direct` | first-party | worker | `macos`, `windows`, `linux`, `android`, `ios` | `dmg`, `zip`, `msi`, `exe`, `appimage`, `deb`, `apk`, `ipa` | `app`, `pack`, `package` | install |
+| App Store | `app-store` | `appstore` | apple | worker | `ios`, `macos` | `ipa`, `pkg` | `app` | open-listing |
+| TestFlight | `testflight` | none | apple | worker | `ios`, `macos` | `ipa`, `pkg` | `app` | open-listing |
+| AltStore | `altstore` | none | sideload | feed | `ios` | `ipa` | `app` | add-source |
+| AltStore PAL | `altstore-pal` | none | sideload | feed | `ios` | `ipa` | `app` | open-listing |
+| Google Play | `google-play` | `play` | google | worker | `android` | `aab`, `apk` | `app`, `pack` | open-listing |
+| Google Play testing | `play-testing` | `google-play-testing` | google | worker | `android` | `aab`, `apk` | `app` | open-listing |
+| Obtainium | `obtainium` | none | sideload | feed | `android` | `apk` | `app` | add-source |
+| F-Droid repository | `fdroid` | `fdroid-repo` | sideload | feed | `android` | `apk` | `app` | add-source |
+| Microsoft Store | `microsoft-store` | `ms-store` | microsoft | worker | `windows` | `msix`, `msixbundle`, `msi`, `exe` | `app` | open-listing |
+| App Installer | `app-installer` | none | microsoft | feed | `windows` | `msix`, `msixbundle`, `appinstaller` | `app` | download |
+| winget | `winget` | none | package-manager | pr | `windows` | `msi`, `exe`, `msix` | `app` | run-command |
+| Steam | `steam` | `steamworks` | pc-store | worker | `windows`, `macos`, `linux` | `depot` | `app`, `pack` | open-listing |
+| itch.io | `itch` | `itch.io` | pc-store | ci | `windows`, `macos`, `linux` | `zip`, `tar.gz` | `app` | open-listing |
+| Flathub | `flathub` | none | linux | pr | `linux` | `flatpak` | `app` | run-command |
+| Snap Store | `snap` | `snap-store` | linux | ci | `linux` | `snap` | `app` | run-command |
+| Homebrew | `homebrew` | none | package-manager | pr | `macos`, `linux` | `tar.gz`, `zip` | `app`, `package` | run-command |
+| Scoop | `scoop` | none | package-manager | pr | `windows` | `zip`, `exe` | `app`, `package` | run-command |
+| Web | `web` | none | web | feed | `web` | `html` | `app` | open-in-browser |
 
 The plane is where the work runs: `worker` calls the store's API, `ci` runs the store's tool, `pr` opens a pull request, `feed` serves a signed feed.
