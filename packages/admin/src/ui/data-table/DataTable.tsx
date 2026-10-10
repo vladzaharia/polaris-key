@@ -1204,7 +1204,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             );
           })}
           {rowActions ? (
-            <th scope="col" className="w-12 px-2">
+            <th scope="col" className="w-12 px-2 font-medium">
               <span className="sr-only">Actions</span>
             </th>
           ) : null}

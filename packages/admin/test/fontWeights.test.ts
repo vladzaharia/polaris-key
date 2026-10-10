@@ -56,4 +56,11 @@ describe("font weights", () => {
     expect(BOLD[2]![1].test('{ fontWeight: "700" }')).toBe(true);
     expect(BOLD[2]![1].test('{ fontWeight: "600" }')).toBe(false);
   });
+
+  it("gives a bare th the medium weight, not the browser's 700", () => {
+    const css = readFileSync(join(SRC, "styles.css"), "utf8");
+    expect(css).toMatch(
+      /\n\s+th\s*\{\s*font-weight:\s*var\(--font-weight-medium\);/,
+    );
+  });
 });

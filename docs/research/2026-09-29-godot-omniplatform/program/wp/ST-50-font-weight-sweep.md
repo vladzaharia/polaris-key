@@ -97,3 +97,7 @@ mise exec node@22 -- pnpm <the package's own tests>
 ## Hand-off
 
 What downstream packages rely on from this one is listed in its Unblocks row. The role agent sets `--set ST-50 in-review` when it hands off; after review the lead adds the last commit `--set ST-50 done`.
+
+## Follow-ups
+
+- Worker-rendered pages and emails (`brandHtml.ts`, `bytesLanding.ts`, `render.ts`, `email.ts`) still use 700 on purpose. They are owned by I-39 and the hosted-page packages; B7 is not repo-wide yet.
