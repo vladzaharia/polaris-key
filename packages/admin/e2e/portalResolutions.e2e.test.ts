@@ -722,9 +722,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           .soft(where.bottom, `the download at ${width}×${height}`)
           .toBeLessThanOrEqual(height);
         expect.soft(where.sideBySide, `side by side at ${width}`).toBe(true);
-        expect
-          .soft(where.fit, `the art at ${width}×${height}`)
-          .toBe("contain");
+        expect.soft(where.fit, `the art at ${width}×${height}`).toBe("contain");
       } finally {
         await o.close();
       }
