@@ -21,6 +21,13 @@ import {
   resolve,
 } from "./layoutFixtures.js";
 import {
+  columnBreaches,
+  emptyStateStarBreaches,
+  lintFindings,
+  forcedColourBreaches,
+  unlabelledScrollers,
+} from "./pageChecks.js";
+import {
   probeLayout,
   type LayoutViolation,
   type ScrollMetric,
@@ -174,6 +181,23 @@ function cases(): Case[] {
 }
 
 const CASES = cases();
+/** The cases the zoom rows open: Home, tables, a record, a settings page and an overlay. */
+const ZOOM_CASES = [
+  "global:home",
+  "global:products",
+  "djdl:overview",
+  "djdl:licenses",
+  "djdl:licenses/record/overview",
+  "djdl:devices",
+  "djdl:keys",
+  "djdl:settings",
+  "djdl:releases",
+  "djdl:activity?table",
+  "long:overview",
+  "dialog:set-secret",
+];
+/** The console's content column at its widest (BRAND.md §7.6). */
+const CONSOLE_COLUMN_MAX = 1760;
 /** `PK_LAYOUT_VIEWPORTS=1280x720,1920x1080` swaps the gate viewports for others locally. */
 const VIEWPORTS: {
   label: string;
@@ -181,6 +205,13 @@ const VIEWPORTS: {
   height: number;
   /** Only these cases (by name) at this viewport. */
   only?: readonly string[];
+  /** Only the cases this accepts (the wide and zoom rows skip the empty-state twins). */
+  accept?: (name: string) => boolean;
+  /** The device pixel ratio: browser zoom is a smaller CSS viewport at a higher ratio. */
+  deviceScaleFactor?: number;
+  /** Emulate a Windows contrast theme, or `prefers-contrast: more`. */
+  forcedColors?: "active";
+  contrast?: "more";
 }[] = process.env.PK_LAYOUT_VIEWPORTS
   ? process.env.PK_LAYOUT_VIEWPORTS.split(",").map((v) => {
       const [width, height] = v.split("x").map(Number) as [number, number];
@@ -200,6 +231,41 @@ const VIEWPORTS: {
         width: 360,
         height: 780,
         only: ["djdl:overview", "djdl:health", "long:overview"],
+      },
+      // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
+      // nothing to a width check). The column stays capped (CONSOLE_COLUMN_MAX).
+      {
+        label: "wide",
+        width: 1920,
+        height: 1080,
+        accept: (n) => !n.startsWith("empty:"),
+      },
+      // 200 % zoom in a 1280 × 800 and a 1440 × 900 window, and 400 % in 1280 × 1024
+      // (320 × 256 CSS px, WCAG 1.4.10): the key pages, a table, a record, an overlay.
+      ...[
+        { label: "zoom200", width: 640, height: 400, deviceScaleFactor: 2 },
+        {
+          label: "zoom200-wide",
+          width: 720,
+          height: 450,
+          deviceScaleFactor: 2,
+        },
+        { label: "zoom400", width: 320, height: 256, deviceScaleFactor: 4 },
+      ].map((v) => ({ ...v, only: ZOOM_CASES })),
+      // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses.
+      {
+        label: "forced-colors",
+        width: 1440,
+        height: 900,
+        forcedColors: "active" as const,
+        only: ["global:home", "djdl:licenses", "dialog:set-secret"],
+      },
+      {
+        label: "more-contrast",
+        width: 1440,
+        height: 900,
+        contrast: "more" as const,
+        only: ["global:home", "djdl:licenses", "dialog:set-secret"],
       },
     ];
 const THEMES = ["dark", "light"] as const;
@@ -284,11 +350,20 @@ function printSync(text: string): void {
 async function open(
   c: Case,
   theme: "dark" | "light",
-  viewport: { width: number; height: number },
+  viewport: {
+    width: number;
+    height: number;
+    deviceScaleFactor?: number;
+    forcedColors?: "active";
+    contrast?: "more";
+  },
 ): Promise<{ page: Page; gaps: string[]; errors: string[] }> {
   const ctx = await browser.newContext({
-    viewport,
+    viewport: { width: viewport.width, height: viewport.height },
+    deviceScaleFactor: viewport.deviceScaleFactor ?? 1,
     colorScheme: theme,
+    forcedColors: viewport.forcedColors ?? "none",
+    contrast: viewport.contrast ?? "no-preference",
     reducedMotion: "reduce",
   });
   await ctx.addInitScript((t) => {
@@ -404,6 +479,7 @@ for (const vp of VIEWPORTS) {
     describe(`layout · ${vp.label} ${vp.width}×${vp.height} · ${theme}`, () => {
       for (const c of CASES) {
         if (vp.only && !vp.only.includes(c.name)) continue;
+        if (vp.accept && !vp.accept(c.name)) continue;
         if (ONLY_CASES && !ONLY_CASES.some((n) => c.name.includes(n))) continue;
         it(c.name, async () => {
           const { page, gaps, errors } = await open(c, theme, vp);
@@ -427,6 +503,38 @@ for (const vp of VIEWPORTS) {
             if (SHOTS)
               await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
             expect(csp, "CSP violations").toEqual([]);
+            expect(
+              await page.evaluate(
+                () => document.documentElement.scrollWidth - window.innerWidth,
+              ),
+              "page-level horizontal scroll",
+            ).toBeLessThanOrEqual(0);
+            expect(
+              await unlabelledScrollers(page),
+              "sideways tables outside a labelled region",
+            ).toEqual([]);
+            if (vp.label === "wide" || vp.label.startsWith("zoom")) {
+              // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
+              expect(await lintFindings(page), "ui:lint findings").toEqual([]);
+            }
+            expect(
+              await emptyStateStarBreaches(page),
+              "stationary star (BRAND.md §7.7)",
+            ).toEqual([]);
+            if (vp.forcedColors)
+              expect(
+                await forcedColourBreaches(page),
+                "forced-colour boundaries",
+              ).toEqual([]);
+            expect(
+              await columnBreaches(
+                page,
+                "#content > div",
+                CONSOLE_COLUMN_MAX,
+                false,
+              ),
+              "content column",
+            ).toEqual([]);
             expect(
               violations.map(
                 (v) => `[${v.rule}/${v.kind}] ${v.detail} @ ${v.where}`,

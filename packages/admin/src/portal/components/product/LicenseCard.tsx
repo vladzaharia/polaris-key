@@ -76,7 +76,9 @@ export function LicenseCard({
   return (
     <SectionCard
       id="license"
-      title={`${product.name} license`}
+      // The last word of the name stays with "license" (a narrow or zoomed heading never leaves
+      // "license" alone on its own line); the text, and so the accessible name, is unchanged.
+      title={<LicenseTitle name={product.name} />}
       aside={
         selected || ownIssue ? (
           <div
@@ -251,5 +253,17 @@ function LicenseFacts({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** "<name> license", its last two words held together. */
+function LicenseTitle({ name }: { name: string }): React.ReactElement {
+  const at = name.lastIndexOf(" ");
+  if (at < 0) return <>{`${name} license`}</>;
+  return (
+    <>
+      {name.slice(0, at + 1)}
+      <span className="whitespace-nowrap">{`${name.slice(at + 1)} license`}</span>
+    </>
   );
 }

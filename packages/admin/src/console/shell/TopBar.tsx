@@ -74,7 +74,7 @@ export function TopBar({
       </Button>
       <BrandBlock
         section={section}
-        className="lg:min-w-[calc(var(--sidebar-w)-1.5rem)]"
+        className="max-[24rem]:hidden lg:min-w-[calc(var(--sidebar-w)-1.5rem)]"
       />
       {product && page ? (
         <ProductSwitcher

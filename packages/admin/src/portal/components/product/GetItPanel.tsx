@@ -209,7 +209,9 @@ export function GetItPanel({
                         <Package aria-hidden className="size-5" />
                       )}
                     </span>
-                    <div className="min-w-0 flex-1">
+                    {/* A 9 rem floor: a narrow or zoomed window moves the button to its own line
+                        instead of squeezing the name to a letter per line. */}
+                    <div className="min-w-0 flex-[1_1_9rem]">
                       {/* Wraps, never cut short (§4.20, like a device's name). */}
                       <p
                         data-platform-name=""

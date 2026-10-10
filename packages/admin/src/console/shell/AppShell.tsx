@@ -351,7 +351,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
           >
             <div
               data-service={accent}
-              className="mx-auto w-full max-w-[80rem] px-4 py-6 sm:px-6 lg:px-8"
+              className="mx-auto w-full max-w-[110rem] px-4 py-6 sm:px-6 lg:px-8"
             >
               <PageContent
                 key={key}

@@ -1,4 +1,5 @@
 // pnpm ui:lint [--board=web,ios] [--theme=dark|light] [--css=<file>]... [--html=<path|url>]...
+//              [--size=1920x1080[,320x256@4]]   window sizes for --html pages (default 3200x2000)
 //              [--no-strings] [--no-kits] [--record-string-debt] [--json]
 import { failed, format, runLint } from "../lint.ts";
 
@@ -11,6 +12,7 @@ const boards = list("board");
 const theme = list("theme") as Array<"dark" | "light">;
 const css = list("css");
 const html = list("html");
+const sizes = list("size");
 const onlyFiles = (css.length || html.length) && !boards.length;
 
 const run = await runLint({
@@ -18,6 +20,7 @@ const run = await runLint({
   themes: theme.length ? theme : undefined,
   css,
   html,
+  sizes,
   strings: !args.includes("--no-strings"),
   kits: !args.includes("--no-kits") && !onlyFiles,
   recordStringDebt: args.includes("--record-string-debt"),

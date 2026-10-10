@@ -682,12 +682,22 @@ stagger-list, success, skeleton, press; S-23 §6).
 - Row dividers `border-subtle`; hover `surface-raised` on page tables (or `surface-overlay` on
   raised tables); the selected row uses the section `subtle`.
 - Layout: a 64 px header (the 48 px mark, `surface-page`, no divider), a 240 px sidebar on
-  `surface-page`, content max-width 1440 px, page gutters `space-6`, card radius `lg`, control
+  `surface-page`, content max-width 1760 px (centred; the canvas itself fills the window), page
+  gutters `space-6`, card radius `lg`, control
   radius `md`. From 1024 px the main region is a `surface-raised` canvas (radius `xl`,
   `border-subtle`, inset `space-4` from the top bar and window edge) carrying a 3 px section rule
   on its top edge; below 1024 px it is edge to edge with no radius. No gradient, glow or wash on
   the canvas. The shell is specified in ADMIN §2.4.
 - Status in tables: a dot or icon plus the word; never colour alone.
+- **Wide windows and zoom** (owner, 2026-10-08). Content never stretches edge to edge: the
+  console's column caps at 1760 px and the customer site's at 82 rem (1312 px, 1248 px of content),
+  both centred; focused flows (free a device, download, activate) are one centred card of at most
+  41 rem. A window wider than the cap gains margin, not line length; where the width allows,
+  panels sit side by side (Home's split, the product page's three columns) instead of one long
+  column. At 200 % zoom (640 or 720 CSS px) the layout is the narrow one, edge to edge; at 400 %
+  (320 × 256 CSS px) nothing scrolls sideways except a table inside a labelled, focusable region
+  (`role=region`, an accessible name, `tabindex=0`). The console and portal e2e suites check 1920,
+  200 % and 400 % in both themes, and forced colours and `prefers-contrast: more`.
 
 ### 7.7 Empty states and illustration
 

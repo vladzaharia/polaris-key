@@ -7,6 +7,7 @@ import {
   RESOLUTIONS,
   shoot,
   smallTargets,
+  unlabelledScrollers,
   startPortal,
   type PortalHarness,
   type Theme,
@@ -46,8 +47,11 @@ afterAll(async () => {
 describe.concurrent("every shipped §4 state at every size", () => {
   for (const state of SHIPPED) {
     describe(`§${state.section} ${state.title} (${state.id})`, () => {
-      RESOLUTIONS.forEach((size, i) => {
-        const theme: Theme = i % 2 === 0 ? "dark" : "light";
+      RESOLUTIONS.flatMap((size, i) =>
+        size.bothThemes
+          ? (["dark", "light"] as Theme[]).map((theme) => ({ size, theme }))
+          : [{ size, theme: (i % 2 === 0 ? "dark" : "light") as Theme }],
+      ).forEach(({ size, theme }) => {
         it(`${size.label} (${size.width} × ${size.height}), ${theme}`, async ({
           expect,
         }) => {
@@ -69,6 +73,12 @@ describe.concurrent("every shipped §4 state at every size", () => {
               .toBeLessThanOrEqual(0);
             expect
               .soft(await smallTargets(o.page), "targets under 24 × 24 px")
+              .toEqual([]);
+            expect
+              .soft(
+                await unlabelledScrollers(o.page),
+                "sideways scrollers outside a labelled region",
+              )
               .toEqual([]);
           } finally {
             await o.close();
