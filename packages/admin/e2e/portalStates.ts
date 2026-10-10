@@ -1,6 +1,7 @@
 import type { Page } from "playwright";
 import { h1, type Override } from "./portalHarness.js";
 import {
+  PROFILE_BORN,
   PROFILE_STEAM,
   identityOn,
   profileRoutes,
@@ -1019,11 +1020,27 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Account");
       await p.getByRole("button", { name: "Edit profile" }).click();
-      await p.getByRole("textbox", { name: "Display name" }).waitFor();
+      await p.getByRole("textbox", { name: "Screen name" }).waitFor();
       await p
         // The tile (its label) takes the click; the native radio inside is visually hidden.
         .locator('[data-tile="link:lnk_google"]')
         .click();
+    },
+  },
+  // I-33: the optional birth date, private to the person: the card's line, then the editor
+  // with the date filled and Remove beside it.
+  {
+    section: "4.30",
+    id: "account-profile-birthdate",
+    title: "Account → Profile, editing a birth date",
+    scenario: "three",
+    path: "/#/account",
+    routes: profileRoutes(PROFILE_BORN),
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p.getByText("Born February 28, 1987").waitFor();
+      await p.getByRole("button", { name: "Edit profile" }).click();
+      await p.getByRole("button", { name: "Remove birth date" }).waitFor();
     },
   },
   // §4.20 The product sign-in card (PX-13): Nightfall with Identity on.

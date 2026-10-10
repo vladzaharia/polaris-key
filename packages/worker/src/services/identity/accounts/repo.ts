@@ -20,6 +20,13 @@ export interface AccountRow {
   details_source_json: string | null;
   /** Superseded by `account_terms_acceptances` (PX-W15): neither read nor written. */
   terms_json: string | null;
+  /**
+   * I-33: the optional birth date (`YYYY-MM-DD`) and where it came from (`user`,
+   * `connection:<id>`), `accounts/birthdate.ts`. Private to the person: never answered outside
+   * their own profile.
+   */
+  birthdate?: string | null;
+  birthdate_source?: string | null;
   created_at: number;
   modified_at: number;
   last_sign_in_at: number | null;

@@ -10,7 +10,10 @@
  *   recipient AND the flow) and a magic link go out in one email.
  *
  *   `POST /api/signin/email/verify {code}` redeems the code for the flow in this browser. Right:
- *   the flow is consumed (atomically: one completion only) and the account session opens.
+ *   the flow is consumed (atomically: one completion only) and the account session opens. A new
+ *   address with something to ask first (I-33: Polaris Key's terms, once published) answers
+ *   `{status: "finish", next}` with the gate cookie instead: the account is created by the
+ *   gate's FinishStep (`gate.ts`), the one finish API of both new-account paths.
  *
  *   `POST /api/signin/email/resend` (PX-W4; PORTAL.md §4.4 "Resend") retires this browser's flow
  *   atomically and opens a new one for the same address and `returnTo`: a new code and link go out,
@@ -82,6 +85,7 @@ import { EMAIL_ISSUER } from "../accounts/repo.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
 import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
 import { finishSignIn } from "./finish.js";
+import { beginEmailFinish } from "./gate.js";
 import {
   cardJson,
   ACCOUNT_DISABLED_MESSAGE,
@@ -502,6 +506,22 @@ async function completeEmailSignIn(
   now: number,
   answer: "json" | "redirect",
 ): Promise<Response> {
+  // I-33: a new address finishes through the gate's FinishStep when it has something to ask
+  // (Polaris Key's terms, once published); the account is created there, not here.
+  const finish = await beginEmailFinish(
+    env,
+    db,
+    { email: record.email, returnTo: record.returnTo ?? null },
+    now,
+  );
+  if (finish) {
+    return answer === "json"
+      ? cardJson({ status: "finish", next: finish.next }, 200, [
+          finish.cookie,
+          clearFlow(),
+        ])
+      : cardRedirect(finish.next, [finish.cookie, clearFlow()]);
+  }
   const result = await signIn(
     db,
     { issuerKey: EMAIL_ISSUER, subject: record.email, kind: "email" },

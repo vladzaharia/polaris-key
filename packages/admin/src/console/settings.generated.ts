@@ -169,6 +169,24 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     deprecated: null,
   },
   {
+    key: "identity.platformTerms",
+    aliases: [],
+    scope: "platform",
+    entity: null,
+    service: "platform",
+    area: "identity",
+    label: "Polaris Key terms",
+    description:
+      "The version and URLs of Polaris Key's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
+    keywords: ["terms", "privacy", "legal", "FinishStep", "_platform"],
+    docs: "/docs/admin/platform-settings/",
+    ownership: "operator",
+    critical: false,
+    secret: false,
+    pending: null,
+    deprecated: null,
+  },
+  {
     key: "identity.keyEntryRefusals",
     aliases: ["KEYENTRY_REFUSALS"],
     scope: "platform",
@@ -1596,6 +1614,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     reason:
       "Customer data: how a portal account came to hold a licence, not Polaris behaviour.",
     shows: "License → Licenses",
+  },
+  {
+    thing: "An account's birth date and where it came from (I-33)",
+    reason:
+      "Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it.",
+    shows: "The customer portal's Account → Profile, to that person only",
   },
   {
     thing: "Grant and licence provenance (LX-08)",

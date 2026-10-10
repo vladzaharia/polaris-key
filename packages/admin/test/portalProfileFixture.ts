@@ -98,10 +98,15 @@ export function applyChange(
     name?: string;
     nameFrom?: string;
     picture?: "initials" | { from?: string; upload?: string };
+    birthdate?: string | null;
   },
   uploads: readonly PortalAvatar[] = [],
 ): PortalProfile {
   const next = { ...profile };
+  if (change.birthdate !== undefined) {
+    next.birthdate = change.birthdate;
+    next.birthdateSource = change.birthdate === null ? null : { kind: "user" };
+  }
   if (change.name !== undefined) {
     next.displayName = change.name.trim();
     next.displayNameSource = { kind: "typed" };

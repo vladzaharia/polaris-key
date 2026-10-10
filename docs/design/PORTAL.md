@@ -574,7 +574,7 @@ to sign in", and "<Developer> · <where>":
 - **Code** is §4.4 with "Continue".
 - **Register** (new account after a verified email code; a provider sign-in goes through the email
   gate, §4.29, instead): "Create your account", a `success` line
-  "mara@fennick.studio is verified", **Your name** ("Shown to you and in emails. Developers see it
+  "mara@fennick.studio is verified", **Screen name** (I-33; "Shown to you and in emails. Developers see it
   only when you continue to their app."), an opt-in checkbox "Add a passkey after this, so next time
   is one tap", **Create account and continue**, and the terms line naming both Polaris Key's terms
   and the developer's.
@@ -1197,7 +1197,7 @@ method it later uses.
 2. `h1` **Confirm your email**, with a lede saying what the email is for (sign-in codes, receipts,
    security notices; purchases made with it join the library). Inside an app: "One step before
    Saltwind."
-3. **Profile import** (§4.30 rules): the imported picture with the provider's badge, **Your name**
+3. **Profile import** (§4.30 rules): the imported picture with the provider's badge, **Screen name** (I-33)
    prefilled and editable, and one line naming the source ("Name and picture from Google. Change
    picture"). Google: name and picture. Apple: name, on first consent only, and no picture ("Apple
    doesn't share a picture. Add one"). Steam: persona name and avatar.
@@ -1255,11 +1255,14 @@ code** (45, 48).
 The first card on Account (`#/account/profile`). **Edit profile** opens it in place:
 
 - A **preview** (the picture as it will look, with its source badge, and the name).
-- **Display name** with a **Your choice** tag once typed, and chips **Use a name from** each linked
+- **Screen name** (I-33) with a **Your choice** tag once typed, and chips **Use a name from** each linked
   method that supplied one (Steam "marafox", Google "Mara Fennick", Game Center "Mara F.").
 - **Picture** as radio tiles: each linked provider that supplied one (Steam avatar, Google
   picture), **Initials**, and **Upload** (PNG or JPEG, up to 5 MB; cropped to a square). The tile in
   use says **In use**. Apple never appears as a picture source.
+- Below a hairline, **Birth date** (I-33), labelled **Optional**: a date field with **Remove**
+  while one is set, and "Private to you. Apps never receive it." Read-only, the card adds
+  "Born <date> · private to you" with a lock, only when there is one.
 - **Save profile** and **Cancel**.
 
 **Rules.**

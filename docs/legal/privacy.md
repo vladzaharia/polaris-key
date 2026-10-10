@@ -53,17 +53,18 @@ developer's own privacy policy for those.
 
 ### When you sign in or create an account
 
-| What                                                                                           | Where it comes from                                                                         |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Your email address                                                                             | You type it, or Google or Apple sends it                                                    |
-| Your name                                                                                      | Google, Apple (first and last name, only the first time) or Steam (your Steam persona name) |
-| Your profile picture                                                                           | Google or Steam. Apple sends none.                                                          |
-| An ID for you at Google, Apple or Steam                                                        | The provider. For Steam this is your Steam ID number.                                       |
-| Whether the provider says your email is verified, and your language setting                    | The provider                                                                                |
-| For "single sign-on" through an organisation: your name, email and the groups you're in        | Your organisation's sign-in system                                                          |
-| When you signed in, how (email, Google, …) and a rough browser label like "Firefox on Windows" | Your browser. We keep the browser family and system only, no version numbers.               |
-| The rough place a sign-in was requested from, like "Berlin, Germany"                           | Cloudflare works this out from your internet address                                        |
-| Which apps you agreed to share your email and name with, and which app terms you accepted      | You                                                                                         |
+| What                                                                                                                       | Where it comes from                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Your email address                                                                                                         | You type it, or Google or Apple sends it                                                    |
+| Your name                                                                                                                  | Google, Apple (first and last name, only the first time) or Steam (your Steam persona name) |
+| Your profile picture                                                                                                       | Google or Steam. Apple sends none.                                                          |
+| Your birth date, only if you add it, or accept one your organisation's sign-in offers. Optional; never shared with any app | You, or your organisation's sign-in system                                                  |
+| An ID for you at Google, Apple or Steam                                                                                    | The provider. For Steam this is your Steam ID number.                                       |
+| Whether the provider says your email is verified, and your language setting                                                | The provider                                                                                |
+| For "single sign-on" through an organisation: your name, email and the groups you're in                                    | Your organisation's sign-in system                                                          |
+| When you signed in, how (email, Google, …) and a rough browser label like "Firefox on Windows"                             | Your browser. We keep the browser family and system only, no version numbers.               |
+| The rough place a sign-in was requested from, like "Berlin, Germany"                                                       | Cloudflare works this out from your internet address                                        |
+| Which apps you agreed to share your email and name with, and which app terms you accepted                                  | You                                                                                         |
 
 **Sign-in codes.** When you sign in by email, we send a 6-digit code and a sign-in link. We keep
 only a scrambled (hashed) copy of the code, never the code itself.

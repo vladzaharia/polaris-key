@@ -255,6 +255,35 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     pending: { wp: "PX-W13b" },
   }),
 
+  // ── Identity: Polaris Key's own terms (I-33, plans/I-27.md §2.4, Q2) ─────────────────────
+  // Unset by default: no FinishStep terms step and no `_platform` acceptance row until the owner
+  // publishes reviewed terms. A `platform_settings` row under the registry key itself (no A-13
+  // alias, so the A-13 route cannot write it); publishing is an owner step until a console
+  // writer exists (core/platformTerms.ts). Not a security gate: it widens nothing.
+  setting({
+    key: "identity.platformTerms",
+    scope: "platform",
+    service: "platform",
+    area: "identity",
+    label: "Polaris Key terms",
+    description:
+      "The version and URLs of Polaris Key's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
+    keywords: ["terms", "privacy", "legal", "FinishStep", "_platform"],
+    docs: "/docs/admin/platform-settings/",
+    value: {
+      kind: "json",
+      schema: "{version, termsUrl, privacyUrl} (core/platformTerms.ts)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L2" },
+    readers: ["core/platformTerms.ts"],
+    storage: { kind: "scalar" },
+    since: "I-33",
+  }),
+
   // ── Identity (registered for I-09 and I-10a; I-04 §7 step 3, S-18 §5.5) ────────────────
   // PX-W9 (plans/PX-W9.md §3) made the refusal switch an A-13 store entry. Its row and `[vars]`
   // name is `KEYENTRY_REFUSALS`, "key entry" as one word and no `IDENTITY_` prefix: a `KEY` token

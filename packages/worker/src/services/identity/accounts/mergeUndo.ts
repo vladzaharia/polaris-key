@@ -97,15 +97,21 @@ export const ACCOUNT_COLUMNS = [
   "deleted_at",
   "nudge_shown_at",
   "passkey_user_handle",
+  "birthdate",
+  "birthdate_source",
 ] as const;
 
-/** The survivor's details a join fills in from the absorbed account when the survivor has none. */
+/**
+ * The survivor's details a join fills in from the absorbed account when the survivor has none.
+ * `birthdate` stands for the pair: its source moves and goes back with it (I-33).
+ */
 const FILLED_COLUMNS = [
   "display_name",
   "avatar_key",
   "locale",
   "primary_email",
   "passkey_user_handle",
+  "birthdate",
 ] as const;
 
 type Row = Record<string, DbParam>;
@@ -251,6 +257,7 @@ export async function captureMergeSnapshot(
     survivorBefore: pick(survivor, [
       ...FILLED_COLUMNS,
       "primary_email_verified_at",
+      "birthdate_source",
     ]),
     links: await ids(
       "SELECT id AS v FROM account_links WHERE account_id = ? ORDER BY created_at, id",
@@ -710,20 +717,28 @@ export async function undoMerge(
                    WHERE id = ? AND primary_email = ?`,
             params: [S, taken],
           }
-        : col === "passkey_user_handle"
+        : col === "birthdate"
           ? {
-              // Kept while the survivor holds a passkey created under it during the window (the
-              // moved ones have left by now), so its authenticator keeps one entry.
-              sql: `UPDATE accounts SET passkey_user_handle = NULL
+              // The pair goes back together, and only while the survivor still holds exactly
+              // what the join filled in.
+              sql: `UPDATE accounts SET birthdate = NULL, birthdate_source = NULL
+                     WHERE id = ? AND birthdate = ? AND birthdate_source IS ?`,
+              params: [S, taken, snap.absorbed.birthdate_source ?? null],
+            }
+          : col === "passkey_user_handle"
+            ? {
+                // Kept while the survivor holds a passkey created under it during the window (the
+                // moved ones have left by now), so its authenticator keeps one entry.
+                sql: `UPDATE accounts SET passkey_user_handle = NULL
                      WHERE id = ? AND passkey_user_handle = ?
                        AND NOT EXISTS (SELECT 1 FROM account_passkeys
                                         WHERE account_id = ? AND user_handle = ?)`,
-              params: [S, taken, S, taken],
-            }
-          : {
-              sql: `UPDATE accounts SET ${col} = NULL WHERE id = ? AND ${col} = ?`,
-              params: [S, taken],
-            },
+                params: [S, taken, S, taken],
+              }
+            : {
+                sql: `UPDATE accounts SET ${col} = NULL WHERE id = ? AND ${col} = ?`,
+                params: [S, taken],
+              },
     );
   }
   // A subject that moved over whole goes back; an aliased one stays the survivor's alias.

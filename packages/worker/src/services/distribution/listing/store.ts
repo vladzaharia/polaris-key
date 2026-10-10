@@ -26,6 +26,7 @@ import type {
   ModelField,
   PrecedenceSource,
 } from "../../../core/storefront/listingModel.js";
+import { httpsUrl } from "../../../core/platformTerms.js";
 
 export interface DistListingRow {
   product: string;
@@ -283,6 +284,30 @@ export async function getListingRow(
     "SELECT * FROM dist_listings WHERE product = ?",
     product,
   );
+}
+
+/**
+ * The listing's legal URLs (I-33, the `delivery` hook's `legalUrls`): `urls_json`'s `eula` and
+ * `privacy`, each `null` when unset or not https (the model stores https only; a hand-edited row
+ * is not trusted).
+ */
+export async function listingLegalUrls(
+  db: Db,
+  product: string,
+): Promise<{ eulaUrl: string | null; privacyUrl: string | null }> {
+  const row = await db.first<{ urls_json: string | null }>(
+    "SELECT urls_json FROM dist_listings WHERE product = ?",
+    product,
+  );
+  const urls = tryParseJson(row?.urls_json ?? null);
+  const pick = (k: string): string | null => {
+    const v =
+      urls && typeof urls === "object" && !Array.isArray(urls)
+        ? (urls as Record<string, unknown>)[k]
+        : undefined;
+    return httpsUrl(v);
+  };
+  return { eulaUrl: pick("eula"), privacyUrl: pick("privacy") };
 }
 
 /** The product's listing, or null when it has none (three reads). */

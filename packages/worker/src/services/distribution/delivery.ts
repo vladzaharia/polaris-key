@@ -63,6 +63,7 @@ import { feedAdapter } from "./registry/index.js";
 import { registryOrigin } from "../../core/registryHostname.js";
 import { resolvePlaySetup } from "./connectors/play/setup.js";
 import { customerDownloads } from "./page/customer.js";
+import { listingLegalUrls } from "./listing/store.js";
 
 /** A reverse-DNS bundle id, re-checked before it becomes part of an App Attest RP ID. */
 const APPLE_BUNDLE_ID = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
@@ -130,6 +131,8 @@ export function delivery(ctx: HookContext): Delivery {
     },
 
     listing: () => getListing(db, slug),
+
+    legalUrls: () => listingLegalUrls(db, slug),
 
     async rollout({ deliverable, outlet, channel }) {
       const row = await getRollout(db, slug, deliverable, outlet, channel);

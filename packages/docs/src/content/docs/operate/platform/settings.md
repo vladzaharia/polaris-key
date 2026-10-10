@@ -69,6 +69,13 @@ an unreadable settings store does not turn it off. It sits under Delivery in the
 product's quotas and its own mirroring switch are on its
 [Presentation page](/docs/admin/presentation/#hosting-and-quotas).
 
+`identity.platformTerms` is Polaris Key's own terms: `{version, termsUrl, privacyUrl}`, with
+https URLs. It is unset, so no new account is asked to accept anything of Polaris Key's and nothing
+is recorded. Set, every new account accepts that terms version before it is created, recorded
+beside the products' terms acceptances; the privacy notice is linked, not accepted. It is not an
+A-13 key and the console does not write it: publishing it is the owner's step in the runbook
+(`docs/RUNBOOK.md`, "Publish Polaris Key's terms"), once the terms are reviewed.
+
 Nothing else can become a runtime setting. Origins, the platform admin group, the admin identity
 provider, the issuer allowlist, key material, session lengths, rate limits, retention periods and
 bucket names stay deploy-time, because a console session that could change them could make

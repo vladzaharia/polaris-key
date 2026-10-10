@@ -1408,6 +1408,38 @@ in once afterwards. There is nothing to migrate.
 minutes and sees nothing different; waiting is the fix. The limits are in
 `src/core/emailLimits.ts`.
 
+### Publish Polaris Key's terms (I-33)
+
+`identity.platformTerms` is unset, so no new account is asked to accept Polaris Key's terms and
+nothing is recorded (plans/I-27.md Q2: `docs/legal/` holds drafts that must not be published). It
+is an owner step, and it waits for four things:
+
+1. the owner's legal review of the terms and the privacy notice, and both published at https URLs;
+2. PX-21's FinishStep in the portal, which renders the terms step (until then the card cannot
+   show it, and a new email address would stop at a step it cannot draw);
+3. I-30, which sends the platform IdP's `/callback` through the gate;
+4. I-32b, which retires the legacy product callback. Until 3 and 4 ship, those two paths create
+   accounts without the step.
+
+Then, per environment (staging first), one row; `version` is a short label such as `2026-10`:
+
+```sh
+npx wrangler d1 execute <DATABASE> --env <env> --remote --command \
+  "INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
+   VALUES ('identity.platformTerms',
+           '{\"version\":\"2026-10\",\"termsUrl\":\"https://…/terms\",\"privacyUrl\":\"https://…/privacy\"}',
+           1, unixepoch(), 'owner')
+   ON CONFLICT (key) DO UPDATE SET value_json = excluded.value_json, version = version + 1,
+     updated_at = excluded.updated_at, updated_by = excluded.updated_by"
+```
+
+It applies at once (read fresh, no cache). A value that is not exactly `{version, termsUrl,
+privacyUrl}` with https URLs reads as unset, so check the step on a new account in staging. New
+accounts then accept that version; the acceptance is a `_platform` row in
+`account_terms_acceptances`. A new version is the same statement with a new `version`; accounts
+created before it are not asked again (existing accounts accepting a new version is a later
+decision). Deleting the row turns the step off again; the acceptances already recorded stay.
+
 ## Login-card providers (I-06)
 
 The login card offers Sign in with Google, Apple and Steam through Polaris's own clients, one set

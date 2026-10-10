@@ -39,6 +39,23 @@
  *     new identity to that account (`linkIdentity`), or merges when the identity already had an
  *     account (`mergeAccounts`, D21: the existing account survives). Declining is choosing a
  *     different email.
+ *
+ * ── FINISHSTEP (I-33; plans/I-27.md §2.4) ───────────────────────────────────────────────────
+ *
+ * The gate is the one finish API for both new-account paths: a first provider sign-in
+ * (`beginProviderSignIn`) and a first email-code sign-in of a new address (`beginEmailFinish`,
+ * opened by `emailSignIn.ts` whenever there is something to ask; PX-21's card renders the step).
+ * Its view and its `POST` carry, beside the email:
+ *
+ *   - the screen name (`accounts.display_name`), with one suggestion per source: the provider's
+ *     name, its display name and the email's local part (`profile.suggestions`);
+ *   - the picture: the provider's, or Initials (`picture: "initials"`), which sticks;
+ *   - the birth date, ONLY when a connection's mapped claim offered one (`profile.birthdate`). It
+ *     lives in this record alone and reaches `accounts.birthdate` only when the person accepts it
+ *     (`birthdate` in the `POST`), with source `connection:<id>`, or `user` once edited;
+ *   - the terms: the product's (`terms`, with its privacy notice linked) and Polaris Key's
+ *     (`platformTerms`, `core/platformTerms.ts`), each recorded as an acceptance in the batch that
+ *     creates the account. Polaris Key's are asked only while `identity.platformTerms` is set.
  */
 
 import {
@@ -47,6 +64,7 @@ import {
   randomId,
   randomToken,
   type Db,
+  type DbStatement,
   type Env,
 } from "../../../core/platform.js";
 import {
@@ -98,10 +116,23 @@ import {
 } from "../accounts/repo.js";
 import { isFresh, linkIdentity } from "../accounts/links.js";
 import {
-  recordTermsAcceptance,
+  stmtRecordTermsAcceptance,
   termsAccepted,
   type TermsRequirement,
 } from "../accounts/terms.js";
+import {
+  PLATFORM_TERMS_PRODUCT,
+  platformTerms,
+  type PlatformTerms,
+} from "../../../core/platformTerms.js";
+import {
+  claimBirthdate,
+  connectionSource,
+  parseBirthdate,
+  stmtFillBirthdate,
+  type BirthdateChoice,
+  type BirthdateSource,
+} from "../accounts/birthdate.js";
 import { mergeAccounts } from "../accounts/merge.js";
 import { providerVouchesForEmail } from "../providers/vouch.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
@@ -154,9 +185,26 @@ export interface ProviderSignIn {
   returnTo?: string | null;
   /** I-08's passthrough request handle, opaque here and handed back when the gate passes. */
   request?: string | null;
+  /**
+   * I-30's seam (I-33): the connection the identity came through, and the `birthdate` its claim
+   * map names, untrusted. The birth date rides ONLY in the gate record, as FinishStep's offer:
+   * never on the link, never in the profile import.
+   */
+  connection?: {
+    id: string;
+    label: string;
+    birthdate?: string | null;
+  } | null;
 }
 
 type Identity = NonNullable<ReturnType<typeof normalizeIdentity>>;
+
+/** FinishStep's birth date offer: a connection's claim, labelled with the connection. */
+interface BirthdateOffer {
+  value: string;
+  source: BirthdateSource;
+  label: string;
+}
 
 interface GateRecord {
   v: 1;
@@ -184,6 +232,17 @@ interface GateRecord {
   joinAccountId: string | null;
   /** When the code to an active email method of `joinAccountId` proved that account. */
   otherProvenAt: number | null;
+  // ── I-33 (absent on a record opened by an earlier Worker: a provider gate, nothing offered) ──
+  /** Which new-account path opened it: a provider's first sign-in, or a new address's code. */
+  origin?: "provider" | "email";
+  /** Polaris Key's terms in force when it opened, while the account has not accepted them. */
+  platformTerms?: PlatformTerms | null;
+  /** A connection's birth date, offered in FinishStep. Never stored unless accepted. */
+  birthdateOffer?: BirthdateOffer | null;
+  /** The birth date the person accepted (or edited), written when the gate passes. */
+  birthdate?: BirthdateChoice | null;
+  /** FinishStep's Initials: the provider's picture declined, as an explicit choice. */
+  initials?: boolean;
 }
 
 async function gateRefFor(env: Env, secret: string): Promise<ArtefactRef> {
@@ -340,8 +399,6 @@ export async function beginProviderSignIn(
       return cardRedirect(input.returnTo ?? "/", [finished.cookie]);
     }
   }
-  const secret = randomToken(32);
-  const ref = await gateRefFor(env, secret);
   const gate: GateRecord = {
     v: 1,
     rev: 0,
@@ -368,11 +425,135 @@ export async function beginProviderSignIn(
     attempts: 0,
     joinAccountId: null,
     otherProvenAt: null,
+    origin: "provider",
+    platformTerms: await platformTermsToAsk(db, account),
+    // An account that already holds a birth date keeps it: nothing is offered.
+    birthdateOffer: account?.birthdate
+      ? null
+      : birthdateOffer(input.connection, now),
+    birthdate: null,
+    initials: false,
   };
+  return cardRedirect(EMAIL_GATE_LANDING, [await storeGate(env, gate)]);
+}
+
+/** Store a gate under a fresh browser secret; answers the cookie that names it. */
+async function storeGate(env: Env, gate: GateRecord): Promise<string> {
+  const secret = randomToken(32);
+  const ref = await gateRefFor(env, secret);
   await putArtefact(env, ref, JSON.stringify(gate), GATE_TTL_SECONDS);
-  return cardRedirect(EMAIL_GATE_LANDING, [
-    accountRealmCookie(EMAIL_GATE_COOKIE, secret, GATE_TTL_SECONDS),
-  ]);
+  return accountRealmCookie(EMAIL_GATE_COOKIE, secret, GATE_TTL_SECONDS);
+}
+
+/** Polaris Key's terms, while set and not yet accepted by `account` (I-33, Q2: dormant unset). */
+async function platformTermsToAsk(
+  db: Db,
+  account: AccountRow | null,
+): Promise<PlatformTerms | null> {
+  const terms = await platformTerms(db);
+  if (!terms) return null;
+  if (
+    account &&
+    (await termsAccepted(db, account.id, PLATFORM_TERMS_PRODUCT, terms.version))
+  )
+    return null;
+  return terms;
+}
+
+/** A connection's birth date claim as FinishStep's offer, or `null` (I-33). */
+function birthdateOffer(
+  connection: ProviderSignIn["connection"],
+  now: number,
+): BirthdateOffer | null {
+  if (!connection) return null;
+  const value = claimBirthdate(connection.birthdate, now);
+  const source = connectionSource(connection.id);
+  const label = sanitizeDisplayName(connection.label);
+  return value && source && label ? { value, source, label } : null;
+}
+
+/**
+ * I-33: the email path's finish. A first email-code sign-in of an address no account knows opens
+ * the same gate a provider's first sign-in does, when it has something to ask: today, Polaris
+ * Key's terms (`identity.platformTerms`). Answers `null` when nothing is asked, and the email
+ * sign-in then creates the account as before. The address is already proven by the code, so the
+ * gate starts confirmed and asks only for the profile and the terms. A known address, or one
+ * another account uses, is never sent here (`signIn` signs it in or answers the join offer).
+ *
+ * PX-21 makes the step unconditional for every new address once the card renders FinishStep:
+ * then the screen name, picture and passkey opt-in are asked on this path too.
+ */
+export async function beginEmailFinish(
+  env: Env,
+  db: Db,
+  input: { email: string; returnTo?: string | null },
+  now: number,
+): Promise<{ cookie: string; next: string } | null> {
+  const id = normalizeIdentity({
+    issuerKey: EMAIL_ISSUER,
+    subject: input.email,
+    kind: "email",
+  });
+  if (!id) return null;
+  const known =
+    (await findLink(db, {
+      issuerKey: EMAIL_ISSUER,
+      tenantScope: "",
+      subject: id.subject,
+    })) !== null || (await accountUsingEmail(db, id.subject)) !== null;
+  if (known) return null;
+  const terms = await platformTermsToAsk(db, null);
+  if (!terms) return null;
+  const gate: GateRecord = {
+    v: 1,
+    rev: 0,
+    createdAt: now,
+    identity: id,
+    profile: { name: null, pictureUrl: null, locale: null },
+    product: null,
+    tenantScopes: [],
+    terms: null,
+    returnTo: input.returnTo ?? null,
+    request: null,
+    accountId: null,
+    emailConfirmed: false,
+    stage: "choose",
+    pendingEmail: null,
+    confirmedEmail: id.subject,
+    confirmedBy: "code",
+    name: null,
+    attempts: 0,
+    joinAccountId: null,
+    otherProvenAt: null,
+    origin: "email",
+    platformTerms: terms,
+    birthdateOffer: null,
+    birthdate: null,
+    initials: false,
+  };
+  return { cookie: await storeGate(env, gate), next: EMAIL_GATE_LANDING };
+}
+
+/**
+ * FinishStep's screen-name chips (I-33): the provider's name, its display name and the email's
+ * local part, each made safe and listed once, in that order.
+ */
+function nameSuggestions(
+  gate: GateRecord,
+): Array<{ name: string; source: string }> {
+  const out: Array<{ name: string; source: string }> = [];
+  const add = (raw: unknown, source: string): void => {
+    const name = sanitizeDisplayName(raw);
+    if (name && !out.some((o) => o.name === name)) out.push({ name, source });
+  };
+  if (gate.identity.kind !== "email") {
+    add(gate.profile.name, gate.identity.kind);
+    add(gate.identity.displayName, gate.identity.kind);
+  }
+  const email =
+    gate.confirmedEmail ?? gate.pendingEmail ?? gate.identity.email ?? null;
+  if (email) add(email.slice(0, email.indexOf("@")), "email");
+  return out;
 }
 
 /** The card's view of a gate. Carries no account id and nothing about another account. */
@@ -391,7 +572,8 @@ async function gateView(db: Db, gate: GateRecord): Promise<unknown> {
     provider: gate.identity.kind,
     stage: gate.stage,
     expiresAt: gate.createdAt + GATE_TTL_SECONDS,
-    emailRequired: !gate.emailConfirmed,
+    // The email path's address is proven before the gate opens (I-33): only the rest is asked.
+    emailRequired: !gate.emailConfirmed && gate.origin !== "email",
     email: {
       provider: providerEmail,
       providerVerified: Boolean(providerEmail && gate.identity.emailVerified),
@@ -402,12 +584,25 @@ async function gateView(db: Db, gate: GateRecord): Promise<unknown> {
     profile: {
       name: gate.name ?? gate.profile.name ?? null,
       nameExplicit: gate.name !== null,
+      // I-33: the screen name's chips, one per name a source supplied.
+      suggestions: nameSuggestions(gate),
       picture: gate.profile.pictureUrl
         ? "/api/signin/confirm-email/picture"
         : null,
+      initials: gate.initials === true,
       locale: gate.profile.locale ?? null,
+      // I-33: present only when a connection's claim offered one (FinishStep shows no field
+      // otherwise). The person's own sign-in, in their own browser: never anyone else's.
+      birthdate: gate.birthdateOffer
+        ? {
+            value: gate.birthdate?.value ?? gate.birthdateOffer.value,
+            offered: gate.birthdateOffer.value,
+            from: gate.birthdateOffer.label,
+          }
+        : null,
     },
     terms: gate.terms,
+    platformTerms: gate.platformTerms ?? null,
     product: gate.product ? { slug: gate.product, name: productName } : null,
     ...(gate.stage === "join_offer"
       ? {
@@ -472,7 +667,108 @@ async function gatePicture(
   });
 }
 
-/** `POST /api/signin/confirm-email {choice, email?, name?, termsVersion?}`. */
+/** What FinishStep's `POST` chose beside the email, kept on the gate until it passes (I-33). */
+type FinishChoices = Pick<GateRecord, "name" | "birthdate" | "initials">;
+
+/**
+ * FinishStep's choices from the body, or the refusal: the terms (each version ticked), the
+ * birth date (only one a connection offered, as offered or edited), the picture and the name.
+ */
+function finishChoices(
+  body: Record<string, unknown>,
+  gate: GateRecord,
+  now: number,
+): { ok: true; choices: FinishChoices } | { ok: false; res: Response } {
+  if (gate.terms && body.termsVersion !== gate.terms.version) {
+    return {
+      ok: false,
+      res: cardJson(
+        {
+          error: "terms_required",
+          message: "Agree to the terms to continue.",
+          terms: gate.terms,
+        },
+        400,
+      ),
+    };
+  }
+  if (
+    gate.platformTerms &&
+    body.platformTermsVersion !== gate.platformTerms.version
+  ) {
+    return {
+      ok: false,
+      res: cardJson(
+        {
+          error: "terms_required",
+          message: "Agree to the terms to continue.",
+          platformTerms: gate.platformTerms,
+        },
+        400,
+      ),
+    };
+  }
+  let birthdate: BirthdateChoice | null = null;
+  if (body.birthdate !== undefined && body.birthdate !== null) {
+    const offer = gate.birthdateOffer;
+    if (!offer)
+      return {
+        ok: false,
+        res: cardJson(
+          {
+            error: "bad_request",
+            reason: "birthdate_not_offered",
+            message: "No birth date was offered.",
+          },
+          400,
+        ),
+      };
+    const value = parseBirthdate(body.birthdate, now);
+    if (!value)
+      return {
+        ok: false,
+        res: cardJson(
+          {
+            error: "bad_request",
+            reason: "invalid_birthdate",
+            message: "Enter a date from 1900 to today.",
+          },
+          400,
+        ),
+      };
+    birthdate = {
+      value,
+      source: value === offer.value ? offer.source : "user",
+    };
+  }
+  if (
+    body.picture !== undefined &&
+    body.picture !== "provider" &&
+    body.picture !== "initials"
+  )
+    return {
+      ok: false,
+      res: cardJson(
+        {
+          error: "bad_request",
+          message: 'picture must be "provider" or "initials"',
+        },
+        400,
+      ),
+    };
+  const typedName = sanitizeDisplayName(body.name);
+  const name =
+    typedName && typedName !== (gate.profile.name ?? null) ? typedName : null;
+  return {
+    ok: true,
+    choices: { name, birthdate, initials: body.picture === "initials" },
+  };
+}
+
+/**
+ * `POST /api/signin/confirm-email {choice, email?, name?, picture?, birthdate?, termsVersion?,
+ * platformTermsVersion?}`. On the email path (I-33) the address is already proven: no `choice`.
+ */
 async function gateChoose(
   req: Request,
   env: Env,
@@ -484,21 +780,16 @@ async function gateChoose(
   const body = await readJsonObject(req);
   if (!body)
     return cardJson({ error: "bad_request", message: "invalid json" }, 400);
-  if (gate.terms && body.termsVersion !== gate.terms.version) {
-    return cardJson(
-      {
-        error: "terms_required",
-        message: "Agree to the terms to continue.",
-        terms: gate.terms,
-      },
-      400,
-    );
+  const finish = finishChoices(body, gate, now);
+  if (!finish.ok) return finish.res;
+  const choices = finish.choices;
+  if (gate.origin === "email") {
+    const chosen = await updateGate(env, ref, gate, choices);
+    if (!chosen) return gateExpired();
+    return gatePass(req, env, db, ref, chosen, chosen.confirmedEmail, now);
   }
-  const typedName = sanitizeDisplayName(body.name);
-  const name =
-    typedName && typedName !== (gate.profile.name ?? null) ? typedName : null;
   if (gate.emailConfirmed) {
-    const named = await updateGate(env, ref, gate, { name });
+    const named = await updateGate(env, ref, gate, choices);
     if (!named) return gateExpired();
     return gatePass(req, env, db, ref, named, null, now);
   }
@@ -532,7 +823,7 @@ async function gateChoose(
   // The owner's fast path: an address the provider asserted as verified needs no code of ours.
   if (providerVerified && email === providerEmail) {
     const chosen = await updateGate(env, ref, gate, {
-      name,
+      ...choices,
       confirmedEmail: email,
       confirmedBy: "provider",
       pendingEmail: null,
@@ -563,7 +854,7 @@ async function gateChoose(
     if (sent === "unavailable") return emailUnavailable();
   }
   const pending = await updateGate(env, ref, gate, {
-    name,
+    ...choices,
     stage: "code_sent",
     pendingEmail: email,
     confirmedEmail: null,
@@ -752,11 +1043,45 @@ async function gatePass(
 }
 
 /**
- * Make the account a new provider identity gets, with the confirmed email as its first method.
- * One atomic batch: the account, its email method and the provider link go in together or not at
- * all. The links' UNIQUE key decides a race (another account taking the address, or the identity
- * linked elsewhere meanwhile): the batch fails and leaves nothing behind, so no row is ever
- * removed to undo it.
+ * What FinishStep's acceptances write onto `accountId` (I-33): the product's terms, Polaris Key's
+ * terms (a `_platform` row whose `url` is the terms URL; the privacy notice gets none), and the
+ * accepted birth date onto an account that has none. Each is idempotent, so the batch that
+ * creates an account carries them and `completeGate` may repeat them.
+ */
+function finishStatements(
+  gate: GateRecord,
+  accountId: string,
+  now: number,
+): DbStatement[] {
+  const out: DbStatement[] = [];
+  if (gate.terms && gate.product)
+    out.push(
+      stmtRecordTermsAcceptance(accountId, gate.product, gate.terms, now),
+    );
+  if (gate.platformTerms)
+    out.push(
+      stmtRecordTermsAcceptance(
+        accountId,
+        PLATFORM_TERMS_PRODUCT,
+        {
+          version: gate.platformTerms.version,
+          url: gate.platformTerms.termsUrl,
+        },
+        now,
+      ),
+    );
+  if (gate.birthdate)
+    out.push(stmtFillBirthdate(accountId, gate.birthdate, now));
+  return out;
+}
+
+/**
+ * Make the account a new identity gets, with the confirmed email as its first method. One atomic
+ * batch: the account, its email method, the provider link (none on the email path, whose identity
+ * IS the email method) and FinishStep's acceptances go in together or not at all, so no account
+ * exists without the terms it accepted. The links' UNIQUE key decides a race (another account
+ * taking the address, or the identity linked elsewhere meanwhile): the batch fails and leaves
+ * nothing behind, so no row is ever removed to undo it.
  */
 async function createAccount(
   db: Db,
@@ -779,64 +1104,69 @@ async function createAccount(
     id.email !== null &&
     (id.email === email || !(await accountUsingEmail(db, id.email)));
   const accountId = randomId("acct");
-  const linkId = randomId("lnk");
+  const emailLinkId = randomId("lnk");
+  const viaEmail = id.kind === "email";
+  const linkId = viaEmail ? emailLinkId : randomId("lnk");
   const normalized = normalizeEmail(email);
   const linkSql = `INSERT INTO account_links
        (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified,
         display_name, amr_json, created_at, last_used_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const statements: DbStatement[] = [
+    {
+      sql: `INSERT INTO accounts
+              (id, status, primary_email, primary_email_verified_at, display_name,
+               created_at, modified_at, last_sign_in_at)
+            VALUES (?, 'active', ?, ?, ?, ?, ?, ?)`,
+      params: [
+        accountId,
+        normalized,
+        now,
+        gate.name ?? gate.profile.name ?? id.displayName ?? normalized,
+        now,
+        now,
+        now,
+      ],
+    },
+    {
+      sql: linkSql,
+      params: [
+        emailLinkId,
+        accountId,
+        EMAIL_ISSUER,
+        "",
+        normalized,
+        "email",
+        normalized,
+        1,
+        null,
+        null,
+        now,
+        now,
+      ],
+    },
+  ];
+  if (!viaEmail)
+    statements.push({
+      sql: linkSql,
+      params: [
+        linkId,
+        accountId,
+        key.issuerKey,
+        key.tenantScope,
+        key.subject,
+        id.kind,
+        id.email ? normalizeEmail(id.email) : null,
+        providerEmailVerified ? 1 : 0,
+        id.displayName,
+        id.amr ? JSON.stringify(id.amr) : null,
+        now,
+        now,
+      ],
+    });
+  statements.push(...finishStatements(gate, accountId, now));
   try {
-    await db.batch([
-      {
-        sql: `INSERT INTO accounts
-                (id, status, primary_email, primary_email_verified_at, display_name,
-                 created_at, modified_at, last_sign_in_at)
-              VALUES (?, 'active', ?, ?, ?, ?, ?, ?)`,
-        params: [
-          accountId,
-          normalized,
-          now,
-          gate.name ?? gate.profile.name ?? id.displayName ?? normalized,
-          now,
-          now,
-          now,
-        ],
-      },
-      {
-        sql: linkSql,
-        params: [
-          randomId("lnk"),
-          accountId,
-          EMAIL_ISSUER,
-          "",
-          normalized,
-          "email",
-          normalized,
-          1,
-          null,
-          null,
-          now,
-          now,
-        ],
-      },
-      {
-        sql: linkSql,
-        params: [
-          linkId,
-          accountId,
-          key.issuerKey,
-          key.tenantScope,
-          key.subject,
-          id.kind,
-          id.email ? normalizeEmail(id.email) : null,
-          providerEmailVerified ? 1 : 0,
-          id.displayName,
-          id.amr ? JSON.stringify(id.amr) : null,
-          now,
-          now,
-        ],
-      },
-    ]);
+    await db.batch(statements);
   } catch {
     return null;
   }
@@ -906,14 +1236,11 @@ async function completeGate(
   },
   now: number,
 ): Promise<Response> {
-  if (gate.terms && gate.product) {
-    await recordTermsAcceptance(
-      db,
-      done.accountId,
-      gate.product,
-      gate.terms,
-      now,
-    );
+  // A new account got these in the batch that made it; an existing one (a join, an account
+  // completing its email) gets them now.
+  if (!done.created) {
+    const finish = finishStatements(gate, done.accountId, now);
+    if (finish.length) await db.batch(finish);
   }
   await importProfile(
     env,
@@ -923,6 +1250,7 @@ async function completeGate(
       linkId: done.linkId,
       profile: gate.profile,
       explicitName: gate.name,
+      explicitInitials: gate.initials === true,
       fill: done.created ? "new" : "refresh",
     },
     now,

@@ -67,6 +67,21 @@ Some tools (docker, SwiftPM) keep one login per registry, so one machine can be 
 one product's private feeds for them. If you delete your portal account, every token you created
 stops working.
 
+## Your profile
+
+Account → Profile holds how you appear in Polaris Key:
+
+- **Screen name**: shown in Polaris Key and in its emails, and to an app only once you agree to
+  share it. Pick one a sign-in method supplied, or type your own; a name you choose stays when
+  you sign in again.
+- **Picture**: one a sign-in method supplied, an upload, or your initials.
+- **Birth date**: optional. Add, change or remove it here. If your sign-in offered one when you
+  created your account, it was saved only because you accepted it. It is private to you: no app,
+  developer or Polaris Key operator receives it, and nothing is decided from it.
+
+Creating an account also asks you to agree to the terms of the app you are signing in to, when it
+has any, with its privacy notice linked beside them.
+
 ## Managing your devices
 
 Every license's page lists the devices using it and lets you disconnect any of them — handy for

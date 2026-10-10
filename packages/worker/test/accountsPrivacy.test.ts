@@ -3,7 +3,8 @@
  * plans/I-04.md §6.2). A licence owned by an account and a device bound to its pairwise subject
  * are read through every developer-facing route I-05 touched — the device routes (activate, token
  * rotation, the signed licence document, the device list) and the console's licence and device
- * pages — and no response, nor the signed document's payload, carries the account id.
+ * pages — and no response, nor the signed document's payload, carries the account id. Nor the
+ * account's birth date (I-33): apps never receive it.
  */
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
@@ -73,6 +74,11 @@ describe("the account id never reaches a developer-facing response (I-05)", () =
       { accountId, product: "djdl", licenseId, via: "key" },
     );
     expect(attached.ok).toBe(true);
+    // I-33: the account holds a birth date, which no app or developer response may carry.
+    await db.run(
+      "UPDATE accounts SET birthdate = '1987-02-28', birthdate_source = 'user' WHERE id = ?",
+      accountId,
+    );
 
     const bodies: Array<[string, string]> = [];
     const activate = await handleActivate(
@@ -166,6 +172,16 @@ describe("the account id never reaches a developer-facing response (I-05)", () =
     for (const [where, body] of bodies) {
       expect(`${where}: ${body.includes(accountId)}`).toBe(`${where}: false`);
       expect(`${where}: ${/account_?id/i.test(body)}`).toBe(`${where}: false`);
+      expect(`${where}: ${/1987-02-28|birth_?date/i.test(body)}`).toBe(
+        `${where}: false`,
+      );
     }
+    // Negative control: the birth date is stored.
+    expect(
+      (await db.first<{ birthdate: string }>(
+        "SELECT birthdate FROM accounts WHERE id = ?",
+        accountId,
+      ))!.birthdate,
+    ).toBe("1987-02-28");
   });
 });

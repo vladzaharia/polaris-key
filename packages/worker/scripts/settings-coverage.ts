@@ -384,6 +384,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { ids: ["column:portal_license_links.source"] },
   },
   {
+    thing: "An account's birth date and where it came from (I-33)",
+    reason:
+      "Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it.",
+    shows: "The customer portal's Account → Profile, to that person only",
+    covers: { ids: ["column:accounts.birthdate_source"] },
+  },
+  {
     thing: "Grant and licence provenance (LX-08)",
     reason:
       "Records of where a grant or a sale-minted licence came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",

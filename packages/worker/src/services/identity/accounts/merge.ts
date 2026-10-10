@@ -262,6 +262,7 @@ export async function mergeAccounts(
     // over and the next one added share one "Polaris Key" entry in an authenticator.
     // A picture the survivor chose explicitly is never filled in: Initials (PX-W16) is a null
     // `avatar_key` with an explicit `picture` in `details_source_json`, and it stays Initials.
+    // The birth date (I-33) fills in with its source, as one pair.
     {
       sql: `UPDATE accounts SET
               display_name = COALESCE(display_name, (SELECT display_name FROM accounts WHERE id = ?)),
@@ -276,9 +277,13 @@ export async function mergeAccounts(
                 ELSE primary_email_verified_at END,
               primary_email = COALESCE(primary_email, (SELECT primary_email FROM accounts WHERE id = ?)),
               passkey_user_handle = COALESCE(passkey_user_handle, (SELECT passkey_user_handle FROM accounts WHERE id = ?)),
+              birthdate_source = CASE WHEN birthdate IS NULL
+                THEN (SELECT birthdate_source FROM accounts WHERE id = ?)
+                ELSE birthdate_source END,
+              birthdate = COALESCE(birthdate, (SELECT birthdate FROM accounts WHERE id = ?)),
               modified_at = ?
             WHERE id = ?`,
-      params: [A, A, A, A, A, A, now, S],
+      params: [A, A, A, A, A, A, A, A, now, S],
     },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)

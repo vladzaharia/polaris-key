@@ -129,8 +129,16 @@ describe("profile import", () => {
     expect(view.profile).toEqual({
       name: "Ada Lovelace",
       nameExplicit: false,
+      // I-33's FinishStep: one chip per name a source supplied, the picture not declined, and
+      // no birth date (Google's sign-in offers none).
+      suggestions: [
+        { name: "Ada Lovelace", source: "google" },
+        { name: "ada", source: "email" },
+      ],
       picture: `${GATE}/picture`,
+      initials: false,
       locale: "en-GB",
+      birthdate: null,
     });
     const proxied = await d.send("GET", `${GATE}/picture`, undefined, {
       headers: { accept: "image/avif,image/webp,*/*" },

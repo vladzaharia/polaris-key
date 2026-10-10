@@ -36,6 +36,11 @@ import {
   releaseAvatars,
   type AvatarView,
 } from "./avatars.js";
+import {
+  birthdateSourceView,
+  parseBirthdate,
+  type BirthdateSourceView,
+} from "../accounts/birthdate.js";
 
 /** What a front door hands over about the person (all optional, all untrusted). */
 export interface ImportedProfile {
@@ -173,7 +178,9 @@ async function storeLinkProfile(
  *
  * `fill: "new"` is the first provider of a new account (it fills every value it has);
  * `"refresh"` is a later sign-in with that link (it refreshes only values sourced from it and
- * never chosen). `explicitName` is the name the person typed in the email gate, which sticks.
+ * never chosen). `explicitName` is the name the person typed in the email gate, which sticks;
+ * `explicitInitials` is FinishStep's "Initials" picture (I-33), which sticks too. The link still
+ * keeps its copy of the provider's picture, so Account → Profile can offer it later.
  */
 export async function importProfile(
   env: Env,
@@ -183,6 +190,7 @@ export async function importProfile(
     linkId: string;
     profile: ImportedProfile;
     explicitName?: string | null;
+    explicitInitials?: boolean;
     fill: "new" | "refresh";
   },
   now: number,
@@ -226,7 +234,10 @@ export async function importProfile(
     displayName = stored.name;
     details.name = { source, explicit: false };
   }
-  if (stored.avatarKey && follows(details.picture, account.avatar_key)) {
+  if (input.explicitInitials) {
+    avatarKey = null;
+    details.picture = { source: "initials", explicit: true };
+  } else if (stored.avatarKey && follows(details.picture, account.avatar_key)) {
     avatarKey = stored.avatarKey;
     details.picture = { source, explicit: false };
   } else if (
@@ -285,6 +296,7 @@ export interface ProfileSourceOption {
 
 /** `GET /api/me/profile`. */
 export interface ProfileView {
+  /** The screen name (I-33's UI word for `accounts.display_name`). */
   displayName: string | null;
   displayNameSource: ProfileSource | null;
   explicitName: boolean;
@@ -294,6 +306,12 @@ export interface ProfileView {
   explicitPicture: boolean;
   locale: string | null;
   sources: ProfileSourceOption[];
+  /**
+   * I-33: the optional birth date (`YYYY-MM-DD`) and where it came from. This route, the person's
+   * own, is the one place it is answered (`accounts/birthdate.ts`).
+   */
+  birthdate: string | null;
+  birthdateSource: BirthdateSourceView | null;
 }
 
 function sourceOf(
@@ -321,8 +339,11 @@ export async function profileView(
     avatar_key: string | null;
     locale: string | null;
     details_source_json: string | null;
+    birthdate: string | null;
+    birthdate_source: string | null;
   }>(
-    "SELECT display_name, avatar_key, locale, details_source_json FROM accounts WHERE id = ?",
+    `SELECT display_name, avatar_key, locale, details_source_json, birthdate, birthdate_source
+       FROM accounts WHERE id = ?`,
     accountId,
   );
   if (!account) return null;
@@ -362,6 +383,10 @@ export async function profileView(
     explicitPicture: details.picture?.explicit === true,
     locale: account.locale,
     sources,
+    birthdate: account.birthdate,
+    birthdateSource: account.birthdate
+      ? birthdateSourceView(account.birthdate_source)
+      : null,
   };
 }
 
@@ -369,11 +394,16 @@ export async function profileView(
 export interface ProfileChange {
   name?: { typed: string } | { from: string };
   picture?: { initials: true } | { from: string } | { upload: string };
+  /** I-33: a birth date the person typed (`YYYY-MM-DD`, checked against `now`), or `null` to
+   *  remove it. */
+  birthdate?: string | null;
 }
 
 export type ProfileChangeRefusal =
   /** The typed name is empty once made safe. */
   | "invalid_name"
+  /** Not a real date from 1900-01-01 to today (`parseBirthdate`). */
+  | "invalid_birthdate"
   /** The named sign-in method is not this account's. */
   | "unknown_source"
   /** That method supplied no name, or no picture. */
@@ -410,8 +440,11 @@ export async function updateProfile(
     display_name: string | null;
     avatar_key: string | null;
     details_source_json: string | null;
+    birthdate: string | null;
+    birthdate_source: string | null;
   }>(
-    "SELECT display_name, avatar_key, details_source_json FROM accounts WHERE id = ?",
+    `SELECT display_name, avatar_key, details_source_json, birthdate, birthdate_source
+       FROM accounts WHERE id = ?`,
     accountId,
   );
   if (!account) return { ok: false, reason: "unknown_source" };
@@ -419,6 +452,23 @@ export async function updateProfile(
     storedObject<DetailsSources>(account.details_source_json) ?? {};
   let displayName = account.display_name;
   let avatarKey = account.avatar_key;
+  let birthdate = account.birthdate;
+  let birthdateSource = account.birthdate_source;
+
+  if (change.birthdate !== undefined) {
+    if (change.birthdate === null) {
+      birthdate = null;
+      birthdateSource = null;
+    } else {
+      const value = parseBirthdate(change.birthdate, now);
+      if (!value) return { ok: false, reason: "invalid_birthdate" };
+      // The same date again keeps where it came from (an accepted connection claim stays one).
+      if (value !== account.birthdate) {
+        birthdate = value;
+        birthdateSource = "user";
+      }
+    }
+  }
 
   if (change.name && "typed" in change.name) {
     const clean = sanitizeDisplayName(change.name.typed);
@@ -457,11 +507,14 @@ export async function updateProfile(
 
   await db.run(
     `UPDATE accounts
-        SET display_name = ?, avatar_key = ?, details_source_json = ?, modified_at = ?
+        SET display_name = ?, avatar_key = ?, details_source_json = ?, birthdate = ?,
+            birthdate_source = ?, modified_at = ?
       WHERE id = ?`,
     displayName,
     avatarKey,
     JSON.stringify(details),
+    birthdate,
+    birthdateSource,
     now,
     accountId,
   );

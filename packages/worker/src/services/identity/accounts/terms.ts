@@ -10,17 +10,55 @@
  *   - A merge moves the absorbed account's rows to the survivor (`stmtsMoveTermsAcceptances`);
  *     deleting the account erases them (`stmtDeleteTermsAcceptances`); deleting the product erases
  *     the product's rows (`deleteProduct`).
+ *   - Polaris Key's own terms (I-33, `identity.platformTerms`) are rows of the same table under
+ *     the product `_platform` (`PLATFORM_TERMS_PRODUCT`), which no product slug can be. Only a
+ *     terms document is accepted: a privacy notice is linked beside it and gets no row.
  *
  * `accounts.terms_json` (I-05's column) is superseded and neither read nor written (see the
  * migration's header).
  */
 
 import type { Db, DbStatement } from "../../../core/platform.js";
+import type { Delivery } from "../../../core/hooks.js";
+import { httpsUrl, TERMS_VERSION_RE } from "../../../core/platformTerms.js";
 
-/** A product's terms, when it requires acceptance (`identity.requireTerms`, I-09's manifest). */
+/**
+ * Terms the gate asks for: a product's (`identity.terms`, I-09's setting) with its URLs resolved
+ * by `productTerms`, or Polaris Key's (`core/platformTerms.ts`, recorded under `_platform`).
+ */
 export interface TermsRequirement {
+  /** The terms document the gate shows and the acceptance row keeps. */
   url: string;
   version: string;
+  /** I-33: the privacy notice linked beside the terms. It informs, so it gets no row. */
+  privacyUrl?: string | null;
+}
+
+/** What a product declares (`identity.terms {version, url?}`, plans/I-27.md §3). */
+export interface DeclaredTerms {
+  version: string;
+  url?: string | null;
+}
+
+/**
+ * A product's terms with their URLs (I-33; plans/I-27.md §2.4): `url` defaults to the listing's
+ * `eulaUrl`, and the listing's `privacyUrl` is linked beside it. `null` when nothing is declared,
+ * the version is not one, or no https terms URL resolves: there is nothing to accept. The front
+ * door that passes a product's terms to the gate (I-08's, reading I-09's setting) calls this
+ * with the product's `delivery` hook, which is `null` while Distribution is off.
+ */
+export async function productTerms(
+  declared: DeclaredTerms | null,
+  delivery: Pick<Delivery, "legalUrls"> | null,
+): Promise<TermsRequirement | null> {
+  if (!declared || !TERMS_VERSION_RE.test(declared.version)) return null;
+  const listing = (await delivery?.legalUrls?.()) ?? {
+    eulaUrl: null,
+    privacyUrl: null,
+  };
+  const url = httpsUrl(declared.url) ?? listing.eulaUrl;
+  if (!url) return null;
+  return { version: declared.version, url, privacyUrl: listing.privacyUrl };
 }
 
 export interface TermsAcceptanceRow {
