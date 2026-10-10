@@ -31,7 +31,7 @@
  * `submission.create` and `submission.commit` (the msstore guard below reads those rows).
  *
  * Pure data (`test/boundaries.test.ts`): the CLI's copy is the generated
- * `packages/cli/src/storefronts/ciPlane.generated.ts` (`pnpm gen:storefront-ci`; a worker test
+ * `packages/cli/src/storefronts/ciPlane.generated.ts` (`pnpm gen storefront-ci`; a worker test
  * fails when it is stale). `test/storefront/conformance.test.ts` asserts every `never` argv
  * matches no command and no literal spells a `neverTokens` entry.
  */

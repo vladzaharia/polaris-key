@@ -47,7 +47,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen:brand, gen:constants, gen:corpus, gen:mirrors, gen:platform-inventory, gen:services, gen:settings, gen:storefront-ci, gen:transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).
+- tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen brand, gen constants, gen corpus, gen mirrors, gen platform-inventory, gen services, gen settings, gen storefront-ci, gen transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).
 
 **Out** (and where it belongs instead):
 

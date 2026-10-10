@@ -2,7 +2,7 @@
 // title per registry code, gate status and activation result, so a CLI, an Electron renderer and
 // a server log describe the same refusal the same way.
 //
-// ENGLISH IS GENERATED: `../copy.generated.ts` is written by `pnpm gen:constants` from
+// ENGLISH IS GENERATED: `../copy.generated.ts` is written by `pnpm gen constants` from
 // `conformance/parity/copy.en.json` (checked against errors.json and enums.json), as three
 // tables — COPY_CODES (per error code), COPY_GATE (per licenseStatus) and COPY_ACTIVATION (per
 // activationResult). `copy.message(code)` looks a code up in that order, after mapping a §3.1

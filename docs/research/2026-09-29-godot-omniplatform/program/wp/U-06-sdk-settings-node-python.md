@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md), [U-08](U-08-merge-prompt.md), [U-32](U-32-catalog-templates-cloud-sync-page-minted.md)                                    |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                               |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                  |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`)                                                                                 |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`)                                                                                    |
 | Human input | none                                                                                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                          |
 

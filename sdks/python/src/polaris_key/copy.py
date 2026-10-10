@@ -4,7 +4,7 @@
 (``licenseStatus``) or an activation result (``activationResult``) into a short English sentence
 and heading for a CLI line, a dialog or a log.
 
-ENGLISH IS GENERATED. :mod:`polaris_key.copy_generated` is written by ``pnpm gen:constants`` from
+ENGLISH IS GENERATED. :mod:`polaris_key.copy_generated` is written by ``pnpm gen constants`` from
 ``conformance/parity/copy.en.json`` with three tables, kept apart on purpose as React and Node
 read them: ``COPY_CODES`` (per error code), ``COPY_GATE`` (per gate status) and
 ``COPY_ACTIVATION`` (per activation result). The error code ``unauthorized`` reads "Not signed

@@ -3,19 +3,19 @@ title: "Generators"
 description: "Every generator the repository runs, what each reads and writes, and the one command that regenerates or checks them all."
 ---
 
-{/_ GENERATED PAGE — do not edit. Regenerate with `pnpm gen registry-docs`.
-Source of truth: tools/generators.ts; emitter: tools/gen-generators-doc.ts. _/}
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm gen registry-docs`.
+    Source of truth: tools/generators.ts; emitter: tools/gen-generators-doc.ts. */}
 
 Generated files are committed, never hand-edited. `tools/generators.ts` declares every generator once; `pnpm gen` runs them.
 
-| Command                   | Does                                                                                       |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| `pnpm gen`                | Regenerates every default family in order.                                                 |
-| `pnpm gen --check`        | Fails when any default family is stale. Writes nothing. CI and the green gate run this.    |
-| `pnpm gen --changed`      | Only the families whose inputs or outputs changed on this branch. Add `--check` to verify. |
-| `pnpm gen --fast --check` | Only the cheap families. The pre-commit hook runs this.                                    |
-| `pnpm gen <family> ...`   | The named families. Extra `--flag value` pairs go to a single named family.                |
-| `pnpm gen --list`         | One line per family.                                                                       |
+| Command | Does |
+| --- | --- |
+| `pnpm gen` | Regenerates every default family in order. |
+| `pnpm gen --check` | Fails when any default family is stale. Writes nothing. CI and the green gate run this. |
+| `pnpm gen --changed` | Only the families whose inputs or outputs changed on this branch. Add `--check` to verify. |
+| `pnpm gen --fast --check` | Only the cheap families. The pre-commit hook runs this. |
+| `pnpm gen <family> ...` | The named families. Extra `--flag value` pairs go to a single named family. |
+| `pnpm gen --list` | One line per family. |
 
 A new generator is one entry in `tools/generators.ts`. A test fails when a file carries a GENERATED banner that no entry claims.
 
@@ -117,7 +117,7 @@ Brand tokens, launch kit, kit copy and per-SDK theme files.
 - Check: `pnpm gen brand --check`.
 - Underlying: `(cd packages/brand && pnpm exec tsx scripts/gen.ts)`.
 - Reads: `packages/brand/scripts/**`, `packages/brand/src/tokens/**`, `packages/brand/kit/**`, `packages/brand/kit-copy/**`, `packages/brand/fixtures/**`, `conformance/parity/copy.*.json`.
-- Writes: `packages/brand/css/*.css`, `packages/brand/tokens.json`, `packages/brand/src/generated/**`, `packages/brand/test/kit-copy-golden/**`, `packages/sdk-node/src/cli/tokens.generated.ts`, `packages/sdk-node/src/kitCopy.generated.ts`, `sdks/godot/addons/polaris_key/brand/**`, `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`, `sdks/godot/addons/polaris_key/ui/locale/**`, `sdks/godot/addons/polaris_key/ui/theme/**`, `sdks/godot/tests/brand/**`, `sdks/kotlin/ui/src/**/brand/*.generated.kt`, `sdks/kotlin/ui/src/**/composeResources/**`, `sdks/python/src/polaris_key/ui/_tokens.py`, `sdks/python/src/polaris_key/ui/ansi.py`, `sdks/python/src/polaris_key/ui/kit_copy_generated.py`, `sdks/python/src/polaris_key/ui/locale/**`, `sdks/python/src/polaris_key/ui/qt/**`, `sdks/python/tests/fixtures/accent-vectors.json`, `sdks/swift/Sources/PolarisKeyUI/*.generated.swift`, `sdks/swift/Sources/PolarisKeyUI/Resources/**`, `sdks/swift/Tests/PolarisKeyTests/AccentVectors.generated.swift`.
+- Writes: `packages/brand/css/*.css`, `packages/brand/tokens.json`, `packages/brand/src/generated/**`, `packages/brand/test/kit-copy-golden/**`, `packages/sdk-node/src/cli/tokens.generated.ts`, `packages/sdk-node/src/kitCopy.generated.ts`, `sdks/godot/addons/polaris_key/brand/**`, `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`, `sdks/godot/addons/polaris_key/ui/locale/**`, `sdks/godot/addons/polaris_key/ui/theme/*_generated.gd`, `sdks/godot/addons/polaris_key/ui/theme/fonts/*.tres`, `sdks/godot/tests/brand/**`, `sdks/kotlin/ui/src/**/brand/*.generated.kt`, `sdks/kotlin/ui/src/**/composeResources/**`, `sdks/python/src/polaris_key/ui/_tokens.py`, `sdks/python/src/polaris_key/ui/ansi.py`, `sdks/python/src/polaris_key/ui/kit_copy_generated.py`, `sdks/python/src/polaris_key/ui/locale/**`, `sdks/python/src/polaris_key/ui/qt/**`, `sdks/python/tests/fixtures/accent-vectors.json`, `sdks/swift/Sources/PolarisKeyUI/*.generated.swift`, `sdks/swift/Sources/PolarisKeyUI/Resources/**`, `sdks/swift/Tests/PolarisKeyTests/AccentVectors.generated.swift`.
 
 ### action-bundle
 
@@ -211,7 +211,7 @@ Docs-site CSP hashes.
 
 ### design-mockups
 
-Static design mockups built from their \_src directories.
+Static design mockups built from their _src directories.
 
 - Run: named run only.
 - Regenerate: `pnpm gen design-mockups`.

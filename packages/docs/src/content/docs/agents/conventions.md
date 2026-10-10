@@ -27,9 +27,9 @@ files):
 
 ```sh
 pnpm build
-pnpm gen:corpus -- --check
-pnpm gen:services -- --check
-pnpm gen:constants -- --check
+pnpm gen corpus --check
+pnpm gen services --check
+pnpm gen constants --check
 pnpm --filter @polaris-key/cli bundle:action -- --check
 pnpm parity:check
 pnpm typecheck
@@ -58,7 +58,7 @@ knowing:
   generation workerd forbids. The `test:workerd` and `typecheck:workerd` pair is the smoke job
   that catches it.
 
-The `.husky/pre-commit` hook runs only `pnpm gen:corpus -- --check`, `pnpm gen:services -- --check`
+The `.husky/pre-commit` hook runs only `pnpm gen corpus --check`, `pnpm gen services --check`
 and `pnpm typecheck`. It is
 deliberately lightweight. A green hook is not a green gate.
 
@@ -96,7 +96,7 @@ into a red build.
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Catches** | A wire-affecting change that was not reflected in the golden vectors, and any hand edit to `conformance/corpus/v2/` (`cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`) or the mirror at `sdks/godot/tests/corpus/v2/` |
 | **How**     | Regenerates all six files in memory from a fixed keypair and case list, then compares against what is committed — the mirror included; a JSON file in a mirror that the generator does not write fails as a stray                                                                    |
-| **Command** | `pnpm gen:corpus -- --check` (drop `--check` to write)                                                                                                                                                                                                                               |
+| **Command** | `pnpm gen corpus --check` (drop `--check` to write)                                                                                                                                                                                                                                  |
 
 A red drift job means: regenerate and commit it in the same change. Never weaken a runner to make
 a change pass.

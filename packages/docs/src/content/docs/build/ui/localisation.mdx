@@ -30,7 +30,7 @@ own.
 - **Which keys each state shows** is `packages/brand/kit-copy/components.json`; every
   [component page](/docs/build/ui/components/) lists its states and their keys from it.
 
-`pnpm gen:brand` validates all three and writes every platform's table. `pnpm gen:brand -- --check`
+`pnpm gen brand` validates all three and writes every platform's table. `pnpm gen brand --check`
 is the drift gate, so a hand edit to a generated table fails CI.
 
 ## Launch locales
@@ -48,7 +48,7 @@ are never translated.
 ## What each platform receives
 
 Each kit will read a table in its platform's own format. The tables are generated today, ahead of
-the kits that will read them: change the source and run `pnpm gen:brand`.
+the kits that will read them: change the source and run `pnpm gen brand`.
 
 | For                                       | Generated table                                                                                                             |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |

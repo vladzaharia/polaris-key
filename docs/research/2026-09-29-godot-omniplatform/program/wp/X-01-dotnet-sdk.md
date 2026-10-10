@@ -166,7 +166,7 @@ one; if so, add it to `tools/sign-corpus.ts` with `--check`.
       `dotnet` job passes on three OSes; every `jwsCases` vector passes.
 - [ ] Each later milestone: its corpus files and transcripts pass in `dotnet test`, and its manifest
       rows are `implemented` or an allowed N/A.
-- [ ] `pnpm gen:constants -- --check` and the C# mirror check pass.
+- [ ] `pnpm gen constants --check` and the C# mirror check pass.
 - [ ] Done: no `planned` entry remains except rows waiting on P5-05, P5-06 or human inputs, each
       named in the PR.
 - [ ] The green gate passes (`AGENTS.md`), plus `dotnet test`.
@@ -176,8 +176,8 @@ one; if so, add it to `tools/sign-corpus.ts` with `--check`.
 ```sh
 ( cd sdks/dotnet && dotnet test )
 mise exec node@22 -- pnpm parity:check
-mise exec node@22 -- pnpm gen:constants -- --check
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen constants --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

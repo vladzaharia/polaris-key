@@ -138,7 +138,7 @@ each the recommended option.
   checked for keys, arguments, plural categories, control characters and "Polaris Key".
 - **Core packs (D4).** `copy.de/es/pt-BR/it/ja/ko/zh-Hans.json` are written, `reviewed: false`,
   and follow `main`'s core copy fixes (`license_owned`, `step_up_required`, `server-error`);
-  `copy.schema.json` gains the optional `reviewed` flag and `gen:constants` now validates every
+  `copy.schema.json` gains the optional `reviewed` flag and `gen constants` now validates every
   `copy.<locale>.json` (keys, placeholders, locale, reviewed) without emitting it. `copy.fr.json`
   stays with SP-03: until it lands, the French kit tables carry English core strings, listed in
   each table's `KIT_COPY_CORE_FALLBACK` (`CORE_PACK_PENDING` in `scripts/kit-copy.ts`); any other
@@ -163,14 +163,14 @@ each the recommended option.
 ## Acceptance criteria
 
 - [x] Every key has a value in all nine locales; a missing key fails the generator (`validateKitCopy`, tested in `packages/brand/test/kit-copy.test.ts`).
-- [x] The generator's `--check` mode is in the green gate and passes (`gen:brand` writes the kit copy outputs; `test/generated.test.ts` runs `run({ check: true })`).
-- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header (`gate.sh`, scope changed, 2026-10-05: `gen:brand -- --check`, `gen:constants -- --check`, pytest, `swift test`, the Godot suite and `pnpm format` included).
+- [x] The generator's `--check` mode is in the green gate and passes (`gen brand` writes the kit copy outputs; `test/generated.test.ts` runs `run({ check: true })`).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header (`gate.sh`, scope changed, 2026-10-05: `gen brand --check`, `gen constants --check`, pytest, `swift test`, the Godot suite and `pnpm format` included).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:brand -- --check
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen brand --check
+mise exec node@22 -- pnpm gen constants --check
 ```
 
 ## Hand-off

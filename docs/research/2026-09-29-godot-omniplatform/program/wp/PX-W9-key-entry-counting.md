@@ -8,7 +8,7 @@
 | Unblocks    | [PX-12](PX-12-login-card-v2.md)                                                                                                                                                                                                                                                                                                      |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                |
 | Plan mode   | yes: executes §2–§4 and §6 of the approved [`plans/PX-W9.md`](../plans/PX-W9.md) (revision 2, approved by the lead under the owner's delegation on 2026-10-06; revision 1 approved by the owner on 2026-10-05). §5 (the SDKs) is [PX-W9b](PX-W9b-key-entry-sdks.md)                                                                  |
-| Gates       | plan mode; D1 migration (the lead numbers it) with `TABLE_OWNERS`; `gen:constants`, `gen:transcripts`, `gen:settings` and `gen:platform-inventory` (`-- --check`), `parity:check`, `bundle:action -- --check`; rule 6; rule 10 (OpenAPI and `routeCoverage`); THREAT-MODEL; `docs gen:check`; `typecheck:workerd` and `test:workerd` |
+| Gates       | plan mode; D1 migration (the lead numbers it) with `TABLE_OWNERS`; `gen constants`, `gen transcripts`, `gen settings` and `gen platform-inventory` (`-- --check`), `parity:check`, `bundle:action -- --check`; rule 6; rule 10 (OpenAPI and `routeCoverage`); THREAT-MODEL; `docs gen:check`; `typecheck:workerd` and `test:workerd` |
 | Human input | none                                                                                                                                                                                                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                            |
 
@@ -26,7 +26,7 @@ accepted. It wins over revision 1 and over the text below where they differ.
 
 - **Q1.** The SDK half (client-core, the six SDKs and the four UI kits) is the new package
   [PX-W9b](PX-W9b-key-entry-sdks.md). This package changes no hand-written SDK code. It does commit
-  the SDK files that `gen:constants` and `gen:transcripts` regenerate.
+  the SDK files that `gen constants` and `gen transcripts` regenerate.
 - **Q2.** The limit comes from `keyEntryLimit()` in `core/keyEntries.ts`, which reads the
   `product_settings` row and defaults to 10. There is no dependency on ST-04, and the product entry
   stays `pending: {wp: "ST-04"}`.
@@ -70,7 +70,7 @@ The code is the fact; these are where it disagreed with the plan, and what was d
   readers cannot pass a product name and drop an unfilled placeholder, so `key_entry_limit` is
   "This key has no entries left. Add it to your account and sign in instead." in all eight packs.
   The kit key `signin.key.noEntries`, which names the product (SIGN-IN.md §5.2), stays in the kit
-  catalog for PX-W9b's kits; it no longer duplicates the core text, which `pnpm gen:brand`
+  catalog for PX-W9b's kits; it no longer duplicates the core text, which `pnpm gen brand`
   refuses.
 - **SDK test fixtures changed, no SDK source except one table.** Tests in React, Swift, Godot and
   Node used `key_entry_limit` as their example of an unknown code. They now use a code no catalog
@@ -187,7 +187,7 @@ Key entries turn anonymous keys into accounts ([PORTAL.md §4.6](../../../../des
 
 1. Re-read the plan, and check its line references against the current code. Record any
    correction here.
-2. Contract, errors and copy first (`gen:constants`). Then the migration and `core/keyEntries.ts`,
+2. Contract, errors and copy first (`gen constants`). Then the migration and `core/keyEntries.ts`,
    the call sites, the portal routes, the settings wiring, the transcripts and parity rows, and the
    docs. Use small commits prefixed `PX-W9:`. Name the migration `00XX_…` and say so in the report.
 3. Add the tests named in the acceptance criteria.
@@ -201,11 +201,11 @@ Key entries turn anonymous keys into accounts ([PORTAL.md §4.6](../../../../des
   - A refused or failed attempt, or an enrolled re-entry, writes none.
 - [x] Installs are unaffected. Every existing transcript is byte-identical, there are regression
       tests on refresh and offline grace, and document bytes are unchanged with counting on.
-- [x] The three `keyentry-*` transcripts and their mirrors are recorded, and `gen:transcripts -- --check` is green.
+- [x] The three `keyentry-*` transcripts and their mirrors are recorded, and `gen transcripts --check` is green.
 - [x] Identity off: no `keyEntries` and no refusal. Switch off: counted past the limit, never refused.
 - [x] The signed-out preview never counts, and never returns an email, licence id or device.
 - [x] The migration and the `TABLE_OWNERS` entry land together.
-- [x] `gen:constants`, `gen:settings`, `gen:platform-inventory` and `parity:check` are green, and the
+- [x] `gen constants`, `gen settings`, `gen platform-inventory` and `parity:check` are green, and the
       `routeCoverage` and `boundaries` tests pass.
 - [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
@@ -213,8 +213,8 @@ Key entries turn anonymous keys into accounts ([PORTAL.md §4.6](../../../../des
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:transcripts -- --check && mise exec node@22 -- pnpm gen:constants -- --check
-mise exec node@22 -- pnpm gen:settings -- --check && mise exec node@22 -- pnpm gen:platform-inventory -- --check
+mise exec node@22 -- pnpm gen transcripts --check && mise exec node@22 -- pnpm gen constants --check
+mise exec node@22 -- pnpm gen settings --check && mise exec node@22 -- pnpm gen platform-inventory --check
 mise exec node@22 -- pnpm parity:check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- keyEntries portal routeCoverage boundaries
 ```

@@ -90,7 +90,7 @@
 | D10 | **The fixture products are UI-KITS's** (`UI-KITS.md:1284-1288`). **Tidewater Studio** by Harbor Audio is the default: it sets no accent, so its teal (`#369186`) is derived from its icon and `accentSource` is `icon`. **Drift Kart** by Lanternworks (`#ff6a3d`) carries the explicit-accent `theme` rows (presentation and integrator accents) and the Godot rows. Keys, names and devices are synthetic                                                                                                                                                                                                                               | Rows, baselines and samples then share the same two products with the same accent sources                                                                                                                                                                                                                                                                                 |
 | D11 | **UK-02b does not wait for P0-44.** It holds the corpus lane only from regeneration to merge. Whichever of the two lands second moves `tools/ui-matrix.ts`, with its one import and one map entry                                                                                                                                                                                                                                                                                                                                                                                                                                         | UK-02b heads the longest chain, and the output is byte-identical in either order                                                                                                                                                                                                                                                                                          |
 | D12 | **The two terminal kits draw what their verbs reach**, not every must component (was Q1). UK-14's terminal draws 10 of the 20 (`sdk-node/src/cli/models.ts`). It does not draw Boot, Welcome, SignIn, OfflineActivation, LicenseChoice (card only, `SIGN-IN.md` §5.1), ReleaseNotes, Settings, Paywall, EntitlementGate or Toast                                                                                                                                                                                                                                                                                                          | Layer (c) parity is unaffected: ui-core and `polaris_key.ui.core` run every row for both languages, and Electron's bridge views and Qt render Node's and Python's rows (D9). UK-41 checks the terminals against `ui.cli` and the states their verbs reach. On a veto, UK-03 and UK-12 each gain about half a week of text renders                                         |
-| D13 | **A copy-only regeneration does not hold the corpus lane.** A copy or translation edit that changes `ui-matrix.json` only through the computed i18n strings runs `pnpm gen:corpus` and commits the result. A PR holds the lane only if it changes `tools/ui-matrix.ts`, an input member or a rule (§4.8)                                                                                                                                                                                                                                                                                                                                  | Rule 3 serialises signed files and transcripts, which cannot be merged by hand. `ui-matrix.json` is unsigned and fully derived from sources the branch carries, so a conflict on it is resolved by regenerating it. The lead adds it and its mirrors to `merge.sh`'s auto-resolved set, regenerated with `pnpm gen:corpus` (§8)                                           |
+| D13 | **A copy-only regeneration does not hold the corpus lane.** A copy or translation edit that changes `ui-matrix.json` only through the computed i18n strings runs `pnpm gen corpus` and commits the result. A PR holds the lane only if it changes `tools/ui-matrix.ts`, an input member or a rule (§4.8)                                                                                                                                                                                                                                                                                                                                  | Rule 3 serialises signed files and transcripts, which cannot be merged by hand. `ui-matrix.json` is unsigned and fully derived from sources the branch carries, so a conflict on it is resolved by regenerating it. The lead adds it and its mirrors to `merge.sh`'s auto-resolved set, regenerated with `pnpm gen corpus` (§8)                                           |
 
 ## 1. Summary
 
@@ -105,7 +105,7 @@
   - presentation-absent rows, on HA-12's shape;
   - `manageUrl` rows.
 - Ten `ui.*` feature ids go into the registry, `planned` in six manifests with open owners.
-  `gen:constants` then regenerates the feature ids, the capability digests and the new
+  `gen constants` then regenerates the feature ids, the capability digests and the new
   `UI_MATRIX_VERSION`.
 - Nothing changes on the wire, in the Worker, in the database or in a deploy.
 
@@ -128,11 +128,11 @@ until a kit flips its row. `CAPABILITY_DIGEST` is not sent on the wire.
 - **No `shared-catalog` or `shared-manifest` change**, so AGENTS rule 9 is not involved.
 - **`components.json`:** `LicenseChoice` changes from `"family": null` to `"signIn"` (`:402`). This
   is a hand-written source. `kit-copy.ts` already accepts the family (`:151-160`), and no generated
-  output changes. `gen:brand -- --check` proves both.
+  output changes. `gen brand --check` proves both.
 - **`features.json`:** the ten rows of UK-02 §3.5, with one change: `ui.signin` also lists
   LicenseChoice (D1).
   - Each row's proof is `[{kind: "corpus", file: "ui-matrix.json", family}, {kind: "snapshot"}]`.
-    `ui.i18n` keeps UK-02 §3.5's third proof, `{kind: "generated", command: "pnpm gen:brand -- --check"}`.
+    `ui.i18n` keeps UK-02 §3.5's third proof, `{kind: "generated", command: "pnpm gen brand --check"}`.
   - The corpus proof is active as soon as the file exists, so it needs no `wp`
     (`parity-check.ts:483-504`).
   - `ui.kit` gets UK-02's note. `ui.kit.manage` (`:1786`) and `ui.kit.keyentry` (`:1804`) are
@@ -154,7 +154,7 @@ until a kit flips its row. `CAPABILITY_DIGEST` is not sent on the wire.
   `PRESENTATION_MATRIX_VERSION` (`:1047-1051`). The type (`:168`), the header (`:33-37`) and the
   test fixture (`gen-sdk-constants.test.ts:216`) follow.
 
-Then run `pnpm gen:corpus` and, after it, `pnpm gen:constants`, which reads the new file. It updates
+Then run `pnpm gen corpus` and, after it, `pnpm gen constants`, which reads the new file. It updates
 the feature ids, `CAPABILITY_DIGEST` (parity rule 7) and `UI_MATRIX_VERSION` in the six constants
 modules.
 
@@ -338,7 +338,7 @@ The file is append-only within `uiMatrixVersion: 1`.
   whose explicit `services` list omits `commerce` keeps its expectation, because only Paywall and
   EntitlementGate depend on Commerce.
 - **A copy-only package** (P0-36, P0-38, SP-39, a pack review) that rewords or translates a key
-  runs `pnpm gen:corpus` and commits the regenerated file without the lane (D13). Removing a key
+  runs `pnpm gen corpus` and commits the regenerated file without the lane (D13). Removing a key
   that a row names, or adding one to a `components.json` state, makes it a feature package.
 - **If I-27 or I-08 changes D2's views**, or retires LicenseChoice `new`, it changes the `signIn`
   rows in its own PR, with a version bump.
@@ -402,14 +402,14 @@ never weakened (AGENTS rule 1).
 
 ## 7. Docs and drift gates
 
-| Change                                                                                                                                                                                                                                                                         | Gate                                                                                               |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `AGENTS.md` rule 1 list (`:161-164`); the `sign-corpus.ts` header (`:18`)                                                                                                                                                                                                      | `pnpm gen:corpus -- --check`                                                                       |
-| `contribute/corpus.md`: a table row (`:72-90`), the never-hand-edit list (`:162-167`), and an "Adding a case" paragraph after presentation-matrix's (`:254`) that states D13                                                                                                   | `pnpm format`                                                                                      |
-| `packages/docs/scripts/gen-reference.mjs`: read the file (beside `:639`) and add a "UI state matrix" section (after `:723`) to `reference/corpus.mdx`. `reference/parity.mdx` picks up the ten rows                                                                            | `pnpm --filter @polaris-key/docs gen:check`, then `check:links`                                    |
-| `UI-KITS.md` §5.2 (`:1087`): the path, `ui.devicelimit`, D1 and the kit rule. `SIGN-IN.md:1377` and `:1745` point at the `signIn` family; `:1805` says `ui.signin` instead of `ui.kit.signin` (D1). `SIGN-IN.md` §3.17 item 4 (`:730-731`) gains the License-off ending (§4.4) | `pnpm format`                                                                                      |
-| `tools/gen-sdk-constants.ts` and its test; feature ids, digests and `UI_MATRIX_VERSION`                                                                                                                                                                                        | `pnpm gen:constants -- --check`, `pnpm parity:check`, `vitest run tools/gen-sdk-constants.test.ts` |
-| `components.json`                                                                                                                                                                                                                                                              | `pnpm gen:brand -- --check`                                                                        |
+| Change                                                                                                                                                                                                                                                                         | Gate                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `AGENTS.md` rule 1 list (`:161-164`); the `sign-corpus.ts` header (`:18`)                                                                                                                                                                                                      | `pnpm gen corpus --check`                                                                       |
+| `contribute/corpus.md`: a table row (`:72-90`), the never-hand-edit list (`:162-167`), and an "Adding a case" paragraph after presentation-matrix's (`:254`) that states D13                                                                                                   | `pnpm format`                                                                                   |
+| `packages/docs/scripts/gen-reference.mjs`: read the file (beside `:639`) and add a "UI state matrix" section (after `:723`) to `reference/corpus.mdx`. `reference/parity.mdx` picks up the ten rows                                                                            | `pnpm --filter @polaris-key/docs gen:check`, then `check:links`                                 |
+| `UI-KITS.md` §5.2 (`:1087`): the path, `ui.devicelimit`, D1 and the kit rule. `SIGN-IN.md:1377` and `:1745` point at the `signIn` family; `:1805` says `ui.signin` instead of `ui.kit.signin` (D1). `SIGN-IN.md` §3.17 item 4 (`:730-731`) gains the License-off ending (§4.4) | `pnpm format`                                                                                   |
+| `tools/gen-sdk-constants.ts` and its test; feature ids, digests and `UI_MATRIX_VERSION`                                                                                                                                                                                        | `pnpm gen constants --check`, `pnpm parity:check`, `vitest run tools/gen-sdk-constants.test.ts` |
+| `components.json`                                                                                                                                                                                                                                                              | `pnpm gen brand --check`                                                                        |
 
 AGENTS rule 3 adds no generated family: the file belongs to rule 1. Rules 9 and 10 are not involved.
 
@@ -422,7 +422,7 @@ AGENTS rule 3 adds no generated family: the file belongs to rule 1. Rules 9 and 
   `sign-corpus.ts` briefly, and `merge.sh` does not auto-resolve that file, so UK-02b's three-line
   edit lands before the freeze or after P0-44 merges, never across it.
 - **Brief changes the lead applies after approval:**
-  - **UK-02b:** deps on UK-02a. Gates `gen:corpus -- --check` and `gen:brand -- --check`. Node's
+  - **UK-02b:** deps on UK-02a. Gates `gen corpus --check` and `gen brand --check`. Node's
     owner is UK-06. Its "One sign-in form" section drops `ui.kit.signin` and its
     `allowedNa headless` (D1).
   - **UK-03:** the runner and `testRoots` from §5; the stand-ins retire.
@@ -442,7 +442,7 @@ AGENTS rule 3 adds no generated family: the file belongs to rule 1. Rules 9 and 
   - **CM-29:** appends the Paywall × `commerce` and EntitlementGate × `commerce` rows and their
     `SERVICE_DEPENDENCIES` entries, in the PR that adds the slug (§4.8).
 - **Lead tooling:** `merge.sh` gains `ui-matrix.json` and its mirrors in its auto-resolved set,
-  regenerated with `pnpm gen:corpus` (D13).
+  regenerated with `pnpm gen corpus` (D13).
 - **Rollback.** Revert the PR; no runner reads the file until UK-03 merges. Once a runner has landed,
   fix forward with a version bump instead.
 - **If owner decision 6 is vetoed**, no row changes. A revived kit appends platform rows or reuses
@@ -456,7 +456,7 @@ AGENTS rule 3 adds no generated family: the file belongs to rule 1. Rules 9 and 
   - reference-formatter vectors for every locale's plural categories
     (`Intl.PluralRules(locale).resolvedOptions()`) and every `formFactor` case;
   - a check that `ui-matrix.ts` imports nothing from `packages/brand/src`, `sdk-node` or ui-core.
-- **`pnpm gen:corpus -- --check`:** `ui-matrix.json` and its mirrors are written, and every other
+- **`pnpm gen corpus --check`:** `ui-matrix.json` and its mirrors are written, and every other
   file stays byte-identical. `git diff --stat conformance/` shows only the new file and its
   mirrors.
 - **`pnpm parity:check`:** ten rows `planned` in six manifests, each with an open owner. The SDK
@@ -482,7 +482,7 @@ AGENTS rule 3 adds no generated family: the file belongs to rule 1. Rules 9 and 
   Mitigation: I-27's plan, written in week 0 alongside this one, keeps the views and the wire
   (§2.2, "Wire: none"); its D4 is taken here (§4.5). Any change after that follows §4.8.
 - **Copy coupling.** The i18n rows' strings are computed from `kit-copy/*.json` and `copy.*.json`,
-  and every row's `copy` is checked against `en.json` and `components.json`. `gen:corpus -- --check`
+  and every row's `copy` is checked against `en.json` and `components.json`. `gen corpus --check`
   runs on every PR (`ci.yml:44`, the lead gate), so every copy or translation edit (P0-36, P0-38,
   SP-39, pack reviews) can fail it until it regenerates. Mitigation: D13 (regenerate without the
   lane; `merge.sh` resolves the file by regenerating), and §8's brief notes.
@@ -508,9 +508,9 @@ owner's veto.
 ```sh
 N="mise exec node@22 --"
 $N pnpm build && $N pnpm typecheck
-$N pnpm gen:brand -- --check            # components.json family edit; no output diff
-$N pnpm gen:corpus -- --check           # ui-matrix.json + Godot (and Swift) mirrors; nothing else
-$N pnpm gen:constants -- --check        # ten feature ids; six CAPABILITY_DIGESTs; UI_MATRIX_VERSION
+$N pnpm gen brand --check            # components.json family edit; no output diff
+$N pnpm gen corpus --check           # ui-matrix.json + Godot (and Swift) mirrors; nothing else
+$N pnpm gen constants --check        # ten feature ids; six CAPABILITY_DIGESTs; UI_MATRIX_VERSION
 $N pnpm parity:check                    # ten ui.* ids planned in six manifests, owners open
 $N pnpm --filter @polaris-key/tools test ui-matrix gen-sdk-constants
 $N pnpm --filter @polaris-key/docs gen:check && $N pnpm --filter @polaris-key/docs check:links
@@ -540,7 +540,7 @@ depend on it.
   lane?**
   - **Decision:** yes. Only changes to rows, inputs or rules hold the lane. The lead adds
     `ui-matrix.json` and its mirrors to `merge.sh`'s auto-resolved files, regenerated with
-    `pnpm gen:corpus`.
+    `pnpm gen corpus`.
   - **Reason:** the file is unsigned and fully derived from the copy sources, so whoever merges
     second just regenerates it.
   - **If vetoed:** every copy or translation edit (P0-36, P0-38, SP-39, pack reviews) holds the

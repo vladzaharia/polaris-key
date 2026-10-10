@@ -21,7 +21,7 @@ extends RefCounted
 ## code; the others come from `params` (camelCase as copy.en.json, or snake_case). A placeholder
 ## with no value is dropped with the space before it, so a raw `{name}` never shows.
 ##
-## English is generated: edit conformance/parity/copy.en.json and run `pnpm gen:constants`. A host
+## English is generated: edit conformance/parity/copy.en.json and run `pnpm gen constants`. A host
 ## overrides any sentence or heading without forking the table:
 ##
 ##   PolarisKey.core.copy.set_overrides({"device_limit": "Diceroll is on all your devices."})

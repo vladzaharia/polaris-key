@@ -58,7 +58,7 @@ Email copy and links predate the redesign ([PORTAL.md §10.2](../../../../design
 
 - [ ] Email snapshot tests for every changed template.
 - [ ] OpenAPI and `routeCoverage` cover the email-download route; it sends only to the account's own verified address (test).
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

@@ -1,16 +1,16 @@
 # I-01 Identity hygiene: OIDC licence `origin`, portal identities keyed by issuer, threat-model rows, portal-gating docs, drop `authPoll`
 
-| Field       | Value                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity service (S-16) (phase-0, MVI)                                                                                           |
-| Size        | 0.2–0.3 engineer-weeks                                                                                                              |
-| Depends on  | none                                                                                                                                |
-| Unblocks    | none                                                                                                                                |
-| Role        | `pkey-implementer`                                                                                                                  |
-| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                            |
-| Gates       | D1 migration; `TABLE_OWNERS`; THREAT-MODEL; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; `check:links` |
-| Human input | none                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                           |
+| Field       | Value                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity service (S-16) (phase-0, MVI)                                                                                        |
+| Size        | 0.2–0.3 engineer-weeks                                                                                                           |
+| Depends on  | none                                                                                                                             |
+| Unblocks    | none                                                                                                                             |
+| Role        | `pkey-implementer`                                                                                                               |
+| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                         |
+| Gates       | D1 migration; `TABLE_OWNERS`; THREAT-MODEL; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; `check:links` |
+| Human input | none                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                        |
 
 > Forward references re-mapped to the re-cut S-16 table on 2026-10-04 ([S-16 §8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)); scope unchanged.
 
@@ -58,7 +58,7 @@ These are gaps G10 and G14 and threat-model item 11 in S-16. They are wrong toda
 
 1. Write the failing `origin` test, then the fix.
 2. Migration and portal-identity code change with tests.
-3. Discovery fragment change and `gen:transcripts`.
+3. Discovery fragment change and `gen transcripts`.
 4. THREAT-MODEL and docs edits; `check:links`.
 
 ## Acceptance criteria
@@ -67,7 +67,7 @@ These are gaps G10 and G14 and threat-model item 11 in S-16. They are wrong toda
 - [x] Portal identities are keyed by issuer; existing rows are migrated; the portal suite passes.
 - [x] THREAT-MODEL A6, the §5 `sub`/`email_verified` rows and T5 are corrected.
 - [x] Docs and the service summary state that the portal runs regardless of the Identity flag.
-- [x] `authPoll` is absent from discovery; `gen:transcripts -- --check` passes; the PR lists the SDK grep showing no reader.
+- [x] `authPoll` is absent from discovery; `gen transcripts --check` passes; the PR lists the SDK grep showing no reader.
 - [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Corrections from the implementation
@@ -93,11 +93,11 @@ Recorded by I-01 where the code made this brief's text inexact:
   No table changes owner, so `TABLE_OWNERS` is unchanged.
 - **Transcripts did not move.** `conformance/transcripts/discovery-capabilities.json` records a
   product with Identity off (`"identity": { "enabled": false }`), so it never carried `authPoll`;
-  `gen:transcripts` rewrote nothing. The advertisement was pinned instead by
+  `gen transcripts` rewrote nothing. The advertisement was pinned instead by
   `test/fixtures/discovery-golden.json` (a sanctioned edit, noted in `discoveryGolden.test.ts`),
   `test/surfaces.test.ts` and the OpenAPI discovery example, all updated.
 - **The "service summary"** is `tools/services.json`'s `identity.summary`, regenerated into
-  `packages/admin/src/services.generated.ts` with `gen:services`.
+  `packages/admin/src/services.generated.ts` with `gen services`.
 - **SDK grep** (no reader of `authPoll`):
   `grep -rniE "authPoll|auth_poll|identity/auth/poll" packages/*/src sdks` outside
   `packages/worker` and `packages/docs` returns nothing (covers `sdks/{godot,kotlin,python,swift}`,
@@ -107,7 +107,7 @@ Recorded by I-01 where the code made this brief's text inexact:
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity portal
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 ```
 

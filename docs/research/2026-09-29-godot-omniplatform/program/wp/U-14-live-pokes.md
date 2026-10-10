@@ -1,16 +1,16 @@
 # U-14 Live pokes over hibernating WebSockets in all six SDKs (Godot `WebSocketPeer`)
 
-| Field       | Value                                                                                                                                                                             |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U4 later)                                                                                                                                                   |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                            |
-| Depends on  | [U-05](U-05-cloud-sync-do.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md)                                                                      |
-| Unblocks    | none                                                                                                                                                                              |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                             |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/U-14.md` first; it needs human approval before code                                                                                        |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); reconnect-on-deploy test |
-| Human input | none                                                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                         |
+| Field       | Value                                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | U: Cloud Sync (S-17) (U4 later)                                                                                                                                                |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                         |
+| Depends on  | [U-05](U-05-cloud-sync-do.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md)                                                                   |
+| Unblocks    | none                                                                                                                                                                           |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                          |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/U-14.md` first; it needs human approval before code                                                                                     |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); reconnect-on-deploy test |
+| Human input | none                                                                                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                      |
 
 ## Consolidation 2026-10-07
 

@@ -1,16 +1,16 @@
 # P1-09 Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`
 
-| Field       | Value                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                                                                                                        |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                      |
-| Depends on  | none                                                                                                                                                                      |
-| Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                                                                                            |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                      |
-| Plan mode   | yes: `program/plans/P1-09.md` must be approved (merged) before any code                                                                                                   |
-| Gates       | plan mode; `corpus:stage-matrix` (a new generated corpus file, its mirrors and `pnpm gen:corpus -- --check`, rule 1); all SDKs; generated `reference/corpus.mdx` (rule 3) |
-| Human input | plan approval, including the open decisions below                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                                                                                                                     |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                   |
+| Depends on  | none                                                                                                                                                                   |
+| Unblocks    | [P1-10](P1-10-godot-ui-kit.md)                                                                                                                                         |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                   |
+| Plan mode   | yes: `program/plans/P1-09.md` must be approved (merged) before any code                                                                                                |
+| Gates       | plan mode; `corpus:stage-matrix` (a new generated corpus file, its mirrors and `pnpm gen corpus --check`, rule 1); all SDKs; generated `reference/corpus.mdx` (rule 3) |
+| Human input | plan approval, including the open decisions below                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                              |
 
 ## Goal
 
@@ -155,7 +155,7 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
 
 1. Write the plan with the row list; set `awaiting-approval`; stop.
 2. After approval: write `stages.ts` and its unit tests.
-3. Add `buildStageMatrixV1()` and the mirrors; run `pnpm gen:corpus`; commit the outputs.
+3. Add `buildStageMatrixV1()` and the mirrors; run `pnpm gen corpus`; commit the outputs.
 4. Add the Node runner section, then the Python and Swift ports and runners, one SDK per commit.
 5. Update the corpus docs and `gen-reference.mjs`; regenerate the reference pages.
 
@@ -163,7 +163,7 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
 
 - [x] The approved plan is merged before the first code commit.
 - [x] `conformance/corpus/v2/stage-matrix.json` and the mirrors (Swift, and Godot once
-      P1-01 has landed) are generated, byte-identical, and `pnpm gen:corpus -- --check` fails if
+      P1-01 has landed) are generated, byte-identical, and `pnpm gen corpus --check` fails if
       any of them changes.
 - [x] The Node runner (`pnpm conformance`) passes every row, asserting the stage sequence, the
       emitted events and the outcome, and every probe of the file's `accepts` table
@@ -186,7 +186,7 @@ proposes moving them to a follow-up and marking `ui.stages` `planned` for those 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm --filter @polaris-key/client-core test
 mise exec node@22 -- pnpm conformance
 ( cd sdks/python && .venv/bin/python -m pytest -q )

@@ -101,7 +101,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- storefront ingest
   (rule 10: OpenAPI and `routeCoverage`), and `pkey storefront snap metadata`, which writes the
   summary and description into snapcraft.yaml.
 - **The CLI's copy** is a generated TypeScript module with a banner
-  (`packages/cli/src/storefronts/ciPlane.generated.ts`, `pnpm gen:storefront-ci`), not a bare
+  (`packages/cli/src/storefronts/ciPlane.generated.ts`, `pnpm gen storefront-ci`), not a bare
   JSON file, so it carries the GENERATED banner rule 3 asks for; AGENTS.md lists it as a seventh
   family.
 - **Steam, Microsoft and Epic** have no adapters yet (A-18g, A-18f; Epic never, decision 8). Their

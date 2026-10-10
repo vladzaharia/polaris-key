@@ -20,7 +20,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 ## Goal
 
-A generated platform inventory lists every `Env` binding and variable, and `gen:platform-inventory --check` fails when `Env`, the inventory and the wrangler comment block disagree; the 16 names missing today are added.
+A generated platform inventory lists every `Env` binding and variable, and `gen platform-inventory --check` fails when `Env`, the inventory and the wrangler comment block disagree; the 16 names missing today are added.
 
 ## Why
 
@@ -74,7 +74,7 @@ Platform settings that exist only as deploy variables are invisible to operators
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:platform-inventory -- --check
+mise exec node@22 -- pnpm gen platform-inventory --check
 ```
 
 ## Hand-off

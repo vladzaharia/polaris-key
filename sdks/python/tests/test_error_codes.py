@@ -2,7 +2,7 @@
 """Every error code this SDK raises is in the shared registry.
 
 The registry is ``conformance/parity/errors.json``, generated into
-``polaris_key/constants_generated.py`` by ``pnpm gen:constants``. The SDK's code constants are
+``polaris_key/constants_generated.py`` by ``pnpm gen constants``. The SDK's code constants are
 checked directly (the error classes' ``code`` attributes and the §7 bundle refusal reasons), and
 ``src/`` is scanned for ``PolarisError("<code>", …)`` literals and ``code = "<code>"``
 attributes. A new code goes into errors.json first; then this test passes.

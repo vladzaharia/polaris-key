@@ -363,7 +363,7 @@ After the merge:
 - `userGrant` and `grantLabel`: these move to Licensing.
 
 No `ConfigKind` is added or removed in the served JSON. `conformance/parity/enums.json`,
-`gen:constants` and every SDK stay untouched.
+`gen constants` and every SDK stay untouched.
 
 ### 5.2 The config chain (the contract)
 
@@ -522,7 +522,7 @@ client.cloudSync.status();             // { state, lastSyncAt, usedBytes, quotaB
 ```
 
 Python, Swift, Kotlin and GDScript get the same names in their own idioms, through
-`gen:constants`.
+`gen constants`.
 
 **Portal and discovery.** Discovery gains `services.sync.description` and per-collection
 `label`, so the portal's "what it keeps in step, in the developer's words" and "one row per data

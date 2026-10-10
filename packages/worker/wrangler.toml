@@ -538,4 +538,4 @@ PKEY_ENVIRONMENT = "test"
 #   PLATFORM_DEPLOY_ENVIRONMENT (default production).
 # Injected at deploy by .github/workflows/deploy.yml (--var): PKEY_RELEASE_TAG, PKEY_GIT_SHA.
 # Product signing keys and product-scoped secrets are sealed in D1 through the admin API.
-# This block is checked against src/env.ts by `pnpm gen:platform-inventory -- --check` (ST-02).
+# This block is checked against src/env.ts by `pnpm gen platform-inventory --check` (ST-02).

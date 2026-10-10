@@ -110,7 +110,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 Then the full green gate in `AGENTS.md`.

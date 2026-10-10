@@ -63,8 +63,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen corpus --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 Then the full green gate in `AGENTS.md`.

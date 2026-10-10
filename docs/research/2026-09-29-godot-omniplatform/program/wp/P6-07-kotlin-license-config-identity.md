@@ -1,16 +1,16 @@
 # P6-07 Kotlin SDK licence, config, devices, identity and release services
 
-| Field       | Value                                                                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P6: Commerce, ops, web                                                                                                                                                     |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                       |
-| Depends on  | [P6-06](P6-06-kotlin-core-runner.md)                                                                                                                                       |
-| Unblocks    | [P6-05](P6-05-kotlin-sdk.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-11](P6-11-kotlin-compose-ui-kit.md)                                                               |
-| Role        | `pkey-sdk-porter`                                                                                                                                                          |
-| Plan mode   | no                                                                                                                                                                         |
-| Gates       | `parity:check`, the Kotlin runner's `gate-matrix.json`, `config-matrix.json` and transcript replay, `gen:mirrors` (Kotlin catalog mirror), `pnpm gen:constants -- --check` |
-| Human input | none                                                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                  |
+| Field       | Value                                                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web                                                                                                                                                  |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                    |
+| Depends on  | [P6-06](P6-06-kotlin-core-runner.md)                                                                                                                                    |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-11](P6-11-kotlin-compose-ui-kit.md)                                                            |
+| Role        | `pkey-sdk-porter`                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                      |
+| Gates       | `parity:check`, the Kotlin runner's `gate-matrix.json`, `config-matrix.json` and transcript replay, `gen mirrors` (Kotlin catalog mirror), `pnpm gen constants --check` |
+| Human input | none                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                               |
 
 Slice b of [P6-05](P6-05-kotlin-sdk.md).
 

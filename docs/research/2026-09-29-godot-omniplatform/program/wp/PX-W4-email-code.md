@@ -58,7 +58,7 @@ Codes work across devices where links do not ([PORTAL.md §4.4](../../../../desi
 - [x] Responses are identical for known and unknown addresses (test: the start's in `identityCardEmail.test.ts`; the resend's, and a refused resend's, in `portalEmailCode.test.ts`).
 - [x] A code is single-use under concurrent verify (test on the I-02 store: `portalEmailCode.test.ts` over the real `SingleUseDO` class, `test-workerd/emailCode.test.ts` on the real object).
 - [x] OpenAPI and `routeCoverage` cover the new routes (`resendCardEmailCode`, `PORTAL_KIND_PATHS`).
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Corrections from the code (implementer, 2026-10-06)

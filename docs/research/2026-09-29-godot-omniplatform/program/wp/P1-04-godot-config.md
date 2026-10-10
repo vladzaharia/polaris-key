@@ -92,7 +92,7 @@ first). Feature ids: `config.resolve`, `config.list`, `config.secret`, `config.s
   [P1b-07](P1b-07-license-config-release-gaps.md)).
 - Server-side mint authorisation (→ [P0-12](P0-12-edge-mint-hardening.md)).
 - The settings panel UI (→ [P1-10](P1-10-godot-ui-kit.md)).
-- A `gen:mirrors -- --check` step in this repo's CI: `ci.yml` omits it on purpose until an
+- A `gen mirrors --check` step in this repo's CI: `ci.yml` omits it on purpose until an
   in-repo product wires a catalog path (the comment in the `js` job), and Diceroll's catalog lives
   in its own repo.
 - Shipping the mirror generator to adopters: it lives in `tools/` and is not published; exposing

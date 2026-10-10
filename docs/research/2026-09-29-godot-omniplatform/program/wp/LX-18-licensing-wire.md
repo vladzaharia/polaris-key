@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [P2-14](P2-14-optional-split-dev-channel-from-dev.md), [LX-19](LX-19-sdks-licensing.md), [LX-20](LX-20-commerce-clients.md), [LX-42](LX-42-quantities-consumables-required.md)                                                                                                                                                          |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                           |
 | Plan mode   | yes: the plan [`plans/LX-18.md`](../plans/LX-18.md) needs human approval before code                                                                                                                                                                                                                                                                                            |
-| Gates       | plan mode; conformance corpus (`gen:corpus --check`); drift gate (`--check`); `PROTOCOL_VERSION`                                                                                                                                                                                                                                                                                |
+| Gates       | plan mode; conformance corpus (`gen corpus --check`); drift gate (`--check`); `PROTOCOL_VERSION`                                                                                                                                                                                                                                                                                |
 | Human input | plan approval (`plans/LX-18.md`)                                                                                                                                                                                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                       |
 
@@ -85,7 +85,7 @@ SDKs cannot tell expired from revoked or refunded, and `isEntitled` ignores stat
 
 ## Acceptance criteria
 
-- [ ] `gen:corpus`, `gen:constants` and `gen:transcripts` `--check` pass.
+- [ ] `gen corpus`, `gen constants` and `gen transcripts` `--check` pass.
 - [ ] Browser runners pass.
 - [ ] `activate-refusals` step 3 carries the expired reason; sync 401s carry it for authenticated tokens ([SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
@@ -93,8 +93,8 @@ SDKs cannot tell expired from revoked or refunded, and `isEntitled` ignores stat
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen corpus --check
+mise exec node@22 -- pnpm gen constants --check
 mise exec node@22 -- pnpm parity:check
 ```
 

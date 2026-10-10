@@ -1,16 +1,16 @@
 # PX-W8 `manageUrl` (G15b) on `device_limit` and on `key_entry_limit` (one name, owner 2026-10-05): contract, `core/manageUrl.ts` builder, transcript, client-core `readManageUrl`, every SDK and UI kit
 
-| Field       | Value                                                                                                                                                                                                                             |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                                                           |
-| Size        | 1–1.6 engineer-weeks                                                                                                                                                                                                              |
-| Depends on  | [I-04](I-04-account-contract-plan.md)                                                                                                                                                                                             |
-| Unblocks    | [PX-17](PX-17-activate-confirm.md)                                                                                                                                                                                                |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                             |
-| Plan mode   | yes: executes the approved [`plans/PX-W8.md`](../plans/PX-W8.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                                         |
-| Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); `gen:constants -- --check`, `parity:check`; every SDK's replayer; `typecheck:workerd` and `test:workerd` |
-| Human input | none                                                                                                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                                                  |
+| Size        | 1–1.6 engineer-weeks                                                                                                                                                                                                     |
+| Depends on  | [I-04](I-04-account-contract-plan.md)                                                                                                                                                                                    |
+| Unblocks    | [PX-17](PX-17-activate-confirm.md)                                                                                                                                                                                       |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                    |
+| Plan mode   | yes: executes the approved [`plans/PX-W8.md`](../plans/PX-W8.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                                |
+| Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen corpus --check`, `gen transcripts --check`); `gen constants --check`, `parity:check`; every SDK's replayer; `typecheck:workerd` and `test:workerd` |
+| Human input | none                                                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -23,7 +23,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 Corrections to the brief, found against the code (the code is the fact):
 
 - **No `errors.json` code and no signed corpus change.** `device_limit` already exists; its
-  description in `conformance/parity/errors.json` now mentions `manageUrl`. `gen:corpus -- --check`
+  description in `conformance/parity/errors.json` now mentions `manageUrl`. `gen corpus --check`
   is unchanged. The evidence is the new transcript `license-device-limit.json` (with its Swift and
   Godot mirrors), replayed by all six SDKs, and the parity rows `license.manage` and
   `ui.kit.manage`.
@@ -91,7 +91,7 @@ How the branch applied it (fix round 1, after merging main):
 - **Merged with UX-15.** `/activate` and `/enroll` keep UX-15's refusal record (`waitUntil` into
   `authorizeDevice`, `license_refusals`) and still answer `authorizationError(authorized, await
 refusalManageUrl(...))`, so a `device_limit` refusal is logged and carries its link.
-  `Constants.generated.kt` was regenerated with `gen:constants`, not merged by hand.
+  `Constants.generated.kt` was regenerated with `gen constants`, not merged by hand.
 - **Merged with the SDK parity pass (`integ/sdk-parity`).** Main now maps every activation answer
   by its body code (SDK-PARITY-PASS §3.1). `manageUrl` moved into that mapping: Node
   `activationRefusal`, React `classifyActivation` and `bridgeActivationOutcome` (so
@@ -151,15 +151,15 @@ Without it an app can only say "device limit reached" ([PORTAL.md §3.4](../../.
 
 ## Acceptance criteria
 
-- [x] `gen:corpus -- --check`, `gen:constants -- --check`, `parity:check` and every SDK's replayer pass.
+- [x] `gen corpus --check`, `gen constants --check`, `parity:check` and every SDK's replayer pass.
 - [x] Each SDK and UI kit surfaces `manageUrl` on both refusals (parity tests). The helpers read either refusal; `key_entry_limit` is emitted once I-09 ships, and I-10a/I-10b wire that outcome.
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check && mise exec node@22 -- pnpm parity:check
+mise exec node@22 -- pnpm gen corpus --check && mise exec node@22 -- pnpm parity:check
 ```
 
 ## Hand-off

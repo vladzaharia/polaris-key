@@ -63,13 +63,13 @@ fixes the chunk-run rule.
 ## Steps
 
 1. Branch from main after the plan PR has merged.
-2. Implement plan §4–§6, then run `pnpm build && pnpm gen:transcripts`.
+2. Implement plan §4–§6, then run `pnpm build && pnpm gen transcripts`.
 3. Run plan §9's acceptance commands, then the full green gate.
 4. Report to the lead. The lead reviews, merges and sets the status.
 
 ## Acceptance
 
-- [x] `pnpm gen:transcripts -- --check` passes. The only new files are
+- [x] `pnpm gen transcripts --check` passes. The only new files are
       `packs-chunk-range.json` and its Swift and Godot mirrors. Existing transcripts are
       byte-identical.
 - [x] `pnpm parity:check` passes with `packs.apply.chunk` proven by its transcript in Node,

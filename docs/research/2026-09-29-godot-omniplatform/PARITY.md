@@ -184,7 +184,7 @@ It fails when:
 
 It also renders the **parity matrix docs page** from the manifests. That page is a generated
 reference page, so it gets the docs freshness gate like every other generated page (AGENTS rule
-3), and `pnpm parity:check -- --check` joins the green gate beside `pnpm gen:corpus -- --check`.
+3), and `pnpm parity:check -- --check` joins the green gate beside `pnpm gen corpus --check`.
 
 ### 3.3 The wave model, extended
 

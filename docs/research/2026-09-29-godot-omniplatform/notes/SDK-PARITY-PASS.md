@@ -616,7 +616,7 @@ effort: under 2 days, under 1 week, and 1–3 weeks. The tasks are ordered withi
     `gen-sdk-constants` emitters.
 
   It sets every SDK's manifest honestly: new ids start as `planned` with the SP task named.
-  **Gates:** `pnpm parity:check -- --check`, `pnpm gen:corpus -- --check`, the generated parity
+  **Gates:** `pnpm parity:check -- --check`, `pnpm gen corpus --check`, the generated parity
   docs page. **L.**
 
 - **SP-01. Manifest corrections, no code.**

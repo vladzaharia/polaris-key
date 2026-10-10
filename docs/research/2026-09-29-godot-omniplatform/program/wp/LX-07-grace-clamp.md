@@ -79,7 +79,7 @@ A licence expiring tomorrow with 30 offline days keeps working offline for 30 da
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

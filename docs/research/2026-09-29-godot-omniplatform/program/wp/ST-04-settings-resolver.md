@@ -55,7 +55,7 @@ Each service resolves its own settings today with different precedence ([S-18 §
 ## Design notes
 
 - Column-backed keys keep today's hot-path reads.
-- `gen:transcripts --check` must stay unchanged: no wire effect.
+- `gen transcripts --check` must stay unchanged: no wire effect.
 - A test asserts no handler writes a registry-backed column directly.
 
 ### As built (2026-10-06), where the code corrected the brief
@@ -143,7 +143,7 @@ Each service resolves its own settings today with different precedence ([S-18 §
 
 - [x] Resolver property tests cover every source and the policy clamp direction
       (`test/settings-resolver.test.ts`, with A-13 parity and the loaders).
-- [x] `gen:transcripts --check` is unchanged.
+- [x] `gen transcripts --check` is unchanged.
 - [x] No handler writes a registry-backed column outside `writeSetting()` (test:
       `test/settings-writes.test.ts`; discovery agreement: `test/settings-discovery.test.ts`).
 - [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. Before
@@ -154,7 +154,7 @@ Each service resolves its own settings today with different precedence ([S-18 §
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 ## Hand-off

@@ -666,7 +666,7 @@ One plan (LX-18) and one SDK wave (LX-19) carry every licensing wire change.
 - **`PROTOCOL_VERSION` stays 4** and `corpusVersion` stays 2, under the P4-13, P4-19, P4-29 and
   LX-01 precedent: optional members outside the claims, which older SDKs ignore.
 - The steps run in this order: contract → `shared-protocol` and client-core → `errors.json` /
-  `enums.json` / `features.json` → `pnpm gen:corpus`, `gen:constants`, `gen:transcripts` (Swift and
+  `enums.json` / `features.json` → `pnpm gen corpus`, `gen constants`, `gen transcripts` (Swift and
   Godot mirrors) → Node, React (client-core), Python, Swift, Kotlin, Godot → kits through UK-03's
   ui-core view models.
 
@@ -842,7 +842,7 @@ locations go from **6 → 2** (tiers, add-ons).
 - **Terms:** `on_expiry` NULL = `stop` = today, so no backfill is needed.
 - **Subscriptions:** none exist. CM-08 and LX-23b write new rows.
 - **Settings:** the removed keys get rule 9 deprecation warnings in the manifest for one window,
-  `NOT_A_SETTING` entries, and console rows deleted (ST-06's `gen:settings -- --check`).
+  `NOT_A_SETTING` entries, and console rows deleted (ST-06's `gen settings --check`).
 - **`holder_versions`:** template edits (tier, profile, add-on, catalog publish) bump `('product',
 <slug>)`, and the cache key includes it. This avoids S-19 §7.3.5's stale-cache gap (T10 of S-19).
 
@@ -904,7 +904,7 @@ locations go from **6 → 2** (tiers, add-ons).
 
 | id         | title                                                                                              | deps                 | plan mode | scope                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ---------- | -------------------------------------------------------------------------------------------------- | -------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **LX-32**  | Licensing settings reduction                                                                       | LX-06                | no        | Remove `licensing.entitlementHolder`, `anchorPolicy` and `reanchor` from the registry, manifest (rule 9 deprecation warnings) and console. Turn `entitlementModel` into a migration card driven by the holder report. Show `refundGraceHours` and `dunningGraceDays` only when a purchase or subscription source exists. Move `clampGraceToExpiry` to advanced. `gen:settings -- --check`.                                                                         |
+| **LX-32**  | Licensing settings reduction                                                                       | LX-06                | no        | Remove `licensing.entitlementHolder`, `anchorPolicy` and `reanchor` from the registry, manifest (rule 9 deprecation warnings) and console. Turn `entitlementModel` into a migration card driven by the holder report. Show `refundGraceHours` and `dunningGraceDays` only when a purchase or subscription source exists. Move `clampGraceToExpiry` to advanced. `gen settings --check`.                                                                            |
 | **LX-33**  | Add-on definitions and one issuance path                                                           | LX-08                | **yes**   | `licensing.addons[]` (rule 9; claimable). `addons` table (License-owned). `grants.addon_id`. Resolver reads add-on keys live. `core/issuance.ts` `grantTo(holder, target, source)` (moves `issueFromPath`'s tier branch down). Console Add-ons collection and record (Sold as, Comp to…, holders). Product-scope cache version bump on edits. OpenAPI and `routeCoverage`.                                                                                         |
 | **LX-34**  | Tier entitlements, config-only profiles and the Entitlements overview                              | LX-09                | no        | `tiers.entitlements_json` plus manifest `licensing.tiers[].entitlements` (rule 9). Exact migration of profile entitlement buckets for `combined` products. Validator warning, then refusal, of flags in profiles. One `kind` field in the catalog (rule 9, mutation table). Platform entitlement registry (`reservedNames.ts` → service-aware rows, `sync.*`). Tier record v2 sections. License → Entitlements page.                                               |
 | **LX-23a** | Terms and subscriptions core: `onExpiry`, perpetual fallback, `licenseState`, Core `subscriptions` | LX-09, LX-12         | **yes**   | `tiers/licenses.on_expiry`, `licenses.fallback_version`, the lapse tick and freeze through `releaseCatalog` (`devices.app_version` fallback). `licenseState` replaces `licenseUsable` with a per-gate table. Core `subscriptions` with `manual`/`external` sources, renew, cancel and dunning (unhides `dunningGraceDays`). Admin API (rule 10). Console subscription panel, Renew…, Preview at a date…. Portal term data. Lapse emails (I-18). THREAT-MODEL rows. |
@@ -989,7 +989,7 @@ locations go from **6 → 2** (tiers, add-ons).
   - `requiresFlag` reads the resolver (U-01, already planned).
   - The developer-backend wallet for consumables (U-16 `ownerRead` collections).
 - **Settings (ST-\*):**
-  - LX-32 removes registry rows (`gen:settings`, `NOT_A_SETTING`).
+  - LX-32 removes registry rows (`gen settings`, `NOT_A_SETTING`).
   - `visibleWhen` "purchase source exists".
   - Product-scope settings remain claimable.
 - **Wire, conformance and SDKs:**

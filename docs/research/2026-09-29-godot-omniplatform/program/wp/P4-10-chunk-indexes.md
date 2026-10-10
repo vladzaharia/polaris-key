@@ -1,16 +1,16 @@
 # P4-10 Chunk indexes and chunk bundles in CI; content corpus v2
 
-| Field       | Value                                                                                                                                                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v2)                                                                                                                                                                                                          |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                    |
-| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P4-06](P4-06-client-core-packs.md), [S-03](S-03-chunk-size-real-history.md), [S-02](S-02-r2-range.md)                                                                             |
-| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-22](P4-22-ci-chunk-indexes.md)                                                                                                                                                   |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                   |
-| Plan mode   | yes: `program/plans/P4-10.md` is written and approved before any code                                                                                                                                                   |
-| Gates       | plan mode; corpus (content-corpus drift gate, `pnpm gen:corpus -- --check`, Swift and Godot mirrors, generated `corpus.mdx`); all SDKs (every runner loads the new sections); rule 9 if chunking is manifest-configured |
-| Human input | approval of the plan (merging the plan PR); nothing else                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v2)                                                                                                                                                                                                       |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                 |
+| Depends on  | [P4-04](P4-04-content-corpus-v1.md), [P4-06](P4-06-client-core-packs.md), [S-03](S-03-chunk-size-real-history.md), [S-02](S-02-r2-range.md)                                                                          |
+| Unblocks    | [P4-11](P4-11-chunk-sync-sdks.md), [P4-22](P4-22-ci-chunk-indexes.md)                                                                                                                                                |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                |
+| Plan mode   | yes: `program/plans/P4-10.md` is written and approved before any code                                                                                                                                                |
+| Gates       | plan mode; corpus (content-corpus drift gate, `pnpm gen corpus --check`, Swift and Godot mirrors, generated `corpus.mdx`); all SDKs (every runner loads the new sections); rule 9 if chunking is manifest-configured |
+| Human input | approval of the plan (merging the plan PR); nothing else                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                            |
 
 ## Goal
 
@@ -220,7 +220,7 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
 3. Add the chunker, bundle packer, index writer and lints to the CLI publisher, then the
    descriptor fields and upload.
 4. Extend `tools/gen-content-corpus.ts` (its reference applier gains chunks) and the mirrors; add
-   `chunks` to the pack-kind `releaseRecordCases`; run `pnpm gen:corpus`.
+   `chunks` to the pack-kind `releaseRecordCases`; run `pnpm gen corpus`.
 5. Update the runners, the parity manifests and the docs; run the green gate.
 
 ## Acceptance criteria
@@ -233,7 +233,7 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
 - [ ] The `client-core` parser returns exactly the A7 §3.1 code for each of the 15
       `chunkIndexCases` in `conformance/runners/node`.
 - [ ] The content corpus contains the 15 index cases, the 8 chunk apply cases and the index-blob
-      plan rows; `pnpm gen:corpus -- --check` is clean, including the Swift and Godot mirrors, and
+      plan rows; `pnpm gen corpus --check` is clean, including the Swift and Godot mirrors, and
       fails after a one-byte edit to a new blob; the source set is under 5 MB.
 - [ ] A pack-kind `releaseRecordCases` vector pins the chunk index's SHA-256.
 - [ ] Python, Swift and Godot runners load the new sections and report them as `planned`; none is
@@ -247,7 +247,7 @@ bundles before any SDK can sync. The corpus pins the format before four SDKs imp
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/client-core test
 mise exec node@22 -- pnpm --filter @polaris-key/cli test
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm conformance
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 ( cd sdks/python && .venv/bin/python -m pytest -q )

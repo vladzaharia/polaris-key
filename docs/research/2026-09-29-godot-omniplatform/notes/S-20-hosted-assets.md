@@ -609,8 +609,8 @@ the following:
 - **`WIRE-CONTRACT-V4.md`.** Add discovery text. `PROTOCOL_VERSION` stays 4 (additive, no
   verification semantics).
 - **`shared-protocol`.** Add the discovery type.
-- **Transcripts.** `pnpm gen:transcripts`, with the mirrors in Swift and Godot.
-- **Corpus.** No signed-document case, so `gen:corpus --check` stays green. Optionally a
+- **Transcripts.** `pnpm gen transcripts`, with the mirrors in Swift and Godot.
+- **Corpus.** No signed-document case, so `gen corpus --check` stays green. Optionally a
   `presentation` parse case.
 - **SDKs, in this order:**
   1. client-core and React;

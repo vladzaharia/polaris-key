@@ -31,15 +31,7 @@ Run these before opening a PR — they are what CI runs (`.github/workflows/ci.y
 
 ```sh
 pnpm build                       # build all JS packages (turbo)
-pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
-pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
-pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
-pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
-pnpm gen:platform-inventory -- --check  # platform-inventory drift gate (Env ↔ inventory ↔ wrangler.toml)
-pnpm gen:settings -- --check     # settings drift gate (registry → settings reference page + console search index)
-pnpm gen:brand -- --check        # brand-token drift gate (packages/brand → CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin)
-pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
-pnpm parity:check                # every SDK's parity.json agrees with the feature registry
+pnpm gen --check                 # every generator's drift gate, from the registry (tools/generators.ts)
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
                                  # except the browser runner below
@@ -78,12 +70,11 @@ pnpm test:all                    # turbo test + Python pytest + Swift swift test
 ## Pre-commit hooks
 
 `pnpm install` runs the `prepare` script, which sets up [husky](https://typicode.github.io/husky/)
-git hooks automatically — no manual step. The committed `.husky/pre-commit` hook runs three
+git hooks automatically — no manual step. The committed `.husky/pre-commit` hook runs two
 fast, fail-early guards before every commit:
 
 ```sh
-pnpm gen:corpus -- --check       # conformance drift gate
-pnpm gen:services -- --check     # service-table drift gate
+pnpm gen --fast --check   # the cheap generators: corpus, service table, generators page
 pnpm typecheck
 ```
 
@@ -114,7 +105,7 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
 ## Pull-request checklist
 
 - [ ] Green gate passes, including the workerd smoke job (`test:workerd`), not just `pnpm test`.
-- [ ] Wire-affecting? Corpus regenerated (`pnpm gen:corpus -- --check` green) — never hand-edited.
+- [ ] Wire-affecting? Corpus regenerated (`pnpm gen corpus --check` green) — never hand-edited.
 - [ ] New manifest validation rule? Add its entry to the schema-parity mutation table.
 - [ ] New route? Added to the OpenAPI spec and the route-coverage table.
 - [ ] Reference sources changed (migrations, routes, protocol constants)? Regenerate docs:

@@ -8954,7 +8954,7 @@
     },
     {
       "id": "ST-06",
-      "title": "`gen:settings`: generated settings reference page, ⌘K index and `--check`; `settings-coverage.test.ts` with a `PENDING` allow-list that only shrinks",
+      "title": "`gen settings`: generated settings reference page, ⌘K index and `--check`; `settings-coverage.test.ts` with a `PENDING` allow-list that only shrinks",
       "phase": "ST",
       "stage": "phase 1: foundation",
       "lane": "docs",
@@ -13653,7 +13653,7 @@
     },
     {
       "id": "MO-01",
-      "title": "Motion tokens in `@polaris-key/brand`: `micro`, `moderate`, `deliberate`, `shimmer` durations, `emphasized` and `spring` easings, distances, scales, stagger and delays through `gen:brand` to CSS, Tailwind, TS, JSON and the kit languages; BRAND §7.5 and UI-KITS §4.8 updated",
+      "title": "Motion tokens in `@polaris-key/brand`: `micro`, `moderate`, `deliberate`, `shimmer` durations, `emphasized` and `spring` easings, distances, scales, stagger and delays through `gen brand` to CSS, Tailwind, TS, JSON and the kit languages; BRAND §7.5 and UI-KITS §4.8 updated",
       "phase": "MO",
       "stage": "wave 1: foundation",
       "lane": "ui",

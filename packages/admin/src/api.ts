@@ -1892,7 +1892,7 @@ export interface ActivityFilters {
 
 // ── services (per-product enablement) ─────────────────────────────────────────
 /** The opt-in services layered over the always-on Core substrate — generated from the service
- *  table (`tools/services.json`) by `pnpm gen:services`. */
+ *  table (`tools/services.json`) by `pnpm gen services`. */
 export type { ServiceSlug };
 
 /** How a device may register (spec §2.3). Derived from the enablement set unless declared. */

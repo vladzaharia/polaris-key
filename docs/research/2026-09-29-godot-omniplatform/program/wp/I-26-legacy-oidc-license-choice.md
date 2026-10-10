@@ -204,7 +204,7 @@ the recommended option. Where the code disagreed with this brief, the code won.
       appears only when the policy grants a tier and every licence is full (tests).
 - [x] Without the binder cookie the chooser is refused and nothing is minted (test).
 - [x] With no link, no usable licence, or a `provider: custom` product, the behaviour is
-      byte-identical to today, and `pnpm gen:transcripts -- --check` is unchanged.
+      byte-identical to today, and `pnpm gen transcripts --check` is unchanged.
 - [x] OpenAPI and `routeCoverage` are updated, and the THREAT-MODEL note is written.
 - [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
 
@@ -214,7 +214,7 @@ the recommended option. Where the code disagreed with this brief, the code won.
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity oidc devicecode choose
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- routeCoverage
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 ## Hand-off

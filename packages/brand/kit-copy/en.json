@@ -1,6 +1,6 @@
 {
   "$schema": "./kit-copy.schema.json",
-  "$comment": "The kit copy catalog (plans/UK-02.md §3.1): every string a Polaris Key UI kit shows that is not core copy. Hand-written ICU MessageFormat subset (plain arguments, at most one plural on an integer argument, select only on formFactor). Error and gate copy is never repeated here: it lives in conformance/parity/copy.en.json and every generated kit table carries it under core.* keys. `pnpm gen:brand` validates this file, the eight locale packs and components.json, and writes the per-platform tables; `pnpm gen:brand -- --check` is the drift gate. US spelling (license); the signin.* namespace is docs/design/SIGN-IN.md §5.2.",
+  "$comment": "The kit copy catalog (plans/UK-02.md §3.1): every string a Polaris Key UI kit shows that is not core copy. Hand-written ICU MessageFormat subset (plain arguments, at most one plural on an integer argument, select only on formFactor). Error and gate copy is never repeated here: it lives in conformance/parity/copy.en.json and every generated kit table carries it under core.* keys. `pnpm gen brand` validates this file, the eight locale packs and components.json, and writes the per-platform tables; `pnpm gen brand --check` is the drift gate. US spelling (license); the signin.* namespace is docs/design/SIGN-IN.md §5.2.",
   "kitCopyVersion": 1,
   "locale": "en",
   "messages": {

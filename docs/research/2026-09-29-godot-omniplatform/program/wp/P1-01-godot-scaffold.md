@@ -1,16 +1,16 @@
 # P1-01 Create `sdks/godot` from the prototype, with a corpus mirror and CI runner
 
-| Field       | Value                                                                                                                                                                                                                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1: Godot SDK core                                                                                                                                                                                                                                                                                   |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                                 |
-| Depends on  | none                                                                                                                                                                                                                                                                                                 |
-| Unblocks    | [P1-02](P1-02-godot-core.md), [P1-11](P1-11-godot-export-plugin.md)                                                                                                                                                                                                                                  |
-| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                             |
-| Plan mode   | yes: `program/plans/P1-01.md` must be approved (merged) before any code                                                                                                                                                                                                                              |
-| Gates       | plan mode; corpus mirror (rule 1, `pnpm gen:corpus -- --check` guards it); a new CI job (editor **and** release template); generated `reference/corpus.mdx` (rule 3, `pnpm --filter @polaris-key/docs gen:check`); the Godot parity manifest (`pnpm parity:check`, generated `reference/parity.mdx`) |
-| Human input | plan approval; adding the new `godot` CI job to the branch's required checks (repository settings)                                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1: Godot SDK core                                                                                                                                                                                                                                                                                |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                              |
+| Depends on  | none                                                                                                                                                                                                                                                                                              |
+| Unblocks    | [P1-02](P1-02-godot-core.md), [P1-11](P1-11-godot-export-plugin.md)                                                                                                                                                                                                                               |
+| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                          |
+| Plan mode   | yes: `program/plans/P1-01.md` must be approved (merged) before any code                                                                                                                                                                                                                           |
+| Gates       | plan mode; corpus mirror (rule 1, `pnpm gen corpus --check` guards it); a new CI job (editor **and** release template); generated `reference/corpus.mdx` (rule 3, `pnpm --filter @polaris-key/docs gen:check`); the Godot parity manifest (`pnpm parity:check`, generated `reference/parity.mdx`) |
+| Human input | plan approval; adding the new `godot` CI job to the branch's required checks (repository settings)                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                         |
 
 ## Goal
 
@@ -19,7 +19,7 @@ research prototype with its history) and a headless test runner. The runner read
 generator-owned mirror of `conformance/corpus/v2/` from `res://` and passes all 36 `jwsCases`
 plus the SHA-512 and Ed25519 vectors on the Godot 4.7.2 editor, on an official 4.7.2 Linux
 release template, and on the 4.4 editor (the source-compatible floor). A new `godot` CI job runs
-all three. `pnpm gen:corpus -- --check` fails if the Godot mirror drifts by one byte.
+all three. `pnpm gen corpus --check` fails if the Godot mirror drifts by one byte.
 
 ## Why
 
@@ -181,7 +181,7 @@ raised.
 
 **Corpus regeneration and SDKs that follow.** No vector changes, `corpusVersion` stays 2 and no
 shipped SDK changes behaviour (only the unreleased Godot `PKeyJws` gains the U+0000 rule).
-`pnpm gen:corpus` gains a second mirror. Under option (a), the one annotated case is regenerated
+`pnpm gen corpus` gains a second mirror. Under option (a), the one annotated case is regenerated
 and every runner is checked to ignore the field. From this work package on, every corpus change
 (P0-04, P1-09, P1b-04, P3-02, …) must keep the Godot job green, and its plan must name Godot.
 
@@ -250,7 +250,7 @@ the business-model-fit review, `docs/superpowers/`, `.changeset/*`) stay as writ
 2. After approval: create the skeleton; `git mv` the files; rename the classes; run the moved
    suites on the 4.7.2 editor to confirm nothing changed.
 3. Write the runner and `suite_conformance.gd` against the mirror path.
-4. Add the Godot mirror to `tools/sign-corpus.ts`; run `pnpm gen:corpus`; commit the mirror.
+4. Add the Godot mirror to `tools/sign-corpus.ts`; run `pnpm gen corpus`; commit the mirror.
 5. Write `tools/run_tests.sh`; export the pack and run it on the release template locally.
 6. Add the CI job; run it on the 4.4 editor and fix syntax, or escalate.
 7. Add the parity registry entry and manifest (plan §5.1), derive the parity page intro from
@@ -263,9 +263,9 @@ the business-model-fit review, `docs/superpowers/`, `.changeset/*`) stay as writ
 - [ ] The approved plan is merged before the first code commit.
 - [ ] `git log --follow sdks/godot/addons/polaris_key/core/crypto/ed25519.gd` reaches the
       prototype commits, and every `.gd` file has its `.uid` beside it.
-- [ ] `pnpm gen:corpus` writes `sdks/godot/tests/corpus/v2/{cases,gate-matrix,fingerprint}.json`
+- [ ] `pnpm gen corpus` writes `sdks/godot/tests/corpus/v2/{cases,gate-matrix,fingerprint}.json`
       byte-identical to `conformance/corpus/v2/`; changing one byte in the Godot mirror makes
-      `pnpm gen:corpus -- --check` exit 1 (shown in the PR description).
+      `pnpm gen corpus --check` exit 1 (shown in the PR description).
 - [ ] On the 4.7.2 editor, `-- --pkey-test ci` reports `jwsCases` 36/36 (verdict, `kid` and
       decoded document, with `valid-nul-byte-in-string` matching `docNulReplaced` exactly),
       SHA-512 24/24 and Ed25519 26/26 for both
@@ -281,15 +281,15 @@ the business-model-fit review, `docs/superpowers/`, `.changeset/*`) stay as writ
       `pnpm parity:check` lists three Godot unowned gaps.
 - [ ] The prototype's `tests/cli.gd` still runs `platform`, and a moved suite exits 1 with a
       pointer to `sdks/godot` instead of hanging.
-- [ ] The green gate passes (`AGENTS.md`), including `pnpm gen:corpus -- --check` and
+- [ ] The green gate passes (`AGENTS.md`), including `pnpm gen corpus --check` and
       `pnpm format`.
 - [ ] `pnpm parity:check` passes with the Godot manifest; `parity.mdx` lists it (regenerated, not hand-edited).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus
+mise exec node@22 -- pnpm gen corpus --check
 GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh
 GODOT_BIN=godot-4.4.1 sdks/godot/tools/run_tests.sh
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check

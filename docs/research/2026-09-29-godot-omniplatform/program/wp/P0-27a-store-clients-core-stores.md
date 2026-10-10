@@ -55,7 +55,7 @@ CM-29 needs only this move from P0-27. Splitting it out keeps A-19 and the adapt
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- boundaries commerce
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 Then the full green gate in `AGENTS.md`.

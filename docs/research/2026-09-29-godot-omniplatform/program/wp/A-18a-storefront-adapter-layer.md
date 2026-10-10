@@ -221,7 +221,7 @@ idempotency_key])`. Rows written before keep their ids; a replay of such an inte
 - [x] No ASC behaviour changes: every existing A-17 and P5-02 test passes unchanged, except the
       three changes the lead asked for (two typed release paths, 428, `Object.hasOwn`); see
       Corrections.
-- [x] The green gate passes (`AGENTS.md`), including `gen:transcripts -- --check`.
+- [x] The green gate passes (`AGENTS.md`), including `gen transcripts --check`.
 
 ## Verify
 

@@ -1,4 +1,4 @@
-# ST-06 `gen:settings`: generated settings reference page, ⌘K index and `--check`; `settings-coverage.test.ts` with a `PENDING` allow-list that only shrinks
+# ST-06 `gen settings`: generated settings reference page, ⌘K index and `--check`; `settings-coverage.test.ts` with a `PENDING` allow-list that only shrinks
 
 | Field       | Value                                                                                                   |
 | ----------- | ------------------------------------------------------------------------------------------------------- |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-`gen:settings` generates the settings reference docs page and the ⌘K index from the registry, with `--check`; `settings-coverage.test.ts` fails when a setting exists without a registry entry, using a `PENDING` allow-list that may only shrink.
+`gen settings` generates the settings reference docs page and the ⌘K index from the registry, with `--check`; `settings-coverage.test.ts` fails when a setting exists without a registry entry, using a `PENDING` allow-list that may only shrink.
 
 ## Why
 
@@ -50,7 +50,7 @@
 
 ## Acceptance criteria
 
-- [x] `gen:settings --check` passes and fails on a stale page.
+- [x] `gen settings --check` passes and fails on a stale page.
 - [x] The coverage test fails on an entry that is both pending and registered.
 - [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
@@ -62,10 +62,10 @@ The code is the fact; these record where it, or an open question, shaped the wor
   with an MDX-comment GENERATED banner, so the page is `reference/settings.mdx`.
 - **Where the generator lives.** The registry is TypeScript assembled by `mount.ts`, and
   `packages/docs/scripts/gen-reference.mjs` is a regex-over-source `.mjs` emitter that cannot
-  import it. `gen:settings` is therefore a Worker script (`packages/worker/scripts/gen-settings.ts`,
-  run by `tsx` like ST-02's `gen:platform-inventory`) that writes both outputs; the worker suite's
+  import it. `gen settings` is therefore a Worker script (`packages/worker/scripts/gen-settings.ts`,
+  run by `tsx` like ST-02's `gen platform-inventory`) that writes both outputs; the worker suite's
   `settings-generated.test.ts` byte-compares them, so `pnpm test` (and the gate) catches a stale page
-  without a separate gate step. `pnpm gen:settings -- --check` is added to CI and `AGENTS.md`.
+  without a separate gate step. `pnpm gen settings --check` is added to CI and `AGENTS.md`.
 - **The ⌘K index** is `packages/admin/src/console/settings.generated.ts`: `SETTINGS_INDEX` (one record
   per entry: key, aliases, scope, entity, service, area, label, description, keywords, docs,
   ownership, critical, secret, pending, deprecated) and `NOT_A_SETTING_INDEX` (the fixed-on-purpose
@@ -111,7 +111,7 @@ The code is the fact; these record where it, or an open question, shaped the wor
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:settings -- --check
+mise exec node@22 -- pnpm gen settings --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 ```
 

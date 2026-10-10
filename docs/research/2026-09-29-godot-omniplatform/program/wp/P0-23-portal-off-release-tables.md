@@ -61,7 +61,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- registry routeCoverage
 ```
 

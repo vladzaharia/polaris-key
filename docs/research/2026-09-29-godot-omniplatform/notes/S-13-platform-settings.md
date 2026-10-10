@@ -614,7 +614,7 @@ The routes are a new `head === "platform"` branch in `W/src/admin/api.ts` (besid
 
 The pkey-implementer role runs all of them. **None is plan-mode**: none touches `shared-protocol`,
 `shared-jws`, `client-core`, a signed document, `PROTOCOL_VERSION` or the corpus, and
-`gen:transcripts -- --check` must stay green. Two need **owner review** because they change
+`gen transcripts --check` must stay green. Two need **owner review** because they change
 production CI or add a credential.
 
 | ID       | Title                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Deps                                      | Size | Flags                                                                            |

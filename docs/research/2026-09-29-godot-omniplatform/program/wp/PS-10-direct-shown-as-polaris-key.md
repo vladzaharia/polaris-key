@@ -69,13 +69,13 @@ The owner: "`direct` really becomes `Polaris Key`" ([S-21 §6.8](../../notes/S-2
 ## Acceptance criteria
 
 - [ ] Label test passes; console and download-page snapshots updated.
-- [ ] `check:links` passes; `pnpm gen:corpus -- --check` and `pnpm gen:constants -- --check` show no change.
+- [ ] `check:links` passes; `pnpm gen corpus --check` and `pnpm gen constants --check` show no change.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/admin test && mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm --filter @polaris-key/admin test && mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

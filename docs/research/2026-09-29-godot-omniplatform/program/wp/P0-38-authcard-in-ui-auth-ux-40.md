@@ -22,7 +22,7 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 These approved plans change this package. Where they differ from the text below, they win.
 
-- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: after a copy edit, regenerate `ui-matrix.json` with `pnpm gen:corpus` without holding the corpus lane (D13).
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: after a copy edit, regenerate `ui-matrix.json` with `pnpm gen corpus` without holding the corpus lane (D13).
 
 ## Goal
 

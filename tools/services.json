@@ -1,5 +1,5 @@
 {
-  "$comment": "The opt-in service table — ONE row per Polaris Key service, in canonical order. Core is not a service and has no row. `pnpm gen:services` writes every language's slug constants from this file (tools/gen-services.ts) and `pnpm gen:services -- --check` fails on drift. Adding a service starts here: see /docs/contribute/layout/#adding-a-service.",
+  "$comment": "The opt-in service table — ONE row per Polaris Key service, in canonical order. Core is not a service and has no row. `pnpm gen services` writes every language's slug constants from this file (tools/gen-services.ts) and `pnpm gen services --check` fails on drift. Adding a service starts here: see /docs/contribute/layout/#adding-a-service.",
   "services": [
     {
       "slug": "license",

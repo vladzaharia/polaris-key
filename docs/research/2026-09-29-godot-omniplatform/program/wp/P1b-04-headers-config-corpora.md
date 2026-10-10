@@ -1,16 +1,16 @@
 # P1b-04 Add `headers.json` and `config-matrix.json` to the corpus
 
-| Field       | Value                                                                                                                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                                                                                                            |
-| Size        | 0.75–1 engineer-weeks                                                                                                                                                                                                      |
-| Depends on  | [P1b-02](P1b-02-sdk-constants.md)                                                                                                                                                                                          |
-| Unblocks    | [X-01](X-01-dotnet-sdk.md), [SP-08](SP-08-apple-platform-values.md)                                                                                                                                                        |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                       |
-| Plan mode   | **yes**: `program/plans/P1b-04.md` needs human approval before any code                                                                                                                                                    |
-| Gates       | plan mode; the corpus drift gate (`pnpm gen:corpus -- --check`, the mirrors (Swift, Godot) included); all SDKs; the generated `reference/corpus.mdx` page (AGENTS rule 3); one corpus-touching package in flight at a time |
-| Human input | approval of the plan, including the header vocabulary and the compatibility choice in Design notes                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                                                                                                         |
+| Size        | 0.75–1 engineer-weeks                                                                                                                                                                                                   |
+| Depends on  | [P1b-02](P1b-02-sdk-constants.md)                                                                                                                                                                                       |
+| Unblocks    | [X-01](X-01-dotnet-sdk.md), [SP-08](SP-08-apple-platform-values.md)                                                                                                                                                     |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                    |
+| Plan mode   | **yes**: `program/plans/P1b-04.md` needs human approval before any code                                                                                                                                                 |
+| Gates       | plan mode; the corpus drift gate (`pnpm gen corpus --check`, the mirrors (Swift, Godot) included); all SDKs; the generated `reference/corpus.mdx` page (AGENTS rule 3); one corpus-touching package in flight at a time |
+| Human input | approval of the plan, including the header vocabulary and the compatibility choice in Design notes                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                               |
 
 ## Goal
 
@@ -18,7 +18,7 @@ After an approved plan:
 
 - corpus v2 gains two generated files, `headers.json` and `config-matrix.json`, each mirrored into
   the Swift test resources and the Godot `res://` mirror and guarded by
-  `pnpm gen:corpus -- --check`;
+  `pnpm gen corpus --check`;
 - every SDK sends the canonical `X-PKey-Platform`, `X-PKey-Arch` and `X-PKey-SDK` values those files
   pin;
 - the Node, React, Python and Swift runners pass both files;
@@ -185,7 +185,7 @@ Godot; the docs pages; and the deploy order (Worker normaliser first, then SDK r
 
 - [x] `program/plans/P1b-04.md` is merged (approved) before any code change.
 - [x] `conformance/corpus/v2/headers.json` and `config-matrix.json` exist, with the mirrors (Swift, Godot), and
-      `mise exec node@22 -- pnpm gen:corpus -- --check` passes.
+      `mise exec node@22 -- pnpm gen corpus --check` passes.
 - [x] The Node, React, Python and Swift runners pass every row that applies to them; a doctored row
       fails each one.
 - [x] A captured request from each SDK carries the canonical values (unit test per SDK).
@@ -198,7 +198,7 @@ Godot; the docs pages; and the deploy order (Worker normaliser first, then SDK r
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test
 mise exec node@22 -- pnpm --filter @polaris-key/react test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check

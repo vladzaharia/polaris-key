@@ -87,7 +87,7 @@ import { globWork } from "./globWork.js";
 
 /**
  * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
- * (`./services.generated.ts`, written by `pnpm gen:services` from `tools/services.json`).
+ * (`./services.generated.ts`, written by `pnpm gen services` from `tools/services.json`).
  *
  * They originate in this package, not in the worker: this package is a *dependency* of the
  * worker and of the CLI, so the types have to live on this side of the arrow, and both import

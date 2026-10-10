@@ -1996,7 +1996,7 @@
       "deps": ["HA-12", "UK-14"],
       "planMode": false,
       "estimateWeeks": [1, 1.5],
-      "scope": "tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen:brand, gen:constants, gen:corpus, gen:mirrors, gen:platform-inventory, gen:services, gen:settings, gen:storefront-ci, gen:transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).",
+      "scope": "tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen brand, gen constants, gen corpus, gen mirrors, gen platform-inventory, gen services, gen settings, gen storefront-ci, gen transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).",
       "acceptance": [
         "One pnpm gen --check replaces per-family checks in CI and gate.sh",
         "Every GENERATED banner maps to a registry entry (test)",
@@ -2094,7 +2094,7 @@
       "deps": ["UK-14"],
       "planMode": false,
       "estimateWeeks": [0.6, 1],
-      "scope": "Each under a day: pkey sdk default base URL key.plrs.im (packages/cli/src/index.ts:849, after UK-14's rewrite of that file); widen the portal STORE_KINDS filter (services/distribution/page/customer.ts:242); delete 14 dead worker exports; fix reservedNames.ts:65,70 rule text and THREAT-MODEL:5139; fix 'six services' docs (build/onboarding.md:36); gen:settings --check in gate.sh; pkey feeds prune --apply after each stable tag (publish-sdks.yml); validate commerce mappings against the catalog (commerce/admin.ts:204); report-only transitive boundary test and a table-crossing test seeded with today's 17 crossings. The portal readBody cap is P0-16's and the licence-list paging is P0-29's, built once.",
+      "scope": "Each under a day: pkey sdk default base URL key.plrs.im (packages/cli/src/index.ts:849, after UK-14's rewrite of that file); widen the portal STORE_KINDS filter (services/distribution/page/customer.ts:242); delete 14 dead worker exports; fix reservedNames.ts:65,70 rule text and THREAT-MODEL:5139; fix 'six services' docs (build/onboarding.md:36); gen settings --check in gate.sh; pkey feeds prune --apply after each stable tag (publish-sdks.yml); validate commerce mappings against the catalog (commerce/admin.ts:204); report-only transitive boundary test and a table-crossing test seeded with today's 17 crossings. The portal readBody cap is P0-16's and the licence-list paging is P0-29's, built once.",
       "acceptance": [
         "Each item lands with a test or a check",
         "Boundary and table-crossing tests report today's baseline"
@@ -2321,7 +2321,7 @@
       "deps": [],
       "planMode": false,
       "estimateWeeks": [0.8, 1.1],
-      "scope": "tools/services.json gains console.group and each feature's switches; gen:services emits them to the console only (SDK constants byte-identical). The Services area shows Licensing, Managed config, Ship builds (release + distribution, In-app updates on by default), Sign-in and Cloud Sync (turns on config and identity); each feature row holds its own switches (Package feeds, Customer portal, Polaris Key storefront visibility, Minted tokens) and its facts as status (Commerce: a storefront is ready); the registration policy is always derived (a declared value gets a validator warning) and the per-slug state is read-only under Advanced; anonymous entry has one home, the Anonymous devices row of license.access; one data-driven service-off state for every service page (UX-66). Release-only products are reported, never migrated.",
+      "scope": "tools/services.json gains console.group and each feature's switches; gen services emits them to the console only (SDK constants byte-identical). The Services area shows Licensing, Managed config, Ship builds (release + distribution, In-app updates on by default), Sign-in and Cloud Sync (turns on config and identity); each feature row holds its own switches (Package feeds, Customer portal, Polaris Key storefront visibility, Minted tokens) and its facts as status (Commerce: a storefront is ready); the registration policy is always derived (a declared value gets a validator warning) and the per-slug state is read-only under Advanced; anonymous entry has one home, the Anonymous devices row of license.access; one data-driven service-off state for every service page (UX-66). Release-only products are reported, never migrated.",
       "acceptance": [
         "Discovery, coherence codes and SDK constants byte-identical",
         "Turning on Ship builds writes release, distribution and update in one audited batch",
@@ -2612,7 +2612,7 @@
       "deps": ["LX-09", "LX-10", "LX-12", "LX-05b"],
       "planMode": false,
       "estimateWeeks": [0.3, 0.5],
-      "scope": "Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (each a validator error naming its replacement) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen:settings --check.",
+      "scope": "Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (each a validator error naming its replacement) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen settings --check.",
       "acceptance": [
         "Registry lists one licensing key",
         "A manifest with a retired key fails validation with an error naming its replacement",
@@ -3841,7 +3841,7 @@
       "deps": ["SP-34", "P0-42", "SP-32b"],
       "planMode": false,
       "estimateWeeks": [0.8, 1.2],
-      "scope": "gen:constants stops emitting copy.generated.*; each SDK's core.copy reads the core.* keys from its kit copy table; React and Node share one runtime from client-core; Node's kit table split per locale or loaded lazily.",
+      "scope": "gen constants stops emitting copy.generated.*; each SDK's core.copy reads the core.* keys from its kit copy table; React and Node share one runtime from client-core; Node's kit table split per locale or loaded lazily.",
       "acceptance": ["One copy source per SDK", "Copy goldens unchanged"]
     },
     {

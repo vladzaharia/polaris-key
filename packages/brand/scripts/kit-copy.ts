@@ -1,5 +1,5 @@
 // The kit copy catalog generator (plans/UK-02.md §3.1–§3.3, UK-02a). Called by gen.ts, so
-// `pnpm gen:brand` writes these outputs and `pnpm gen:brand -- --check` is their drift gate.
+// `pnpm gen brand` writes these outputs and `pnpm gen brand --check` is their drift gate.
 //
 // Sources (hand-written, each with a JSON Schema beside it):
 //   packages/brand/kit-copy/en.json             every kit string: {value, role, note, variants?}
@@ -967,7 +967,7 @@ const BANNER_LINES = [
   "",
   "Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from",
   "packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in",
-  "conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any",
+  "conformance/parity/copy.<locale>.json. `pnpm gen brand --check` fails the green gate on any",
   "difference. To change a string, edit its source and regenerate.",
 ];
 const banner = (prefix: string) =>

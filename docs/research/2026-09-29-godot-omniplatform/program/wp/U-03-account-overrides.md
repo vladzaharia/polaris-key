@@ -154,7 +154,7 @@ Where the brief and the code disagreed, the code won:
   config write are one conditional UPDATE; the claim path clears every declared secret key;
   `deleteProduct` deletes the product's account overrides and report; the RUNBOOK and the console
   say what decision 4 costs OIDC licences with no account.
-- **Test 8** (the signed corpus is unchanged) is the gate's `pnpm gen:corpus -- --check`: no signed
+- **Test 8** (the signed corpus is unchanged) is the gate's `pnpm gen corpus --check`: no signed
   shape, claim or fixture changes.
 
 ## Steps
@@ -168,7 +168,7 @@ Where the brief and the code disagreed, the code won:
 
 - [x] The eight tests listed in [S-17 §5.12](../../notes/S-17-user-data-sync.md#512-the-account-override-layer-and-the-licence-override-migration-owner-decision) pass.
 - [x] Dry run on a production-shaped copy produces the inventory and report; secret values never appear (test).
-- [x] `gen:corpus -- --check` unchanged.
+- [x] `gen corpus --check` unchanged.
 - [x] The migration notice cannot be started before I-07 and I-11 are flagged live (test or guard).
 - [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. At
       hand-off every step was green except `test/recordDeploy.test.ts`, which refuses an
@@ -178,7 +178,7 @@ Where the brief and the code disagreed, the code won:
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- payload overrides migration
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

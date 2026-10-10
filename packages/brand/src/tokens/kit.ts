@@ -1,6 +1,6 @@
 // THE DESIGN SOURCE for the UI kits' component tokens (docs/design/UI-KITS.md §2.1, §4.8): the
 // measures every kit reads, per platform variant, the per-platform type scale, the highlight edge,
-// the scrim and the motion mapping. `pnpm gen:brand` writes them into css/kit.css (--pk-kit-*),
+// the scrim and the motion mapping. `pnpm gen brand` writes them into css/kit.css (--pk-kit-*),
 // src/generated/kit.ts, tokens.json and every SDK's kit tokens; no kit hand-copies a value.
 //
 // Units are each platform's own: CSS px on the web, points on Apple, dp/sp on Android, effective

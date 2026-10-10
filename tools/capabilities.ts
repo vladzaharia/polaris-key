@@ -1,7 +1,7 @@
 // The capability table every SDK's `supports()` reads (P1b-10, PARITY §2.2).
 //
 // One table per SDK, generated from that SDK's parity manifest into its constants module by
-// `pnpm gen:constants` (tools/gen-sdk-constants.ts). The manifest is the one declaration: a
+// `pnpm gen constants` (tools/gen-sdk-constants.ts). The manifest is the one declaration: a
 // feature the manifest calls `planned` is unsupported (`version`) and one it declares N/A on a
 // runtime is unsupported there, so the code cannot drift from what the parity page shows.
 //
@@ -18,7 +18,7 @@
 // `capabilityDigest` is a SHA-256 over the canonical rows. The generator writes it into each
 // constants module as `CAPABILITY_DIGEST`, and `pnpm parity:check` (rule 7) recomputes it from
 // the manifest, so editing a manifest without regenerating fails the parity gate as well as
-// `pnpm gen:constants -- --check`.
+// `pnpm gen constants --check`.
 
 import { createHash } from "node:crypto";
 

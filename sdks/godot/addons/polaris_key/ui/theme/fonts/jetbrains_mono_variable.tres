@@ -4,7 +4,7 @@
 ;
 ; Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
 ; packages/brand/fonts/ttf/JetBrainsMono-Variable.ttf, unchanged (SIL OFL 1.1, see the OFL files beside it).
-; `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+; `pnpm gen brand --check` fails the green gate on any difference. To change a value, edit
 ; its source and regenerate.
 
 [resource]

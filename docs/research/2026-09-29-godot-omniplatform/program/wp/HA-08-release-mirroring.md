@@ -87,15 +87,15 @@ The code is the fact; these replace the Scope wording where they differ.
 
 - [x] After a sync, a fixture release's files serve from R2 with an unchanged ETag/sha256 (test).
 - [x] Corrupted bytes are refused and GitHub keeps serving (test).
-- [x] `pnpm gen:corpus -- --check` and `pnpm gen:transcripts -- --check` stay green (no wire change).
+- [x] `pnpm gen corpus --check` and `pnpm gen transcripts --check` stay green (no wire change).
 - [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:corpus -- --check
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen corpus --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 ## Hand-off

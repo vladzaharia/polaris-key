@@ -23,7 +23,7 @@ export type { RegistrationPolicy };
 
 /**
  * The opt-in services come from the generated service table (`tools/services.json`, written into
- * `@polaris-key/manifest` by `pnpm gen:services`). Core is not a service — it is always on.
+ * `@polaris-key/manifest` by `pnpm gen services`). Core is not a service — it is always on.
  * `SERVICE_SLUGS` is the canonical order: iterate it rather than `Object.keys` so output is
  * stable. Re-exported so the rest of the worker keeps importing them from here.
  */

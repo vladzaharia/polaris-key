@@ -209,7 +209,7 @@ uniqueness or order is ASCII by pattern.
     set's hashes (A7 §11.5: the corpora join by hash; no key enters the content corpus). List
     positives and negatives.
 19. **Generator.** Port A7's generator to TypeScript under `tools/` (proposed
-    `tools/gen-content-corpus.ts`), run by `pnpm gen:corpus` so `--check` covers it. zstd output
+    `tools/gen-content-corpus.ts`), run by `pnpm gen corpus` so `--check` covers it. zstd output
     is not stable across libzstd versions, so committed blobs are **inputs** checked by hash;
     `--check` rebuilds `cases.json` and `plan-matrix.json` from them; a separate explicit mode
     rebuilds blobs with a pinned zstd CLI version and refuses any other.

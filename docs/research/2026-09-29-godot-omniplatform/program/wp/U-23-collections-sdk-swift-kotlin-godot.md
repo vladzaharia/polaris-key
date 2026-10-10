@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                     |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                       |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                          |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); CI: macOS; CI: Android                 |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`); CI: macOS; CI: Android                    |
 | Human input | none                                                                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
 

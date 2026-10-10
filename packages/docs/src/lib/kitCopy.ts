@@ -1,7 +1,7 @@
 /**
  * The kit copy as the `build/ui/` pages show it: the generated English table (every kit key and
  * every `core.*` key, flat), its platform variants, and the launch locales. All of it is the
- * committed output of `pnpm gen:brand` (packages/brand/src/generated/kit-copy/), read here rather
+ * committed output of `pnpm gen brand` (packages/brand/src/generated/kit-copy/), read here rather
  * than through the package's dist so the docs need no brand build to render it.
  */
 

@@ -29,7 +29,7 @@ import Foundation
 
 // `ServiceSlug` — the opt-in services, in canonical order, with `isDefaultEnabled` — is GENERATED
 // from the service table (tools/services.json) into `ServiceSlug.generated.swift` by
-// `pnpm gen:services`. Core is not a service — it is always on.
+// `pnpm gen services`. Core is not a service — it is always on.
 
 /// Per-service state as the SDK consumes it.
 public typealias ServicesMap = [ServiceSlug: Bool]

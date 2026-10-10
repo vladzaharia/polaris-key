@@ -194,7 +194,7 @@ sooner.
 
 ```sh
 mise exec node@22 -- pnpm build
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen constants --check
 mise exec node@22 -- pnpm typecheck
 mise exec node@22 -- pnpm test
 mise exec node@22 -- pnpm --filter @polaris-key/worker typecheck:workerd

@@ -41,7 +41,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- Each under a day: pkey sdk default base URL key.plrs.im (packages/cli/src/index.ts:849, after UK-14's rewrite of that file); widen the portal STORE_KINDS filter (services/distribution/page/customer.ts:242); delete 14 dead worker exports; fix reservedNames.ts:65,70 rule text and THREAT-MODEL:5139; fix 'six services' docs (build/onboarding.md:36); gen:settings --check in gate.sh; pkey feeds prune --apply after each stable tag (publish-sdks.yml); validate commerce mappings against the catalog (commerce/admin.ts:204); report-only transitive boundary test and a table-crossing test seeded with today's 17 crossings. The portal readBody cap is P0-16's and the licence-list paging is P0-29's, built once.
+- Each under a day: pkey sdk default base URL key.plrs.im (packages/cli/src/index.ts:849, after UK-14's rewrite of that file); widen the portal STORE_KINDS filter (services/distribution/page/customer.ts:242); delete 14 dead worker exports; fix reservedNames.ts:65,70 rule text and THREAT-MODEL:5139; fix 'six services' docs (build/onboarding.md:36); gen settings --check in gate.sh; pkey feeds prune --apply after each stable tag (publish-sdks.yml); validate commerce mappings against the catalog (commerce/admin.ts:204); report-only transitive boundary test and a table-crossing test seeded with today's 17 crossings. The portal readBody cap is P0-16's and the licence-list paging is P0-29's, built once.
 
 **Out** (and where it belongs instead):
 
@@ -67,7 +67,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 Then the full green gate in `AGENTS.md`.

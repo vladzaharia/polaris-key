@@ -1,11 +1,11 @@
 // GENERATED FILE — do not edit by hand.
 //
-// Written by `pnpm gen:constants` (tools/gen-sdk-constants.ts) from conformance/parity/
+// Written by `pnpm gen constants` (tools/gen-sdk-constants.ts) from conformance/parity/
 // errors.json, enums.json and features.json, tools/services.json, @polaris-key/protocol/core
-// and the conformance corpus. `pnpm gen:constants -- --check` fails the green gate on any
+// and the conformance corpus. `pnpm gen constants --check` fails the green gate on any
 // difference. To change a constant, edit its source and regenerate.
 
-// `ServiceSlug` is not here: ServiceSlug.generated.kt (pnpm gen:services) declares it.
+// `ServiceSlug` is not here: ServiceSlug.generated.kt (pnpm gen services) declares it.
 
 @file:Suppress("unused", "ObjectPropertyName")
 

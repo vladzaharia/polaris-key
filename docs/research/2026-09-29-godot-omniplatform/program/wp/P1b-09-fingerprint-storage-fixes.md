@@ -1,16 +1,16 @@
 # P1b-09 Fix fingerprint and storage issues: `wmic`, Linux anchor, config directories, keyring downgrade, macOS keychain
 
-| Field       | Value                                                                                                                                                                                                                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                                                                                                                                                                         |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                    |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                                                                                                                                                                                     |
-| Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md)                                                                                                                                                                                                               |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                    |
-| Plan mode   | **yes**: `program/plans/P1b-09.md` needs human approval before any code (it changes `fingerprint.json` and the `client-core` `Store` contract)                                                                                                                                          |
-| Gates       | plan mode; the corpus drift gate for `fingerprint.json` (`pnpm gen:corpus -- --check`, the mirrors (Swift, Godot)); all SDKs; AGENTS rule 7 and `docs/PRIVACY.md`; the generated `reference/corpus.mdx` page (it prints vector counts); one corpus-touching package in flight at a time |
-| Human input | approval of the plan, including the Linux-anchor migration impact and the config-directory choice                                                                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P1b: SDK parity                                                                                                                                                                                                                                                                      |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                 |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                                                                                                                                                                                  |
+| Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md)                                                                                                                                                                                                            |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                 |
+| Plan mode   | **yes**: `program/plans/P1b-09.md` needs human approval before any code (it changes `fingerprint.json` and the `client-core` `Store` contract)                                                                                                                                       |
+| Gates       | plan mode; the corpus drift gate for `fingerprint.json` (`pnpm gen corpus --check`, the mirrors (Swift, Godot)); all SDKs; AGENTS rule 7 and `docs/PRIVACY.md`; the generated `reference/corpus.mdx` page (it prints vector counts); one corpus-touching package in flight at a time |
+| Human input | approval of the plan, including the Linux-anchor migration impact and the config-directory choice                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                            |
 
 ## Goal
 
@@ -226,7 +226,7 @@ section: byte counts to a bucket or `omitted`.
 
 - [x] `program/plans/P1b-09.md` is merged (approved) before any code change.
 - [x] `fingerprint.json` carries the new sections with the mirrors (Swift, Godot);
-      `mise exec node@22 -- pnpm gen:corpus -- --check` passes.
+      `mise exec node@22 -- pnpm gen corpus --check` passes.
 - [x] Node, Python and Swift pass every section that applies to them; the Worker's fingerprint corpus
       test passes.
 - [x] No `wmic` invocation remains in `packages/sdk-node/src` or `sdks/python/src`
@@ -244,7 +244,7 @@ section: byte counts to a bucket or `omitted`.
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test
 mise exec node@22 -- pnpm --filter @polaris-key/node test
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- fingerprint

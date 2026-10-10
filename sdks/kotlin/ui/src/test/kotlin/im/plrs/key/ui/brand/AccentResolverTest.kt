@@ -76,7 +76,7 @@ class AccentResolverTest {
         assertEquals(8f, PolarisKitTokens.concentricRadius(10f, 6f))
     }
 
-    /** The committed kit tokens and vectors are the generator's (pnpm gen:brand -- --check owns them). */
+    /** The committed kit tokens and vectors are the generator's (pnpm gen brand --check owns them). */
     @Test
     fun theGeneratedFilesAreTheGenerators() {
         val repo = File(System.getProperty("pkey.repoRoot") ?: "../../..")

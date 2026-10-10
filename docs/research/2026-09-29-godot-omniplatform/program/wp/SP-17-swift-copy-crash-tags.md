@@ -1,16 +1,16 @@
 # SP-17 Swift copy and crash tags: `ErrorCopy` serves the generated `Copy.generated.swift` tables with fallback and placeholder fill (`core.copy`), and `crashTags()` (`crash.tags`)
 
-| Field       | Value                                                                               |
-| ----------- | ----------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                           |
-| Size        | 0.4–0.6 engineer-weeks                                                              |
-| Depends on  | none                                                                                |
-| Unblocks    | none                                                                                |
-| Role        | `pkey-sdk-porter`                                                                   |
-| Plan mode   | no                                                                                  |
-| Gates       | `swift test`; `gen:constants -- --check`; `parity:check`; the generated parity page |
-| Human input | none                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                           |
+| Field       | Value                                                                            |
+| ----------- | -------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                        |
+| Size        | 0.4–0.6 engineer-weeks                                                           |
+| Depends on  | none                                                                             |
+| Unblocks    | none                                                                             |
+| Role        | `pkey-sdk-porter`                                                                |
+| Plan mode   | no                                                                               |
+| Gates       | `swift test`; `gen constants --check`; `parity:check`; the generated parity page |
+| Human input | none                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                        |
 
 ## Consolidation 2026-10-07
 

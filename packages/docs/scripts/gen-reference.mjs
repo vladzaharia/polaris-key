@@ -189,7 +189,7 @@ function errorCodes() {
   const enumRows = [
     ...(enumMatch?.[1] ?? "").matchAll(/([A-Za-z]+):\s*"([a-z_]+)"/g),
   ].map((m) => [`\`${m[2]}\``, `\`ErrorCode.${m[1]}\``]);
-  // The registry (P1b-02): every code, wire and client. `pnpm gen:constants` generates each
+  // The registry (P1b-02): every code, wire and client. `pnpm gen constants` generates each
   // SDK's ErrorCode constants from it; the client codes are listed here because no Worker
   // source names them.
   const registry = JSON.parse(
@@ -210,7 +210,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 ${codes.length} protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in \`conformance/parity/errors.json\`
-(${registry.length} codes), and \`pnpm gen:constants\` generates each SDK's \`ErrorCode\` constants
+(${registry.length} codes), and \`pnpm gen constants\` generates each SDK's \`ErrorCode\` constants
 from it. A new code needs an entry there first.`,
     [
       "## Protocol codes (`@polaris-key/protocol/core`)",
@@ -676,7 +676,7 @@ verifies them: Node, Python, Swift, React (the gate matrix, the \`web\` rows of
 release template) and Kotlin (every \`cases.json\` family, \`update-matrix.json\`,
 \`plan-matrix.json\`, every \`content/\` section, \`headers.json\`, \`fingerprint.json\`,
 \`stage-matrix.json\` and \`outlet-matrix.json\`, read in place on both Ed25519 backends). Swift reads
-the corpus in place too. \`pnpm gen:corpus -- --check\` is the CI drift gate, over the source and
+the corpus in place too. \`pnpm gen corpus --check\` is the CI drift gate, over the source and
 the one generator-owned mirror (the Godot \`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`).
 Corpus v1 is deleted — v2 is the
 only corpus. \`corpusVersion ${cases.corpusVersion}\`,
@@ -787,7 +787,7 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       "",
       `## Content corpus (\`content/cases.json\`): ${Object.keys(content.blobs ?? {}).length} blobs, ${blobBytes.toLocaleString("en-US")} bytes`,
       "",
-      "WIRE-CONTRACT-V4 §2.6: the files index and its path rules, the binary chunk index (`pkey-chunks/1`, `chunkIndexCases`, P4-10), full, `payload`-delta, `file` and `chunk` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen:corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7), which may only add blobs (`plans/P4-10.md` decision 15). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.",
+      "WIRE-CONTRACT-V4 §2.6: the files index and its path rules, the binary chunk index (`pkey-chunks/1`, `chunkIndexCases`, P4-10), full, `payload`-delta, `file` and `chunk` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7), which may only add blobs (`plans/P4-10.md` decision 15). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.",
       "",
       table(["Section", "Cases"], contentSections),
     ].join("\n"),
@@ -809,7 +809,7 @@ function parityMatrix() {
   }));
 
   // A transcript proof EXISTS once some committed transcript (conformance/transcripts/, written
-  // by `pnpm gen:transcripts`) lists the feature; until then it shows its owner, or "not
+  // by `pnpm gen transcripts`) lists the feature; until then it shows its owner, or "not
   // recorded" when it has none.
   const transcriptsDir = join(repo, "conformance", "transcripts");
   const recorded = new Set(

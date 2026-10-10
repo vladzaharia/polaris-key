@@ -1,7 +1,7 @@
 // The SDK constants generator (P1b-02, PARITY §4.4).
 //
-//   pnpm gen:constants              # (re)write every generated constants module
-//   pnpm gen:constants -- --check   # regenerate in memory; exit 1 if any file differs
+//   pnpm gen constants              # (re)write every generated constants module
+//   pnpm gen constants --check   # regenerate in memory; exit 1 if any file differs
 //
 // One constants module per language, every one from the same sources, so that names are
 // identical up to casing (PARITY §2.1) and nobody has to remember the mapping:
@@ -28,7 +28,7 @@
 //                                       emitted as a separate copy module per SDK (COPY_TARGETS)
 //   conformance/parity/copy.<locale>.json  translated core packs (plans/UK-02.md D4): checked
 //                                       against copy.en.json (keys, placeholders, locale,
-//                                       reviewed) and not emitted here; gen:brand's kit tables
+//                                       reviewed) and not emitted here; gen brand's kit tables
 //                                       carry them
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
@@ -294,7 +294,7 @@ export function validateCopy(
  * A translated core copy pack, `copy.<locale>.json` (plans/UK-02.md D4): the same sections and
  * keys as copy.en.json, the same placeholder set in every string, a `locale` matching the file
  * name and an explicit `reviewed`. The schema and validateCopy's placeholder rules apply too.
- * Translations are not emitted by this generator; the kit tables (gen:brand) carry them.
+ * Translations are not emitted by this generator; the kit tables (gen brand) carry them.
  */
 export function validateCopyLocale(
   doc: CopyDoc & { reviewed?: boolean },
@@ -1144,9 +1144,9 @@ function banner(comment: string): string {
   return [
     `${comment} GENERATED FILE — do not edit by hand.`,
     comment,
-    `${comment} Written by \`pnpm gen:constants\` (tools/gen-sdk-constants.ts) from conformance/parity/`,
+    `${comment} Written by \`pnpm gen constants\` (tools/gen-sdk-constants.ts) from conformance/parity/`,
     `${comment} errors.json, enums.json and features.json, tools/services.json, @polaris-key/protocol/core`,
-    `${comment} and the conformance corpus. \`pnpm gen:constants -- --check\` fails the green gate on any`,
+    `${comment} and the conformance corpus. \`pnpm gen constants --check\` fails the green gate on any`,
     `${comment} difference. To change a constant, edit its source and regenerate.`,
     "",
   ].join("\n");
@@ -1447,7 +1447,7 @@ public let CAPABILITY_DIGEST = ${q(capabilityDigest(caps))}
 export function renderSwift(model: Model, caps?: SdkCapabilities): string {
   const out: string[] = [
     `${banner("//")}
-// \`ServiceSlug\` is not here: ServiceSlug.generated.swift (pnpm gen:services) declares it.
+// \`ServiceSlug\` is not here: ServiceSlug.generated.swift (pnpm gen services) declares it.
 // \`StoreBackend\` and \`StoreDegradedReason\` are not here: Store.swift declares them as
 // \`String\`-backed enums.
 `,
@@ -1580,7 +1580,7 @@ export function kotlinIdent(camel: string): string {
   return KOTLIN_KEYWORDS.has(camel) ? `\`${camel}\`` : camel;
 }
 
-/** Groups the Kotlin SDK declares by hand: `ServiceSlug` is ServiceSlug.generated.kt (gen:services). */
+/** Groups the Kotlin SDK declares by hand: `ServiceSlug` is ServiceSlug.generated.kt (gen services). */
 export const KOTLIN_DECLARED: ReadonlySet<string> = new Set(["ServiceSlug"]);
 
 function kotlinScalar(s: Scalar): string {
@@ -1633,7 +1633,7 @@ public const val CAPABILITY_DIGEST: String = ${ktq(capabilityDigest(caps))}
 export function renderKotlin(model: Model, caps?: SdkCapabilities): string {
   const out: string[] = [
     `${banner("//")}
-// \`ServiceSlug\` is not here: ServiceSlug.generated.kt (pnpm gen:services) declares it.
+// \`ServiceSlug\` is not here: ServiceSlug.generated.kt (pnpm gen services) declares it.
 
 @file:Suppress("unused", "ObjectPropertyName")
 
@@ -1688,9 +1688,9 @@ function copyBanner(comment: string): string {
   return [
     `${comment} GENERATED FILE — do not edit by hand.`,
     comment,
-    `${comment} Written by \`pnpm gen:constants\` (tools/gen-sdk-constants.ts) from conformance/parity/`,
+    `${comment} Written by \`pnpm gen constants\` (tools/gen-sdk-constants.ts) from conformance/parity/`,
     `${comment} copy.en.json, checked against errors.json and enums.json (licenseStatus, activationResult).`,
-    `${comment} \`pnpm gen:constants -- --check\` fails the green gate on any difference. To change a string,`,
+    `${comment} \`pnpm gen constants --check\` fails the green gate on any difference. To change a string,`,
     `${comment} edit copy.en.json and regenerate.`,
     "",
   ].join("\n");
@@ -2048,7 +2048,7 @@ async function main(): Promise<void> {
   }
   if (check) {
     for (const path of stale)
-      console.error(`stale: ${path} — run \`pnpm gen:constants\``);
+      console.error(`stale: ${path} — run \`pnpm gen constants\``);
     if (stale.length > 0) process.exit(1);
     console.log(
       "up to date: every generated SDK constants and core copy module",

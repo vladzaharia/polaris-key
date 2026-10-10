@@ -9,7 +9,7 @@
  * undeclared request. The declarations are pure data and JSON-serialisable (patterns are regex
  * sources), so the CLI reads the same declaration from a generated copy (S-15 §6.1;
  * `packages/cli/src/storefronts/ciPlane.generated.ts`, written by
- * `pnpm gen:storefront-ci` from `ciPlane.ts`).
+ * `pnpm gen storefront-ci` from `ciPlane.ts`).
  *
  * The check runs twice: in the CLI before the tool starts, and in the Worker when the step is
  * reported back into `store_operations` (`services/distribution/storeSteps.ts`), so a ledger row

@@ -1,6 +1,6 @@
 // @pkey-feature core.copy
 // The copy catalog (SDK parity pass §3.2): `copy` serves the generated English module
-// (src/copy.generated.ts, `pnpm gen:constants` from conformance/parity/copy.en.json), its
+// (src/copy.generated.ts, `pnpm gen constants` from conformance/parity/copy.en.json), its
 // fallback names an unknown code and never a raw body, placeholders never show raw, and a
 // registered locale falls back to the generated English per key.
 

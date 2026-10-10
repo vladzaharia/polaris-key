@@ -1,4 +1,4 @@
-// Every transcript scenario. Adding a scenario here is all it takes for `pnpm gen:transcripts`
+// Every transcript scenario. Adding a scenario here is all it takes for `pnpm gen transcripts`
 // to write it and for the drift check to guard it.
 
 import type { Scenario } from "../world.js";

@@ -8,13 +8,13 @@
 | Unblocks    | [UK-03](UK-03-ui-core.md), [UK-04](UK-04-web-components.md), [UK-05](UK-05-react-kit.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md), [UK-13](UK-13-python-terminal.md), [UK-14](UK-14-node-terminal.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md) |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                |
 | Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                |
-| Gates       | `pnpm gen:brand -- --check` (rule 3, generated banners); the per-SDK generated-file tests; mockup render (`render.cjs`) clean                                                                                                                                                                                                                                     |
+| Gates       | `pnpm gen brand --check` (rule 3, generated banners); the per-SDK generated-file tests; mockup render (`render.cjs`) clean                                                                                                                                                                                                                                        |
 | Human input | none                                                                                                                                                                                                                                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                         |
 
 ## Goal
 
-`pnpm gen:brand` emits every token every kit reads, in every language, from `packages/brand`, and the drift gate covers all of it. Rubik ships as a variable font with weights 400/500/600 in use, the kit mono is JetBrains Mono, and the accent resolver gives the same answer in TypeScript, Swift, Kotlin, GDScript and Python for the shared vectors.
+`pnpm gen brand` emits every token every kit reads, in every language, from `packages/brand`, and the drift gate covers all of it. Rubik ships as a variable font with weights 400/500/600 in use, the kit mono is JetBrains Mono, and the accent resolver gives the same answer in TypeScript, Swift, Kotlin, GDScript and Python for the shared vectors.
 
 ## Why
 
@@ -49,7 +49,7 @@ Every kit reads these tokens, so they come first (§10). Today only Rubik 400 an
 
 - No ttk image elements: Tk is dropped (owner, 2026-10-05).
 - Weights in UI are 400, 500 and 600 only; 700 is allowed only for the game wordmark fallback.
-- Every generated file carries the GENERATED banner (rule 3) and is covered by `gen:brand -- --check`; each SDK suite adds one test that its committed file matches the generator.
+- Every generated file carries the GENERATED banner (rule 3) and is covered by `gen brand --check`; each SDK suite adds one test that its committed file matches the generator.
 
 ## Steps
 
@@ -88,7 +88,7 @@ took the recommended option. UI-KITS.md §2.1, §3.3 and §8 were edited to matc
   and `solid` in light. Every search is a fixed 32-step bisection on rounded hex, so the ports agree
   bit for bit. The §3.3 table now carries the resolver's output (the first draft's numbers were
   hand-tuned mockup colours; Drift Kart's raw light solid failed 3:1 on white).
-- **Shared vectors.** Inputs live in `src/tokens/accent-vectors.ts`; `gen:brand` computes
+- **Shared vectors.** Inputs live in `src/tokens/accent-vectors.ts`; `gen brand` computes
   `fixtures/accent-vectors.json` and writes copies into the Python and Godot tests and native literals
   into the Swift and Kotlin tests, all drift-gated, so an algorithm change cannot land without every
   port following.
@@ -105,7 +105,7 @@ took the recommended option. UI-KITS.md §2.1, §3.3 and §8 were edited to matc
 
 ## Acceptance criteria
 
-- [x] `pnpm gen:brand -- --check` covers every new output, and a hand edit to any of them fails it (`test/kit.test.ts` edits each one in memory and expects exactly that path stale).
+- [x] `pnpm gen brand --check` covers every new output, and a hand edit to any of them fails it (`test/kit.test.ts` edits each one in memory and expects exactly that path stale).
 - [x] The §3.3 vector table passes in TypeScript, Swift, Kotlin, GDScript and Python (every vector, bit for bit; Kotlin run locally with `./gradlew :ui:testDebugUnitTest`, which the gate does not run).
 - [x] The mockup render (`render.cjs`) runs with no console error and no missing font, and the new boards exist in both themes (172 shots).
 - [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
@@ -113,7 +113,7 @@ took the recommended option. UI-KITS.md §2.1, §3.3 and §8 were edited to matc
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:brand -- --check
+mise exec node@22 -- pnpm gen brand --check
 mise exec node@22 -- pnpm --filter @polaris-key/brand test
 NODE_PATH=packages/admin/node_modules node docs/design/ui-kits/render.cjs
 ```

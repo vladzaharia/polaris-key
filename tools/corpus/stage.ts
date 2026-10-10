@@ -8,7 +8,7 @@
 // `client-core`: a golden file that shares code with the implementation it checks cannot catch
 // a bug in that shared code. `buildStageMatrix` self-checks the rows before writing, so a row
 // that contradicts the vocabulary, the `accepts` table or its own stage list fails
-// `gen:corpus`.
+// `gen corpus`.
 //
 // Append-only, like `CARRIED_MATRIX_ROWS`. Rows that use only v1 semantics keep
 // `stageMatrixVersion: 1`; a change to the vocabulary, to `accepts`, to an existing row's

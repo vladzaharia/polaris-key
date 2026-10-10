@@ -76,7 +76,7 @@ Signing in on a new device by approving from a known one ([PORTAL.md §4.23](../
 
 - [x] Codes expire and are single-use (tests); approval never happens without an explicit action.
 - [x] OpenAPI and `routeCoverage` cover every route; a THREAT-MODEL row exists.
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

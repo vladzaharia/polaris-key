@@ -129,7 +129,7 @@ TUF-style delegation).
       (rejected); a pack id outside the prefix (rejected); a delegation signed by an unpinned key
       (rejected); an expired delegation (rejected); a revoked delegation (rejected); a content key
       signing an app record, a revocation or another delegation (each rejected).
-      `pnpm gen:corpus -- --check` is clean, mirrors included.
+      `pnpm gen corpus --check` is clean, mirrors included.
 - [ ] The cases pass in `conformance/runners/node`, pytest, `swift test` and the Godot runner.
 - [ ] Worker tests: a delegated record within scope is ingested; one outside scope is refused.
 - [ ] `pkey release delegate` and a content-key publish have CLI tests.
@@ -140,7 +140,7 @@ TUF-style delegation).
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm conformance
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- release
 mise exec node@22 -- pnpm --filter @polaris-key/cli test
@@ -242,7 +242,7 @@ Recorded by the implementer; the code is the fact where this brief, the plan and
   stored delegation there (behind the publisher token) for both the content-key publish and
   `pkey release revoke --delegation <sha256>`, never from the record route, so both work whatever
   the product's release metadata access.
-- **`gen:constants` gains a GDScript naming rule.** `dataOnlyExtension`'s `json` maps to `JSON`,
+- **`gen constants` gains a GDScript naming rule.** `dataOnlyExtension`'s `json` maps to `JSON`,
   which shadows Godot's native `JSON` class (a parse error that broke the Godot runner). The
   GDScript renderer now writes a member whose upper-snake name is one of Godot's all-caps native
   class or built-in type names (`AABB`, `IP`, `JSON`, `OS`, `RID`, `UPNP`) with a trailing

@@ -87,7 +87,7 @@ cancel|undo`. The two proofs are collected in one browser by a `__Host-pkey_link
 - [x] Never-orphan tests: removing the last method returns `last_link` (the registered code; see the corrections above).
 - [x] Join requires both proofs; undo works within 72 h (tests).
 - [x] Every change writes an audit row and sends a notice (tests); OpenAPI and `routeCoverage` cover every route.
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header. (Builder, 2026-10-06: every step green except `test/recordDeploy.test.ts`, which refused the then-unnumbered migration by design; with the lead's number, 0098, it passes.)
 
 ## Verify

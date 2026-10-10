@@ -62,7 +62,7 @@ import { tryParseJson } from "../../platform/json.js";
 /**
  * Secrets the page reports as present or absent. Presence only. ST-02: every `Env` member tagged
  * `@inventory secret` in `env.ts`, in `Env` order, so a new secret cannot be left off this list
- * (`pnpm gen:platform-inventory -- --check`). `ADMIN_OIDC_CLIENT_SECRET` is the console's own
+ * (`pnpm gen platform-inventory --check`). `ADMIN_OIDC_CLIENT_SECRET` is the console's own
  * client secret (I-03); `PLATFORM_OIDC_CLIENT_SECRET` is the shared platform client's.
  */
 export const SECRET_NAMES: readonly string[] = PLATFORM_INVENTORY.filter(

@@ -412,7 +412,7 @@ if not r.ok:
 	print(r.detail["reason"], ": ", r.detail["detail"])   # runtime: license.enroll is not available on web.
 ```
 
-`core/caps.gd` (PKeyCaps) reads the capability table that `pnpm gen:constants` generates from
+`core/caps.gd` (PKeyCaps) reads the capability table that `pnpm gen constants` generates from
 `parity.json` into `PKeyConstants.capabilities()`. Reasons are checked in one order: an unknown
 id is `version`; a `runtime` N/A on this platform; a `planned` feature is `version`; a feature of
 an opt-in service the product does not run (discovery, else `expected_services`, else licence

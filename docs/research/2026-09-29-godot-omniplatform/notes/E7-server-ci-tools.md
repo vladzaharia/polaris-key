@@ -236,7 +236,7 @@ Proposed Action responsibilities:
 
 Explicitly not in the Action: exporting, building, signing binaries, store uploads. Ship **recipes** (composable snippets) for `setup-godot`, `rcodesign`/`quill`, `jsign`/`osslsigncode`, `apksigner`, `asc`/fastlane, `r0adkll/upload-google-play`, `setup-msstore-cli`, `butler`, `game-ci/steam-deploy`, `flatpak-github-actions`, `winget-releaser`, Homebrew bump.
 
-Contract-first caveat (CLAUDE.md/AGENTS.md): new artifact-upload/finalize routes and any new signed document shape (pack manifest, `signatures[]`) are wire-touching -> plan mode, contract -> catalog -> corpus regen -> SDKs (Node, Python, Swift, React); a Godot addon adds a sixth consumer. `pnpm gen:corpus -- --check` and `typecheck:workerd`/`test:workerd` are the relevant drift gates.
+Contract-first caveat (CLAUDE.md/AGENTS.md): new artifact-upload/finalize routes and any new signed document shape (pack manifest, `signatures[]`) are wire-touching -> plan mode, contract -> catalog -> corpus regen -> SDKs (Node, Python, Swift, React); a Godot addon adds a sixth consumer. `pnpm gen corpus --check` and `typecheck:workerd`/`test:workerd` are the relevant drift gates.
 
 ---
 

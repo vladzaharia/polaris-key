@@ -2,7 +2,7 @@
 #
 # Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
 # packages/brand/src/tokens/ and the launch kit copy in packages/brand/kit/.
-# `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+# `pnpm gen brand --check` fails the green gate on any difference. To change a value, edit
 # its source and regenerate.
 class_name PKeyKitIcons
 extends RefCounted

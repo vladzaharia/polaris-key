@@ -1,8 +1,8 @@
 // GENERATED FILE — do not edit by hand.
 //
-// Written by `pnpm gen:constants` (tools/gen-sdk-constants.ts) from conformance/parity/
+// Written by `pnpm gen constants` (tools/gen-sdk-constants.ts) from conformance/parity/
 // copy.en.json, checked against errors.json and enums.json (licenseStatus, activationResult).
-// `pnpm gen:constants -- --check` fails the green gate on any difference. To change a string,
+// `pnpm gen constants --check` fails the green gate on any difference. To change a string,
 // edit copy.en.json and regenerate.
 // The core copy (core.copy): a title and message per error code, gate status (licenseStatus) and activation result (activationResult). A code missing from COPY_CODES shows COPY_FALLBACK with {code} filled in, never the raw body.
 

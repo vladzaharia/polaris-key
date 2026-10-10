@@ -4,7 +4,7 @@ extends RefCounted
 # @pkey-feature update.content packs.revoke packs.delegation packs.delta.feed
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
-# `pnpm gen:corpus`; never
+# `pnpm gen corpus`; never
 # edit them) through the shipped addon, mirroring conformance/runners/node/corpusV2.test.ts and
 # fingerprint.test.ts vector for vector. No case id appears here: the corpus decides what is
 # tested, and each section ends with a coverage check against its floor.

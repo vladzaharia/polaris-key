@@ -672,7 +672,7 @@ Proposed for `docs/security/THREAT-MODEL.md`, landing in A-17a. The text is not 
 
 All are pkey-implementer. **None is plan-mode**: none touches `shared-protocol`, `shared-jws`,
 `client-core`, a signed document, `PROTOCOL_VERSION` or the corpus, and
-`gen:transcripts -- --check` must stay green. Admin routes are narrative-only (rule 10 via
+`gen transcripts --check` must stay green. Admin routes are narrative-only (rule 10 via
 `NARRATIVE_ONLY`); each needs a worker test, an audit row and a `D/admin/*` narrative.
 
 | ID        | Title                                                                                                                                                                                                                                                                                                                                                                                                          | Deps                                                         | Size | Flags                                                                        |

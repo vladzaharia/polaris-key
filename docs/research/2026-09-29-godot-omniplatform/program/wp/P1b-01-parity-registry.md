@@ -214,7 +214,7 @@ except`. A feature N/A on only some runtimes is `implemented` or `planned` with 
   settles the web half P1b-07 defers to P1b-01.
 - `config.mirror` is proven by `tools/gen-mirrors.test.ts` (it renders the TS, Python and Swift
   mirrors), so every manifest lists that file in `testRoots`. Its registry proof is `unit`, not
-  PARITY §5's `gen-mirrors --check`: `pnpm gen:mirrors -- --check` run bare exits 2 (it needs
+  PARITY §5's `gen-mirrors --check`: `pnpm gen mirrors --check` run bare exits 2 (it needs
   `--catalog` and `--out-dir`), and CI does not run it.
 - `license.entitlements`' registry proof is `unit`, not PARITY §5's `cases.json`: as with
   `license.channels`, no corpus case asserts entitlements, profile or licence id (every

@@ -116,7 +116,7 @@ Where the brief or the plan and the code disagreed, the code was the fact:
    named-object check and checked by the new `missingHeldObjects` (one `json_each` batch, the
    pack id as one more parameter). A dry run also lists an index neither stored nor staged.
 10. **No transcript or validation-codes change.** The recorded transcripts do not carry
-    Release's discovery fragment, so `gen:transcripts -- --check` stays fresh, and the
+    Release's discovery fragment, so `gen transcripts --check` stays fresh, and the
     discovery golden fixture, `surfaces.test.ts` and the OpenAPI example gain `chunks: true`.
     `validation-codes.mdx` renders `invalid_pack_patch`'s message template literally, so
     `docs gen` leaves it unchanged.

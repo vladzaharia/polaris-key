@@ -1,16 +1,16 @@
 # P1b-08 Port device-code sign-in and edge-mint to Node, Python and Swift
 
-| Field       | Value                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                    |
-| Size        | 1–1.5 engineer-weeks                                                                                                               |
-| Depends on  | [P1b-03](P1b-03-http-transcripts.md), [P1-06](P1-06-rfc8628-page.md), [P0-12](P0-12-edge-mint-hardening.md)                        |
-| Unblocks    | none                                                                                                                               |
-| Role        | `pkey-sdk-porter`                                                                                                                  |
-| Plan mode   | no                                                                                                                                 |
-| Gates       | all SDKs; new transcripts through P1b-03's harness (`pnpm gen:transcripts -- --check`); Swift `Package.swift`; `pnpm parity:check` |
-| Human input | none (the IdP is mocked in the Worker scenarios)                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                          |
+| Field       | Value                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                 |
+| Size        | 1–1.5 engineer-weeks                                                                                                            |
+| Depends on  | [P1b-03](P1b-03-http-transcripts.md), [P1-06](P1-06-rfc8628-page.md), [P0-12](P0-12-edge-mint-hardening.md)                     |
+| Unblocks    | none                                                                                                                            |
+| Role        | `pkey-sdk-porter`                                                                                                               |
+| Plan mode   | no                                                                                                                              |
+| Gates       | all SDKs; new transcripts through P1b-03's harness (`pnpm gen transcripts --check`); Swift `Package.swift`; `pnpm parity:check` |
+| Human input | none (the IdP is mocked in the Worker scenarios)                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                       |
 
 ## Goal
 
@@ -159,7 +159,7 @@ not landed, so the SDKs raise the Worker's own wire codes — `not_found`, `unau
 ## Acceptance criteria
 
 - [x] `conformance/transcripts/devicecode-happy.json`, `devicecode-expired.json` and `edge-mint.json`
-      exist with Swift mirrors, and `pnpm gen:transcripts -- --check` passes.
+      exist with Swift mirrors, and `pnpm gen transcripts --check` passes.
 - [x] Node, Python and Swift replay all three green.
 - [x] Unit tests in each SDK show:
   - [x] no poll comes earlier than `interval`;
@@ -174,7 +174,7 @@ not landed, so the SDKs raise the Worker's own wire codes — `not_found`, `unau
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/node test
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test
 mise exec node@22 -- pnpm parity:check

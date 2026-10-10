@@ -748,7 +748,7 @@ All of this is plan mode under CLAUDE.md.
   - client-core `src/backend.ts`: `backendVerdict()` and `clientBackendAction()`, the reference that
     `@polaris-key/server` and the JS client halves use;
   - the Node and browser runners replay their sections.
-- **Gates:** `pnpm gen:corpus`, `gen:constants -- --check` and `parity:check`.
+- **Gates:** `pnpm gen corpus`, `gen constants --check` and `parity:check`.
 - **Counters:** `PROTOCOL_VERSION` 4, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3,
   all unchanged.
 - **SDKs that follow:**

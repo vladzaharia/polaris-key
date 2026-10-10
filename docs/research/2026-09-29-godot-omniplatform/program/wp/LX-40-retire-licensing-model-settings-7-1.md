@@ -46,7 +46,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (each a validator error naming its replacement; docs plan §10 amendment 6) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen:settings --check.
+- Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (each a validator error naming its replacement; docs plan §10 amendment 6) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen settings --check.
 
 **Out** (and where it belongs instead):
 
@@ -80,7 +80,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 Then the full green gate in `AGENTS.md`.

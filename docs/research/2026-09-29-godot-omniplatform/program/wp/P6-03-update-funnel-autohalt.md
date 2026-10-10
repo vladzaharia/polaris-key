@@ -81,7 +81,7 @@ halt candidate that an operator confirms.
 ## Design notes
 
 - **The event names are fixed.** P3-01's approved plan puts the seven `updateEvent` values in
-  `conformance/parity/enums.json` (plan §2.10), emitted in every SDK by `gen:constants`. This
+  `conformance/parity/enums.json` (plan §2.10), emitted in every SDK by `gen constants`. This
   package owns the event shapes, not the names. `installId` for bucketing is the device id.
 - **Where the event shape lives.** Every SDK emits these events, so the natural home is
   `DeviceFacts` in `packages/shared-protocol/src/core.ts`, and CLAUDE.md puts every

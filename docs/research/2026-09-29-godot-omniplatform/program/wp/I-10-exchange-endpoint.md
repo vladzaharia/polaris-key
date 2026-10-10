@@ -1,16 +1,16 @@
 # I-10 Dropped (S-16 re-cut, 2026-10-04): Identity exchange endpoint `POST /<p>/identity/token` with `oidc` (JWKS) and `firebase` (x509) verifiers, returning the activation response; now I-13 (exchange for platform kinds) and I-22 (product-IdP kinds)
 
-| Field       | Value                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (dropped)                                                                           |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                 |
-| Depends on  | none                                                                                                                                                   |
-| Unblocks    | none                                                                                                                                                   |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                  |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-10.md` first; no code before a human approves it                                                              |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd` |
-| Human input | none                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                              |
+| Field       | Value                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (dropped)                                                                        |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                              |
+| Depends on  | none                                                                                                                                                |
+| Unblocks    | none                                                                                                                                                |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                               |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-10.md` first; no code before a human approves it                                                           |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd` |
+| Human input | none                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                           |
 
 > **Dropped (2026-10-04).** S-16 was restructured around one Polaris Key account ([S-16 §8](../../notes/S-16-identity-service.md#8-work-packages), [§8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)). The exchange endpoint for platform kinds (native Apple and Google first) is now [I-13](I-13-exchange-endpoint.md); the product-IdP `oidc` and `firebase` kinds below are layer 2 and now [I-22](I-22-bring-your-own-auth.md). The id I-10 is not reused: the SDK work became I-10a and I-10b. The text below is kept as the record of the earlier product-scoped plan; do not implement it.
 
@@ -66,8 +66,8 @@ Bring-your-own-auth (J3): one generic JWKS verifier covers most surveyed provide
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity exchange
-mise exec node@22 -- pnpm gen:transcripts -- --check
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen transcripts --check
+mise exec node@22 -- pnpm gen constants --check
 ```
 
 ## Hand-off

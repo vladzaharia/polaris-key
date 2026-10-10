@@ -1,16 +1,16 @@
 # U-25 Saves SDK in Swift, Kotlin and Godot (Godot first): the same plus conflict views in `PolarisKeyUI`, the Kotlin UI kit and Godot's `PKeySaveConflict`, `formatVersion` and `saveCompat`
 
-| Field       | Value                                                                                                                                                          |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                      |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                         |
-| Depends on  | none                                                                                                                                                           |
-| Unblocks    | none                                                                                                                                                           |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                           |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                              |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); UI kit screenshots; CI: macOS; CI: Android |
-| Human input | none                                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                      |
+| Field       | Value                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                   |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                      |
+| Depends on  | none                                                                                                                                                        |
+| Unblocks    | none                                                                                                                                                        |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                        |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                           |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`); UI kit screenshots; CI: macOS; CI: Android |
+| Human input | none                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                   |
 
 ## Consolidation 2026-10-07
 

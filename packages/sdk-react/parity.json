@@ -59,7 +59,7 @@
     },
     "core.copy": {
       "status": "implemented",
-      "note": "English is src/copy.generated.ts (pnpm gen:constants, from conformance/parity/copy.en.json): copyMessage/copyTitle read the error-code, gate and activation tables, describeError reads a typed activation result from the activation table only. French is the hand-written proof locale until SP-03."
+      "note": "English is src/copy.generated.ts (pnpm gen constants, from conformance/parity/copy.en.json): copyMessage/copyTitle read the error-code, gate and activation tables, describeError reads a typed activation result from the activation table only. French is the hand-written proof locale until SP-03."
     },
     "license.gate": {
       "status": "implemented"

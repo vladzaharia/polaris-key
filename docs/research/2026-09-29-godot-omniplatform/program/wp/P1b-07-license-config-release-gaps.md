@@ -1,16 +1,16 @@
 # P1b-07 Close licence, config and release gaps: `entitledChannels`, catalog fetch, release client, React bundle import and telemetry
 
-| Field       | Value                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                    |
-| Size        | 1.5–2 engineer-weeks                                                                                                               |
-| Depends on  | [P1b-03](P1b-03-http-transcripts.md)                                                                                               |
-| Unblocks    | none                                                                                                                               |
-| Role        | `pkey-sdk-porter`                                                                                                                  |
-| Plan mode   | no                                                                                                                                 |
-| Gates       | all SDKs; new transcripts through P1b-03's harness (`pnpm gen:transcripts -- --check`); `pnpm parity:check`; Swift `Package.swift` |
-| Human input | none                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                          |
+| Field       | Value                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                 |
+| Size        | 1.5–2 engineer-weeks                                                                                                            |
+| Depends on  | [P1b-03](P1b-03-http-transcripts.md)                                                                                            |
+| Unblocks    | none                                                                                                                            |
+| Role        | `pkey-sdk-porter`                                                                                                               |
+| Plan mode   | no                                                                                                                              |
+| Gates       | all SDKs; new transcripts through P1b-03's harness (`pnpm gen transcripts --check`); `pnpm parity:check`; Swift `Package.swift` |
+| Human input | none                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                       |
 
 ## Goal
 
@@ -186,12 +186,12 @@ actor).
 - [x] `parity.json` manifests are updated for every SDK this changes (`license.channels`,
       `config.schema`, `release.changelog`, `release.download`, `core.bundle`, `devices.report`), and
       `pnpm parity:check` passes.
-- [ ] The green gate passes (`AGENTS.md`), including `pnpm gen:transcripts -- --check`.
+- [ ] The green gate passes (`AGENTS.md`), including `pnpm gen transcripts --check`.
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/node test
 mise exec node@22 -- pnpm --filter @polaris-key/react test
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test

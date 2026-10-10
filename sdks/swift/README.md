@@ -373,7 +373,7 @@ case .unsupported(let why):
 ```
 
 The answer comes from the capability table generated from `parity.json` into
-`Constants.generated.swift` (`CAPABILITIES`, `pnpm gen:constants`), so it always matches the
+`Constants.generated.swift` (`CAPABILITIES`, `pnpm gen constants`), so it always matches the
 parity page. In order: an unknown id or a `planned` feature is `version`; an N/A declared for this
 runtime (`macos` or `ios`) is `runtime`; a feature of a service the product does not run (from
 `discover()`, else `expectedServices`, else the default) is `product`; `update.driver` on iOS is
@@ -899,6 +899,6 @@ The tests read the corpus (`conformance/corpus/v2/`, `content/` included) and th
 root from its own `#filePath`; nothing is copied into the test bundle, so run the suite from a
 monorepo checkout (from any working directory: CI runs `swift test --package-path sdks/swift`).
 
-The corpus and the transcripts are **generated**: run `pnpm gen:corpus` (or `pnpm gen:transcripts`)
-from the repo root after any wire change, and `pnpm gen:corpus -- --check` (and
-`pnpm gen:transcripts -- --check`) is the CI drift gate.
+The corpus and the transcripts are **generated**: run `pnpm gen corpus` (or `pnpm gen transcripts`)
+from the repo root after any wire change, and `pnpm gen corpus --check` (and
+`pnpm gen transcripts --check`) is the CI drift gate.

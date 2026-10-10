@@ -143,7 +143,7 @@ export const STAGE_ROUND_OBJECTS = 256;
  * `@polaris-key/protocol` nor `@polaris-key/manifest` exports it (only `shared-jws` holds it, as
  * the private `MAX_DOC_BYTES` that `signJws`/`verifyJws` enforce), so it is restated here as a
  * friendlier, earlier refusal; exporting it from `shared-protocol` would be a constants change of
- * its own (`gen:constants`).
+ * its own (`gen constants`).
  */
 export const MAX_RECORD_PAYLOAD_BYTES = 65536;
 /** At most this many releases one uploads request names (the Worker's `MAX_TICKET_RELEASES`). */

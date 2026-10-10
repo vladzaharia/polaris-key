@@ -7,7 +7,7 @@ extends EditorPlugin
 # (editor/setup_dock.tscn: res://polaris_key.tres and the pin check). The dock goes through
 # `add_dock` where the editor has it (4.6+), otherwise `add_control_to_dock` (the 4.4 floor). On
 # 4.6+ the dock tab carries the Pinned K editor glyph from brand/ (the kit's bit-less 16 px cut,
-# copied by `pnpm gen:brand`), rasterised here because that folder is never imported.
+# copied by `pnpm gen brand`), rasterised here because that folder is never imported.
 
 const AUTOLOAD_NAME := "PolarisKey"
 const AUTOLOAD_PATH := "res://addons/polaris_key/polaris_key.gd"

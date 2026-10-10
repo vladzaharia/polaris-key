@@ -412,7 +412,7 @@ Migrate service by service, starting with license, config and update; U-05 is wr
 
 ### 5.8 One release resolver (CQW-15)
 
-Every surface (appcast, version, downloads, the portal) resolves from `release_metadata`, `release_builds` and `release_artifacts`, kept current by the webhook, sync and HA-08 mirror ingest. GitHub's API is used only at ingest. The output must stay byte-identical: the transcripts gate (`pnpm gen:transcripts -- --check`) proves it, and compiled-in `SUFeedURL`s keep working through the existing aliases.
+Every surface (appcast, version, downloads, the portal) resolves from `release_metadata`, `release_builds` and `release_artifacts`, kept current by the webhook, sync and HA-08 mirror ingest. GitHub's API is used only at ingest. The output must stay byte-identical: the transcripts gate (`pnpm gen transcripts --check`) proves it, and compiled-in `SUFeedURL`s keep working through the existing aliases.
 
 ### 5.9 Portal off Release's tables (CQW-09)
 
@@ -470,8 +470,8 @@ Measured order of magnitude: about 4–6k lines deleted outright (legacy paths, 
 
 **Wire impact.**
 
-- **Byte-identical, so not wire events:** CQW-01, 02, 03, 04, 06, 07, 08, 09, 10, 11, 12, 16 and 17. Each must pass the transcripts gate (`pnpm gen:transcripts -- --check`) and the corpus gate unchanged. CQW-01 in particular keeps four error-body families; it does not unify shapes on the wire.
-- **CQW-14 (commerce service) is plan-mode.** It adds a `tools/services.json` row, which means `pnpm gen:services` regenerates slug constants in every SDK language, plus a discovery fragment (the corpus mirror, as U-04 did). App Store and Play notification URLs that store consoles have already registered must keep resolving through permanent aliases.
+- **Byte-identical, so not wire events:** CQW-01, 02, 03, 04, 06, 07, 08, 09, 10, 11, 12, 16 and 17. Each must pass the transcripts gate (`pnpm gen transcripts --check`) and the corpus gate unchanged. CQW-01 in particular keeps four error-body families; it does not unify shapes on the wire.
+- **CQW-14 (commerce service) is plan-mode.** It adds a `tools/services.json` row, which means `pnpm gen services` regenerates slug constants in every SDK language, plus a discovery fragment (the corpus mirror, as U-04 did). App Store and Play notification URLs that store consoles have already registered must keep resolving through permanent aliases.
 - **CQW-15 (one resolver) is plan-mode.** Appcast, version and legacy-download bytes are in the HTTP transcripts; compiled-in `SUFeedURL` and `curl | sh` lines must keep working. A product whose `release_metadata` lacks artifacts needs a backfill from GitHub (HA-08's mirror backfill is the precedent) before the switch. Risk: an operator with an unsynced repository loses the appcast until sync runs, so ship behind a per-product readiness check that falls back to the live path until the rows exist, then remove the fallback in a later contract step.
 
 **Data migrations.** The lead assigns numbers; builders name files `00XX_<name>.sql`.

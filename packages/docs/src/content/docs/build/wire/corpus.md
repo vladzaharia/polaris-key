@@ -105,7 +105,7 @@ libzstd versions, so a normal or `--check` run never compresses. It decodes the 
 `@polaris-key/zstd-wasm`, checks each against the `blobs` table in `content/cases.json`, and
 rebuilds `content/cases.json` and `plan-matrix.json` from them. `content/blobs/refs.json` holds
 the refs of the few objects the signed records pin but the corpus does not ship (they would pass
-the 5 MB budget). Only `pnpm gen:corpus -- --rebuild-content-blobs`, which refuses any zstd but
+the 5 MB budget). Only `pnpm gen corpus -- --rebuild-content-blobs`, which refuses any zstd but
 1.5.7, writes the blobs or `refs.json`, and it may only add them: it throws, writing nothing,
 when an existing blob or `refs.json` entry would change (`plans/P4-10.md` decision 15), so
 changing an existing blob, which changes hashes, is a PR of its own.
@@ -219,8 +219,8 @@ the clients do.
 ## The drift gate
 
 ```sh
-pnpm gen:corpus              # write the corpus (and the Godot mirror)
-pnpm gen:corpus -- --check   # re-emit in memory; exit 1 if any committed file drifted
+pnpm gen corpus              # write the corpus (and the Godot mirror)
+pnpm gen corpus --check   # re-emit in memory; exit 1 if any committed file drifted
 ```
 
 The `--check` form is wired into two places:
@@ -239,7 +239,7 @@ passed to the script, and the command silently _rewrites_ the corpus instead of 
 :::danger[Never hand-edit a corpus file]
 The vectors are signed. Editing `cases.json` by hand either breaks a signature (and every
 runner fails with an error that points at the wrong thing) or is silently reverted the next
-time anyone runs `gen:corpus` — and `--check` fails CI in the meantime.
+time anyone runs `gen corpus` — and `--check` fails CI in the meantime.
 
 Change the generator (`tools/sign-corpus.ts` and its family modules in `tools/corpus/`),
 regenerate, and commit the regenerated files together with the generator change.
@@ -255,7 +255,7 @@ The loop:
 1. Add the vector to the appropriate family module in `tools/corpus/`, with a `description`
    that states the _rule_, not the symptom. The descriptions are read by whoever debugs a
    failure three years from now.
-2. Run `pnpm gen:corpus`. Commit the regenerated `conformance/corpus/v2/*.json` **and** the Godot
+2. Run `pnpm gen corpus`. Commit the regenerated `conformance/corpus/v2/*.json` **and** the Godot
    mirror alongside the generator change.
 3. Run every runner, including the Godot one (`sdks/godot/tools/run_tests.sh`). A vector that only the language you were working in agrees with is
    the finding, not a flake.

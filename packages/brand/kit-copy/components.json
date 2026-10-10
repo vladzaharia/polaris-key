@@ -1,6 +1,6 @@
 {
   "$schema": "./components.schema.json",
-  "$comment": "Each UI-KITS §4.1 component's states and the copy keys each state shows (plans/UK-02.md §3.1). Hand-written. A key is a kit key from en.json or a core.* key from conformance/parity/copy.en.json. `pnpm gen:brand` fails on a key neither defines, and on a component key in en.json that no state lists. family is the ui-matrix.json family that pins the component (UK-02b), or null where no row exists yet. The UK-15 string lint reads this file.",
+  "$comment": "Each UI-KITS §4.1 component's states and the copy keys each state shows (plans/UK-02.md §3.1). Hand-written. A key is a kit key from en.json or a core.* key from conformance/parity/copy.en.json. `pnpm gen brand` fails on a key neither defines, and on a component key in en.json that no state lists. family is the ui-matrix.json family that pins the component (UK-02b), or null where no row exists yet. The UK-15 string lint reads this file.",
   "componentsVersion": 1,
   "components": {
     "PolarisKeyGate": {

@@ -40,7 +40,7 @@ One colour story across site, guide, mockups and console, with no floor lowered 
 - **Kit rule.** Links inside Commerce use strong text, because green reads close to success; the accent never encodes status.
 - **Console icon.** `tools/services.json` gives commerce the `ShoppingBag` icon (CM-29 carries the file).
 - **BRAND.md** §5.2 records the decision with the date (B1); the docs editor owns the wording.
-- **Generated.** `gen:brand` regenerates the CSS, `tokens.json`, the Swift and Godot brand tokens and `[data-service="commerce"]`; `brand proofs` re-renders `preview/proofs/accents-{dark,light}.png`; the preview is rebuilt.
+- **Generated.** `gen brand` regenerates the CSS, `tokens.json`, the Swift and Godot brand tokens and `[data-service="commerce"]`; `brand proofs` re-renders `preview/proofs/accents-{dark,light}.png`; the preview is rebuilt.
 
 **Out** (and where it belongs instead):
 
@@ -68,13 +68,13 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [ ] The decision is recorded in BRAND.md §5.2 'Owner decisions' with the date, and CM-29b's scope matches it.
 - [ ] `SERVICE_FAMILY.commerce` is the Distribution green family; no vermilion family exists; every floor, including 17.5, is unchanged.
-- [ ] `pnpm gen:brand -- --check` and `pnpm --filter @polaris-key/brand test` pass; commerce renders green in both themes in the preview.
+- [ ] `pnpm gen brand --check` and `pnpm --filter @polaris-key/brand test` pass; commerce renders green in both themes in the preview.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
 ```
-mise exec node@22 -- pnpm gen:brand -- --check
+mise exec node@22 -- pnpm gen brand --check
 mise exec node@22 -- pnpm --filter @polaris-key/brand test
 ```
 

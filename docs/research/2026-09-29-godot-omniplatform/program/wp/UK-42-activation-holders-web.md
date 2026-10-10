@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-31](LX-31-holders-closeout.md), [UK-43](UK-43-activation-holders-native.md) |
 | Role        | `pkey-sdk-porter`                                                                                                       |
 | Plan mode   | no                                                                                                                      |
-| Gates       | UI snapshots in both themes; modernity lint; kit copy drift gate (`gen:brand -- --check`); UI fixtures in every SDK     |
+| Gates       | UI snapshots in both themes; modernity lint; kit copy drift gate (`gen brand --check`); UI fixtures in every SDK        |
 | Human input | none                                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                               |
 
@@ -123,7 +123,7 @@ nameHint, purpose: "attach", licenseChoice: "app"})`, then `choice.complete({kin
   `PolarisKeyGate`), styled (`<ActivateDone>`, `<AddToAccount>`), headless (`useActivateDone`,
   `useAddToAccount`).
 - **Copy keys** in the kit copy catalog (`activate.done.*`, `activate.recommend.*`,
-  `signin.attach.*`, `activate.owned.*`) per SIGN-IN.md §5.2; `gen:brand`.
+  `signin.attach.*`, `activate.owned.*`) per SIGN-IN.md §5.2; `gen brand`.
 - **UI fixtures** (UK-02b's format) for every state, so the native kits (UK-43) match.
 - Motion: the body morph, the reason lines' stagger (three at most), one check draw; reduced motion
   instant.
@@ -158,14 +158,14 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
       in the account (integration test against the Worker).
 - [ ] Cloud Sync is listed only when the product has it (test).
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
-- [ ] `gen:brand -- --check` and the green gate pass (AGENTS.md).
+- [ ] `gen brand --check` and the green gate pass (AGENTS.md).
 
 ## Verify
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/ui-core test
 mise exec node@22 -- pnpm --filter @polaris-key/react test
-mise exec node@22 -- pnpm gen:brand -- --check
+mise exec node@22 -- pnpm gen brand --check
 ```
 
 ## Hand-off

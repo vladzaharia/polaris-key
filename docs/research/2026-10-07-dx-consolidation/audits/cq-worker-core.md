@@ -501,7 +501,7 @@ reads it.
 
 - **Wire**: none of the recommended work touches the wire. Device error shapes, signed documents,
   client-core and the corpus are untouched. Moving _public_ routes onto a route table is optional,
-  and the transcripts drift gate (`pnpm gen:transcripts -- --check`) must stay byte-identical. If a
+  and the transcripts drift gate (`pnpm gen transcripts --check`) must stay byte-identical. If a
   later change wanted to unify device error shapes, it would be a plan-mode, all-SDK event; **this
   audit recommends against it**.
 - **Console and portal error shape**: removing the hybrid top-level `code`/`message` from admin

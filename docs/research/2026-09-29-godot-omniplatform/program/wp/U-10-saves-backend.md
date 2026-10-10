@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-11a](U-11a-console-data-settings.md)                                                                                                                  |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                            |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `wrangler.toml`                                          |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `wrangler.toml`                                             |
 | Human input | the R2 buckets `polaris-key-sync-files-{prod,staging,dev}`, binding `SYNC_FILES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                        |
 
@@ -81,7 +81,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- sync saves
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 ## Hand-off

@@ -5,7 +5,7 @@
 //   Copy.activationMessage(kind, locale?, code?, ..)  the sentence for a typed activation result
 //   Copy.activationTitle(kind, locale?)               its heading
 //
-// ENGLISH IS GENERATED. Copy.generated.kt is written by `pnpm gen:constants` from
+// ENGLISH IS GENERATED. Copy.generated.kt is written by `pnpm gen constants` from
 // conformance/parity/copy.en.json with three tables, kept apart on purpose as React reads them:
 // COPY_CODES (per error code), COPY_GATE (per licenseStatus) and COPY_ACTIVATION (per
 // activationResult). The error code `unauthorized` reads "Not signed in"; the activation result

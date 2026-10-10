@@ -1,8 +1,8 @@
 # GENERATED FILE — do not edit by hand.
 #
-# Written by `pnpm gen:constants` (tools/gen-sdk-constants.ts) from conformance/parity/
+# Written by `pnpm gen constants` (tools/gen-sdk-constants.ts) from conformance/parity/
 # copy.en.json, checked against errors.json and enums.json (licenseStatus, activationResult).
-# `pnpm gen:constants -- --check` fails the green gate on any difference. To change a string,
+# `pnpm gen constants --check` fails the green gate on any difference. To change a string,
 # edit copy.en.json and regenerate.
 class_name PKeyCoreCopy
 extends RefCounted

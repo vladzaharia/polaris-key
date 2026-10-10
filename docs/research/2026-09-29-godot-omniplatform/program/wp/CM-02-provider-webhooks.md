@@ -53,7 +53,7 @@ Every later CM package needs one verified, idempotent path from Stripe into Pola
 - `W/services/distribution/commerce/checkout/provider.ts` and `providers/stripe.ts` (fixed API host through `core/safeFetch.ts`, body cap, idempotency keys).
 - `commerce_events` (Core) and its migration; `TABLE_OWNERS`.
 - The platform webhook route: raw-body `v1` HMAC-SHA256, constant-time compare, 300 s tolerance, current and previous signing secret; record-then-ack; queue consumer; fetch-latest.
-- Deploy secrets `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_WEBHOOK_SECRET_PREVIOUS`, the `COMMERCE_EVENTS` queue, `gen:platform-inventory`.
+- Deploy secrets `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_WEBHOOK_SECRET_PREVIOUS`, the `COMMERCE_EVENTS` queue, `gen platform-inventory`.
 - Daily reconciliation cron (no-op until merchants exist).
 
 **Out** (and where it belongs instead):
@@ -77,14 +77,14 @@ Every later CM package needs one verified, idempotent path from Stripe into Pola
 
 - [ ] A bad signature, a stale timestamp and a non-`v1` scheme are refused (tests).
 - [ ] A duplicate event id is processed once (test).
-- [ ] `pnpm gen:platform-inventory -- --check` passes.
+- [ ] `pnpm gen platform-inventory --check` passes.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:platform-inventory -- --check
+mise exec node@22 -- pnpm gen platform-inventory --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 ```
 

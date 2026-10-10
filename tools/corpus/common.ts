@@ -335,7 +335,7 @@ export function asciiJson(value: unknown): string {
 // feed and record families, the per-claim integer cases, `update-matrix.json`,
 // `outlet-matrix.json` and the stage matrix's confirmation cases. Each builder recomputes its own
 // expectations and throws when a hand-written expectation disagrees, so a row that contradicts
-// the plan fails `gen:corpus` instead of shipping. The constants and signing helpers they share
+// the plan fails `gen corpus` instead of shipping. The constants and signing helpers they share
 // follow.
 
 /** V4 §3: the largest integer claim, 2^53 − 1. */

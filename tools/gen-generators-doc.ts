@@ -51,15 +51,16 @@ function mode(g: Generator): string {
 
 export function agentsTable(): string {
   const rows = sorted().map(
-    (g) =>
-      `| \`${g.id}\` | \`${command(g)}\` | ${list(g.inputs)} | ${list(g.outputs)} |`,
+    (g) => `| \`${g.id}\` | \`${command(g)}\` | ${g.title} |`,
   );
   return [
     START,
     "",
-    "| Family | Regenerate | Reads | Writes |",
-    "| --- | --- | --- | --- |",
+    "| Family | Regenerate | Writes |",
+    "| --- | --- | --- |",
     ...rows,
+    "",
+    "Inputs and outputs per family: `packages/docs/src/content/docs/reference/generators.mdx`.",
     "",
     END,
   ].join("\n");
@@ -119,7 +120,8 @@ async function fmt(text: string, file: string): Promise<string> {
 
 export async function render(root = ROOT): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  out.set(PAGE_PATH, await fmt(pageSource(), PAGE_PATH));
+  // Like the other reference pages, written as-is: prettier would rewrite the MDX comment.
+  out.set(PAGE_PATH, pageSource());
   const agents = readFileSync(join(root, AGENTS_PATH), "utf8");
   const s = agents.indexOf(START);
   const e = agents.indexOf(END);

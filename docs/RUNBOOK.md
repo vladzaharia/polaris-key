@@ -1846,7 +1846,7 @@ polaris-key-deltas-<env>`).
 `.github/workflows/ci.yml` runs on PRs and `main` pushes:
 
 - JS/TS build, typecheck, tests, lint.
-- Conformance corpus drift check with `pnpm gen:corpus -- --check`.
+- Conformance corpus drift check with `pnpm gen corpus --check`.
 - Admin build.
 - Python SDK tests on Ubuntu and macOS.
 - Swift SDK tests on macOS.

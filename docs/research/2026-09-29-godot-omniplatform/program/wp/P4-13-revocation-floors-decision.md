@@ -179,7 +179,7 @@ decision is conformance-tested like the licence gate, so these rows are what kee
    and stop.
 2. After approval: contract text and `shared-protocol` types.
 3. Worker: revocation ingest, resolution hook, feed composition and narrowing, size guard.
-4. Corpus: generator changes, `pnpm gen:corpus`, mirrors, docs regeneration.
+4. Corpus: generator changes, `pnpm gen corpus`, mirrors, docs regeneration.
 5. SDKs in wave order, each against the regenerated corpus.
 6. CLI `pkey release revoke`; threat-model note; the green gate.
 
@@ -189,7 +189,7 @@ decision is conformance-tested like the licence gate, so these rows are what kee
 - [ ] `cases.json` has `feedCases` for `packSets`, pack floors, revocations and narrowing,
       `releaseRecordCases` for `kind: revocation` (valid; signed by the product key instead of a
       release key → rejected; replacement from another deliverable → rejected), and `packSetId`
-      vectors; `update-matrix.json` has every row listed above; `pnpm gen:corpus -- --check` is
+      vectors; `update-matrix.json` has every row listed above; `pnpm gen corpus --check` is
       clean, mirrors included.
 - [ ] The rows and cases pass in `conformance/runners/node` (`client-core`), pytest, `swift test`
       and the Godot runner (editor and release template).
@@ -206,7 +206,7 @@ decision is conformance-tested like the licence gate, so these rows are what kee
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm conformance
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- update
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
@@ -255,7 +255,7 @@ recorded deviation or a precision the plan left open; none changes a decision.
   `decideUpdate`. A record whose `content.holds` fails the token rule reaches the decision with
   `holds: null`. `verifyReleaseRecord` returns `nonWireIntegers` for this.
 - **Limits live in protocol `core`.** `MAX_FEED_REVOCATIONS` and `REVOCATION_REASON_MAX_BYTES` are
-  in `@polaris-key/protocol/core`, because `gen:constants` reads `WIRE_LIMIT_EXPORTS` from there.
+  in `@polaris-key/protocol/core`, because `gen constants` reads `WIRE_LIMIT_EXPORTS` from there.
   `update` re-exports the first.
 - **The engine's second store.** `PackEngineOptions.revocations` is a second `PackStateStore` (the
   same seam: atomic replace and quarantine) for `revocations.json`. It is not a key on

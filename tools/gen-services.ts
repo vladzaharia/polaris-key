@@ -1,7 +1,7 @@
 // The service-table generator (P0-09).
 //
-//   pnpm gen:services              # (re)write every generated service file
-//   pnpm gen:services -- --check   # regenerate in memory; exit 1 if any file differs
+//   pnpm gen services              # (re)write every generated service file
+//   pnpm gen services --check   # regenerate in memory; exit 1 if any file differs
 //
 // Input: tools/services.json — one row per opt-in service, in canonical order. Core is not a
 // service and has no row.
@@ -181,8 +181,8 @@ function banner(comment: string): string {
   return [
     `${comment} GENERATED FILE — do not edit by hand.`,
     comment,
-    `${comment} Written by \`pnpm gen:services\` (tools/gen-services.ts) from tools/services.json, the`,
-    `${comment} one declaration of the opt-in services. \`pnpm gen:services -- --check\` fails the green`,
+    `${comment} Written by \`pnpm gen services\` (tools/gen-services.ts) from tools/services.json, the`,
+    `${comment} one declaration of the opt-in services. \`pnpm gen services --check\` fails the green`,
     `${comment} gate on any difference. To change a service, edit the table and regenerate.`,
     "",
   ].join("\n");
@@ -603,7 +603,7 @@ async function main(): Promise<void> {
   }
   if (check) {
     for (const path of stale)
-      console.error(`stale: ${path} — run \`pnpm gen:services\``);
+      console.error(`stale: ${path} — run \`pnpm gen services\``);
     if (stale.length > 0) process.exit(1);
     console.log(`up to date: ${TARGETS.length} generated service files`);
     return;

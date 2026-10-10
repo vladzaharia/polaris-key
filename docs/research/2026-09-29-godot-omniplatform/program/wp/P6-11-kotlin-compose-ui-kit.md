@@ -1,16 +1,16 @@
 # P6-11 Kotlin SDK Jetpack Compose UI kit
 
-| Field       | Value                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P6: Commerce, ops, web                                                                                                                                     |
-| Size        | 2–3 engineer-weeks                                                                                                                                         |
-| Depends on  | [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md)                                                                    |
-| Unblocks    | [P6-05](P6-05-kotlin-sdk.md)                                                                                                                               |
-| Role        | `pkey-implementer`                                                                                                                                         |
-| Plan mode   | no                                                                                                                                                         |
-| Gates       | `gen:brand -- --check` (Kotlin token emitter), Compose snapshot tests, accessibility checks, `parity:check` (`ui.kit`), the `kotlin` and `android` CI jobs |
-| Human input | none (screenshots for review are taken by the agent from the snapshot run)                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
+| Field       | Value                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web                                                                                                                                  |
+| Size        | 2–3 engineer-weeks                                                                                                                                      |
+| Depends on  | [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md)                                                                 |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md)                                                                                                                            |
+| Role        | `pkey-implementer`                                                                                                                                      |
+| Plan mode   | no                                                                                                                                                      |
+| Gates       | `gen brand --check` (Kotlin token emitter), Compose snapshot tests, accessibility checks, `parity:check` (`ui.kit`), the `kotlin` and `android` CI jobs |
+| Human input | none (screenshots for review are taken by the agent from the snapshot run)                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                               |
 
 Slice f of [P6-05](P6-05-kotlin-sdk.md).
 
@@ -76,7 +76,7 @@ logo = null)`. With `None` every colour, shape and text style reads from the hos
   and a hook for host translations), including chrome; the state-to-copy mapping is a pure function
   with unit tests, as in Swift.
 - A Kotlin emitter in `packages/brand/scripts/gen.ts` writing `PolarisBrandTokens.generated.kt`
-  into `:ui`, covered by `pnpm gen:brand -- --check`.
+  into `:ui`, covered by `pnpm gen brand --check`.
 - Quality bar, checked not claimed: snapshot tests (Paparazzi or Roborazzi; the PR names the choice)
   of every screen in light, dark, large font scale, a phone and a tablet, branded and neutral;
   TalkBack semantics (headers, roles, content descriptions, focus order) asserted with Compose
@@ -120,7 +120,7 @@ logo = null)`. With `None` every colour, shape and text style reads from the hos
 - [x] Every screen listed has snapshots (light, dark, large font, phone, tablet; neutral and
       branded) and passes the accessibility tests.
 - [x] Every string is in `PolarisCopy` or string resources; the state-to-copy mapping has unit tests.
-- [x] `pnpm gen:brand -- --check` covers the Kotlin token file; `ui.kit` is `implemented` and
+- [x] `pnpm gen brand --check` covers the Kotlin token file; `ui.kit` is `implemented` and
       `parity:check` is green.
 - [x] The green gate passes (`AGENTS.md`) and the CI jobs are green (locally: the gate, and the
       `android` job's `:ui` tasks with `checkModuleBoundaries`; the hosted CI run follows the push).
@@ -129,7 +129,7 @@ logo = null)`. With `None` every colour, shape and text style reads from the hos
 
 ```sh
 ( cd sdks/kotlin && ./gradlew :ui:verifyRoborazziDebug )   # every :ui unit test, with the snapshots verified (Roborazzi)
-mise exec node@22 -- pnpm gen:brand -- --check
+mise exec node@22 -- pnpm gen brand --check
 mise exec node@22 -- pnpm parity:check -- --check
 ```
 
@@ -165,7 +165,7 @@ disagree.
   `:godot`, `:boundary` or `:conformance`.
 - **Brand artwork as vectors.** Swift bundles kit PNGs. Here the generator reduces the kit SVGs (the
   bit-less display-cut Pinned K and the compact transparent badge) to groups and filled paths
-  (`svgTree`) and emits them in `PolarisBrandTokens.generated.kt`, so `gen:brand --check` covers the
+  (`svgTree`) and emits them in `PolarisBrandTokens.generated.kt`, so `gen brand --check` covers the
   marks as well as the tokens. The Rubik TTFs are binary copies into `res/font`, through a new
   `COPIES` list that `--check` compares byte for byte. The OFL and the kit notice are in
   `assets/polaris-key/fonts/`.

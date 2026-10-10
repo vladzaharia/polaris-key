@@ -1,6 +1,6 @@
 // The determinism harness for transcript recording (P1b-03).
 //
-// A recorded conversation must be byte-stable: two runs of `pnpm gen:transcripts` produce
+// A recorded conversation must be byte-stable: two runs of `pnpm gen transcripts` produce
 // identical files, and a file only changes when the Worker's behaviour does. Three sources of
 // variation have to be pinned while a scenario runs:
 //

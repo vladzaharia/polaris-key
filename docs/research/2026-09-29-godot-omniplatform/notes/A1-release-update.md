@@ -657,7 +657,7 @@ deps_json)`.
   adding a `VersionCheck`/`PackCatalog` type) — it's a contract change that SDKs mirror (Node
   `sdk-node/src/update/client.ts`, Python `sdks/python/src/polaris_key/update/client.py`, Swift
   `sdks/swift/Sources/PolarisKeyUpdate/*`, React `useLatestVersion`), even without a version bump.
-- **Signed wire (PROTOCOL_VERSION 3→4, `pnpm gen:corpus`, all five SDKs, Swift mirror):** only if the
+- **Signed wire (PROTOCOL_VERSION 3→4, `pnpm gen corpus`, all five SDKs, Swift mirror):** only if the
   pack catalog / release manifest must be verifiable offline by the game with the product key — i.e. a
   new `pkey-packs+jws` (or `pkey-release+jws`) document type, or new fields in license/config/trust/
   bundle payloads (e.g. putting "allowed pack ids" or "rollout bucket" into the licence doc envelope

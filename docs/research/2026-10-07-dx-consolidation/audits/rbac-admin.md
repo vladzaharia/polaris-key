@@ -434,7 +434,7 @@ recommendation is a table, for indexed scope queries.
   group", with the two actions and the role matrix.
 - **Platform ready row** (UX-67): "Team access" is done when there is at least one member besides
   the root or one rule.
-- **Docs**: a generated roles × areas matrix (a drift gate like `gen:settings`) and a "Console
+- **Docs**: a generated roles × areas matrix (a drift gate like `gen settings`) and a "Console
   access and roles" page with GitHub-style recipes (support team, release managers, a contractor
   on one product).
 - **Graceful degradation.** Pocket ID down: a member with a passkey still signs in (better than

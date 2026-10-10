@@ -160,7 +160,7 @@ ids: `devices.fingerprint`, `devices.facts`, `devices.register`, `devices.manage
   `DeviceFacts` in `shared-protocol` would make this a plan-mode change; leave the type alone.
   Corrected during implementation: the recorded HTTP transcripts hold every replayed report to
   the Worker's `REPORT_KEYS` (`allowedKeys`), so adding the two keys re-records
-  `conformance/transcripts/` and its Swift and Godot mirrors (`pnpm gen:transcripts`); only
+  `conformance/transcripts/` and its Swift and Godot mirrors (`pnpm gen transcripts`); only
   `allowedKeys` changes, and every replayer still passes.
 - **Manage is self-only.** A device token may rename or deauthorise only its own device; other
   rows are read-only (server R3-09). `deauthorize()` then wipes locally like `license.deactivate`.

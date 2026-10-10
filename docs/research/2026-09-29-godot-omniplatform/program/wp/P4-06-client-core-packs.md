@@ -8,7 +8,7 @@
 | Unblocks    | [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-10](P4-10-chunk-indexes.md), [P4-11](P4-11-chunk-sync-sdks.md), [P4-16](P4-16-more-pack-types.md), [P4-20](P4-20-save-compat.md) |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                         |
 | Plan mode   | no                                                                                                                                                                                                        |
-| Gates       | corpus: the content corpus and `plan-matrix.json` pass in Node (lowest and current Node 22) and Chromium; `pnpm gen:corpus -- --check` unchanged                                                          |
+| Gates       | corpus: the content corpus and `plan-matrix.json` pass in Node (lowest and current Node 22) and Chromium; `pnpm gen corpus --check` unchanged                                                             |
 | Human input | none                                                                                                                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                 |
 

@@ -8,7 +8,7 @@
 | Unblocks    | [P2b-02](P2b-02-distribution-manifest.md), [P3-01](P3-01-wire-v4-plan.md), [P5-01](P5-01-outlet-credentials.md)                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                |
 | Plan mode   | no (stop and escalate if P0-09 put the service table in `shared-protocol` or any wire shape would change)                                                                                                                                         |
-| Gates       | new service; `pnpm gen:services -- --check` (P0-09); rule 9 (two new coherence codes, one retired); D1 migration (backfill); threat model; all SDKs (generated enums); `docs check:links`                                                         |
+| Gates       | new service; `pnpm gen services --check` (P0-09); rule 9 (two new coherence codes, one retired); D1 migration (backfill); threat model; all SDKs (generated enums); `docs check:links`                                                            |
 | Human input | ✋ confirmation that [P0-08](P0-08-unknown-slug-tolerance.md) is **in production** before this is deployed (program README §6; not in the graph's list); djdl's live `.pkey/product` gains `distribution` before its next push (see Design notes) |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                         |
 
@@ -39,7 +39,7 @@ P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and thes
   [§3.1](../../README.md#31-vocabulary) (outlet, transport, availability, rollout, capabilities).
 - [notes/A3 §5.3](../../notes/A3-admin-dx.md#53-blast-radius-of-a-sixth-service-content) (the
   blast radius of a new slug) and [§5.4](../../notes/A3-admin-dx.md#54-terminology-new-nouns-that-dont-collide).
-- [P0-09](P0-09-service-table.md) (`tools/services.json`, `pnpm gen:services`, its assertion
+- [P0-09](P0-09-service-table.md) (`tools/services.json`, `pnpm gen services`, its assertion
   tests and the "Adding a service" checklist in `contribute/layout.md`), [P0-08](P0-08-unknown-slug-tolerance.md),
   [P2-03](P2-03-release-data-model.md) hand-off (`model.ts`).
 - Code: `packages/worker/src/core/registry.ts:99-135` (`ServiceDescriptor`), `:121-134` and
@@ -55,7 +55,7 @@ P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and thes
 - **The table row** in `tools/services.json`: `distribution`, label "Distribution", a `summary`
   for the Services card, `defaultEnabled: false`, `requires: ["release"]`, `legacyModules: ["releases"]`, a new console
   accent `distribution` and an icon. Change `update`'s `requires` from `["release"]` to
-  `["distribution"]`. Run `pnpm gen:services`.
+  `["distribution"]`. Run `pnpm gen services`.
 - **Everything the table generates** (P0-09): `ServiceSlug`/`SERVICE_SLUGS`/`MODULE_SERVICES` in
   `@polaris-key/manifest`, `SERVICE_NAMESPACES`, discovery iteration, the console's `ServiceSlug`
   and `ServicesCard` rows, the CLI module list, and the service enums of `sdk-node`
@@ -142,7 +142,7 @@ P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and thes
 ## Steps
 
 1. Confirm P0-08 is in production and P0-09 and P2-03 are `done`; branch.
-2. Add the table row and change `update`'s edge; run `pnpm gen:services`; follow every failure of
+2. Add the table row and change `update`'s edge; run `pnpm gen services`; follow every failure of
    P0-09's assertion tests until they pass. Keep a list of files for the PR body.
 3. Coherence codes in both validators, mutation entries, `product.schema.json`, fixtures.
 4. `core/hooks.ts`, the context wiring in `dispatchService`, discovery and the admin API; release's
@@ -152,7 +152,7 @@ P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and thes
 
 ## Acceptance criteria
 
-- [ ] `pnpm gen:services -- --check` passes; P0-09's assertion tests pass with six slugs.
+- [ ] `pnpm gen services --check` passes; P0-09's assertion tests pass with six slugs.
 - [ ] `boundaries.test.ts` scans `services/distribution/` and the only cross-service exception is
       still `update → release`.
 - [ ] Hook tests: with Release off, `hooks.releaseCatalog()` is `null` inside distribution; with
@@ -170,7 +170,7 @@ P4-05, P4-14, P5-\*) and the wire v4 plan (P3-01) build on this service and thes
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:services -- --check
+mise exec node@22 -- pnpm gen services --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- boundaries registry services router hooks discovery
 mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 mise exec node@22 -- pnpm --filter @polaris-key/admin build

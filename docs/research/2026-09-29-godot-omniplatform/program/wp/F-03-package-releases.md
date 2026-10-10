@@ -8,7 +8,7 @@
 | Unblocks    | [F-04](F-04-npm-feed.md), [F-05](F-05-pypi-feed.md), [F-06](F-06-swift-registry.md), [F-07](F-07-maven-feed.md), [F-08](F-08-oci-registry.md), [F-09](F-09-godot-feed.md), [F-11](F-11-console-feeds.md), [F-30](F-30-cargo-feed.md), [F-31](F-31-go-proxy.md), [F-32](F-32-nuget-feed.md) |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                                         |
 | Plan mode   | no separate plan: this package executes the approved [`plans/F-01.md`](../plans/F-01.md) exactly, and stops to ask if the code disagrees with it                                                                                                                                           |
-| Gates       | rule 9 (`.pkey/release` package deliverables, the descriptor's `package` branch, `.pkey/distribution` refusal); D1 migrations and `TABLE_OWNERS`; Action-bundle drift (CLI); `docs gen:check`; THREAT-MODEL; `gen:corpus`/`gen:transcripts`/`gen:constants -- --check` stay unchanged      |
+| Gates       | rule 9 (`.pkey/release` package deliverables, the descriptor's `package` branch, `.pkey/distribution` refusal); D1 migrations and `TABLE_OWNERS`; Action-bundle drift (CLI); `docs gen:check`; THREAT-MODEL; `gen corpus`/`gen transcripts`/`gen constants --check` stay unchanged         |
 | Human input | none (the system product is created by the bootstrap action after deploy; the trusted-publisher registration is F-10's)                                                                                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                  |
 
@@ -86,7 +86,7 @@ data side every ecosystem feed reads.
       the appcast, the records route, the download page or a storefront feed (one test each).
 - [ ] Republishing a yanked version is refused. A `record` on a package descriptor is refused.
 - [ ] The migration replay test passes on a populated fixture.
-- [ ] `gen:corpus`, `gen:transcripts` and `gen:constants -- --check` show no diff.
+- [ ] `gen corpus`, `gen transcripts` and `gen constants --check` show no diff.
 - [ ] The green gate passes (`AGENTS.md`).
 
 ## Verify
@@ -97,7 +97,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- release packages 
 mise exec node@22 -- pnpm --filter @polaris-key/cli test -- package
 mise exec node@22 -- pnpm --filter @polaris-key/cli bundle:action -- --check
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
-mise exec node@22 -- pnpm gen:corpus -- --check && mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen corpus --check && mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 ## Corrections (recorded while implementing, against the code)

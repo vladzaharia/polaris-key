@@ -174,7 +174,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser test -- --br
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-browser test -- --browser=webkit   # macOS
 mise exec node@<floor> -- pnpm --filter @polaris-key/conformance-node test
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # repeat in 3.9 and 3.14 virtualenvs
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

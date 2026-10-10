@@ -512,7 +512,7 @@ describe("renderers", () => {
     }
   });
 
-  it("Swift and Kotlin leave ServiceSlug to their gen:services files; the others emit it", () => {
+  it("Swift and Kotlin leave ServiceSlug to their gen services files; the others emit it", () => {
     expect(renderSwift(MODEL)).not.toMatch(/public enum ServiceSlug/);
     expect(renderKotlin(MODEL)).not.toMatch(/public object ServiceSlug/);
     expect(renderKotlin(MODEL)).toContain("public object StoreBackend {");
@@ -688,7 +688,7 @@ describe("the header-value tables and SdkId", () => {
   });
 });
 
-describe("gen:constants --check", () => {
+describe("gen constants --check", () => {
   it("the committed files are up to date", async () => {
     expect(await run({ check: true })).toEqual([]);
   });

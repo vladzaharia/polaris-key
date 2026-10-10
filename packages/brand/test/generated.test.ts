@@ -19,7 +19,7 @@ const css = readFileSync(join(PKG, "css", "tokens.css"), "utf8");
 const themeCss = readFileSync(join(PKG, "css", "theme.css"), "utf8");
 
 describe("generator drift", () => {
-  it("every generated output is up to date (pnpm gen:brand -- --check)", async () => {
+  it("every generated output is up to date (pnpm gen brand --check)", async () => {
     expect(await run({ check: true })).toEqual([]);
   }, 60_000);
 

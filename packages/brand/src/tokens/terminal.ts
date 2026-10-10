@@ -1,5 +1,5 @@
 // THE DESIGN SOURCE for the terminal kits (Node and Python CLIs; UI-KITS.md §2.1 "Terminal", §4.8
-// and the terminal board in docs/design/ui-kits/terminal.html). `pnpm gen:brand` writes it to
+// and the terminal board in docs/design/ui-kits/terminal.html). `pnpm gen brand` writes it to
 // packages/sdk-node/src/cli/tokens.generated.ts and sdks/python/src/polaris_key/ui/ansi.py.
 //
 // Status roles map to the ANSI-16 palette so they follow the user's terminal theme; truecolor is

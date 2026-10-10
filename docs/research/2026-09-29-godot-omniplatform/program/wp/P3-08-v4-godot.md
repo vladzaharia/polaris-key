@@ -190,7 +190,7 @@ Recorded by P3-08 where the code, the plan or the repository made this brief's t
 GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh
 # the 4.4 source-compatibility floor
 GODOT_BIN=godot-4.4.1 sdks/godot/tools/run_tests.sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

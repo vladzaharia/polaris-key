@@ -1,7 +1,7 @@
 // GENERATED FILE — do not edit by hand.
 //
-// Written by `pnpm gen:services` (tools/gen-services.ts) from tools/services.json, the
-// one declaration of the opt-in services. `pnpm gen:services -- --check` fails the green
+// Written by `pnpm gen services` (tools/gen-services.ts) from tools/services.json, the
+// one declaration of the opt-in services. `pnpm gen services --check` fails the green
 // gate on any difference. To change a service, edit the table and regenerate.
 
 /** The opt-in services. Core is not a service — it is always on. */

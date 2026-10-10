@@ -43,7 +43,7 @@ The owner decided Commerce is a service with its own switch that follows the req
 
 ## Scope
 
-**In:** what the approved plan names: the `tools/services.json` row and `gen:services` output in all six SDKs;
+**In:** what the approved plan names: the `tools/services.json` row and `gen services` output in all six SDKs;
 discovery and the corpus mirror; the device routes to `/<p>/commerce/*` together with the SDK path strings (no
 aliases); the store hook URLs kept as Commerce's canonical routes; the code move to `services/commerce/`; the
 console's sixth feature row; the RBAC `commerce` area; the automatic catch-up when Commerce is turned back on.

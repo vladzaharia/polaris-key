@@ -774,14 +774,14 @@ describe("rule 7 — the generated capability table is the manifest's", () => {
     });
     expect(violations).toHaveLength(1);
     expect(violations[0]).toMatch(
-      /^\[rule 7\] demo: the capability table in sdks\/demo\/constants\.generated\.ts is not sdks\/demo\/parity\.json's \(CAPABILITY_DIGEST [0-9a-f]{64}\); run `pnpm gen:constants`$/,
+      /^\[rule 7\] demo: the capability table in sdks\/demo\/constants\.generated\.ts is not sdks\/demo\/parity\.json's \(CAPABILITY_DIGEST [0-9a-f]{64}\); run `pnpm gen constants`$/,
     );
   });
 
   it("fails when the constants module does not exist", () => {
     const { violations } = run({ constants: null });
     expect(violations).toEqual([
-      "[rule 7] demo: sdks/demo/constants.generated.ts does not exist (run `pnpm gen:constants`)",
+      "[rule 7] demo: sdks/demo/constants.generated.ts does not exist (run `pnpm gen constants`)",
     ]);
   });
 

@@ -55,7 +55,7 @@
     },
     "core.copy": {
       "status": "implemented",
-      "note": "copy.message/title/activation over src/copy.generated.ts (pnpm gen:constants, from conformance/parity/copy.en.json): the error-code, gate and activation tables, COPY_FALLBACK naming an unknown code; registerCopy adds a locale that falls back to the generated English per key."
+      "note": "copy.message/title/activation over src/copy.generated.ts (pnpm gen constants, from conformance/parity/copy.en.json): the error-code, gate and activation tables, COPY_FALLBACK naming an unknown code; registerCopy adds a locale that falls back to the generated English per key."
     },
     "license.gate": {
       "status": "implemented"

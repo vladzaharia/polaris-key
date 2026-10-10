@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-13](I-13-exchange-endpoint.md), [I-15](I-15-native-redirect.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-24b](I-24b-named-user-seats-sdks.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md), [LX-39](LX-39-licences-in-account-need-sign-in-product.md), [UK-43](UK-43-activation-holders-native.md) |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                     |
 | Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                                                                                                                                        |
-| Gates       | plan mode; all six SDKs (`parity:check`); `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; UI kit screenshots; CI: macOS; CI: Android                                                                                                                                                                                                                                           |
+| Gates       | plan mode; all six SDKs (`parity:check`); `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; UI kit screenshots; CI: macOS; CI: Android                                                                                                                                                                                                                                              |
 | Human input | none                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                |
 
@@ -33,7 +33,7 @@ For this package:
   Godot, Swift and Kotlin.
 - **Polling.** Keep polling `pending` until `expires_in`.
 - **After `ready`,** show the bound tier from the licence document.
-- **Constants.** `gen:constants` adds `license_choice_required`.
+- **Constants.** `gen constants` adds `license_choice_required`.
 - **Kit naming.** In `PolarisKeyUI`, the Compose `ui` module and `addons/polaris_key/ui`, the
   device-limit screen is **Replace a device**; its confirm is "Replace <device>?" with
   `signin.replace.consequence` and **Replace and continue** (SIGN-IN.md §3.7, `plans/I-04.md`
@@ -205,7 +205,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ```sh
 mise exec node@22 -- pnpm parity:check
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen constants --check
 ```
 
 ## Hand-off

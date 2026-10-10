@@ -628,7 +628,7 @@ components, hwid}]}` (:2207-2310).
 
 **CI** (`.github/workflows/ci.yml`):
 
-- `js` job: build, typecheck, test (which includes the Node runner), lint, `gen:corpus -- --check`.
+- `js` job: build, typecheck, test (which includes the Node runner), lint, `gen corpus --check`.
 - `python` job: ubuntu + macOS-14, `pytest`.
 - `swift` job: macOS-15, `swift test`.
 - There is no mirror gate for gen-mirrors.

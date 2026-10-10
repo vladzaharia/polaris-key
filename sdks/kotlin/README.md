@@ -119,8 +119,8 @@ Maven, the coordinate table and the other SDKs:
   `Fingerprint.hashComponents` and the source rules, `DeviceId.fromRaw`, `detectOutlet`,
   `effectiveCapabilities`, `canonicalPlatform` / `canonicalArch`, `Semver`.
 
-`Constants.generated.kt` and `ServiceSlug.generated.kt` are written by `pnpm gen:constants` and
-`pnpm gen:services`; never edit them by hand.
+`Constants.generated.kt` and `ServiceSlug.generated.kt` are written by `pnpm gen constants` and
+`pnpm gen services`; never edit them by hand.
 
 ## The services and PolarisKeyClient
 
@@ -328,7 +328,7 @@ token store (`Store.stateDirectory`; in memory for a store without one), never i
 cache. `report()` carries the oldest 16 as `updates`, with `gate` and `outlet`, and drops them once
 the Worker accepted the report.
 
-**Typed catalog mirror.** `pnpm gen:mirrors --catalog catalog.json --out-dir <dir> --lang kotlin
+**Typed catalog mirror.** `pnpm gen mirrors --catalog catalog.json --out-dir <dir> --lang kotlin
 --kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
 `ProductCatalog` object (keys, entries, each entry's JSON schema and default; a secret's default is
 never compiled in). The `:config` tests compile a sample of it.

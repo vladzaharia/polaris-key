@@ -195,9 +195,9 @@ revoked license shows, how an activation error reads, and how a version window i
 
 The neutral theme reads everything from `MaterialTheme`. A test scans the module and fails on a
 colour literal, font or corner shape outside the theme and the generated token file. The brand
-values come from `@polaris-key/brand`: `pnpm gen:brand` writes `PolarisBrandTokens.generated.kt`
+values come from `@polaris-key/brand`: `pnpm gen brand` writes `PolarisBrandTokens.generated.kt`
 (colours, accents, radii, optical cuts, badge minimums, and the Pinned K and badge as vector data)
-and copies the kit's Rubik TTFs into `res/font`. `pnpm gen:brand -- --check` fails the green gate
+and copies the kit's Rubik TTFs into `res/font`. `pnpm gen brand --check` fails the green gate
 on any drift. Rubik is under the SIL Open Font License 1.1, and its `OFL.txt` and the kit notice
 ship in the module's assets, so they travel inside every APK that carries the fonts. A neutral kit
 reads Rubik only for the monogram tile it draws when you pass no product icon.

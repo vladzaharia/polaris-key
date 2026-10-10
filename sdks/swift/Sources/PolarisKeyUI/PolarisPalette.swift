@@ -2,7 +2,7 @@
 //
 // - `native` (the default): system semantic colours and the app's accent, so the gate looks like
 //   the host app and carries no Polaris Key branding;
-// - `brand(for:)`: the generated brand tokens (`PolarisBrand`, written by `pnpm gen:brand` into
+// - `brand(for:)`: the generated brand tokens (`PolarisBrand`, written by `pnpm gen brand` into
 //   BrandTokens.generated.swift). SDK UI is a core surface (BRAND.md §7.1): the core violet accent.
 //
 // Both follow the SwiftUI `colorScheme` environment (system colours are dynamic; the brand palette

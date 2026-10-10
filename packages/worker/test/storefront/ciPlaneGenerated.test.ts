@@ -2,7 +2,7 @@
  * A-18h: the CLI's copy of the CI plane (`packages/cli/src/storefronts/ciPlane.generated.ts`) is
  * a straight serialise of `src/core/storefront/ciPlane.ts` and the CI-plane adapters, so the CLI
  * runs exactly the allow-list the Worker re-checks on report-back. Stale ⇒ `pnpm
- * gen:storefront-ci`.
+ * gen storefront-ci`.
  */
 
 import { readFileSync } from "node:fs";
@@ -24,9 +24,9 @@ const ROOT = join(
 );
 
 describe("the CLI's generated CI plane (A-18h)", () => {
-  it("is up to date (pnpm gen:storefront-ci)", async () => {
+  it("is up to date (pnpm gen storefront-ci)", async () => {
     const committed = readFileSync(join(ROOT, GENERATED_PATH), "utf8");
-    expect(committed, "run pnpm gen:storefront-ci").toBe(await renderCiPlane());
+    expect(committed, "run pnpm gen storefront-ci").toBe(await renderCiPlane());
   });
 
   it("carries every CI-plane store and only the CI-plane adapters", () => {

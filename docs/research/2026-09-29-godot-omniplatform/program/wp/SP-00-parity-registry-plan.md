@@ -1,16 +1,16 @@
 # SP-00 SDK parity registry and corpus plan: the nine proposed parity ids with allowed N/As, `ui.cli` for Node and Python, `commerce.receipt` required on Node and Python, new transcripts and corpus rows, `copy.en.json` and its emitters, honest `planned` manifests
 
-| Field       | Value                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (wave 1)                                                                         |
-| Size        | 1–1.6 engineer-weeks                                                                                                            |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                             |
-| Unblocks    | [SP-10](SP-10-signed-browser-session.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)          |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                            |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-00.md` first; no code before a human approves it                                      |
-| Gates       | plan mode; `pnpm parity:check -- --check`; `pnpm gen:corpus -- --check`; generated parity docs page; `gen:constants -- --check` |
-| Human input | none                                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                                       |
+| Field       | Value                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (wave 1)                                                                   |
+| Size        | 1–1.6 engineer-weeks                                                                                                      |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                       |
+| Unblocks    | [SP-10](SP-10-signed-browser-session.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)    |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                      |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-00.md` first; no code before a human approves it                                |
+| Gates       | plan mode; `pnpm parity:check -- --check`; `pnpm gen corpus --check`; generated parity docs page; `gen constants --check` |
+| Human input | none                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                 |
 
 ## Consolidation 2026-10-07
 
@@ -66,7 +66,7 @@ pass. The owner approved it on 2026-10-05, to proceed through plan mode ("Owner 
 
 ## Acceptance criteria
 
-- [x] `pnpm parity:check -- --check` and `pnpm gen:corpus -- --check` pass.
+- [x] `pnpm parity:check -- --check` and `pnpm gen corpus --check` pass.
 - [x] Every new id is `planned` in every SDK with its SP task named.
 - [x] The green gate passes (`AGENTS.md`).
 
@@ -74,7 +74,7 @@ pass. The owner approved it on 2026-10-05, to proceed through plan mode ("Owner 
 
 ```sh
 mise exec node@22 -- pnpm parity:check -- --check
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

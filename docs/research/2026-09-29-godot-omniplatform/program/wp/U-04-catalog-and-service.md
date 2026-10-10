@@ -1,16 +1,16 @@
 # U-04 Catalog, manifest and the `sync` service: catalog `user` block and `cloudSync` block with validator rules 1–11, typed setting keys in the mirrors, generated docs, the Cloud Sync service descriptor (`requires: [config, identity]`), console catalog form and Cloud Sync page
 
-| Field       | Value                                                                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                                             |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                    |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md)                                                                                                                                                                                           |
-| Unblocks    | [U-05](U-05-cloud-sync-do.md)                                                                                                                                                                                             |
-| Role        | `pkey-implementer`                                                                                                                                                                                                        |
-| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                                                                                                                  |
-| Gates       | rule 9 (validator rule, mutation table, JSON schema); new service slug (services checklist, boundaries test); generated docs pages (`gen-docs` drift); `gen-mirrors` drift; console CSP parity; `gen:services -- --check` |
-| Human input | none                                                                                                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                                          |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                 |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md)                                                                                                                                                                                        |
+| Unblocks    | [U-05](U-05-cloud-sync-do.md)                                                                                                                                                                                          |
+| Role        | `pkey-implementer`                                                                                                                                                                                                     |
+| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                                                                                                               |
+| Gates       | rule 9 (validator rule, mutation table, JSON schema); new service slug (services checklist, boundaries test); generated docs pages (`gen-docs` drift); `gen-mirrors` drift; console CSP parity; `gen services --check` |
+| Human input | none                                                                                                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                              |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -34,14 +34,14 @@ taken with the recommended option, as the lead delegated.
   `product_settings` row that ST-01b creates: until then `.pkey/product`'s `cloudSync` block is
   validated (rules 8, 8b, 10) but not persisted. The operator-only per-product ceilings
   (`cloudSync.ceiling.*`) and the platform `cloudSync.writesPaused` lock stay with U-05, which
-  enforces them. There is no `gen:settings` generator or settings reference page yet (ST-06).
-- **`gen-mirrors` drift is the generator test.** `pnpm gen:mirrors` needs `--catalog`/`--out-dir`
+  enforces them. There is no `gen settings` generator or settings reference page yet (ST-06).
+- **`gen-mirrors` drift is the generator test.** `pnpm gen mirrors` needs `--catalog`/`--out-dir`
   and the repo commits no mirror, so the drift gate is
   `mise exec node@22 -- pnpm --filter @polaris-key/tools exec vitest run gen-mirrors.test.ts` (byte-exact per
   language). Mirrors now always carry the user-settings block (`UserSettingKey = never` and an
   empty `USER_SETTINGS` when a catalog declares none), so a downstream repo that commits a mirror
   sees a one-time diff on upgrade. The generator has no changelog of its own, so the upgrade note
-  lives beside the `gen:mirrors` instructions in `build/manifest/authoring.md`.
+  lives beside the `gen mirrors` instructions in `build/manifest/authoring.md`.
 - **One implementation of the user-block rules.** Rules shape and 1–5 live once, in
   `@polaris-key/catalog` (`userSettingIssues`, `mergeMembersOverLimit`), called by the manifest
   validator, the Worker's console catalog publish (`PUT …/config/catalog`) and the console's
@@ -88,13 +88,13 @@ taken with the recommended option, as the lead delegated.
   `USER_SETTINGS` in every language) moves into the CLI module, so `pkey mirror` emits it too, and
   `tools/gen-mirrors.ts` re-exports `userPolicies` for its test.
   A fourth merge (main at 19dda5662, MO-01) regenerates `packages/brand/css/tokens.css` with
-  `gen:brand`, not by hand. Admin e2e on macOS: the portal `§4.20–4.22` visual baselines fail on
+  `gen brand`, not by hand. Admin e2e on macOS: the portal `§4.20–4.22` visual baselines fail on
   main too. Main's 357667065 re-recorded only the Linux portal baselines for the new licence-origin
   line, so the darwin baselines are stale. U-04 touches neither the portal source nor those
   baselines. Everything else in admin e2e passes; a lone run of four layout timeouts on
   platform pages was a flake and passed when re-run.
   A fifth merge (main at 915424055, MO-02) merged cleanly; typecheck, the action bundle,
-  `gen:services` and the docs `gen:check` are clean on it.
+  `gen services` and the docs `gen:check` are clean on it.
 - **Legacy catalog form keeps `cloudSync`** (fix round 3). `normalizeCatalog` now carries the
   legacy `{schemaVersion, catalog:[…]}` form's top-level `cloudSync` into the stored catalog, the
   same block the validator judged; pinned by a `schema-parity.test.ts` case.
@@ -146,15 +146,15 @@ Owner decision 2: Cloud Sync is its own service with its own toggle ([S-17 owner
 ## Acceptance criteria
 
 - [x] Every rule 1–11 has a validator rule, a mutation-table entry and schema coverage.
-- [x] `gen:services -- --check`, `gen:mirrors` drift and generated docs are clean.
+- [x] `gen services --check`, `gen mirrors` drift and generated docs are clean.
 - [x] The `sync` toggle cannot be enabled without Config and Identity, and Identity cannot be turned off while Cloud Sync is on (tests).
 - [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:services -- --check
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen services --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 ```
 

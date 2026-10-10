@@ -3,7 +3,7 @@
 // The error copy catalog (SDK-PARITY-PASS §3.2) and the typed activation table (§3.1).
 //
 // English is the generated module (src/copy.generated.ts, from conformance/parity/copy.en.json by
-// `pnpm gen:constants`); French is the hand-written proof locale until SP-03. Every wire code in
+// `pnpm gen constants`); French is the hand-written proof locale until SP-03. Every wire code in
 // conformance/parity/errors.json has an English AND a French sentence; an unknown code falls back
 // to COPY_FALLBACK naming it, never the server's body.
 
@@ -154,7 +154,7 @@ describe("copy catalog (§3.2)", () => {
 
 describe("core.copy: English is the generated module", () => {
   it("copyMessage and copyTitle read the generated tables, which match copy.en.json", () => {
-    // The generated module is checked against copy.en.json by `pnpm gen:constants -- --check`;
+    // The generated module is checked against copy.en.json by `pnpm gen constants --check`;
     // this pins that the React surface reads it, entry for entry.
     expect(COPY_FALLBACK).toEqual(COPY_EN.fallback);
     for (const [code, e] of Object.entries(COPY_EN.codes)) {

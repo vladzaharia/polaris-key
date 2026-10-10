@@ -1,16 +1,16 @@
 # I-22 Bring-your-own-auth: `oidc` (JWKS) and `firebase` (x509) exchange kinds for the product's own IdP, product-scoped principals, optional portal-side linking under step-up, SDK support
 
-| Field       | Value                                                                                                                                                                                                                       |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-2)                                                                                                                                                |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                      |
-| Depends on  | none                                                                                                                                                                                                                        |
-| Unblocks    | none                                                                                                                                                                                                                        |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                       |
-| Plan mode   | yes: executes the approved [`plans/I-20.md`](../plans/I-20.md) (no separate plan)                                                                                                                                           |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL; rule 9 (validator rule, mutation table, JSON schema) |
-| Human input | none                                                                                                                                                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                   |
+| Field       | Value                                                                                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-2)                                                                                                                                             |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                   |
+| Depends on  | none                                                                                                                                                                                                                     |
+| Unblocks    | none                                                                                                                                                                                                                     |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                    |
+| Plan mode   | yes: executes the approved [`plans/I-20.md`](../plans/I-20.md) (no separate plan)                                                                                                                                        |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL; rule 9 (validator rule, mutation table, JSON schema) |
+| Human input | none                                                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                |
 
 ## Consolidation 2026-10-07
 

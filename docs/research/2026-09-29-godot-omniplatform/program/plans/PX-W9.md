@@ -154,7 +154,7 @@ accepted as written.**
 
   This is SIGN-IN `signin.key.noEntries`, using the allowed `{product}` placeholder. `copyVersion` stays 1.
 
-- **Generated (rule 3).** `pnpm gen:constants` regenerates `constants.generated.*` and `copy.generated.*` in all six SDKs, and PX-W9 commits them. Every SDK built from that commit then shows this copy for `refused{key_entry_limit}` (its "a known code arriving bare reads its own copy" rule), before PX-W9b.
+- **Generated (rule 3).** `pnpm gen constants` regenerates `constants.generated.*` and `copy.generated.*` in all six SDKs, and PX-W9 commits them. Every SDK built from that commit then shows this copy for `refused{key_entry_limit}` (its "a known code arriving bare reads its own copy" rule), before PX-W9b.
 - **`shared-catalog`:** no change.
 - **`shared-manifest`:** no change, so there is no rule 9 entry. I-09 owns `identity.keyEntryLimit` and `invalid_identity_key_entry_limit`.
 - **Settings (ST-03's entries; PX-W9 wires them).**
@@ -169,7 +169,7 @@ accepted as written.**
 
 ## 4. Corpus, transcripts and parity
 
-**Signed corpus: none.** `pnpm gen:corpus -- --check` stays green, with no `tools/sign-corpus.ts`, constant or mirror change.
+**Signed corpus: none.** `pnpm gen corpus --check` stays green, with no `tools/sign-corpus.ts`, constant or mirror change.
 
 **Transcripts.**
 
@@ -178,7 +178,7 @@ accepted as written.**
 - The other device's entries are seeded between steps, as `license-device-limit.json` seeds its seat.
 - Each transcript has `features: ["license.activate", "identity.keyentry"]` and `requires: ["core.store"]`.
 - The `expect` keys are `result`, `keyEntries`, `manageUrl`, `licenseStatus` and `tokenHeld`.
-- `pnpm gen:transcripts` writes the files and the mirrors (`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/`, `sdks/godot/tests/transcripts/`).
+- `pnpm gen transcripts` writes the files and the mirrors (`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/`, `sdks/godot/tests/transcripts/`).
 
 | File                         | Steps                                                                                                                                                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -198,7 +198,7 @@ Every existing transcript stays byte-identical. That is the "installs unaffected
 PX-W9b depends on PX-W9 and PX-W8. Each SDK must:
 
 - replay the three transcripts and flip both rows to `implemented` (the replayers' `@pkey-feature identity.keyentry`);
-- pass `parity:check` and `gen:constants -- --check`;
+- pass `parity:check` and `gen constants --check`;
 - never wipe state or retry on the refusal, and repeat client-core's table.
 
 **Headless, every SDK:**
@@ -211,7 +211,7 @@ PX-W9b depends on PX-W9 and PX-W8. Each SDK must:
 - **Success line.** "{left} key entries left" (`signin.key.entriesLeftShort`).
 - **Refusal screen.** The title and body are the core copy above. It has **Add it in Polaris Key**, which opens `manageUrl` through `withManageKey` and `withManageReturn`, as a button. On a TV or console, or when a joypad is the only input, it shows a QR code without the key (§5.3 rule 5). It also has **Use a different key**.
 - **Not in PX-W9b.** The primary **Sign in** belongs to I-10a and I-10b, because it needs I-08.
-- **New kit copy.** `keyEntryLimit.manage` and `keyEntryLimit.scan` go into `packages/brand/kit-copy/en.json` and its eight packs (`de`, `es`, `fr`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`), then `pnpm gen:brand`.
+- **New kit copy.** `keyEntryLimit.manage` and `keyEntryLimit.scan` go into `packages/brand/kit-copy/en.json` and its eight packs (`de`, `es`, `fr`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`), then `pnpm gen brand`.
 
 | #   | SDK         | Headless files                                                                                                                                                                                                    | UI kit                                                                                                    |
 | --- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -372,10 +372,10 @@ The order is the parity order, and Godot may go first. Each SDK's licensing guid
 N="mise exec node@22 --"
 # PX-W9
 $N pnpm build && $N pnpm typecheck
-$N pnpm gen:corpus -- --check            # unchanged
-$N pnpm gen:transcripts -- --check       # three new files + Swift/Godot mirrors; all others byte-identical
-$N pnpm gen:constants -- --check         # errors.json, enums.json, 8 copy packs → six SDKs
-$N pnpm gen:settings -- --check && $N pnpm gen:platform-inventory -- --check
+$N pnpm gen corpus --check            # unchanged
+$N pnpm gen transcripts --check       # three new files + Swift/Godot mirrors; all others byte-identical
+$N pnpm gen constants --check         # errors.json, enums.json, 8 copy packs → six SDKs
+$N pnpm gen settings --check && $N pnpm gen platform-inventory --check
 $N pnpm parity:check                     # identity.keyentry, ui.kit.keyentry planned ×6
 $N pnpm --filter @polaris-key/cli bundle:action -- --check
 $N pnpm --filter @polaris-key/worker test -- keyEntries portal routeCoverage boundaries settings platformInventory licenseDelete
@@ -384,7 +384,7 @@ $N pnpm --filter @polaris-key/admin build && $N pnpm --filter @polaris-key/docs 
 $N pnpm test && $N pnpm lint && $N pnpm format
 node docs/research/2026-09-29-godot-omniplatform/program/check.mjs
 # PX-W9b, in addition
-$N pnpm --filter @polaris-key/client-core test && $N pnpm gen:brand -- --check && $N pnpm ui:lint && $N pnpm ui:report
+$N pnpm --filter @polaris-key/client-core test && $N pnpm gen brand --check && $N pnpm ui:lint && $N pnpm ui:report
 ( cd sdks/python && .venv/bin/python -m pytest -q ); ( cd sdks/swift && swift test ); sdks/godot/tools/run_tests.sh
 ( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :sdk:test :conformance:test )
 ```

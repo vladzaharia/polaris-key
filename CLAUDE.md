@@ -23,6 +23,13 @@ Prefix every JS/TS command with the pinned Node: `mise exec node@22 -- pnpm <cmd
 Node major, `better-sqlite3` fails to build and the entire worker package fails to _collect_ —
 the failure will not look like the change you made.
 
+## Generated files
+
+Every generator is one entry in `tools/generators.ts`. `pnpm gen` regenerates them all, `pnpm gen --check`
+is the one drift gate (CI, the lead's gate and `.husky/pre-commit --fast` read it), `pnpm gen --changed`
+runs only the families your branch touches, and `pnpm gen <family>` runs one. Never hand-edit a generated
+file; there are no per-family `gen:*` scripts.
+
 ## Waiting on long jobs
 
 Minimise idle time. Sleep as little as reasonable:

@@ -1,16 +1,16 @@
 # P3-02 Implement the wire v4 contract and corpus (feed, release, malleability, update and outlet matrices)
 
-| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                                                                                                                                                                                                           |
-| Size        | 2.75–3.25 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                             |
-| Depends on  | [P3-01](P3-01-wire-v4-plan.md), [S-06](S-06-outlet-signals.md)                                                                                                                                                                                                                                                                                                                                       |
-| Unblocks    | [P3-03](P3-03-feed-composition.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md), [P3-11](P3-11-outlet-detection.md), [P3-12](P3-12-worker-representability.md), [P4-04](P4-04-content-corpus-v1.md), [P4-21](P4-21-packs-wire-core.md), [P6-06](P6-06-kotlin-core-runner.md)                          |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                |
-| Plan mode   | yes: execute the approved `plans/P3-01.md`; do not start until a human has merged it                                                                                                                                                                                                                                                                                                                 |
-| Gates       | `PROTOCOL_VERSION` 3 → 4; corpus drift gate (`pnpm gen:corpus -- --check`, with the Swift and Godot mirrors); all SDKs (the new `jwsCases`, the v3 claim cases and the pointer-set sections run in every existing runner); constants (`gen:constants`); transcripts (`gen:transcripts`); parity (`parity:check`); generated docs (`reference/corpus.mdx`, `reference/error-codes.mdx`); threat model |
-| Human input | none beyond the approved plan                                                                                                                                                                                                                                                                                                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P3: Signed feed, decision, feeds (wire v4)                                                                                                                                                                                                                                                                                                                                                        |
+| Size        | 2.75–3.25 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                          |
+| Depends on  | [P3-01](P3-01-wire-v4-plan.md), [S-06](S-06-outlet-signals.md)                                                                                                                                                                                                                                                                                                                                    |
+| Unblocks    | [P3-03](P3-03-feed-composition.md), [P3-04](P3-04-v4-node.md), [P3-05](P3-05-v4-react.md), [P3-06](P3-06-v4-python.md), [P3-07](P3-07-v4-swift.md), [P3-08](P3-08-v4-godot.md), [P3-11](P3-11-outlet-detection.md), [P3-12](P3-12-worker-representability.md), [P4-04](P4-04-content-corpus-v1.md), [P4-21](P4-21-packs-wire-core.md), [P6-06](P6-06-kotlin-core-runner.md)                       |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                             |
+| Plan mode   | yes: execute the approved `plans/P3-01.md`; do not start until a human has merged it                                                                                                                                                                                                                                                                                                              |
+| Gates       | `PROTOCOL_VERSION` 3 → 4; corpus drift gate (`pnpm gen corpus --check`, with the Swift and Godot mirrors); all SDKs (the new `jwsCases`, the v3 claim cases and the pointer-set sections run in every existing runner); constants (`gen constants`); transcripts (`gen transcripts`); parity (`parity:check`); generated docs (`reference/corpus.mdx`, `reference/error-codes.mdx`); threat model |
+| Human input | none beyond the approved plan                                                                                                                                                                                                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                         |
 
 ## Goal
 
@@ -110,7 +110,7 @@ vectors today, so backends can diverge silently
     (the four functions [P3-03](P3-03-feed-composition.md) imports), with the Node runner's
     `versionCases` section and its claims section over the feed and record cases (§2.7, §5);
   - `MAX_WIRE_INTEGER`, `MAX_JSON_DEPTH` and `MAX_RECORD_JWS_BYTES` in `shared-protocol` and
-    `gen:constants`; `BUILD_ID_PATTERN` and `FEED_PLATFORM_PATTERN` (§2.3, §2.4);
+    `gen constants`; `BUILD_ID_PATTERN` and `FEED_PLATFORM_PATTERN` (§2.3, §2.4);
   - the generator's reference implementations and claim checks, which recompute every matrix
     row and prove every per-claim token, bound and minimum case, and §4.6's delta rule (§4.2,
     §4.9);
@@ -124,8 +124,8 @@ vectors today, so backends can diverge silently
     fast-forward in AT-3's new branch (§6);
   - `stage-matrix.json` version 2 and its ports (§4.8);
   - the `enums.json` additions, `outletKind` included (P2b-02 left it out), the four client codes
-    in `errors.json`, and `gen:constants`, with §2.8's vocabularies exactly;
-  - `gen:transcripts` (discovery's `protocolVersion`);
+    in `errors.json`, and `gen constants`, with §2.8's vocabularies exactly;
+  - `gen transcripts` (discovery's `protocolVersion`);
   - the `@noble/curves` devDependency in `tools`;
   - `shared-protocol/distribution.ts` (new subpath), `PLATFORM_NARROWING` included, with
     `OUTLET_KINDS`, `OutletKind` and `OUTLET_ID_PATTERN` moved there from
@@ -224,7 +224,7 @@ vectors today, so backends can diverge silently
 - [ ] `cases.json` contains `feedCases`, `releaseRecordCases` and the plan's new `jwsCases` ids;
       `update-matrix.json` and `outlet-matrix.json` exist with their version constants; the Swift
       mirror (and the Godot mirror, if present) contains all of them.
-- [ ] `pnpm gen:corpus -- --check` passes, and changing any one committed byte makes it fail.
+- [ ] `pnpm gen corpus --check` passes, and changing any one committed byte makes it fail.
 - [ ] The Node runner, `pytest`, `swift test` and the Godot runner (editor and release template, if
       `sdks/godot` exists) all pass, including every new `jwsCases` vector.
 - [ ] `reference/corpus.mdx` lists the new families and files; `docs gen:check` passes.
@@ -243,7 +243,7 @@ vectors today, so backends can diverge silently
 
 ```sh
 mise exec node@22 -- pnpm build
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm typecheck
 mise exec node@22 -- pnpm test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
