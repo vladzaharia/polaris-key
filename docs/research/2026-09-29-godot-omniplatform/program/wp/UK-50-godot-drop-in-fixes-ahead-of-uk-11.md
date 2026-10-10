@@ -61,16 +61,16 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 
 ## Acceptance criteria
 
-- [ ] OFFLINE → Try again → READY resolves the awaited `boot()` and changes the scene.
-- [ ] Every dialog opened from a live gate renders its content.
-- [ ] A re-boot after `sign_out()` shows key entry and Sign in.
-- [ ] From a cold boot with no pointer, focus lands on the first control and `ui_down` walks the chain.
-- [ ] The branded and neutral sign-in cards fit 1280×720 and 1280×800.
-- [ ] A wrong pin and a +2-day clock never show "Activated.".
-- [ ] No product screen shows the Pinned K.
-- [ ] No leak warning at exit.
-- [ ] `pkey-ux-reviewer` passes every changed screen.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] OFFLINE → Try again → READY resolves the awaited `boot()` and changes the scene.
+- [x] Every dialog opened from a live gate renders its content.
+- [x] A re-boot after `sign_out()` shows key entry and Sign in.
+- [x] From a cold boot with no pointer, focus lands on the first control and `ui_down` walks the chain.
+- [x] The branded and neutral sign-in cards fit 1280×720 and 1280×800.
+- [x] A wrong pin and a +2-day clock never show "Activated.".
+- [x] No product screen shows the Pinned K.
+- [x] No leak warning at exit.
+- [x] `pkey-ux-reviewer` passes every changed screen.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
