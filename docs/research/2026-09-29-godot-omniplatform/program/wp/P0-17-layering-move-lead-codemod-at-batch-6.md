@@ -118,7 +118,7 @@ Every file keeps its basename. `admin/**` not listed below becomes `console/**`.
 
 - [x] Transitive boundary test is blocking (P0-48 seeded it report-only)
 - [x] No re-export shim remains
-- [ ] Gate green with no behaviour change
+- [x] Gate green with no behaviour change
 
 ## Verify
 
