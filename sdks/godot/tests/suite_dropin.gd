@@ -124,10 +124,14 @@ func _retry(t: PKeyTestContext) -> void:
 	await _until(func() -> bool: return sdk4.boot_view != null and sdk4.boot_view.state["outcome"] == PKeyBoot.OFFLINE)
 	await _until(func() -> bool: return not sdk4._syncing)
 	h.serve_docs([h.F["token"]])
+	var restarts := [0]
+	sdk4.boot_view.stage_changed.connect(func(stage: String, _p: String) -> void:
+		if stage == "shell":
+			restarts[0] += 1)
 	sdk4.boot_view.retry()
 	ask4.call()
 	var joined := await _until(func() -> bool: return late.size() == 2)
-	t.check("retry: a boot() during a Retry joins it, and both awaits resolve", joined and late[0].outcome == PKeyBoot.READY and late[1].outcome == PKeyBoot.READY, str(late))
+	t.check("retry: a boot() during a Retry joins it, and both awaits resolve", joined and restarts[0] == 0 and late[0].outcome == PKeyBoot.READY and late[1].outcome == PKeyBoot.READY, "%s restarts %d" % [late, restarts[0]])
 	sdk4.queue_free()
 	await _tree().process_frame
 
