@@ -100,6 +100,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - **Builds or backs 3 mockup item(s):** `kitboard:godot.html:gate`, `kitboard:godot.html:sign-in`, `kitboard:godot.html:update-toast`.
 - `B10.3`, `kitboard:godot.html:update-toast`: B10: the toast keeps title-safe placement and the host-owns-pause rule (set process_mode so kit dialogs survive tree pause; verify in the engine); tell the Godot builder the desktop/tablet QR is dropped; QR-allowed contexts become a ui-matrix row (UK-02b).
 - `kitboard:godot.html:sign-in`: B10: the Godot QR is for pad-only/console input only; drop it on desktop, tablet and phone; show the vanity URL.
+
 ## Corrections (verified against the code)
 
 - The branch is based on `fix/godot-ui-responsive`, so registering that worktree is this branch.

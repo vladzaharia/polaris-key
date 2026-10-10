@@ -100,15 +100,15 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] UI tests drive a licence to expired and to revoked and reach the activation form through "Use a different key" and through Sign in without relaunching.
-- [ ] A device-limit refusal shows a working "Replace a device".
-- [ ] No `pkeyt_` in `String(describing:)`, `String(reflecting:)` or `dump`.
-- [ ] Contrast at least 4.5:1 on `#FF6A3D` in both schemes.
-- [ ] A licensed cold launch never renders the activation card (first-frame snapshot).
-- [ ] The README blocks compile in SP-45b's lane.
-- [ ] `pkey-ux-reviewer` passes every changed screen.
-- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] UI tests drive a licence to expired and to revoked and reach the activation form through "Use a different key" and through Sign in without relaunching.
+- [x] A device-limit refusal shows a working "Replace a device".
+- [x] No `pkeyt_` in `String(describing:)`, `String(reflecting:)` or `dump`.
+- [x] Contrast at least 4.5:1 on `#FF6A3D` in both schemes.
+- [x] A licensed cold launch never renders the activation card (first-frame snapshot).
+- [x] The README blocks compile in SP-45b's lane.
+- [x] `pkey-ux-reviewer` passes every changed screen.
+- [x] The acceptance in "Design language v2 (2026-10-08)" above holds.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

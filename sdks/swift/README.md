@@ -380,14 +380,14 @@ struct MyApp: App {
 
 `GateOptions` is what you decide about the gate (`PolarisTheme` is how it looks):
 
-| Option                    | Default                  | What it does                                                                                                                                  |
-| ------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `showsKeyEntry`           | `true`                   | The licence-key field. Turn it off where the store's rules forbid key entry (App Store 3.1.1); sign-in and your own actions remain.          |
-| `offersOfflineActivation` | `false` on iOS, else `true` | "Activate offline", for a machine with no network. A phone has one, so iOS leaves it out unless you ask.                                  |
-| `offersFreeTier`          | `false`                  | "Continue free" (keyless enrolment); hidden for good once the server answers `enroll_disabled`.                                               |
-| `returnURL`               | none                     | Where the portal sends the person back after **Replace a device** (the device-limit refusal's link carries it).                               |
-| `renewURL`                | none                     | Your renewal or account page. An expired licence then leads with **Renew or manage**; without it, with **Try again**.                         |
-| `blockedAction`           | none                     | Your own action on an expired, revoked or version-blocked gate (a support link, an Update button), drawn under the gate's.                    |
+| Option                    | Default                     | What it does                                                                                                                        |
+| ------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `showsKeyEntry`           | `true`                      | The licence-key field. Turn it off where the store's rules forbid key entry (App Store 3.1.1); sign-in and your own actions remain. |
+| `offersOfflineActivation` | `false` on iOS, else `true` | "Activate offline", for a machine with no network. A phone has one, so iOS leaves it out unless you ask.                            |
+| `offersFreeTier`          | `false`                     | "Continue free" (keyless enrolment); hidden for good once the server answers `enroll_disabled`.                                     |
+| `returnURL`               | none                        | Where the portal sends the person back after **Replace a device** (the device-limit refusal's link carries it).                     |
+| `renewURL`                | none                        | Your renewal or account page. An expired licence then leads with **Renew or manage**; without it, with **Try again**.               |
+| `blockedAction`           | none                        | Your own action on an expired, revoked or version-blocked gate (a support link, an Update button), drawn under the gate's.          |
 
 A blocking state always has a way out (one filled action, the rest quiet): **expired** offers Renew
 or manage (when `renewURL` is set), Try again, Use a different key and Sign in; **revoked** offers
