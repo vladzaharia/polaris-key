@@ -1,8 +1,9 @@
-import { t } from "../../lib/copy.js";
 /**
  * Polaris Key license keys (PORTAL.md §4.17): `pkey_<product-slug>_<22 characters of
  * base64url>`, case-sensitive, never grouped or re-cased.
  */
+
+import { t } from "../../lib/copy.js";
 
 /**
  * The masked display: the prefix, the slug, an ellipsis and the last 4 (`pkey_tidewater_…KQ2w`).

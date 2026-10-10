@@ -94,6 +94,15 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+### Corrections found in the code (builder, P0-36)
+
+- `lib/copy.ts` is built: `t(key, args)` over `KIT_COPY_EN` with ui-core's `Copy` formatter (UK-03 landed first, so no formatter ships here), plus `tParts` for a sentence that holds a rendered argument (the bold address in `signin.code.sent`). `@polaris-key/ui-core` is a new admin dependency.
+- The "41 verbatim strings" were about 130 sites by an exact match against the catalog; the lint (`test/copyLint.test.ts`, "the portal copy lint") now fails on any, with a negative control. Six catalog keys and one sentence are listed as same words, another sentence, each with its reason.
+- The "24 refusal-code wordings" are not retyped catalog text: the portal words its own browser errors (`portal/errors.ts`), and only three titles equal catalog titles (`signin.network.title`, `signin.console.signedOut`, `core.fallback.title`). Those three read the catalog; the rest need the owner's call (the portal's wording is for a browser, `core.codes.unauthorized` says "this device"). The `codeErrorText` triple is one module, `portal/copy/codeEntry.ts`.
+- About 35 `signin.*` placeholders and the `profile.*` and `getIt.*` tables have **no catalog key**; they stay in the portal under the key they will take, and the lint cannot flag them until the catalog holds them.
+- "Automatic grant" needs a catalog edit (`signin.choice.origin.signIn`, "From signing in" today) and a validator exception ("grant" is banned vocabulary in `packages/brand/scripts/kit-copy.ts`), then `pnpm gen`, which rewrites every SDK table. That is outside the portal tree and was not done here; the portal says "Automatic grant" in sentence case from its own constant until it is.
+- The ui-qa `portal` board over `e2e/portalStates.ts` is in `packages/ui-qa`, outside the portal tree: not done here.
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
@@ -104,9 +113,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] No verbatim customer-facing string in the portal (lint)
-- [ ] 'Automatic grant' comes from the catalog in sentence case
-- [ ] ST-36's e2e assertions (e2e/portal.e2e.test.ts) and PORTAL.md updated to 'Automatic grant'
+- [x] No verbatim customer-facing string in the portal (lint): every string equal to a catalog message; strings the catalog lacks are listed above
+- [ ] 'Automatic grant' comes from the catalog in sentence case (sentence case done; the catalog edit is open, see Corrections)
+- [x] ST-36's e2e assertions (e2e/portal.e2e.test.ts) and PORTAL.md updated to 'Automatic grant'
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

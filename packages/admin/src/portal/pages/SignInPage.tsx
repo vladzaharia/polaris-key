@@ -137,7 +137,7 @@ export function SignInPage(): React.ReactElement {
               {
                 kind: "methods",
                 email: step.email,
-                // signin.code.expiredRestart (PX-W4; joins the §5.2 catalog with UK-02a)
+                // signin.code.expiredRestart (PX-W4): no catalog key yet
                 notice: "That sign-in has expired. Continue to get a new code.",
               },
               "back",
@@ -601,7 +601,7 @@ function CodeStep({
         // one to use.
         setCapped(true);
         setStatus({
-          // signin.code.noMore (PX-W4; joins the §5.2 catalog with UK-02a)
+          // signin.code.noMore (PX-W4): no catalog key yet
           text: "No more codes can be sent for this sign-in. The latest code still works.",
           tone: "muted",
         });

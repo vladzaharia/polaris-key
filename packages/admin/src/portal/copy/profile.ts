@@ -1,12 +1,13 @@
-import { t } from "../../lib/copy.js";
 /**
  * Account → Profile's copy (PORTAL.md §4.26 Profile, §4.30, §6.2 "Profile"; PX-22).
  *
- * Marked for the copy catalog (UK-02a): the catalog serves the SDK UI kits today and the portal
- * does not read it yet, so the strings live here under the `profile.*` keys they move to, and the
+ * The catalog (`lib/copy.ts` `t()`) holds no `profile.*` keys yet, so the strings live here under
+ * the keys they will take, except the two it words (`signin.cancel`, `signin.retry`); the
  * sentences built from data are the functions below the table. US spelling, sentence case, no
  * jargon (§6.1): a sign-in method, never an "identity link".
  */
+
+import { t } from "../../lib/copy.js";
 export const PROFILE_COPY = {
   "profile.title": "Profile",
   "profile.subtitle":
