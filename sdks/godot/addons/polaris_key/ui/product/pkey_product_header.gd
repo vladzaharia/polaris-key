@@ -186,12 +186,15 @@ func _fit_name() -> void:
 		var words: Array = Array(_plain.split(" ", false)).filter(func(word: String) -> bool: return word.unicode_at(0) < 0x2e80 and word.unicode_at(word.length() - 1) < 0x2e80)
 		while want > least and font != null and _widest(font, words, want) > w:
 			want -= 1
-	if want < _name_size:
-		_name.add_theme_font_size_override("font_size", want)
-	elif _name_override > 0:
-		_name.add_theme_font_size_override("font_size", _name_override)
+	# 0: no override, the theme's own size (which follows the screen's scale). Only a change is
+	# applied: an override re-lays the label out, which resizes it and calls this again.
+	var target := want if want < _name_size else _name_override
+	var held := _name.get_theme_font_size("font_size") if _name.has_theme_font_size_override("font_size") else 0
+	if target == held:
+		return
+	if target > 0:
+		_name.add_theme_font_size_override("font_size", target)
 	else:
-		# The theme's own size, which follows the screen's scale.
 		_name.remove_theme_font_size_override("font_size")
 
 

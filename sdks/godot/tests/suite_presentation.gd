@@ -381,6 +381,31 @@ func _fetch(t: PKeyTestContext) -> void:
 		before = _server.requests.size()
 		t.check("fetch: a %s original with no sizes is no icon, and no request" % ctype, await src.icon(64) == null and _server.requests.size() == before)
 
+	# The host freed with a fetch in flight: a miss, never a script error (the kit fetches without
+	# waiting, and a game may change scenes meanwhile).
+	var gone_host := Node.new()
+	_host.add_child(gone_host)
+	var gone := _source()
+	gone.transport.host = gone_host
+	var gp := F.png(15)
+	var gic := F.icon(gp, "image/png", [], _server.base_url())
+	_routes[_path(gic["original"])] = {"hang": true}
+	gone.accept(F.manifest(F.member(F.DRIFT_KART, gic)))
+	var answers: Array = []
+	gone.icon_to(64, 1.0, func(x): answers.append(x))
+	await PKeyTestFixtures.frames(3)
+	gone_host.free()
+	await _until(func(): return answers.size() == 1)
+	t.check("fetch: a host freed mid-fetch is a miss", answers == [null], str(answers))
+	var direct := PKeyTransport.new(Node.new())
+	_host.add_child(direct.host)
+	var pending := {"r": null}
+	(func(): pending["r"] = await direct.request("GET", _server.base_url() + _path(gic["original"]))).call()
+	await PKeyTestFixtures.frames(3)
+	direct.host.free()
+	await _until(func(): return pending["r"] != null)
+	t.check("transport: a host freed mid-request is a network failure", pending["r"] != null and not pending["r"].ok and pending["r"].code == PKeyErrors.NETWORK, str(pending["r"]))
+
 	# Local-only never dials.
 	var local := _source(true)
 	var lp := F.png(14)

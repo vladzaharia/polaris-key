@@ -124,6 +124,9 @@ static func replay(tr: Dictionary) -> Array:
 	sdk.presentation_source.cache_dir = presentation_dir
 	var fails: Array = []
 	var cr: PKeyResult = sdk.configure(opts)
+	# configure() binds the kit, which fetches a presented icon from the image host: nothing a
+	# replay may reach (the recording is the Worker's only).
+	PKeyUiTheme.use_presentation(null)
 	if not cr.ok:
 		fails.append("configure: %s" % cr)
 	else:

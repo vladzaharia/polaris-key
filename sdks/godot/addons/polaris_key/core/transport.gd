@@ -194,6 +194,9 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 		req.queue_free()
 		return PKeyResult.failure(PKeyErrors.NETWORK, "The request could not start (error %d)." % err, {"error": err})
 	var res := await _await_completed(req, deadline)
+	if not is_instance_valid(req):
+		# The host was freed with the request in flight (a scene change, an SDK node freed).
+		return PKeyResult.failure(PKeyErrors.NETWORK, "The transport's host node was freed during the request.")
 	req.queue_free()
 	if res.is_empty():
 		return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": HTTPRequest.RESULT_TIMEOUT})
@@ -216,7 +219,8 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 
 
 ## The request_completed arguments, or [] once the wall-clock `deadline` (computed once in
-## `request()`; 0 means none) has passed (the request is then cancelled). Checked once per frame, as HTTPRequest polls; the
+## `request()`; 0 means none) has passed (the request is then cancelled), or once the request was
+## freed with its host. Checked once per frame, as HTTPRequest polls; the
 ## deadline must be seen on two checks, so HTTPRequest always gets a poll after it passes (one
 ## hitch frame cannot expire a request it never let run).
 func _await_completed(req: HTTPRequest, deadline: int) -> Array:
@@ -226,6 +230,8 @@ func _await_completed(req: HTTPRequest, deadline: int) -> Array:
 	var expired := false
 	var tree := req.get_tree()
 	while box.is_empty():
+		if not is_instance_valid(req):
+			return []
 		if deadline > 0 and Time.get_ticks_msec() >= deadline:
 			if expired:
 				req.cancel_request()
