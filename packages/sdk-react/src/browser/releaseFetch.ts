@@ -22,6 +22,7 @@
 // It is a standalone function, like `decideBrowserUpdate`, so the adapter and the transcript
 // replayer drive the same code.
 
+import type { IHasher } from "hash-wasm";
 import { verifyReleaseRecord } from "@polaris-key/client-core";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
@@ -233,8 +234,19 @@ export async function fetchReleaseBuild(
     );
   }
   // hash-wasm carries its wasm as base64: loaded here, on a download, never with the Provider.
-  const { createSHA256 } = await import("hash-wasm");
-  const hasher = await createSHA256();
+  let hasher: IHasher;
+  try {
+    const { createSHA256 } = await import("hash-wasm");
+    hasher = await createSHA256();
+  } catch {
+    // A chunk that will not load (offline, blocked, a stale deploy): typed, and the bytes are
+    // never accepted unhashed.
+    throw new PolarisError(
+      "network",
+      "The download could not be verified: the hashing module could not be loaded.",
+      ErrorCode.networkError,
+    );
+  }
   hasher.init();
   hasher.update(bytes);
   const sha256 = hasher.digest("hex");

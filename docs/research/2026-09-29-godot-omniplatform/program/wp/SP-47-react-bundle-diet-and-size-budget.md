@@ -44,9 +44,9 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 - Provider reached `hash-wasm` statically through `browser/releaseFetch.ts`, and the root barrel
   reached zstd-wasm through `packs/browserPacks.ts`; both are now `import()`.
 - Measured before: +83.4 KB (use-license) and +102.4 KB (license-gate) gzip with a 69 KB `.wasm`
-  emitted; after: +76.3 KB and +95.3 KB initial (+7.1 KB lazy hash-wasm chunk), no `.wasm`. The
+  emitted; after: +78.3 KB and +99.9 KB initial (+7.0 KB lazy hash-wasm chunk; Vite 8; Vite 6 measured +76.3 and +95.3), no `.wasm`. The
   remaining weight is the shared core (adapters, client-core, catalog, copy), outside this scope.
-- Budgets: 78 KB and 98 KB over bare React.
+- Budgets: 80 KB and 102 KB over bare React.
 
 ## Steps
 

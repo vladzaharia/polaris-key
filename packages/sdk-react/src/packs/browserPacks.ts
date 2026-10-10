@@ -22,6 +22,7 @@
 // facet, and the host's Node client reports `content`.
 
 import type { IHasher } from "hash-wasm";
+import type { loadZstdWasm as loadZstdWasmType } from "@polaris-key/zstd-wasm/browser";
 /** `kid` → raw Ed25519 public key, base64url. */
 type TrustSet = Record<string, string>;
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
@@ -140,7 +141,15 @@ export const hashWasmSha256: Sha256Port = () => {
       pending.length = 0;
       hasher = h;
       return h;
+    })
+    .catch((): never => {
+      throw new PackError(
+        ErrorCode.networkError,
+        "The hashing module could not be loaded.",
+      );
     });
+  // A failure surfaces from digest(); with no digest() call it must not be an unhandled rejection.
+  ready.catch(() => {});
   return {
     update(bytes) {
       if (hasher) hasher.update(bytes);
@@ -156,8 +165,16 @@ export const hashWasmSha256: Sha256Port = () => {
 /** `@polaris-key/zstd-wasm`'s browser decoder as a `ZstdPort` (wasm32: P = 30). */
 export async function browserZstd(): Promise<ZstdPort> {
   // Dynamic: the decoder's .wasm is fetched when a pack is first decoded, never bundled in.
-  const { loadZstdWasm } = await import("@polaris-key/zstd-wasm/browser");
-  const z = await loadZstdWasm();
+  let z: Awaited<ReturnType<typeof loadZstdWasmType>>;
+  try {
+    const { loadZstdWasm } = await import("@polaris-key/zstd-wasm/browser");
+    z = await loadZstdWasm();
+  } catch {
+    throw new PackError(
+      ErrorCode.networkError,
+      "The decompression module could not be loaded.",
+    );
+  }
   return {
     pointerBits: 30,
     decode: z.decode,

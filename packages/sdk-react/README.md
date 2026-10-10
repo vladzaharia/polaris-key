@@ -157,11 +157,13 @@ load.
 
 | app imports                              | gzip JS over bare React | budget |
 | ---------------------------------------- | ----------------------- | ------ |
-| `<PolarisKeyProvider>` + `useLicense`    | +76.3 KB                | 78 KB  |
-| `<PolarisKeyProvider>` + `<LicenseGate>` | +95.3 KB                | 98 KB  |
+| `<PolarisKeyProvider>` + `useLicense`    | +78.3 KB                | 80 KB  |
+| `<PolarisKeyProvider>` + `<LicenseGate>` | +99.9 KB                | 102 KB |
 
-The root no longer re-exports `createBrowserPacks` and the pack handlers; import them from
-`@polaris-key/react/packs`.
+**Breaking:** the root no longer re-exports `createBrowserPacks`, `opfsPackStore`, `PackError`,
+`WASM_MEM_BUDGET`, `defaultWebMemBudget`, `DataJsonHandler`, `L10nTableHandler`, `MlModelHandler`
+and the types `BrowserPacks`, `BrowserPacksOptions`, `StagedPack`, `PackCheckRefusal`, `L10nTable`
+and `MlModel`. Import them from `@polaris-key/react/packs` (or `/update`).
 
 ## Components
 

@@ -79,7 +79,7 @@ async function measure(name, source) {
     });
     const files = (Array.isArray(out) ? out : [out]).flatMap((o) => o.output);
     // Initial load = the entry chunk plus everything it imports statically. A dynamic import()
-    // chunk is fetched later: reported apart, not budgeted, and the wasm check skips it.
+    // chunk is fetched later: reported apart and not budgeted. A .wasm file anywhere fails the check; an inlined wasm is looked for in the initial load only.
     const chunks = new Map(
       files.filter((f) => f.type === "chunk").map((f) => [f.fileName, f]),
     );
