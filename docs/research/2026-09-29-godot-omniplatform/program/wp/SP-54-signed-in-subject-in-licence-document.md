@@ -22,6 +22,17 @@
 - **Sequencing.** After UK-03, and after SP-53 merges: rebase onto SP-53, swap its private decoder for `licenseUserOf` (one line, no corpus effect), run the **one batched** `pnpm gen corpus && node tools/gen-transcripts.mjs` over both sets, commit once, then `pnpm gen --check` once. It lands before I-24a and before SP-55, SP-56, SP-57 and SP-62, which read the member.
 - **Docs in this PR.** `docs/security/THREAT-MODEL.md` (the I-05 "device binding" bullet and the leaked-document and revocation-bound row), `docs/PRIVACY.md` (the signed-licence-documents line), `build/wire` and the generated corpus reference page.
 
+## Corrections found while implementing (2026-10-10)
+
+The code is the fact; these override the plan and the text above.
+
+- **No transcript changes.** `devicecode-happy.json` does not hold a subject-bound device: the device-code sign-in is the product's own OIDC, and `authorizeAndMint` (`services/identity/oidc.ts`) binds no pairwise subject (plans/I-04.md §8 Q6). `identity-attach.json` now exists (I-09 recorded it) but fetches its document at activation, before the binding is seeded. Regenerating every transcript with the Worker change writes no difference. `test/licenseDocUser.test.ts` pins that no recorded document carries `user`; I-08's passthrough sign-in binds a subject, so its re-recorded transcripts are the first to carry the member and belong in that test's `SIGNED_IN` set.
+- **`PAIRWISE_SUBJECT_PATTERN` already existed** in `shared-protocol/src/identity.ts` (I-09), as a string. It is now declared in `src/core.ts` and re-exported by `/identity`; the barrel exports neither. The Worker's `RegExp` (`core/accounts/accountSubjects.ts`) and `docProfile` compile it from that one declaration.
+- **Paths after P0-17.** `docProfile` is `core/licensing/authz.ts`; the bundle mint is `console/handlers/bundles.ts` (it keeps `docProfile(license)`). The fused browser-session document (`services/identity/browserSession.ts`) is unsigned page JSON, not a licence document, and keeps `docProfile(license)` too.
+- **`build/wire` does not exist.** The wire page is `packages/docs/src/content/docs/reference/protocol/license-document.md`. Docs pages may not name programme ids (`lint:docs`), so `contribute/corpus.md` describes the sections without them.
+- **Two existing Worker tests pinned the old contract** ("the binding never changes the document"): `identityAccount.test.ts` (subject and sign-out) and `identityPerProduct.test.ts` (Identity off). They now pin that the binding adds exactly `profile.user` and that sign-out or Identity off removes it.
+- **client-core** gains a `./license` subpath export beside the barrel export, like `./backend`.
+
 ## Goal
 
 Signed-in subject in the licence document (`profile.user` whenever `devices.subject` is set), as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -57,8 +68,8 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 ## Acceptance criteria
 
 - [x] A `pkey-wire-planner` has written and the lead has approved `plans/SP-54.md` (2026-10-09), amending `plans/I-24.md` §2.1, §2.2, §2.4 and §4.
-- [ ] `profile.user` appears for every subject-bound device and for no other; a Worker property test shows every other document is byte-identical.
-- [ ] Old v4 verifiers ignore the member (V4 §3.2); `PROTOCOL_VERSION` unchanged.
+- [x] `profile.user` appears for every subject-bound device and for no other; a Worker property test shows every other document is byte-identical. (`packages/worker/test/licenseDocUser.test.ts`: `docProfile` over a grid of licences and stored values, the route for a signed-in, key-entry, malformed and signed-out device, and every recorded transcript document; `pnpm gen transcripts` writes no difference.)
+- [x] Old v4 verifiers ignore the member (V4 §3.2); `PROTOCOL_VERSION` unchanged. (`licenseDocCases` `license-profile-user-*`, accepted by every runner's existing licence-document replay; `PROTOCOL_VERSION` 4, `corpusVersion` 2.)
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
