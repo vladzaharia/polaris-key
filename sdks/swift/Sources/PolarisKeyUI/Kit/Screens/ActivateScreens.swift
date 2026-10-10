@@ -30,15 +30,25 @@ public struct ActivateView: View {
 
     public var body: some View {
         KitScreenScaffold(header: true) {
+            // Done names its state: the outcome is the heading, not a row under the old one.
             VStack(alignment: .leading, spacing: 6) {
-                KitText("activate.title", [:], .title, color: .strong)
-                    .accessibilityAddTraits(.isHeader)
-                KitText("activate.lede", [:], .body, color: .default)
+                KitText(
+                    screen.state == .done
+                        ? screen.lineOrKey("core.activation.ok.title") : CopyLine("activate.title"),
+                    .title, color: .strong
+                )
+                .accessibilityAddTraits(.isHeader)
+                KitText(
+                    screen.state == .done
+                        ? screen.lineOrKey("core.activation.ok.message")
+                        : CopyLine("activate.lede"),
+                    .body, color: .default)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
             ActivateBody(
-                screen: screen, text: $text, onSubmit: onSubmit, onReplaceDevice: onReplaceDevice)
+                screen: screen, text: $text, onSubmit: onSubmit, onReplaceDevice: onReplaceDevice,
+                outcomeIsHeading: true)
         } actions: {
             ActivateActions(
                 screen: screen, onSubmit: onSubmit, onReplaceDevice: onReplaceDevice,
@@ -54,6 +64,8 @@ struct ActivateBody: View {
     @Binding var text: String
     var onSubmit: () -> Void
     var onReplaceDevice: (() -> Void)?
+    /// Activate's own screen titles the outcome; an embedding form shows it here.
+    var outcomeIsHeading = false
 
     var body: some View {
         kitStyle { style in
@@ -76,9 +88,14 @@ struct ActivateBody: View {
                     .foregroundStyle(style.palette.success)
                     .symbolEffect(.bounce, options: .nonRepeating, isActive: !style.reduceMotion)
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    KitText(screen.lineOrKey("core.activation.ok.title"), .headline, color: .strong)
-                    KitText(screen.lineOrKey("core.activation.ok.message"), .body, color: .default)
+                // On Activate's own screen the outcome is already the heading.
+                if !outcomeIsHeading {
+                    VStack(alignment: .leading, spacing: 4) {
+                        KitText(
+                            screen.lineOrKey("core.activation.ok.title"), .headline, color: .strong)
+                        KitText(
+                            screen.lineOrKey("core.activation.ok.message"), .body, color: .default)
+                    }
                 }
             }
         case .deviceLimit, .rejected:

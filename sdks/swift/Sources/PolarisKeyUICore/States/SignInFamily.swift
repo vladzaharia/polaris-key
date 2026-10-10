@@ -54,8 +54,11 @@ extension KitStates {
             if error.code == "sign-in-unavailable" {
                 return KitScreen(.error, [c.line("signIn.noMethods", c.productArg)])
             }
+            // The method's name only when known: without it the line is incomplete and the view
+            // keeps the methods in place without a sentence that starts mid-thought.
             return KitScreen(
-                .error, [c.line("signIn.methodError", ["method": .text(s.method ?? "")])])
+                .error,
+                [c.line("signIn.methodError", s.method.map { ["method": .text($0)] } ?? [:])])
         }
         if s.outcome == .expired {
             return KitScreen(.expired, [c.line("signin.handoff.tooLong"), c.line("signin.again")])

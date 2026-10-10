@@ -120,6 +120,19 @@ public struct KeyField: View {
         self.onSubmit = onSubmit
     }
 
+    /// Not being edited, with a key in it.
+    private var atRest: Bool { !focused && !text.isEmpty }
+
+    /// A key that does not fit, at rest: the `pkey_<product>_` prefix and the last six
+    /// characters (§4.3), so the person sees which product and which key.
+    static func shortened(_ key: String) -> String {
+        guard key.count > 12, let cut = key.lastIndex(of: "_") else { return key }
+        let prefix = key[...cut]
+        let rest = key[key.index(after: cut)...]
+        guard rest.count > 6 else { return key }
+        return prefix + "…" + rest.suffix(6)
+    }
+
     private var invalid: Bool {
         screen.state == .rejected
             && (screen.shows("part.keyField.malformed")
@@ -138,7 +151,21 @@ public struct KeyField: View {
                     )
                     .font(style.font(.key))
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    // At rest a long key is drawn by the overlay, which keeps the prefix.
+                    .foregroundStyle(atRest ? Color.clear : style.palette.textStrong)
+                    .overlay(alignment: .leading) {
+                        if atRest {
+                            ViewThatFits(in: .horizontal) {
+                                Text(verbatim: text).fixedSize()
+                                Text(verbatim: KeyField.shortened(text))
+                            }
+                            .font(style.font(.key))
+                            .lineLimit(1)
+                            .foregroundStyle(style.palette.textStrong)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                        }
+                    }
                     .autocorrectionDisabled()
                     #if os(iOS)
                         .textInputAutocapitalization(.never)

@@ -70,6 +70,53 @@ final class PreviewStateTests: XCTestCase {
         XCTAssertEqual(KitCopy.bundled.format("no.such.key", locale: "en"), "no.such.key")
     }
 
+    func testALineIsCompleteOnlyWithEveryArgumentItsMessageNames() {
+        XCTAssertFalse(CopyLine("updateProgress.downloading", ["size": "24 MB"]).isComplete())
+        XCTAssertTrue(
+            CopyLine(
+                "updateProgress.downloading", ["size": "24 MB", "total": "61 MB", "time": "4:12"]
+            ).isComplete())
+        XCTAssertTrue(CopyLine("common.tryAgain").isComplete())
+        XCTAssertEqual(
+            KitMessageFormat.argumentNames("{count, plural, one {# of {name}} other {#}} {x}"),
+            ["count", "name", "x"])
+    }
+
+    func testProgressNeverInventsASize() {
+        // Fraction only (the matrix vocabulary): no size, so the line is not drawn.
+        let fractionOnly = PolarisKeyPreviewState.base {
+            $0.update = KitUpdate(
+                action: "binary", version: "2.5.0",
+                progress: KitUpdateProgress(phase: "download", fraction: 0.4))
+        }
+        let line = KitStates.updateProgress(fractionOnly).line("updateProgress.downloading")
+        XCTAssertNotNil(line)
+        XCTAssertFalse(line!.isComplete())
+        // Counted bytes and a time left: "24.4 MB of 61 MB · 4:12 left".
+        let counted = PolarisKeyPreviewState.all.first {
+            $0.component == .updateProgress && $0.state == "downloading"
+        }!
+        let full = KitStates.updateProgress(counted.inputs).line("updateProgress.downloading")!
+        XCTAssertTrue(full.isComplete())
+        XCTAssertEqual(full.args["time"], "4:12")
+    }
+
+    func testReleaseDatesAreNeverRawISO() {
+        let day = KitFormat.day("2026-09-30")
+        XCTAssertNotEqual(day, "2026-09-30")
+        XCTAssertTrue(day.contains("2026"))
+        XCTAssertEqual(KitFormat.day("soon"), "soon")
+    }
+
+    func testTheSignInErrorNeverStartsMidSentence() {
+        var inputs = PolarisKeyPreviewState.base { $0.error = KitError(code: "sign-in-failed") }
+        XCTAssertFalse(KitStates.signIn(inputs).line("signIn.methodError")!.isComplete())
+        inputs.signIn = KitSignIn()
+        inputs.signIn?.method = "Apple"
+        let line = KitStates.signIn(inputs).line("signIn.methodError")!
+        XCTAssertTrue(KitCopy.bundled.format(line, locale: "en").hasPrefix("Apple sign-in"))
+    }
+
     func testLocalesResolveToTheirPack() {
         let copy = KitCopy.bundled
         XCTAssertEqual(copy.packLocale(for: "pt-BR"), "pt-BR")

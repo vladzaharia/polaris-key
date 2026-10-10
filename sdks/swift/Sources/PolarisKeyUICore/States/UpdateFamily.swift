@@ -69,7 +69,7 @@ extension KitStates {
                     .downloading,
                     [
                         c.line("update.downloading", c.progressArgs),
-                        c.line("update.timeLeft", ["time": ""]),
+                        c.line("update.timeLeft", c.progressArgs),
                         c.line("a11y.progress", c.progressArgs), c.line("update.later"),
                         c.line("update.restartWhenReady"),
                     ])

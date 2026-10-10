@@ -5,8 +5,10 @@
 //     device class: raising the keyboard never changes the arrangement or rebuilds a field;
 //   * split (identity pane | title, lede, act) only at width ≥ 1.15 × height and at least
 //     760 × 520; the row capped at 1040 with a 48 pt gutter, both panes top-aligned;
-//   * otherwise the tall form: the heading block near the upper third (spacers 1:2), the hero icon
-//     at 120 pt, the act docked 24 pt above the bottom safe area and riding above the keyboard;
+//   * otherwise the tall form: a hero screen's block near the upper third (spacers 1:2), the hero
+//     icon at 120 pt; a focused step's header pinned at one inset (8 % of the height, 16 to 88 pt)
+//     so it never moves between steps; the act docked 24 pt above the bottom safe area and riding
+//     above the keyboard;
 //   * iPad portrait and other wide tall windows: one column of about 480 pt, never two panes;
 //   * at short heights the hero gives way first (DL3): 120 → 72 → the one-line header strip.
 
@@ -22,6 +24,11 @@ public enum KitArrangement: Sendable, Equatable {
     public static func of(_ size: CGSize) -> KitArrangement {
         size.width >= 1.15 * size.height && size.width >= 760 && size.height >= 520
             ? .split : .tall
+    }
+
+    /// A focused step's header inset from the top of the safe area at window `height`.
+    public static func topInset(height: CGFloat) -> CGFloat {
+        min(max(height * 0.08, 16), 88)
     }
 
     /// The hero icon's size at `height` (DL3: decoration gives way first).
@@ -92,8 +99,15 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 0) {
-                    Spacer(minLength: style.space(.md))
-                    VStack(spacing: style.space(.md)) {
+                    // A hero screen centres its block near the upper third (spacers 1:2); a
+                    // focused step pins its header at one inset from the window, so the header
+                    // stays put while the steps of one form morph under it (SIGN-IN §3.17).
+                    if hero {
+                        Spacer(minLength: style.space(.md))
+                    } else {
+                        Color.clear.frame(height: KitArrangement.topInset(height: window.height))
+                    }
+                    VStack(alignment: hero ? .center : .leading, spacing: style.space(.md)) {
                         if let size = heroIcon(window.height) {
                             ProductIcon(size: size)
                                 .padding(.bottom, style.space(.xs))
@@ -101,11 +115,15 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                             ProductHeader(tier: tier)
                                 .frame(maxWidth: .infinity, alignment: hero ? .center : .leading)
                         }
-                        heading()
-                        content()
+                        Group {
+                            heading()
+                            content()
+                        }
+                        // A body narrower than the column starts at the title's edge.
+                        .frame(maxWidth: .infinity, alignment: hero ? .center : .leading)
                     }
                     Spacer(minLength: style.space(.lg))
-                    Spacer(minLength: 0)
+                    if hero { Spacer(minLength: 0) }
                     VStack(spacing: style.space(.md)) {
                         actions()
                         footer()

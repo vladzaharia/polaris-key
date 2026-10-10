@@ -152,10 +152,21 @@ public struct KitResolvedStyle: Sendable, Equatable {
             return Font.custom(face, size: size, relativeTo: spec.textStyle).weight(
                 spec.weight.swiftUI)
         }
-        guard let name = KitFonts.rubikName(spec.weight) else {
+        // Rubik has no kana, hanzi or hangul: the system's fallback for them is regular weight,
+        // beside SemiBold Latin (DL12). The CJK locales take the system face, whose cascade
+        // carries every weight.
+        guard !usesCJK, let name = KitFonts.rubikName(spec.weight) else {
             return Font.system(spec.textStyle).weight(spec.weight.swiftUI)
         }
         return Font.custom(name, size: size, relativeTo: spec.textStyle)
+    }
+
+    /// Whether the copy's locale is written in a CJK script.
+    var usesCJK: Bool {
+        let language = locale.split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map {
+            $0.lowercased()
+        }
+        return ["ja", "zh", "ko"].contains(language ?? "")
     }
 }
 
@@ -300,7 +311,9 @@ enum KitPaletteResolver {
         if preset == .native {
             p.page = Color.systemGroupedGround
             p.raised = Color.secondarySystemGroupedGround
-            p.sunken = Color.tertiarySystemGroupedGround
+            // Fields and tiles need a ground on the grouped page (DL2, DL13): the tertiary
+            // grouped colour is the page itself in light.
+            p.sunken = Color.secondarySystemGroupedGround
             p.textStrong = .primary
             p.textDefault = .primary
             p.textMuted = .secondary

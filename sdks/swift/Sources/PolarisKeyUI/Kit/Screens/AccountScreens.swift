@@ -198,7 +198,11 @@ public struct AccountAndLicenseSection: View {
                     PaneText(CopyLine("account.cloudSync"), .body, color: .default)
                 }
             }
-            if screen.shows("account.updates") {
+            // A group header only over rows that render (never an empty "Updates").
+            if screen.shows("account.updates"),
+                screen.shows("account.autoUpdate") || screen.shows("update.checkNow")
+                    || (version != nil && screen.shows("account.version"))
+            {
                 Section {
                     if screen.shows("account.autoUpdate") {
                         Toggle(isOn: $autoUpdate) {
@@ -252,53 +256,90 @@ public struct DevicesSection: View {
     let devices: [KitDevice]
     var onRemove: (KitDevice) -> Void
     var onRetry: () -> Void
+    var onManage: () -> Void
+    /// The device a Remove waits on, confirmed first (it signs that device out).
+    @State private var removing: KitDevice?
     @Environment(\.polarisKeyStrings) private var strings
 
     public init(
         screen: KitScreen<DevicesState>, devices: [KitDevice],
         onRemove: @escaping (KitDevice) -> Void,
-        onRetry: @escaping () -> Void
+        onRetry: @escaping () -> Void, onManage: @escaping () -> Void = {}
     ) {
         self.screen = screen
         self.devices = devices
         self.onRemove = onRemove
         self.onRetry = onRetry
+        self.onManage = onManage
     }
 
     public var body: some View {
-        Section {
-            switch screen.state {
-            case .loading:
-                LoadingIndicator(CopyLine("common.loading"))
-            case .error:
-                if let line = screen.copy.first(where: { $0.key != "common.tryAgain" }) {
-                    PaneText(line, .body, color: .default)
-                }
-                Button(strings.string("common.tryAgain"), action: onRetry)
-            case .empty:
-                PaneText(CopyLine("devices.empty"), .body, color: .default)
-            case .browserMode:
-                PaneText(CopyLine("devices.browser"), .body, color: .default)
-            default:
-                ForEach(Array(devices.enumerated()), id: \.offset) { _, device in
-                    DeviceRow(
-                        name: device.name, formFactor: device.formFactor.rawValue,
-                        meta: strings.string(
-                            "devices.meta",
-                            [
-                                "platform": .text(KitFormat.platformName(device.platform)),
-                                "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
-                            ])
-                    )
-                    .swipeActions {
-                        Button(strings.string("devices.remove"), role: .destructive) {
-                            onRemove(device)
+        kitStyle { style in
+            Section {
+                switch screen.state {
+                case .loading:
+                    LoadingIndicator(CopyLine("common.loading"))
+                case .error:
+                    if let line = screen.copy.first(where: { $0.key != "common.tryAgain" }) {
+                        PaneText(line, .body, color: .default)
+                    }
+                    Button(strings.string("common.tryAgain"), action: onRetry)
+                case .empty:
+                    PaneText(CopyLine("devices.empty"), .body, color: .default)
+                case .browserMode:
+                    // The sentence and the way there: never a dead end.
+                    PaneText(CopyLine("devices.browser"), .body, color: .muted)
+                    if screen.shows("devices.manage") {
+                        Button(action: onManage) {
+                            HStack {
+                                PaneText(CopyLine("devices.manage"), .body, color: .accent)
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .foregroundStyle(style.palette.textMuted)
+                                    .accessibilityLabel(strings.string("a11y.externalLink"))
+                            }
+                        }
+                    }
+                default:
+                    ForEach(Array(devices.enumerated()), id: \.offset) { _, device in
+                        DeviceRow(
+                            name: device.name, formFactor: device.formFactor.rawValue,
+                            meta: strings.string(
+                                "devices.meta",
+                                [
+                                    "platform": .text(KitFormat.platformName(device.platform)),
+                                    "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
+                                ])
+                        )
+                        .swipeActions {
+                            Button(strings.string("devices.remove"), role: .destructive) {
+                                removing = device
+                            }
                         }
                     }
                 }
+            } header: {
+                PaneText(CopyLine("devices.title"), .footnote, color: .muted)
             }
-        } header: {
-            PaneText(CopyLine("devices.title"), .footnote, color: .muted)
+            .confirmationDialog(
+                removing.map {
+                    strings.string(
+                        "devices.removeConfirm",
+                        [
+                            "device": .text($0.name ?? strings.string("devices.unnamed")),
+                            "product": .text(style.identity.name),
+                        ])
+                } ?? "",
+                isPresented: Binding(
+                    get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button(strings.string("devices.remove"), role: .destructive) {
+                    if let device = removing { onRemove(device) }
+                    removing = nil
+                }
+                Button(strings.string("common.cancel"), role: .cancel) { removing = nil }
+            }
         }
     }
 }
@@ -374,27 +415,51 @@ public struct SettingsSection: View {
 /// never invents checkout.
 public struct PaywallView: View {
     let screen: KitScreen<PaywallState>
+    /// What the tier adds, as the product names it.
+    var features: [String]
     var onPortal: () -> Void
     var onRedeem: () -> Void
 
     public init(
-        screen: KitScreen<PaywallState>, onPortal: @escaping () -> Void,
+        screen: KitScreen<PaywallState>, features: [String] = [], onPortal: @escaping () -> Void,
         onRedeem: @escaping () -> Void
     ) {
         self.screen = screen
+        self.features = features
         self.onPortal = onPortal
         self.onRedeem = onRedeem
     }
 
     public var body: some View {
         KitScreenScaffold(hero: true, header: false) {
-            if let title = screen.line("paywall.title") ?? screen.line("paywall.notAvailable") {
+            if let title = screen.line("paywall.title") {
                 KitText(title, .title, color: .strong, alignment: .center)
                     .accessibilityAddTraits(.isHeader)
             }
         } content: {
-            if let includes = screen.line("paywall.includes") {
-                KitText(includes, .body, color: .default, alignment: .center)
+            // Not available is a sentence, not a heading.
+            if let sentence = screen.line("paywall.notAvailable") {
+                KitText(sentence, .body, color: .default, alignment: .center)
+            }
+            if let includes = screen.line("paywall.includes"), includes.isComplete(),
+                !features.isEmpty
+            {
+                kitStyle { style in
+                    VStack(alignment: .leading, spacing: style.space(.xs)) {
+                        KitText(includes, .label, color: .strong)
+                        ForEach(features, id: \.self) { feature in
+                            Label {
+                                Text(feature)
+                                    .font(style.font(.body))
+                                    .foregroundStyle(style.palette.textDefault)
+                            } icon: {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(style.palette.accentFg)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         } actions: {
             KitActionStack {

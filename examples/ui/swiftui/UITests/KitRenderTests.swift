@@ -41,7 +41,8 @@ final class KitRenderTests: XCTestCase {
     /// The states the matrix renders in full; the rest render at the default row only.
     static let full = [
         "Welcome.default", "Activate.parsed", "Activate.device-limit", "SignIn.methods",
-        "SignInHandoff.code", "StatusScreen.revoked",
+        "SignInHandoff.code", "StatusScreen.revoked", "AccountAndLicense.signed-in",
+        "UpdatePrompt.store",
     ]
 
     static let all = [
@@ -171,8 +172,9 @@ final class KitRenderTests: XCTestCase {
         let name =
             "\(device)-\(orientationName)-\(type)-\(preset)\(locale.map { "-\($0)" } ?? "")-\(scheme)"
         let raw = XCUIScreen.main.screenshot()
-        // A landscape screenshot comes back in the panel's portrait orientation: turn it upright.
-        let upright = orientation == .portrait ? raw.image : Self.turnedUpright(raw.image)
+        // A landscape screenshot's pixels are in the panel's portrait orientation, with an
+        // orientation flag that PNG encoding drops: redraw it upright.
+        let upright = orientation == .portrait ? raw.image : Self.upright(raw.image)
         let attachment = XCTAttachment(image: upright)
         attachment.name = "\(state) \(name)"
         attachment.lifetime = .keepAlways
@@ -288,19 +290,13 @@ final class KitRenderTests: XCTestCase {
         }
     }
 
-    /// `image` turned a quarter counter-clockwise (a landscape-left screenshot, upright).
-    static func turnedUpright(_ image: UIImage) -> UIImage {
-        let size = CGSize(width: image.size.height, height: image.size.width)
+    /// `image` redrawn with its orientation applied, so its pixels are upright (`draw(in:)`
+    /// honours `imageOrientation`; `pngData()` and `cgImage` do not).
+    static func upright(_ image: UIImage) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = image.scale
-        return UIGraphicsImageRenderer(size: size, format: format).image { ctx in
-            let c = ctx.cgContext
-            c.translateBy(x: size.width / 2, y: size.height / 2)
-            c.rotate(by: -.pi / 2)
-            image.draw(
-                in: CGRect(
-                    x: -image.size.width / 2, y: -image.size.height / 2, width: image.size.width,
-                    height: image.size.height))
+        return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
         }
     }
 

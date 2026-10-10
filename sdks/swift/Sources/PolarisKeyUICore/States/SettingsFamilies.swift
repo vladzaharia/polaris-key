@@ -132,7 +132,8 @@ extension KitStates {
         let c = Ctx(i)
         guard i.isOn(.license) else { return .hidden }
         if i.loading == true { return KitScreen(.loading, [c.line("common.loading")]) }
-        let tier: [String: CopyArgument] = ["product": c.product, "tier": ""]
+        let tierName = i.offers?.tier
+        let tier: [String: CopyArgument] = ["product": c.product, "tier": .text(tierName ?? "")]
         if i.pending == .purchase {
             return KitScreen(.purchasing, [c.line("paywall.purchasing"), c.line("a11y.busy")])
         }
@@ -145,7 +146,11 @@ extension KitStates {
         if !offers.available {
             return KitScreen(.notAvailable, [c.line("paywall.notAvailable", c.productArg)])
         }
-        var lines = [c.line("paywall.title", tier), c.line("paywall.includes", tier)]
+        // "{tier} includes" only introduces a list: without the tier and its features the line
+        // carries no tier, so it is incomplete and not drawn.
+        let includes: [String: CopyArgument] =
+            tierName != nil && !(offers.features ?? []).isEmpty ? tier : [:]
+        var lines = [c.line("paywall.title", tier), c.line("paywall.includes", includes)]
         lines.append(
             i.capabilities.purchase
                 ? c.line("paywall.upgrade", tier) : c.line("paywall.portal"))
@@ -158,7 +163,7 @@ extension KitStates {
     public static func entitlementGate(_ i: KitInputs) -> KitScreen<EntitlementGateState> {
         let c = Ctx(i)
         if i.loading == true { return KitScreen(.loading, [c.line("common.loading")]) }
-        let tier: [String: CopyArgument] = ["tier": ""]
+        let tier: [String: CopyArgument] = i.entitlement?.tier.map { ["tier": .text($0)] } ?? [:]
         // With License off there is no license document, so no entitlement holds, and the Paywall
         // that Unlock opens is hidden.
         guard i.isOn(.license) else {

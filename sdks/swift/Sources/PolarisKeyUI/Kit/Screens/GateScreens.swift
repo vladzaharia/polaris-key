@@ -198,7 +198,11 @@ public struct StatusScreenView: View {
                         glyph: line.key == "status.renew" ? "arrow.up.right" : nil
                     ) { onFix(line.key) }
                 }
-                if fixes.isEmpty || !fixes.contains(where: { $0.key != "common.signOut" }) {
+                // Try again whenever a refresh can clear the state: no fix the host can run, or
+                // an expiry renewed elsewhere ("connect to the internet or renew").
+                if fixes.isEmpty || !fixes.contains(where: { $0.key != "common.signOut" })
+                    || screen.state == .expired
+                {
                     KitButton(
                         line: CopyLine("common.tryAgain"),
                         kind: fixes.isEmpty ? .primary : .secondary,
@@ -231,22 +235,19 @@ public struct GraceBannerView: View {
     public var body: some View {
         kitStyle { style in
             if let lead = screen.line("grace.daysLeft") ?? screen.line("grace.lastDay") {
-                HStack(spacing: style.space(.sm)) {
+                KitBanner {
                     Image(systemName: "wifi.exclamationmark")
                         .foregroundStyle(style.palette.warning)
                         .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        KitText(lead, .label, color: .strong)
-                        if let deadline = screen.line("grace.deadline") {
-                            KitText(deadline, .footnote, color: .muted)
-                        }
+                } text: {
+                    KitText(lead, .label, color: .strong)
+                    if let deadline = screen.line("grace.deadline") {
+                        KitText(deadline, .footnote, color: .muted)
                     }
-                    Spacer(minLength: 0)
+                } actions: {
                     KitButton(
                         line: CopyLine("common.reconnect"), kind: .primary, fullWidth: false,
-                        action: onReconnect
-                    )
-                    .fixedSize()
+                        compact: true, action: onReconnect)
                     if screen.shows("common.dismiss") {
                         Button(action: onDismiss) {
                             Image(systemName: "xmark")
@@ -259,13 +260,6 @@ public struct GraceBannerView: View {
                         .accessibilityLabel(strings.string("common.dismiss"))
                     }
                 }
-                .padding(.leading, style.space(.md))
-                .padding(.trailing, style.space(.xs))
-                .padding(.vertical, style.space(.xs))
-                .modifier(KitFloatingSurface(style: style))
-                .padding(.horizontal, style.space(.md))
-                .padding(.bottom, style.space(.xs))
-                .accessibilityElement(children: .contain)
             }
         }
     }

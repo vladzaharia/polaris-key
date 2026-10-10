@@ -75,7 +75,8 @@ public struct PolarisKeyPreview: View {
             StatusScreenView(
                 screen: model.statusScreen,
                 available: [
-                    "signin.key.differentKey", "status.useAnotherLicense", "common.signOut",
+                    "signin.key.differentKey", "status.renew", "status.update",
+                    "status.useAnotherLicense", "common.signOut",
                 ],
                 onFix: { _ in }, onTryAgain: {})
         case .graceBanner:
@@ -90,7 +91,9 @@ public struct PolarisKeyPreview: View {
             } else {
                 ZStack(alignment: .bottom) {
                     PreviewHostApp()
-                    UpdatePromptView(screen: screen, onUpdate: {}, onLater: {})
+                    UpdatePromptView(
+                        screen: screen, fraction: model.inputs.update?.progress?.fraction,
+                        onUpdate: {}, onLater: {})
                 }
             }
         case .updateProgress:
@@ -126,18 +129,23 @@ public struct PolarisKeyPreview: View {
                     screen: KitStates.settings(model.inputs), rows: model.inputs.config ?? [])
             }
         case .paywall:
-            PaywallView(screen: KitStates.paywall(model.inputs), onPortal: {}, onRedeem: {})
+            PaywallView(
+                screen: KitStates.paywall(model.inputs),
+                features: model.inputs.offers?.features ?? [], onPortal: {}, onRedeem: {})
         case .entitlementGate:
             EntitlementGate(screen: KitStates.entitlementGate(model.inputs)) {
                 PreviewHostApp()
             } locked: {
+                let offers = KitOffers(
+                    available: true, tier: "Pro",
+                    features: ["Stem export", "Unlimited projects", "Priority support"])
                 PaywallView(
                     screen: KitStates.paywall(
                         {
                             var i = model.inputs
-                            i.offers = KitOffers(available: true)
+                            i.offers = offers
                             return i
-                        }()), onPortal: {}, onRedeem: {})
+                        }()), features: offers.features ?? [], onPortal: {}, onRedeem: {})
             }
         default:
             PreviewHostApp()

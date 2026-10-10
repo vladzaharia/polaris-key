@@ -660,10 +660,22 @@ public struct KitUpdateProgress: Sendable, Codable, Equatable, Hashable {
     /// `queued`, `download`, `verify`, `paused`, `install`, `failed` or `done`.
     public var phase: String
     public var fraction: Double?
+    /// The counted bytes, when the download knows them (beyond the matrix vocabulary: the copy
+    /// says "38 MB of 61 MB", never a percentage dressed as a size).
+    public var bytes: Int?
+    public var totalBytes: Int?
+    /// The time left, when the download estimates it.
+    public var secondsLeft: Double?
 
-    public init(phase: String, fraction: Double? = nil) {
+    public init(
+        phase: String, fraction: Double? = nil, bytes: Int? = nil, totalBytes: Int? = nil,
+        secondsLeft: Double? = nil
+    ) {
         self.phase = phase
         self.fraction = fraction
+        self.bytes = bytes
+        self.totalBytes = totalBytes
+        self.secondsLeft = secondsLeft
     }
 }
 
@@ -785,10 +797,13 @@ public struct KitAccount: Sendable, Codable, Equatable, Hashable {
 public struct KitEntitlement: Sendable, Codable, Equatable, Hashable {
     public var name: String
     public var entitled: Bool
+    /// The tier that grants it, by its display name (beyond the matrix vocabulary).
+    public var tier: String?
 
-    public init(name: String, entitled: Bool) {
+    public init(name: String, entitled: Bool, tier: String? = nil) {
         self.name = name
         self.entitled = entitled
+        self.tier = tier
     }
 }
 
@@ -796,10 +811,18 @@ public struct KitEntitlement: Sendable, Codable, Equatable, Hashable {
 public struct KitOffers: Sendable, Codable, Equatable, Hashable {
     public var available: Bool
     public var purchased: Bool?
+    /// The tier on offer, by its display name, and what it adds (beyond the matrix vocabulary:
+    /// without them the kit draws no "{tier} includes" line).
+    public var tier: String?
+    public var features: [String]?
 
-    public init(available: Bool, purchased: Bool? = nil) {
+    public init(
+        available: Bool, purchased: Bool? = nil, tier: String? = nil, features: [String]? = nil
+    ) {
         self.available = available
         self.purchased = purchased
+        self.tier = tier
+        self.features = features
     }
 }
 

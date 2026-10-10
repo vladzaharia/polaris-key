@@ -132,6 +132,7 @@ public struct SignInView: View {
             SignInMethodsView(
                 screen: screen.state == .error ? methodsScreen : screen, providers: providers,
                 error: screen.state == .error ? screen.copy.first : nil,
+                failedMethod: model.inputs.signIn?.method,
                 onMethod: { key in model.beginSignIn(method: Self.methodName(key)) },
                 onCode: { model.beginSignIn(code: true) })
         case .handoff, .code:
@@ -306,8 +307,11 @@ public struct SignInView: View {
 public struct SignInMethodsView: View {
     let screen: KitScreen<SignInState>
     var providers: [KitProvider]
-    /// A failed method's sentence, shown above the methods it leaves in place.
+    /// A failed method's sentence, shown under the method that failed (DL7), every method left
+    /// in place.
     var error: CopyLine?
+    /// The failed method's name (`Apple`, `Email`, `Passkey`).
+    var failedMethod: String?
     var onMethod: (String) -> Void
     var onCode: () -> Void
     @Environment(\.polarisKeyStrings) private var strings
@@ -315,13 +319,33 @@ public struct SignInMethodsView: View {
 
     public init(
         screen: KitScreen<SignInState>, providers: [KitProvider], error: CopyLine? = nil,
-        onMethod: @escaping (String) -> Void, onCode: @escaping () -> Void
+        failedMethod: String? = nil, onMethod: @escaping (String) -> Void,
+        onCode: @escaping () -> Void
     ) {
         self.screen = screen
         self.providers = providers
         self.error = error
+        self.failedMethod = failedMethod
         self.onMethod = onMethod
         self.onCode = onCode
+    }
+
+    /// The error, when it is complete and belongs under `method`'s control.
+    @ViewBuilder private func errorRow(after method: String, _ style: KitResolvedStyle)
+        -> some View
+    {
+        if let error, error.isComplete(), failedMethod == method {
+            Label {
+                KitText(error, .meta, color: .default)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(style.palette.warning)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityFocused($errorFocused)
+            .onAppear { errorFocused = true }
+        }
     }
 
     public var body: some View {
@@ -329,17 +353,6 @@ public struct SignInMethodsView: View {
             VStack(alignment: .leading, spacing: style.space(.md)) {
                 if let lede = screen.line("signin.methods.ledeApp") {
                     KitText(lede, .body, color: .default)
-                }
-                if let error {
-                    Label {
-                        KitText(error, .meta, color: .default)
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(style.palette.warning)
-                            .accessibilityHidden(true)
-                    }
-                    .accessibilityFocused($errorFocused)
-                    .onAppear { errorFocused = true }
                 }
                 KitActionStack {
                     if let email = screen.line("signin.email.continue")
@@ -349,6 +362,7 @@ public struct SignInMethodsView: View {
                             onMethod(email.key)
                         }
                         .keyboardShortcut(.defaultAction)
+                        errorRow(after: "Email", style)
                     }
                     if !providers.isEmpty, screen.shows("signin.provider.continue") {
                         HStack(spacing: style.space(.sm)) {
@@ -371,9 +385,11 @@ public struct SignInMethodsView: View {
                         }
                         .accessibilityElement(children: .contain)
                         .accessibilityLabel(strings.string("signin.provider.group"))
+                        ForEach(providers, id: \.self) { errorRow(after: $0.name, style) }
                     }
                     if let passkey = screen.line("signin.passkey") {
                         KitButton(line: passkey, kind: .secondary) { onMethod(passkey.key) }
+                        errorRow(after: "Passkey", style)
                     }
                     if let code = screen.line("signin.link.deviceCode") {
                         KitButton(line: code, kind: .quiet) { onCode() }
@@ -529,7 +545,11 @@ public struct LicenseChoiceView: View {
                     }
                     .background(
                         RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
-                            .fill(style.palette.raised))
+                            .fill(style.palette.raised)
+                    )
+                    // The selected row's tint follows the group's corners.
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous))
                 }
                 ForEach(
                     screen.copy.filter {

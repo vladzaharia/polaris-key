@@ -103,6 +103,19 @@ final class KitRulesTests: XCTestCase {
         XCTAssertNil(KitArrangement.heroSize(height: 440))
     }
 
+    func testAFocusedStepsHeaderInsetIsOneValuePerWindow() {
+        XCTAssertEqual(KitArrangement.topInset(height: 956), 76.48, accuracy: 0.01)
+        XCTAssertEqual(KitArrangement.topInset(height: 100), 16)
+        XCTAssertEqual(KitArrangement.topInset(height: 2000), 88)
+    }
+
+    func testAKeyAtRestKeepsItsPrefixAndLastSix() {
+        XCTAssertEqual(
+            KeyField.shortened("pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpQQ"), "pkey_tidewater_…ZUhpQQ")
+        XCTAssertEqual(KeyField.shortened("pkey_x_abc"), "pkey_x_abc")
+        XCTAssertEqual(KeyField.shortened("no-underscore-here-at-all"), "no-underscore-here-at-all")
+    }
+
     // MARK: Type
 
     func testTheVariableFontsGiveTheThreeWeights() {

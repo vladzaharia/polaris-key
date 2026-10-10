@@ -56,6 +56,12 @@ public struct CopyLine: Sendable, Equatable, Hashable {
         self.key = key
         self.args = args
     }
+
+    /// Whether every argument the English message names is supplied: a view draws an incomplete
+    /// line not at all rather than as "{size} of {total}".
+    public func isComplete(in catalog: KitCopy = .bundled) -> Bool {
+        catalog.argumentNames(key).allSatisfy { args[$0] != nil }
+    }
 }
 
 /// A platform variant of an English string (UI-KITS §4.7: only the verb or the casing varies).
@@ -169,6 +175,12 @@ public struct KitCopy: Sendable {
     public func format(_ line: CopyLine, locale: String, variant: CopyVariant? = nil) -> String {
         format(line.key, locale: locale, args: line.args, variant: variant)
     }
+
+    /// The arguments the English message for `key` names.
+    public func argumentNames(_ key: String) -> Set<String> {
+        guard let message = tables["en"]?[key] else { return [] }
+        return KitMessageFormat.argumentNames(message)
+    }
 }
 
 /// The ICU MessageFormat subset of the kit catalog (see the file header).
@@ -205,6 +217,22 @@ public enum KitMessageFormat {
         }
         for p in parsed.tail { render(p, number: nil) }
         return out
+    }
+
+    /// The arguments `message` names, plain and plural or select.
+    public static func argumentNames(_ message: String) -> Set<String> {
+        guard let parsed = Parsed(message) else { return [] }
+        var names = Set<String>()
+        func collect(_ pieces: [Piece]) {
+            for case .arg(let name) in pieces { names.insert(name) }
+        }
+        collect(parsed.head)
+        collect(parsed.tail)
+        if let complex = parsed.complex {
+            names.insert(complex.arg)
+            complex.cases.values.forEach(collect)
+        }
+        return names
     }
 
     enum Piece: Equatable {

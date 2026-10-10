@@ -263,6 +263,7 @@ extension PolarisKeyPreviewState {
             .signIn, "error",
             base {
                 $0.signIn = sign()
+                $0.signIn?.method = "Passkey"
                 $0.error = KitError(code: "sign-in-failed")
             }),
         .init(.signIn, "expired", base { $0.signIn = sign(.expired) }),
@@ -422,7 +423,9 @@ extension PolarisKeyPreviewState {
             base {
                 $0.update = KitUpdate(
                     action: "binary", version: "2.5.0",
-                    progress: KitUpdateProgress(phase: "download", fraction: 0.4))
+                    progress: KitUpdateProgress(
+                        phase: "download", fraction: 0.4, bytes: 24_400_000,
+                        totalBytes: 61_000_000, secondsLeft: 252))
             }),
         .init(
             .releaseNotes, "list",
@@ -476,8 +479,10 @@ extension PolarisKeyPreviewState {
         .init(
             .paywall, "offers",
             base {
-                $0.entitlement = KitEntitlement(name: "pro.export", entitled: false)
-                $0.offers = KitOffers(available: true)
+                $0.entitlement = KitEntitlement(name: "pro.export", entitled: false, tier: "Pro")
+                $0.offers = KitOffers(
+                    available: true, tier: "Pro",
+                    features: ["Stem export", "Unlimited projects", "Priority support"])
             }),
         .init(
             .paywall, "not-available",
@@ -487,7 +492,9 @@ extension PolarisKeyPreviewState {
             }),
         .init(
             .entitlementGate, "not-entitled",
-            base { $0.entitlement = KitEntitlement(name: "pro.export", entitled: false) }),
+            base {
+                $0.entitlement = KitEntitlement(name: "pro.export", entitled: false, tier: "Pro")
+            }),
         .init(
             .entitlementGate, "entitled",
             base { $0.entitlement = KitEntitlement(name: "pro.export", entitled: true) }),

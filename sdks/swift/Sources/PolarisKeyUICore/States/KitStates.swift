@@ -72,9 +72,17 @@ struct Ctx {
     }
 
     /// The download line's arguments from the update's progress.
+    /// The download's counted bytes and time left, each only when known: a line whose arguments
+    /// are missing is not drawn (`CopyLine.isComplete`), so the copy never invents a size.
     var progressArgs: [String: CopyArgument] {
-        let fraction = i.update?.progress?.fraction ?? 0
-        return ["size": .text(KitFormat.percent(fraction)), "total": .text("100%"), "time": ""]
+        guard let p = i.update?.progress else { return [:] }
+        var args: [String: CopyArgument] = [:]
+        if let done = p.bytes, let total = p.totalBytes, total > 0 {
+            args["size"] = .text(KitFormat.bytes(done))
+            args["total"] = .text(KitFormat.bytes(total))
+        }
+        if let seconds = p.secondsLeft { args["time"] = .text(KitFormat.duration(seconds)) }
+        return args
     }
 }
 
@@ -83,6 +91,16 @@ public enum KitFormat {
     /// Bytes as "50 MB" in the file style.
     public static func bytes(_ n: Int) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(n), countStyle: .file)
+    }
+
+    /// A duration as "4:12" (or "1:04:12").
+    public static func duration(_ seconds: Double) -> String {
+        let total = Int(max(0, seconds).rounded())
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        return h > 0
+            ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 
     /// A fraction as a whole percentage.
@@ -100,6 +118,19 @@ public enum KitFormat {
     public static func date(_ epochSeconds: Int) -> String {
         Date(timeIntervalSince1970: TimeInterval(epochSeconds)).formatted(
             date: .abbreviated, time: .omitted)
+    }
+
+    /// A calendar day (`2026-09-30`, as release notes carry it) in the locale's abbreviated style,
+    /// never the raw ISO date (DL8); anything else is shown as given.
+    public static func day(_ iso: String) -> String {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(identifier: "UTC")
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: String(iso.prefix(10))) else { return iso }
+        var style = Date.FormatStyle(date: .abbreviated, time: .omitted)
+        style.timeZone = TimeZone(identifier: "UTC")!
+        return date.formatted(style)
     }
 
     /// A platform id as people read it (DL8: never a raw id): `macos` is macOS.

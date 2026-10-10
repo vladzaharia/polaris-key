@@ -10,14 +10,17 @@ import SwiftUI
 /// The update offer: a banner, or the mandatory screen.
 public struct UpdatePromptView: View {
     let screen: KitScreen<UpdatePromptState>
+    /// The download's fraction while `downloading`, from counted bytes.
+    var fraction: Double?
     var onUpdate: () -> Void
     var onLater: () -> Void
 
     public init(
-        screen: KitScreen<UpdatePromptState>, onUpdate: @escaping () -> Void,
-        onLater: @escaping () -> Void
+        screen: KitScreen<UpdatePromptState>, fraction: Double? = nil,
+        onUpdate: @escaping () -> Void, onLater: @escaping () -> Void
     ) {
         self.screen = screen
+        self.fraction = fraction
         self.onUpdate = onUpdate
         self.onLater = onLater
     }
@@ -50,28 +53,32 @@ public struct UpdatePromptView: View {
     }
 
     private var banner: some View {
-        kitStyle { style in
-            HStack(spacing: style.space(.sm)) {
-                ProductIcon(size: 40)
-                VStack(alignment: .leading, spacing: 2) {
-                    KitText(
-                        screen.line("update.title") ?? screen.line("update.readyTitle")
-                            ?? screen.lineOrKey("update.availableTitle"), .label, color: .strong)
-                    if let detail = screen.line("update.downloading") ?? screen.line(
-                        "update.readyBody")
-                        ?? screen.line("update.critical")
-                    {
-                        KitText(detail, .footnote, color: .muted)
-                    }
-                }
-                Spacer(minLength: 0)
-                KitButton(line: verb, kind: .primary, fullWidth: false, action: onUpdate)
-                    .fixedSize()
+        KitBanner {
+            ProductIcon(size: 40)
+        } text: {
+            KitText(
+                screen.line("update.title") ?? screen.line("update.readyTitle")
+                    ?? screen.lineOrKey("update.availableTitle"), .label, color: .strong)
+            if let detail = screen.line("update.readyBody") ?? screen.line("update.critical") {
+                KitText(detail, .footnote, color: .muted)
             }
-            .padding(style.space(.sm))
-            .modifier(KitFloatingSurface(style: style))
-            .padding(.horizontal, style.space(.md))
-            .accessibilityElement(children: .contain)
+            if screen.state == .downloading {
+                ForEach(
+                    ["update.downloading", "update.timeLeft"].compactMap(screen.line)
+                        .filter { $0.isComplete() }, id: \.key
+                ) {
+                    KitText($0, .footnote, color: .muted)
+                }
+                if let fraction { ProgressBar(fraction: fraction) }
+            }
+        } actions: {
+            // One dismissal plus the verb (§4.1), where the state offers one.
+            if let later = screen.line("update.later") {
+                KitButton(
+                    line: later, kind: .secondary, fullWidth: false, compact: true,
+                    action: onLater)
+            }
+            KitButton(line: verb, kind: .primary, fullWidth: false, compact: true, action: onUpdate)
         }
     }
 
@@ -102,9 +109,11 @@ public struct UpdateProgressView: View {
     public var body: some View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.xs)) {
+                // A line whose counts are unknown is not drawn: never "40% of 100%".
                 ForEach(
                     screen.copy.filter {
                         !$0.key.hasPrefix("a11y.") && $0.key != "common.tryAgain"
+                            && $0.isComplete()
                     }, id: \.key
                 ) {
                     KitText($0, .meta, color: .default)
@@ -128,7 +137,6 @@ public struct ReleaseNotesView: View {
     let screen: KitScreen<ReleaseNotesState>
     let notes: [KitReleaseNote]
     var onRetry: () -> Void
-    @Environment(\.polarisKeyStrings) private var strings
 
     public init(
         screen: KitScreen<ReleaseNotesState>, notes: [KitReleaseNote], onRetry: @escaping () -> Void
@@ -150,6 +158,13 @@ public struct ReleaseNotesView: View {
                 case .empty:
                     KitText(CopyLine("releaseNotes.empty"), .body, color: .default)
                 case .list:
+                    // The title is a heading in the content, wrapped, rather than a navigation
+                    // title the bar would truncate ("What's new in Tidewate…").
+                    if let title = screen.line("releaseNotes.title") {
+                        KitText(title, .title, color: .strong)
+                            .accessibilityAddTraits(.isHeader)
+                            .listRowBackground(Color.clear)
+                    }
                     ForEach(notes, id: \.version) { note in
                         Section {
                             Text(verbatim: note.notes)
@@ -163,7 +178,9 @@ public struct ReleaseNotesView: View {
                                     .label, color: .strong)
                                 Spacer()
                                 KitText(
-                                    CopyLine("releaseNotes.released", ["date": .text(note.date)]),
+                                    CopyLine(
+                                        "releaseNotes.released",
+                                        ["date": .text(KitFormat.day(note.date))]),
                                     .footnote, color: .muted)
                             }
                         }
@@ -172,7 +189,9 @@ public struct ReleaseNotesView: View {
                     EmptyView()
                 }
             }
-            .navigationTitle(screen.line("releaseNotes.title").map(strings.string) ?? "")
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+            #endif
         }
     }
 }
