@@ -47,23 +47,8 @@ export {
   type UseUpdateDecision,
   type UseUpdateDecisionOptions,
 } from "./update/useUpdateDecision.js";
-// `update.packs` for the web transport (P4-06).
-export {
-  DataJsonHandler,
-  L10nTableHandler,
-  MlModelHandler,
-  type L10nTable,
-  type MlModel,
-  type PackCheckRefusal,
-  type StagedPack,
-  PackError,
-  WASM_MEM_BUDGET,
-  createBrowserPacks,
-  defaultWebMemBudget,
-  opfsPackStore,
-  type BrowserPacks,
-  type BrowserPacksOptions,
-} from "./packs/index.js";
+// `update.packs` (createBrowserPacks, the pack handlers, opfsPackStore) lives on
+// `@polaris-key/react/packs`: it is not part of the root, so a Provider-only app bundles none of it.
 export {
   useChangelog,
   type UseChangelog,

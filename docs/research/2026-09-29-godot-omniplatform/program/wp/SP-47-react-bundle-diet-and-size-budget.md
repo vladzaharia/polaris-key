@@ -37,6 +37,17 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 
 - No new copies (tracks.md rule 4): build on the one mechanism this package names, never beside it.
 
+## Corrections (verified against the code)
+
+- The package ships `tsc` output, not a bundle; the size is measured by a Vite production build of an
+  app importing `dist/` (`packages/sdk-react/scripts/size-budget.mjs`), not by size-limit.
+- Provider reached `hash-wasm` statically through `browser/releaseFetch.ts`, and the root barrel
+  reached zstd-wasm through `packs/browserPacks.ts`; both are now `import()`.
+- Measured before: +83.4 KB (use-license) and +102.4 KB (license-gate) gzip with a 69 KB `.wasm`
+  emitted; after: +78.3 KB and +99.9 KB initial (+7.0 KB lazy hash-wasm chunk; Vite 8; Vite 6 measured +76.3 and +95.3), no `.wasm`. The
+  remaining weight is the shared core (adapters, client-core, catalog, copy), outside this scope.
+- Budgets: 80 KB and 102 KB over bare React.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -44,10 +55,10 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 
 ## Acceptance criteria
 
-- [ ] A Vite build of Provider + `useLicense` emits no `.wasm` and inlines none.
-- [ ] Gzip JS over bare React stays under the budget measured in the package (today +77 KB).
-- [ ] CI fails over budget.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] A Vite build of Provider + `useLicense` emits no `.wasm` and inlines none.
+- [x] Gzip JS over bare React stays under the budget measured in the package (today +77 KB).
+- [x] CI fails over budget.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

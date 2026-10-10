@@ -35,6 +35,15 @@ jobs:
           python -m venv sdks/python/.venv
           sdks/python/.venv/bin/pip install -e "sdks/python[dev]"
       - run: pnpm build
+      # The React bundle budget (SP-47): gzip JS of Provider + LicenseGate and Provider + useLicense
+      # over bare React, and no .wasm emitted or inlined. The second step is its negative control:
+      # it must fail when a budget is exceeded.
+      - run: pnpm --filter @polaris-key/react size
+      - name: Size budget fails when exceeded (negative control)
+        run: |
+          if pnpm --filter @polaris-key/react size --budget provider+use-license=1000; then
+            echo "::error::the size budget did not fail when exceeded"; exit 1
+          fi
       - run: pnpm typecheck
       - run: pnpm test
       # Adapter conformance (A-18a, notes/S-15 §6.6): every storefront and feed adapter against the
