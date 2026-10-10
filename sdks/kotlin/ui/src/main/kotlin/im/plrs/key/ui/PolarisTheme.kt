@@ -18,7 +18,8 @@
 // off by default, independent of branding (owner decision 2).
 //
 // THE PRODUCT IS THE HERO (UI-KITS.md §1.2). `logo` is the product's own icon. Without one, the
-// kit draws a monogram tile (the product's initial); the Pinned K appears only inside the optional
+// kit draws the verified icon discovery's presentation names (`presentation`, PolarisPresentation.kt),
+// else a monogram tile (the product's initial); the Pinned K appears only inside the optional
 // Powered-by badge, in either preset.
 //
 // THE PRODUCT ACCENT. `accent` (a product's colour) replaces the primary roles in either mode,
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import im.plrs.key.core.PresentationSource
 import im.plrs.key.ui.brand.BrandAccent
 import im.plrs.key.ui.brand.PolarisAccent
 import im.plrs.key.ui.brand.PolarisBrandTokens
@@ -180,6 +182,11 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *   contrast against the surfaces it sits on (the host's, neutral).
  * @param deviceCodeUrl the address a person types to sign in with a code (for example
  *   `driftkart.gg/tv`); null shows the server's verification address.
+ * @param presentation the SDK's presentation seam (`client.presentationSource`, discovery's
+ *   `core.presentation`): it fills only what the integrator left out. [logo] falls back to the
+ *   verified product icon, then the monogram; branded, [accent] falls back to the product's accent
+ *   (its dark one on a dark ground), then a colour derived from the icon, then the core violet.
+ *   Neutral keeps the host's primary. Defaults to the client PolarisKeyProvider provides, if any.
  */
 @Composable
 public fun PolarisTheme(
@@ -190,6 +197,35 @@ public fun PolarisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     accent: Color? = null,
     deviceCodeUrl: String? = null,
+    presentation: PresentationSource? = LocalPolarisKey.current?.presentationSource,
+    content: @Composable () -> Unit,
+) {
+    val member = rememberPresentation(presentation)
+    // The icon is fetched only for what it fills: the logo, or a branded accent nothing else gives.
+    val wantsArt = logo == null || (branding == PolarisBranding.PolarisKey && accent == null && member?.accentFor(darkTheme) == null)
+    val art = rememberPresentationArt(presentation.takeIf { wantsArt }, member)
+    PolarisThemeResolved(
+        branding = branding,
+        showPoweredBy = showPoweredBy,
+        copy = copy,
+        logo = logo ?: art?.let(::presentationLogo),
+        darkTheme = darkTheme,
+        accent = themeAccent(accent, branding, member, darkTheme, art?.derivedAccent),
+        deviceCodeUrl = deviceCodeUrl,
+        content = content,
+    )
+}
+
+/** [PolarisTheme] once the presentation's defaults are applied. */
+@Composable
+private fun PolarisThemeResolved(
+    branding: PolarisBranding,
+    showPoweredBy: Boolean,
+    copy: PolarisCopy,
+    logo: (@Composable () -> Unit)?,
+    darkTheme: Boolean,
+    accent: Color?,
+    deviceCodeUrl: String?,
     content: @Composable () -> Unit,
 ) {
     when (branding) {

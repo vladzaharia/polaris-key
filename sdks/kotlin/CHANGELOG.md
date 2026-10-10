@@ -6,6 +6,12 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Product presentation** (`core.presentation`, HA-13): `ProductDiscoveryDocument.presentation`,
+  `client.presentation()`, `client.presentationIcon(px, scale)` and `client.presentationSource`
+  (`im.plrs.key.core.PresentationSource`); the icon verified by SHA-256 and cached by hash.
+  `PolarisTheme(presentation = …)` defaults the logo to the verified icon and, branded, the accent
+  to the product's. `PolarisRequest.followRedirects` (default true) lets a request see a 3xx.
+
 Key-custody and offline-bundle fixes (wire contract v4). Each **breaking** line names what to change.
 
 - **Pin two keys.** A verified manifest signed by one usable pinned key can revoke another pinned
