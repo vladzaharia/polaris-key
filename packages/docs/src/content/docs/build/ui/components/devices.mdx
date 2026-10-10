@@ -49,7 +49,7 @@ The device list: an icon for the form factor, the name, platform and last seen, 
   <TabItem label="SwiftUI">
     **Drop-in.** A section a host drops into its settings.
 
-    **Styled part.** `DevicesSection(screen:devices:onRemove:onRetry:)` with `DeviceRow`; Remove is a swipe action.
+    **Styled part.** `DevicesSection(screen:devices:onRemove:onRetry:onManage:)` with `DeviceRow`; Remove is a swipe action, confirmed before it signs the device out.
 
     **Headless.** `KitStates.devices(_:)`: `This device` only for a row the runtime knows is this device.
 
