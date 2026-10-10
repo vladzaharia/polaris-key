@@ -104,7 +104,7 @@ Layer (c) must be the same state machine in every language (§1.3); without fixt
 
 Done when the Themes row holds. This package draws no screens of its own, so the other rows do not apply (EXPERIENCE.md §7.3).
 
-- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [x] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes. The `theme` rows pin both schemes and Drift Kart's light accent on a light and a dark ground; the forced-colors, contrast and transparency checks are measured on the kits' renders of these rows (UK-15).
 
 ## Brand transition (2026-10-09)
 
@@ -128,10 +128,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] `pnpm parity:check -- --check` passes with every new id `planned` in every SDK.
-- [ ] Every §4.1 must component has at least one fixture per listed state.
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] `pnpm parity:check -- --check` passes with every new id `planned` in every SDK.
+- [x] Every §4.1 must component has at least one fixture per listed state.
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31. This package's part is the states-to-handle data: `reference/corpus.mdx` lists every component state and its copy keys from the rows; the kit tabs, component pages and recipes come with UK-04 to UK-12 and UK-31.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
