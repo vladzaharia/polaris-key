@@ -46,6 +46,10 @@ import {
   watchProductIdentity,
 } from "./contract.js";
 
+import {
+  isBrowserDefaultFont,
+  SYSTEM_FONT_STACK,
+} from "../components/theme.js";
 import { text, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
 import { adoptKitStyles } from "./styles.js";
@@ -333,6 +337,20 @@ function useKit(
     };
   }, [fill]);
 
+  // `native` takes the host's face; a page that sets none would draw the kit in the browser's
+  // default serif, so it gets the platform's UI face instead.
+  const [fontless, setFontless] = useState(false);
+  const native = resolved.theme.preset === "native";
+  useIsoLayoutEffect(() => {
+    const parent = rootRef.current?.parentElement;
+    setFontless(
+      native &&
+        parent !== null &&
+        parent !== undefined &&
+        isBrowserDefaultFont(getComputedStyle(parent).fontFamily),
+    );
+  }, [native]);
+
   const kb = useSyncExternalStore(
     subscribeKeyboard,
     () => keyboard,
@@ -402,10 +420,21 @@ function useKit(
     el?.focus({ preventScroll: true });
   });
 
-  return { view, resolved, copy, input, ctxFor, rootRef, shape, kb };
+  return { view, resolved, copy, input, ctxFor, rootRef, shape, kb, fontless };
 }
 
 type Kit = ReturnType<typeof useKit>;
+
+/** The platform's UI face for every type role, for `native` on a page that sets no font. */
+const SYSTEM_FONT_VARS: Record<string, string> = {
+  fontFamily: SYSTEM_FONT_STACK,
+  ...Object.fromEntries(
+    ["body", "title", "display", "label", "button", "meta"].map((role) => [
+      `--pk-kit-type-${role}-family`,
+      SYSTEM_FONT_STACK,
+    ]),
+  ),
+};
 
 /** The `.pk-root` every component draws in: the elements' attributes, the theme's variables. */
 function KitRoot(props: {
@@ -418,7 +447,7 @@ function KitRoot(props: {
   fill?: boolean;
   children: ReactNode;
 }): ReactNode {
-  const { view, resolved: r, copy, rootRef, shape, kb } = props.kit;
+  const { view, resolved: r, copy, rootRef, shape, kb, fontless } = props.kit;
   return (
     <div
       ref={rootRef}
@@ -436,7 +465,11 @@ function KitRoot(props: {
       data-bare={props.bare ? "" : undefined}
       data-fill={props.fill ? "" : undefined}
       lang={copy.locale}
-      style={themeVars(r) as CSSProperties}
+      style={
+        (fontless
+          ? { ...themeVars(r), ...SYSTEM_FONT_VARS }
+          : themeVars(r)) as CSSProperties
+      }
       onKeyDown={
         props.onEscape
           ? (e) => {
