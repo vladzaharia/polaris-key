@@ -515,6 +515,11 @@ public object Feature {
     public const val configMint: String = "config.mint"
     public const val configMirror: String = "config.mirror"
     public const val configLocal: String = "config.local"
+    public const val configSync: String = "config.sync"
+    public const val syncScenarios: String = "sync.scenarios"
+    public const val syncSettings: String = "sync.settings"
+    public const val syncConflict: String = "sync.conflict"
+    public const val syncSaves: String = "sync.saves"
     public const val devicesFingerprint: String = "devices.fingerprint"
     public const val devicesFacts: String = "devices.facts"
     public const val devicesRegister: String = "devices.register"
@@ -614,6 +619,11 @@ public val FEATURE_VALUES: List<String> = listOf(
     "config.mint",
     "config.mirror",
     "config.local",
+    "config.sync",
+    "sync.scenarios",
+    "sync.settings",
+    "sync.conflict",
+    "sync.saves",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
@@ -1253,7 +1263,7 @@ public const val OUTLET_MATRIX_VERSION: Int = 1
 public const val PLAN_MATRIX_VERSION: Int = 2
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-public const val SYNC_SCENARIOS_VERSION: Int = 1
+public const val SYNC_SCENARIOS_VERSION: Int = 2
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 public const val DEVICE_LABEL_VERSION: Int = 1
@@ -1491,6 +1501,11 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "config.mint" to CapabilityRow("implemented", "config", listOf()),
     "config.mirror" to CapabilityRow("implemented", "config", listOf()),
     "config.local" to CapabilityRow("implemented", "sdk", listOf()),
+    "config.sync" to CapabilityRow("planned", "sync", listOf()),
+    "sync.scenarios" to CapabilityRow("planned", "sync", listOf()),
+    "sync.settings" to CapabilityRow("planned", "sync", listOf()),
+    "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
+    "sync.saves" to CapabilityRow("planned", "sync", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
     "devices.register" to CapabilityRow("implemented", "core", listOf()),
@@ -1561,4 +1576,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "f348c51df6a08445a887da7df2d1d9fe3d43e8e14c44b8825ed52ac40e9725e0"
+public const val CAPABILITY_DIGEST: String = "9fa2bafba447ea0fd10f924d1f0365ebb0a1253ba6402bcab3d19ef687143757"

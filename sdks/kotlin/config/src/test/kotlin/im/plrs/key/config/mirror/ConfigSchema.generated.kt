@@ -44,7 +44,7 @@ public data class ConfigSchemaEntry(
     val defaultJson: String?,
 )
 
-/** A user setting's policy (a config key with a `user` block), defaults applied. */
+/** A settable key's policy (an Editable config key), defaults applied. */
 public data class UserSettingPolicy(
     val sync: String,
     val conflict: String,
@@ -239,9 +239,10 @@ public object ProductCatalog {
 
     public fun entriesByKind(kind: ConfigKind): List<ConfigSchemaEntry> = entries.filter { it.kind == kind }
 
-    /** Every user setting, by key, in catalog order. */
+    /** Every settable key (synced or local), by key, in catalog order. */
     public val userSettings: Map<String, UserSettingPolicy> = mapOf(
+        "dice.animSpeed" to UserSettingPolicy(sync = "user", conflict = "lastWrite", listed = true),
         "audio.musicVolume" to UserSettingPolicy(sync = "user", conflict = "max", listed = true),
-        "ui.theme" to UserSettingPolicy(sync = "device", conflict = "lastWrite", listed = false),
+        "ui.theme" to UserSettingPolicy(sync = "local", conflict = "lastWrite", listed = false),
     )
 }

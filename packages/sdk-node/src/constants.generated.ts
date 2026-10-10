@@ -513,6 +513,11 @@ export const Feature = {
   configMint: "config.mint",
   configMirror: "config.mirror",
   configLocal: "config.local",
+  configSync: "config.sync",
+  syncScenarios: "sync.scenarios",
+  syncSettings: "sync.settings",
+  syncConflict: "sync.conflict",
+  syncSaves: "sync.saves",
   devicesFingerprint: "devices.fingerprint",
   devicesFacts: "devices.facts",
   devicesRegister: "devices.register",
@@ -613,6 +618,11 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "config.mint",
   "config.mirror",
   "config.local",
+  "config.sync",
+  "sync.scenarios",
+  "sync.settings",
+  "sync.conflict",
+  "sync.saves",
   "devices.fingerprint",
   "devices.facts",
   "devices.register",
@@ -1302,7 +1312,7 @@ export const OUTLET_MATRIX_VERSION = 1;
 export const PLAN_MATRIX_VERSION = 2;
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-export const SYNC_SCENARIOS_VERSION = 1;
+export const SYNC_SCENARIOS_VERSION = 2;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 1;
@@ -1557,6 +1567,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "config.mint": { status: "implemented", service: "config", na: [] },
   "config.mirror": { status: "implemented", service: "config", na: [] },
   "config.local": { status: "implemented", service: "sdk", na: [] },
+  "config.sync": { status: "planned", service: "sync", na: [] },
+  "sync.scenarios": { status: "planned", service: "sync", na: [] },
+  "sync.settings": { status: "planned", service: "sync", na: [] },
+  "sync.conflict": { status: "planned", service: "sync", na: [] },
+  "sync.saves": { status: "planned", service: "sync", na: [] },
   "devices.fingerprint": { status: "implemented", service: "core", na: [] },
   "devices.facts": { status: "implemented", service: "core", na: [] },
   "devices.register": { status: "implemented", service: "core", na: [] },
@@ -1684,4 +1699,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "d3a3eb4328bdbbd8e2e9cdbbcca08ba803db99398e72d2b81a5ffe4d88e7b77a";
+  "1e059750f5a52c6f453879da2e4515e1af544195adfc19b3a6640ca4797416ca";

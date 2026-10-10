@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 70 | 8 | 17 | 0 |
-| React | `web`, `desktop-bridge` | 66 | 12 | 17 | 0 |
-| Python | `python` | 70 | 8 | 17 | 0 |
-| Swift | `macos`, `ios` | 72 | 6 | 17 | 0 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 76 | 2 | 17 | 0 |
-| Kotlin | `android`, `jvm` | 73 | 6 | 16 | 0 |
+| Node | `node` | 70 | 8 | 22 | 0 |
+| React | `web`, `desktop-bridge` | 66 | 12 | 22 | 0 |
+| Python | `python` | 70 | 8 | 22 | 0 |
+| Swift | `macos`, `ios` | 72 | 6 | 22 | 0 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 76 | 2 | 22 | 0 |
+| Kotlin | `android`, `jvm` | 73 | 6 | 21 | 0 |
 
 ## Core
 
@@ -68,6 +68,16 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.local` | Persisted device-local overrides: config.set, config.setting, onConfigChange | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `config.sync` | Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import | `sync-scenarios.json` `settingCases` + transcripts (U-05) | planned (U-06) | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
+
+## Cloud Sync
+
+| Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `sync.scenarios` | The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits | `sync-scenarios.json` | planned (U-06) | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
+| `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts (U-05) | planned (U-06) | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
+| `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
+| `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 
 ## Devices and identity
 
