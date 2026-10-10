@@ -46,8 +46,15 @@ import { packsChunkRange } from "./packs.js";
 import {
   keyentryIdentityOff,
   keyentryLimit,
+  keyentryOwned,
   keyentryRefusalsOff,
 } from "./keyEntry.js";
+import {
+  discoveryIdentity,
+  identityAttach,
+  identityAttachErrors,
+  identitySubjectSignout,
+} from "./account.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -83,4 +90,9 @@ export const SCENARIOS: Scenario[] = [
   keyentryIdentityOff,
   discoveryPresentation,
   trustSignerRetry,
+  keyentryOwned,
+  discoveryIdentity,
+  identityAttach,
+  identityAttachErrors,
+  identitySubjectSignout,
 ];

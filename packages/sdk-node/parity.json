@@ -151,6 +151,14 @@
       "status": "planned",
       "wp": "I-10a"
     },
+    "identity.attach": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
+    "identity.account": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
     "identity.keyentry": {
       "status": "planned",
       "wp": "PX-W9b"
@@ -326,6 +334,11 @@
       "reason": "runtime"
     },
     "ui.kit.manage": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.kit.account": {
       "status": "na",
       "runtime": "headless",
       "reason": "runtime"

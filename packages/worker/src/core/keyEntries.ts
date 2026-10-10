@@ -30,6 +30,15 @@
  * `identity.keyEntryRefusals` (A-13 store, `KEYENTRY_REFUSALS`), off until the SDKs that
  * show the refusal ship. The refusal applies only to a usable licence in no account
  * (`account_id IS NULL`, §8 Q3); a licence in an account meets I-09's `license_owned` first.
+ *
+ * ── STEP 3: AN OWNED LICENCE NEVER MOVES BY KEY (I-09) ──────────────────────────────────────
+ *
+ * Under the same switch, a usable licence that is in an account (`licenses.account_id IS NOT
+ * NULL`) is refused to a device that is not enrolled on it: `403 license_owned` with
+ * `signInUrl`, the product's login card (§12.2 step 3, S-16 D24). Nothing is counted. The device
+ * gets to the licence by signing in to the account that holds it, which binds it through
+ * Identity's sign-in, never through the key. An enrolled device is answered at step 2 first, so
+ * an install that already holds a token for the licence never sees the refusal.
  */
 
 import type {
@@ -42,7 +51,7 @@ import type { LicenseRow } from "./data.js";
 import { licenseUsable } from "./devices.js";
 import { ErrorCode, errorResponse } from "./errors.js";
 import { identityEnabled } from "./identityGate.js";
-import { buildManageUrl } from "./manageUrl.js";
+import { buildManageUrl, buildSignInUrl } from "./manageUrl.js";
 import { platformSetting, type SettingsEnv } from "./platformSettings.js";
 import type { ServicesMap } from "./services.js";
 import type { SettingsRegistry } from "./settings/registry.js";
@@ -256,20 +265,24 @@ export async function recordPortalKeyEntry(
   );
 }
 
-/** What the device routes do before `authorizeDevice` (§12.2 steps 2 and 4). */
+/** What the device routes do before `authorizeDevice` (§12.2 steps 2 to 4). */
 export type KeyEntryGate =
   /** Identity is off: nothing is counted or refused, and no member is sent. */
   | { kind: "off" }
   /** Authorise as before, passing `keyEntry` so a new authorisation records its entry. */
   | { kind: "admit"; keyEntries: KeyEntries; enrolled: boolean }
+  /** Step 3 (I-09): answer `license_owned` ({@link licenseOwnedResponse}); nothing is written. */
+  | { kind: "owned" }
   /** Step 4: answer `key_entry_limit` ({@link keyEntryLimitResponse}); nothing is written. */
   | { kind: "refuse"; keyEntries: KeyEntries };
 
 /**
- * §12.2 steps 2 and 4 for `license/activate` and `identity/session/license`, after the key and
+ * §12.2 steps 2 to 4 for `license/activate` and `identity/session/license`, after the key and
  * the licence have been resolved. An enrolled device is admitted. A device that is not is refused
- * only when the switch is on, the licence is usable (an unusable one keeps its `401` from
- * `authorizeDevice`) and in no account, and `used >= limit`. Step 3 is I-09's `license_owned`.
+ * only when the switch is on and the licence is usable (an unusable one keeps its `401` from
+ * `authorizeDevice`, so neither refusal says anything about a licence the key cannot use): with
+ * `license_owned` when the licence is in an account (step 3), else with `key_entry_limit` when
+ * `used >= limit` (step 4).
  */
 export async function keyEntryGate(
   ctx: KeyEntrySettings,
@@ -283,14 +296,35 @@ export async function keyEntryGate(
   if (!keyEntries) return { kind: "off" };
   if (await isEnrolled(db, product.slug, license.id, deviceId))
     return { kind: "admit", keyEntries, enrolled: true };
-  if (
-    licenseUsable(license, now) &&
-    (license.account_id ?? null) === null &&
-    keyEntries.used >= keyEntries.limit &&
-    (await keyEntryRefusalsOn(env, db))
-  )
-    return { kind: "refuse", keyEntries };
+  if (licenseUsable(license, now)) {
+    const owned = (license.account_id ?? null) !== null;
+    if (
+      (owned || keyEntries.used >= keyEntries.limit) &&
+      (await keyEntryRefusalsOn(env, db))
+    )
+      return owned ? { kind: "owned" } : { kind: "refuse", keyEntries };
+  }
   return { kind: "admit", keyEntries, enrolled: false };
+}
+
+/**
+ * The flat `403 license_owned` (§12.2 step 3): `{error, message, signInUrl}`. The link is the
+ * product's login card; it never carries the key and says nothing about the account. Not an auth
+ * failure: a client keeps its state and offers sign-in behind a user action.
+ */
+export function licenseOwnedResponse(
+  env: Parameters<typeof buildSignInUrl>[0],
+  req: Request,
+  product: { slug: string },
+): Response {
+  return errorResponse(
+    403,
+    ErrorCode.LicenseOwned,
+    "license is in an account",
+    {
+      signInUrl: buildSignInUrl(env, req, product),
+    },
+  );
 }
 
 /**

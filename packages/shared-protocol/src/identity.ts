@@ -212,3 +212,99 @@ export interface KeyPreview {
   keyEntries: KeyEntries | null;
   upgrade: KeyUpgrade;
 }
+
+// ── §12.2 step 3, §12.3 and §12.6: the account on the device wire (I-09) ─────────────────────
+
+/**
+ * §8: a pairwise subject, `ps_` and 16 random bytes in base64url. The one name a developer-facing
+ * surface ever uses for an account, different for every product (S-16 §5.1).
+ */
+export const PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$";
+
+/**
+ * §12.2 step 3: the flat 403 of `POST /<p>/license/activate` and
+ * `POST /<p>/identity/session/license` when the key's licence is in an account and the device is
+ * not enrolled on it (Identity on, `identity.keyEntryRefusals` on). `signInUrl` is
+ * `<origin>/signin?product=<slug>`: it never carries the key and names no account. Not an auth
+ * failure: a client keeps its state and offers sign-in behind a user action. On
+ * `POST /<p>/identity/attach` the same code is nested and carries no `signInUrl`.
+ */
+export interface LicenseOwnedBody {
+  error: "license_owned";
+  message?: string;
+  signInUrl: string;
+}
+
+/** §12.3: `POST /<p>/identity/attach`'s body. `false` previews; `true` attaches. */
+export interface AttachRequest {
+  confirm: boolean;
+}
+
+/**
+ * §12.3: `POST /<p>/identity/attach` with `confirm: false`. The device's own licence, as the
+ * confirm screen names it; nothing is written.
+ */
+export interface AttachPreview {
+  status: "confirm";
+  license: { id: string; tierId: string | null; name: string | null };
+}
+
+/**
+ * §12.3: `POST /<p>/identity/attach` with `confirm: true`: the activation response (a rotated
+ * `token`, `schemaVersion`, `device`, `license`) plus the subject signed in on the device.
+ * `attached: "claimed"` when this call put the licence in the account; absent when it was already
+ * there. The licence document does not change.
+ */
+export interface AttachResult {
+  token: string;
+  schemaVersion: number;
+  device: Record<string, unknown>;
+  license: Record<string, unknown>;
+  /** The pairwise subject ({@link PAIRWISE_SUBJECT_PATTERN}) of the account signed in on the device. */
+  subject: string;
+  attached?: "claimed";
+}
+
+/** §12.3: `GET /<p>/identity/subject`. `null` when no account is signed in on the device. */
+export interface SubjectResponse {
+  subject: string | null;
+}
+
+/**
+ * §12.3: `POST /<p>/identity/signout`. `released` is true when the sign-in had bound the device
+ * to a licence of the signed-out account, which then deauthorized it: the token stops working.
+ */
+export interface SignOutResponse {
+  released: boolean;
+}
+
+/**
+ * §12.6: the Identity fragment of `/.well-known/polaris.json` while the product's Identity
+ * service is on. `account`, `keyEntryLimit` and the four account endpoints are I-09's; I-08 adds
+ * its own beside them. A client uses an endpoint only when it is present and never builds one.
+ * With Identity off the fragment is `{enabled: false}` and nothing else.
+ */
+export interface IdentityDiscovery {
+  enabled: true;
+  configured: boolean;
+  /** The account features (attach, subject, sign-out, the account portal) are served. */
+  account?: true;
+  /** The product's effective `identity.keyEntry.limit` (§12.2 rule 5): the value enforced. */
+  keyEntryLimit?: number;
+  endpoints: {
+    session: string;
+    sessionLicense: string;
+    authStart: string;
+    authCallback: string;
+    authLogout: string;
+    authDeviceStart: string;
+    authDeviceEntry: string;
+    authDeviceVerify: string;
+    authDevicePoll: string;
+    attach?: string;
+    subject?: string;
+    signout?: string;
+    /** The product's page in the customer portal, `<origin>/#/p/<slug>` (`openAccount()`). */
+    accountPortal?: string;
+  };
+}

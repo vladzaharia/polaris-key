@@ -138,6 +138,7 @@
       "deprecated": true
     },
     "oidc": { "$ref": "#/$defs/oidc" },
+    "identity": { "$ref": "#/$defs/identity" },
     "provisioning": {
       "type": "array",
       "items": { "$ref": "#/$defs/provisioningHook" }
@@ -622,6 +623,58 @@
         "properties": { "provider": { "const": "custom" } }
       },
       "then": { "required": ["issuer", "clientId"] }
+    },
+    "identity": {
+      "type": "object",
+      "description": "Identity settings (I-09), each a claimable setting: the console can override it and Revert returns it to this file. Takes effect only while the identity service is on; declared with it off, pkey validate warns (identity_block_without_service).",
+      "additionalProperties": false,
+      "properties": {
+        "keyEntry": {
+          "type": "object",
+          "description": "Key entry on this Identity product (WIRE-CONTRACT-V4 §12.2).",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "How many times the key of a licence in no account may be entered on new devices (identity.keyEntry.limit): 1 to 100, default 10, no unlimited value.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "claimByKey": {
+              "description": "Whether a licence that carries a buyer email may join an account by its key alone, without that email verified (identity.keyEntry.claimByKey). Default false; true lets a leaked key claim an email-bound licence.",
+              "type": "boolean"
+            }
+          }
+        },
+        "terms": {
+          "type": "object",
+          "description": "The product's terms, accepted once per version at sign-in (identity.terms). url defaults to the listing's EULA URL.",
+          "additionalProperties": false,
+          "required": ["version"],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,32}$"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^https://[^\\u0000-\\u0020\\u007f]+$"
+            }
+          }
+        },
+        "redirectPaths": {
+          "type": "array",
+          "description": "Web-redirect callback paths (identity.redirectPaths): a redirect URI is a web.origins origin plus one of these paths, matched exactly. Up to 16 unique paths, each rooted at /, at most 256 characters, with no ?, #, *, // or ..; needs web.origins (identity_redirect_paths_without_origins).",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$"
+          }
+        }
+      }
     },
     "provisioningHook": {
       "type": "object",

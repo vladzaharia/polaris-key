@@ -692,6 +692,22 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     ).toBeTruthy();
   });
 
+  it("starts a provider sign-in through the product the card was opened for (I-09)", async () => {
+    window.history.replaceState(null, "", "/?product=nightfall");
+    signedOut({
+      ...CAPS_ALL,
+      auth: { ...CAPS_ALL.auth, providers: ["google"] },
+      product: { slug: "nightfall", name: "Nightfall", developerName: null },
+    });
+    renderPortal();
+    const google = await screen.findByRole("link", {
+      name: "Continue with Google",
+    });
+    expect(google.getAttribute("href")).toMatch(
+      /^\/login\/google\?return_to=[^&]+&product=nightfall$/,
+    );
+  });
+
   it("shows the product context header when the Worker names the product", async () => {
     window.history.replaceState(null, "", "/?product=nightfall");
     signedOut({

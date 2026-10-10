@@ -1561,6 +1561,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_license_owned_message">This %1$s license is already in another Polaris Key account. A license never moves by its key.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_title">Email not verified</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_email_bound_message">This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_title">Sign-in needed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_account_required_message">Sign in to your Polaris Key account on this device, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">Email not verified</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.</string>

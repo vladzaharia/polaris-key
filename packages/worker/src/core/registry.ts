@@ -162,6 +162,12 @@ export interface DiscoveryContext {
   base: string;
   /** The same read-only hooks a request gets (`core/hooks.ts`), gated on this product. */
   hooks: ServiceHooks;
+  /**
+   * ST-04's settings registry for this service table, so a fragment publishes a setting through
+   * the same resolver enforcement reads it with (I-09's `keyEntryLimit`). Absent on a context
+   * built by hand, where a reader falls back as it documents.
+   */
+  settings?: SettingsRegistry;
 }
 
 /**

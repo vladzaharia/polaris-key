@@ -6,8 +6,12 @@
 //                          re-entry included), the `key_entry_limit` refusal with its portal link
 //                          once a new device meets the limit, and success again once the limit is
 //                          raised.
-//   keyentry-refusals-off  limit 1, refusals off: counted past the limit, never refused.
+//   keyentry-refusals-off  limit 1, refusals off: counted past the limit, never refused; a
+//                          licence in an account is counted and admitted too (I-09).
 //   keyentry-identity-off  Identity off: no member at all, whatever the table and the limit say.
+//   keyentry-owned         I-09 (§12.2 step 3), refusals on: a licence in an account, entered
+//                          again on its enrolled device (counted nothing new), then on a new
+//                          one: `license_owned` with `signInUrl`, nothing counted.
 //
 // The limit and the switch are fixture rows (`product_settings`, `platform_settings`), written
 // before the first request so the platform-settings cache never holds an older read. The other
@@ -41,6 +45,7 @@ import {
   type Scenario,
 } from "../world.js";
 import type { World } from "../recorder.js";
+import { holdLicense, seedAccount } from "./account.js";
 
 /** The product's services: License, Config and Identity. */
 const IDENTITY_ON = servicesOn("license", "config", "identity");
@@ -79,7 +84,7 @@ async function otherDeviceEnters(w: World, key: string): Promise<void> {
 }
 
 /** A key activation the Worker accepts, then the sync it triggers. */
-async function activateAndSync(
+export async function activateAndSync(
   s: StepRecorder,
   keyEntries: { used: number; limit: number } | null,
 ): Promise<void> {
@@ -234,16 +239,16 @@ export const keyentryRefusalsOff: Scenario = {
   record: () =>
     pinned("keyentry-refusals-off", async (pin) => {
       const world = await productWorld(IDENTITY_ON);
-      const { key } = await seedLicense(world);
+      const { key, licenseId } = await seedLicense(world);
       await setLimit(world, 1);
       await otherDeviceEnters(world, key);
 
       const r = new TranscriptRecorder({
         id: "keyentry-refusals-off",
         description:
-          "Key-entry counting with refusals off (PX-W9, WIRE-CONTRACT-V4 §12.2), the rollout default. The limit is 1 and another device has already entered the key, yet a new device activates: the entry is counted past the limit (keyEntries used 2 of 1, so a client shows none left) and never refused.",
+          "Key-entry counting with refusals off (PX-W9, WIRE-CONTRACT-V4 §12.2), the rollout default. The limit is 1 and another device has already entered the key, yet a new device activates: the entry is counted past the limit (keyEntries used 2 of 1, so a client shows none left) and never refused. The device then deactivates and the licence joins an account: its next entry is a new device's and, with refusals off, step 3 (license_owned, I-09) does not apply either, so it is counted (3 of 1) and admitted.",
         features: FEATURES,
-        requires: ["core.store"],
+        requires: ["core.store", "license.deactivate"],
         product: PRODUCT,
         now: T0,
         world,
@@ -261,6 +266,41 @@ export const keyentryRefusalsOff: Scenario = {
         {
           result: "ok",
           keyEntries: { used: 2, limit: 1 },
+          licenseStatus: "ok",
+          tokenHeld: true,
+        },
+      );
+
+      // I-09: the licence joins an account. With refusals off, step 3 does not apply either.
+      await r.step(
+        {
+          action: "deactivate",
+          now: T0 + 60,
+          note: "This device deactivates, so its next entry is a new device's.",
+        },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: `/${PRODUCT}/license/deauthorize`,
+            bearer: "token",
+          });
+          expect(res.status).toBe(200);
+        },
+        { licenseStatus: "needs-activation", tokenHeld: false },
+      );
+      const holder = await seedAccount(world, "holder@example.com");
+      await holdLicense(world, licenseId, holder.id);
+      await r.step(
+        {
+          action: "activate",
+          args: { key },
+          now: T0 + 120,
+          note: "The licence is now in an account: with refusals off it is still counted and admitted (I-09).",
+        },
+        (s) => activateAndSync(s, { used: 3, limit: 1 }),
+        {
+          result: "ok",
+          keyEntries: { used: 3, limit: 1 },
           licenseStatus: "ok",
           tokenHeld: true,
         },
@@ -311,6 +351,105 @@ export const keyentryIdentityOff: Scenario = {
           keyEntries: null,
           licenseStatus: "ok",
           tokenHeld: true,
+        },
+      );
+      const n = await world.db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM license_key_entries WHERE product = ? AND license_id = ?",
+        PRODUCT,
+        licenseId,
+      );
+      expect(n?.n).toBe(1);
+      return r.transcript();
+    }),
+};
+
+export const keyentryOwned: Scenario = {
+  id: "keyentry-owned",
+  record: () =>
+    pinned("keyentry-owned", async (pin) => {
+      const world = await productWorld(IDENTITY_ON);
+      const { key, licenseId } = await seedLicense(world);
+      await refusalsOn(world);
+      // This device entered the key while the licence was in no account (one counted entry);
+      // then the licence joined an account.
+      await setup(world, "POST", `/${PRODUCT}/license/activate`, {
+        authorization: `Bearer ${key}`,
+      });
+      const holder = await seedAccount(world, "holder@example.com");
+      await holdLicense(world, licenseId, holder.id);
+
+      const r = new TranscriptRecorder({
+        id: "keyentry-owned",
+        description:
+          "An owned licence never moves by key (I-09, WIRE-CONTRACT-V4 §12.2 step 3), on a product with Identity on and refusals on. The licence is in an account. The device that is enrolled on it enters the key again: admitted as before, nothing new counted. The device deactivates, so its next entry is a new device's: refused 403 license_owned with signInUrl, the product's login card, which carries no key and nothing about the account. Nothing is counted and the client keeps its state; it offers sign-in behind a user action.",
+        features: FEATURES,
+        requires: ["core.store", "license.deactivate"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: { deviceId: DEVICE, version: VERSION },
+      });
+
+      await r.step(
+        {
+          action: "activate",
+          args: { key },
+          note: "The enrolled device enters the key again: step 2 admits it, nothing is counted.",
+        },
+        (s) => activateAndSync(s, { used: 1, limit: 10 }),
+        {
+          result: "ok",
+          keyEntries: { used: 1, limit: 10 },
+          licenseStatus: "ok",
+          tokenHeld: true,
+        },
+      );
+
+      await r.step(
+        {
+          action: "deactivate",
+          now: T0 + 60,
+          note: "This device deactivates: it is no longer enrolled.",
+        },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: `/${PRODUCT}/license/deauthorize`,
+            bearer: "token",
+          });
+          expect(res.status).toBe(200);
+        },
+        { licenseStatus: "needs-activation", tokenHeld: false },
+      );
+
+      await r.step(
+        {
+          action: "activate",
+          args: { key },
+          now: T0 + 120,
+          note: "A new device and a licence in an account: license_owned with the sign-in link.",
+        },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: `/${PRODUCT}/license/activate`,
+            bearer: "key",
+            body: FINGERPRINT,
+            expectBody: FINGERPRINT_EXPECT,
+          });
+          expect(res.status).toBe(403);
+          expect(await res.clone().json()).toEqual({
+            error: "license_owned",
+            message: "license is in an account",
+            signInUrl: `https://key.plrs.im/signin?product=${PRODUCT}`,
+          });
+        },
+        {
+          result: "refused",
+          code: "license_owned",
+          licenseStatus: "needs-activation",
+          tokenHeld: false,
         },
       );
       const n = await world.db.first<{ n: number }>(

@@ -3,21 +3,44 @@
  * contributed through the descriptor (`identityService.settings`), never imported by Core
  * (rule 6).
  *
- * `identity.keyEntry.limit` is claimable from the manifest's `identity:` block (I-04 §3; I-09 adds
- * the block), bounded 1–100 with no unlimited value (`allowUnset: false`, I-04 Q7), and capped by
- * the platform entry of the same key (`policyBound: "max"`). The bounds are the platform slice's
- * `KEY_ENTRY_LIMIT_*` constants; the manifest rule I-09 adds (`invalid_identity_key_entry_limit`)
- * must use the same numbers. PX-W9 reads it through ST-04's resolver (`core/keyEntries.ts`
- * `keyEntryLimit()`, `resolveProductSetting`). It stays pending on I-09, whose manifest block and
- * discovery member are what a live entry needs; I-09 drops `pending` and the console then writes it
- * through `writeSetting()`.
+ * The manifest's `identity:` block (I-09; plans/I-27.md §3) seeds four claimable settings, in their
+ * final nested shape:
+ *
+ *   identity.keyEntry.limit       `identity.keyEntry.limit`: 1–100, no unlimited value
+ *                                 (`allowUnset: false`, I-04 Q7), capped by the platform entry of
+ *                                 the same key (`policyBound: "max"`). The bounds are
+ *                                 `@polaris-key/manifest`'s `IDENTITY_KEY_ENTRY_LIMIT`, which the
+ *                                 manifest rule `invalid_identity_key_entry_limit` uses too. Read
+ *                                 through ST-04's resolver (`core/keyEntries.ts` `keyEntryLimit()`)
+ *                                 by enforcement and by discovery's `keyEntryLimit`.
+ *   identity.keyEntry.claimByKey  `identity.keyEntry.claimByKey`: column-backed on
+ *                                 `portal_product_settings.claim_by_key` (`settingsColumns.ts`)
+ *                                 until ST-14 folds that table into rows. Off by default; on lets a
+ *                                 leaked key claim an email-bound licence, so it is
+ *                                 security-widening and the console warns while it is on.
+ *   identity.terms                `identity.terms` `{version, url?}` (`productTerms.ts`).
+ *   identity.redirectPaths        `identity.redirectPaths`: critical; read by I-08's redirect.
+ *
+ * The row-backed ones (`IDENTITY_ROW_SETTINGS`) are written by the descriptor's
+ * `manifestIngestAlways` on every link and resync (`core/rowSettings.ts`, omit-clears); claimByKey's
+ * manifest value reaches its column through `manifestClaimByKeyStatements` below, while Identity is
+ * on. A console claim is never overwritten. `identity.native` and `identity.requireTerms` are never registered.
  */
 
 import {
+  MAX_IDENTITY_REDIRECT_PATH_LENGTH,
+  MAX_IDENTITY_REDIRECT_PATHS,
   OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
   type OidcSyncTierOnSignIn,
+  type ParsedManifest,
 } from "@polaris-key/manifest";
-import type { Db } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../core/platform.js";
+import { randomId } from "../../core/platform.js";
+import {
+  manifestRowSettingStatements,
+  manifestValueAt,
+} from "../../core/rowSettings.js";
+import { RESYNC_ACTOR } from "../../core/settingsClaims.js";
 import {
   readRowSettings,
   type RowSettingProduct,
@@ -32,6 +55,7 @@ import type {
   ServiceSettingsSlice,
   SettingDef,
 } from "../../core/settings/types.js";
+import { IDENTITY_COLUMN_ADAPTERS } from "./settingsColumns.js";
 
 const VISIBLE = { service: "identity", offBehaviour: "hide" } as const;
 
@@ -67,45 +91,150 @@ const SYNC_TIER_ON_SIGN_IN: SettingDef = setting({
   since: "LX-06",
 });
 
+/** I-09: `identity.keyEntry.limit`, from the `identity:` block (the limit PX-W9 enforces). */
+const KEY_ENTRY_LIMIT: SettingDef = setting({
+  key: "identity.keyEntry.limit",
+  scope: "product",
+  service: "identity",
+  area: "identity.keyEntry",
+  label: "Key-entry limit",
+  description:
+    "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
+  keywords: ["key entry", "key_entry_limit", "activations"],
+  docs: "/docs/features/sign-in/",
+  value: {
+    kind: "integer",
+    unit: "count",
+    min: KEY_ENTRY_LIMIT_MIN,
+    max: KEY_ENTRY_LIMIT_MAX,
+  },
+  defaultValue: KEY_ENTRY_LIMIT_DEFAULT,
+  allowUnset: false,
+  merge: "policy",
+  policyBound: "max",
+  widensWhen: "higher",
+  ownership: "claimable",
+  manifest: { path: "product:identity.keyEntry.limit" },
+  confirm: { up: "L1", down: "L0" },
+  visibleWhen: VISIBLE,
+  wire: ["discovery", "refusal"],
+  readers: ["core/keyEntries.ts"],
+  storage: { kind: "scalar" },
+});
+
+/** The registry key of claimByKey (`settingsColumns.ts` adapts its column). */
+export const CLAIM_BY_KEY_SETTING = "identity.keyEntry.claimByKey";
+
+/**
+ * I-09: `identity.keyEntry.claimByKey`. Column-backed until ST-14; the claim rules
+ * (`accounts/claim.ts`, the portal's preview) read the column. It applies to every product, Identity
+ * on or off (the platform claim rule), so it stays visible with Identity off.
+ */
+const CLAIM_BY_KEY: SettingDef = setting({
+  key: CLAIM_BY_KEY_SETTING,
+  scope: "product",
+  service: "identity",
+  area: "identity.keyEntry",
+  label: "Add by key without the purchase email",
+  description:
+    "Whether a licence that carries a buyer email may join an account by its key alone, without that email verified on the account. On, anyone holding a leaked key can add an email-bound licence to their own account. A licence already in an account never moves by its key either way.",
+  keywords: ["claim", "license_email_bound", "email-bound", "leaked key"],
+  docs: "/docs/features/sign-in/",
+  value: { kind: "boolean" },
+  defaultValue: false,
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.keyEntry.claimByKey" },
+  securityWidening: true,
+  widensWhen: "on",
+  critical: true,
+  confirm: { on: "L1", off: "L0" },
+  visibleWhen: { service: "identity", offBehaviour: "visible" },
+  readers: [
+    "services/identity/accounts/claim.ts",
+    "services/identity/portal/selfService.ts",
+  ],
+  storage: {
+    kind: "column",
+    table: "portal_product_settings",
+    column: "claim_by_key",
+  },
+  since: "I-09",
+});
+
+/** I-09: `identity.terms` `{version, url?}`, the product's terms accepted at sign-in. */
+const TERMS: SettingDef = setting({
+  key: "identity.terms",
+  scope: "product",
+  service: "identity",
+  area: "identity.signIn",
+  label: "Terms",
+  description:
+    "The product's terms: a version and an https URL. A person signing in through the product accepts each version once; a new version asks again.",
+  keywords: ["terms", "eula", "terms_required", "acceptance"],
+  docs: "/docs/features/sign-in/",
+  value: { kind: "json", schema: "identity.terms (product.schema.json)" },
+  defaultValue: null,
+  allowUnset: true,
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.terms" },
+  confirm: { change: "L1" },
+  visibleWhen: VISIBLE,
+  readers: ["services/identity/productTerms.ts"],
+  storage: { kind: "scalar" },
+  since: "I-09",
+});
+
+/**
+ * I-09: `identity.redirectPaths`, the web redirect's callback paths (a redirect URI is a
+ * `web.origins` origin plus one of them, matched exactly). Security-widening on any change. I-08's
+ * `authorize` is its reader, so it stays pending on I-08; link and resync already write its row.
+ */
+const REDIRECT_PATHS: SettingDef = setting({
+  key: "identity.redirectPaths",
+  scope: "product",
+  service: "identity",
+  area: "identity.signIn",
+  label: "Redirect paths",
+  description:
+    "The paths a web app's sign-in may return to. A redirect URI is one of the product's web origins plus one of these paths, matched exactly.",
+  keywords: ["redirect_uri", "callback", "authorize", "web.origins"],
+  docs: "/docs/features/sign-in/",
+  value: {
+    kind: "list",
+    of: {
+      kind: "string",
+      pattern: "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$",
+      maxLength: MAX_IDENTITY_REDIRECT_PATH_LENGTH,
+    },
+    max: MAX_IDENTITY_REDIRECT_PATHS,
+  },
+  defaultValue: [],
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.redirectPaths" },
+  securityWidening: true,
+  widensWhen: "any",
+  critical: true,
+  confirm: { change: "L1" },
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  since: "I-09",
+  pending: { wp: "I-08" },
+});
+
 /** `browserSession.ts`'s 30-day browser session: a product may only shorten it (rule 3). */
 const BROWSER_SESSION_DAYS = 30;
 
 export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
   namespaces: ["identity"],
+  columns: IDENTITY_COLUMN_ADAPTERS,
   entries: [
-    setting({
-      key: "identity.keyEntry.limit",
-      scope: "product",
-      service: "identity",
-      area: "identity.keyEntry",
-      label: "Key-entry limit",
-      description:
-        "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
-      keywords: ["key entry", "key_entry_limit", "activations"],
-      docs: "/docs/features/sign-in/",
-      value: {
-        kind: "integer",
-        unit: "count",
-        min: KEY_ENTRY_LIMIT_MIN,
-        max: KEY_ENTRY_LIMIT_MAX,
-      },
-      defaultValue: KEY_ENTRY_LIMIT_DEFAULT,
-      allowUnset: false,
-      merge: "policy",
-      policyBound: "max",
-      widensWhen: "higher",
-      ownership: "claimable",
-      manifest: { path: "product:identity.keyEntryLimit" },
-      confirm: { up: "L1", down: "L0" },
-      visibleWhen: VISIBLE,
-      wire: ["discovery", "refusal"],
-      readers: ["core/keyEntries.ts"],
-      storage: { kind: "scalar" },
-      // Read through ST-04's resolver since batch 4; still pending on I-09, which adds the two
-      // pieces a live entry needs: the manifest path (the `identity:` block) and the discovery
-      // member that publishes the value (`test/settings-registry.test.ts`, `settings-discovery`).
-      pending: { wp: "I-09" },
-    }),
+    KEY_ENTRY_LIMIT,
+    CLAIM_BY_KEY,
+    TERMS,
+    REDIRECT_PATHS,
     setting({
       key: "identity.oidc",
       scope: "product",
@@ -219,7 +348,84 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
  */
 export const IDENTITY_ROW_SETTINGS: readonly SettingDef[] = [
   SYNC_TIER_ON_SIGN_IN,
+  KEY_ENTRY_LIMIT,
+  TERMS,
+  REDIRECT_PATHS,
 ];
+
+/**
+ * Identity's row-backed settings for a link or resync batch (the descriptor's
+ * `manifestIngestAlways`), whatever Identity's enablement, so they are already right when Identity
+ * is turned on; none of them is read while it is off.
+ */
+export function identityManifestIngest(
+  parsed: ParsedManifest,
+  product: string,
+  now: number,
+): DbStatement[] {
+  return manifestRowSettingStatements(
+    product,
+    IDENTITY_ROW_SETTINGS,
+    parsed,
+    now,
+  );
+}
+
+/**
+ * claimByKey's manifest value at link and resync (I-09), for the descriptor's `manifestIngest`
+ * (Identity on only: the claim rules read the column for every product, so a block declared while
+ * Identity is off, which the validator warns about, changes nothing): when `.pkey/product` declares
+ * `identity.keyEntry.claimByKey`, its
+ * column takes that value unless the console has claimed the key (the guard is in the
+ * statement, so a claim made while the resync ran still wins), with one `setting.resync` audit row
+ * when the value changes. An undeclared value leaves the column alone: the console set it before
+ * the block existed, and a resync must not quietly change what an existing product does.
+ */
+export function manifestClaimByKeyStatements(
+  product: string,
+  parsed: ParsedManifest | unknown,
+  now: number,
+): DbStatement[] {
+  const declared = manifestValueAt(parsed, CLAIM_BY_KEY);
+  if (typeof declared !== "boolean") return [];
+  const value = declared ? 1 : 0;
+  const claimed = `EXISTS (SELECT 1 FROM product_settings
+      WHERE product = ? AND key = ? AND source = 'console'
+        AND (expires_at IS NULL OR expires_at > ?))`;
+  const was = `(SELECT claim_by_key FROM portal_product_settings WHERE product = ?)`;
+  return [
+    {
+      sql: `INSERT INTO audit
+              (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
+               target_id, parent_id, summary)
+            SELECT ?, ?, ?, ?, ?, ?, 'setting.resync', 'setting', ?, NULL, ?
+            WHERE NOT ${claimed} AND COALESCE(${was}, 0) <> ?`,
+      params: [
+        product,
+        randomId("aud"),
+        now,
+        RESYNC_ACTOR.sub,
+        RESYNC_ACTOR.name,
+        RESYNC_ACTOR.email,
+        CLAIM_BY_KEY_SETTING,
+        `${CLAIM_BY_KEY_SETTING} set from the manifest: ${declared}`,
+        product,
+        CLAIM_BY_KEY_SETTING,
+        now,
+        product,
+        value,
+      ],
+    },
+    {
+      sql: `INSERT INTO portal_product_settings (product, claim_by_key, created_at, modified_at)
+            SELECT ?, ?, ?, ? WHERE NOT ${claimed}
+            ON CONFLICT(product) DO UPDATE SET
+              claim_by_key = excluded.claim_by_key, modified_at = excluded.modified_at
+            WHERE portal_product_settings.claim_by_key <> excluded.claim_by_key`,
+      params: [product, value, now, now, product, CLAIM_BY_KEY_SETTING, now],
+    },
+  ];
+}
 
 /** The product's `identity.oidc.syncTierOnSignIn` in force (until ST-04's resolver). */
 export async function readSyncTierOnSignIn(

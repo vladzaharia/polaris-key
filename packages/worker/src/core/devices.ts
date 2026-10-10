@@ -52,6 +52,7 @@ import {
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
+import { parseJsonStringList } from "../platform/json.js";
 import type { Product, ProductPublic } from "./products.js";
 import {
   hashKey,
@@ -1042,6 +1043,27 @@ function coreDeviceAllowed(
 ): boolean {
   if (!product.services.license.enabled) return true;
   return licenseUsable(valid.license, now);
+}
+
+/**
+ * The `license` member of an activation response (`license/activate`, `license/enroll`, and
+ * Identity's `identity/attach`, I-09). In Core because License and Identity both answer it and a
+ * service may not import another (rule 6); License re-exports it unchanged.
+ */
+export function shapeLicense(license: LicenseRow) {
+  return {
+    id: license.id,
+    status: license.status,
+    name: license.name,
+    email: license.email,
+    tierId: license.tier_id,
+    activatedAt: license.activated_at,
+    expiresAt: license.expires_at,
+    maxOfflineDays: license.max_offline_days,
+    channels: parseJsonStringList(license.channels_json),
+    minVersion: license.min_version,
+    maxVersion: license.max_version,
+  };
 }
 
 export function shapeDevice(device: DeviceRow, currentDeviceId?: string) {

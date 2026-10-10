@@ -34,6 +34,8 @@ const VERBS: Record<string, string> = {
   "license.disable": "disabled license",
   "license.delete": "deleted license",
   "license.enroll": "enrolled a keyless license",
+  // I-09: a signed-in device added its license to the account (the actor is the subject).
+  "license.attach": "added to their account license",
   // LX-26, LX-28 and LX-30 (notes/S-24 §6.3, §7.4): holders and batches.
   "license.holder.assign": "assigned license",
   "license.batch.create": "created batch",

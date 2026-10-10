@@ -824,7 +824,25 @@
       "service": "identity",
       "proof": [{ "kind": "transcript", "wp": "PX-W9b" }],
       "allowedNa": [],
-      "note": "PX-W9 (WIRE-CONTRACT-V4 §12.2): an activation by key on a product with Identity on exposes keyEntries {used, limit} on ok, and the typed key-entry-limit result (keyEntries, manageUrl) when a new device meets the licence's limit with refusals on. Never an auth failure: the client keeps its state and never retries. Pinned by keyentry-limit.json, keyentry-refusals-off.json and keyentry-identity-off.json; client-core's keyEntries table (PX-W9b) pins readKeyEntries. I-09 extends this to license_owned."
+      "note": "PX-W9 (WIRE-CONTRACT-V4 §12.2): an activation by key on a product with Identity on exposes keyEntries {used, limit} on ok, and the typed key-entry-limit result (keyEntries, manageUrl) when a new device meets the licence's limit with refusals on. Never an auth failure: the client keeps its state and never retries. Pinned by keyentry-limit.json, keyentry-refusals-off.json and keyentry-identity-off.json; client-core's keyEntries table (PX-W9b) pins readKeyEntries. I-09 adds step 3: a licence in an account refused to a new device with license_owned and signInUrl (keyentry-owned.json); the typed license-owned result is I-10a's and I-10b's."
+    },
+    {
+      "id": "identity.attach",
+      "family": "devices",
+      "title": "Attach: add the device's licence to the account signed in on it, with a preview",
+      "service": "identity",
+      "proof": [{ "kind": "transcript", "wp": "I-10a" }],
+      "allowedNa": [],
+      "note": "I-09 (WIRE-CONTRACT-V4 §12.3): identity.attach({confirm}) previews the device's own licence (confirm:false writes nothing) and attaches it to the account the device is signed in to (confirm:true: a rotated token, subject and attached: claimed). The nested refusals account_required, license_owned and license_email_bound are not auth failures. Pinned by identity-attach.json and identity-attach-errors.json; I-10a (Node, React, Python) and I-10b (Swift, Godot, Kotlin) implement it."
+    },
+    {
+      "id": "identity.account",
+      "family": "devices",
+      "title": "The account on the device: subject(), signOut() and openAccount()",
+      "service": "identity",
+      "proof": [{ "kind": "transcript", "wp": "I-10a" }],
+      "allowedNa": [],
+      "note": "I-09 (WIRE-CONTRACT-V4 §12.3, §12.6): subject() reads the pairwise subject signed in on the device; signOut() flushes Cloud Sync first, then clears the binding and drops the token when the seat was released; openAccount() opens discovery's accountPortal. Each only when discovery's identity fragment carries account: true and the endpoint. Pinned by identity-subject-signout.json and discovery-identity.json; I-10a and I-10b implement it."
     },
     {
       "id": "release.changelog",
@@ -1816,6 +1834,20 @@
           "runtime": "headless",
           "reason": "runtime",
           "why": "A headless SDK ships no UI toolkit; hosts read keyEntries and manageUrl from the activation result (identity.keyentry)."
+        }
+      ]
+    },
+    {
+      "id": "ui.kit.account",
+      "family": "ui",
+      "title": "Account screens: License in another account with Sign in, Add to your Library (attach) and Sign out",
+      "service": "sdk",
+      "proof": [{ "kind": "snapshot" }],
+      "allowedNa": [
+        {
+          "runtime": "headless",
+          "reason": "runtime",
+          "why": "A headless SDK ships no UI toolkit; hosts read signInUrl from the activation result and call identity.attach, subject and signOut themselves (identity.attach, identity.account)."
         }
       ]
     },

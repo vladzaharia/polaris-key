@@ -4094,6 +4094,26 @@ msgstr "此{product}许可证已在另一个Polaris Key账户中。许可证不�
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_email_bound.title"
+msgstr "电子邮件未验证"
+
+#. This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_email_bound.message"
+msgstr "此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。"
+
+#. Sign-in needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.account_required.title"
+msgstr "需要登录"
+
+#. Sign in to your Polaris Key account on this device, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.account_required.message"
+msgstr "请在此设备上登录你的Polaris Key账户，然后重试。"
+
+#. Email not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
 msgstr "电子邮件未验证"
 

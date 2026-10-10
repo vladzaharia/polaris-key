@@ -30,6 +30,7 @@ import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
 import { Link } from "../../router.js";
+import { ClaimByKeyWarning } from "./ClaimByKeyWarning.js";
 import { r } from "../../routes.js";
 import {
   SettingsRow,
@@ -229,6 +230,7 @@ function PortalForm({
     label: string,
     help: React.ReactNode,
     disabled: boolean,
+    footer?: React.ReactNode,
   ): React.ReactElement => {
     const id = `portal-${slug}-${key}`;
     return (
@@ -237,6 +239,7 @@ function PortalForm({
         label={label}
         htmlFor={id}
         help={help ? <span id={`${id}-help`}>{help}</span> : undefined}
+        footer={footer}
       >
         <Switch
           id={id}
@@ -329,6 +332,7 @@ function PortalForm({
             "Add by key without the purchase email",
             "Off: a license that carries an email joins only an account with that email verified. On: anyone holding the key can add it. A license already in an account never moves by its key either way.",
             !portalOn,
+            values.claimByKey ? <ClaimByKeyWarning /> : null,
           )}
         </SettingsSection>
 

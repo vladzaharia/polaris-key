@@ -197,6 +197,8 @@ describe("the account id never reaches a developer (PX-W17)", () => {
         `/${slug}/devices`,
         `/${slug}/devices/dev-1`,
         `/${slug}/license/document`,
+        // I-09: the device's own subject read names the subject, never the account.
+        `/${slug}/identity/subject`,
       ]) {
         const res = await dispatchWith(
           new Request(`${ORIGIN}${path}`, {

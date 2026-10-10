@@ -19,6 +19,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  setClaimByKey,
 } from "./seed.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { handlePortalApi } from "./portalHarness.js";
@@ -41,10 +42,7 @@ import {
 } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleBrowserSessionLicense } from "../src/services/identity/browserSession.js";
-import {
-  getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -452,7 +450,7 @@ describe("the refusal (§12.2 step 4)", () => {
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(3);
   });
 
-  it("applies only to a licence in no account (§8 Q3); a licence in an account is still counted", async () => {
+  it("applies only to a licence in no account (§8 Q3): one in an account meets license_owned first (I-09), and is counted with refusals off", async () => {
     const { product, key, licenseId } = await atLimit({ refusals: true });
     await db.run(
       "UPDATE licenses SET account_id = 'acct_x' WHERE product = ? AND id = ?",
@@ -460,7 +458,13 @@ describe("the refusal (§12.2 step 4)", () => {
       licenseId,
     );
     const res = await activate(product, key, "dev-3", NOW + 60);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "license_owned",
+    );
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(2);
+    await setRefusals(false);
+    expect((await activate(product, key, "dev-3", NOW + 120)).status).toBe(200);
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(3);
   });
 
@@ -622,7 +626,7 @@ describe("portal entries", () => {
   it("the signed-in preview reports keyEntries; the claim records one portal entry; already_yours none", async () => {
     await setIdentity(true);
     const { key, licenseId } = await seedLicenseWithKey(db, SLUG);
-    await upsertPortalProductSettings(db, SLUG, { claimByKey: true }, NOW);
+    await setClaimByKey(db, SLUG, true);
     const s = await portalSession("bob@example.com");
 
     const preview = await portal("/api/activate/preview", { key }, s);
@@ -654,7 +658,7 @@ describe("portal entries", () => {
   it("a claim past the limit still commits and writes its row (never refused)", async () => {
     await setIdentity(true);
     const { key, licenseId } = await seedLicenseWithKey(db, SLUG);
-    await upsertPortalProductSettings(db, SLUG, { claimByKey: true }, NOW);
+    await setClaimByKey(db, SLUG, true);
     await setLimit(1);
     await setRefusals(true);
     await db.run(
@@ -673,7 +677,7 @@ describe("portal entries", () => {
   it("Identity off: the previews answer keyEntries null and the claim counts nothing", async () => {
     await setIdentity(false);
     const { key, licenseId } = await seedLicenseWithKey(db, SLUG);
-    await upsertPortalProductSettings(db, SLUG, { claimByKey: true }, NOW);
+    await setClaimByKey(db, SLUG, true);
     const s = await portalSession("bob@example.com");
     expect(
       await (await portal("/api/activate/preview", { key }, s)).json(),

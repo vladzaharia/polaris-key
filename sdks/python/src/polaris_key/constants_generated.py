@@ -191,6 +191,8 @@ class ErrorCode:
     EMAIL_IN_USE: Final = "email_in_use"
     TERMS_REQUIRED: Final = "terms_required"
     LICENSE_OWNED: Final = "license_owned"
+    LICENSE_EMAIL_BOUND: Final = "license_email_bound"
+    ACCOUNT_REQUIRED: Final = "account_required"
     EMAIL_MISMATCH: Final = "email_mismatch"
     LINK_CONFLICT: Final = "link_conflict"
     LAST_LINK: Final = "last_link"
@@ -349,6 +351,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "email_in_use",
     "terms_required",
     "license_owned",
+    "license_email_bound",
+    "account_required",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -509,6 +513,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "email_in_use": "wire",
         "terms_required": "wire",
         "license_owned": "wire",
+        "license_email_bound": "wire",
+        "account_required": "wire",
         "email_mismatch": "wire",
         "link_conflict": "wire",
         "last_link": "wire",
@@ -669,6 +675,8 @@ class Feature:
     IDENTITY_DEVICELABEL: Final = "identity.devicelabel"
     IDENTITY_TOGGLE: Final = "identity.toggle"
     IDENTITY_KEYENTRY: Final = "identity.keyentry"
+    IDENTITY_ATTACH: Final = "identity.attach"
+    IDENTITY_ACCOUNT: Final = "identity.account"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -712,6 +720,7 @@ class Feature:
     UI_KIT: Final = "ui.kit"
     UI_KIT_MANAGE: Final = "ui.kit.manage"
     UI_KIT_KEYENTRY: Final = "ui.kit.keyentry"
+    UI_KIT_ACCOUNT: Final = "ui.kit.account"
     UI_CLI: Final = "ui.cli"
     UI_GATE: Final = "ui.gate"
     UI_ACTIVATE: Final = "ui.activate"
@@ -768,6 +777,8 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.devicelabel",
     "identity.toggle",
     "identity.keyentry",
+    "identity.attach",
+    "identity.account",
     "release.changelog",
     "release.download",
     "release.record",
@@ -811,6 +822,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.kit",
     "ui.kit.manage",
     "ui.kit.keyentry",
+    "ui.kit.account",
     "ui.cli",
     "ui.gate",
     "ui.activate",
@@ -1813,6 +1825,8 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.devicelabel": CapabilityRow("implemented", "identity", ()),
         "identity.toggle": CapabilityRow("planned", "identity", ()),
         "identity.keyentry": CapabilityRow("planned", "identity", ()),
+        "identity.attach": CapabilityRow("planned", "identity", ()),
+        "identity.account": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -1856,6 +1870,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.keyentry": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.kit.account": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "ui.gate": CapabilityRow("planned", "sdk", ()),
         "ui.activate": CapabilityRow("planned", "sdk", ()),
@@ -1872,4 +1887,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "23d6ce503bec7fcf42597404c388ec4a92a1ba619924b3db5d00cfeeb9b21402"
+CAPABILITY_DIGEST: Final[str] = "80b25ebf198d16ad9d52cec0de8a4a13994b7924bf9ac95bc700ce0aa485eee8"

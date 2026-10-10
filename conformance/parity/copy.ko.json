@@ -173,6 +173,14 @@
       "title": "다른 계정의 라이선스",
       "message": "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
     },
+    "license_email_bound": {
+      "title": "인증되지 않은 이메일",
+      "message": "이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
+    },
+    "account_required": {
+      "title": "로그인 필요",
+      "message": "이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+    },
     "email_mismatch": {
       "title": "인증되지 않은 이메일",
       "message": "이 라이선스는 회원님 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 해당 이메일을 추가하고 인증한 후 다시 시도하세요."

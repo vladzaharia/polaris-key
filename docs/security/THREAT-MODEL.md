@@ -5784,6 +5784,71 @@ of its holder), and the platform switch (AT-2).
   (as `devices` already does; `NULL` for a portal claim) and a time. No personal data. The rows go
   with the licence when it is deleted, and an LX-03 merge leaves them on the retired licence.
 
+### The account on the device: license_owned, attach, subject and sign-out (I-09)
+
+On a product with Identity on, a licence in an account is no longer reached by its key from a new
+device: while the platform switch `identity.keyEntryRefusals` is on, `license/activate` and the
+browser key session answer `403 license_owned` with `signInUrl`, the product's login card
+(WIRE-CONTRACT-V4 §12.2 step 3). A signed-in device can add the licence it runs on to its
+account, read its pairwise subject and sign out (`POST /<p>/identity/attach`,
+`GET /<p>/identity/subject`, `POST /<p>/identity/signout`, §12.3;
+`services/identity/attach.ts`). S-16 §5.4 item 5. Assets: the licence (an entitlement its buyer
+paid for), the account (A6), and the device token (a bearer credential).
+
+- **Licence claim and key entry (item 5).** An owned licence never moves by key: the attach
+  writes the owner pointer with one compare-and-set (`UPDATE … WHERE account_id IS NULL`), the
+  portal's Activate License uses the same statement, and key entry of an owned licence on a new
+  device is refused (while the switch is on) rather than admitted. A licence with a buyer email
+  joins only an account that verified that email, unless the developer sets
+  `identity.keyEntry.claimByKey`. That setting is off by default and the console warns, when it is
+  on, that a leaked key can then add an email-bound licence to anyone's account.
+- **First claim wins (inherent).** A leaked key of a licence in no account can be added to an
+  attacker's account before the buyer's: by the attach (after signing in on a device that holds
+  the key) or by the portal. Mitigations: the buyer email rule above; an owned licence never
+  moves again by key, so the attacker's account cannot be displaced by a race but neither can it
+  take a licence already in the buyer's account; devices already enrolled keep working (step 2);
+  every attach writes `license.attach` on the licence (the subject and the device, never the
+  account id) and the account's own history, and mails the licence's own address when the account
+  has not verified it; the owner or the developer can detach and relink (I-12). Residual: a
+  floating licence (no email) has no buyer to protect; whoever holds its key holds it, as before.
+- **The race.** Two accounts attaching the same licence at once reach one compare-and-set
+  statement: one wins, the other is answered `license_owned` and nothing else changes
+  (`test/identityAccount.test.ts` races two devices). Account deletion detaches its licences
+  through the existing hook.
+- **The holder is the device's sign-in, never the request.** The attach's account is the one a
+  completed sign-in bound to THIS device (`devices.subject`, read from the D1 row the token
+  validated), never an account, subject or licence the request names and never the licence's
+  owner (S-19 decision 4). A body naming another account, licence or device is ignored (the
+  test sends one). No binding is `account_required`.
+- **No oracle.** `license_owned` on key entry is answered only after a valid key, under the
+  activate and browser buckets (30 a minute per client network, failing closed); an unknown key
+  keeps its `401`, and an unusable licence keeps its `401` too, so the refusal never describes a
+  licence the key cannot use. It says only that the licence is in an account: no account id,
+  subject, email or masked email, and `signInUrl` carries no key. The attach preview answers only
+  the device's own licence (id, tier, name), which its token already reads; its refusals carry no
+  detail of the other account and no link.
+- **Sign-out cannot evict others.** Core's clearing hook runs for this device only. It releases
+  the seat (deauthorizes the device) only when the sign-in bound it (`bound_by = 'signin'`) to a
+  licence of the account signing out; a key- or enrol-bound device keeps its licence and token,
+  and no other device of the account is touched.
+- **No ambient authority.** The three routes take the device bearer and `X-PKey-Device` only:
+  no cookie, no session. CORS admits the product's `web.origins` without credentials, so a
+  listed page reaches only what its own device token already can.
+- **A stolen device token gains nothing new.** It can attach or sign out only the licence its
+  device already holds, and only into the account already signed in on that device; it cannot
+  bind a device, set a subject or reach another licence. Attach rotates the token, so a
+  replayed copy of the old one stops working. It is limited to 30 attaches a minute per client
+  network (failing closed); subject and sign-out to 60 (failing open: they mint nothing).
+- **The client-chosen device id (residual).** A device id is chosen by the client, so a key
+  holder can present fresh ids to look like new devices. Key-entry counting (PX-W9) and step 3
+  treat each as new, which is the designed direction: more refusals, never fewer. A key holder
+  can also present the id of a device enrolled on the licence; that is answered as the enrolled
+  device only when the id holds an authorized row for that licence, which the key holder could
+  have created anyway.
+- **Documents.** Attach, a sign-in binding, a sign-out and a counted entry leave every licence
+  document unchanged (`test/identityAccount.test.ts` compares them), so no install's offline
+  grace or entitlements move.
+
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 
 The portal mails its account holders when something changes (`services/identity/portal/
@@ -8351,6 +8416,21 @@ Use the Worker's Admin App Store Connect key (A11b)
 └── Compromise the Worker's code or PLATFORM_KEK ───► bypasses the gate: A11b lost in full (accepted residual risk)
 ```
 
+### AT-5 — Take a licence into your account (I-09)
+
+```
+Put someone else's licence in my Polaris Key account
+├── Present its key in the portal or on a new device ───► an owned licence never moves (CAS); key entry: license_owned
+├── Attach it from a device
+│   ├── Name my account or the licence in the request ──► ignored: the holder is the device's sign-in, the licence the device's
+│   ├── Use a stolen device token ─────────────────────► only that device's licence, into the account already signed in on it
+│   └── Race the buyer's attach ───────────────────────► one CAS statement: one owner, the other gets license_owned
+├── Win the first claim with a leaked key (floating or waiting licence)
+│   ├── Licence with a buyer email ────────────────────► needs that email verified on my account, unless claimByKey (off; console warns)
+│   └── Licence with no email ─────────────────────────► possible (residual): audited, the buyer's address is told, the owner or developer relinks
+└── Learn whose it is ─────────────────────────────────► no answer names the account, its subject or its email
+```
+
 ## 8. Out of scope for this model
 
 Physical access to Cloudflare infrastructure; compromise of Cloudflare itself; compromise of the
@@ -8360,7 +8440,9 @@ operator; and denial of service originating from Cloudflare's own network contro
 ## 9. Review triggers
 
 Revisit this document when any of the following changes: a new tenant that is not first-party is
-onboarded; the portal gains write capability beyond device disconnect and key claim; a second
+onboarded; a route writes `licenses.account_id` other than through the compare-and-set claim, an
+attach takes its holder from anywhere but the device's sign-in binding, or
+`identity.keyEntry.claimByKey` defaults to on (I-09); the portal gains write capability beyond device disconnect and key claim; a second
 release channel or artifact type is added; a service gains a route, a table or a secret, or a
 descriptor hook gains a method that writes or a new provider, or a method that returns bytes
 (today only `releaseCatalog.openSource`); a byte route or a permanent alias is added; edge caching

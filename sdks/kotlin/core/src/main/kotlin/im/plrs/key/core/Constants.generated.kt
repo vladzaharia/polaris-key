@@ -54,6 +54,8 @@ public object ErrorCode {
     public const val emailInUse: String = "email_in_use"
     public const val termsRequired: String = "terms_required"
     public const val licenseOwned: String = "license_owned"
+    public const val licenseEmailBound: String = "license_email_bound"
+    public const val accountRequired: String = "account_required"
     public const val emailMismatch: String = "email_mismatch"
     public const val linkConflict: String = "link_conflict"
     public const val lastLink: String = "last_link"
@@ -212,6 +214,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "email_in_use",
     "terms_required",
     "license_owned",
+    "license_email_bound",
+    "account_required",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -370,6 +374,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "email_in_use" to "wire",
     "terms_required" to "wire",
     "license_owned" to "wire",
+    "license_email_bound" to "wire",
+    "account_required" to "wire",
     "email_mismatch" to "wire",
     "link_conflict" to "wire",
     "last_link" to "wire",
@@ -527,6 +533,8 @@ public object Feature {
     public const val identityDevicelabel: String = "identity.devicelabel"
     public const val identityToggle: String = "identity.toggle"
     public const val identityKeyentry: String = "identity.keyentry"
+    public const val identityAttach: String = "identity.attach"
+    public const val identityAccount: String = "identity.account"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -570,6 +578,7 @@ public object Feature {
     public const val uiKit: String = "ui.kit"
     public const val uiKitManage: String = "ui.kit.manage"
     public const val uiKitKeyentry: String = "ui.kit.keyentry"
+    public const val uiKitAccount: String = "ui.kit.account"
     public const val uiCli: String = "ui.cli"
     public const val uiGate: String = "ui.gate"
     public const val uiActivate: String = "ui.activate"
@@ -626,6 +635,8 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.devicelabel",
     "identity.toggle",
     "identity.keyentry",
+    "identity.attach",
+    "identity.account",
     "release.changelog",
     "release.download",
     "release.record",
@@ -669,6 +680,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.kit",
     "ui.kit.manage",
     "ui.kit.keyentry",
+    "ui.kit.account",
     "ui.cli",
     "ui.gate",
     "ui.activate",
@@ -1503,6 +1515,8 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.devicelabel" to CapabilityRow("implemented", "identity", listOf()),
     "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
     "identity.keyentry" to CapabilityRow("planned", "identity", listOf()),
+    "identity.attach" to CapabilityRow("planned", "identity", listOf()),
+    "identity.account" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -1546,6 +1560,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.keyentry" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.kit.account" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.gate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.activate" to CapabilityRow("planned", "sdk", listOf()),
@@ -1561,4 +1576,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "f348c51df6a08445a887da7df2d1d9fe3d43e8e14c44b8825ed52ac40e9725e0"
+public const val CAPABILITY_DIGEST: String = "b006c6110b1f3b1f985e597e7a685285796ea6c4adac86ff82448c6434ce1e7f"

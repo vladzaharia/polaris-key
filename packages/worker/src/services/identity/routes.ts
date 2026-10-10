@@ -18,6 +18,10 @@
  *     /identity/auth/device/poll            POST  poll a confirmed device flow
  *     /identity/auth/choose                 GET   the legacy sign-in's licence chooser (I-26)
  *                                           POST  record a step of it, or the choice
+ *     /identity/attach                      POST  add the device's licence to the signed-in
+ *                                                 account (I-09; device bearer)
+ *     /identity/subject                     GET   the pairwise subject signed in on the device
+ *     /identity/signout                     POST  sign the device out of its account
  *
  * There are no aliases. The pre-namespace spellings (`/<p>/session`, `/<p>/auth/…`) are deleted
  * outright, unlike the four permanent aliases D-07 keeps for Release/Update: those exist because
@@ -52,6 +56,11 @@ import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "./browserSession.js";
+import {
+  handleIdentityAttach,
+  handleIdentitySignOut,
+  handleIdentitySubject,
+} from "./attach.js";
 
 export async function handleIdentityRoutes(
   ctx: ServiceContext,
@@ -59,9 +68,19 @@ export async function handleIdentityRoutes(
   const { req, env, db, product, rest, now, settings } = ctx;
 
   if (rest.length === 1) {
-    if (rest[0] === "session")
-      return handleBrowserSession(req, env, db, product, now, settings);
-    return null;
+    switch (rest[0]) {
+      case "session":
+        return handleBrowserSession(req, env, db, product, now, settings);
+      // I-09 (WIRE-CONTRACT-V4 §12.3): the account on the device wire.
+      case "attach":
+        return handleIdentityAttach(req, env, db, product, now);
+      case "subject":
+        return handleIdentitySubject(req, env, db, product, now);
+      case "signout":
+        return handleIdentitySignOut(req, env, db, product, now);
+      default:
+        return null;
+    }
   }
 
   if (rest.length === 2) {

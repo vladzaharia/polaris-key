@@ -111,6 +111,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/resume` | distribution | Resume an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}` | distribution | Start an outlet rollout, or set its percentage (CI) |
 | GET | `/{product}/distribution/scoop/{channel}.json` | distribution | Scoop app manifest for one channel |
+| POST | `/{product}/identity/attach` | identity | Add the device's licence to the account signed in on it |
 | GET | `/{product}/identity/auth/callback` | identity | OIDC redirect URI |
 | GET | `/{product}/identity/auth/choose` | identity | The legacy sign-in's license chooser (I-26) |
 | POST | `/{product}/identity/auth/choose` | identity | Record a step of the license chooser, or the choice (I-26) |
@@ -124,6 +125,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |
+| POST | `/{product}/identity/signout` | identity | Sign the device out of its account |
+| GET | `/{product}/identity/subject` | identity | The pairwise subject signed in on the device |
 | GET | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image (image host only) |
 | HEAD | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image, headers only (image host only) |
 | GET | `https://img.plrs.im/{product}/a/{sha256}` | img | A hosted image, content-addressed (image host only) |

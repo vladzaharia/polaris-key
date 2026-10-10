@@ -146,6 +146,14 @@
       "status": "planned",
       "wp": "I-10b"
     },
+    "identity.attach": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
+    "identity.account": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
     "identity.keyentry": {
       "status": "planned",
       "wp": "PX-W9b"
@@ -331,6 +339,10 @@
     "ui.kit.manage": {
       "status": "implemented",
       "note": "PX-W8: PolarisLoginView shows Replace a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
+    },
+    "ui.kit.account": {
+      "status": "planned",
+      "wp": "I-10b"
     },
     "ui.kit.keyentry": {
       "status": "planned",

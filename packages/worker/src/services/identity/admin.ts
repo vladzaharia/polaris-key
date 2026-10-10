@@ -31,7 +31,11 @@ import {
   settingRefused,
 } from "../../core/adminApi.js";
 import { writeSettings } from "../../core/settings/write.js";
-import { patchSignInSettings, signInSettingsView } from "./signInSettings.js";
+import {
+  planSignInSettingsPatch,
+  signInSettingsView,
+} from "./signInSettings.js";
+import { CLAIM_BY_KEY_SETTING } from "./settings.js";
 import {
   getPortalProductSettings,
   listingSettingWrites,
@@ -92,26 +96,92 @@ async function handleSignInSettings(
   if (req.method !== "PATCH")
     return err(405, ErrorCode.BadRequest, "method not allowed");
   const body = await readBody(req);
-  const result = await patchSignInSettings(db, ref, body, now);
-  if (!result.ok) {
-    const first = result.fields[0]!;
+  const plan = await planSignInSettingsPatch(db, ref, body);
+  if (!plan.ok) {
+    const first = plan.fields[0]!;
     return err(422, ErrorCode.BadRequest, SIGN_IN_REFUSAL_COPY[first.reason], {
-      fields: result.fields.map((f) => f.field),
-      reasons: Object.fromEntries(
-        result.fields.map((f) => [f.field, f.reason]),
-      ),
+      fields: plan.fields.map((f) => f.field),
+      reasons: Object.fromEntries(plan.fields.map((f) => [f.field, f.reason])),
     });
   }
-  await audit(
-    db,
-    product.slug,
-    session,
-    now,
-    "identity.signin.settings.update",
-    { kind: "product", id: product.slug },
-    `Updated sign-in settings for ${product.slug}`,
-  );
-  return adminJson({ ok: true, settings: result.view });
+  const target = { kind: "product", id: product.slug };
+  const summary = `Updated sign-in settings for ${product.slug}`;
+  const current = await getPortalProductSettings(db, product.slug);
+  // I-09: claimByKey is `identity.keyEntry.claimByKey`, written through `writeSetting()`; the
+  // passthrough name rides in the same batch, so a refused write saves neither.
+  if (
+    plan.claimByKey !== undefined &&
+    plan.claimByKey !== (current.claim_by_key === 1)
+  ) {
+    if (!ctx.settings)
+      throw new Error(
+        "the sign-in settings route needs ServiceContext.settings",
+      );
+    const written = await writeSettings(
+      { env: ctx.env, db, registry: ctx.settings },
+      [
+        {
+          key: CLAIM_BY_KEY_SETTING,
+          value: plan.claimByKey,
+          audit: {
+            action: "portal.settings.update",
+            target,
+            summary: claimByKeySummary(product.slug, plan.claimByKey),
+          },
+        },
+      ],
+      {
+        actor: {
+          sub: session.sub,
+          name: session.name ?? null,
+          email: session.email ?? null,
+        },
+        origin: "console",
+        now,
+        product: product.slug,
+        strict: false,
+        extra: (guard) => [
+          ...(Object.keys(plan.patch).length > 0
+            ? [
+                stmtUpsertPortalProductSettings(
+                  current,
+                  product.slug,
+                  plan.patch,
+                  now,
+                  guard,
+                ),
+              ]
+            : []),
+          auditStatementFor(
+            product.slug,
+            session,
+            now,
+            "identity.signin.settings.update",
+            target,
+            summary,
+            guard,
+          ),
+        ],
+      },
+    );
+    if (!written.ok) return settingRefused(written);
+  } else {
+    if (Object.keys(plan.patch).length > 0)
+      await upsertPortalProductSettings(db, product.slug, plan.patch, now);
+    await audit(
+      db,
+      product.slug,
+      session,
+      now,
+      "identity.signin.settings.update",
+      target,
+      summary,
+    );
+  }
+  return adminJson({
+    ok: true,
+    settings: await signInSettingsView(db, ref),
+  });
 }
 
 async function handlePortalSettings(
@@ -137,13 +207,19 @@ async function handlePortalSettings(
     "licenseKeyClaimEnabled",
     "releasesEnabled",
     "keyReissueEnabled",
-    "claimByKey",
   ] as const;
   const fields: string[] = [];
   for (const key of booleans) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") fields.push(key);
     else patch[key] = body[key];
+  }
+  // I-09: `claimByKey` is the registry setting `identity.keyEntry.claimByKey`, written through
+  // `writeSetting()` (a console claim on a manifest-declared value).
+  let claimByKey: boolean | undefined;
+  if (body.claimByKey !== undefined) {
+    if (typeof body.claimByKey !== "boolean") fields.push("claimByKey");
+    else claimByKey = body.claimByKey;
   }
   // The legacy Discover switch is the listing state now (PS-02 dual-write).
   if (body.discoverEnabled !== undefined) {
@@ -216,6 +292,16 @@ async function handlePortalSettings(
       summary: `Changed the Polaris Key listing for ${slug}: ${describeListingChange(before, w.key, w.value)}`,
     },
   }));
+  if (claimByKey !== undefined && claimByKey !== (current.claim_by_key === 1))
+    writes.push({
+      key: CLAIM_BY_KEY_SETTING,
+      value: claimByKey,
+      audit: {
+        action: "portal.settings.update",
+        target,
+        summary: claimByKeySummary(slug, claimByKey),
+      },
+    });
   const portalSummary = `Updated portal settings for ${slug}`;
   if (writes.length === 0) {
     await upsertPortalProductSettings(db, slug, patch, now);
@@ -268,6 +354,13 @@ async function handlePortalSettings(
       await getPortalProductSettings(db, slug),
     ),
   });
+}
+
+/** The audit summary of a claimByKey change (I-09): turning it on lets a leaked key claim. */
+function claimByKeySummary(slug: string, on: boolean): string {
+  return on
+    ? `Allowed adding ${slug} licenses by key without the purchase email`
+    : `Required the purchase email to add ${slug} licenses by key`;
 }
 
 /** One listing value's change, as `name before → after`; group labels are counted, never quoted. */

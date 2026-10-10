@@ -42,8 +42,14 @@ import type { AdminSession } from "../../core/adminApi.js";
 import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
-import { IDENTITY_ROW_SETTINGS, IDENTITY_SETTINGS_SLICE } from "./settings.js";
-import { manifestRowSettingStatements } from "../../core/rowSettings.js";
+import {
+  identityManifestIngest,
+  IDENTITY_SETTINGS_SLICE,
+  manifestClaimByKeyStatements,
+} from "./settings.js";
+import type { IdentityDiscovery } from "@polaris-key/protocol/identity";
+import { keyEntryLimit } from "../../core/keyEntries.js";
+import { accountPortalUrl, portalEnabled } from "../../core/manageUrl.js";
 // LX-26: registers Identity's licence-holder hooks with Core (`core/licenseHolders.ts`) at load,
 // so License's creation path and every account-email verification reach them.
 import "./accounts/holders.js";
@@ -56,9 +62,13 @@ export const identityService: ServiceDescriptor = {
    * LX-06: `oidc.syncTierOnSignIn` → the claimable `identity.oidc.syncTierOnSignIn` row, on every
    * link and resync whatever Identity's enablement, so it is already right when Identity is
    * turned on (it does nothing while Identity is off). A console claim is never overwritten.
+   * I-09: the `identity:` block's settings ride along (`settings.ts` `identityManifestIngest`).
    */
   manifestIngestAlways: (parsed, product, now) =>
-    manifestRowSettingStatements(product, IDENTITY_ROW_SETTINGS, parsed, now),
+    identityManifestIngest(parsed, product, now),
+  /** I-09: `identity.keyEntry.claimByKey` from the `identity:` block, into its column. */
+  manifestIngest: (parsed, product, now) =>
+    manifestClaimByKeyStatements(product, parsed, now),
   handle: handleIdentityRoutes,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
@@ -96,15 +106,36 @@ export const identityService: ServiceDescriptor = {
    *
    * `/auth/poll` is not advertised either (I-01, S-16 §5.3), and no longer exists: no SDK read
    * it, and it could complete only device-bound flows that nothing starts any more.
+   *
+   * I-09 (WIRE-CONTRACT-V4 §12.6): `account: true` says the account routes are served, and
+   * `keyEntryLimit` is the product's `identity.keyEntry.limit` read through the same resolver
+   * the key-entry routes enforce it with (`core/keyEntries.ts`), so the value published is the
+   * value enforced (discovery's 300 s cache may lag; the refusal carries the live value).
+   * `accountPortal` is the product's page in the customer portal, for `openAccount()`, present
+   * while the product's portal is on. A client uses each endpoint only when it is present.
    */
-  discoveryFragment: async ({ db, product, base }: DiscoveryContext) => {
+  discoveryFragment: async ({
+    db,
+    env,
+    product,
+    base,
+    settings,
+  }: DiscoveryContext) => {
     const row = await db.first<{ product: string }>(
       "SELECT product FROM oidc_config WHERE product = ?",
       product.slug,
     );
-    return {
+    const accountPortal = (await portalEnabled(db, product.slug))
+      ? accountPortalUrl(env, base, product)
+      : null;
+    const fragment: IdentityDiscovery = {
       enabled: true,
       configured: Boolean(row),
+      account: true,
+      keyEntryLimit: await keyEntryLimit(
+        { env, db, ...(settings ? { registry: settings } : {}) },
+        product.slug,
+      ),
       endpoints: {
         session: `${base}/identity/session`,
         sessionLicense: `${base}/identity/session/license`,
@@ -115,8 +146,13 @@ export const identityService: ServiceDescriptor = {
         authDeviceEntry: `${base}/identity/auth/device`,
         authDeviceVerify: `${base}/identity/auth/device/verify`,
         authDevicePoll: `${base}/identity/auth/device/poll`,
+        attach: `${base}/identity/attach`,
+        subject: `${base}/identity/subject`,
+        signout: `${base}/identity/signout`,
+        ...(accountPortal ? { accountPortal } : {}),
       },
     };
+    return { ...fragment };
   },
 };
 

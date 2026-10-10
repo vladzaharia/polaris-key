@@ -1124,6 +1124,7 @@ Amendment A1 (see the design spec) withdrew the interim `plrs` rebrand, so the v
 | Variant key              | a variant's `axis=value` pairs sorted by axis-name bytes, joined with `;`; the empty string for `{}` (`variantKey`)                                                                                                                          | —                                                         |
 | Request handle           | `rq_` + 22 base64url characters, `REQUEST_HANDLE_PATTERN` `^rq_[A-Za-z0-9_-]{22}$`; lives `REQUEST_HANDLE_TTL_SECONDS` = 600 (§12.7.2; `@polaris-key/protocol/identity`)                                                                     | —                                                         |
 | Device label             | `deviceName`, at most `DEVICE_LABEL_MAX_CODEPOINTS` = 64 code points after §12.7.1; display data only (§5.4)                                                                                                                                 | —                                                         |
+| Pairwise subject         | `ps_` + 22 base64url characters (16 random bytes), `PAIRWISE_SUBJECT_PATTERN` `^ps_[A-Za-z0-9_-]{22}$`; one per account and product, never derived from the account id (§12.3; `@polaris-key/protocol/identity`)                             | —                                                         |
 
 `pkey-config+jws` and `pkey-trust+jws` are the v2 type strings reused for v3's config document and trust manifest; the document _shapes_ changed in v3, the type strings did not.
 
@@ -1131,7 +1132,7 @@ The outlet kind `direct` is presented as Polaris Key: the console, the download 
 
 ## 9. Rollout & versioning
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 
@@ -1260,11 +1261,14 @@ Client behaviour beside the Cloud Sync routes (`plans/U-01.md` §2.3, §2.4, §4
 There is one Polaris Key account per person, platform-wide; it is never a per-product toggle. A
 product's `identity` service toggle gates only sign-in _through that product_
 (`plans/I-04.md` §2.1). Nothing in this section is signed and nothing here enters the licence
-document: `PROTOCOL_VERSION` stays 4. §12.2 is PX-W9's key entry; I-09 inserts its step 3
-(`license_owned`). §12.3 to §12.6 are reserved for I-08 (the passthrough sign-in, Continue,
-callback binding and `authorize`) and I-09 (the account contract and its refusals) and are
-written when they land. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's
-Identity-off behaviour.
+document: `PROTOCOL_VERSION` stays 4. The licence document's claims and members are independent
+of `licenses.account_id` and `devices.subject` until LX-09: attaching a licence, a sign-in binding,
+a sign-out and a counted key entry leave every document a device verifies unchanged. §12.2 is
+PX-W9's key entry with I-09's step 3 (`license_owned`). §12.3 (attach, subject and sign-out) and
+the account members of §12.6 are I-09's; §12.4, §12.5 and the rest of §12.6 are reserved for I-08
+(the passthrough sign-in, Continue, callback binding and `authorize`) and are written when it
+lands. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's Identity-off
+behaviour. The plan is `plans/I-09.md`.
 
 ### 12.1 What the toggle scopes
 
@@ -1280,9 +1284,9 @@ by the global account id (S-16 §5.1).
 
 ### 12.2 Key entry [C]
 
-Pinned by `keyentry-limit.json`, `keyentry-refusals-off.json` and `keyentry-identity-off.json`
-(transcripts). The long form is `plans/PX-W9.md`. Nothing here is signed and no signed document
-changes: `PROTOCOL_VERSION` stays 4.
+Pinned by `keyentry-limit.json`, `keyentry-refusals-off.json`, `keyentry-identity-off.json` and
+`keyentry-owned.json` (transcripts). The long forms are `plans/PX-W9.md` and `plans/I-09.md`.
+Nothing here is signed and no signed document changes: `PROTOCOL_VERSION` stays 4.
 
 A **key entry** is a person typing a licence key to use it. On a product whose Identity toggle is
 on, the Worker counts key entries per licence and, past the product's limit, may refuse the key to
@@ -1298,7 +1302,15 @@ a new device and point the person at an account instead (PORTAL §4.6).
 3. **Order on the two device routes.**
    1. The rate limit, the key and the licence, unchanged.
    2. An enrolled device is answered as before: never refused, never counted.
-   3. Reserved for I-09 (`license_owned`).
+   3. When `identity.keyEntryRefusals` is on and the licence is usable and in an account
+      (`licenses.account_id IS NOT NULL`): the flat
+      `403 {"error":"license_owned","message":…,"signInUrl":…}`. `signInUrl` is the product's
+      login card, `<origin>/signin?product=<slug>` (the console origin, else the Worker's own),
+      present whatever the product's portal settings say: the card is platform-level. It never
+      carries the key and names nothing about the account. Nothing is written but the refusal log
+      (reason `license_owned`). The device reaches the licence by signing in to the account that
+      holds it, never by the key (S-16 D24). An unusable licence keeps its `401` from step 5, so
+      the refusal never describes a licence the key cannot use.
    4. When `identity.keyEntryRefusals` is on, the licence is usable (an unusable one keeps its
       `401` from step 5) and in no account (rule 6), and `used ≥ limit`: the flat
       `403 {"error":"key_entry_limit","message":…,"manageUrl":…,"keyEntries":{…}}`. `manageUrl`
@@ -1329,10 +1341,14 @@ a new device and point the person at an account instead (PORTAL §4.6).
      with Identity off.
 6. **Whom the limit applies to.** Every successful key entry is counted, whatever the licence's
    holder. Step 4 refuses only a licence in no account (`licenses.account_id IS NULL`), floating
-   or assigned and waiting for its email. A licence in an account meets I-09's `license_owned`
-   first.
+   or assigned and waiting for its email. A licence in an account meets step 3's
+   `license_owned` first. While the switch is off neither step refuses: a licence in an account is
+   counted and admitted like any other.
 7. **Not an auth failure.** A client never wipes state, retries or opens the link on its own: it
-   shows the refusal and offers the link behind a user action (§5.3 rule 6).
+   shows the refusal and offers the link behind a user action (§5.3 rule 6). On `license_owned`
+   a client that supports sign-in offers it for the same product (device code, or the redirect
+   in a browser), with `signInUrl` as the fallback; a client that predates I-09 reports
+   `refused` with the code.
 8. **The portal.**
    - `POST /api/activate/preview` (signed in) answers `keyEntries`, or `null`, where it answered
      `entries: null`. The claim answers `keyEntries` beside the licence.
@@ -1347,6 +1363,72 @@ a new device and point the person at an account instead (PORTAL §4.6).
      `401`, and the per-network budget (10 a minute) `429`.
 9. **Identity off.** Nothing is counted, nothing is refused and no member is sent. Entries
    recorded earlier are kept and ignored.
+
+### 12.3 Attach, subject and sign-out
+
+Pinned by `identity-attach.json`, `identity-attach-errors.json` and
+`identity-subject-signout.json` (transcripts). Three device routes, on a product with Identity on:
+
+| Route                        | Body                | Answer                                                          |
+| ---------------------------- | ------------------- | --------------------------------------------------------------- |
+| `POST /<p>/identity/attach`  | `{"confirm": bool}` | the preview, or the activation response with `subject` (rule 3) |
+| `GET /<p>/identity/subject`  | none                | `{"subject": "ps_…" \| null}`                                   |
+| `POST /<p>/identity/signout` | none                | `{"released": bool}`                                            |
+
+1. **Credentials.** `Authorization: Bearer pkeyt_…` and `X-PKey-Device`, and the token must be
+   that device's. No cookie, session or account id is ever read, and nothing in the request
+   names an account, a subject or a licence. CORS answers the product's `web.origins` without
+   credentials. Every answer is `cache-control: no-store`. Errors are the nested
+   `PolarisErrorBody`. With Identity off the routes do not exist (§12.8 rule 1). Rate limits per
+   client network: attach 30 a minute (failing closed), subject and sign-out 60 a minute.
+2. **The holder.** The account an attach adds the licence to is the account of the device's
+   binding `devices.subject`, which only a completed sign-in writes (resolved through merge
+   aliases, while the account is active). Never the request, and never the licence's owner. The
+   licence is the one the device runs on.
+3. **Attach.** In order: `400 bad_request` (no device header, or `confirm` is not a boolean),
+   `401 unauthorized` (the token, or the device's licence is no longer usable),
+   `403 account_required` (no account is signed in on the device), `404 not_found` (the device
+   holds no licence), `403 license_owned` (the licence is in another account; no link and
+   nothing about that account), `403 license_email_bound` (the licence carries a buyer email the
+   signed-in account has not verified, and the product does not set
+   `identity.keyEntry.claimByKey`).
+   - `confirm: false` answers `200 {"status":"confirm","license":{"id","tierId","name"}}` and
+     writes nothing. It refuses exactly what `confirm: true` would.
+   - `confirm: true` puts the licence in the account by one compare-and-set
+     (`account_id IS NULL`), so the first claim wins and a concurrent loser gets
+     `license_owned`. It rotates the device token and answers the activation response
+     (`token`, `schemaVersion`, `device`, `license`) plus `subject` and `"attached":"claimed"`.
+     When the licence is already in this account the answer is the same without `attached`.
+   - Attach never changes the device's licence (it never re-anchors), never sets the binding and
+     never changes a signed document. The licence's history gains `license.attach` (the subject,
+     the device, `via: device`), and the licence's own email is told when the account has not
+     verified it.
+4. **Subject.** The pairwise subject of the account signed in on the device, after merge
+   aliases; `null` when none is or it was deleted. Never the account id.
+5. **Sign-out.** Drops this device's binding, and no other device's. `released` is true only
+   when the sign-in bound the device (`bound_by = 'signin'`) to a licence of the account signing
+   out: the device is then deauthorized and its token stops working. A device activated by key
+   or enrolment keeps its licence and token. A client flushes Cloud Sync before it signs out
+   (S-17 §5.4 rule 5) and drops its token when `released` is true.
+6. **Not auth failures.** `account_required`, `license_owned` and `license_email_bound` keep the
+   client's token and state.
+
+### 12.6 Discovery
+
+Pinned by `discovery-identity.json`. With Identity on, the identity fragment carries, beside its
+sign-in endpoints:
+
+- `"account": true`: the routes of §12.3 are served.
+- `"keyEntryLimit": n`: the product's `identity.keyEntry.limit` read through the same resolver
+  key entry enforces it with (§12.2 rule 5). Discovery is cached for 300 seconds, so it can lag;
+  the refusal carries the live value.
+- the endpoints `attach`, `subject` and `signout`, and `accountPortal` (`<origin>/#/p/<slug>`,
+  the product's page in the customer portal, for `openAccount()`), present while the product's
+  portal is on.
+
+A client uses an account feature only when its endpoint is present and never builds one; a
+client that predates them ignores them. With Identity off the fragment stays `{"enabled":false}`
+(`discovery-capabilities.json` is unchanged). I-08 adds its members beside these.
 
 ### 12.7 Passthrough request metadata
 

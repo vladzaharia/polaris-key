@@ -48,6 +48,8 @@ export const ErrorCode = {
   emailInUse: "email_in_use",
   termsRequired: "terms_required",
   licenseOwned: "license_owned",
+  licenseEmailBound: "license_email_bound",
+  accountRequired: "account_required",
   emailMismatch: "email_mismatch",
   linkConflict: "link_conflict",
   lastLink: "last_link",
@@ -207,6 +209,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "email_in_use",
   "terms_required",
   "license_owned",
+  "license_email_bound",
+  "account_required",
   "email_mismatch",
   "link_conflict",
   "last_link",
@@ -368,6 +372,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   email_in_use: "wire",
   terms_required: "wire",
   license_owned: "wire",
+  license_email_bound: "wire",
+  account_required: "wire",
   email_mismatch: "wire",
   link_conflict: "wire",
   last_link: "wire",
@@ -525,6 +531,8 @@ export const Feature = {
   identityDevicelabel: "identity.devicelabel",
   identityToggle: "identity.toggle",
   identityKeyentry: "identity.keyentry",
+  identityAttach: "identity.attach",
+  identityAccount: "identity.account",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -568,6 +576,7 @@ export const Feature = {
   uiKit: "ui.kit",
   uiKitManage: "ui.kit.manage",
   uiKitKeyentry: "ui.kit.keyentry",
+  uiKitAccount: "ui.kit.account",
   uiCli: "ui.cli",
   uiGate: "ui.gate",
   uiActivate: "ui.activate",
@@ -625,6 +634,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.devicelabel",
   "identity.toggle",
   "identity.keyentry",
+  "identity.attach",
+  "identity.account",
   "release.changelog",
   "release.download",
   "release.record",
@@ -668,6 +679,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.kit",
   "ui.kit.manage",
   "ui.kit.keyentry",
+  "ui.kit.account",
   "ui.cli",
   "ui.gate",
   "ui.activate",
@@ -1613,6 +1625,8 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "identity.toggle": { status: "planned", service: "identity", na: [] },
   "identity.keyentry": { status: "planned", service: "identity", na: [] },
+  "identity.attach": { status: "planned", service: "identity", na: [] },
+  "identity.account": { status: "planned", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1717,6 +1731,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.keyentry": { status: "planned", service: "sdk", na: [] },
+  "ui.kit.account": { status: "planned", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
     service: "sdk",
@@ -1740,4 +1755,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "711880b0fd4642569c4d90ce6bb187667f0d8b01b0e00f1e5c5627fca71d3682";
+  "5c3d1337628d825d0509313d6f9d568a1455e3b46a2527142c67421eea287033";

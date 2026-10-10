@@ -3,6 +3,7 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
+import { licenseAccess } from "../../core/anchor.js";
 import { claimsView } from "../../core/settingsClaims.js";
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
@@ -198,6 +199,9 @@ export async function licenseSummary(
     holder: licenseHolder(row),
     // LX-28: the batch the licence was created in, `null` for a licence created on its own.
     batchId: row.batch_id ?? null,
+    // I-09 (plans/I-04.md §F.6): `account` for a sign-in licence (held by an account, no key ever
+    // issued), else `seats`. Display only: a sign-in licence is device-limited like any other.
+    access: await licenseAccess(db, row),
     // PX-W9 (WIRE-CONTRACT-V4 §12.2): the licence's key entries, `null` with Identity off. LX-30
     // renders the "Key entries 3 of 10" row from it.
     keyEntries: await licenseKeyEntries(db, product, row.id, keyEntryContext),

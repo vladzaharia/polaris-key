@@ -114,6 +114,16 @@
 //   keyEntries      activate on "ok" or "key-entry-limit" (PX-W9, WIRE-CONTRACT-V4 §12.2): the
 //                   result's key entries {used, limit}, exactly as served, or null when the
 //                   result carries none (Identity off)
+//                   activate's `license_owned` (I-09, §12.2 step 3) is recorded as "refused" with
+//                   its code, what every SDK reports today; I-10a and I-10b make it the typed
+//                   result "license-owned" with the body's `signInUrl`
+//   attach (I-09, §12.3): result "confirm" (the preview) | "ok" | "refused" (a nested refusal,
+//                   with `code`) | "error"; `license` on "confirm": the previewed {id, tierId,
+//                   name}; `attached` on "ok": "claimed" when this call put the licence in the
+//                   account, else null; `subject` on "ok": the signed-in subject
+//   subject (I-09): `subject`, the pairwise subject or null
+//   released        signOut (I-09): whether the seat was released (the client then holds no
+//                   token)
 //   licenseStatus   the gate's status afterwards (client-core `licenseState`)
 //   tokenHeld       whether the client holds a device token afterwards
 //   code            on a refusal: the wire code the body carried (`{"error":"<code>"}` or
@@ -155,7 +165,7 @@
 // report carries at most 16 of them, oldest first (`core/updateHealth.ts` `MAX_UPDATE_EVENTS`),
 // and drops the ones a 200 delivered.
 //
-// Step `args` per action: activate { key }; sync { force }; beginSignIn { deviceName? };
+// Step `args` per action: activate { key }; attach { confirm }; sync { force }; beginSignIn { deviceName? };
 // mintToken { recipeId }; updateDecide { channel } (the REQUESTED name, which may be an alias);
 // commerceClaim { store, payload } (payload: the store's own fields, sent beside `store`). pollSignIn and waitForSignIn act on the prompt the transcript's last
 // beginSignIn returned. boot {} and downloadModel {} take none.
@@ -259,7 +269,13 @@ export type Action =
   /** SP-00: one verified build download, resumable (`release.fetch`). */
   | "releaseFetch"
   /** SP-00: `distribution.downloadModel()` (`release.distribution`). */
-  | "downloadModel";
+  | "downloadModel"
+  /** I-09: `identity.attach({confirm})` (`identity.attach`, WIRE-CONTRACT-V4 §12.3). */
+  | "attach"
+  /** I-09: `identity.subject()` (`identity.account`). */
+  | "subject"
+  /** I-09: `identity.signOut()` (`identity.account`). */
+  | "signOut";
 
 export interface Step {
   action: Action;

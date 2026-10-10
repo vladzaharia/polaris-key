@@ -419,9 +419,12 @@ function MethodsStep({
       <ProviderRow
         providers={providers}
         // I-06's start route is GET /login/<provider>; the row renders only once the Worker
-        // names providers in its capabilities (PX-12).
+        // names providers in its capabilities (PX-12). I-09: a card opened for a product (an
+        // app's `signInUrl`) signs in through it, so the product's terms are asked.
         hrefFor={(p) =>
-          `/login/${p}?return_to=${encodeURIComponent(returnTo())}`
+          `/login/${p}?return_to=${encodeURIComponent(returnTo())}${
+            context ? `&product=${encodeURIComponent(context.slug)}` : ""
+          }`
         }
         onNavigate={() => stashCarriedKey()}
       />

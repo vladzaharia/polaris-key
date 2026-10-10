@@ -7,9 +7,10 @@
  * Every assumption about how many licences or grants a device can draw on lives here, so a change
  * to that model changes this file and nothing else.
  *
- * The anchor is a DRY RUN: it writes nothing and binds nothing. Until I-09's inline rank-first
- * steps (and LX-10's `chooseAnchor`) land, it is the best usable licence in the portal's own order
- * (status, then no expiry, then the later expiry, then the newer activation). `more` counts the
+ * The anchor is a DRY RUN: it writes nothing and binds nothing. It is the row the sign-in
+ * choice would preselect (`core/anchor.ts` `rankAnchorCandidates`, I-09's rank-first order until
+ * LX-10's `chooseAnchor`): the first free licence the account holds for the product, else the
+ * first listed one with no seat for this device. `more` counts the
  * account's other usable licences for THIS product under `combined`, never names and never other
  * products; under `legacy` it is 0. The model is `legacy` for every product until LX-09 ships
  * (the lead's decision D1 on LX-06: the combined model changes behaviour only with LX-09, which
@@ -24,7 +25,7 @@ import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { resolveProductSetting } from "../../../core/settings/resolve.js";
 import type { ProductPublic } from "../../../core/products.js";
 import { getTier } from "../../../core/data.js";
-import { rankedLicensesFor } from "../portal/library.js";
+import { rankAnchorCandidates } from "../../../core/anchor.js";
 
 /** S-19's `licensing.entitlementModel`. `legacy` reproduces today's documents byte for byte. */
 export type EntitlementModel = "legacy" | "combined";
@@ -72,31 +73,35 @@ export async function licenseConsentItem(
   now: number,
   settings?: { env: Env; registry?: SettingsRegistry },
 ): Promise<Extract<ConsentItem, { kind: "license" }>> {
-  const usable = (await rankedLicensesFor(db, accountId, product, now)).filter(
-    (l) => l.status !== "suspended" && l.status !== "expired",
+  const { candidates, preselected } = await rankAnchorCandidates(
+    db,
+    product,
+    accountId,
+    now,
   );
-  const best = usable[0];
+  const best =
+    candidates.find((c) => c.licenseId === preselected) ?? candidates[0];
   if (!best) return { kind: "license", anchor: null, more: 0 };
-  const tier = best.row.tier_id
-    ? await getTier(db, product.slug, best.row.tier_id)
+  const tier = best.tierId
+    ? await getTier(db, product.slug, best.tierId)
     : null;
-  const { deviceLimit, activeSeatCount } = best.seats;
+  const { used, limit } = best.seats;
   return {
     kind: "license",
     anchor: {
       name: tier?.label ?? product.name,
       tierName: tier?.label ?? null,
-      term: best.row.expires_at ?? "perpetual",
-      // The seat this device would take: the next one, or none when every seat is taken.
+      term: best.expiresAt ?? "perpetual",
+      // The seat this device would take: the next one, or none when this licence has none free.
       seat:
-        activeSeatCount < deviceLimit
-          ? { position: activeSeatCount + 1, limit: deviceLimit }
+        best.state === "free" && used < limit
+          ? { position: used + 1, limit }
           : null,
     },
     more:
       settings &&
       (await entitlementModelFor({ ...settings, db }, product)) === "combined"
-        ? usable.length - 1
+        ? candidates.length - 1
         : 0,
   };
 }

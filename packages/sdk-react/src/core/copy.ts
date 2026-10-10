@@ -193,6 +193,11 @@ const FR: CopyBundle = {
     terms_required: "Acceptez les conditions pour continuer.",
     license_owned:
       "Cette licence appartient à un autre compte. Connectez-vous avec ce compte.",
+    // I-09 (WIRE-CONTRACT-V4 §12.3): the device attach's two account refusals.
+    license_email_bound:
+      "Cette licence appartient à une adresse e-mail que votre compte Polaris Key n'a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez.",
+    account_required:
+      "Connectez-vous à votre compte Polaris Key sur cet appareil, puis réessayez.",
     email_mismatch: "Cette licence a été vendue à une autre adresse e-mail.",
     link_conflict:
       "Cette méthode de connexion est déjà liée à un autre compte.",

@@ -59,6 +59,40 @@ Sources: [`plans/I-09.md`](../plans/I-09.md) (approved 2026-10-05, every recomme
 - **Neither refusal is an auth failure.** The URLs never carry the key; a device that already holds a token for the licence never sees either.
 - **With Identity off,** devices behave exactly as today: key entry of an owned licence on a new device is still accepted.
 
+## Build notes (I-09, 2026-10-09)
+
+Where the build found the code or the plan's wording different, the code is the fact:
+
+- **Step 3 needs a usable licence**, as step 4 does: an unusable owned licence keeps its `401`, so
+  `license_owned` never describes a licence the key cannot use. `signInUrl` is always present (the
+  login card is platform-level), from the console origin or the Worker's own.
+- **`shapeLicense` moved to Core** (`core/devices.ts`; License re-exports it) so Identity's attach
+  answers the activation shape without importing License (rule 6).
+- **Attach preview** runs the claim rules too, so it refuses exactly what the attach would. Order:
+  `400`, `401` (token, or an unusable licence), `account_required`, `404`, `license_owned`,
+  `license_email_bound`. Rate limits: `identityAttach` 30/min (closed), `identityAccount` 60/min
+  (open). The audit row `license.attach` names the subject and the device, never the account id.
+- **`accountPortal`** is published only while the product's customer portal is on, as `manageUrl`
+  is.
+- **`rankAnchorCandidates(db, product, accountId, now, opts)`**: `opts` carries `deviceId`,
+  `grantTierId` (the policy's grant, decided by the caller) and I-24a's `alsoCandidates`.
+  `bindSignedInDevice` takes the caller's `mint` for `create` (I-08 supplies the account-holder
+  mint). The consent line's dry run (`passthrough/anchor.ts`) and I-26's chooser use the same
+  order.
+- **Terms:** `identity.terms` with no `url` asks nothing until a Core hook exposes the listing's
+  EULA URL. A sign-in started from `/signin?product=<slug>` now passes the product and its terms
+  to `beginProviderSignIn` (`GET /login/<kind>?product=`), which also makes it a first contact for
+  the pairwise subject. I-09 adds no new email-verification point, so `onAccountEmailVerified` has
+  no new caller; I-08, landing second, drops the per-request sweep.
+- **`identity.redirectPaths`** is registered and written by link and resync, but stays
+  `pending: {wp: "I-08"}` (its only reader). `claimByKey` is written through `writeSetting()` by
+  the console (the portal's direct column write is gone); an undeclared manifest value leaves the
+  column alone.
+- **Transcripts:** the owned step of `keyentry-owned.json` expects `refused` with the code, what
+  every SDK reports today; I-10a/I-10b make it `license-owned` with `signInUrl` and add the enum
+  value. The attach and sign-out transcripts seed the sign-in; I-08 re-records them.
+- **`access`** is on the portal's licence summary and the console's (`AdminLicenseSummary`).
+
 ## Screen acceptance (brand transition, 2026-10-09)
 
 Done when every row holds for each screen and state this package ships, checked in the real runtime
@@ -103,13 +137,13 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 ## Acceptance criteria
 
-- [ ] Key entry of an owned licence on a new device answers `license_owned` with `signInUrl`; re-entry on an enrolled device still succeeds; nothing is counted (tests).
-- [ ] With the Identity toggle off, activation behaves exactly as before (tests against the existing transcripts).
-- [ ] Attach refuses an owned licence, and an email-bound licence without a matching verified email unless `claimByKey`; attach never changes the anchor (tests).
-- [ ] No second automatic licence is minted while a usable one exists, and `rankAnchorCandidates` lists full licences as `full` (tests).
-- [ ] `enrollFate` answers `claimed` for an `enroll` licence in an account with no `sub` (test).
-- [ ] Every new manifest rule has its mutation-table row and schema change; `bundle:action -- --check` passes.
-- [ ] Transcripts recorded; `errors.json`, OpenAPI and `routeCoverage` updated; `PROTOCOL_VERSION` unchanged.
+- [x] Key entry of an owned licence on a new device answers `license_owned` with `signInUrl`; re-entry on an enrolled device still succeeds; nothing is counted (tests).
+- [x] With the Identity toggle off, activation behaves exactly as before (tests against the existing transcripts).
+- [x] Attach refuses an owned licence, and an email-bound licence without a matching verified email unless `claimByKey`; attach never changes the anchor (tests).
+- [x] No second automatic licence is minted while a usable one exists, and `rankAnchorCandidates` lists full licences as `full` (tests).
+- [x] `enrollFate` answers `claimed` for an `enroll` licence in an account with no `sub` (test).
+- [x] Every new manifest rule has its mutation-table row and schema change; `bundle:action -- --check` passes.
+- [x] Transcripts recorded; `errors.json`, OpenAPI and `routeCoverage` updated; `PROTOCOL_VERSION` unchanged.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

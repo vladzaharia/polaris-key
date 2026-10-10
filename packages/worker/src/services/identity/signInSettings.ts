@@ -5,7 +5,9 @@
  * What lives here today, and where each value is stored:
  *
  *   - `claimByKey`: an email-bound licence may attach by its key without the verified email
- *     (`portal_product_settings.claim_by_key`, the column the claim rules already read);
+ *     (`portal_product_settings.claim_by_key`, the column the claim rules already read). Since
+ *     I-09 it is the registry setting `identity.keyEntry.claimByKey`, which the manifest's
+ *     `identity:` block may declare; the console writes it through `writeSetting()`;
  *   - the passthrough header's app name ("<App> wants you to sign in"), which is also the <App>
  *     of the "<App> via Polaris Key" sender of passthrough mail (I-18). It reuses
  *     `portal_product_settings.branding_json` (S-16 §5.2), under the key `passthroughName`, and
@@ -17,10 +19,10 @@
  *     native Sign in with Apple. Native platform config arrives with I-13/I-14, so until then any
  *     product with iOS devices carries the warning.
  *
- * The manifest-authored settings (`identity.keyEntryLimit`, `identity.requireTerms`,
- * `identity.native`) are persisted by I-09 to `identity_product_settings`; the per-kind setup
- * checklist and the "test sign-in" dry run belong with the native verifiers (I-13, I-14). They are
- * added to this view when their storage exists.
+ * The rest of the manifest's `identity:` block (`identity.keyEntry.limit`, `identity.terms`,
+ * `identity.redirectPaths`) is claimable `product_settings` rows (I-09, `settings.ts`); there is no
+ * `identity_product_settings` table and no `identity.native`. The per-kind setup checklist and the
+ * "test sign-in" dry run belong with the native verifiers (I-13, I-14).
  */
 
 import type { Db } from "../../core/platform.js";
@@ -30,7 +32,7 @@ import {
 } from "../../core/emailSender.js";
 import {
   getPortalProductSettings,
-  upsertPortalProductSettings,
+  type PortalSettingsPatch,
 } from "./portal/repo.js";
 
 export interface SignInSettingsView {
@@ -99,27 +101,37 @@ export async function signInSettingsView(
   };
 }
 
-export type SignInSettingsPatchResult =
-  | { ok: true; view: SignInSettingsView }
+export type SignInSettingsPatchPlan =
+  | {
+      ok: true;
+      /** The portal-row part (the passthrough name in `branding_json`); empty when unchanged. */
+      patch: PortalSettingsPatch;
+      /** The requested `identity.keyEntry.claimByKey`, which the caller writes through
+       *  `writeSetting()` (it is a registry setting since I-09). */
+      claimByKey?: boolean;
+    }
   | {
       ok: false;
       fields: Array<{ field: string; reason: SenderNameRefusal | "type" }>;
     };
 
-/** Apply a console edit: `claimByKey` (boolean) and `passthroughName` (string, or null to unset). */
-export async function patchSignInSettings(
+/**
+ * Check a console edit, writing nothing: `claimByKey` (boolean) and `passthroughName` (string, or
+ * null to unset). The caller writes the plan in one batch, so a refused value saves nothing.
+ */
+export async function planSignInSettingsPatch(
   db: Db,
   product: { slug: string; name: string },
   body: Record<string, unknown>,
-  now: number,
-): Promise<SignInSettingsPatchResult> {
+): Promise<SignInSettingsPatchPlan> {
   const fields: Array<{ field: string; reason: SenderNameRefusal | "type" }> =
     [];
-  const patch: Parameters<typeof upsertPortalProductSettings>[2] = {};
+  const patch: PortalSettingsPatch = {};
+  let claimByKey: boolean | undefined;
   if (body.claimByKey !== undefined) {
     if (typeof body.claimByKey !== "boolean")
       fields.push({ field: "claimByKey", reason: "type" });
-    else patch.claimByKey = body.claimByKey;
+    else claimByKey = body.claimByKey;
   }
   if (body.passthroughName !== undefined) {
     const current = await getPortalProductSettings(db, product.slug);
@@ -135,7 +147,9 @@ export async function patchSignInSettings(
     }
   }
   if (fields.length > 0) return { ok: false, fields };
-  if (Object.keys(patch).length > 0)
-    await upsertPortalProductSettings(db, product.slug, patch, now);
-  return { ok: true, view: await signInSettingsView(db, product) };
+  return {
+    ok: true,
+    patch,
+    ...(claimByKey !== undefined ? { claimByKey } : {}),
+  };
 }

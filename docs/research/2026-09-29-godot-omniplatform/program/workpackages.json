@@ -4132,7 +4132,7 @@
         "plans/SP-54.md (approved 2026-10-09): identity-attach.json records profile.user from the start"
       ],
       "brief": "wp/I-09-key-entry-attach.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-10",

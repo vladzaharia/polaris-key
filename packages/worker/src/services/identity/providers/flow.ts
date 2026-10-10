@@ -53,6 +53,9 @@ import {
 } from "../../../core/platform.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
+import { identityEnabled } from "../../../core/identityGate.js";
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
+import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import {
   artefactRef,
   consumeArtefact,
@@ -65,6 +68,7 @@ import { importProfile } from "../card/profile.js";
 import { linkIdentity } from "../accounts/links.js";
 import { accountUsingEmail } from "../accounts/repo.js";
 import { providerVouchesForEmail } from "./vouch.js";
+import { productTerms } from "../productTerms.js";
 import { htmlError, signInPage } from "../portal/auth.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
@@ -117,6 +121,12 @@ export interface SignInFlowRecord {
   /** The exact redirect URI (OIDC) or `openid.return_to` (Steam) this flow sent. */
   redirectUri: string;
   returnTo?: string;
+  /**
+   * I-09: the product the sign-in comes through, when the card was opened for one
+   * (`/signin?product=<slug>`, the `signInUrl` of `license_owned`) and that product's Identity is
+   * on. The callback hands it, with the product's terms, to the email gate.
+   */
+  product?: string;
   /** Peppered hash of the browser-binding cookie's value. */
   bindingHash: string;
   /** PX-W12: a Connect from Account → Sign-in methods, not a sign-in. */
@@ -145,6 +155,20 @@ export async function signInFlowKey(
 export interface ProviderRouteOptions {
   now: number;
   fetch?: ProviderFetch;
+  /** The settings registry (ST-04), from the composition root: a product's terms resolve through it. */
+  settings?: SettingsRegistry;
+}
+
+/**
+ * I-09: the product a sign-in start names (`?product=<slug>`), kept only when it is a product slug
+ * of a product whose Identity is on; anything else is ignored and the sign-in is a plain portal one.
+ */
+async function signInProduct(
+  db: Db,
+  raw: string | null,
+): Promise<string | null> {
+  if (!raw || !PRODUCT_SLUG_RE.test(raw)) return null;
+  return (await identityEnabled(db, raw)) ? raw : null;
 }
 
 function bindCookie(value: string): string {
@@ -330,6 +354,8 @@ export async function handleProviderStart(
 
   const built = await buildProviderFlow(env, kind, url.origin, returnTo, opts);
   if (!built) return signInPage.unavailable(label);
+  const product = await signInProduct(db, url.searchParams.get("product"));
+  if (product) built.record.product = product;
   const cookie = await storeProviderFlow(env, built);
   return redirect(built.location, 302, [cookie]);
 }
@@ -513,6 +539,19 @@ export async function handleProviderCallback(
       },
       hostedDomain: result.hostedDomain ?? null,
       returnTo: flow.returnTo ?? null,
+      // I-09: a sign-in the card started for a product goes through it, with its terms. The
+      // toggle is read again here: Identity turned off while the person was at the provider
+      // makes it a plain portal sign-in.
+      product:
+        flow.product && (await identityEnabled(db, flow.product))
+          ? {
+              slug: flow.product,
+              terms: await productTerms(
+                { env, db, registry: opts.settings },
+                flow.product,
+              ),
+            }
+          : null,
     },
     opts.now,
   );

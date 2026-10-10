@@ -282,6 +282,19 @@ describe("Identity → Portal", () => {
     });
   });
 
+  it("warns while adding by key without the purchase email is on (I-09)", async () => {
+    renderPortal();
+    const warning = /Anyone with a leaked key can add an email-bound license/;
+    await waitFor(() =>
+      expect(checked(toggle("Add by key without the purchase email"))).toBe(
+        true,
+      ),
+    );
+    expect(screen.getByText(warning)).toBeTruthy();
+    await userEvent.click(toggle("Add by key without the purchase email"));
+    expect(screen.queryByText(warning)).toBeNull();
+  });
+
   it("renders the Discover switch (PX-W10), on by default, and saves turning it off", async () => {
     portalSettings.mockResolvedValue({
       settings: { ...PORTAL, discoverEnabled: undefined },
@@ -766,6 +779,19 @@ describe("Identity → Sign-in, through this product (I-12)", () => {
         .getAttribute("href"),
     ).toBe("#/p/djdl/identity/portal");
     expect(screen.queryByText("App Review guideline 4.8")).toBeNull();
+  });
+
+  it("warns under the claimByKey read-out only while it is on (I-09)", async () => {
+    const warning = /Anyone with a leaked key can add an email-bound license/;
+    renderSignIn();
+    await screen.findByRole("textbox", { name: "App name" });
+    expect(screen.queryByText(warning)).toBeNull();
+    cleanup();
+    signInSettings.mockResolvedValue({
+      settings: { ...SIGN_IN, claimByKey: true },
+    });
+    renderSignIn();
+    expect(await screen.findByText(warning)).toBeTruthy();
   });
 
   it("warns about App Review 4.8 when the server says so", async () => {

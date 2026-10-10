@@ -333,6 +333,10 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/auth/device/poll", ["post"]],
   // I-26: the legacy sign-in's licence chooser (server-rendered HTML).
   ["/{product}/identity/auth/choose", ["get", "post"]],
+  // I-09: the account on the device wire (device bearer; CORS without credentials).
+  ["/{product}/identity/attach", ["post"]],
+  ["/{product}/identity/subject", ["get"]],
+  ["/{product}/identity/signout", ["post"]],
 ];
 
 /**

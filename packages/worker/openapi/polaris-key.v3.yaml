@@ -237,6 +237,8 @@ paths:
                       identity:
                         enabled: true
                         configured: true
+                        account: true
+                        keyEntryLimit: 10
                         endpoints:
                           session: https://key.plrs.im/djdl/identity/session
                           sessionLicense: https://key.plrs.im/djdl/identity/session/license
@@ -247,6 +249,10 @@ paths:
                           authDeviceEntry: https://key.plrs.im/djdl/identity/auth/device
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
+                          attach: https://key.plrs.im/djdl/identity/attach
+                          subject: https://key.plrs.im/djdl/identity/subject
+                          signout: https://key.plrs.im/djdl/identity/signout
+                          accountPortal: https://key.plrs.im/#/p/djdl
                       sync:
                         enabled: true
                         settings: false
@@ -1241,7 +1247,10 @@ paths:
             `identity.keyEntryRefusals` on, a new device, and a usable licence in no account that
             has used its limit; it carries `keyEntries` and, while the portal is on,
             `manageUrl`. Never sent to a device already enrolled on the licence, and not an
-            auth failure.
+            auth failure. `license_owned` (I-09, §12.2 step 3): under the same switch, a usable
+            licence in an account and a device not enrolled on it; it carries `signInUrl`, the
+            product's login card (`<origin>/signin?product=<slug>`), never the key and nothing
+            about the account. Nothing is counted.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -1254,6 +1263,14 @@ paths:
                       message: key entry limit reached,
                       manageUrl: "https://key.plrs.im/activate?product=djdl",
                       keyEntries: { used: 2, limit: 2 },
+                    }
+                licenseOwned:
+                  summary: test/identityAccount.test.ts
+                  value:
+                    {
+                      error: license_owned,
+                      message: license is in an account,
+                      signInUrl: "https://key.plrs.im/signin?product=djdl",
                     }
                 deviceLimit:
                   summary: test/manageUrl.test.ts
@@ -6831,11 +6848,20 @@ paths:
           description: >
             The license's seat pool is exhausted, or (PX-W9, §12.2 step 4) it has no key entries
             left — LEGACY FLAT, with `manageUrl` while the product's customer portal is on, and
-            `keyEntries` on `key_entry_limit`.
+            `keyEntries` on `key_entry_limit`. `license_owned` (I-09, §12.2 step 3): the licence
+            is in an account, with `signInUrl`; no cookie is set and nothing is counted.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
+                licenseOwned:
+                  summary: test/identityAccount.test.ts
+                  value:
+                    {
+                      error: license_owned,
+                      message: license is in an account,
+                      signInUrl: "https://key.plrs.im/signin?product=djdl",
+                    }
                 keyEntryLimit:
                   summary: test/keyEntries.test.ts
                   value:
@@ -7899,6 +7925,261 @@ paths:
         Browser preflight for a page on one of the product's `web.origins`. Answered
         before service dispatch, so the result never depends on whether the service
         behind this path is enabled. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  # ── the account on the device wire (I-09, WIRE-CONTRACT-V4 §12.3) ──────────────
+  /{product}/identity/attach:
+    post:
+      operationId: identityAttach
+      tags: [identity]
+      summary: Add the device's licence to the account signed in on it
+      description: >
+        I-09 (WIRE-CONTRACT-V4 §12.3). Authenticated by the device's own credential only: the
+        `pkeyt_` bearer with its `X-PKey-Device`; no cookie, and nothing in the request names
+        an account. The account the licence joins is the one a completed sign-in bound to THIS
+        device (`devices.subject`), never the licence's owner. The licence is the one the
+        device runs on. `confirm: false` previews and writes nothing; it refuses exactly what
+        `confirm: true` would. `confirm: true` puts the licence in the account (first claim
+        wins: one compare-and-set, so of two accounts racing one gets `license_owned`),
+        rotates the device token and answers the activation result plus `subject` and
+        `attached: "claimed"` (absent when the licence was already in this account). It never
+        changes the device's licence or any signed document. Errors are NESTED. With Identity
+        off the route does not exist (`404 not_found`). 30 calls a minute per client network.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AttachRequest" }
+            examples:
+              preview: { value: { confirm: false } }
+              attach: { value: { confirm: true } }
+      responses:
+        "200":
+          description: >
+            The preview (`confirm: false`), or the attach's activation result (`confirm: true`).
+            `cache-control: no-store`.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AttachPreview" }
+                  - { $ref: "#/components/schemas/AttachResult" }
+              examples:
+                preview:
+                  summary: test/identityAccount.test.ts
+                  value:
+                    status: confirm
+                    license:
+                      { id: lic_djdl_1, tierId: null, name: Ada Lovelace }
+                attached:
+                  summary: test/identityAccount.test.ts
+                  value:
+                    token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    schemaVersion: 1
+                    device:
+                      id: dev-1
+                      licenseId: lic_djdl_1
+                      label: null
+                      status: authorized
+                      current: true
+                      firstSeen: 1700000000
+                      lastSeen: 1700000000
+                      userAgent: null
+                      platform: null
+                      arch: null
+                      appVersion: null
+                      sdkName: null
+                      sdkVersion: null
+                    license:
+                      id: lic_djdl_1
+                      status: active
+                      name: Ada Lovelace
+                      email: ada@example.com
+                      tierId: null
+                      activatedAt: 1700000000
+                      expiresAt: null
+                      maxOfflineDays: null
+                      channels: []
+                      minVersion: null
+                      maxVersion: null
+                    subject: ps_AAAAAAAAAAAAAAAAAAAAAA
+                    attached: claimed
+        "400":
+          description: No `X-PKey-Device`, or `confirm` is not a boolean — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401":
+          description: >
+            The bearer is not this device's live token, or the device's licence is no longer
+            usable — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                unauthorized: { value: { error: { code: unauthorized } } }
+        "403":
+          description: >
+            `account_required`: no account is signed in on the device. `license_owned`: the
+            licence is in another account; it never moves, and the answer names nothing about
+            that account and carries no link. `license_email_bound`: the licence carries a buyer
+            email the signed-in account has not verified, and the product does not set
+            `identity.keyEntry.claimByKey`. None is an auth failure. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                accountRequired:
+                  { value: { error: { code: account_required } } }
+                licenseOwned: { value: { error: { code: license_owned } } }
+                emailBound: { value: { error: { code: license_email_bound } } }
+        "404":
+          description: >
+            The device holds no licence, or the product's Identity service is off (the
+            registry's answer) — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                notFound: { value: { error: { code: not_found } } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 30 calls per 60 s per client network — NESTED. Fails closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+    options:
+      operationId: preflightIdentityAttach
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/subject:
+    get:
+      operationId: identitySubject
+      tags: [identity]
+      summary: The pairwise subject signed in on the device
+      description: >
+        I-09 (WIRE-CONTRACT-V4 §12.3). The device's own credential only. `subject` is the
+        product's pairwise subject (`ps_` and 22 base64url characters) of the account signed
+        in on this device, after merge aliases; `null` when none is, or when the subject was
+        deleted. Never an account id. With Identity off the route does not exist. 60 calls a
+        minute per client network.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      responses:
+        "200":
+          description: "The subject, or null. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubjectResponse" }
+              examples:
+                signedIn:
+                  summary: test/identityAccount.test.ts
+                  value: { subject: ps_AAAAAAAAAAAAAAAAAAAAAA }
+                signedOut: { value: { subject: null } }
+        "400":
+          description: No `X-PKey-Device` — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 calls per 60 s per client network — NESTED. Fails open.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+    options:
+      operationId: preflightIdentitySubject
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/signout:
+    post:
+      operationId: identitySignOut
+      tags: [identity]
+      summary: Sign the device out of its account
+      description: >
+        I-09 (WIRE-CONTRACT-V4 §12.3). The device's own credential only. Drops this device's
+        sign-in binding, and no other device's. `released: true` when the sign-in had bound the
+        device to a licence of the signing-out account (`bound_by = 'signin'`): the device is
+        then deauthorized and its token stops working. A device activated by key or enrolment
+        keeps its licence and token (`released: false`). An SDK flushes Cloud Sync first. With
+        Identity off the route does not exist. 60 calls a minute per client network.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      responses:
+        "200":
+          description: "Signed out. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignOutResponse" }
+              examples:
+                kept:
+                  summary: test/identityAccount.test.ts
+                  value: { released: false }
+                released:
+                  summary: test/identityAccount.test.ts
+                  value: { released: true }
+        "400":
+          description: No `X-PKey-Device` — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 calls per 60 s per client network — NESTED. Fails open.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+    options:
+      operationId: preflightIdentitySignOut
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
       parameters:
         - { $ref: "#/components/parameters/Product" }
       responses:
@@ -18134,6 +18415,10 @@ components:
         batchId:
           type: [string, "null"]
           description: "LX-28: the batch the licence was created in; `null` for a licence created on its own."
+        access:
+          type: string
+          enum: [seats, account]
+          description: "I-09 (plans/I-04.md §F.6): `account` for a sign-in licence (held by an account, no key ever issued), else `seats`. Display only; a sign-in licence is device-limited like any other."
         keyEntries:
           oneOf:
             - { $ref: "#/components/schemas/KeyEntries" }
@@ -20407,6 +20692,56 @@ components:
           minimum: 1
           maximum: 100
           description: The product's effective `identity.keyEntry.limit` (default 10).
+    AttachRequest:
+      type: object
+      description: "`POST /{product}/identity/attach` (I-09, §12.3): `false` previews, `true` attaches."
+      required: [confirm]
+      properties:
+        confirm: { type: boolean }
+    AttachPreview:
+      type: object
+      description: >
+        The attach preview: the device's own licence as the confirm screen names it. Nothing
+        is written.
+      required: [status, license]
+      additionalProperties: false
+      properties:
+        status: { type: string, const: confirm }
+        license:
+          type: object
+          required: [id, tierId, name]
+          additionalProperties: false
+          properties:
+            id: { type: string }
+            tierId: { type: [string, "null"] }
+            name: { type: [string, "null"] }
+    AttachResult:
+      description: >
+        The attach: the activation result with a rotated token, plus the subject signed in on
+        the device and `attached: "claimed"` when this call put the licence in the account.
+      allOf:
+        - { $ref: "#/components/schemas/ActivationResult" }
+        - type: object
+          required: [subject]
+          properties:
+            subject: { type: string, pattern: "^ps_[A-Za-z0-9_-]{22}$" }
+            attached: { type: string, const: claimed }
+    SubjectResponse:
+      type: object
+      description: "`GET /{product}/identity/subject` (I-09, §12.3)."
+      required: [subject]
+      additionalProperties: false
+      properties:
+        subject:
+          type: [string, "null"]
+          pattern: "^ps_[A-Za-z0-9_-]{22}$"
+    SignOutResponse:
+      type: object
+      description: "`POST /{product}/identity/signout` (I-09, §12.3)."
+      required: [released]
+      additionalProperties: false
+      properties:
+        released: { type: boolean }
     SessionFromLicenseResult:
       type: object
       description: >

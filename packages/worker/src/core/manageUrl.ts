@@ -22,6 +22,11 @@
  * The link exists only while the product's customer portal is on; otherwise the member is
  * omitted (PORTAL §4.19). It sits outside every signed document, so `legacy` and `combined`
  * products alike get it with no document byte changing.
+ *
+ * I-09 adds two more links built from the same origin: `license_owned`'s `signInUrl`
+ * (`<portal>/signin?product=<slug>`, the platform-level login card, so always present) and
+ * discovery's `accountPortal` (`<portal>/#/p/<slug>`, while the product's portal is on). Neither
+ * carries a key, an account or a holder hint.
  */
 
 import {
@@ -102,6 +107,14 @@ export function manageForLabel(req: Request): string | null {
  * root portal (`router.ts`).
  */
 export function portalOriginOf(env: Env, req: Request): string | null {
+  return portalOriginFor(env, req.url);
+}
+
+/**
+ * {@link portalOriginOf} for a caller with no request in hand (discovery's fragments): the
+ * configured origin, else `fallback` (an absolute URL or origin the Worker was reached on).
+ */
+export function portalOriginFor(env: Env, fallback: string): string | null {
   const usable = (raw: string): string | null => {
     try {
       const u = new URL(raw);
@@ -121,7 +134,7 @@ export function portalOriginOf(env: Env, req: Request): string | null {
     typeof env.CONSOLE_ORIGIN === "string" && env.CONSOLE_ORIGIN.trim() !== ""
       ? usable(env.CONSOLE_ORIGIN.trim())
       : null;
-  return configured ?? usable(req.url);
+  return configured ?? usable(fallback);
 }
 
 /**
@@ -169,4 +182,32 @@ export async function buildManageUrl(
         : `${origin}/activate?product=${slug}&next=free-device${forPart}`;
   }
   return url.length <= MANAGE_URL_MAX_LENGTH ? url : undefined;
+}
+
+/**
+ * The `signInUrl` of `license_owned` (I-09, WIRE-CONTRACT-V4 §12.2 step 3): the root login card
+ * for the product, `<portal>/signin?product=<slug>`. The card is platform-level (one account for
+ * every product), so the link does not depend on the product's portal settings. It carries no
+ * key, account or holder hint: the card explains how to sign in on the device.
+ */
+export function buildSignInUrl(
+  env: Env,
+  req: Request,
+  product: { slug: string },
+): string {
+  const origin = portalOriginOf(env, req) ?? new URL(req.url).origin;
+  return `${origin}/signin?product=${encode(product.slug)}`;
+}
+
+/**
+ * The account portal's page for a product, `<portal>/#/p/<slug>` (I-09, §12.6 `accountPortal`):
+ * where `openAccount()` sends the person. `null` when no usable origin exists.
+ */
+export function accountPortalUrl(
+  env: Env,
+  fallbackOrigin: string,
+  product: { slug: string },
+): string | null {
+  const origin = portalOriginFor(env, fallbackOrigin);
+  return origin ? `${origin}/#/p/${encode(product.slug)}` : null;
 }

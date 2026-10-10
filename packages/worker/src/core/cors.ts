@@ -150,6 +150,11 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "update/version",
   "identity/auth/device/start",
   "identity/auth/device/poll",
+  // I-09: the account on the device wire. Each takes the device bearer (never ambient), so a
+  // listed origin reaches only what that page's own device token already can.
+  "identity/attach",
+  "identity/subject",
+  "identity/signout",
 ];
 
 /** Core route kinds that answer CORS. The attestation routes (P6-02) are not among them: no

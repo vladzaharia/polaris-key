@@ -13,6 +13,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  setClaimByKey,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
@@ -200,7 +201,7 @@ describe("POST /api/activate/preview (G22)", () => {
       );
     }
     const s = await portalSession(env, db, OWNER_EMAIL.replace("ada", "bob"));
-    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
+    await setClaimByKey(db, "djdl", true);
 
     const res = await preview(env, db, s, key);
     expect(res.status).toBe(200);
@@ -303,7 +304,7 @@ describe("POST /api/activate/preview (G22)", () => {
     const env = portalEnv();
     await seedProduct(db, "djdl");
     const { key, licenseId } = await seedLicenseWithKey(db, "djdl");
-    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
+    await setClaimByKey(db, "djdl", true);
     const first = await portalSession(env, db, "first@example.com");
     expect((await claim(env, db, first, key)).status).toBe(200);
 
@@ -357,7 +358,7 @@ describe("POST /api/activate/preview (G22)", () => {
     });
 
     // The product's claimByKey lifts the rule for both at once.
-    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
+    await setClaimByKey(db, "djdl", true);
     expect(await (await preview(env, db, s, key)).json()).toMatchObject({
       verdict: "addable",
     });
@@ -369,7 +370,7 @@ describe("POST /api/activate/preview (G22)", () => {
     const env = portalEnv();
     await seedProduct(db, "djdl");
     const { key } = await seedLicenseWithKey(db, "djdl");
-    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
+    await setClaimByKey(db, "djdl", true);
     const s = await portalSession(env, db, "bob@example.com");
     for (let i = 0; i < 10; i++) {
       expect((await preview(env, db, s, key)).status).toBe(200);
@@ -411,7 +412,7 @@ describe("POST /api/claim/license-key notifies the licence's own email", () => {
     const sent = withMailbox(env);
     await seedProduct(db, "djdl");
     const { key } = await seedLicenseWithKey(db, "djdl");
-    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
+    await setClaimByKey(db, "djdl", true);
     const s = await portalSession(env, db, "bob@example.com");
     expect((await claim(env, db, s, key)).status).toBe(200);
     expect(sent.map((m) => m.to).sort()).toEqual([
