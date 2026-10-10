@@ -196,7 +196,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			var view := PKeyBoot.new()
 			view.auto_sdk = false
 			(Engine.get_main_loop() as SceneTree).root.add_child(view)
-			var r: PKeyBootResult = await sdk.boot({"view": view, "host": PKeyBootHost.new(sdk)})
+			var r: PKeyBootResult = await sdk.boot({"resolve_on_stop": true, "view": view, "host": PKeyBootHost.new(sdk)})
 			out["bootOutcome"] = r.outcome
 			view.queue_free()
 		"downloadModel":

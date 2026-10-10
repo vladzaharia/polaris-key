@@ -24,9 +24,10 @@ extends SceneTree
 const SDK := preload("res://addons/polaris_key/polaris_key.gd")
 const Context := preload("res://tests/support/test_context.gd")
 
-## Named suite sets. Later work packages append their suites to `ci`; `profile` stays outside.
+## Named suite sets. Later work packages append their suites to `ci`; `profile` stays outside, and
+## so does `ui_matrix` (about a minute), which run_tests.sh runs as a step of its own.
 const SETS := {
-	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "devices", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "commerce", "transports", "parity", "ui_lint"],
+	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "devices", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "commerce", "transports", "parity", "ui_lint", "exit_leaks", "dropin"],
 	## The brief spells the suite with a hyphen.
 	"stage-matrix": ["stage_matrix"],
 }
@@ -41,6 +42,8 @@ func _initialize() -> void:
 
 
 func _run(args: PackedStringArray, at: int) -> void:
+	# This project's own name stands in for a product's in the screens the suites pin.
+	PKeyUiTheme.hide_dev_project_name = false
 	var names: Array[String] = []
 	var bad_selection := at + 1 >= args.size() or args[at + 1].begins_with("--")
 	if not bad_selection:

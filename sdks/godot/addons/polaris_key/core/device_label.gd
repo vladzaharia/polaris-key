@@ -53,13 +53,59 @@ static func normalize(raw: String) -> String:
 	return out
 
 
-## The platform's own name for this device: the model where the OS reports a real one, else the
-## OS name ("macOS", "Linux", …).
+## The platform's own name for this device (the contract's default, WIRE-CONTRACT-V4 §12.7.1): the
+## model where the OS reports a real one, else the OS name ("macOS", "Linux", …). The drop-in
+## `boot()` replaces it with `computer_name()` where it has one (see `friendly_default()`).
 static func platform_default() -> String:
 	var model := OS.get_model_name()
 	if model != "" and model != "GenericDevice":
 		return model
 	return OS.get_name()
+
+
+## What a game's drop-in names this device when its configuration names none: the model where the OS
+## reports a real one, else the computer's own name, else the OS name.
+static func friendly_default() -> String:
+	var model := OS.get_model_name()
+	if model != "" and model != "GenericDevice":
+		return model
+	var host := computer_name()
+	return host if host != "" else OS.get_name()
+
+
+## The computer's own name on a desktop, "" where there is none to read (a phone reports a model,
+## a browser has no name). Read once per run: macOS asks `scutil`, Windows its COMPUTERNAME,
+## Linux /etc/hostname. A `.local`, `.lan` or `.home` suffix goes, as in the other SDKs.
+static func computer_name() -> String:
+	if _computer_name_read:
+		return _computer_name
+	_computer_name_read = true
+	var raw := ""
+	match OS.get_name():
+		"macOS":
+			var out: Array = []
+			if OS.execute("/usr/sbin/scutil", PackedStringArray(["--get", "ComputerName"]), out, false) == 0 and not out.is_empty():
+				raw = String(out[0]).strip_edges()
+			if raw == "":
+				out = []
+				if OS.execute("/bin/hostname", PackedStringArray(), out, false) == 0 and not out.is_empty():
+					raw = String(out[0]).strip_edges()
+		"Windows":
+			raw = OS.get_environment("COMPUTERNAME")
+		"Linux", "FreeBSD", "NetBSD", "OpenBSD", "BSD":
+			if FileAccess.file_exists("/etc/hostname"):
+				raw = FileAccess.get_file_as_string("/etc/hostname").strip_edges()
+			if raw == "":
+				raw = OS.get_environment("HOSTNAME")
+	for suffix in [".local", ".lan", ".home"]:
+		if raw.to_lower().ends_with(suffix):
+			raw = raw.substr(0, raw.length() - suffix.length())
+	_computer_name = normalize(raw)
+	return _computer_name
+
+
+static var _computer_name_read := false
+static var _computer_name := ""
 
 
 ## The label to send: a non-empty `override` (per call) wins; else nothing when

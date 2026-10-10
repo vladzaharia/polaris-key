@@ -11,6 +11,8 @@
 #   PKEY_TEST_SUITES  the --pkey-test selection (default: ci)
 #   PKEY_TEST_STAMPS  1 runs the build-stamp exports (step 4) whatever the selection; they run
 #                     by default only with the `ci` selection
+#   PKEY_TEST_MATRIX  1 runs the UI resolution matrix (step 3b, the ui_matrix suite) whatever the
+#                     selection; it runs by default only with the `ci` selection
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
 #   PKEY_CONTENT_CORPUS the content corpus directory the packs suite reads (default: the
 #                     checkout's conformance/corpus/v2/content; `content/` is not mirrored)
@@ -21,7 +23,8 @@
 #
 # Steps: import (retried once on a signal exit), the untracked-.uid check, the f_uid data packs
 # (two projects under tests/fixtures/uid_packs/, imported and exported with --export-pack into
-# build/uid_packs/, read by the packs suite through PKEY_UID_PACKS), the editor run, the
+# build/uid_packs/, read by the packs suite through PKEY_UID_PACKS), the editor run, the UI
+# resolution matrix (the ui_matrix suite, `ci` only unless PKEY_TEST_MATRIX=1), the
 # build-stamp exports (six ZIP exports with the P1-11 and P3-11 env overrides, checked by the
 # export_stamps suite in the editor; --export-pack needs no templates), then export + template
 # run. Every step runs under a log watchdog: a fatal line (below) kills and
@@ -209,6 +212,13 @@ done
 
 # 3. The editor run.
 step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "$@" || exit 1
+
+# 3b. The UI resolution matrix (tests/ui/matrix.gd): every drop-in screen laid out at every size,
+# look and locale, in the editor, as a step of its own (about a minute) so the editor step keeps
+# its budget. Layout is the same engine code on a release template, so it runs once.
+if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
+  step ui-matrix run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix || exit 1
+fi
 
 # 4. The build stamp (P1-11): the export plugin end to end, headless, as CI exports a game.
 STAMP_ENV="PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42"

@@ -20,7 +20,7 @@ extends Resource
 const DEFAULTS := {
 	# ── PKeyBoot ────────────────────────────────────────────────────────────────────────────
 	"boot_starting": "Starting…",
-	"boot_syncing": "Checking for updates…",
+	"boot_syncing": "Connecting…",
 	"boot_gate": "Checking your license…",
 	"boot_deciding": "Looking for a newer version…",
 	"boot_fetching": "Downloading content…",
@@ -28,20 +28,20 @@ const DEFAULTS := {
 	"boot_ready": "Ready",
 	"boot_offline_title": "You're offline",
 	"boot_offline_body": "Connect to the internet and try again.",
-	"boot_error_title": "Something went wrong",
+	"boot_error_title": "%s couldn't start",
 	"boot_error_body": "The game couldn't finish starting (%s).",
 	"boot_blocked_update_title": "Update required",
-	"boot_blocked_update_body": "This version can no longer be played. Update the game to continue.",
+	"boot_blocked_update_body": "This version can no longer be played. Update %s to continue.",
 	"boot_blocked_unavailable_title": "Not available on your license",
 	"boot_blocked_unavailable_body": "This build isn't available on your license.",
 	"boot_rolled_back": "The last update didn't start, so the previous version was restored.",
 	"boot_consent_title": "Download content?",
-	"boot_consent_body": "The game needs %s of new content.",
-	"boot_consent_body_metered": "The game needs %s of new content, and you're on a mobile connection.",
+	"boot_consent_body": "%s of new content.",
+	"boot_consent_body_metered": "%s of new content. You're on a metered connection.",
 	"boot_consent_download": "Download",
 	"boot_consent_later": "Not now",
 	"boot_declined_title": "Content not downloaded",
-	"boot_declined_body": "The game needs this content to start. Try again when you're ready.",
+	"boot_declined_body": "%s needs this content to start. Try again when you're ready.",
 	"boot_background": "Downloading content… %d%%",
 	"retry": "Try again",
 	"play_offline": "Play offline",
@@ -51,19 +51,21 @@ const DEFAULTS := {
 	"gate_loading": "Checking your license…",
 	"grace_title": "Offline grace",
 	"grace_body": "The licensing service can't be reached. You can keep playing until the grace period ends.",
-	"grace_blocked_body": "The licensing service can't be reached and this game needs it now. Connect and try again.",
-	"expired_title": "License expired",
-	"expired_body": "Connect to the internet to continue.",
+	"grace_blocked_body": "%s needs to check your license online now.",
+	"expired_title": "Connect to keep playing",
+	"expired_body": "Your license needs an online check.",
 	"revoked_title": "Signed out",
 	"revoked_body": "This device was signed out. Sign in or activate again to continue.",
 	"version_too_old_title": "Update required",
-	"version_too_old_body": "This version is no longer supported. Please update the game.",
+	"version_too_old_body": "This version is no longer supported.",
 	"version_min": "Minimum version: %s",
 	"not_available_title": "Not available on this license",
 	"version_too_new_body": "This build is newer than your license allows.",
-	"channel_not_entitled_body": "Your license doesn't include this release channel.",
-	"gate_error_title": "Couldn't check your license",
+	"channel_not_entitled_body": "Your license doesn't cover this build.",
+	"not_available_max": "Your license covers versions up to %s.",
+	"gate_error_title": "Couldn't start",
 	"gate_error_body": "Check your connection and try again.",
+	"gate_continue_offline": "Continue offline",
 	# ── PKeyActivationPanel (Swift's PolarisLoginView copy is the model) ────────────────────
 	"activation_title": "Activate",
 	"activation_subtitle": "Enter a license key or sign in to continue.",
@@ -74,7 +76,7 @@ const DEFAULTS := {
 	"key_submit": "Activate",
 	"sign_in": "Sign in",
 	"continue_free": "Continue free",
-	"offline_activation": "Offline activation…",
+	"offline_activation": "Activate offline",
 	"activation_working": "Activating…",
 	"activation_ok": "Activated.",
 	"activation_key_empty": "Enter a license key first.",
@@ -90,14 +92,26 @@ const DEFAULTS := {
 	"activation_unsupported": "This isn't available on this platform.",
 	"activation_license_expired": "This license has expired. Renew it to keep playing.",
 	"activation_attestation_required": "This game needs to confirm it was installed from an official store before it can be activated here.",
+	"store_only": "Get %s from %s to play.",
+	"store_only_game": "the game",
 	"activation_manage_devices": "Manage devices",
 	"activation_error": "Activation failed. Check your connection and try again.",
 	"free_device": "Replace a device",
 	"free_device_scan": "Scan with your phone to free a device, then try again.",
+	"device_limit_heading": "Your license is on %s of %s devices",
+	"device_limit_heading_one": "Your license is on %s of %s device",
+	"device_limit_heading_unknown": "Your license is on all its devices",
+	"device_limit_lede": "To use it on this device, replace one. You can add it back later.",
+	"different_key": "Use a different key",
+	"use_another_license": "Use another license",
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
 	"sign_in_starting": "Starting sign-in…",
-	"sign_in_instructions": "Scan the code, or go to %s and enter:",
+	"sign_in_instructions": "Scan the code, or go to",
+	"sign_in_instructions_plain": "Go to",
+	"sign_in_expired_title": "Code expired",
+	"sign_in_new_code": "Get a new code",
+	"sign_in_use_key": "Use a license key instead",
 	"sign_in_open_browser": "Open browser",
 	"sign_in_copy_link": "Copy link",
 	"sign_in_copied": "Link copied.",
@@ -117,11 +131,13 @@ const DEFAULTS := {
 	"sign_in_error": "Sign-in failed. Check your connection and try again.",
 	# ── PKeyOfflineDialog ───────────────────────────────────────────────────────────────────
 	"offline_title": "Offline activation",
-	"offline_request": "Send this request code to whoever issues your license:",
+	"offline_step_send": "1  Send this code",
+	"offline_step_load": "2  Load the reply",
+	"offline_request": "Send this request code to whoever issues your license.",
 	"offline_product": "Product: %s",
 	"offline_copy_code": "Copy code",
 	"offline_copied": "Code copied.",
-	"offline_load_hint": "Then load the activation file you receive, or paste its text:",
+	"offline_load_hint": "Load the activation file you receive, or paste its text.",
 	"offline_load_file": "Load file…",
 	"offline_paste_placeholder": "Paste the activation text here",
 	"offline_import": "Activate",
@@ -138,16 +154,25 @@ const DEFAULTS := {
 	# ── PKeySettingsPanel (React's ConfigPanel copy) ────────────────────────────────────────
 	"settings_title": "Settings",
 	"settings_empty": "There are no settings to show.",
+	"settings_loading": "Loading settings…",
+	"settings_general": "General",
 	"settings_advanced": "Show advanced settings",
+	"settings_decrease": "Decrease",
+	"settings_increase": "Increase",
 	"settings_reset": "Reset to default",
 	"settings_set_by": "Set by %s",
+	"settings_set_by_developer": "Set by the developer",
+	"settings_offline": "Couldn't load settings. Connect and try again.",
 	"settings_locked": "Locked",
 	"settings_badge_local": "Changed by you",
 	"settings_badge_env": "Set by the environment",
 	"settings_badge_remote_default": "Default",
 	"settings_badge_fallback": "Built-in default",
+	"settings_source_local": "Changed by you",
+	"settings_source_env": "Set by the environment",
 	# ── PKeyStatusBanner ────────────────────────────────────────────────────────────────────
 	"banner_grace": "Offline — %s left",
+	"banner_expired": "Your license needs an online check",
 	"banner_checked": "Checked %s ago",
 	"banner_checked_now": "Checked just now",
 	"banner_update": "An update is available",
@@ -159,8 +184,12 @@ const DEFAULTS := {
 	"duration_minute": "1 minute",
 	# ── PKeyUpdatePrompt (React's UpdatePrompt copy) ────────────────────────────────────────
 	"update_title": "An update is available",
-	"update_body": "A newer version of this game has been released.",
-	"update_body_version": "A newer version of this game has been released (%s).",
+	"update_modal_title": "Version %s",
+	"update_current": "You have %s · %s download",
+	"update_current_nosize": "You have %s",
+	"update_mandatory_title": "Update to keep using %s",
+	"update_body": "A newer version is available.",
+	"update_body_version": "Version %s is available.",
 	"update_action": "Get the update",
 	"update_dismiss": "Not now",
 	"update_up_to_date": "You're up to date.",
@@ -183,12 +212,14 @@ const DEFAULTS := {
 	"update_platform_body": "A newer version is available. It installs through the store or platform you got this game from.",
 	"update_mandatory_body": "This version is below the minimum supported version. Please update; you can keep playing until you do.",
 	"update_blocked_title": "This version is no longer supported",
-	"update_blocked_body": "This version is below the minimum supported version, and no update is available here yet. You can keep playing.",
+	"update_blocked_body": "No update is available here yet. You can keep playing.",
 	"update_content_floor_body": "Some of this game's content needs a newer version. Please update; you can keep playing until you do.",
 	"update_revoked_title": "Content withdrawn",
 	"update_revoked_body": "Some of this game's content was withdrawn by its developer and can't be used. Update the app to keep playing.",
 	# ── PKeyEntitlementBadge ────────────────────────────────────────────────────────────────
 	"badge_included": "Included with %s",
+	"badge_lead": "Included with",
+	"badge_more": "+%d",
 	# ── PKeyDevMenuSection ──────────────────────────────────────────────────────────────────
 	"dev_title": "Polaris Key",
 	"dev_channel": "Channel",
@@ -201,7 +232,7 @@ const DEFAULTS := {
 	"dev_gate": "License",
 	"dev_last_sync": "Last sync",
 	"dev_never": "never",
-	"dev_copy": "COPY DIAGNOSTICS",
+	"dev_copy": "Copy diagnostics",
 	"dev_copied": "Diagnostics copied.",
 	"dev_force_check": "Force check",
 	"dev_checking": "Checking…",
@@ -239,8 +270,9 @@ const DEFAULTS := {
 	"error_unavailable": "The store couldn't be reached. Try again later.",
 	"error_download_auth_required": "Sign in or activate to download this.",
 	"error_internal_error": "The service had a problem. Try again later.",
-	"error_network-error": "Couldn't connect. Check your connection and try again.",
-	"error_timeout": "The connection timed out. Try again.",
+	"error_network-error": "{product} couldn't connect. Check your connection and try again.",
+	"error_timeout": "{product} didn't answer in time. Try again.",
+	"error_invalid-response": "{product} couldn't verify this license. Check the date and time, update the game, then try again.",
 	"error_service-unavailable": "This isn't enabled for this game.",
 	"error_no-token": "Activate or sign in first.",
 	"error_local-only": "This copy runs offline only.",
@@ -319,6 +351,10 @@ const DEFAULTS := {
 	"channel_locked": "This build's channel is set by where you got it (%s).",
 	"channel_restart": "The new channel applies at the next update check.",
 	# ── PKeyUpdatePrompt additions ──────────────────────────────────────────────────────────
+	"update_check_again": "Check again",
+	"update_checking": "Checking…",
+	"update_no_update_yet": "No update yet.",
+	"update_check_failed": "Couldn't check. Try again.",
 	"update_notes": "What's new",
 	"update_downloading": "Downloading the update… %d%%",
 }
@@ -349,9 +385,22 @@ func text(key: String, args: Variant = null) -> String:
 	var s := tr(r[0])
 	if r[1] != "":
 		s = PKeyCopy.fill(s, r[1])
+	if s.contains("{product}"):
+		s = s.replace("{product}", _product_label())
 	if args == null:
 		return s
 	return s % (args if args is Array else [args])
+
+
+## The name a message gives the product: its identity's, else "the game".
+static func _product_label() -> String:
+	var n := String(PKeyUiTheme.product_identity()["name"])
+	return n if n != "" else "The game"
+
+
+## Codes whose message is the kit's own line (it names the product, which the core's names the
+## service) unless the game overrides the core one.
+const KIT_FIRST := ["network-error", "timeout", "invalid-response"]
 
 
 ## [template, core code] for `key`. An `error_<code>` key reads the core copy (PKeyCopy.shared(),
@@ -369,6 +418,8 @@ func _resolve(key: String) -> Array:
 	var core := PKeyCopy.shared()
 	if core.has_override(code):
 		return [core.message_template(code), code]
+	if KIT_FIRST.has(code) and DEFAULTS.has(key):
+		return [own, ""]
 	if DEFAULTS.has(key) and tr(own) != own:
 		return [own, ""]
 	if core.has(code):
@@ -401,6 +452,12 @@ func for_code(code: Variant, reason: Variant = "") -> String:
 func for_result(r: PKeyResult) -> String:
 	if r == null:
 		return for_code("unknown")
+	if r.ok:
+		return ""
+	if r is PKeyActivationResult:
+		# One copy path: the same words the activation panel shows for this result.
+		var m := PKeyActivationController.message_for(r as PKeyActivationResult)
+		return text(m[0], m[1])
 	var reason := ""
 	if r.detail is Dictionary:
 		var e = r.detail.get("error")
