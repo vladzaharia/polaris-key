@@ -57,16 +57,20 @@ struct KitText: View {
 
     @Environment(\.polarisKeyStrings) private var strings
 
-    init(_ line: CopyLine, _ role: KitTextRole = .body, color: KitTextColor = .default,
-         alignment: TextAlignment = .leading) {
+    init(
+        _ line: CopyLine, _ role: KitTextRole = .body, color: KitTextColor = .default,
+        alignment: TextAlignment = .leading
+    ) {
         self.line = line
         self.role = role
         self.color = color
         self.alignment = alignment
     }
 
-    init(_ key: String, _ args: [String: CopyArgument] = [:], _ role: KitTextRole = .body,
-         color: KitTextColor = .default, alignment: TextAlignment = .leading) {
+    init(
+        _ key: String, _ args: [String: CopyArgument] = [:], _ role: KitTextRole = .body,
+        color: KitTextColor = .default, alignment: TextAlignment = .leading
+    ) {
         self.init(CopyLine(key, args), role, color: color, alignment: alignment)
     }
 

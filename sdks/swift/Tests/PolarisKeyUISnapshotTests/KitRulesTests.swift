@@ -5,10 +5,11 @@
 // (recorded by examples/ui/swiftui/run.sh; ui-qa and the docs read the same files).
 
 import Foundation
-@testable import PolarisKeyUI
 import PolarisKeyUICore
 import SwiftUI
 import XCTest
+
+@testable import PolarisKeyUI
 
 final class KitRulesTests: XCTestCase {
     // MARK: Theme
@@ -49,7 +50,9 @@ final class KitRulesTests: XCTestCase {
     func testTheIntegratorsThemeWinsOverThePresentation() {
         var theme = PolarisKeyTheme(accent: .color("#2f6fde"))
         theme.product = PolarisKeyTheme.Product(name: "Tidewater", developer: "Harbor")
-        var inputs = PolarisKeyPreviewState.base { $0.presentation = PolarisKeyPreviewState.driftKart }
+        var inputs = PolarisKeyPreviewState.base {
+            $0.presentation = PolarisKeyPreviewState.driftKart
+        }
         inputs.integrator = theme.integrator
         let id = KitIdentity.resolve(inputs)
         XCTAssertEqual(id.name, "Tidewater")
@@ -132,7 +135,9 @@ final class KitRulesTests: XCTestCase {
             // Previews the drop-in does not draw on iOS yet have no baseline.
             guard ![KitComponent.boot, .offlineActivation, .toast].contains(preview.component)
             else { continue }
-            let base = ([Self.kebab(preview.component.rawValue), preview.state] + [preview.variant].compactMap { $0 })
+            let base =
+                ([Self.kebab(preview.component.rawValue), preview.state]
+                + [preview.variant].compactMap { $0 })
                 .joined(separator: "-")
             for scheme in ["dark", "light"] where !files.contains("\(base)-\(scheme).png") {
                 missing.append("\(base)-\(scheme).png")

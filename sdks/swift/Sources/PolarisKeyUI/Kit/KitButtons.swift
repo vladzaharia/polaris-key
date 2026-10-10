@@ -156,7 +156,8 @@ struct KitCapsuleStyle: ButtonStyle {
             .contentShape(Capsule())
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
             .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.42)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(
+                reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -181,10 +182,12 @@ struct KitGlassStyle: ButtonStyle {
             .frame(minHeight: height)
             .contentShape(Capsule())
             .glassEffect(
-                .regular.tint(ground.opacity(dark ? 0.55 : 0.85)).interactive(), in: Capsule())
+                .regular.tint(ground.opacity(dark ? 0.55 : 0.85)).interactive(), in: Capsule()
+            )
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
             .opacity(isEnabled ? 1 : 0.42)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(
+                reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

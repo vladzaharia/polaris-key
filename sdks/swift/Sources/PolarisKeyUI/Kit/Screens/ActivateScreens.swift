@@ -82,7 +82,9 @@ struct ActivateBody: View {
                 }
             }
         case .deviceLimit, .rejected:
-            if screen.state == .deviceLimit || screen.copy.contains(where: { $0.key.hasPrefix("core.") }) {
+            if screen.state == .deviceLimit
+                || screen.copy.contains(where: { $0.key.hasPrefix("core.") })
+            {
                 KitCallout(screen: screen)
             }
         default:
@@ -98,7 +100,9 @@ struct KitCallout: View {
 
     var body: some View {
         kitStyle { style in
-            let title = screen.copy.first { $0.key.hasPrefix("core.") && $0.key.hasSuffix(".title") }
+            let title = screen.copy.first {
+                $0.key.hasPrefix("core.") && $0.key.hasSuffix(".title")
+            }
             let message = screen.copy.first {
                 $0.key.hasPrefix("core.") && $0.key.hasSuffix(".message")
             }
@@ -119,7 +123,8 @@ struct KitCallout: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
-                    .fill(style.palette.sunken))
+                    .fill(style.palette.sunken)
+            )
             .accessibilityElement(children: .combine)
         }
     }
@@ -198,7 +203,8 @@ public struct DeviceLimitView: View {
                     .title, color: .strong
                 )
                 .accessibilityAddTraits(.isHeader)
-                if let lede = screen.line("deviceLimit.lede") ?? screen.line("deviceLimit.browser") {
+                if let lede = screen.line("deviceLimit.lede") ?? screen.line("deviceLimit.browser")
+                {
                     KitText(lede, .body, color: .default)
                 }
             }
@@ -253,7 +259,8 @@ public struct DeviceLimitView: View {
                                     meta: strings.string(
                                         "signin.replace.meta",
                                         [
-                                            "platform": .text(KitFormat.platformName(device.platform)),
+                                            "platform": .text(
+                                                KitFormat.platformName(device.platform)),
                                             "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
                                         ]),
                                     leastRecent: device.name == leastRecent,
@@ -278,7 +285,9 @@ public struct DeviceLimitView: View {
                         }
                     }
                 }
-                if let line = screen.line("deviceLimit.removed") ?? screen.line("deviceLimit.failed") {
+                if let line = screen.line("deviceLimit.removed")
+                    ?? screen.line("deviceLimit.failed")
+                {
                     KitText(line, .body, color: .default)
                 }
             }

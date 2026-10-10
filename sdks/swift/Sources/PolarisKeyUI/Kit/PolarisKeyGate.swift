@@ -83,7 +83,9 @@ public struct PolarisKeyGate<Content: View>: View {
             if model.route == .welcome {
                 StatusScreenView(
                     screen: model.statusScreen,
-                    available: ["signin.key.differentKey", "status.useAnotherLicense", "common.signOut"],
+                    available: [
+                        "signin.key.differentKey", "status.useAnotherLicense", "common.signOut",
+                    ],
                     onFix: fix, onTryAgain: { Task { await model.refresh() } })
             } else {
                 activation
@@ -91,25 +93,27 @@ public struct PolarisKeyGate<Content: View>: View {
         }
     }
 
+    /// `presentation: "sheet"` (D-79): the form in one sheet over Welcome; every step morphs inside
+    /// it and a second sheet never opens.
+    private var signInSheet: Binding<Bool> {
+        Binding(
+            get: { model.options.signInPresentation == .sheet && model.route == .signIn },
+            set: { shown in if !shown { model.backToWelcome() } })
+    }
+
     @ViewBuilder private var activation: some View {
         switch model.route {
-        case .welcome, .offline:
-            WelcomeView(
-                screen: model.welcome, onSignIn: { model.beginSignIn() },
-                onUseKey: { model.useLicenseKey() },
-                inline: {
-                    if model.welcome.shows("welcome.ledeKeyOnly") {
-                        ActivateBody(
-                            screen: model.activate, text: $model.keyText,
-                            onSubmit: { Task { await model.submitKey() } },
-                            onReplaceDevice: replaceDevice)
+        case .signIn where model.options.signInPresentation == .sheet:
+            welcome
+                .sheet(isPresented: signInSheet) {
+                    PolarisKeyScope(model: model) {
+                        SignInView(model: model, providers: providers) { model.backToWelcome() }
                     }
-                },
-                inlineActions: {
-                    ActivateActions(
-                        screen: model.activate, onSubmit: { Task { await model.submitKey() } },
-                        onReplaceDevice: replaceDevice, onCancel: nil)
-                })
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                }
+        case .welcome, .offline:
+            welcome
         case .activate:
             ActivateView(
                 screen: model.activate, text: $model.keyText,
@@ -118,6 +122,25 @@ public struct PolarisKeyGate<Content: View>: View {
         case .signIn:
             SignInView(model: model, providers: providers)
         }
+    }
+
+    private var welcome: some View {
+        WelcomeView(
+            screen: model.welcome, onSignIn: { model.beginSignIn() },
+            onUseKey: { model.useLicenseKey() },
+            inline: {
+                if model.welcome.shows("welcome.ledeKeyOnly") {
+                    ActivateBody(
+                        screen: model.activate, text: $model.keyText,
+                        onSubmit: { Task { await model.submitKey() } },
+                        onReplaceDevice: replaceDevice)
+                }
+            },
+            inlineActions: {
+                ActivateActions(
+                    screen: model.activate, onSubmit: { Task { await model.submitKey() } },
+                    onReplaceDevice: replaceDevice, onCancel: nil)
+            })
     }
 
     @ViewBuilder private var overlays: some View {

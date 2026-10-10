@@ -73,7 +73,8 @@ final class KitRenderTests: XCTestCase {
 
     var device: String {
         let env = ProcessInfo.processInfo.environment
-        if let label = env["PKEY_KIT_DEVICE"] ?? env["TEST_RUNNER_PKEY_KIT_DEVICE"], !label.isEmpty {
+        if let label = env["PKEY_KIT_DEVICE"] ?? env["TEST_RUNNER_PKEY_KIT_DEVICE"], !label.isEmpty
+        {
             return label
         }
         return env["SIMULATOR_DEVICE_NAME"]?.lowercased().replacingOccurrences(of: " ", with: "-")
@@ -82,10 +83,12 @@ final class KitRenderTests: XCTestCase {
 
     @MainActor
     func testRenders() throws {
-        let only = ProcessInfo.processInfo.environment["PKEY_KIT_ONLY"]
+        let only =
+            ProcessInfo.processInfo.environment["PKEY_KIT_ONLY"]
             ?? ProcessInfo.processInfo.environment["TEST_RUNNER_PKEY_KIT_ONLY"]
         let states =
-            only.flatMap { $0.isEmpty ? nil : $0.split(separator: ",").map(String.init) } ?? Self.all
+            only.flatMap { $0.isEmpty ? nil : $0.split(separator: ",").map(String.init) }
+            ?? Self.all
         var renders: [Render] = []
         for state in states {
             for scheme in ["dark", "light"] {
@@ -148,7 +151,9 @@ final class KitRenderTests: XCTestCase {
         }
         args += ["-UIPreferredContentSizeCategoryName", category]
         let env = ProcessInfo.processInfo.environment
-        if let extra = env["PKEY_KIT_EXTRA_ARGS"] ?? env["TEST_RUNNER_PKEY_KIT_EXTRA_ARGS"], !extra.isEmpty {
+        if let extra = env["PKEY_KIT_EXTRA_ARGS"] ?? env["TEST_RUNNER_PKEY_KIT_EXTRA_ARGS"],
+            !extra.isEmpty
+        {
             args += extra.split(separator: " ").map(String.init)
         }
         app.launchArguments = args
@@ -187,12 +192,14 @@ final class KitRenderTests: XCTestCase {
             // the render itself, and keep the finding only when the pixels fail too (BRAND §9:
             // contrast is measured on the render).
             if issue.compactDescription.contains("Contrast"), let element = issue.element,
-                let pixels, let ratio = Self.measuredContrast(pixels, in: element.frame, scale: scale)
+                let pixels,
+                let ratio = Self.measuredContrast(pixels, in: element.frame, scale: scale)
             {
                 let floor = element.elementType == .staticText ? 4.5 : 3.0
                 if ratio >= floor {
                     issues.append(
-                        "measured \(String(format: "%.1f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]")
+                        "measured \(String(format: "%.1f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]"
+                    )
                     return true
                 }
             }
@@ -218,7 +225,8 @@ final class KitRenderTests: XCTestCase {
     /// The default row (portrait, L, the Polaris Key preset): the docs subset, flat at the top of
     /// the baseline directory as `<component>-<state>[-variant]-<scheme>.png` (ui-qa's and the docs'
     /// layout); every other row in `<component>-<state>/<device>-…-<scheme>.png`.
-    func isDefaultRow(_ type: String, _ orientation: UIDeviceOrientation, _ preset: String) -> Bool {
+    func isDefaultRow(_ type: String, _ orientation: UIDeviceOrientation, _ preset: String) -> Bool
+    {
         type == "L" && orientation == .portrait && preset == "polaris-key"
     }
 
@@ -228,7 +236,8 @@ final class KitRenderTests: XCTestCase {
         let component = parts[0].replacingOccurrences(
             of: "([a-z0-9])([A-Z])", with: "$1-$2", options: .regularExpression
         ).lowercased()
-        return parts.count > 1 ? "\(component)-\(parts[1].replacingOccurrences(of: ".", with: "-"))" : component
+        return parts.count > 1
+            ? "\(component)-\(parts[1].replacingOccurrences(of: ".", with: "-"))" : component
     }
 
     /// Compare a render with its committed baseline (swift-snapshot-testing's image diffing), at
@@ -245,7 +254,8 @@ final class KitRenderTests: XCTestCase {
         let url: URL =
             isDefault && device.hasPrefix("iphone-440")
             ? URL(fileURLWithPath: root).appendingPathComponent("\(base)-\(scheme).png")
-            : URL(fileURLWithPath: root).appendingPathComponent(base).appendingPathComponent("\(name).png")
+            : URL(fileURLWithPath: root).appendingPathComponent(base).appendingPathComponent(
+                "\(name).png")
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let size = CGSize(width: image.size.width, height: image.size.height)
@@ -259,7 +269,8 @@ final class KitRenderTests: XCTestCase {
             return
         }
         guard let reference = UIImage(contentsOfFile: url.path) else {
-            baselineFailures.append("\(url.lastPathComponent): no baseline (record with PKEY_KIT_RECORD=1)")
+            baselineFailures.append(
+                "\(url.lastPathComponent): no baseline (record with PKEY_KIT_RECORD=1)")
             return
         }
         let diffing = Diffing<UIImage>.image(precision: 0.995, perceptualPrecision: 0.98, scale: 1)
@@ -276,8 +287,11 @@ final class KitRenderTests: XCTestCase {
             x: frame.minX * scale, y: frame.minY * scale, width: frame.width * scale,
             height: frame.height * scale
         ).integral.intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        guard rect.width > 2, rect.height > 2, let crop = image.cropping(to: rect) else { return nil }
-        let w = crop.width, h = crop.height
+        guard rect.width > 2, rect.height > 2, let crop = image.cropping(to: rect) else {
+            return nil
+        }
+        let w = crop.width
+        let h = crop.height
         var bytes = [UInt8](repeating: 0, count: w * h * 4)
         guard
             let ctx = CGContext(
@@ -289,7 +303,9 @@ final class KitRenderTests: XCTestCase {
         var counts: [UInt32: Int] = [:]
         for i in stride(from: 0, to: bytes.count, by: 4) {
             // Quantise to 4 bits per channel so antialiasing and gradients pool together.
-            let key = UInt32(bytes[i] >> 4) << 8 | UInt32(bytes[i + 1] >> 4) << 4 | UInt32(bytes[i + 2] >> 4)
+            let key =
+                UInt32(bytes[i] >> 4) << 8 | UInt32(bytes[i + 1] >> 4) << 4
+                | UInt32(bytes[i + 2] >> 4)
             counts[key, default: 0] += 1
         }
         guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return nil }

@@ -74,7 +74,9 @@ public struct PolarisKeyPreview: View {
         case .statusScreen:
             StatusScreenView(
                 screen: model.statusScreen,
-                available: ["signin.key.differentKey", "status.useAnotherLicense", "common.signOut"],
+                available: [
+                    "signin.key.differentKey", "status.useAnotherLicense", "common.signOut",
+                ],
                 onFix: { _ in }, onTryAgain: {})
         case .graceBanner:
             ZStack(alignment: .bottom) {
@@ -149,7 +151,8 @@ struct PreviewHostApp: View {
         kitStyle { style in
             NavigationStack {
                 List {
-                    ForEach(["Harbor demo", "Night swim", "Field notes", "Lighthouse"], id: \.self) {
+                    ForEach(["Harbor demo", "Night swim", "Field notes", "Lighthouse"], id: \.self)
+                    {
                         Text($0)
                     }
                 }
@@ -183,7 +186,9 @@ public struct PolarisKeyGallery: View {
                     if !states.isEmpty {
                         Section(component.rawValue) {
                             ForEach(states) { state in
-                                NavigationLink(state.variant.map { "\(state.state) · \($0)" } ?? state.state) {
+                                NavigationLink(
+                                    state.variant.map { "\(state.state) · \($0)" } ?? state.state
+                                ) {
                                     PolarisKeyPreview(state)
                                         .navigationBarBackButtonHiddenIfAvailable()
                                 }

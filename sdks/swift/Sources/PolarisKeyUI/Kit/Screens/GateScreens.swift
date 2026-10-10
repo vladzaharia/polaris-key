@@ -69,9 +69,11 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
     public var body: some View {
         KitScreenScaffold(hero: true, header: false) {
             VStack(spacing: 6) {
-                KitText(screen.lineOrKey("welcome.title"), .display, color: .strong, alignment: .center)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityFocused($titleFocused)
+                KitText(
+                    screen.lineOrKey("welcome.title"), .display, color: .strong, alignment: .center
+                )
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused($titleFocused)
                 if let by = screen.line("common.byDeveloper") {
                     KitText(by, .footnote, color: .subtle, alignment: .center)
                 }
@@ -92,9 +94,13 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
                 KitButton(line: CopyLine("welcome.signIn"), kind: .primary, busy: true) {}
             } else if screen.state == .default {
                 KitActionStack {
-                    KitButton(line: screen.lineOrKey("welcome.signIn"), kind: .primary, action: onSignIn)
-                        .keyboardShortcut(.defaultAction)
-                    KitButton(line: screen.lineOrKey("welcome.useKey"), kind: .secondary, action: onUseKey)
+                    KitButton(
+                        line: screen.lineOrKey("welcome.signIn"), kind: .primary, action: onSignIn
+                    )
+                    .keyboardShortcut(.defaultAction)
+                    KitButton(
+                        line: screen.lineOrKey("welcome.useKey"), kind: .secondary, action: onUseKey
+                    )
                 }
             } else if screen.state == .capabilityLimited, screen.shows("welcome.ledeSignInOnly") {
                 KitButton(line: CopyLine("welcome.signIn"), kind: .primary, action: onSignIn)
@@ -108,12 +114,16 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 20) {
                         ForEach(extras, id: \.key) { line in
-                            KitButton(line: line, kind: .quiet, fullWidth: false) { onExtra(line.key) }
+                            KitButton(line: line, kind: .quiet, fullWidth: false) {
+                                onExtra(line.key)
+                            }
                         }
                     }
                     VStack(spacing: 4) {
                         ForEach(extras, id: \.key) { line in
-                            KitButton(line: line, kind: .quiet, fullWidth: false) { onExtra(line.key) }
+                            KitButton(line: line, kind: .quiet, fullWidth: false) {
+                                onExtra(line.key)
+                            }
                         }
                     }
                 }
@@ -158,10 +168,12 @@ public struct StatusScreenView: View {
     }
 
     private var fixes: [CopyLine] {
-        ["signin.key.differentKey", "status.renew", "status.update", "status.switchChannel",
-            "status.useAnotherLicense", "status.contact", "common.signOut"]
-            .compactMap { screen.line($0) }
-            .filter { available.contains($0.key) }
+        [
+            "signin.key.differentKey", "status.renew", "status.update", "status.switchChannel",
+            "status.useAnotherLicense", "status.contact", "common.signOut",
+        ]
+        .compactMap { screen.line($0) }
+        .filter { available.contains($0.key) }
     }
 
     public var body: some View {
@@ -188,7 +200,8 @@ public struct StatusScreenView: View {
                 }
                 if fixes.isEmpty || !fixes.contains(where: { $0.key != "common.signOut" }) {
                     KitButton(
-                        line: CopyLine("common.tryAgain"), kind: fixes.isEmpty ? .primary : .secondary,
+                        line: CopyLine("common.tryAgain"),
+                        kind: fixes.isEmpty ? .primary : .secondary,
                         action: onTryAgain)
                 }
             }
@@ -229,8 +242,11 @@ public struct GraceBannerView: View {
                         }
                     }
                     Spacer(minLength: 0)
-                    KitButton(line: CopyLine("common.reconnect"), kind: .primary, fullWidth: false, action: onReconnect)
-                        .fixedSize()
+                    KitButton(
+                        line: CopyLine("common.reconnect"), kind: .primary, fullWidth: false,
+                        action: onReconnect
+                    )
+                    .fixedSize()
                     if screen.shows("common.dismiss") {
                         Button(action: onDismiss) {
                             Image(systemName: "xmark")

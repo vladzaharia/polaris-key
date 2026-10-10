@@ -157,7 +157,8 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
 extension KitScreenScaffold where Footer == EmptyView {
     init(
         hero: Bool = false, header: Bool = true, tier: String? = nil,
-        @ViewBuilder heading: @escaping () -> Heading, @ViewBuilder content: @escaping () -> Content,
+        @ViewBuilder heading: @escaping () -> Heading,
+        @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder actions: @escaping () -> Actions
     ) {
         self.init(

@@ -147,8 +147,10 @@ public struct KitResolvedStyle: Sendable, Equatable {
             return Font.custom(name, size: size, relativeTo: spec.textStyle)
         }
         if case .custom(let family) = typography.family {
-            let face = (role == .display || role == .title) ? (typography.display ?? family) : family
-            return Font.custom(face, size: size, relativeTo: spec.textStyle).weight(spec.weight.swiftUI)
+            let face =
+                (role == .display || role == .title) ? (typography.display ?? family) : family
+            return Font.custom(face, size: size, relativeTo: spec.textStyle).weight(
+                spec.weight.swiftUI)
         }
         guard let name = KitFonts.rubikName(spec.weight) else {
             return Font.system(spec.textStyle).weight(spec.weight.swiftUI)

@@ -81,7 +81,8 @@ extension KitStates {
         if i.loading == true { return KitScreen(.loading, [title, c.line("common.loading")]) }
         if i.error != nil {
             if i.config == nil {
-                return KitScreen(.error, [c.line("settings.loadFailed"), c.line("common.tryAgain")])
+                return KitScreen(
+                    .error, [c.line("settings.loadFailed"), c.line("common.tryAgain")])
             }
             return KitScreen(.error, [c.line("settings.error"), c.line("common.tryAgain")])
         }
@@ -107,7 +108,8 @@ extension KitStates {
         if rows.contains(where: { $0.source == "default" }) {
             lines.append(c.line("settings.fromDeveloper", c.developerArg))
         }
-        for source in ["local", "env", "default"] where rows.contains(where: { $0.source == source }) {
+        for source in ["local", "env", "default"]
+        where rows.contains(where: { $0.source == source }) {
             lines.append(c.line("settings.source.\(source)"))
         }
         if rows.contains(where: { $0.source == "local" }) { lines.append(c.line("settings.reset")) }
@@ -136,7 +138,8 @@ extension KitStates {
         }
         if i.pending == .restore { return KitScreen(.restore, [c.line("paywall.restore")]) }
         if i.offers?.purchased == true {
-            return KitScreen(.purchased, [c.line("paywall.purchased", tier), c.line("common.done")])
+            return KitScreen(
+                .purchased, [c.line("paywall.purchased", tier), c.line("common.done")])
         }
         guard let offers = i.offers else { return KitScreen(.loading, [c.line("common.loading")]) }
         if !offers.available {

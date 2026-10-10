@@ -78,7 +78,10 @@ extension KitStates {
             if s.issuedNow == true {
                 return KitScreen(
                     .done,
-                    [c.line("signin.return.signedInShort"), c.line("signin.done.start", c.productArg)])
+                    [
+                        c.line("signin.return.signedInShort"),
+                        c.line("signin.done.start", c.productArg),
+                    ])
             }
             return KitScreen(.done, [c.line("signin.desktop.toast", ["name": "", "tier": ""])])
         }
@@ -167,7 +170,8 @@ extension KitStates {
         if s.channel == .deviceCode {
             switch i.deviceCode?.phase ?? .starting {
             case .starting:
-                return KitScreen(.starting, [c.line("signInHandoff.starting"), c.line("a11y.busy")])
+                return KitScreen(
+                    .starting, [c.line("signInHandoff.starting"), c.line("a11y.busy")])
             case .waiting, .slowDown:
                 return KitScreen(.code, codeLines(c))
             case .ok:
@@ -235,7 +239,9 @@ extension KitStates {
         if p.isTV {
             lines.append(c.line("a11y.qr"))
             if p.os == .android || p.os == .tvos {
-                lines += [c.line("signInHandoff.scanTv"), c.line("signin.handoff.url", ["url": url])]
+                lines += [
+                    c.line("signInHandoff.scanTv"), c.line("signin.handoff.url", ["url": url]),
+                ]
             } else {
                 lines += [c.line("signInHandoff.scan", ["url": url]), c.line("part.qr.enlarge")]
             }
@@ -310,7 +316,8 @@ extension KitStates {
             return KitScreen(
                 .new,
                 [
-                    c.line("signin.choice.ledeNew", c.productArg.merging(c.developerArg) { a, _ in a }),
+                    c.line(
+                        "signin.choice.ledeNew", c.productArg.merging(c.developerArg) { a, _ in a }),
                     c.line("signin.choice.tag.new"), c.line("signin.choice.metaNew"),
                 ])
         default:
@@ -335,7 +342,8 @@ extension KitStates {
         }
         if view.keep {
             return KitScreen(
-                .keep, [c.line("signin.choice.keep"), c.line("signin.choice.keepMeta", c.productArg)])
+                .keep,
+                [c.line("signin.choice.keep"), c.line("signin.choice.keepMeta", c.productArg)])
         }
         if choices.contains(where: \.current) {
             return KitScreen(.current, [c.line("signin.choice.tag.current")])
@@ -398,7 +406,8 @@ extension Ctx {
     /// The device Replace would sign out: the least recent of the replace view.
     var replaceTarget: String? {
         guard let devices = i.replaceView?.devices else { return nil }
-        let target = devices.first(where: \.leastRecent) ?? devices.min { $0.lastSeen < $1.lastSeen }
+        let target =
+            devices.first(where: \.leastRecent) ?? devices.min { $0.lastSeen < $1.lastSeen }
         return target?.label
     }
 }

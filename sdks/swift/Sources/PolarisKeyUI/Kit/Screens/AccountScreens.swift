@@ -22,8 +22,10 @@ struct PaneText: View {
         self.color = color
     }
 
-    init(_ key: String, _ args: [String: CopyArgument] = [:], _ role: KitTextRole = .body,
-         color: KitTextColor = .default) {
+    init(
+        _ key: String, _ args: [String: CopyArgument] = [:], _ role: KitTextRole = .body,
+        color: KitTextColor = .default
+    ) {
         self.init(CopyLine(key, args), role, color: color)
     }
 
@@ -31,7 +33,9 @@ struct PaneText: View {
         kitStyle { style in
             Text(strings.string(line))
                 .font(role == .footnote || role == .meta ? .footnote : nil)
-                .foregroundStyle(color == .default ? AnyShapeStyle(.primary) : AnyShapeStyle(color.resolve(style.palette)))
+                .foregroundStyle(
+                    color == .default
+                        ? AnyShapeStyle(.primary) : AnyShapeStyle(color.resolve(style.palette)))
         }
     }
 }
@@ -49,7 +53,9 @@ struct ServiceCue: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(ring.color)
                     .frame(width: 20, height: 20)
-                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(fill.color))
+                    .background(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous).fill(fill.color)
+                    )
                     .accessibilityHidden(true)
             }
         }
@@ -59,24 +65,54 @@ struct ServiceCue: View {
         switch service {
         case .update, .distribution, .release:
             return dark
-                ? ("arrow.down.circle", PolarisBrand.Dark.stateUpdateRing, PolarisBrand.Dark.stateUpdateSelectedFill)
-                : ("arrow.down.circle", PolarisBrand.Light.stateUpdateRing, PolarisBrand.Light.stateUpdateSelectedFill)
+                ? (
+                    "arrow.down.circle", PolarisBrand.Dark.stateUpdateRing,
+                    PolarisBrand.Dark.stateUpdateSelectedFill
+                )
+                : (
+                    "arrow.down.circle", PolarisBrand.Light.stateUpdateRing,
+                    PolarisBrand.Light.stateUpdateSelectedFill
+                )
         case .sync:
             return dark
-                ? ("icloud", PolarisBrand.Dark.stateSyncRing, PolarisBrand.Dark.stateSyncSelectedFill)
-                : ("icloud", PolarisBrand.Light.stateSyncRing, PolarisBrand.Light.stateSyncSelectedFill)
+                ? (
+                    "icloud", PolarisBrand.Dark.stateSyncRing,
+                    PolarisBrand.Dark.stateSyncSelectedFill
+                )
+                : (
+                    "icloud", PolarisBrand.Light.stateSyncRing,
+                    PolarisBrand.Light.stateSyncSelectedFill
+                )
         case .config:
             return dark
-                ? ("slider.horizontal.3", PolarisBrand.Dark.stateConfigRing, PolarisBrand.Dark.stateConfigSelectedFill)
-                : ("slider.horizontal.3", PolarisBrand.Light.stateConfigRing, PolarisBrand.Light.stateConfigSelectedFill)
+                ? (
+                    "slider.horizontal.3", PolarisBrand.Dark.stateConfigRing,
+                    PolarisBrand.Dark.stateConfigSelectedFill
+                )
+                : (
+                    "slider.horizontal.3", PolarisBrand.Light.stateConfigRing,
+                    PolarisBrand.Light.stateConfigSelectedFill
+                )
         case .identity:
             return dark
-                ? ("person.crop.circle", PolarisBrand.Dark.stateIdentityRing, PolarisBrand.Dark.stateIdentitySelectedFill)
-                : ("person.crop.circle", PolarisBrand.Light.stateIdentityRing, PolarisBrand.Light.stateIdentitySelectedFill)
+                ? (
+                    "person.crop.circle", PolarisBrand.Dark.stateIdentityRing,
+                    PolarisBrand.Dark.stateIdentitySelectedFill
+                )
+                : (
+                    "person.crop.circle", PolarisBrand.Light.stateIdentityRing,
+                    PolarisBrand.Light.stateIdentitySelectedFill
+                )
         case .license:
             return dark
-                ? ("key", PolarisBrand.Dark.stateLicenseRing, PolarisBrand.Dark.stateLicenseSelectedFill)
-                : ("key", PolarisBrand.Light.stateLicenseRing, PolarisBrand.Light.stateLicenseSelectedFill)
+                ? (
+                    "key", PolarisBrand.Dark.stateLicenseRing,
+                    PolarisBrand.Dark.stateLicenseSelectedFill
+                )
+                : (
+                    "key", PolarisBrand.Light.stateLicenseRing,
+                    PolarisBrand.Light.stateLicenseSelectedFill
+                )
         }
     }
 }
@@ -123,10 +159,14 @@ public struct AccountAndLicenseSection: View {
                             .fontWeight(.medium)
                             .foregroundStyle(.primary)
                         if screen.shows("account.tier") {
-                            PaneText(CopyLine("account.tier", ["tier": .text(tier ?? "")]), .meta, color: .muted)
+                            PaneText(
+                                CopyLine("account.tier", ["tier": .text(tier ?? "")]), .meta,
+                                color: .muted)
                         }
                         if screen.shows("account.holder"), let holder {
-                            PaneText(CopyLine("account.holder", ["name": .text(holder)]), .meta, color: .muted)
+                            PaneText(
+                                CopyLine("account.holder", ["name": .text(holder)]), .meta,
+                                color: .muted)
                         } else if screen.shows("account.keyOnly") {
                             PaneText(CopyLine("account.keyOnly"), .meta, color: .muted)
                         } else if screen.shows("account.offline") {
@@ -167,7 +207,9 @@ public struct AccountAndLicenseSection: View {
                         .tint(style.palette.accentSolid)
                     }
                     if let version, screen.shows("account.version") {
-                        PaneText(CopyLine("account.version", ["version": .text(version)]), .body, color: .default)
+                        PaneText(
+                            CopyLine("account.version", ["version": .text(version)]), .body,
+                            color: .default)
                     }
                     if screen.shows("update.checkNow") {
                         Button(action: onCheckNow) {
@@ -192,7 +234,8 @@ public struct AccountAndLicenseSection: View {
                         strings.string("common.signOut"), isPresented: $confirmingSignOut,
                         titleVisibility: .hidden
                     ) {
-                        Button(strings.string("common.signOut"), role: .destructive, action: onSignOut)
+                        Button(
+                            strings.string("common.signOut"), role: .destructive, action: onSignOut)
                     }
                 }
             }
@@ -212,7 +255,8 @@ public struct DevicesSection: View {
     @Environment(\.polarisKeyStrings) private var strings
 
     public init(
-        screen: KitScreen<DevicesState>, devices: [KitDevice], onRemove: @escaping (KitDevice) -> Void,
+        screen: KitScreen<DevicesState>, devices: [KitDevice],
+        onRemove: @escaping (KitDevice) -> Void,
         onRetry: @escaping () -> Void
     ) {
         self.screen = screen
@@ -241,9 +285,15 @@ public struct DevicesSection: View {
                         name: device.name, formFactor: device.formFactor.rawValue,
                         meta: strings.string(
                             "devices.meta",
-                            ["platform": .text(KitFormat.platformName(device.platform)), "when": .text(KitFormat.daysAgo(device.lastSeenDays))]))
+                            [
+                                "platform": .text(KitFormat.platformName(device.platform)),
+                                "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
+                            ])
+                    )
                     .swipeActions {
-                        Button(strings.string("devices.remove"), role: .destructive) { onRemove(device) }
+                        Button(strings.string("devices.remove"), role: .destructive) {
+                            onRemove(device)
+                        }
                     }
                 }
             }
@@ -285,7 +335,8 @@ public struct SettingsSection: View {
                             if row.locked {
                                 PaneText(
                                     row.org.map { CopyLine("settings.setBy", ["org": .text($0)]) }
-                                        ?? CopyLine("settings.setByGuardian"), .footnote, color: .muted)
+                                        ?? CopyLine("settings.setByGuardian"), .footnote,
+                                    color: .muted)
                             }
                         }
                     }
@@ -327,7 +378,8 @@ public struct PaywallView: View {
     var onRedeem: () -> Void
 
     public init(
-        screen: KitScreen<PaywallState>, onPortal: @escaping () -> Void, onRedeem: @escaping () -> Void
+        screen: KitScreen<PaywallState>, onPortal: @escaping () -> Void,
+        onRedeem: @escaping () -> Void
     ) {
         self.screen = screen
         self.onPortal = onPortal
@@ -347,7 +399,9 @@ public struct PaywallView: View {
         } actions: {
             KitActionStack {
                 if screen.shows("paywall.portal") {
-                    KitButton(line: CopyLine("paywall.portal"), kind: .primary, glyph: "arrow.up.right", action: onPortal)
+                    KitButton(
+                        line: CopyLine("paywall.portal"), kind: .primary, glyph: "arrow.up.right",
+                        action: onPortal)
                 }
                 if screen.shows("paywall.redeem") {
                     KitButton(line: CopyLine("paywall.redeem"), kind: .secondary, action: onRedeem)

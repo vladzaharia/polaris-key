@@ -46,7 +46,8 @@ extension KitStates {
         case "store":
             return KitScreen(.store, [storeLine(u.outlet, c)])
         case "platform":
-            return KitScreen(.platform, [c.line("update.availableTitle"), platformLine(u.outlet, c)])
+            return KitScreen(
+                .platform, [c.line("update.availableTitle"), platformLine(u.outlet, c)])
         case "code-ready":
             return KitScreen(
                 .ready,
@@ -138,7 +139,10 @@ extension KitStates {
         case "download", "verify":
             return KitScreen(
                 .downloading,
-                [c.line("updateProgress.downloading", c.progressArgs), c.line("a11y.progress", c.progressArgs)])
+                [
+                    c.line("updateProgress.downloading", c.progressArgs),
+                    c.line("a11y.progress", c.progressArgs),
+                ])
         case "install":
             return KitScreen(.installing, [c.line("updateProgress.installing")])
         case "paused":

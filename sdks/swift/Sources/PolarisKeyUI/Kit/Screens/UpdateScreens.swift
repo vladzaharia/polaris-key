@@ -26,12 +26,16 @@ public struct UpdatePromptView: View {
         switch screen.state {
         case .mandatory, .revokedRequiredContent:
             KitScreenScaffold(hero: true, header: false) {
-                if let title = screen.line("update.mandatoryTitle") ?? screen.line("core.codes.pack-revoked.title") {
+                if let title = screen.line("update.mandatoryTitle")
+                    ?? screen.line("core.codes.pack-revoked.title")
+                {
                     KitText(title, .title, color: .strong, alignment: .center)
                         .accessibilityAddTraits(.isHeader)
                 }
             } content: {
-                if let body = screen.line("update.mandatoryBody") ?? screen.line("update.revokedContent") {
+                if let body = screen.line("update.mandatoryBody")
+                    ?? screen.line("update.revokedContent")
+                {
                     KitText(body, .body, color: .default, alignment: .center)
                 }
             } actions: {
@@ -53,7 +57,8 @@ public struct UpdatePromptView: View {
                     KitText(
                         screen.line("update.title") ?? screen.line("update.readyTitle")
                             ?? screen.lineOrKey("update.availableTitle"), .label, color: .strong)
-                    if let detail = screen.line("update.downloading") ?? screen.line("update.readyBody")
+                    if let detail = screen.line("update.downloading") ?? screen.line(
+                        "update.readyBody")
                         ?? screen.line("update.critical")
                     {
                         KitText(detail, .footnote, color: .muted)
@@ -72,7 +77,8 @@ public struct UpdatePromptView: View {
 
     /// The verb the outlet allows.
     private var verb: CopyLine {
-        for key in ["update.appStore", "update.testflight", "update.altstore", "update.restartNow"] {
+        for key in ["update.appStore", "update.testflight", "update.altstore", "update.restartNow"]
+        {
             if let line = screen.line(key) { return line }
         }
         return CopyLine("update.install")
@@ -96,14 +102,20 @@ public struct UpdateProgressView: View {
     public var body: some View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.xs)) {
-                ForEach(screen.copy.filter { !$0.key.hasPrefix("a11y.") && $0.key != "common.tryAgain" }, id: \.key) {
+                ForEach(
+                    screen.copy.filter {
+                        !$0.key.hasPrefix("a11y.") && $0.key != "common.tryAgain"
+                    }, id: \.key
+                ) {
                     KitText($0, .meta, color: .default)
                 }
                 if screen.state == .downloading, let fraction {
                     ProgressBar(fraction: fraction)
                 }
                 if screen.state == .failed {
-                    KitButton(line: CopyLine("common.tryAgain"), kind: .secondary, fullWidth: false, action: onRetry)
+                    KitButton(
+                        line: CopyLine("common.tryAgain"), kind: .secondary, fullWidth: false,
+                        action: onRetry)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -145,9 +157,14 @@ public struct ReleaseNotesView: View {
                                 .foregroundStyle(style.palette.textDefault)
                         } header: {
                             HStack {
-                                KitText(CopyLine("releaseNotes.version", ["version": .text(note.version)]), .label, color: .strong)
+                                KitText(
+                                    CopyLine(
+                                        "releaseNotes.version", ["version": .text(note.version)]),
+                                    .label, color: .strong)
                                 Spacer()
-                                KitText(CopyLine("releaseNotes.released", ["date": .text(note.date)]), .footnote, color: .muted)
+                                KitText(
+                                    CopyLine("releaseNotes.released", ["date": .text(note.date)]),
+                                    .footnote, color: .muted)
                             }
                         }
                     }

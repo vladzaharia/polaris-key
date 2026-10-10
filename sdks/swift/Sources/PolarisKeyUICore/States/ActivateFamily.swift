@@ -160,7 +160,8 @@ extension KitStates {
             return KitScreen(.typing, [c.line("part.keyField.label"), c.line("activate.submit")])
         case .parsed:
             return KitScreen(
-                .parsed, [c.line("part.keyField.forProduct", c.productArg), c.line("activate.submit")])
+                .parsed,
+                [c.line("part.keyField.forProduct", c.productArg), c.line("activate.submit")])
         case .cutShort:
             return KitScreen(
                 .cutShort,

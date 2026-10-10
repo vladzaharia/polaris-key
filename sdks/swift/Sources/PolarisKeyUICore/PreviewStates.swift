@@ -18,7 +18,9 @@ public struct PolarisKeyPreviewState: Sendable, Identifiable, Hashable {
         [component.rawValue, state, variant].compactMap { $0 }.joined(separator: ".")
     }
 
-    public init(_ component: KitComponent, _ state: String, variant: String? = nil, _ inputs: KitInputs) {
+    public init(
+        _ component: KitComponent, _ state: String, variant: String? = nil, _ inputs: KitInputs
+    ) {
         self.component = component
         self.state = state
         self.variant = variant
@@ -123,7 +125,8 @@ extension PolarisKeyPreviewState {
     }
 
     private static func sign(
-        _ outcome: KitSignInOutcome? = nil, event: KitSignInEvent? = nil, channel: KitSignInChannel = .browser,
+        _ outcome: KitSignInOutcome? = nil, event: KitSignInEvent? = nil,
+        channel: KitSignInChannel = .browser,
         _ edit: (inout KitSignIn) -> Void = { _ in }
     ) -> KitSignIn {
         var s = KitSignIn(channel: channel, outcome: outcome, event: event)
@@ -160,7 +163,8 @@ extension PolarisKeyPreviewState {
             .gate, "error",
             base {
                 $0.stage = KitStage(
-                    stage: "error", outcome: "error", emit: KitStageEmit(type: "error", code: "sync-failed"))
+                    stage: "error", outcome: "error",
+                    emit: KitStageEmit(type: "error", code: "sync-failed"))
             }),
         .init(.boot, "progress", base { $0.stage = KitStage(stage: "sync", outcome: "running") }),
         .init(
@@ -208,7 +212,8 @@ extension PolarisKeyPreviewState {
             .boot, "error",
             base {
                 $0.stage = KitStage(
-                    stage: "error", outcome: "error", emit: KitStageEmit(type: "error", code: "sync-failed"))
+                    stage: "error", outcome: "error",
+                    emit: KitStageEmit(type: "error", code: "sync-failed"))
             }),
     ]
 
@@ -216,12 +221,16 @@ extension PolarisKeyPreviewState {
         .init(.welcome, "default", base()),
         .init(
             .welcome, "default", variant: "extras",
-            base { $0.capabilities = KitCapabilities(offlineActivation: true, trial: true, restore: true) }),
+            base {
+                $0.capabilities = KitCapabilities(
+                    offlineActivation: true, trial: true, restore: true)
+            }),
         .init(.welcome, "default", variant: "drift-kart", base { $0.presentation = driftKart }),
         .init(.welcome, "default", variant: "no-presentation", base { $0.presentation = nil }),
         .init(.welcome, "busy", base { $0.pending = .signIn }),
         .init(
-            .welcome, "capability-limited", base { $0.capabilities = KitCapabilities(signIn: false) }),
+            .welcome, "capability-limited",
+            base { $0.capabilities = KitCapabilities(signIn: false) }),
     ]
 
     static let signIn: [PolarisKeyPreviewState] = [
@@ -250,7 +259,12 @@ extension PolarisKeyPreviewState {
             }),
         .init(
             .signIn, "done", base { $0.signIn = sign(.signedIn) { $0.issuedNow = true } }),
-        .init(.signIn, "error", base { $0.signIn = sign(); $0.error = KitError(code: "sign-in-failed") }),
+        .init(
+            .signIn, "error",
+            base {
+                $0.signIn = sign()
+                $0.error = KitError(code: "sign-in-failed")
+            }),
         .init(.signIn, "expired", base { $0.signIn = sign(.expired) }),
         .init(.signInHandoff, "waiting", base { $0.signIn = sign(.pending) }),
         .init(
@@ -309,7 +323,8 @@ extension PolarisKeyPreviewState {
             .licenseChoice, "none-keys",
             base {
                 $0.signIn = sign(.choose)
-                $0.choices = KitLicenseChoices(state: "none", getLicense: KitGetLicense(keyEntry: true))
+                $0.choices = KitLicenseChoices(
+                    state: "none", getLicense: KitGetLicense(keyEntry: true))
             }),
     ]
 
@@ -319,7 +334,9 @@ extension PolarisKeyPreviewState {
         .init(.activate, "parsed", base { $0.keyField = KitKeyField(text: key) }),
         .init(
             .activate, "cut-short",
-            base { $0.keyField = KitKeyField(text: "pkey_tidewater_Q2xvdWRzT3Zlcl", submitted: true) }),
+            base {
+                $0.keyField = KitKeyField(text: "pkey_tidewater_Q2xvdWRzT3Zlcl", submitted: true)
+            }),
         .init(
             .activate, "busy",
             base {
@@ -367,10 +384,14 @@ extension PolarisKeyPreviewState {
         .init(.statusScreen, "expired", base { $0.gate = KitGate(status: .expired) }),
         .init(
             .statusScreen, "version-too-old",
-            base { $0.gate = KitGate(status: .versionTooOld, allowed: KitAllowedVersions(min: "2.0.0")) }),
+            base {
+                $0.gate = KitGate(status: .versionTooOld, allowed: KitAllowedVersions(min: "2.0.0"))
+            }),
         .init(
             .statusScreen, "version-too-new",
-            base { $0.gate = KitGate(status: .versionTooNew, allowed: KitAllowedVersions(max: "2.9.9")) }),
+            base {
+                $0.gate = KitGate(status: .versionTooNew, allowed: KitAllowedVersions(max: "2.9.9"))
+            }),
         .init(
             .statusScreen, "channel-not-entitled",
             base { $0.gate = KitGate(status: .channelNotEntitled) }),

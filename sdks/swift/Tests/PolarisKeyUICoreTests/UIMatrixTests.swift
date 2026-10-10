@@ -50,7 +50,8 @@ final class UIMatrixTests: XCTestCase {
         for row in rows {
             let name = row["name"] as? String ?? "?"
             var input = try XCTUnwrap(row["input"] as? [String: Any])
-            let kit = try XCTUnwrap(KitKind(rawValue: input.removeValue(forKey: "kit") as? String ?? ""))
+            let kit = try XCTUnwrap(
+                KitKind(rawValue: input.removeValue(forKey: "kit") as? String ?? ""))
             let preset = (input.removeValue(forKey: "preset") as? String).flatMap(KitPreset.init)
             let scheme = (input.removeValue(forKey: "colorScheme") as? String).flatMap(
                 KitColorScheme.init)
@@ -109,7 +110,8 @@ final class UIMatrixTests: XCTestCase {
             if let defect = Self.knownCorpusDefects[name] {
                 defectsSeen.insert(name)
                 XCTAssertEqual(got.state, defect.state, "\(name): the recorded defect changed")
-                XCTAssertEqual(got.copyKeys, defect.copy.sorted(), "\(name): the recorded defect changed")
+                XCTAssertEqual(
+                    got.copyKeys, defect.copy.sorted(), "\(name): the recorded defect changed")
                 XCTAssertNotEqual(
                     got.state, state, "\(name) now passes: remove it from knownCorpusDefects")
                 continue
@@ -120,18 +122,21 @@ final class UIMatrixTests: XCTestCase {
             XCTAssertEqual(got.copyKeys, copy, name)
             XCTAssertEqual(got.actions.map(\.rawValue).sorted(), actions, name)
             if state == "hidden" {
-                XCTAssertTrue(got.copy.isEmpty && got.actions.isEmpty, "\(name): hidden renders nothing")
+                XCTAssertTrue(
+                    got.copy.isEmpty && got.actions.isEmpty, "\(name): hidden renders nothing")
             }
             if let mustNot = row["mustNot"] as? [String: Any] {
                 for forbidden in mustNot["states"] as? [String] ?? [] {
                     XCTAssertNotEqual(got.state, forbidden, "\(name): Must not")
                 }
                 for forbidden in mustNot["copy"] as? [String] ?? [] {
-                    XCTAssertFalse(got.copyKeys.contains(forbidden), "\(name): Must not \(forbidden)")
+                    XCTAssertFalse(
+                        got.copyKeys.contains(forbidden), "\(name): Must not \(forbidden)")
                 }
                 for forbidden in mustNot["actions"] as? [String] ?? [] {
                     XCTAssertFalse(
-                        got.actions.map(\.rawValue).contains(forbidden), "\(name): Must not \(forbidden)")
+                        got.actions.map(\.rawValue).contains(forbidden),
+                        "\(name): Must not \(forbidden)")
                 }
             }
         }

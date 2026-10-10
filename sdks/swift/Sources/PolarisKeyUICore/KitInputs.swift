@@ -595,7 +595,8 @@ public struct KitReplaceView: Sendable, Codable, Equatable, Hashable {
     public var replace: KitReplaceAllowance
 
     public init(
-        licenseId: String, seats: KitSeats, devices: [KitReplaceDevice], replace: KitReplaceAllowance
+        licenseId: String, seats: KitSeats, devices: [KitReplaceDevice],
+        replace: KitReplaceAllowance
     ) {
         self.licenseId = licenseId
         self.seats = seats

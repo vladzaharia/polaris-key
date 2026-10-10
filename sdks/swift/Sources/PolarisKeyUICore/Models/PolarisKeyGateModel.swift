@@ -377,7 +377,8 @@ public final class PolarisKeyGateModel {
                 return
             } catch {
                 self.pending = nil
-                self.signInError = KitError(code: (error as? PolarisError)?.code ?? "sign-in-failed")
+                self.signInError = KitError(
+                    code: (error as? PolarisError)?.code ?? "sign-in-failed")
                 self.rebuild()
                 self.announce(self.signInScreen.copy.first)
             }

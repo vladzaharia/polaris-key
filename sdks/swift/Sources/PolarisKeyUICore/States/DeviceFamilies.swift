@@ -30,10 +30,12 @@ extension KitStates {
         if let replacement = i.replacement {
             if replacement.outcome == "done" {
                 return KitScreen(
-                    .removed, [c.line("deviceLimit.removed", ["device": device, "product": c.product])])
+                    .removed,
+                    [c.line("deviceLimit.removed", ["device": device, "product": c.product])])
             }
             return KitScreen(
-                .failed, [c.line("deviceLimit.failed", ["device": device]), c.line("common.tryAgain")])
+                .failed,
+                [c.line("deviceLimit.failed", ["device": device]), c.line("common.tryAgain")])
         }
         if i.pending == .replace {
             return KitScreen(
@@ -124,7 +126,8 @@ extension KitStates {
         }
         if devices.isEmpty { return KitScreen(.empty, [c.line("devices.empty")]) }
         var lines = [
-            title, c.line("devices.lede"), c.line("devices.count", ["count": .number(devices.count)]),
+            title, c.line("devices.lede"),
+            c.line("devices.count", ["count": .number(devices.count)]),
             c.line("devices.meta", ["platform": "", "when": ""]),
         ]
         if let current = devices.first(where: \.current) {
@@ -136,7 +139,8 @@ extension KitStates {
         }
         lines += [
             c.line("devices.rename"), c.line("devices.remove"),
-            c.line("a11y.renameDevice", ["device": ""]), c.line("a11y.removeDevice", ["device": ""]),
+            c.line("a11y.renameDevice", ["device": ""]),
+            c.line("a11y.removeDevice", ["device": ""]),
             c.line("a11y.formFactor", ["formFactor": ""]),
         ]
         return KitScreen(.list, lines)

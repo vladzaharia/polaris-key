@@ -51,7 +51,8 @@ public struct SignInView: View {
                 content(screen, style)
                     .transition(
                         style.reduceMotion
-                            ? .identity : .push(from: .trailing).combined(with: .opacity))
+                            ? .identity : .push(from: .trailing).combined(with: .opacity)
+                    )
                     .id(screen.stateName)
             } actions: {
                 actions(screen)
@@ -90,7 +91,8 @@ public struct SignInView: View {
         case .done:
             return CopyLine("signin.return.signedInShort")
         case .expired:
-            return screen.line("core.codes.sign-in-expired.title") ?? CopyLine("signin.handoff.tooLong")
+            return screen.line("core.codes.sign-in-expired.title")
+                ?? CopyLine("signin.handoff.tooLong")
         }
     }
 
@@ -101,7 +103,9 @@ public struct SignInView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(style.font(.title))
                         .foregroundStyle(style.palette.success)
-                        .symbolEffect(.bounce, options: .nonRepeating, isActive: !style.reduceMotion)
+                        .symbolEffect(
+                            .bounce, options: .nonRepeating, isActive: !style.reduceMotion
+                        )
                         .accessibilityHidden(true)
                 }
                 KitText(title(screen), .title, color: .strong)
@@ -189,7 +193,9 @@ public struct SignInView: View {
         KitActionStack {
             switch screen.state {
             case .methods, .error, .none:
-                if screen.shows("signin.choice.keyInstead") || methodsScreen.shows("signin.choice.keyInstead") {
+                if screen.shows("signin.choice.keyInstead")
+                    || methodsScreen.shows("signin.choice.keyInstead")
+                {
                     KitButton(line: CopyLine("signin.choice.keyInstead"), kind: .quiet) {
                         model.useLicenseKey()
                     }
@@ -269,7 +275,9 @@ public struct SignInView: View {
             KitButton(line: CopyLine("signin.handoff.useCode"), kind: .primary) { model.useCode() }
                 .keyboardShortcut(.defaultAction)
         default:
-            KitButton(line: CopyLine("signin.handoff.again"), kind: .primary, glyph: "arrow.up.right") {
+            KitButton(
+                line: CopyLine("signin.handoff.again"), kind: .primary, glyph: "arrow.up.right"
+            ) {
                 model.reopenBrowser()
             }
             .keyboardShortcut(.defaultAction)
@@ -334,7 +342,9 @@ public struct SignInMethodsView: View {
                     .onAppear { errorFocused = true }
                 }
                 KitActionStack {
-                    if let email = screen.line("signin.email.continue") ?? screen.line("signin.desktop.continue") {
+                    if let email = screen.line("signin.email.continue")
+                        ?? screen.line("signin.desktop.continue")
+                    {
                         KitButton(line: email, kind: .primary, glyph: "arrow.up.right") {
                             onMethod(email.key)
                         }
@@ -348,7 +358,9 @@ public struct SignInMethodsView: View {
                                 } label: {
                                     Image(systemName: provider.symbol)
                                         .font(style.font(.headline))
-                                        .frame(maxWidth: .infinity, minHeight: style.controlHeight - 14)
+                                        .frame(
+                                            maxWidth: .infinity, minHeight: style.controlHeight - 14
+                                        )
                                 }
                                 .modifier(KitButtonSkin(kind: .secondary, style: style))
                                 .accessibilityLabel(
@@ -419,13 +431,18 @@ public struct SignInHandoffView: View {
                                 .accessibilityLabel(
                                     KitLinks.display(request?.verificationUri ?? url))
                             Spacer()
-                            Button(strings.string(
-                                screen.state == .linkCopied ? "signInHandoff.linkCopied" : "signin.handoff.copyLink")
+                            Button(
+                                strings.string(
+                                    screen.state == .linkCopied
+                                        ? "signInHandoff.linkCopied" : "signin.handoff.copyLink")
                             ) {
                                 KitPasteboard.copy(url)
                                 onCopyLink()
                             }
-                            .buttonStyle(KitQuietStyle(color: style.palette.accentFg, reduceMotion: style.reduceMotion))
+                            .buttonStyle(
+                                KitQuietStyle(
+                                    color: style.palette.accentFg, reduceMotion: style.reduceMotion)
+                            )
                             .font(style.font(.label))
                         }
                     }
@@ -505,21 +522,31 @@ public struct LicenseChoiceView: View {
                     VStack(spacing: 0) {
                         ForEach(Array(rows.enumerated()), id: \.element.id) { index, choice in
                             row(choice, style)
-                            if index < rows.count - 1 { Divider().padding(.leading, style.space(.md)) }
+                            if index < rows.count - 1 {
+                                Divider().padding(.leading, style.space(.md))
+                            }
                         }
                     }
                     .background(
                         RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
                             .fill(style.palette.raised))
                 }
-                ForEach(screen.copy.filter { $0.key.hasPrefix("signin.choice.allFull") || $0.key == "signin.choice.noneReplaceable" || $0.key.hasSuffix(".raced") || $0.key.hasPrefix("signin.none") }, id: \.key) { line in
+                ForEach(
+                    screen.copy.filter {
+                        $0.key.hasPrefix("signin.choice.allFull")
+                            || $0.key == "signin.choice.noneReplaceable"
+                            || $0.key.hasSuffix(".raced") || $0.key.hasPrefix("signin.none")
+                    }, id: \.key
+                ) { line in
                     KitText(line, .meta, color: .default)
                 }
             }
         }
     }
 
-    @ViewBuilder private func row(_ choice: KitLicenseChoice, _ style: KitResolvedStyle) -> some View {
+    @ViewBuilder private func row(_ choice: KitLicenseChoice, _ style: KitResolvedStyle)
+        -> some View
+    {
         let isSelected = (selected ?? choices?.preselected) == choice.id && !choice.isFull
         Button {
             if !choice.isFull { selected = choice.id }
@@ -536,29 +563,40 @@ public struct LicenseChoiceView: View {
                             .padding(.vertical, 2)
                             .background(Capsule().fill(style.palette.textStrong.opacity(0.09)))
                         if let seats = choice.seats {
-                            Text(strings.string(
-                                "signin.choice.devices",
-                                ["used": .number(seats.used), "limit": .number(seats.limit)]))
-                                .font(style.font(.footnote))
-                                .foregroundStyle(style.palette.textMuted)
+                            Text(
+                                strings.string(
+                                    "signin.choice.devices",
+                                    ["used": .number(seats.used), "limit": .number(seats.limit)])
+                            )
+                            .font(style.font(.footnote))
+                            .foregroundStyle(style.palette.textMuted)
                         }
                         if choice.isFull {
                             KitText("signin.choice.tag.full", [:], .footnote, color: .muted)
                         }
                     }
-                    Text(strings.string(
-                        "signin.choice.meta",
-                        [
-                            "origin": .line(CopyLine(
-                                KitStates.originKey(choice),
-                                ["developer": .text(style.identity.developer ?? style.identity.name),
-                                 "store": "App Store"])),
-                            "term": choice.expiresAt.map {
-                                .line(CopyLine("signin.term.until", ["date": .text(KitFormat.date($0))]))
-                            } ?? .line(CopyLine("signin.term.lifetime")),
-                        ]))
-                        .font(style.font(.meta))
-                        .foregroundStyle(style.palette.textMuted)
+                    Text(
+                        strings.string(
+                            "signin.choice.meta",
+                            [
+                                "origin": .line(
+                                    CopyLine(
+                                        KitStates.originKey(choice),
+                                        [
+                                            "developer": .text(
+                                                style.identity.developer ?? style.identity.name),
+                                            "store": "App Store",
+                                        ])),
+                                "term": choice.expiresAt.map {
+                                    .line(
+                                        CopyLine(
+                                            "signin.term.until", ["date": .text(KitFormat.date($0))]
+                                        ))
+                                } ?? .line(CopyLine("signin.term.lifetime")),
+                            ])
+                    )
+                    .font(style.font(.meta))
+                    .foregroundStyle(style.palette.textMuted)
                 }
                 Spacer(minLength: 0)
                 if isSelected {
@@ -612,10 +650,14 @@ public struct ReplaceDeviceView: View {
                                     name: device.label, formFactor: device.deviceType,
                                     meta: strings.string(
                                         "signin.replace.meta",
-                                        ["platform": .text(KitFormat.platformName(device.platform)),
-                                         "when": .text(KitFormat.date(device.lastSeen))]),
+                                        [
+                                            "platform": .text(
+                                                KitFormat.platformName(device.platform)),
+                                            "when": .text(KitFormat.date(device.lastSeen)),
+                                        ]),
                                     leastRecent: device.leastRecent,
-                                    selected: device.id == (selection ?? devices.first(where: \.leastRecent)?.id))
+                                    selected: device.id
+                                        == (selection ?? devices.first(where: \.leastRecent)?.id))
                             }
                             .buttonStyle(.plain)
                             .padding(.horizontal, style.space(.md))
@@ -626,7 +668,8 @@ public struct ReplaceDeviceView: View {
                             .fill(style.palette.raised))
                 }
                 KitButton(
-                    line: CopyLine(confirmInSystem ? "signin.replace.openSystem" : "signin.replace.confirm"),
+                    line: CopyLine(
+                        confirmInSystem ? "signin.replace.openSystem" : "signin.replace.confirm"),
                     kind: .primary, action: onReplace)
             }
         }

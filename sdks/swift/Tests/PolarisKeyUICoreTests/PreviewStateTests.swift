@@ -36,7 +36,8 @@ final class PreviewStateTests: XCTestCase {
         XCTAssertEqual(KeyVerdict("pkey_tidewater_abc").kind, .typing)
         XCTAssertEqual(KeyVerdict("pkey_tidewater_abc", submitted: true).kind, .cutShort)
         XCTAssertEqual(KeyVerdict("pkey_tidewater_abc", submitted: true).used, 3)
-        XCTAssertEqual(KeyVerdict("pkey_tidewater_" + String(repeating: "A", count: 23)).kind, .malformed)
+        XCTAssertEqual(
+            KeyVerdict("pkey_tidewater_" + String(repeating: "A", count: 23)).kind, .malformed)
         XCTAssertEqual(KeyVerdict("  \(PolarisKeyPreviewState.key)\n").kind, .parsed)
         // The secret's alphabet is base64url: `_` and `-` are secret characters.
         XCTAssertEqual(KeyVerdict("pkey_tidewater_Q2xv_-WRzT3ZlclRoZUhpQ").kind, .parsed)
@@ -55,12 +56,17 @@ final class PreviewStateTests: XCTestCase {
             KitCopy.bundled.format(consequence, locale: "de"),
             KitCopy.bundled.format(
                 "signin.replace.lede", locale: "de",
-                args: ["thisDevice": .text(KitCopy.bundled.format(
-                    "part.thisDeviceTitle", locale: "de", args: ["formFactor": .text("ipad")]))]))
+                args: [
+                    "thisDevice": .text(
+                        KitCopy.bundled.format(
+                            "part.thisDeviceTitle", locale: "de",
+                            args: ["formFactor": .text("ipad")]))
+                ]))
     }
 
     func testAMissingArgumentShowsRatherThanVanishes() {
-        XCTAssertEqual(KitCopy.bundled.format("welcome.title", locale: "en"), "Welcome to {product}")
+        XCTAssertEqual(
+            KitCopy.bundled.format("welcome.title", locale: "en"), "Welcome to {product}")
         XCTAssertEqual(KitCopy.bundled.format("no.such.key", locale: "en"), "no.such.key")
     }
 
@@ -100,7 +106,8 @@ final class PreviewStateTests: XCTestCase {
         XCTAssertEqual(id.icon, .monogram)
         XCTAssertEqual(id.monogram, "T")
         XCTAssertNil(id.accentLight)
-        let drift = KitIdentity.resolve(PolarisKeyPreviewState.base { $0.presentation = PolarisKeyPreviewState.driftKart })
+        let drift = KitIdentity.resolve(
+            PolarisKeyPreviewState.base { $0.presentation = PolarisKeyPreviewState.driftKart })
         XCTAssertEqual(drift.accentSource, .product)
         XCTAssertEqual(drift.accentLight, "#ff6a3d")
         XCTAssertEqual(drift.accentDark, "#ff6a3d")

@@ -31,7 +31,8 @@ public struct ProductIcon: View {
                         .scaledToFill()
                         .frame(width: size, height: size)
                         .clipShape(shape)
-                        .overlay(shape.strokeBorder(style.palette.border.opacity(0.6), lineWidth: 0.5))
+                        .overlay(
+                            shape.strokeBorder(style.palette.border.opacity(0.6), lineWidth: 0.5))
                 } else {
                     MonogramIcon(size: size)
                 }
@@ -113,8 +114,10 @@ public struct KeyField: View {
     }
 
     private var invalid: Bool {
-        screen.state == .rejected && (screen.shows("part.keyField.malformed")
-            || screen.shows("part.keyField.empty")) || screen.state == .cutShort
+        screen.state == .rejected
+            && (screen.shows("part.keyField.malformed")
+                || screen.shows("part.keyField.empty"))
+            || screen.state == .cutShort
     }
 
     public var body: some View {
@@ -161,7 +164,8 @@ public struct KeyField: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
                         .strokeBorder(
-                            invalid ? style.palette.danger : (focused ? style.palette.focus : .clear),
+                            invalid
+                                ? style.palette.danger : (focused ? style.palette.focus : .clear),
                             lineWidth: 2)
                 )
                 verdict(style)
@@ -217,7 +221,8 @@ public struct CodeDisplay: View {
                     .accessibilityLabel(
                         strings.string(
                             "a11y.code",
-                            ["code": .text(code.map(String.init).joined(separator: " "))]))
+                            ["code": .text(code.map(String.init).joined(separator: " "))])
+                    )
                     .frame(maxWidth: .infinity)
                 Button {
                     KitPasteboard.copy(code)
@@ -264,15 +269,19 @@ public struct CountdownRing: View {
                         Circle().stroke(style.palette.border, lineWidth: 2)
                         Circle()
                             .trim(from: 0, to: total > 0 ? left / total : 0)
-                            .stroke(style.palette.accentSolid, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .stroke(
+                                style.palette.accentSolid,
+                                style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                            )
                             .rotationEffect(.degrees(-90))
                     }
                     .frame(width: 20, height: 20)
                     .accessibilityHidden(true)
                     KitText(
                         "signin.handoff.expires", ["time": .text(Self.clock(left))], .meta,
-                        color: .muted)
-                        .monospacedDigit()
+                        color: .muted
+                    )
+                    .monospacedDigit()
                 }
             }
         }
@@ -487,7 +496,8 @@ public struct PoweredBy: View {
     public var body: some View {
         kitStyle { style in
             HStack(spacing: 6) {
-                if let mark = brandImage(style.dark ? "marks/key-dark-192" : "marks/key-light-192") {
+                if let mark = brandImage(style.dark ? "marks/key-dark-192" : "marks/key-light-192")
+                {
                     mark.resizable().frame(width: 16, height: 16).accessibilityHidden(true)
                 }
                 KitText("part.poweredBy", [:], .footnote, color: .subtle)
