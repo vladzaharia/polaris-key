@@ -385,6 +385,25 @@ export const SCENES: Scene[] = [
     gate: true,
   },
   {
+    id: "license-gate.revoked.handoff",
+    render: (scheme) =>
+      gate(
+        okBridgeState({ capabilities: ALL, lastSyncUnauthorized: true }),
+        scheme,
+        (bridge) => {
+          bridge.beginSignIn = async () => handoff(587);
+        },
+      ),
+    act: async (root) => {
+      root.querySelector<HTMLButtonElement>("[data-polaris-oidc]")!.click();
+    },
+    before: "[data-polaris-oidc]",
+    ready: '[data-polaris-handoff="waiting"]',
+    primary: "[data-polaris-handoff-open]",
+    focus: "[data-polaris-handoff-open]",
+    gate: true,
+  },
+  {
     id: "license-gate.version",
     render: (scheme) =>
       gate(blocked("version-too-old", { min: "5.0.0" }), scheme),
