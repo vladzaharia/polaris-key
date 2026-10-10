@@ -10,7 +10,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { Copy, viewOf, type ComponentName } from "@polaris-key/ui-core";
 import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 
-import { TAGS, type PkElement } from "../src/index.js";
+import { TAGS, type PkElement, type PkSignIn } from "../src/index.js";
 import {
   COMPONENT_FAMILIES,
   readMatrix,
@@ -119,12 +119,15 @@ for (const family of COMPONENT_FAMILIES) {
       // Welcome, StatusScreen or the grace banner for its state).
       const filled = [...root.querySelectorAll('[data-variant="primary"]')];
       expect(filled.length).toBeLessThanOrEqual(1);
+      // The sign-in form draws its step's body (the handoff's code view, the license choice).
       const drawn =
         view.component === "PolarisKeyGate"
           ? (["Welcome", "StatusScreen", "GraceBanner"] as const).map(
               (c) => viewOf(c, el.input).decisions.primary,
             )
-          : [];
+          : view.component === "SignIn"
+            ? [(el as PkSignIn).step.body.decisions.primary]
+            : [];
       if (filled.length === 1)
         expect([view.decisions.primary, ...drawn]).toContain(
           filled[0]!.getAttribute("data-key"),

@@ -14,13 +14,19 @@ import axe from "axe-core";
 import type { ComponentName, UiInput } from "@polaris-key/ui-core";
 import matrix from "../../../../conformance/corpus/v2/ui-matrix.json" with { type: "json" };
 
-import { PolarisKey, TAGS, type PkElement } from "../../src/index.js";
+import {
+  PolarisKey,
+  TAGS,
+  type PkElement,
+  type PkSignIn,
+} from "../../src/index.js";
 
 declare module "vitest/browser" {
   interface BrowserCommands {
     kitShot: (file: string) => Promise<void>;
     emulateScheme: (scheme: "dark" | "light" | null) => Promise<void>;
     emulateForced: (forced: "active" | null) => Promise<void>;
+    emulateMotion: (motion: "reduce" | null) => Promise<void>;
   }
 }
 declare const __PKEY_KIT_SHOTS__: string;
@@ -238,11 +244,105 @@ describe("forced colours", () => {
     const el = await mount(status, "dark", 900);
     const card = el.shadowRoot!.querySelector<HTMLElement>(".card")!;
     expect(getComputedStyle(card).borderTopStyle).toBe("solid");
+    // The blurred icon is decoration: it goes under forced colours.
+    const art = [
+      ...el.shadowRoot!.querySelectorAll(".ambient, .passport-ambient"),
+    ];
+    expect(art.length).toBeGreaterThan(0);
+    for (const n of art) expect(getComputedStyle(n).display).toBe("none");
     // Under forced colours the OS's system colours set contrast; axe reads the author colours.
     expect(await axeViolations(el, ["color-contrast"])).toEqual([]);
     if (__PKEY_KIT_SHOTS__)
       await commands.kitShot(
         `${__PKEY_KIT_SHOTS__}/elements.forced-colors/1440-dark.png`,
       );
+  });
+});
+
+describe("the sign-in form (SIGN-IN.md §3.17, §3.18)", () => {
+  const signInRow = (name: string) =>
+    (matrix as unknown as Record<string, Row[]>).signIn!.find(
+      (r) => r.name === name,
+    )!;
+  const methods = () => ({
+    elapsedMs: 60_000,
+    ...withDefaults(signInRow("SignIn/methods: web").input),
+  });
+  const handoff = () => ({
+    elapsedMs: 60_000,
+    ...withDefaults(signInRow("SignIn/handoff: waiting for the browser").input),
+  });
+
+  afterEach(async () => {
+    await commands.emulateMotion(null);
+  });
+
+  for (const size of SIZES)
+    it(`sheet at ${size.label}: a modal dialog over an inert host; Escape closes it and focus returns to the opener`, async () => {
+      await page.viewport(size.width, size.height);
+      document.body.style.background = "#060912";
+      const opener = document.createElement("button");
+      opener.textContent = "Open";
+      const el = document.createElement("pk-sign-in") as PkSignIn;
+      el.presentation = "sheet";
+      el.colorScheme = "dark";
+      el.input = methods();
+      document.body.replaceChildren(opener, el);
+      opener.focus();
+      el.open = true;
+      await el.updateComplete;
+      await document.fonts.ready;
+      const dialog = el.shadowRoot!.querySelector("dialog")!;
+      expect(dialog.open).toBe(true);
+      expect(dialog.matches(":modal")).toBe(true);
+      await Promise.all(
+        el
+          .shadowRoot!.getAnimations()
+          .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      );
+      // The sheet's title and primary are inside the viewport; a phone docks it to the bottom.
+      const card = dialog.querySelector(".card")!.getBoundingClientRect();
+      expect(card.bottom).toBeLessThanOrEqual(size.height + 1);
+      if (size.width < 560) expect(Math.round(card.bottom)).toBe(size.height);
+      expect(await axeViolations(el)).toEqual([]);
+      if (__PKEY_KIT_SHOTS__)
+        await commands.kitShot(
+          `${__PKEY_KIT_SHOTS__}/elements.sign-in-sheet/${size.label}-dark.png`,
+        );
+      await userEvent.keyboard("{Escape}");
+      await el.updateComplete;
+      expect(dialog.open).toBe(false);
+      expect(el.open).toBe(false);
+      expect(document.activeElement).toBe(opener);
+    });
+
+  async function stepChange(): Promise<PkSignIn> {
+    await page.viewport(1440, 900);
+    const el = document.createElement("pk-sign-in") as PkSignIn;
+    el.colorScheme = "dark";
+    el.input = methods();
+    document.body.replaceChildren(el);
+    await el.updateComplete;
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    el.input = handoff();
+    await el.updateComplete;
+    return el;
+  }
+
+  it("morphs between steps under full motion", async () => {
+    const el = await stepChange();
+    expect(el.view.state).toBe("handoff");
+    const running = el
+      .shadowRoot!.getAnimations()
+      .filter((a) => a.effect?.getTiming().iterations !== Infinity);
+    expect(running.length).toBeGreaterThan(0);
+  });
+
+  it("swaps instantly under reduced motion (DL16)", async () => {
+    await commands.emulateMotion("reduce");
+    const el = await stepChange();
+    expect(el.view.state).toBe("handoff");
+    expect(el.shadowRoot!.getAnimations()).toEqual([]);
   });
 });

@@ -69,12 +69,39 @@ const CLOSE = "";
  * One catalog string, with each argument that carries someone's own text (`view.isolate`) in a
  * `<bdi>` run (plans/HA-12.md Q5). A missing argument stays visible as `{name}`.
  */
+/** The view's arguments, plus what the kit knows that a message may name: `{thisDevice}` (the
+ *  current device in the platform's own word, capitalised where it starts a sentence),
+ *  `{device}` where the view names no device (this device), and `{developer}` (the identity's). */
+function argsOf(
+  c: RenderCtx,
+  key: string,
+  extra: Record<string, string | number>,
+): Record<string, string | number> {
+  const args: Record<string, string | number> = { ...c.view.args, ...extra };
+  const raw = c.copy.raw(key) ?? "";
+  const formFactor = c.input.platform?.formFactor ?? "other";
+  if (args.thisDevice === undefined && raw.includes("{thisDevice}")) {
+    const initial = /(^|[.!?]\s+)\{thisDevice\}/.test(raw);
+    const k = initial ? "part.thisDeviceTitle" : "part.thisDevice";
+    if (c.copy.has(k)) args.thisDevice = c.copy.format(k, { formFactor });
+  }
+  if (
+    args.device === undefined &&
+    raw.includes("{device}") &&
+    c.copy.has("part.thisDevice")
+  )
+    args.device = c.copy.format("part.thisDevice", { formFactor });
+  const developer = c.resolved.identity.developer;
+  if (args.developer === undefined && developer) args.developer = developer;
+  return args;
+}
+
 export function text(
   c: RenderCtx,
   key: string,
   extra: Record<string, string | number> = {},
 ): TemplateResult {
-  const args: Record<string, string | number> = { ...c.view.args, ...extra };
+  const args = argsOf(c, key, extra);
   const isolated = new Set(c.view.isolate);
   const marked: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(args))
@@ -100,7 +127,7 @@ export function plain(
   key: string,
   extra: Record<string, string | number> = {},
 ): string {
-  return c.copy.format(key, { ...c.view.args, ...extra });
+  return c.copy.format(key, argsOf(c, key, extra));
 }
 
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────
@@ -331,6 +358,17 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
     style=${styleMap({ "--pk-fraction": String(pct / 100) })}
   >
     <span></span>
+  </div>`;
+}
+
+/** The success mark (SIGN-IN.md §3.18 success): the check draws once; static under reduced
+ *  motion. Decorative: the title says what happened. */
+export function successMark(): TemplateResult {
+  return html`<div class="success" part="success" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="22"></circle>
+      <path d="m14 25 7 7 13-15"></path>
+    </svg>
   </div>`;
 }
 
@@ -587,10 +625,12 @@ export function titles(
   c: RenderCtx,
   keys: string[],
   size: "display" | "title" | "section" = "title",
+  subtitles: readonly string[] = [],
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   const [first, ...more] = keys;
   return html`<h1
+      id="pk-title"
       class="title"
       part="title"
       data-part="title"
@@ -604,7 +644,7 @@ export function titles(
       (k) =>
         html`<h2
           class="title"
-          data-size="section"
+          data-size=${subtitles.includes(k) ? "sub" : "section"}
           part="heading"
           data-part="heading"
           data-key=${k}

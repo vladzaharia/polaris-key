@@ -124,6 +124,42 @@ Built so far on `wp/UK-04-elements` (`packages/elements`), in two slices:
    sideways scroll, title and primary in the first viewport, the DL9 keyboard path, and forced
    colours; 503 renders. `PKEY_KIT_SHOTS=<dir>` writes the PNGs.
 
+Then on `wp/UK-04-elements-2`, two more slices:
+
+3. **Look fixes from the renders.** Device rows name the platform through a typed fallback
+   table (`src/platforms.ts`; every `Os` of the vocabulary, plus ids device records carry) until
+   the catalog has platform-name keys; DeviceLimit is titled Replace a device with the count as
+   its subhead above the lede; Settings rows show the catalog entry's `label` (else the key read
+   as words), the value's source under it, On or Off, and the lock on the locked row, under a
+   From <developer> heading; the dark split's identity panel carries the blurred icon ambient;
+   the links row follows the end pane's start edge (and a pane's links its start edge); forced
+   colours and reduced transparency hide the blurred art. `test/look.test.ts`.
+4. **The one sign-in form.** `<pk-sign-in>` (`src/signin.ts`) morphs its body through the steps,
+   drawing the handoff's code view, the license choice and Replace a device in place;
+   `presentation` and `replace` attributes; the step elements `pk-sign-in-methods`,
+   `pk-replace-device` and `pk-sign-in-done`; Replace a device per SIGN-IN.md §3.7 (least recent
+   preselected, Active now and This browser tags, the confirm follows the pick, Replace and
+   continue carries the device id); `presentation="sheet"` as a modal `<dialog>` (host inert,
+   Escape backs out, focus returns to the opener, bottom sheet under 35rem); the morph (card
+   height and the body entering from the side of travel through the Web Animations API, the
+   license rows' stagger, Done's check) with reduced motion an instant swap; with `primitives`
+   the form drives ui-core's `SignInModel` from its own controls. `test/signin.test.ts` and the
+   browser suite's sheet and motion tests.
+
+Decisions taken here (lead, 2026-10-10): no pixel baselines and no change to ui-qa's
+React/elements diff until UK-05 renders on this package's `styles.css`; `@polaris-key/node`'s
+pure QR encoder stays a dependency (follow-up: move it to client-core); the release closure is
+untouched (a new public package registers on npm with a tag deploy, UK-03's rule).
+
+**Model and catalog notes for UK-02a and UK-03, not changed here:** the catalog has no
+platform-name keys (`part.platform.<os>`) and no title-role key for the Replace step's heading
+(the form uses `deviceLimit.title`, the same words); `ConfigRowInput` has no `label` (the elements
+read one when the adapter passes the catalog entry's); `signin.replace.open` and, on macOS,
+`signin.replace.openSystem` are in the Replace step's copy though the web confirms inline (D-80),
+so the elements draw them as quiet links; the provider row's `{provider}` and a store-origin
+license row's `{store}` have no input to fill them (the elements fill `{thisDevice}`, `{device}`
+and `{developer}` from what the kit knows).
+
 **Continue here, in this order:**
 
 1. **Baselines and the cross-renderer diff.** Committing PNGs under
@@ -134,28 +170,30 @@ Built so far on `wp/UK-04-elements` (`packages/elements`), in two slices:
    only when `@polaris-key/react` depends on `@polaris-key/elements`), then record the baselines
    with a `toMatchScreenshot`-style compare at the §7.1 rows (both presets, 200 % text, 400 % zoom,
    `prefers-contrast: more`) and in WebKit.
-2. **Look fixes seen on the renders:** platform ids print raw (`windows`, `ios`, `macos`; DL8 wants
-   macOS) because the catalog has no platform-name keys (a UK-02a catalog addition); in the split
-   (DL1) the links row centres while the end pane is start-aligned; DeviceLimit draws
-   `deviceLimit.heading` as the h1 above `deviceLimit.title` (pick the order with design); the dark
-   passport reads as a black slab (use the blurred icon, DL1); Settings rows show the raw catalog
-   key, not the field's label.
-3. **The sign-in form's step elements** (`pk-sign-in-methods`, `pk-replace-device`,
-   `pk-sign-in-done`), `presentation="sheet"` as a `<dialog>` with `@starting-style` and the scrim,
-   `replace`, View Transitions between steps (SIGN-IN.md §3.18), and the Fluent, GNOME and Mac sheet
-   variants from `theme.platform` (the kit tokens exist in brand's `kit.css`).
-4. **A live adapter** for `<pk-gate>`'s `config` (client-core gate, the sign-in primitives) and the
-   `examples/ui/elements/` static and htmx samples with fixture adapters and `--live`.
-5. **The CDN route** `key.plrs.im/elements/<major>/pk.js` (an esbuild bundle, immutable, SRI),
-   its OpenAPI entry and `routeCoverage` row (rule 10), the THREAT-MODEL row, and the release
-   closure. A new public package needs a tag deploy to register on npm (UK-03's rule). Until
-   then `packages/elements/package.json` is `"private": true`, so the lockstep stamp, the pack
-   step and the release tests leave it out; the release closure removes it and follows UK-03's
-   `ba4184ea0` (`npm.elements` in `.pkey/release`, a `publish-sdks.yml` tier beside `cli`, the
-   package counts in `sdk-version.test.ts` and `feed-closure.test.ts`, the releasing page).
-6. **The rest of the acceptance list:** `pnpm ui:lint` over the element renders, `parity.json`
-   for the elements with the `ui.*` rows, the docs framework page and kit tabs (UK-16 scaffold),
-   the Tailwind v4 preset (from UK-22), and the UX reviews (`pkey-ux-reviewer`, BUILT mode).
+2. **The rest of the sign-in form:** the Fluent, GNOME and Mac sheet variants from
+   `theme.platform` (the kit tokens exist in brand's `kit.css`); View Transitions for the morph
+   once `view-transition-name` works inside shadow roots in the target browsers (the Web
+   Animations path is the fallback the spec allows, and it is what runs now); the logo-only
+   provider row (D-21) once the input names the providers.
+3. **A live adapter** for `<pk-gate>`'s `config` (client-core gate, the sign-in primitives; the
+   form's own primitives path is done) and the `examples/ui/elements/` static and htmx samples
+   with fixture adapters and `--live`.
+4. **`parity.json` `ui.*` rows** were decided by the lead (2026-10-10): the elements' proofs are recorded in React's `ui.*` rows by UK-05, with no separate manifest. Options considered: the registry
+   (`conformance/parity/features.json` `sdks`) has no elements entry, a full SDK manifest would
+   have to declare every non-UI feature, and the React manifest's `ui.*` rows are UK-05's (in
+   flight). Either register a UI-only kit manifest for the elements, or record the elements'
+   proofs (`test/matrix.test.ts`, `test/browser/render.browser.test.ts`, both tagged
+   `@pkey-feature ui.*`) in React's rows when UK-05 lands.
+5. **Follow-up packages, not this one:** the CDN route `key.plrs.im/elements/<major>/pk.js` (an
+   esbuild bundle, immutable, SRI; a Worker route with its OpenAPI entry and `routeCoverage` row,
+   rule 10, and a THREAT-MODEL row for serving script); the Tailwind v4 preset (from UK-22). The release
+   closure follows UK-03's `ba4184ea0` (`npm.elements` in `.pkey/release`, a `publish-sdks.yml` tier
+   beside `cli`, the package counts in `sdk-version.test.ts` and `feed-closure.test.ts`, the releasing
+   page); a new public package needs a tag deploy to register on npm. Until then
+   `packages/elements/package.json` is `"private": true`.
+6. **The rest of the acceptance list:** `pnpm ui:lint` over the element renders, the docs
+   framework page and kit tabs (UK-16 scaffold), and the UX reviews (`pkey-ux-reviewer`, BUILT
+   mode).
 
 **Model notes for UK-03 (ui-core), not changed here:** some states name a `primary` their `copy`
 leaves out (Welcome `busy` and `capability-limited`, LicenseChoice `raced` and `new`); the

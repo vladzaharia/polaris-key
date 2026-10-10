@@ -28,6 +28,9 @@ export interface Layout {
   links?: readonly string[];
   /** Keys that read as a title though their name does not say so. */
   titles?: readonly string[];
+  /** Title keys drawn as the subhead under the h1 (an h2 at body size): a fact that heads the
+   *  content, not a second title. */
+  subtitles?: readonly string[];
   /** Short status lines in muted meta type. */
   meta?: readonly string[];
   /** The footnote at the foot of the card. */
@@ -172,7 +175,10 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "common.back",
     ],
     meta: ["common.working"],
-    order: ["deviceLimit.heading", "deviceLimit.lede"],
+    // The component is titled Replace a device in every kit (owner, 2026-10-05); the count
+    // heads the content under it, then the lede (UI-KITS.md §4.3 DeviceLimit).
+    order: ["deviceLimit.title", "deviceLimit.heading", "deviceLimit.lede"],
+    subtitles: ["deviceLimit.heading"],
     content: [
       "part.seatMeter.caption",
       "signin.replace.meta",
@@ -191,11 +197,18 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.again",
       "signin.choice.keep",
       "signin.choice.create",
-      "signin.replace.open",
       "signin.replace.back",
       "signin.none.otherAccount",
     ],
-    links: ["signin.choice.keyInstead"],
+    // Replace a device names the step it opens; in the Replace step itself it is a quiet link.
+    // The elements confirm inline everywhere (D-80: the web has no system confirm), so macOS's
+    // Replace… is quiet too.
+    links: [
+      "signin.replace.open",
+      "signin.replace.openSystem",
+      "signin.choice.keyInstead",
+    ],
+    titles: ["deviceLimit.title"],
     meta: ["common.loading"],
     content: [
       "signin.choice.group",
@@ -220,6 +233,8 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.choice.metaNew",
       "signin.choice.keepMeta",
       "signin.choice.createMeta",
+      "signin.replace.title",
+      "signin.replace.consequence",
     ],
   },
   Devices: {
