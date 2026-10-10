@@ -40,11 +40,19 @@ function servable(a: CatalogSourceArtifact): boolean {
   });
 }
 
+function compareBytes(x: Uint8Array, y: Uint8Array): number {
+  const n = Math.min(x.length, y.length);
+  for (let i = 0; i < n; i++) if (x[i] !== y[i]) return x[i]! - y[i]!;
+  return x.length - y.length;
+}
+
 /** The `SHA256SUMS` text for `artifacts`, or `null` when no file qualifies. */
 export function sha256sumsBody(
   artifacts: readonly CatalogSourceArtifact[],
 ): string | null {
-  const byLine = new Map<string, string>();
+  // name -> the distinct digests it carries. A name with two digests cannot be verified (which
+  // file does it mean?), so the whole name is left out rather than written twice.
+  const byName = new Map<string, Set<string>>();
   for (const a of artifacts) {
     if (
       a.name === SHA256SUMS_NAME ||
@@ -54,14 +62,21 @@ export function sha256sumsBody(
       !servable(a)
     )
       continue;
-    byLine.set(`${a.sha256}  ${a.name}\n`, a.name);
+    const set = byName.get(a.name) ?? new Set<string>();
+    set.add(a.sha256);
+    byName.set(a.name, set);
   }
-  if (byLine.size === 0) return null;
-  // Bytewise by name (then digest), so the file is the same wherever it is generated.
-  return [...byLine]
-    .sort(([lx, nx], [ly, ny]) =>
-      nx < ny ? -1 : nx > ny ? 1 : lx < ly ? -1 : lx > ly ? 1 : 0,
-    )
-    .map(([line]) => line)
+  const enc = new TextEncoder();
+  const rows = [...byName]
+    .filter(([, digests]) => digests.size === 1)
+    .map(([name, digests]) => ({
+      key: enc.encode(name),
+      line: `${[...digests][0]}  ${name}\n`,
+    }));
+  if (rows.length === 0) return null;
+  // Sorted by the name's UTF-8 bytes, so the file is the same wherever it is generated.
+  return rows
+    .sort((x, y) => compareBytes(x.key, y.key))
+    .map((r) => r.line)
     .join("");
 }

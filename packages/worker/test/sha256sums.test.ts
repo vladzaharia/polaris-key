@@ -98,6 +98,30 @@ describe("sha256sumsBody", () => {
     expect(body).toBe(`${H("1")}  ok.zip\n`);
   });
 
+  it("sorts by the name's UTF-8 bytes, not UTF-16 code units", () => {
+    // U+FF5E (EF BD 9E) sorts after U+1F600 (F0 9F 98 80) by code unit (0xFF5E > 0xD83D) but
+    // before it by UTF-8 byte.
+    const body = sha256sumsBody([
+      art("\u{1F600}.zip", H("a")),
+      art("\uFF5E.zip", H("b")),
+    ]);
+    expect(body).toBe(`${H("b")}  \uFF5E.zip\n${H("a")}  \u{1F600}.zip\n`);
+  });
+
+  it("a name carrying two different digests is left out whole; the same digest twice is one line", () => {
+    const body = sha256sumsBody([
+      art("dup.zip", H("a")),
+      art("dup.zip", H("b")),
+      art("same.zip", H("c")),
+      art("same.zip", H("c")),
+      art("other.zip", H("d")),
+    ]);
+    expect(body).toBe(`${H("d")}  other.zip\n${H("c")}  same.zip\n`);
+    expect(
+      sha256sumsBody([art("dup.zip", H("a")), art("dup.zip", H("b"))]),
+    ).toBeNull();
+  });
+
   it("is null when nothing qualifies, and never writes an MD5 line", () => {
     expect(sha256sumsBody([])).toBeNull();
     expect(sha256sumsBody([art("x", null)])).toBeNull();

@@ -55,8 +55,10 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - The checksum file is served by the existing `file` byte route (`files/<releaseId>/SHA256SUMS`, both
   hosts), not a new `<p>/<version>/SHA256SUMS` route: no new route, no OpenAPI or `routeCoverage` change.
-- Linked from the download page. The portal link is P2-13's (it changes the portal release JSON, which is
-  in the transcripts) and the channel Releases tab is console UI; both can build the URL from the release id.
+- Linked from the download page only. The portal link moved to P2-13 (it changes the portal release JSON,
+  which is in the transcripts). The channel Releases tab link needs a console UI package: a follow-up for
+  the lead to file (check.mjs has no add command). Both can build the URL as `files/<releaseId>/SHA256SUMS`.
+- Duplicate file names with different digests are left out of SHA256SUMS whole (never two lines).
 
 ## UX coverage (2026-10-09)
 
