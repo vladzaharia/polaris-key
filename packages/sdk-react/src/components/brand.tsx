@@ -10,7 +10,7 @@
 //     artwork is the launch kit's own; dark means FOR dark grounds (§1.2), so its variant
 //     follows the luminance of the background token actually in use.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { PoweredByBadge } from "@polaris-key/brand/react";
 import { relativeLuminance } from "@polaris-key/brand/color";
 import { usePolarisTheme } from "../react/hooks.js";
@@ -22,6 +22,8 @@ import {
 } from "./theme.js";
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+/** The bidi embedding, override and isolate controls (U+202A–U+202E, U+2066–U+2069). */
+const BIDI_CONTROLS = /[\u202a-\u202e\u2066-\u2069]/g;
 
 /** Which ground the theme's background is: "dark" or "light". A non-hex background (a
  *  `var()`, a named colour) falls back to the theme's scheme, then to dark. */
@@ -45,7 +47,11 @@ function MonogramTile(props: {
   name: string;
   size: string;
 }): React.JSX.Element {
-  const initial = Array.from(props.name.trim())[0]?.toLocaleUpperCase() ?? "";
+  // The first visible character: a presentation name arrives bidi-isolated (FSI…PDI).
+  const initial =
+    Array.from(
+      props.name.replace(BIDI_CONTROLS, "").trim(),
+    )[0]?.toLocaleUpperCase() ?? "";
   return (
     <span
       aria-hidden="true"
@@ -73,14 +79,49 @@ function MonogramTile(props: {
   );
 }
 
+/** The product's verified icon (discovery's presentation, HA-13), decorative like the
+ *  monogram; the monogram replaces it when the image does not load. */
+function ProductIcon(props: {
+  src: string;
+  name: string | null;
+  size: string;
+}): React.JSX.Element | null {
+  const [failed, setFailed] = useState<string | null>(null);
+  if (failed === props.src)
+    return props.name ? (
+      <MonogramTile name={props.name} size={props.size} />
+    ) : null;
+  return (
+    <img
+      src={props.src}
+      alt=""
+      aria-hidden="true"
+      data-polaris-identity="icon"
+      draggable={false}
+      onError={() => setFailed(props.src)}
+      style={{
+        display: "inline-block",
+        flex: "none",
+        width: props.size,
+        height: props.size,
+        objectFit: "contain",
+        borderRadius: "var(--pk-radius)",
+      }}
+    />
+  );
+}
+
 /**
  * The product identity a gate or update screen shows above its title, at `size`: the
- * integrator's `theme.logo` (`null` for none), else a monogram tile once the product's name is
- * known, else nothing. Never a Polaris Key mark (UI-KITS §1.6).
+ * integrator's `theme.logo` (`null` for none), else the product's verified icon from discovery
+ * (`theme.productIcon`), else a monogram tile once the product's name is known, else nothing.
+ * Never a Polaris Key mark (UI-KITS §1.6).
  */
 export function screenLogo(theme: PolarisTheme, size = "4rem"): ReactNode {
   if (theme.logo !== undefined) return theme.logo;
   const name = knownProductName(theme);
+  if (theme.productIcon)
+    return <ProductIcon src={theme.productIcon} name={name} size={size} />;
   return name ? <MonogramTile name={name} size={size} /> : null;
 }
 

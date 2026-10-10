@@ -58,7 +58,17 @@ public final class PolarisKeyModel {
     /// change the gate announces.
     public private(set) var resultSerial = 0
 
+    /// The product's presentation from discovery (`client.presentation`), mapped once for the
+    /// SwiftUI kit, with the verified icon's bytes once they arrive; nil when discovery carries
+    /// none. The gate puts it in the environment (`polarisKeyPresentation`) unless the host set
+    /// one there, and the integrator's theme still wins over it field by field.
+    public private(set) var presentation: PolarisProductPresentation?
+
     private var observation: Task<Void, Never>?
+    private var presentationMember: Presentation?
+    private var presentationRead = false
+    private var presentationGeneration = 0
+    private var presentationUnsubscribe: (@Sendable () -> Void)?
 
     public init(
         client: PolarisKeyClient, copy: PolarisCopy = PolarisCopy(), offersFreeTier: Bool = false,
@@ -74,6 +84,9 @@ public final class PolarisKeyModel {
     public func start() {
         guard observation == nil else { return }
         let stream = client.events
+        presentationUnsubscribe = client.presentationSource.subscribe { [weak self] _ in
+            Task { @MainActor in self?.readPresentation() }
+        }
         observation = Task { [weak self] in
             await self?.reload()
             for await event in stream {
@@ -89,6 +102,8 @@ public final class PolarisKeyModel {
     public func stop() {
         observation?.cancel()
         observation = nil
+        presentationUnsubscribe?()
+        presentationUnsubscribe = nil
     }
 
     /// Re-read the client's state (no network).
@@ -100,7 +115,42 @@ public final class PolarisKeyModel {
         activation = await client.license.activation()
         identityEnabled = await client.core.enabled(.identity)
         licenseEnabled = await client.core.licenseGateEnabled()
+        readPresentation()
         hasLoaded = true
+    }
+
+    /// The SDK's `Presentation` as the kit's environment value: the one place the two meet.
+    public nonisolated static func productPresentation(
+        _ member: Presentation?, iconData: Data?
+    ) -> PolarisProductPresentation? {
+        guard let member else { return nil }
+        return PolarisProductPresentation(
+            name: member.name, developerName: member.developerName, accent: member.accent,
+            accentDark: member.accentDark, iconData: iconData)
+    }
+
+    /// The hero's size the kit asks the icon for: the welcome pane's largest draw.
+    static let presentationIconPoints: Double = 120
+    static let presentationIconScale: Double = 3
+
+    /// Re-read `client.presentation` (no network); when it changed, fetch its verified icon. A
+    /// failed icon leaves the monogram or the bundle's icon, never an error.
+    func readPresentation() {
+        let member = client.presentation
+        guard !presentationRead || member != presentationMember else { return }
+        presentationRead = true
+        presentationMember = member
+        presentationGeneration += 1
+        let generation = presentationGeneration
+        presentation = Self.productPresentation(member, iconData: nil)
+        guard member?.icon != nil else { return }
+        let client = self.client
+        Task { [weak self] in
+            let data = await client.presentationIcon(
+                points: Self.presentationIconPoints, scale: Self.presentationIconScale)
+            guard let self, self.presentationGeneration == generation, let data else { return }
+            self.presentation = Self.productPresentation(member, iconData: data)
+        }
     }
 
     /// A sync, then a fresh snapshot.
@@ -254,6 +304,7 @@ struct PolarisKeyModelModifier: ViewModifier {
                 content
             }
         }
+        .modifier(PolarisPresentationDefault(model: model))
         .environment(model)
         .environment(\.polarisTheme, theme)
         .task {
@@ -266,6 +317,17 @@ struct PolarisKeyModelModifier: ViewModifier {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await model.refreshIfStale() } }
         }
+    }
+}
+
+/// The model's presentation in the environment, unless the host already put one there: the
+/// kit's default when the integrator passes nothing (plans/HA-13.md).
+struct PolarisPresentationDefault: ViewModifier {
+    let model: PolarisKeyModel
+    @Environment(\.polarisKeyPresentation) private var host
+
+    func body(content: Content) -> some View {
+        content.environment(\.polarisKeyPresentation, host ?? model.presentation)
     }
 }
 

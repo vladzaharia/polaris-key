@@ -55,6 +55,16 @@ point and links to the kit's current docs.
     (`accentText`, `ring`): the kit does not resolve contrast yet. The
     [framework page](/docs/build/ui/frameworks/react/#theming) has the table.
 
+    **Product presentation (shipped).** With no `theme.copy.productName`, accent or `theme.logo`,
+    the kit uses the product's presentation from discovery: its name (bidi-isolated), `accentDark`
+    in the dark scheme, else `accent`, else a colour derived from the icon, else ink; and the
+    verified icon in place of the monogram. `usePresentation()` reads it in your own components,
+    and `adapter.presentationSource()` is the seam other kits take. The browser fetches the icon
+    without credentials or redirects, checks its SHA-256 and shows it as a `blob:` URL, so a page
+    with a Content-Security-Policy needs `img-src blob:` and `connect-src` for the image origin
+    (`https://img.plrs.im`); a blocked icon falls back to the monogram. Desktop apps reuse the
+    host's Node cache over the bridge.
+
     **Planned:** the `polarisKeyTheme({ … })` helper, the stable `pk-*` class names and
     `data-part` attributes inside the `@layer polaris-key` cascade layer so host CSS wins without
     `!important`, and `--pk-*` variables scoped to the provider element. React and the web
@@ -92,6 +102,11 @@ point and links to the kit's current docs.
     `.polarisKeyStyle(_:for:)`), whose configuration carries the state, its copy lines and its
     actions, and the kit's own body to wrap. See [SwiftUI](/docs/build/ui/frameworks/swiftui/).
 
+    **Product presentation (shipped).** `PolarisKeyModel` maps the client's `presentation` to the
+    product identity once, so the kit shows the product's name, accent and verified icon wherever
+    the theme sets none. `client.presentationSource` is the seam; the icon is fetched without
+    credentials or redirects, checked by SHA-256 and cached in Application Support.
+
   </TabItem>
   <TabItem label="UIKit, AppKit">
     <KitStatus kits={["uikit", "appkit"]} />
@@ -110,6 +125,12 @@ point and links to the kit's current docs.
     **Planned:** `PolarisKeyTheme(theme = PolarisKeyTheme(…)) { }`. Beyond the theme:
     `ActivateDefaults.colors()`, `shapes()` and the other `*Defaults` objects, like Material's
     `ButtonDefaults`, and composable slot parameters.
+
+    **Product presentation (shipped).** `PolarisTheme(presentation = client.presentationSource)`
+    fills what the integrator leaves out: `logo` falls back to the verified icon, then the
+    monogram; under `PolarisBranding.PolarisKey` the accent falls back to the product's
+    (`accentDark` on a dark ground), then one derived from the icon. The icon is fetched without
+    credentials or redirects and checked by SHA-256.
 
   </TabItem>
   <TabItem label="Godot">
@@ -149,7 +170,8 @@ point and links to the kit's current docs.
     `PKEY_THEME=dark` or `light` pins the scheme and `NO_COLOR` drops colour. Beyond the theme: the `symbols` restyle
     hook (`"unicode"` or `"ascii"`), per-role truecolor `colors`, and the styled parts and the
     `@polaris-key/node/terminal` primitives. What each field does in a terminal is on the
-    [framework page](/docs/build/ui/frameworks/terminal-node/#theming).
+    [framework page](/docs/build/ui/frameworks/terminal-node/#theming). The product's name,
+    developer and accent come from `client.presentationSource()` when the theme sets none.
 
   </TabItem>
   <TabItem label="Terminal (Python)">
@@ -158,7 +180,8 @@ point and links to the kit's current docs.
     `Theme` (`polaris_key.ui.core`) as `theme=` of `register_argparse`, `polaris_click_group` and
     `polaris_typer_app`, with `PKEY_THEME=dark` or `light` and `NO_COLOR`. Beyond the theme: a
     unicode or ascii symbol set and per-role truecolor `colors`. What each field does in a terminal
-    is on the [framework page](/docs/build/ui/frameworks/terminal-python/#theming).
+    is on the [framework page](/docs/build/ui/frameworks/terminal-python/#theming). The product's
+    name, developer and accent come from `client.presentation_source` when the theme sets none.
 
   </TabItem>
 </Tabs>

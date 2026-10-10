@@ -106,6 +106,14 @@ Maven, the coordinate table and the other SDKs:
   `sync()` refreshes trust on Core's cadence, fetches the enabled documents in parallel with their
   ETags, takes at most one shared re-acquire, escalates a 304 past the half-life, writes the cache
   once and reports. `discover()` installs the product's capability map (fail closed).
+- **Presentation** (`core.presentation`, HA-13). `discover()` also parses the product's display
+  data (`PresentationRules`, client-core's rules): `client.presentation()` (name, developer,
+  accents, icon), `client.presentationIcon(px, scale)` (verified bytes, or null) and
+  `client.presentationSource` (the `PresentationSource` seam the Compose kit reads:
+  `PolarisTheme(presentation = client.presentationSource)`). The icon is a plain GET with no
+  headers and no redirect followed, SHA-256 checked, cached by hash under the store's state
+  directory (`presentation/`, at most four files, `presentation.json` for a cold start). The
+  integrator's logo and accent always win; the kit falls back to the icon, then the monogram.
 - **Stores.** `InMemoryStore`, the 0600 `FileStore` (`status()` reports `file` /
   `keyring-unavailable`) and, on a JVM desktop, `KeyringStore` (UK-40): the token in the OS keyring
   (Keychain, Credential Manager, Secret Service) through java-keyring, the device id and cache in

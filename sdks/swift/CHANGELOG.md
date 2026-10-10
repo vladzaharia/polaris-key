@@ -9,6 +9,12 @@ deprecated aliases).
 Gate and SDK correctness.
 
 - **Signed-in user (`license.signedinuser`).** `licenseUser(_:)`, `LicenseClient.licenseUser()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is nil.
+- **Product presentation (`core.presentation`).** `client.presentation`,
+  `client.presentationIcon(points:scale:)` and `client.presentationSource` (the `PresentationSource`
+  seam in PolarisKeyCore) expose discovery's name, developer, accents and an icon verified by
+  SHA-256, cached by hash with `presentation.json` for cold starts. The SwiftUI kits default their
+  name, icon and accent to it when the theme sets none. `CoreOptions.presentationIconFetcher`
+  replaces the icon fetcher.
 
 - **A blocking gate has a way out.** An expired licence offers Renew or manage (with
   `GateOptions.renewURL`), Try again, Use a different key and Sign in; a revoked one offers Use a

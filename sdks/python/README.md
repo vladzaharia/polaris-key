@@ -199,6 +199,19 @@ A slug outside `SERVICE_SLUGS` raises `PolarisError("invalid-options")` from the
 `"licence"` used to turn License off, and a product without License is usable, so an unactivated
 device read as licensed.
 
+### Product presentation
+
+After `client.discover()`, `client.presentation()` is the product's display data from discovery
+(`core.presentation`): `name`, and `developerName`, `accent`, `accentDark` and `icon` when the
+product declares them, normalised; `None` when it serves none. It is unsigned and gates nothing.
+`client.presentation_icon(px, scale=1.0)` returns the icon's bytes for a hero drawn at `px`
+points, verified against the SHA-256 discovery names, or `None` (show a letter tile). The fetch
+sends no credential and follows no redirect; icons are cached by hash under
+`<cache>/presentation`, with the last member in `presentation.json` for an offline start.
+`client.presentation_source` is the `polaris_key.presentation.PresentationSource` the UI kits
+read (`current()`, `icon(px, scale)`, `subscribe(fn)`). The async client keeps `presentation()`
+synchronous and awaits `presentation_icon()`.
+
 ### supports() and capabilities
 
 `client.supports(feature)` answers whether a feature (a `Feature` id, `Feature.CONFIG_SECRET`)

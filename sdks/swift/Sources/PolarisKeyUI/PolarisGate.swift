@@ -87,6 +87,7 @@ public struct PolarisGate<Content: View>: View {
             showsKeyEntry: showsKeyEntry,
             content: content
         )
+        .modifier(PolarisPresentationDefault(model: model))
         .onChange(of: model.lastActivation) { _, _ in
             // A new result closes the round: a second refusal needs a second Replace tap.
             manageOpened = false

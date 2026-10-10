@@ -48,6 +48,9 @@ export const DEFAULT_INVOKE_VERBS = [
   "release.changelog",
   "release.installUrl",
   "release.downloadUrl",
+  // Discovery's `core.presentation` (HA-13): one verified icon's bytes. The member itself rides
+  // every state push (`presentation`).
+  "core.presentationIcon",
 ] as const;
 
 /** What every handler resolves. */

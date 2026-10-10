@@ -80,6 +80,9 @@ public struct CoreOptions: Sendable {
     /// same cache. Nil, or (on iOS) a group this process is not entitled to: the per-app
     /// defaults. macOS answers a container path for any group; entitle the app for it.
     public let appGroup: String?
+    /// How the product's presentation icon is fetched (plans/HA-13.md). Nil: `URLSessionIconFetcher`
+    /// (no credential, no cookie, no redirect). A local-only client never fetches, whatever this is.
+    public let presentationIconFetcher: (any PresentationIconFetcher)?
 
     public init(
         productSlug: String,
@@ -99,8 +102,10 @@ public struct CoreOptions: Sendable {
         stateDir: URL? = nil,
         deviceName: String? = nil,
         keychainAccessGroup: String? = nil,
-        appGroup: String? = nil
+        appGroup: String? = nil,
+        presentationIconFetcher: (any PresentationIconFetcher)? = nil
     ) {
+        self.presentationIconFetcher = presentationIconFetcher
         self.keychainAccessGroup = keychainAccessGroup
         self.appGroup = appGroup
         self.productSlug = productSlug
@@ -313,6 +318,10 @@ public actor CoreContext {
     private nonisolated let packSetIdSource = PackSetIdSource()
     /// The update-health journal (P6-03): events queued for the next device report.
     public nonisolated let journal: UpdateJournal
+    /// The product's presentation (`core.presentation`) and its verified icon: the
+    /// `PresentationSource` the UI kits read (plans/HA-13.md). Re-parsed after every successful
+    /// discovery; `start()` loads the last member from disk. A local-only client never fetches.
+    public nonisolated let presentationSource: ProductPresentationSource
     private nonisolated let eventSink = LockedValue<(@Sendable (CoreEvent) -> Void)?>(nil)
 
     /// Where module events go (the facade's `client.events`).
@@ -379,6 +388,11 @@ public actor CoreContext {
         let transport = options.transport ?? URLSessionTransport()
         self.transport = transport
         self.localOnly = transport is NoNetworkTransport
+        self.presentationSource = ProductPresentationSource(
+            product: options.productSlug,
+            directory: dirs.data.appendingPathComponent("presentation", isDirectory: true),
+            fetcher: transport is NoNetworkTransport
+                ? nil : (options.presentationIconFetcher ?? URLSessionIconFetcher()))
         self.requestTimeoutSeconds = options.requestTimeoutSeconds
         self.expectedServices = options.expectedServices
         self.deviceNameOption = options.deviceName
@@ -399,6 +413,8 @@ public actor CoreContext {
         tokenValue = try await store.getToken()
         tokenSourceValue = nil
         loadCache(await store.readCache())
+        // The last presentation, so an offline start still shows the product. Files only.
+        presentationSource.loadCached()
     }
 
     // ── Identity + credential ────────────────────────────────────────────────────────────
@@ -649,6 +665,8 @@ public actor CoreContext {
         if case .ok(let document) = result {
             discoveryDocumentValue = document
             discoveredServices = document.servicesMap
+            // No member (or an invalid one) clears it; a failed discovery keeps the last.
+            presentationSource.accept(document.presentation)
         }
         return result
     }

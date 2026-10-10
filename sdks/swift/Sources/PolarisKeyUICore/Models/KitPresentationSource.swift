@@ -2,11 +2,13 @@
 //
 // The kit reads the product's registered presentation (discovery `core.presentation`: name,
 // developer, accents and the icon verified by its sha256) only through this source, which the SDK
-// fills (HA-13). The kit never fetches discovery or the icon itself. Until HA-13 lands this is a
-// structurally identical local type, HA-11's `{ current(); icon(px, scale); subscribe(fn) }`; the
-// SDK's `PresentationSource` replaces it then without a kit change.
+// fills (HA-13). The kit never fetches discovery or the icon itself. This is HA-11's
+// `{ current(); icon(px, scale); subscribe(fn) }` in the kit's own types; `SDKPresentationSource`
+// is the thin adapter over PolarisKeyCore's `PresentationSource` (plans/HA-13.md D1), and a live
+// `PolarisKeyGateModel` uses it by default, until UK-07 reads the core seam directly.
 
 import Foundation
+import PolarisKeyCore
 
 /// The product's registered presentation (HA-12's member).
 public struct KitProductPresentation: Sendable, Equatable, Hashable {
@@ -53,5 +55,30 @@ public struct StaticPresentationSource: KitPresentationSource {
     public func icon(px: Int, scale: Int) async -> Data? { iconData }
     public func subscribe(_ onChange: @escaping @Sendable () -> Void) -> @Sendable () -> Void {
         {}
+    }
+}
+
+/// The SDK's `PresentationSource` (`client.presentationSource`) as the kit's seam.
+public struct SDKPresentationSource: KitPresentationSource {
+    public let source: any PresentationSource
+
+    public init(_ source: any PresentationSource) {
+        self.source = source
+    }
+
+    public func current() -> KitProductPresentation? {
+        source.current().map {
+            KitProductPresentation(
+                name: $0.name, developerName: $0.developerName, accent: $0.accent,
+                accentDark: $0.accentDark)
+        }
+    }
+
+    public func icon(px: Int, scale: Int) async -> Data? {
+        await source.icon(px: Double(px), scale: Double(scale))
+    }
+
+    public func subscribe(_ onChange: @escaping @Sendable () -> Void) -> @Sendable () -> Void {
+        source.subscribe { _ in onChange() }
     }
 }

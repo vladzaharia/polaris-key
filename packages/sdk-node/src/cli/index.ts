@@ -135,6 +135,7 @@ export {
   titleizeSlug,
   type AccentSource,
   type PolarisKeyTerminalTheme,
+  type LegacyPresentationSource,
   type PresentationSource,
   type ProductIdentity,
   type ProductPresentation,

@@ -273,6 +273,12 @@ export interface PolarisTheme {
    * Star Cut on update screens).
    */
   logo?: import("react").ReactNode;
+  /**
+   * The product's verified icon from discovery (`core.presentation`, HA-13), as a `blob:` URL,
+   * when the integrator set no `logo`. The Provider fills it; `screenLogo` draws it, and falls
+   * back to the monogram when it does not load (an integrator CSP without `img-src blob:`).
+   */
+  productIcon?: string;
   /** Which look these tokens are. Absent means "neutral". */
   branding?: PolarisBranding;
   /** The scheme these tokens are for. Set by `mergeTheme`; absent on a hand-built theme. */

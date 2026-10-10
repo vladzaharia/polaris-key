@@ -37,6 +37,17 @@ export {
   type UseLicenseGate,
   type GateScreen,
 } from "./react/hooks.js";
+// Discovery's `core.presentation` (HA-13): the hook, and the seam the kits read.
+export {
+  usePresentation,
+  type UsePresentation,
+  type UsePresentationOptions,
+} from "./react/usePresentation.js";
+export type {
+  PresentationSource,
+  ProductPresentation,
+  ReactPresentationSource,
+} from "./core/presentation.js";
 export {
   useLatestVersion,
   type UseLatestVersion,
