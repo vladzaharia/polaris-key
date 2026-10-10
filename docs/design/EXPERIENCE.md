@@ -1,7 +1,7 @@
 # Polaris Key experience specification: one system for the console and the portal
 
-**Status:** proposed, 2026-10-05; revised the same day after a critique (reconciled with the
-S-18/S-19 program, §0.8). **Owner brief (verbatim, 2026-10-05):** "Let's work hard on making a
+**Status:** the experience spec the console and portal packages build to (2026-10-05; reconciled
+with the S-18/S-19 program, §0.8; brand v2 and the B17 state-colour rule, 2026-10-10). **Owner brief (verbatim, 2026-10-05):** "Let's work hard on making a
 great experience for both our users and administrators. Do a full UX path on BOTH to standardize how
 we do things (ie. login can likely be based on the same form for admin), update our experiences to
 be modern, comprehensive, informative but not overly so. Remove extraneous text and subtitles which
@@ -180,7 +180,7 @@ to their hub area.
 - **Settings is the ST-08 hub** (`#/p/<slug>/settings/<tab>`) with four tabs: **Features**,
   **Presentation**, **Keys & secrets** and **Members**. Services & registration is derived on
   Features; fingerprint mode lives in tier limits; probes and device trust are ST-12; automatic
-  access is Licenses → Access. Outlet credentials live in Platform → Connections and the channel
+  access is Licenses → Access. Channel credentials live in Platform → Connections and the channel
   page's Setup tab, not the hub. Removed pages open **Page moved**, never a redirect.
 
 Settings leave the feature pages for the hub, which takes most of the consolidation the audits
@@ -197,7 +197,7 @@ their settings.
 - Settings' History and the global Activity read the same audit (S-18 §4.6); History is Activity
   filtered to settings, rendered by the same component.
 
-**Names that stop colliding** (CL 1.1): "Outlets & feeds" → **Outlets**; product "Package feeds" →
+**Names that stop colliding** (CL 1.1): "Outlets & feeds" → **Channels**; product "Package feeds" →
 **Packages**; Update "Feed" → **Update feed**; Platform keeps **Package feeds**. S-18 D16 gives
 Access, Feeds and Metadata access one access-mode vocabulary ("Entitled: holds `<flag>`").
 
@@ -727,7 +727,7 @@ Done step.
 - **Owner polish 2026-10-07** (PORTAL.md §4.20): the device count lives on Devices alone (the
   License card drops its "N of M devices" line and carries the tier pill at its header's top
   right); the section nav lists the page's own order with the Devices count as a pill, and
-  follows the page as it scrolls; an OIDC-granted licence's source reads "Automatic Grant"; What's
+  follows the page as it scrolls; an OIDC-granted licence's source reads "Automatic grant"; What's
   new draws its Markdown notes formatted, a summary first.
 
 #### P5 · Account (PJ A, C, SH 1.6)
@@ -947,9 +947,9 @@ legacy `src/components/ui/*` kit is deleted (SH 0.4, §2). "Density" is a prop o
 | `HealthLine`                                                                            | new in `ui/` (a callout with one fix action)                                                           | License and release Status tabs, Platform Status                                      | Warning or danger callout when there is an issue; **renders nothing when healthy** (Platform Status may show one muted "All checks passed" line, no box, no icon) |
 | `Celebration`                                                                           | `ui/motion` (MO-02: check + sparks, one-shot key)                                                      | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
 
-Type scale, defined once in `ui` tokens (SH 1.14): `display` 40/30 px (portal Library and Product
-titles only), console h1 36/44 on collections and 32/40 on records (24/32 on phones; ADMIN §2.4), `title`
-24 px (portal h1s), `section` 16–18 px (panel headers, 18/24 in the console), `row` 14 px at weight 600. Weights are 400/500/600 everywhere (BRAND §1.6). Arbitrary sizes (`text-[1.875rem]`, `text-[0.9375rem]`) are removed.
+Type scale, defined once in `ui` tokens (SH 1.14): `display` 48/52 px, 32/36 on phones (the
+portal's page, product and focused-task h1s; PORTAL §7), console h1 36/44 on collections and 32/40
+on records (24/32 on phones; ADMIN §2.4), `section` 16–18 px (panel headers, 18/24 in the console), `row` 14 px at weight 600. Weights are 400/500/600 everywhere (BRAND §1.6). Arbitrary sizes (`text-[1.875rem]`, `text-[0.9375rem]`) are removed.
 
 **Theme completeness.** Every theme token change re-renders, in light and dark and with a custom
 accent: root surfaces, text, fields, focus, buttons, provider rows, dialogs, skeletons, progress,
@@ -1004,18 +1004,20 @@ Mockups: [Overview](experience/05-console-overview-desktop-dark.png) · [list](e
   jump to…", ⌘K) and the account menu. Breadcrumbs live in the masthead's orientation line, not
   the top bar. The Docs button and the theme button are in the account menu and the palette
   (SH 1.11). From 1024 px the page is an inset raised canvas beside the sidebar.
-- **Sidebar** (248 px): the product switcher at the top (name, slug or "Launch · 5 of 9"), then
-  neutral group labels (sentence case, a 3 px accent bar, no icon, no "Workspace" label) with only the active group open; closed sections show a red dot
-  when they hold an attention item. Off a product: Home, Products, Activity and the Platform group.
+- **Sidebar** (240 px): the product switcher at the top (name, slug or "Launch · 5 of 9"), then
+  neutral group labels (sentence case, a 3 px accent bar, no icon, no "Workspace" label) with only
+  the active group open; closed sections show a red dot when they hold an attention item. Off a
+  product it is the Platform context of §0.2: Home · Members · Connections · Settings · Packages ·
+  Status · Activity.
 - **Phone:** a menu button opens the sidebar as a drawer that **includes the product switcher and
   the Platform entry** (CL 7); the search field fills the top bar.
 
 ### 5.2 Portal
 
 - **Top bar** (64 px): the compact lockup, Library (count) and Discover (new count), then
-  right-aligned **Activate license** and the account chip. One background for both apps' bars:
-  `surface-raised` in the console, `surface-page` in the portal stays (the portal is a page, not a
-  workspace); the lockup sizes follow BRAND §1.4.
+  right-aligned **Activate license** and the account chip. Both apps' bars are `surface-page`
+  with no console divider (the portal keeps a `border-subtle` bottom edge, PORTAL §0.3); the lockup
+  sizes follow BRAND §1.4.
 - **Phone:** a bottom tab bar (Library · Activate · Discover) with Activate as the outlined middle
   pill, and the avatar top right. This is an **owner-approved phone exception** to "Activate is
   right-aligned": PORTAL.md §3.2 (approved 2026-10-04) specifies the middle pill on phones. It still
@@ -1160,7 +1162,8 @@ PORTAL §9 link here.
       the console.
 - [ ] **Themes:** dark and light; a custom product accent on a light and a dark ground (kits,
       hosted sign-in); forced-colors; `prefers-contrast: more`; reduced transparency; contrast
-      measured on the render (text 4.5:1, UI 3:1).
+      measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent,
+      both themes.
 - [ ] **States:** loading (skeleton after the grace), first-run empty, filtered empty, permission
       refused, expired or stale, network and API error with Try again, partial failure, success;
       input survives a failed save; where the API sends `expectedVersion`, a changed-since-open
@@ -1168,9 +1171,12 @@ PORTAL §9 link here.
 - [ ] **Motion:** tokens only; reduced motion is an instant swap and the outcome still reads;
       errors appear without moving content; progress is real (no invented percentage, nothing
       loops after a failure); no celebration on refunds, revocation, removal, deletion or consent.
-- [ ] **Hierarchy and copy:** one filled primary per state; the section accent marks context only,
-      never success, warning or failure; copy from the catalog, each fact once; no decorative
-      numbers or taglines; no text drawn over customer art.
+- [ ] **Hierarchy and copy:** one filled primary per state (neutral action ink in the console,
+      portal and hosted sign-in; the product accent in kits); focus, selected, hover, checked and
+      context borders take the accent of the service the element references (`data-service`; `-fg`
+      for text and edges, base for fills; a non-colour cue stays); status colours (success, warning,
+      danger, info, signed) never become a service accent; copy from the catalog, each fact once; no
+      decorative numbers or taglines; no text drawn over customer art.
 - [ ] **Native (kits):** Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack,
       gamepad and D-pad focus, TV and title-safe insets, terminal keys with `NO_COLOR`, ascii and
       `--json` paths.
