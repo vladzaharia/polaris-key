@@ -72,8 +72,9 @@ There is no term model beyond one `expires_at` (G8, [S-19 §4.3](../../notes/S-1
 - **The writers.** Four paths disable a licence today, and each now writes its reason. The
   console's Disable and a batch's Disable unused keys write `revoked`, and so does a product's
   deletion. The sign-in merge of an enrolled licence (`activateFromIdentity`) writes
-  `superseded`, with `superseded_by`. Enable clears the reason, and is refused (409) for
-  `refunded` and `chargeback`: only the store's reversal undoes a money end.
+  `superseded`, with `superseded_by`. Enable clears the reason (and a superseded licence's
+  `superseded_by`; an active licence's pointer is kept), and is refused (409) for `refunded` and
+  `chargeback`: only the store's reversal undoes a money end.
   `admin/repo.ts`'s `setLicenseStatus` is gone. No path refunds or charges back a licence yet:
   those events are for CM-05 and CM-22.
 - **Grant reads.** The one grant a document reads before LX-09, the licence's `oidc` grant, now
@@ -83,6 +84,26 @@ There is no term model beyond one `expires_at` (G8, [S-19 §4.3](../../notes/S-1
   `revoked` until CM-22 routes them through the lifecycle.
 - **Console.** No console file changes. The admin licence summary carries `endedReason` and
   `supersededBy` (OpenAPI `AdminLicenseSummary`) for LX-14 to show.
+
+## Follow-ups (from review, 2026-10-09)
+
+- **CM-22: a reversal must never lift an operator end or a standing chargeback.** One reason
+  column (one state per grant) holds one end. So a refund that replaced an operator's end, an
+  operator's revoke after a refund (`same`), or a chargeback after a refund (or the reverse) each
+  leave one recorded end. That end's reversal then reinstates the item while the other end
+  stands. Nothing writes a reversal through the lifecycle yet. It becomes a real fail-open when
+  CM-22 wires store reversals, so this is a CM-22 acceptance criterion (added to its brief; see
+  THREAT-MODEL "Licence and add-on lifecycle (LX-12)").
+- **LX-23: align the provisioned-keys move with the contribution predicate.** The document layer
+  (`oidcGrantLayer`) counts an `oidc` grant that is `active` or `past_due` inside `expires_at`.
+  The provisioned-keys move (`moveProvisionedKeys` in `core/grants.ts`, through
+  `activeOidcEntries`) still reads `state = 'active'` only. The two agree while nothing writes
+  `past_due` or an expiry on an `oidc` grant. The package that first does (LX-23) must align them,
+  or a move could plan against keys the document no longer shows.
+- **CM-22 / LX-11:** route store refunds through the lifecycle as `refunded` and lift the
+  store-source exclusion once the dual-write retires.
+- **The operator's suppress (LX-13, LX-14):** make the `oidc` grant's sign-in upsert keep
+  `suppressed`; it writes `active` on every sign-in today.
 
 ## Acceptance criteria
 

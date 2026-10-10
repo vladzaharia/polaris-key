@@ -40,11 +40,14 @@
  * 4. **A reversal undoes nothing else.** A store's reversal never reinstates an item an operator
  *    or a supersession ended, so it cannot lift an operator's revocation.
  * 5. **Operators lift every other end.** `reinstate` moves a revoked, superseded or legacy
- *    suspended licence, and a revoked, suppressed or past-due grant, back to `active`.
+ *    suspended licence, and a revoked, suppressed or past-due grant, back to `active`. Reinstating
+ *    a superseded licence also clears `superseded_by`: nothing replaces it any more.
  *
- * Residual of rule 2 with one reason column: an item ended by an operator and then refunded loses
- * the operator's reason, so a later reversal of that refund reinstates it. Both events on one
- * item, then a reversal, is the case; the audit log keeps every step.
+ * Residual: one reason column holds one end. An operator's end replaced by a refund, an operator's
+ * revoke after a refund (`same`), and a chargeback after a refund (or the other way round) each
+ * leave one recorded end, and that end's reversal reinstates the item while the other end still
+ * stands. Nothing writes a reversal through this module yet. CM-22 must not lift an operator end
+ * or a standing chargeback when it does (THREAT-MODEL "Licence and add-on lifecycle (LX-12)").
  *
  * The module is PURE and imports nothing, so the Worker and the console share it, as `terms.ts`.
  */

@@ -7832,9 +7832,20 @@ A licence's `status` stays `active`/`disabled`; `ended_reason` records why it en
   suppressed stays ended.
 - **Money ends are recorded over other ends.** A refund or chargeback of an item an operator has
   already ended replaces that reason, so the record always shows that the money went back.
-  Residual: a single reason column cannot hold both ends. If such an item's refund is later
-  reversed, the item becomes active again although the operator had ended it. The audit log keeps
-  both steps, and the operator can revoke it again.
+  Residual: one reason column holds one end, so a reversal can reinstate an item that a second
+  end should keep ended. Three orders do it:
+  - an operator ends the item, then it is refunded: the refund replaces the operator's reason;
+  - it is refunded, then an operator revokes it: the revoke changes nothing (`same`);
+  - it is refunded, then charged back, or the other way round: the second money end changes
+    nothing. A grant records both as `refunded`.
+
+  In each case a later reversal of the recorded money end reinstates the item, although the
+  operator's end or the other money end still stands. The audit log keeps every step. Today
+  nothing writes a reversal through the lifecycle, so this cannot happen yet. Once CM-22 wires
+  store reversals it becomes a real fail-open. **CM-22 acceptance: a reversal must never lift an
+  operator end or a standing chargeback** (for example by keeping every end an item has, not one
+  reason).
+
 - **Store grants keep their own writer.** Until LX-11 retires the dual-write, a store grant's
   state is the projection of `license_store_grants`, so the lifecycle's grant writers exclude
   store sources: an operator cannot reinstate a refunded store purchase through them. Store

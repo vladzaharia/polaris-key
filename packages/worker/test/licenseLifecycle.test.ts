@@ -254,6 +254,10 @@ function columnsOf(state: LicenseLifecycleState): {
   return { status: "disabled", reason: state };
 }
 
+/** Every seeded licence carries a `superseded_by` pointer, so the cells show which events keep it
+ *  (an active licence's is an attached free licence's, LX-10) and which one clears it. */
+const PREV = "lic_prev";
+
 async function seedLicenseIn(
   db: SqliteDb,
   id: string,
@@ -261,15 +265,28 @@ async function seedLicenseIn(
 ): Promise<void> {
   const c = columnsOf(state);
   await db.run(
-    `INSERT INTO licenses (product, id, status, ended_reason, activated_at, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, 'seed', ?)`,
+    `INSERT INTO licenses (product, id, status, ended_reason, superseded_by, activated_at,
+       modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'seed', ?)`,
     SLUG,
     id,
     c.status,
     c.reason,
+    PREV,
     NOW,
     NOW,
   );
+}
+
+/** Where `superseded_by` stands after `event` moved a licence out of `from`: set by supersede,
+ *  cleared only by reinstating a superseded licence, kept by everything else. */
+function supersededByAfter(
+  from: LicenseLifecycleState,
+  event: LicenseEvent,
+): string | null {
+  if (event === "supersede") return "lic_survivor";
+  if (from === "superseded" && event === "reinstate") return null;
+  return PREV;
 }
 
 async function licenseRow(db: SqliteDb, id: string) {
@@ -355,8 +372,7 @@ describe("the writers apply exactly the table", () => {
               ended_reason: columnsOf(out).reason,
               modified_by: "op-1",
               modified_at: NOW + 1,
-              superseded_by:
-                event === "supersede" ? "lic_survivor" : before!.superseded_by,
+              superseded_by: supersededByAfter(state, event),
             },
           ]);
         }
@@ -385,6 +401,13 @@ describe("the writers apply exactly the table", () => {
           event,
           state,
           expected,
+        ]);
+        expect([event, state, row?.superseded_by]).toEqual([
+          event,
+          state,
+          out === "same" || out === "refused"
+            ? PREV
+            : supersededByAfter(state, event),
         ]);
       }
     }
@@ -990,6 +1013,53 @@ describe("ended_reason is written with every disable", () => {
         await call("POST", `/license/licenses/${licenseId}/enable`)
       ).json(),
     ).toMatchObject({ status: "active", endedReason: null });
+  });
+
+  it("Enable of a superseded licence clears supersededBy; a revoked licence keeps its pointer", async () => {
+    await seedLicenseWithKey(db, SLUG, { id: "lic_survivor" });
+    const { licenseId: merged } = await seedLicenseWithKey(db, SLUG, {
+      id: "lic_merged",
+    });
+    await transitionLicense(db, {
+      product: SLUG,
+      licenseId: merged,
+      event: "supersede",
+      supersededBy: "lic_survivor",
+      actor: "oidc",
+      now: NOW,
+    });
+    expect(
+      await (await call("GET", `/license/licenses/${merged}`)).json(),
+    ).toMatchObject({
+      status: "disabled",
+      endedReason: "superseded",
+      supersededBy: "lic_survivor",
+    });
+    expect(
+      await (await call("POST", `/license/licenses/${merged}/enable`)).json(),
+    ).toMatchObject({ status: "active", endedReason: null });
+    expect(
+      await (await call("GET", `/license/licenses/${merged}`)).json(),
+    ).toMatchObject({ status: "active", supersededBy: null });
+    expect((await licenseRow(db, merged))?.superseded_by).toBeNull();
+
+    // Negative control: an active licence's pointer (an attached free licence) survives a
+    // Disable and an Enable, because it never ended as superseded.
+    const { licenseId: attached } = await seedLicenseWithKey(db, SLUG, {
+      id: "lic_attached",
+    });
+    await db.run(
+      "UPDATE licenses SET superseded_by = 'lic_survivor' WHERE product = ? AND id = ?",
+      SLUG,
+      attached,
+    );
+    await call("POST", `/license/licenses/${attached}/disable`);
+    await call("POST", `/license/licenses/${attached}/enable`);
+    expect(await licenseRow(db, attached)).toMatchObject({
+      status: "active",
+      ended_reason: null,
+      superseded_by: "lic_survivor",
+    });
   });
 
   it("deleting the product revokes every active licence and keeps an ended one's reason", async () => {

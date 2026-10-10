@@ -20,6 +20,7 @@ import {
   grantTransition,
   isGrantState,
   LICENSE_ENDED_REASONS,
+  LICENSE_TRANSITIONS,
   licenseEndedReasonOf,
   licenseEventMoves,
   licenseLifecycleState,
@@ -67,14 +68,31 @@ function reasonLiteral(state: LicenseLifecycleState): string {
 }
 
 /**
- * The SET items that put a licence where `event` moves it: its `status` and `ended_reason`. A
- * statement that writes them must also carry {@link licenseEventSourceSql} in its WHERE, so it
- * only moves rows the table moves. `supersede` also writes `superseded_by`
- * ({@link licenseTransitionStatement}).
+ * The SET item that clears `superseded_by` when `event` brings a superseded licence back to
+ * `active` (an operator's reinstate): nothing replaces it any more, so the pointer would be
+ * stale. Only a row that ended as superseded loses it; an active licence's pointer (an attached
+ * free licence, LX-10) and any other row's are kept. Read against the row as it was, so it pairs
+ * with either form below. `null` for an event that does not do this.
+ */
+function supersessionClearSql(event: LicenseEvent): string | null {
+  if (LICENSE_TRANSITIONS.superseded[event] !== "active") return null;
+  return `superseded_by = CASE WHEN ${licenseStateSql("superseded")} THEN NULL ELSE superseded_by END`;
+}
+
+/**
+ * The SET items that put a licence where `event` moves it: its `status` and `ended_reason`, and
+ * for a reinstate the cleared `superseded_by` of a superseded licence. A statement that writes
+ * them must also carry {@link licenseEventSourceSql} in its WHERE, so it only moves rows the
+ * table moves. `supersede` also writes `superseded_by` ({@link licenseTransitionStatement}).
  */
 export function licenseTargetSetSql(event: LicenseEvent): string {
   const { target } = licenseEventMoves(event);
-  return `status = ${lit(licenseStatusOf(target))}, ended_reason = ${reasonLiteral(target)}`;
+  const clear = supersessionClearSql(event);
+  return [
+    `status = ${lit(licenseStatusOf(target))}`,
+    `ended_reason = ${reasonLiteral(target)}`,
+    ...(clear ? [clear] : []),
+  ].join(", ");
 }
 
 /** One licence's event. */
@@ -91,7 +109,8 @@ export interface LicenseTransitionArgs {
 
 /**
  * The guarded UPDATE that applies one event to one licence: the target's `status` and
- * `ended_reason` (with `superseded_by` for `supersede`), written only while the row is in one of
+ * `ended_reason` (with `superseded_by` set by `supersede`, cleared by reinstating a superseded
+ * licence), written only while the row is in one of
  * the event's source states. A row in any other state is left exactly as it is (`modified_at`
  * included), so a replayed event writes nothing.
  */
@@ -129,9 +148,12 @@ export function licenseTransitionSetSql(event: LicenseEvent): string {
     throw new Error("licenseTransitionSetSql: supersede has no bulk form");
   const { target } = licenseEventMoves(event);
   const source = licenseEventSourceSql(event);
+  // A superseded row is in a reinstate's sources, so the clear needs no extra guard here.
+  const clear = supersessionClearSql(event);
   return [
     `status = CASE WHEN ${source} THEN ${lit(licenseStatusOf(target))} ELSE status END`,
     `ended_reason = CASE WHEN ${source} THEN ${reasonLiteral(target)} ELSE ended_reason END`,
+    ...(clear ? [clear] : []),
   ].join(", ");
 }
 

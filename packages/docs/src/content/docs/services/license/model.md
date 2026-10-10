@@ -192,7 +192,8 @@ A license disabled before reasons were recorded has none.
   refund ends nothing.
 - **Only the store undoes a refund.** The store's reversal of that refund or chargeback restores
   the license. **Enable** answers `409` for it: to give the person access anyway, issue a new
-  license. Enable restores a license that ended for any other reason.
+  license. Enable restores a license that ended for any other reason, and clears a superseded
+  license's `superseded_by`.
 - **The first end stays, except for money.** Disabling an ended license changes nothing; a refund
   or chargeback still replaces an earlier reason, so the record says when the money went back.
 - **No wire change.** A disabled license's document request gets the same `401` whatever the
