@@ -662,6 +662,37 @@ export function useRemoveMethod() {
   });
 }
 
+/** Make a verified email the primary (step-up first). The answer is the methods list. */
+export function useMakePrimary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (methodId: string) => portalApi.makePrimary(methodId),
+    onSuccess: (view) => {
+      qc.setQueryData(qk.portalMethods(), view);
+      refreshAfterMethodChange(qc);
+    },
+    onError: (err) => {
+      if (err instanceof PortalApiError && err.status === 404)
+        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+    },
+  });
+}
+
+/** Name a passkey, or clear its name (step-up first). */
+export function useRenamePasskey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; name: string | null }) =>
+      portalApi.renamePasskey(v.id, v.name),
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: portalKeys.methods }),
+    onError: (err) => {
+      if (err instanceof PortalApiError && err.status === 404)
+        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+    },
+  });
+}
+
 /**
  * The session again, now (`GET /api/me`): after a step-up sign-in the browser holds a new
  * session, with a new CSRF token, which every later change must carry.

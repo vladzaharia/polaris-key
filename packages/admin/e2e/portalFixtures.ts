@@ -1508,6 +1508,20 @@ export const MARA_METHODS = (() => {
   };
 })();
 
+/**
+ * The same account on a Worker with PX-W19: each address says how many products it brought in
+ * and each passkey carries its name (null when unnamed). Kept apart so the account page's
+ * committed baselines stay those of the shape without them.
+ */
+export const MARA_METHODS_W19 = {
+  ...MARA_METHODS,
+  emails: MARA_METHODS.emails.map((e, i) => ({ ...e, productCount: 2 - i })),
+  passkeys: MARA_METHODS.passkeys.map((p, i) => ({
+    ...p,
+    name: i === 1 ? "Work laptop" : null,
+  })),
+};
+
 /** Mara's browsers (`GET /api/sessions`, I-07), this one first. */
 const MARA_SESSIONS = [
   {

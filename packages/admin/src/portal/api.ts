@@ -832,6 +832,8 @@ export interface PortalMethodEmail {
   methodId: string;
   email: string;
   primary: boolean;
+  /** Products this address brought in (PX-W19); absent on an older Worker. */
+  productCount?: number;
   connectedAt: number;
   lastUsedAt: number | null;
   canRemove: boolean;
@@ -852,6 +854,8 @@ export interface PortalPasskey {
   aaguid: string | null;
   /** The browser it was added from ("Safari on macOS"). */
   addedFrom: string | null;
+  /** The name its holder gave it (PX-W19), or null; absent on an older Worker. */
+  name?: string | null;
   canRemove?: boolean;
   reason?: PortalRemoveRefusal | null;
 }
@@ -1225,6 +1229,17 @@ export const portalApi = {
       `/api/me/methods/${enc(id)}`,
       { method: "DELETE" },
     ),
+  /** Make a verified email the primary (PX-W19; step-up). The answer is the methods list. */
+  makePrimary: (methodId: string) =>
+    call<PortalMethods>(`/api/me/methods/${enc(methodId)}/primary`, {
+      method: "POST",
+    }),
+  /** Name a passkey, or clear its name with `null` (PX-W19; step-up). */
+  renamePasskey: (passkeyId: string, name: string | null) =>
+    call<{ passkeys: PortalPasskey[] }>(`/api/me/passkeys/${enc(passkeyId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
   /** A passkey sign-in's challenge: how the account page confirms it's you (step-up). */
   passkeySignInOptions: () =>
     call<PortalPasskeyOptions>("/api/signin/passkey/options", {

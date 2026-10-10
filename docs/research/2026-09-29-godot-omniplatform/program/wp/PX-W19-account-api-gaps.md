@@ -175,6 +175,17 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Built (2026-10-10)
+
+- Confirmed against the code: every email link is written verified (`signIn` email kind, the
+  provider fast path, `connect` after its code), so Make primary needs no extra verified check. A
+  merge moves passkey rows whole (`UPDATE account_passkeys SET account_id`), so `name` travels.
+- Migration placeholder: `packages/worker/migrations/00XX_account_passkeys_name.sql`.
+- PX-25's controls are in this branch: `RowTools.tsx` (Make primary, Rename), `productCount` text
+  on email rows. Controls show only when the Worker sends `productCount` / `name`. The committed
+  account baselines are unchanged (their fixture has neither field); new e2e frames
+  `account-methods-w19-*` are not baselined.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`;

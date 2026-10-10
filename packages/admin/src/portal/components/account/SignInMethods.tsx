@@ -36,6 +36,7 @@ import {
   methodIdentity,
   passkeyName,
   passkeyProvider,
+  plural,
   remainingAfter,
   stepUpFresh,
 } from "../../model/methods.js";
@@ -61,6 +62,11 @@ import {
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "../product/Card.js";
 import { MethodRow } from "./MethodRow.js";
+import {
+  MakePrimaryTool,
+  RenamePasskeyTool,
+  type ToolSlots,
+} from "./RowTools.js";
 import { StepUp } from "./StepUp.js";
 
 /**
@@ -300,12 +306,18 @@ function MethodGroups({
       consequence: string;
       doneText: string;
       notice?: React.ReactNode;
+      /** Wraps the row with an action beside Remove (Make primary, Rename). */
+      tool?: (
+        render: (slots: ToolSlots) => React.ReactElement,
+      ) => React.ReactElement;
     },
   ): React.ReactElement => {
     const left = remainingAfter(view.methods, m.id);
-    return (
+    const row = (slots?: ToolSlots): React.ReactElement => (
       <MethodRow
         key={m.id}
+        actions={slots?.action}
+        extra={slots?.panel}
         id={m.id}
         {...common}
         icon={shape.icon}
@@ -338,6 +350,7 @@ function MethodGroups({
         doneText={shape.doneText}
       />
     );
+    return shape.tool ? shape.tool(row) : row();
   };
 
   return (
@@ -442,8 +455,26 @@ function MethodGroups({
               name: e.email,
               keepLabel: "Keep it",
               guardName: "this email",
+              tool:
+                e.primary || e.productCount === undefined
+                  ? undefined
+                  : (render) => (
+                      <MakePrimaryTool
+                        key={m.id}
+                        methodId={e.methodId}
+                        email={e.email}
+                        focusAfter={focusGroup("email")}
+                        {...common}
+                        returnTo={returnTo({})}
+                      >
+                        {render}
+                      </MakePrimaryTool>
+                    ),
               meta: [
                 e.primary ? "Primary" : null,
+                e.productCount
+                  ? `brought in ${plural(e.productCount, "product", "products")}`
+                  : null,
                 `added ${formatDate(e.connectedAt * 1000)}`,
                 e.lastUsedAt
                   ? `last used ${formatRelative(e.lastUsedAt * 1000)}`
@@ -485,6 +516,21 @@ function MethodGroups({
                 name: which,
                 keepLabel: "Keep it",
                 guardName: "this passkey",
+                tool:
+                  p && p.name !== undefined
+                    ? (render) => (
+                        <RenamePasskeyTool
+                          key={m.id}
+                          passkeyId={p.id}
+                          current={p.name ?? ""}
+                          what={which}
+                          {...common}
+                          returnTo={returnTo({})}
+                        >
+                          {render}
+                        </RenamePasskeyTool>
+                      )
+                    : undefined,
                 meta: p ? passkeyMeta(p) : methodMeta(m),
                 verb: "Remove",
                 consequence: `You won't sign in with ${which} any more. It stays on your device until you delete it there.`,
@@ -521,7 +567,7 @@ function methodMeta(m: PortalMethod): string {
 }
 
 function passkeyMeta(p: PortalPasskey): string {
-  const named = passkeyProvider(p.aaguid) !== null;
+  const named = Boolean(p.name?.trim()) || passkeyProvider(p.aaguid) !== null;
   return [
     `Added ${formatDate(p.createdAt * 1000)}`,
     p.lastUsedAt

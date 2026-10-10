@@ -63,6 +63,10 @@ export interface MethodRowProps {
   focusAfter: () => void;
   /** What to call the method when it's gone ("Steam was disconnected"). */
   doneText: string;
+  /** Buttons beside Remove (Make primary, Rename), hidden while the removal panel is open. */
+  actions?: React.ReactNode;
+  /** A panel under the row, for an action in `actions`. */
+  extra?: React.ReactNode;
 }
 
 export function MethodRow({
@@ -86,6 +90,8 @@ export function MethodRow({
   initiallyOpen = false,
   focusAfter,
   doneText,
+  actions,
+  extra,
 }: MethodRowProps): React.ReactElement {
   const [open, setOpen] = React.useState(initiallyOpen);
   const [needsStepUp, setNeedsStepUp] = React.useState(false);
@@ -155,24 +161,28 @@ export function MethodRow({
           {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
         </div>
         {open ? null : (
-          <Button
-            ref={buttonRef}
-            variant="ghost"
-            className="ml-auto h-10 font-medium"
-            aria-disabled={guarded || undefined}
-            aria-describedby={guarded ? reasonId : undefined}
-            aria-expanded={guarded ? undefined : false}
-            aria-controls={guarded ? undefined : panelId}
-            aria-label={`${verb} ${name}`}
-            onClick={() => {
-              if (guarded) return;
-              setOpen(true);
-            }}
-          >
-            {verb}
-          </Button>
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            {actions}
+            <Button
+              ref={buttonRef}
+              variant="ghost"
+              className="h-10 font-medium"
+              aria-disabled={guarded || undefined}
+              aria-describedby={guarded ? reasonId : undefined}
+              aria-expanded={guarded ? undefined : false}
+              aria-controls={guarded ? undefined : panelId}
+              aria-label={`${verb} ${name}`}
+              onClick={() => {
+                if (guarded) return;
+                setOpen(true);
+              }}
+            >
+              {verb}
+            </Button>
+          </div>
         )}
       </div>
+      {open ? null : extra}
       {notice ? (
         <p className="mt-2 text-sm text-warning sm:pl-13">{notice}</p>
       ) : null}
