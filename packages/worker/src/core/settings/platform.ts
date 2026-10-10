@@ -17,6 +17,7 @@
 import {
   DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
   DEFAULT_RESERVED_NAMES_MODE,
+  IDENTITY_KEY_ENTRY_LIMIT,
 } from "@polaris-key/manifest";
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
@@ -30,10 +31,13 @@ export const LAZY_DELTA_MAX_BYTES_CEILING = 33_554_432;
 /** The lowest runtime per-side cap (1 MiB): below it no delta could save `MIN_SAVING_BYTES`. */
 export const LAZY_DELTA_MAX_BYTES_FLOOR = 1_048_576;
 
-/** I-04 §8 Q7: the key-entry limit is 1–100, default 10, and never unlimited while Identity is on. */
-export const KEY_ENTRY_LIMIT_MIN = 1;
-export const KEY_ENTRY_LIMIT_MAX = 100;
-export const KEY_ENTRY_LIMIT_DEFAULT = 10;
+/**
+ * I-04 §8 Q7: the key-entry limit is 1–100, default 10, and never unlimited while Identity is on.
+ * The manifest rule `invalid_identity_key_entry_limit` uses the same numbers (I-09).
+ */
+export const KEY_ENTRY_LIMIT_MIN = IDENTITY_KEY_ENTRY_LIMIT.min;
+export const KEY_ENTRY_LIMIT_MAX = IDENTITY_KEY_ENTRY_LIMIT.max;
+export const KEY_ENTRY_LIMIT_DEFAULT = IDENTITY_KEY_ENTRY_LIMIT.default;
 
 /** The console's offline-window bound (`admin/lib/writeChecks.ts` `MAX_OFFLINE_DAYS`; a test pins them). */
 export const OFFLINE_DAYS_MAX = 365;

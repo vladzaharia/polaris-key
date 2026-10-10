@@ -13,7 +13,13 @@ import { describe, expect, it } from "vitest";
 import { THEME_TOKENS } from "@polaris-key/brand";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  setClaimByKey,
+} from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { setServices } from "../src/repo.js";
@@ -22,7 +28,6 @@ import { handlePortalApi } from "./portalHarness.js";
 import {
   linkEmail,
   getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
@@ -447,7 +452,7 @@ describe("security notices reach every verified address", () => {
     const { env, sent } = portalEnv();
     await namedProduct(db, false);
     // The licence carries ada@example.com; claimByKey lets another address add it (PX-W5).
-    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
+    await setClaimByKey(db, "djdl", true);
     const { key } = await seedLicenseWithKey(db, "djdl");
     const s = await session(env, db, "someone@example.com");
     const res = await handlePortalApi(

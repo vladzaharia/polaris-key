@@ -39,6 +39,8 @@ const WRITE_PATH = [
   "core/settings/write.ts",
   "core/settings/columns.ts",
   "services/release/settingsColumns.ts",
+  // I-09: Identity's adapter for `identity.keyEntry.claimByKey` (`portal_product_settings`).
+  "services/identity/settingsColumns.ts",
 ] as const;
 
 /** A-13's store (`writePlatformSetting`), the platform-settings route's own versioned path. */
@@ -78,6 +80,10 @@ const MANIFEST_WRITERS: Readonly<
   "core/rowSettings.ts": {
     why: "the row-backed settings' manifest rows at link and resync (LX-06), claim-guarded in SQL",
     functions: ["manifestRowSettingStatements"],
+  },
+  "services/identity/settings.ts": {
+    why: "identity.keyEntry.claimByKey's manifest value at link and resync (I-09), claim-guarded in SQL",
+    functions: ["manifestClaimByKeyStatements"],
   },
   "core/settingsClaims.ts": {
     why: "the end of a break-glass claim at an apply (ST-20): the claim row goes in the apply's batch",

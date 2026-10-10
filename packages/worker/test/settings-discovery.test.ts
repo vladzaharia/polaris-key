@@ -30,6 +30,7 @@ import { resolveProductSetting } from "../src/core/settings/resolve.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
 import { parseManualChannels } from "../src/services/release/channels.js";
 import { setServices } from "../src/repo.js";
+import { keyEntryLimit } from "../src/core/keyEntries.js";
 
 interface Probe {
   /** A value to write that differs from the seeded product's. */
@@ -181,6 +182,35 @@ const PROBES: Readonly<Record<string, Probe>> = {
     },
     published: (doc) => ({ accent: doc.core.presentation?.accent }),
     enforced: (p) => ({ accent: p.presentation?.accent }),
+  },
+  // I-09 (WIRE-CONTRACT-V4 §12.6): the Identity fragment's `keyEntryLimit` is the limit key entry
+  // enforces (`core/keyEntries.ts` `keyEntryLimit()`). The probe turns Identity on and writes the
+  // row the manifest's `identity.keyEntry.limit` seeds at link and resync.
+  "identity.keyEntry.limit": {
+    value: 7,
+    seed: async (db, slug) => {
+      await setServices(
+        db,
+        slug,
+        JSON.stringify(
+          servicesFrom((s) => ["license", "config", "identity"].includes(s)),
+        ),
+        "manifest",
+        NOW,
+      );
+      await db.run(
+        `INSERT INTO product_settings (product, key, value_json, source, updated_at, updated_by)
+         VALUES (?, 'identity.keyEntry.limit', '7', 'manifest', ?, 'resync')`,
+        slug,
+        NOW,
+      );
+    },
+    published: (doc) => doc.services.identity.keyEntryLimit,
+    enforced: (p, db) =>
+      keyEntryLimit(
+        { env: makeEnv(new KvMock(), [p.slug]), db, registry: SETTINGS },
+        p.slug,
+      ),
   },
   "release.sparkleEd25519Pub": {
     value: "SPARKLEPUB",

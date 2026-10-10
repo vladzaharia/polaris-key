@@ -19,6 +19,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  setClaimByKey,
 } from "./seed.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { handlePortalApi } from "./portalHarness.js";
@@ -41,10 +42,7 @@ import {
 } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleBrowserSessionLicense } from "../src/services/identity/browserSession.js";
-import {
-  getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -628,7 +626,7 @@ describe("portal entries", () => {
   it("the signed-in preview reports keyEntries; the claim records one portal entry; already_yours none", async () => {
     await setIdentity(true);
     const { key, licenseId } = await seedLicenseWithKey(db, SLUG);
-    await upsertPortalProductSettings(db, SLUG, { claimByKey: true }, NOW);
+    await setClaimByKey(db, SLUG, true);
     const s = await portalSession("bob@example.com");
 
     const preview = await portal("/api/activate/preview", { key }, s);
@@ -660,7 +658,7 @@ describe("portal entries", () => {
   it("a claim past the limit still commits and writes its row (never refused)", async () => {
     await setIdentity(true);
     const { key, licenseId } = await seedLicenseWithKey(db, SLUG);
-    await upsertPortalProductSettings(db, SLUG, { claimByKey: true }, NOW);
+    await setClaimByKey(db, SLUG, true);
     await setLimit(1);
     await setRefusals(true);
     await db.run(
@@ -679,7 +677,7 @@ describe("portal entries", () => {
   it("Identity off: the previews answer keyEntries null and the claim counts nothing", async () => {
     await setIdentity(false);
     const { key, licenseId } = await seedLicenseWithKey(db, SLUG);
-    await upsertPortalProductSettings(db, SLUG, { claimByKey: true }, NOW);
+    await setClaimByKey(db, SLUG, true);
     const s = await portalSession("bob@example.com");
     expect(
       await (await portal("/api/activate/preview", { key }, s)).json(),

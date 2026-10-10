@@ -17,6 +17,7 @@ import { hashKey, mintLicenseKey } from "../src/crypto.js";
 import { seal } from "../src/keyvault.js";
 import { parseServices } from "../src/core/services.js";
 import { readIdentityIssuance } from "../src/core/identityTrust.js";
+import { IDENTITY_COLUMN_ADAPTERS } from "../src/services/identity/settingsColumns.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
 import { makeSingleUseNamespace } from "./singleUseMock.js";
@@ -382,4 +383,26 @@ export async function stagePackObjects(
   const res = await post("stage", { ticket: body.ticket, deliverable });
   if (res.status !== 200)
     throw new Error(`stage: stage ${res.status} ${await res.text()}`);
+}
+
+/**
+ * I-09: set a product's `identity.keyEntry.claimByKey` (`portal_product_settings.claim_by_key`)
+ * through its column adapter, the statements `writeSetting()` runs for a console write, without the
+ * claim row and the audit around them.
+ */
+export async function setClaimByKey(
+  db: Db,
+  product: string,
+  on: boolean,
+  at: number = NOW,
+): Promise<void> {
+  const adapter = IDENTITY_COLUMN_ADAPTERS["identity.keyEntry.claimByKey"]!;
+  for (const stmt of adapter.set!({
+    product,
+    at,
+    by: "test",
+    guard: { sql: "1", params: [] },
+    value: on,
+  }))
+    await db.run(stmt.sql, ...stmt.params);
 }

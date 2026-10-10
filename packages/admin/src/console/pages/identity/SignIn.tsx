@@ -45,6 +45,7 @@ import { qk } from "../../data/queries.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
+import { ClaimByKeyWarning } from "./ClaimByKeyWarning.js";
 import { releaseSourceOf } from "../../../lib/products.js";
 import {
   ProductSettingsSection,
@@ -493,6 +494,7 @@ function SignInThroughForm({
           <SettingsRow
             label="Add by key without the purchase email"
             help="Off: a license that carries an email joins only an account with that email verified."
+            footer={settings.claimByKey ? <ClaimByKeyWarning /> : undefined}
           >
             <span className="flex flex-wrap items-center justify-end gap-3 text-sm">
               <span>{settings.claimByKey ? "On" : "Off"}</span>

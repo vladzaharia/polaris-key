@@ -789,15 +789,15 @@ export type PortalSettingsPatch = Partial<{
   /** `null` restores "auto" (derived from the product's OIDC issuer) — R5-01/R5-02. */
   autoLinkEnabled: boolean | null;
   keyReissueEnabled: boolean;
-  claimByKey: boolean;
   branding: unknown;
 }>;
 
 /**
  * The upsert of a product's portal switches and branding, as one statement (`guard`, when given,
  * is ANDed in so it can ride in a `writeSetting()` batch). The listing columns
- * (`discover_enabled`, `store_*`) are NOT named here: they are registry settings, written only
- * through `writeSetting()` (ST-04), and a new row takes their column defaults.
+ * (`discover_enabled`, `store_*`) and `claim_by_key` (I-09's `identity.keyEntry.claimByKey`) are
+ * NOT named here: they are registry settings, written only through `writeSetting()` (ST-04), and a
+ * new row takes their column defaults.
  */
 export function stmtUpsertPortalProductSettings(
   current: PortalProductSettingsRow,
@@ -829,7 +829,6 @@ export function stmtUpsertPortalProductSettings(
       patch.keyReissueEnabled,
       current.key_reissue_enabled,
     ),
-    claim_by_key: flag(patch.claimByKey, current.claim_by_key),
     branding_json:
       patch.branding === undefined
         ? current.branding_json
@@ -841,8 +840,8 @@ export function stmtUpsertPortalProductSettings(
     sql: `INSERT INTO portal_product_settings
        (product, portal_enabled, oidc_enabled, magic_enabled,
         license_key_claim_enabled, releases_enabled, auto_link_enabled,
-        key_reissue_enabled, claim_by_key, branding_json, created_at, modified_at)
-     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
+        key_reissue_enabled, branding_json, created_at, modified_at)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
        oidc_enabled = excluded.oidc_enabled,
@@ -851,7 +850,6 @@ export function stmtUpsertPortalProductSettings(
        releases_enabled = excluded.releases_enabled,
        auto_link_enabled = excluded.auto_link_enabled,
        key_reissue_enabled = excluded.key_reissue_enabled,
-       claim_by_key = excluded.claim_by_key,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     params: [
@@ -863,7 +861,6 @@ export function stmtUpsertPortalProductSettings(
       next.releases_enabled,
       next.auto_link_enabled,
       next.key_reissue_enabled,
-      next.claim_by_key,
       next.branding_json,
       current.created_at || now,
       now,

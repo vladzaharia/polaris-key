@@ -123,7 +123,10 @@ export async function handlePortal(
   if (clean === "/login") return handlePortalLogin(req, env, db, now);
   // I-06: Google, Apple and Steam on the login card (`../providers/flow.ts`).
   if (clean.startsWith("/login/")) {
-    return handleProviderSignInPath(req, env, db, clean, { now });
+    return handleProviderSignInPath(req, env, db, clean, {
+      now,
+      settings: opts.settings,
+    });
   }
   if (clean === "/callback") return handlePortalCallback(req, env, db, now);
   if (clean === "/logout") return handlePortalLogout(req, env, db, now);

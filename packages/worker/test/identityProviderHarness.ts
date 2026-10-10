@@ -28,6 +28,7 @@ import { resetProviderCaches } from "../src/services/identity/providers/discover
 import { handlePortal } from "../src/services/identity/portal/index.js";
 import { SIGNIN_BIND_COOKIE } from "../src/services/identity/providers/flow.js";
 import { EMAIL_GATE_COOKIE } from "../src/core/accountCookies.js";
+import { SETTINGS } from "../src/mount.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ORIGIN = "https://key.plrs.im";
@@ -226,7 +227,10 @@ export async function makeProviderHarness(
       if (init.cookie) headers.set("cookie", init.cookie);
       const req = new Request(`${ORIGIN}${path}`, { ...init, headers });
       const pathname = new URL(req.url).pathname;
-      return handlePortal(req, env, db, pathname, { now: nowSec() });
+      return handlePortal(req, env, db, pathname, {
+        now: nowSec(),
+        settings: SETTINGS,
+      });
     },
     async start(kind, returnTo) {
       const qs = returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : "";

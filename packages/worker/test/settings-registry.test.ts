@@ -538,12 +538,12 @@ describe("the registry rules refuse", () => {
     };
     expect(
       issuesWith("identity", [
-        product("identity.redirectPaths", "identity", base),
+        product("identity.exampleRedirects", "identity", base),
       ]),
     ).toEqual([]);
     expect(
       issuesWith("identity", [
-        product("identity.redirectPaths", "identity", {
+        product("identity.exampleRedirects", "identity", {
           ...base,
           critical: false,
         }),
@@ -551,7 +551,7 @@ describe("the registry rules refuse", () => {
     ).toEqual([expect.stringMatching(/is critical \(rule 2\)/)]);
     expect(
       issuesWith("identity", [
-        product("identity.redirectPaths", "identity", {
+        product("identity.exampleRedirects", "identity", {
           ...base,
           confirm: { change: "L0" },
         }),
@@ -559,7 +559,7 @@ describe("the registry rules refuse", () => {
     ).toEqual([expect.stringMatching(/at least L1/)]);
     expect(
       issuesWith("identity", [
-        product("identity.redirectPaths", "identity", {
+        product("identity.exampleRedirects", "identity", {
           ...base,
           securityWidening: false,
         }),

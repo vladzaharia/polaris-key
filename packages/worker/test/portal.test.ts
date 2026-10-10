@@ -8,6 +8,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  setClaimByKey,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
@@ -24,10 +25,7 @@ import {
 import { sweepErasures } from "../src/services/identity/accounts/deletion.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";
-import {
-  getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
   handlePortalApi,
   handlePortalDownload,
@@ -200,7 +198,7 @@ describe("customer portal", () => {
     const { licenseId, key } = await seedLicenseWithKey(db, "djdl");
     // The seeded licence carries ada@example.com and this account signed in as someone else, so
     // the S-16 email rule (PX-W5) would refuse it; this product opts into claim by key.
-    await upsertPortalProductSettings(db, "djdl", { claimByKey: true }, NOW);
+    await setClaimByKey(db, "djdl", true);
     const session = await portalSession(env, db, "someone@example.com");
 
     const claimed = await handlePortalApi(

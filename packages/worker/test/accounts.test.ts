@@ -17,6 +17,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  setClaimByKey,
 } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
@@ -58,7 +59,6 @@ import {
   removeProductData,
 } from "../src/services/identity/accounts/deletion.js";
 import { resolveAccount } from "../src/services/identity/accounts/repo.js";
-import { upsertPortalProductSettings } from "../src/services/identity/portal/repo.js";
 
 const ISSUER = "https://id.example";
 
@@ -639,7 +639,7 @@ describe("licence claim rules", () => {
     ).toMatchObject({ ok: false, reason: "license_email_bound" });
     expect(w.sent).toEqual([]);
 
-    await upsertPortalProductSettings(w.db, "acme", { claimByKey: true }, NOW);
+    await setClaimByKey(w.db, "acme", true);
     const ok = await attachLicense(w.ctx(), {
       accountId: a.account.id,
       product: "acme",
