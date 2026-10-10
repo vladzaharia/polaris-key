@@ -42,7 +42,6 @@ import {
   HEADER_SDK_VERSION,
   HEADER_VERSION,
 } from "@polaris-key/protocol";
-import type { Route } from "../router.js";
 
 /** Every method a covered route answers. `OPTIONS` itself never needs listing. */
 export const CORS_ALLOW_METHODS = "GET, POST, PATCH, DELETE";
@@ -160,7 +159,7 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
 /** Core route kinds that answer CORS. The attestation routes (P6-02) are not among them: no
  *  browser can attest (App Attest and Play Integrity are native-only), so a cross-origin
  *  attest request has nothing to reach. */
-const CORS_CORE_KINDS: ReadonlySet<Route["kind"]> = new Set<Route["kind"]>([
+const CORS_CORE_KINDS: ReadonlySet<string> = new Set<string>([
   "discovery",
   "jwks",
   "trustManifest",
@@ -181,11 +180,22 @@ function matchesTemplate(template: string[], segments: string[]): boolean {
   });
 }
 
+/**
+ * What CORS reads of a matched route (`Route` in `router.ts`): its kind, and a service route's
+ * slug and path. Structural, so Core never imports the composition root (P0-17).
+ */
+export interface CorsRoute {
+  kind: string;
+  slug?: string;
+  rest?: readonly string[];
+}
+
 /** Does this route answer CORS at all? Decided from the path shape alone. */
-export function isCorsCoveredRoute(route: Route): boolean {
+export function isCorsCoveredRoute(route: CorsRoute): boolean {
   if (CORS_CORE_KINDS.has(route.kind)) return true;
   if (route.kind !== "service") return false;
-  const segments = [route.slug, ...route.rest];
+  // A service route always carries both (`router.ts`).
+  const segments = [route.slug!, ...route.rest!];
   return SERVICE_TEMPLATES.some((t) => matchesTemplate(t, segments));
 }
 

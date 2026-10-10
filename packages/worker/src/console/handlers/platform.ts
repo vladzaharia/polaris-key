@@ -67,7 +67,7 @@ import { handleFeedsAdmin } from "./feeds.js";
 import { platformAudit } from "../../core/console/audit.js";
 import { operationsSnapshot } from "../../core/ops/operations.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
-import { platformMigrationReport } from "../../services/identity/accounts/platformMigration.js";
+import { platformMigrationReport } from "../../services/identity/public.js";
 import { handleOverrideMigration } from "./overrideMigration.js";
 import { parseJsonColumn } from "../../platform/json.js";
 

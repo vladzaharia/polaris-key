@@ -21,7 +21,7 @@ import {
   ALLOWED_ID_TOKEN_ALGS,
   ID_TOKEN_CLOCK_TOLERANCE,
   ID_TOKEN_MAX_AGE,
-} from "../services/identity/idToken.js";
+} from "../services/identity/public.js";
 import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../platform/crypto.js";

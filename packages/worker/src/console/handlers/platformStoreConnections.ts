@@ -96,29 +96,29 @@ import {
   PlatformStoreNotConfigured,
   PlatformStoreUnavailable,
   type PlatformAppsListing,
-} from "../../services/distribution/connectors/platformApps.js";
+} from "../../services/distribution/public.js";
 import {
   checkAscApiKey,
   listPlatformAscApps,
-} from "../../services/distribution/connectors/asc/platform.js";
+} from "../../services/distribution/public.js";
 import {
   checkPlayServiceAccount,
   listPlatformPlayApps,
-} from "../../services/distribution/connectors/play/platform.js";
+} from "../../services/distribution/public.js";
 import {
   checkMsPartnerCenter,
   listPlatformMsStoreApps,
-} from "../../services/distribution/connectors/msstore/platform.js";
+} from "../../services/distribution/public.js";
 import {
   checkSteamPublisherKey,
   listPlatformSteamApps,
-} from "../../services/distribution/commerce/steam.js";
+} from "../../services/distribution/public.js";
 import {
   checked,
   credentialCheckAllowed,
   formatFailure,
   type CredentialCheck,
-} from "../../services/distribution/connectors/credentialCheck.js";
+} from "../../services/distribution/public.js";
 import { storefrontAdapter } from "../../core/storefront/adapter.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../../core/console/session.js";

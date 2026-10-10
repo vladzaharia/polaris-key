@@ -42,11 +42,11 @@ import {
   type GithubAppInfo,
   type GithubInstallation,
   type GithubRepository,
-} from "../../services/release/githubApp.js";
+} from "../../services/release/public.js";
 import {
   parseRepoUrl,
   productsByRepository,
-} from "../../services/release/linkRepo.js";
+} from "../../services/release/public.js";
 import { secret } from "../../platform/env.js";
 
 /** How long the App's inventory and a page's probe stay fresh, in seconds. */

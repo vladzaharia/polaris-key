@@ -52,14 +52,14 @@ import {
 } from "../../core/storefront/projection.js";
 import { GROUP_NAME_MAX } from "../../core/storefront/polarisKeyListing.js";
 import { SERVICES } from "../../mount.js";
-import { readListing } from "../../services/distribution/listing/store.js";
-import { storefrontTileView } from "../../services/identity/portal/discover.js";
-import { storefrontAnalytics } from "../../services/identity/portal/store/analytics.js";
-import { polarisKeyStatus } from "../../services/identity/portal/store/panelStatus.js";
+import { readListing } from "../../services/distribution/public.js";
+import { storefrontTileView } from "../../services/identity/public.js";
+import { storefrontAnalytics } from "../../services/identity/public.js";
+import { polarisKeyStatus } from "../../services/identity/public.js";
 import {
   previewPersona,
   type Persona,
-} from "../../services/identity/portal/store/obtain.js";
+} from "../../services/identity/public.js";
 import type { AdminSession } from "../../core/console/session.js";
 import { audit } from "../../core/console/audit.js";
 import {

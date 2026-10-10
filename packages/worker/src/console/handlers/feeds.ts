@@ -79,21 +79,21 @@ import {
   RENDER_ALL,
   stmtEnqueuePackageRender,
 } from "../../core/registry/registryQueue.js";
-import { packageFeedsOf } from "../../services/distribution/registryFeeds.js";
+import { packageFeedsOf } from "../../services/distribution/public.js";
 import { handleRegistryTokensAdmin } from "./registryTokens.js";
-import { forgetRegistrySettings } from "../../services/distribution/registry/settings.js";
-import { packageCatalog } from "../../services/release/packages/catalog.js";
+import { forgetRegistrySettings } from "../../services/distribution/public.js";
+import { packageCatalog } from "../../services/release/public.js";
 import {
   pruneRetentionOf,
   prunePackages,
   setPruneRetention,
-} from "../../services/release/packages/prune.js";
+} from "../../services/release/public.js";
 import {
   setPackageDeprecation,
   unyank,
   yank,
   type PolicyRefusal,
-} from "../../services/release/policy.js";
+} from "../../services/release/public.js";
 import {
   ECOSYSTEM_LABELS,
   FEED_ACCESS_MODES,

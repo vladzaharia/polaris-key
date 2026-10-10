@@ -22,7 +22,7 @@ import type { Db } from "../../db/types.js";
 import type { ProductRow } from "../../core/repo.js";
 import { serviceStateOf } from "../../core/services.js";
 import { STOREFRONT_ADAPTERS } from "../../core/storefront/adapter.js";
-import { countListedUsersByProduct } from "../../services/identity/accounts/productUsers.js";
+import { countListedUsersByProduct } from "../../services/identity/public.js";
 
 export interface ProductSummary {
   license?: { active: number };

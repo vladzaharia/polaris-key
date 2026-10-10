@@ -50,7 +50,7 @@ import {
   stmtUpsertManifestPublisher,
 } from "../core/publisher.js";
 import { stmtInsertReleaseConfig } from "../core/repo.js";
-import { manifestDeliverableStatements } from "../services/release/deliverables.js";
+import { manifestDeliverableStatements } from "../services/release/public.js";
 import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
 import {
   claimsForApply,
@@ -59,7 +59,7 @@ import {
   type BreakGlassClaim,
   type ClaimKey,
 } from "../core/settingsClaims.js";
-import { isSafeBinaryName } from "../services/release/install.js";
+import { isSafeBinaryName } from "../services/release/public.js";
 import {
   stmtEnqueuePackageRender,
   RENDER_ALL,
@@ -67,7 +67,7 @@ import {
 import {
   stmtEnsureFeed,
   stmtSetPackageFeeds,
-} from "../services/distribution/registryFeeds.js";
+} from "../services/distribution/public.js";
 
 /** The platform feeds' namespaces and extensions (plans/F-01.md §6.7, §5.3). */
 export const SYSTEM_FEEDS = [

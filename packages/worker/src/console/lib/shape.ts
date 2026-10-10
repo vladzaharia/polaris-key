@@ -17,18 +17,18 @@ import { serviceStateOf } from "../../core/services.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
-} from "../../services/identity/portal/repo.js";
-import { shipsDmgs } from "../../services/release/config.js";
-import { packageFeedsOf } from "../../services/distribution/registryFeeds.js";
-import { latestReleaseHasDmg } from "../../services/release/store.js";
-import { readAppDeliverable } from "../../services/release/descriptor.js";
-import { hasArtifactMap } from "../../services/release/artifactMap.js";
+} from "../../services/identity/public.js";
+import { shipsDmgs } from "../../services/release/public.js";
+import { packageFeedsOf } from "../../services/distribution/public.js";
+import { latestReleaseHasDmg } from "../../services/release/public.js";
+import { readAppDeliverable } from "../../services/release/public.js";
+import { hasArtifactMap } from "../../services/release/public.js";
 import {
   approvalMismatch,
   listEdgeMintRecipesWithApprovals,
   mintApprovalBasis,
   type MintPolicyProduct,
-} from "../../services/config/mint.js";
+} from "../../services/config/public.js";
 import { parseAutoIssue } from "../../platform/fingerprint.js";
 import {
   productIcons,

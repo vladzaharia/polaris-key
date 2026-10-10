@@ -75,7 +75,7 @@ import {
   type BundlePlatform,
   type TeamWriteContext,
 } from "../../core/ascProvisioning.js";
-import { platformAscClient } from "../../services/distribution/connectors/asc/platform.js";
+import { platformAscClient } from "../../services/distribution/public.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,

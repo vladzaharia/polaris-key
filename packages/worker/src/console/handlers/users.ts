@@ -63,8 +63,8 @@ import {
   undoRelink,
   type HolderMoveResult,
   type RelinkRefusal,
-} from "../../services/identity/accounts/productUsers.js";
-import type { AccountContext } from "../../services/identity/accounts/links.js";
+} from "../../services/identity/public.js";
+import type { AccountContext } from "../../services/identity/public.js";
 import { audit } from "../../core/console/audit.js";
 import {
   adminJson,

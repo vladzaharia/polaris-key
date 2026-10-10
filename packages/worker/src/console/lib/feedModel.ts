@@ -23,7 +23,7 @@ import {
   feedCapabilityView,
   requireFeedAdapter,
   type FeedCapabilityView,
-} from "../../services/distribution/registry/index.js";
+} from "../../services/distribution/public.js";
 
 /** What one ecosystem's protocol can express, as the admin API exposes it. */
 export type FeedCapabilities = FeedCapabilityView;

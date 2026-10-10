@@ -74,9 +74,9 @@ import {
   type LegacyKey,
   type Sealed,
 } from "../../platform/keyvault.js";
-import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
-import { SIGNIN_ENV } from "../../services/identity/providers/config.js";
-import { checkSlug, prepareCreate } from "../../services/release/linkRepo.js";
+import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/public.js";
+import { SIGNIN_ENV } from "../../services/identity/public.js";
+import { checkSlug, prepareCreate } from "../../services/release/public.js";
 import { manifestIngestFor } from "../../core/registry.js";
 import { SERVICES, SETTINGS } from "../../mount.js";
 import {

@@ -75,13 +75,13 @@ import {
 } from "../core/settingsClaims.js";
 import { isManagedSecretKey } from "../core/managedSecrets.js";
 import { SETTINGS } from "../mount.js";
-import type { FetchImpl } from "../services/release/githubApp.js";
+import type { FetchImpl } from "../services/release/public.js";
 import {
   readLinkedManifest,
   screenCatalog,
   withStoredSecrets,
-} from "../services/release/resync.js";
-import { readManifestFilesAt } from "../services/release/manifestFetch.js";
+} from "../services/release/public.js";
+import { readManifestFilesAt } from "../services/release/public.js";
 
 export interface BackfillRunOptions {
   dryRun: boolean;
