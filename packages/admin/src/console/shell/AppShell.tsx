@@ -316,7 +316,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               e.preventDefault();
               document.getElementById("content")?.focus();
             }}
-            className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-bold focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:ring-2 focus:ring-focus"
+            className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:ring-2 focus:ring-focus"
           >
             Skip to content
           </a>
@@ -379,7 +379,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
             >
               <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-                <DialogPrimitive.Title className="text-sm font-bold text-fg-strong">
+                <DialogPrimitive.Title className="text-sm font-semibold text-fg-strong">
                   Navigation
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Close

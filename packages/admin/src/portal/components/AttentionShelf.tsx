@@ -26,7 +26,7 @@ export function AttentionShelf({
     <section aria-labelledby="attention-h" className="space-y-4">
       <h2
         id="attention-h"
-        className="flex items-baseline gap-2 text-lg font-bold text-fg-strong"
+        className="flex items-baseline gap-2 text-lg font-semibold text-fg-strong"
       >
         Needs attention
         <span className="text-xs font-normal text-fg-muted">
@@ -49,7 +49,7 @@ export function AttentionShelf({
                 className="hidden h-[4.625rem] w-[8.25rem] shrink-0 rounded-lg @[22rem]:block"
               />
               <div className="min-w-0 flex-1 space-y-2">
-                <h3 className="font-bold text-fg-strong">
+                <h3 className="font-semibold text-fg-strong">
                   <a
                     href={href.product(product.slug)}
                     className="hover:underline"

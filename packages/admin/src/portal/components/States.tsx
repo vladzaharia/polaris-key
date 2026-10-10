@@ -31,7 +31,9 @@ export function ErrorPanel({
       )}
     >
       <AlertCircle aria-hidden className="size-6 text-danger" />
-      <Title className="text-lg font-bold text-fg-strong">{copy.title}</Title>
+      <Title className="text-lg font-semibold text-fg-strong">
+        {copy.title}
+      </Title>
       <p className="text-fg-muted">{copy.description}</p>
       {onRetry && copy.retry ? (
         <Button
@@ -62,7 +64,7 @@ export function StarScreen({
       className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-surface-page px-4 text-center text-fg"
     >
       <StationaryStar />
-      <h1 className="text-xl font-bold text-fg-strong">{title}</h1>
+      <h1 className="text-xl font-semibold text-fg-strong">{title}</h1>
       {children}
     </main>
   );

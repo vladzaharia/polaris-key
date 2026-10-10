@@ -87,7 +87,7 @@ export function AccountMenu({
                 {account.name && account.name !== account.email ? (
                   <span
                     dir="auto"
-                    className="truncate text-sm font-bold text-fg-strong"
+                    className="truncate text-sm font-medium text-fg-strong"
                   >
                     {account.name}
                   </span>

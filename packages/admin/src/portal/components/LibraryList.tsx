@@ -121,7 +121,7 @@ function LibraryRow({
       <td className="px-2 py-3">
         <a
           href={href.product(p.slug)}
-          className="font-bold text-fg-strong after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+          className="font-medium text-fg-strong after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
         >
           {p.name}
         </a>
@@ -132,7 +132,7 @@ function LibraryRow({
                 <span
                   data-cue="text"
                   className={cn(
-                    "inline-block font-bold text-accent-fg",
+                    "inline-block font-medium text-accent-fg",
                     cue.animate && "pk-pop-in",
                   )}
                 >
@@ -157,7 +157,7 @@ function LibraryRow({
       <td
         className={
           p.status.kind === "deviceLimit"
-            ? "hidden px-2 py-3 text-sm font-bold text-danger wide:table-cell"
+            ? "hidden px-2 py-3 text-sm font-medium text-danger wide:table-cell"
             : "hidden px-2 py-3 text-sm text-fg wide:table-cell"
         }
       >

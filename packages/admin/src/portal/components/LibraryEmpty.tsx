@@ -28,7 +28,7 @@ export function LibraryEmpty({
       <div className="order-2 flex flex-col gap-5 p-6 mid:order-1 mid:p-12">
         <h2
           id="empty-h"
-          className="text-2xl font-bold text-fg-strong desk:text-3xl"
+          className="text-2xl font-semibold text-fg-strong desk:text-3xl"
         >
           Nothing here yet
         </h2>
@@ -40,7 +40,7 @@ export function LibraryEmpty({
         <div className="flex flex-wrap gap-3">
           <Button
             size="lg"
-            className="h-12 font-bold"
+            className="h-12 font-medium"
             iconStart={<KeyRound aria-hidden />}
             onClick={() => activate.open()}
           >
@@ -59,7 +59,7 @@ export function LibraryEmpty({
           Bought with a different email or on Steam?{" "}
           <a
             href={href.account("methods")}
-            className="font-bold text-accent-fg hover:underline"
+            className="font-medium text-accent-fg hover:underline"
           >
             Add it in Account → Sign-in methods
           </a>

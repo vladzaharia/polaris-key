@@ -291,7 +291,7 @@ export function DiscardStrip({
         className,
       )}
     >
-      <p className="flex min-w-0 flex-1 items-center gap-2 font-bold text-fg-strong">
+      <p className="flex min-w-0 flex-1 items-center gap-2 font-medium text-fg-strong">
         <TriangleAlert aria-hidden className="size-4 shrink-0 text-warning" />
         Discard your changes? Nothing has been saved.
       </p>
@@ -445,7 +445,7 @@ export function Dialog({
               <DialogPrimitive.Title
                 ref={setTitle}
                 tabIndex={-1}
-                className="text-lg font-bold leading-tight text-fg-strong outline-hidden"
+                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden"
               >
                 {title}
               </DialogPrimitive.Title>

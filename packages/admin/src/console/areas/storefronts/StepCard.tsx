@@ -280,7 +280,9 @@ export function StepCard({
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 flex-[1_1_16rem] space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-bold text-fg-strong">{step.label}</h4>
+            <h4 className="text-sm font-semibold text-fg-strong">
+              {step.label}
+            </h4>
             <CapabilityBadge support={{ mode: step.mode }} />
           </div>
           {step.detail ? (

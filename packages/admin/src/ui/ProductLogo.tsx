@@ -117,7 +117,7 @@ export function ProductLogo({
           : undefined
       }
       className={cn(
-        "inline-grid shrink-0 select-none place-items-center border font-bold leading-none",
+        "inline-grid shrink-0 select-none place-items-center border font-medium leading-none",
         SIZE[size],
         RADIUS[size],
         LETTER[size],

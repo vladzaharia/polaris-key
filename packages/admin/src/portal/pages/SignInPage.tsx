@@ -191,7 +191,7 @@ function Title({
   return (
     <h1
       tabIndex={-1}
-      className="text-2xl font-bold text-fg-strong outline-none"
+      className="text-2xl font-semibold text-fg-strong outline-none"
     >
       {children}
     </h1>
@@ -380,7 +380,7 @@ function MethodsStep({
           <div className="space-y-1.5">
             <label
               htmlFor="pk-signin-email"
-              className="text-sm font-bold text-fg-strong"
+              className="text-sm font-medium text-fg-strong"
             >
               Email
             </label>
@@ -407,7 +407,7 @@ function MethodsStep({
           <Button
             type="submit"
             size="lg"
-            className="h-12 w-full text-base font-bold"
+            className="h-12 w-full text-base font-semibold"
             loading={sending}
             iconEnd={<ArrowRight aria-hidden />}
           >
@@ -632,7 +632,7 @@ function CodeStep({
         <p className="text-fg">
           {/* signin.code.sent */}
           We sent a code and a sign-in link to{" "}
-          <span className="font-bold text-fg-strong">{email}</span>. Both work
+          <span className="font-medium text-fg-strong">{email}</span>. Both work
           for 10 minutes.
         </p>
       </div>
@@ -645,7 +645,10 @@ function CodeStep({
         }}
       >
         <div className="space-y-1.5">
-          <label htmlFor={inputId} className="text-sm font-bold text-fg-strong">
+          <label
+            htmlFor={inputId}
+            className="text-sm font-medium text-fg-strong"
+          >
             Code
           </label>
           <CodeCells
@@ -672,7 +675,7 @@ function CodeStep({
         <Button
           type="submit"
           size="lg"
-          className="h-12 w-full text-base font-bold"
+          className="h-12 w-full text-base font-semibold"
           disabled={code.length !== CODE_LENGTH}
           loading={verifying}
         >
@@ -731,14 +734,14 @@ function RefusedStep({
         <Title>This account can't sign in</Title>
         <p className="text-fg">
           {/* signin.disabled.lede */}
-          <span className="font-bold text-fg-strong">{email}</span> belongs to
+          <span className="font-medium text-fg-strong">{email}</span> belongs to
           an account that can't sign in. Try a different email or another way to
           sign in.
         </p>
       </div>
       <Button
         size="lg"
-        className="h-12 w-full text-base font-bold"
+        className="h-12 w-full text-base font-semibold"
         onClick={onChangeEmail}
       >
         {/* signin.code.differentEmail */}
@@ -795,7 +798,7 @@ function KeyStep({
             check.kind === "valid" ? (
               <p className="text-sm text-fg-muted">
                 Key for{" "}
-                <span className="font-bold text-fg-strong">
+                <span className="font-medium text-fg-strong">
                   {productLabel(check.slug)}
                 </span>
               </p>
@@ -806,7 +809,7 @@ function KeyStep({
         <Button
           type="submit"
           size="lg"
-          className="h-12 w-full text-base font-bold"
+          className="h-12 w-full text-base font-semibold"
           iconEnd={<ArrowRight aria-hidden />}
         >
           Continue

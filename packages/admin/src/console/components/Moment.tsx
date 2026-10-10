@@ -182,7 +182,7 @@ export function MomentLine({
         <Celebration momentKey={key} size={20} />
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="font-bold text-fg-strong">{title}</p>
+        <p className="font-semibold text-fg-strong">{title}</p>
         {children ? <div className="text-fg-muted">{children}</div> : null}
       </div>
     </div>
@@ -219,7 +219,7 @@ export function MomentBanner({
           <Celebration momentKey={key} size={20} />
         </span>
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="font-bold text-fg-strong">{title}</p>
+          <p className="font-semibold text-fg-strong">{title}</p>
           {detail ? <p className="text-fg-muted">{detail}</p> : null}
         </div>
       </div>

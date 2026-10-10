@@ -455,7 +455,7 @@ export function ActivateDialog({
                     />
                     <span>
                       Key for{" "}
-                      <span className="font-bold text-fg-strong">
+                      <span className="font-medium text-fg-strong">
                         {nameFor(slug)}
                       </span>
                       {owned(slug) ? " · already in your library" : ""}
@@ -473,14 +473,14 @@ export function ActivateDialog({
           <DialogFooter>
             <Button
               variant="outline"
-              className="font-bold"
+              className="font-medium"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="font-bold"
+              className="font-medium"
               loading={preview.isPending || claim.isPending || leaving}
               disabled={check.kind === "empty" || blocksResend(serverVerdict)}
             >
@@ -514,7 +514,7 @@ function RefusalActions({
       <Button
         variant="ghost"
         size="sm"
-        className="font-bold"
+        className="font-medium"
         onClick={onDifferentKey}
       >
         Use a different key
@@ -523,7 +523,7 @@ function RefusalActions({
         <Button
           variant="outline"
           size="sm"
-          className="font-bold"
+          className="font-medium"
           onClick={onAddEmail}
         >
           Add and verify that email
@@ -533,7 +533,7 @@ function RefusalActions({
         <Button
           variant="outline"
           size="sm"
-          className="font-bold"
+          className="font-medium"
           onClick={() => window.location.assign(signInUrl)}
         >
           Sign in to that account
@@ -589,7 +589,7 @@ function LinkNotice({
         className="mt-0.5 shrink-0"
       />
       <p id={id} className="min-w-0 [overflow-wrap:anywhere]">
-        <strong className="font-bold text-fg-strong">{lead}</strong> {body}
+        <strong className="font-semibold text-fg-strong">{lead}</strong> {body}
       </p>
     </div>
   );
@@ -658,7 +658,7 @@ function DoneStep({
             variant="banner"
             className="h-36 rounded-lg"
           />
-          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-bold text-success shadow-elevation-2">
+          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-medium text-success shadow-elevation-2">
             {momentKey ? (
               <Celebration momentKey={momentKey} size={14} />
             ) : (
@@ -678,12 +678,12 @@ function DoneStep({
             <Button
               variant="outline"
               size="lg"
-              className="h-11 font-bold"
+              className="h-11 font-medium"
               onClick={onOpen}
             >
               See it in your library
             </Button>
-            <Button asChild size="lg" className="h-11 font-bold">
+            <Button asChild size="lg" className="h-11 font-medium">
               <a href={back}>Back to {name}</a>
             </Button>
           </>
@@ -692,14 +692,14 @@ function DoneStep({
             <Button
               variant="outline"
               size="lg"
-              className="h-11 font-bold"
+              className="h-11 font-medium"
               onClick={onAnother}
             >
               Activate another
             </Button>
             <Button
               size="lg"
-              className="h-11 font-bold"
+              className="h-11 font-medium"
               iconEnd={<ArrowRight aria-hidden />}
               onClick={onOpen}
             >
@@ -750,7 +750,7 @@ function DevicesNote({
         className="mt-0.5 size-4 shrink-0 text-accent-fg"
       />
       <span>
-        <strong className="font-bold text-fg-strong">{lead}</strong>
+        <strong className="font-semibold text-fg-strong">{lead}</strong>
         {rest ? ` ${rest}` : null}
       </span>
     </p>
@@ -837,7 +837,7 @@ export function ConfirmStep({
           <Check aria-hidden className="size-4 shrink-0 text-success" />
           <span>
             Key recognized ·{" "}
-            <span className="font-bold text-fg-strong">{p.name}</span>
+            <span className="font-medium text-fg-strong">{p.name}</span>
             {p.developerName ? ` · ${p.developerName}` : ""}
           </span>
         </p>
@@ -855,7 +855,7 @@ export function ConfirmStep({
         <div className="flex items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2.5">
           <code className="min-w-0 flex-1 font-mono text-code leading-5 [overflow-wrap:anywhere]">
             <span className="text-fg-subtle">pkey_</span>
-            <span className="font-bold text-accent-fg">{p.slug}</span>
+            <span className="font-medium text-accent-fg">{p.slug}</span>
             <span className="text-fg-subtle">_</span>
             <span className="text-fg-strong">
               {licenseKey.slice(`pkey_${p.slug}_`.length)}
@@ -864,7 +864,7 @@ export function ConfirmStep({
           <button
             type="button"
             onClick={onBack}
-            className="shrink-0 rounded-sm text-sm font-bold text-accent-fg hover:underline"
+            className="shrink-0 rounded-sm text-sm font-medium text-accent-fg hover:underline"
           >
             Change key
           </button>
@@ -886,7 +886,7 @@ export function ConfirmStep({
       <DialogFooter>
         <Button
           variant="outline"
-          className="shrink-0 font-bold"
+          className="shrink-0 font-medium"
           onClick={onBack}
         >
           Back
@@ -894,7 +894,7 @@ export function ConfirmStep({
         {/* A long product name is cut short with an ellipsis rather than spilling out of the
             button (PS-05 review M5); the name is read in full (the label, the heading above). */}
         <Button
-          className="min-w-0 font-bold"
+          className="min-w-0 font-medium"
           loading={adding}
           onClick={onAdd}
           aria-label={primaryLabel ?? `Add ${p.name}`}

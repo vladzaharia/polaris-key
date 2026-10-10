@@ -355,7 +355,7 @@ export function ProductCard({
         />
         <div className="min-w-0 flex-1">
           <h3
-            className="line-clamp-2 break-words text-base font-bold text-fg-strong max-sm:line-clamp-1"
+            className="line-clamp-2 break-words text-base font-semibold text-fg-strong max-sm:line-clamp-1"
             title={name}
           >
             <Link

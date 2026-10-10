@@ -189,7 +189,7 @@ export function SegmentedControl<V extends string = string>({
             // checked item's own background without a dip.
             "transition-[color] duration-(--pk-duration-fast) ease-standard hover:text-fg-strong",
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
-            "data-[state=checked]:bg-surface-raised data-[state=checked]:font-bold data-[state=checked]:text-fg-strong data-[state=checked]:shadow-elevation-1",
+            "data-[state=checked]:bg-surface-raised data-[state=checked]:font-medium data-[state=checked]:text-fg-strong data-[state=checked]:shadow-elevation-1",
             "group-data-[moving]/seg:data-[state=checked]:bg-transparent group-data-[moving]/seg:data-[state=checked]:shadow-none",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
