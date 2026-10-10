@@ -119,6 +119,18 @@ Settings reference page and console search index.
 - Reads: `packages/worker/scripts/gen-settings.ts`, `packages/worker/src/core/settings/**`, `packages/worker/src/**/settings.ts`.
 - Writes: `packages/docs/src/content/docs/reference/settings.mdx`, `packages/admin/src/console/settings.generated.ts`.
 
+### cli-reference
+
+The pkey CLI reference page, from the command table.
+
+- Run: default.
+- Regenerate: `pnpm gen cli-reference`.
+- Check: `pnpm gen cli-reference --check`.
+- Underlying: `pnpm exec tsx packages/cli/scripts/gen-reference.ts`.
+- Needs `pnpm build` first.
+- Reads: `packages/cli/scripts/gen-reference.ts`, `packages/cli/src/help.ts`.
+- Writes: `packages/docs/src/content/docs/reference/cli.mdx`.
+
 ### brand
 
 Brand tokens, launch kit, kit copy and per-SDK theme files.

@@ -14,12 +14,13 @@ import {
   LOGO_STAR_GLYPH,
   logoLines,
 } from "../src/logo.js";
+import { CLI_VERSION } from "../src/version.js";
 import { termFor, type TermEnv, type TermFlags } from "../src/terminal.js";
 import { readGeometry, renderLogo } from "../scripts/gen-logo.mjs";
 
 const ESC = "\x1b";
 const TEXT_ROWS = [
-  "pkey",
+  `pkey ${CLI_VERSION}`,
   "Polaris Key platform CLI",
   "",
   "Usage  pkey <command> [options]",
@@ -163,7 +164,10 @@ describe("the collapsed star", () => {
       expect(logoLines(t)).toBeNull();
       const lines = renderHelp(t).split("\n");
       expect(stripAnsi(lines[0]!)).toBe(
-        `${LOGO_STAR_GLYPH} pkey · Polaris Key platform CLI`.slice(0, 80),
+        `${LOGO_STAR_GLYPH} pkey ${CLI_VERSION} · Polaris Key platform CLI`.slice(
+          0,
+          80,
+        ),
       );
       expect(lines[0]).toContain(`${ESC}[1m${LOGO_STAR_GLYPH} `);
       expect(sansHeader(lines.map(stripAnsi))).toEqual(

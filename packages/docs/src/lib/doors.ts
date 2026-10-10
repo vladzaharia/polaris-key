@@ -295,6 +295,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           leaf("reference/index", "Overview"),
           ...leaves(
             "reference/http-api",
+            "reference/cli",
             "reference/error-codes",
             "reference/validation-codes",
             "reference/settings",

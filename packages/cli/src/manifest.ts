@@ -125,6 +125,46 @@ export function normalizeModules(raw: string | undefined): ServiceSlug[] {
   return servicesOf(parsed as ProductModule[]);
 }
 
+/** The product a `.pkey/product` names, and the file that names it. */
+export interface FoundProduct {
+  slug: string;
+  name?: string;
+  file: string;
+}
+
+/**
+ * The nearest `.pkey/product` at or above `cwd` (the way git finds a repository), read only far
+ * enough to take the slug and name: a flat document or the `product:` wrapper. `null` when there
+ * is none, or when the nearest one has no readable slug (`pkey validate` says what is wrong).
+ */
+export async function findProductManifest(
+  cwd: string,
+): Promise<FoundProduct | null> {
+  for (let dir = path.resolve(cwd); ; dir = path.dirname(dir)) {
+    const file = await findExisting(path.join(dir, ".pkey"), PRODUCT_FILES);
+    if (file) {
+      try {
+        const doc = parseFile(file, await readFile(file, "utf8"));
+        if (!isRecord(doc)) return null;
+        const wrapped = isRecord(doc.product) ? doc.product : doc;
+        const slug = wrapped.slug;
+        if (typeof slug !== "string" || !slug.trim()) return null;
+        const name = wrapped.name;
+        return {
+          slug: slug.trim(),
+          ...(typeof name === "string" && name.trim()
+            ? { name: name.trim() }
+            : {}),
+          file,
+        };
+      } catch {
+        return null;
+      }
+    }
+    if (path.dirname(dir) === dir) return null;
+  }
+}
+
 export async function loadManifest(cwd: string): Promise<LoadedManifest> {
   const rootDir = path.join(cwd, ".pkey");
   const productFile = await findExisting(rootDir, PRODUCT_FILES);

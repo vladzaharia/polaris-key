@@ -1,0 +1,423 @@
+---
+title: "pkey CLI"
+description: "Every pkey command and flag, generated from the CLI."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm gen cli-reference`.
+    Source of truth: the command table in packages/cli/src/help.ts, rendered by
+    packages/cli/scripts/gen-reference.ts. */}
+
+Every `pkey` command and flag. Run `pkey help` for the same table in your terminal, and `pkey help <command>` for one command.
+
+## Options
+
+| Option | Meaning |
+| --- | --- |
+| `--product slug` | The product to act on; default from .pkey/product |
+| `--base-url url` | The Polaris Key origin; default $PKEY_BASE_URL, else key.plrs.im |
+| `--dry-run` | Check and print; upload and write nothing |
+| `--json` | One JSON object on stdout, where a command has it |
+| `--no-color` | Plain text (also NO_COLOR=1, or a pipe) |
+| `--ascii` | ASCII symbols only |
+| `-h, --help` | Help for pkey, or for one command |
+
+## Manifest
+
+### `pkey init`
+
+Scaffold .pkey/ in this directory.
+
+```text
+pkey init [--product slug] [--name name] [--modules license,config,release,distribution,update,identity,sync] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]
+```
+
+pkey init scaffolds .pkey/ in the current directory: product.yaml and schema.yaml always, release.yaml when Release is on. --modules takes the service slugs or the legacy module names (licensing, releases, oidc, edgeMint) and writes service slugs; without it you get license,config. --product (or --slug) defaults to the directory's name and --name to a titleized slug. Existing files are never overwritten without --force.
+
+No `--json`: the answer is text.
+
+### `pkey validate`
+
+Check .pkey/ with the rules the platform applies.
+
+```text
+pkey validate [path] [--fix] [--json]
+```
+
+pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid.
+
+--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: \{"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"\}, each warning and error as \{"code","message","at","file"\}. When no manifest can be read it is \{"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"\}.
+
+--fix repairs what it safely can before it validates: a field written in an old spelling moves to its canonical place when that place is empty (the deprecated_spelling warnings), keeping YAML comments. It never overwrites a value and leaves a conflict for you. It prints each move, or "Nothing to fix." With --json the moves are the result's "fixed" list.
+
+`--json`: one JSON line on stdout.
+
+### `pkey doctor`
+
+Validate, then check the live product's discovery.
+
+```text
+pkey doctor [--product slug] [--base-url url] [--json]
+```
+
+pkey doctor runs validate first. When a product is known (--product, else the nearest .pkey/product) it also fetches &lt;base-url&gt;/&lt;product&gt;/.well-known/polaris.json (--base-url, else $PKEY_BASE_URL, else key.plrs.im) and reports whether discovery answers, which services it enables and which signing keys it exposes; a failed remote check exits 1. Without a product the remote checks are skipped and it says so.
+
+--json prints one result line: \{"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"\}, each fact as \{"id","state","detail"\} with id manifest, discovery, services or signing-keys and state ok, warn or todo. It exits 1 while any fact is todo.
+
+`--json`: one JSON line on stdout.
+
+### `pkey manifest`
+
+Write the .pkey/ JSON Schemas for editors.
+
+```text
+pkey manifest schemas --out dir
+```
+
+pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a repository with no node_modules.
+
+No `--json`: the answer is text.
+
+## SDK and tools
+
+### `pkey sdk`
+
+Print an SDK snippet, or one SDK's config file.
+
+```text
+pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
+pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url] [--write [--out path] [--force]] [--kid kid --public-key key] [--release-key kid=key ...] [--package kotlin.package]
+```
+
+Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write.
+
+No `--json`: the answer is text.
+
+### `pkey trust`
+
+Format a signing key for every SDK's pinned keys.
+
+```text
+pkey trust --kid kid --public-key key
+```
+
+No `--json`: the answer is text.
+
+### `pkey mirror`
+
+Write typed catalog mirrors for each language.
+
+```text
+pkey mirror --lang ts,python,swift,gdscript,kotlin [--out-dir dir] [--catalog file | --product slug [--base-url url]] [--package kotlin.package] [--check]
+```
+
+--check writes nothing and exits 1 when a mirror is stale (a CI drift gate).
+
+No `--json`: the answer is text.
+
+## Offline bundles
+
+### `pkey bundle`
+
+Mint an offline activation bundle for one device.
+
+```text
+pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] [--base-url url] [--out file] [--force]
+```
+
+pkey bundle mints one offline activation bundle and writes it to a file (default &lt;product&gt;-&lt;first 8 of device id&gt;.pkeybundle; --base-url defaults to https://key.plrs.im). Copy that file to the air-gapped machine and import it there.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_ADMIN_COOKIE` | Required by `pkey bundle` and `pkey listing import`. The console's admin session cookie, as `__Host-pkey_admin=&lt;value&gt;` (the bare value is accepted too). The admin API is authenticated by the console's browser session — there is no API token yet — so copy the cookie from an authenticated console tab: devtools -&gt; Application -&gt; Cookies -&gt; the console origin. It is a SHORT-LIVED session credential carrying full admin authority: do not commit it, and do not export it into a shared shell. |
+
+No `--json`: the answer is text.
+
+## CI release
+
+### `pkey auth`
+
+Exchange the job's OIDC token for a CI token.
+
+```text
+pkey auth github-oidc --product slug [--base-url url]
+```
+
+pkey auth github-oidc exchanges the Actions job's OIDC token for a pkeyci_ token, masks it, and writes PKEY_CI_TOKEN to $GITHUB_ENV for the job's later steps.
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+No `--json`: the answer is text.
+
+### `pkey release`
+
+Publish, sign and move releases from CI.
+
+```text
+pkey release publish --product slug --version v --dir path [--deliverable app] [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json] [--base-url url] [--release-key-file pem] [--min-supported-seq n] [--no-record] [--content-stamp file | --embedded dir --pin pack@v ...] [--content-interface registry.json [--strict]] [--dry-run]
+pkey release publish --product slug --version v --dir path --deliverable packId [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run] [--content-key-file pem --delegation sha256] [--provides ids.json] [--removes id[,id...] ...] [--script-extensions ext[,ext...]] [--script-types Type[,Type...]]
+pkey release content-stamp --product slug --out pkey-content.json [--embedded dir] [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
+pkey release revoke packId@version --reason text --product slug [--replacement version] [--release-key-file pem] [--base-url url] [--dry-run]
+pkey release revoke --delegation sha256|file --reason text --product slug [--release-key-file pem] [--base-url url] [--dry-run]
+pkey release keys generate --kid kid --out file [--force]
+pkey release keys generate --content --out file
+pkey release delegate --product slug --prefix packId --types type,... --public-key key [--expires-in days] [--notes text] [--release-key-file pem] [--base-url url] [--dry-run]
+pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
+pkey release unpin --channel c --product slug [--deliverable id]
+pkey release yank releaseId --reason text --product slug
+```
+
+pkey release publish matches the files under --dir against .pkey/release's deliverables.app.artifacts map (&lt;file&gt;.sig and &lt;file&gt;.sha256 ride along as sidecars), hashes them, uploads what Polaris Key does not already hold, and submits the release descriptor. --dry-run prints the descriptor and the server's verdict and uploads and writes nothing.
+
+With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the release record (pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it, and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys generate writes a new private release key to --out and prints its releaseKeys entry.
+
+When .pkey/release declares packs, an app publish states its pins: --content-stamp is the pkey-content.json pkey release content-stamp wrote before the export (from the pkey-marker/1 markers under --embedded, verified, and --pin packId@version resolved through Polaris Key), and each build's embeds come from the artifact map; both go into the descriptor, which the record is moved from.
+
+--deliverable &lt;packId&gt; publishes a pack: per declared variant, the payload at &lt;dir&gt;/&lt;variant key or "default"&gt;/ (one .pck file, or the tree), checked, stripped of project.binary and the class cache, linted, indexed (pkey-files/1), with a full object, file blobs, a gaps object and deltas against the releases --bases keeps (zstd &gt;= 1.5.5 on PATH), and for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundles shared along the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record, uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the record, payloads and chunk indexes for the next publish's --bases.
+
+A godot.pck lint (P4-28) refuses a resource that references an app script or a UID outside the pack's uid cache unless .pkey/release lists it in deliverables.app.content.attachable (the device's PKeyOptions.pack_attachable), and refuses as scripts .gd, .gdc, .cs plus --script-extensions (bare extensions of a GDExtension script language) and the class names --script-types gives (the device asks its engine for both).
+
+Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or the pack's declared provides.from (default .pkey/provides.json; provides.required fails a publish without it); Polaris Key refuses a release that stops providing an id its predecessor provided at a live contentApi level both support, unless --removes acknowledges it. An app publish with --content-interface hashes that registry (canonical JSON, SHA-256), stores it with the release and warns when it changed since the channel's current app release while contentApi did not (--strict fails instead, before anything is uploaded).
+
+pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one release for this app release (written into the stamp's holds; never a pinned pack).
+
+pkey release revoke signs a kind: revocation release record with the release key and submits it: devices stop using that pack release, and --replacement names the release of the same pack they take instead. Revocations are permanent; a later revoke of the same release supersedes the replacement or reason, never the revoked status.
+
+pkey release keys generate --content writes a new content key (no kid) and prints its public key; pkey release delegate signs a kind: delegation record with the release key that lets that key sign data-only pack releases (files.tree, data.json, l10n.table) of compatible or standalone packs under --prefix (whole segments) for --expires-in days (default 180, at most 366). A content team then publishes with PKEY_CONTENT_KEY (or --content-key-file) and --delegation &lt;sha256&gt;: the files must pass the data-only rule, and the record is signed under the kid pkd1-&lt;sha256&gt;.
+
+pkey release revoke --delegation revokes a delegation and every pack release signed under it.
+
+--meta is a JSON file \{"&lt;buildId&gt;": \{"buildNumber", "minOS", "requires"\}\}. An ipa or apk payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are read into the descriptor for the storefront feeds.
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+No `--json`: the answer is text.
+
+## Distribution
+
+### `pkey distribution`
+
+Channel ids for a build, store reports and rollouts.
+
+```text
+pkey distribution outlet-ids --outlet id
+pkey distribution report availability|submission --product slug --outlet id (--release id | --version v [--deliverable id]) --state s [--build id] [--since epoch] [--platform-ref json] [--detail json]
+pkey distribution report key --product slug --purpose p --sha256 hex [--outlet id]
+pkey distribution rollout --product slug --outlet id --channel c --release id --bp n [--deliverable id]
+pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c [--release id] [--deliverable id]
+```
+
+pkey distribution outlet-ids prints the build outlet's store ids from .pkey/distribution as one JSON object of strings (steamAppId, itchGameId, flatpakId, snapName, caskToken, homebrewFormula, msixFamilyName, bundleId), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no .pkey/distribution it prints \{\}.
+
+pkey distribution report tells Polaris Key what a store says until its connector exists: availability (pending, processing, in-review, approved, live, rejected, removed) and the submission state (prepared, submitted, in-review, approved, rejected, pending-developer-release, released, cancelled) of a release on an outlet. report key sends the SHA-256 fingerprint the job signed with (colons allowed); one that is not in the product's key inventory is flagged for an operator and the command exits 1.
+
+rollout, pause, resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and they need a token an operator granted distribution:rollout.
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+No `--json`: the answer is text.
+
+## Feeds
+
+### `pkey feeds`
+
+The F-Droid feed, package-feed setup and feed pruning.
+
+```text
+pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
+pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]
+pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
+```
+
+pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops.
+
+pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants.
+
+pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme, groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the registry token from that environment variable. Offline: nothing is sent anywhere.
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+`--json`: one JSON line on stdout.
+
+## Listing and assets
+
+### `pkey listing`
+
+Import a Godot listing, or derive every store's assets.
+
+```text
+pkey listing import --godot project --product slug [--preset name ...] [--locale code] [--overwrite] [--apply [--fields a,b]] [--json] [--base-url url]
+pkey listing import --godot project --dry-run [--preset name ...]
+pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png] [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y] [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...] [--locale code] [--upload --product slug [--base-url url] [--dry-run]]
+```
+
+pkey listing import reads the Godot project and imports it into the product's shared listing: the diff first, written only with --apply.
+
+pkey listing assets derives every store's icons from one square icon master (Play 512, the Microsoft tile 300, Steam's 184 JPG and 256 icons, Flathub, Snap, winget and F-Droid; Android's adaptive layers only when the mark sits inside the central 66 of 108 dp), composes every store's art from logo-free key art and the wordmark (Play and F-Droid feature graphics, Steam's capsules and library set, the Microsoft super hero, poster and box art, the itch.io cover, the Snap banner; cropped around --focal, the wordmark only on slots that allow a title), and fits each screenshot under --screenshots (one directory per size class) for the App Store, Play, the Microsoft Store and Steam. A screenshot that does not fit gets a crop or pad proposal, used only for the images named with --accept or --pad. Everything goes under --out with report.json (the fit report), preview.html and one ZIP pack per store. --upload stores the masters, outputs and packs in the listing model (the token needs distribution:listing); nothing is pushed to a store. Needs the sharp library.
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_ADMIN_COOKIE` | Required by `pkey bundle` and `pkey listing import`. The console's admin session cookie, as `__Host-pkey_admin=&lt;value&gt;` (the bare value is accepted too). The admin API is authenticated by the console's browser session — there is no API token yet — so copy the cookie from an authenticated console tab: devtools -&gt; Application -&gt; Cookies -&gt; the console origin. It is a SHORT-LIVED session credential carrying full admin authority: do not commit it, and do not export it into a shared shell. |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+`--json`: one JSON line on stdout.
+
+### `pkey assets`
+
+Host a file in a presentation or listing slot.
+
+```text
+pkey assets push file --slot slot [--locale code] --product slug [--base-url url] [--dry-run]
+```
+
+pkey assets push hosts a file that is not on the web in a slot: presentation.icon, listing.icon, listing.header, listing.screenshot:&lt;1-16&gt; or a listing image slot (icon-master, play:feature-graphic, ...). Polaris Key hosts a copy and serves it from its image host; PNG, JPEG, WebP, GIF or AVIF only (never SVG), up to 10 MiB for icon slots and 20 MiB for the rest. A slot an operator uploaded in the console, or one a manifest declares, is kept as it is (console, then manifest, then CI). The token needs assets:write, an opt-in scope, and Release must be on (the upload ticket comes from its uploads route).
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+No `--json`: the answer is text.
+
+## Transport
+
+### `pkey transport`
+
+Package a published pack for a store transport.
+
+```text
+pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n] [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
+pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n] [--expect-resource id] [--lock file] [--wait minutes] [--no-report]
+pkey transport play-pad modules --deliverable packId --release v --from dir --project dir [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
+pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]
+```
+
+pkey transport packages a published pack release (the --out cache of pkey release publish --deliverable &lt;packId&gt;, re-hashed against its record and linted again, so a pack with scripts never reaches a store) for the transport .pkey/distribution routes it through, writes the pkey-marker/1 marker beside the payload, and reports the transport's availability: apple-ba package writes Manifest.json for asset pack &lt;pack&gt;-c&lt;contentApi&gt; (dots become hyphens; every apple-ba pack is mapped at once and a collision, double hyphen or id over 64 characters is refused before anything is written) and runs xcrun ba-package (macOS); apple-ba upload sends it to App Store Connect with CI's key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH) and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a later upload into any other resource is refused); play-pad modules writes com.android.asset-pack modules (a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it; steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only).
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+No `--json`: the answer is text.
+
+## Channels
+
+### `pkey storefront`
+
+Run store CLIs from CI and open store pull requests.
+
+```text
+pkey storefront itch push --platform windows|linux|mac|android --dir dir --version v [--channel c] [--outlet id] [--dry-run] [--no-report]
+pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]
+pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]
+pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
+pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
+pkey storefront allow-list [--store s] [--json]
+pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]] [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
+pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]
+pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]
+```
+
+pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list admits (pkey storefront allow-list prints them): itch push is butler push &lt;dir&gt; &lt;user/game&gt;:&lt;platform[-channel]&gt; --userversion &lt;v&gt;, the target from the itch outlet's identity (BUTLER_API_KEY in the environment); snap upload is snapcraft upload &lt;snap&gt; --release=&lt;snap channels&gt;, only the channels the snap outlet's channels map declares, and snap upload-metadata sends the summary, description and icon the snap carries, which snap metadata writes into snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script may set live only a named branch; msstore publish, refused while the console has a staged draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and after it runs (distribution:report), so the store's ledger shows it beside console steps; a step already done in the same run is skipped. --dry-run checks and prints the command lines.
+
+pkey storefront &lt;store&gt; pr writes winget's manifests (schema 1.12.0), the cask in your own Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch.
+
+A CI command runs in GitHub Actions with permissions: id-token: write, or with PKEY_CI_TOKEN. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. --product defaults to the nearest .pkey/product and --base-url to $PKEY_BASE_URL, else key.plrs.im. See /docs/build/ci/.
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_CI_TOKEN` | Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead. |
+
+`--json`: one JSON line on stdout.
+
+## Shell
+
+### `pkey completion`
+
+Print a shell completion script.
+
+```text
+pkey completion bash|zsh|fish
+```
+
+The script is generated from pkey's own command table: the commands, their subcommands and their flags. bash: eval "$(pkey completion bash)" in ~/.bashrc. zsh: eval "$(pkey completion zsh)" in ~/.zshrc, after compinit. fish: pkey completion fish &gt; ~/.config/fish/completions/pkey.fish.
+
+No `--json`: the answer is text.
+
+### `pkey help`
+
+Show this help, or one command's.
+
+```text
+pkey help [command]
+```
+
+pkey &lt;command&gt; --help (or -h) prints the same as pkey help &lt;command&gt; and runs nothing. Colour is used only on a terminal; NO_COLOR, --no-color and a pipe give plain text, and --ascii (or TERM=dumb) ASCII symbols.
+
+No `--json`: the answer is text.
+
+## GitHub Action
+
+The `polaris-key/publish` Action runs these commands. Each input becomes the flag shown; an input marked step picks which subcommand runs.
+
+| Input | Command | Flag |
+| --- | --- | --- |
+| `product` | `pkey release` | `--product` |
+| `deliverable` | `pkey release` | `--deliverable` |
+| `version` | `pkey release` | `--version` |
+| `tag` | `pkey release` | `--tag` |
+| `channel` | `pkey release` | `--channel` |
+| `dir` | `pkey release` | `--dir` |
+| `source` | `pkey release` | `--source` |
+| `meta` | `pkey release` | `--meta` |
+| `base-url` | `pkey release` | `--base-url` |
+| `release-key` | `pkey release` | `--release-key-file` |
+| `content-key` | `pkey release` | `--content-key-file` |
+| `delegation` | `pkey release` | `--delegation` |
+| `min-supported-seq` | `pkey release` | `--min-supported-seq` |
+| `content-stamp` | `pkey release` | `--content-stamp` |
+| `embedded` | `pkey release` | `--embedded` |
+| `pins` | `pkey release` | `--pin` |
+| `out` | `pkey release` | `--out` |
+| `bases` | `pkey release` | `--bases` |
+| `script-extensions` | `pkey release` | `--script-extensions` |
+| `script-types` | `pkey release` | `--script-types` |
+| `dry-run` | `pkey release` | `--dry-run` |
+| `assets` | `pkey assets` | step |
+| `transport` | `pkey transport` | step |
+| `deliverable` | `pkey transport` | `--deliverable` |
+| `version` | `pkey transport` | `--release` |
+| `dir` | `pkey transport` | `--from` |
+| `content-api` | `pkey transport` | `--content-api` |
+| `variant` | `pkey transport` | `--variant` |
+| `transport-out` | `pkey transport` | `--out` |
+| `gradle-project` | `pkey transport` | `--project` |
+| `pad-delivery` | `pkey transport` | `--delivery` |
+| `steam-depot` | `pkey transport` | `--depot` |
+| `steam-branch` | `pkey transport` | `--branch` |
+| `steam-setlive` | `pkey transport` | `--setlive` |
+| `asc-expect-resource` | `pkey transport` | `--expect-resource` |
+| `transport-report` | `pkey transport` | `--no-report` |
+| `storefront` | `pkey storefront` | step |
+| `itch-platform` | `pkey storefront` | `--platform` |
+| `storefront-outlet` | `pkey storefront` | `--outlet` |
