@@ -470,7 +470,7 @@ jobs:
           pnpm --filter "@polaris-key/cli..." build
           xcrun ba-package --version
           PKEY_REAL_BA_PACKAGE=1 pnpm --filter @polaris-key/cli exec vitest run test/transport.test.ts
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/4.7.2-ios
           key: pkey-godot-4.7.2-ios-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
@@ -696,7 +696,7 @@ jobs:
             :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
             :ui:publishUiPublicationToLocalRepository :android:publishAllPublicationsToLocalRepository
           tools/check_publication.sh
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/4.7.2
           key: pkey-godot-4.7.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
@@ -905,7 +905,7 @@ jobs:
       # engine control icon themed, is tests/support/ui_lint.gd (suite ui_lint).
       - name: UI kit source lint (godot)
         run: node packages/ui-qa/bin/kit-lint.mjs --kit=godot
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/${{ matrix.godot }}
           key: pkey-godot-${{ matrix.godot }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
