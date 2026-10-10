@@ -148,6 +148,15 @@ final class KitRulesTests: XCTestCase {
             // Previews the drop-in does not draw on iOS yet have no baseline.
             guard ![KitComponent.boot, .offlineActivation, .toast].contains(preview.component)
             else { continue }
+            // States that draw no kit view of their own: the gate past booting shows another
+            // component's screen (Welcome, the status screen) or the app, up to date draws
+            // nothing, and an entitled gate draws the host's content.
+            if preview.component == .gate && preview.state != "booting" { continue }
+            if preview.id.hasSuffix("UpdatePrompt.up-to-date")
+                || preview.id.hasSuffix("EntitlementGate.entitled")
+            {
+                continue
+            }
             let base =
                 ([Self.kebab(preview.component.rawValue), preview.state]
                 + [preview.variant].compactMap { $0 })
