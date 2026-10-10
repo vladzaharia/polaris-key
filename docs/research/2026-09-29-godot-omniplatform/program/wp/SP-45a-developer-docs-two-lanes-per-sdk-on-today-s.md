@@ -64,12 +64,12 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 
 ## Acceptance criteria
 
-- [ ] For each SDK, both lanes reach the eight checkpoints.
-- [ ] Every code block on the new and changed pages compiles in its lane, and a deliberately broken block fails CI.
-- [ ] A check fails when a page names a symbol the SDK does not export.
-- [ ] Docs-links and the slug manifest pass.
-- [ ] A newcomer dry run per SDK is recorded in the PR.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] For each SDK, both lanes reach the eight checkpoints.
+- [x] Every code block on the new and changed pages compiles in its lane, and a deliberately broken block fails CI.
+- [x] A check fails when a page names a symbol the SDK does not export.
+- [x] Docs-links and the slug manifest pass.
+- [x] A newcomer dry run per SDK is recorded in the PR.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
