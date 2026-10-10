@@ -128,7 +128,8 @@ export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
   const config = client.config.entries();
   if (config) state.config = config;
   // Discovery's `core.presentation` (HA-13): the member rides every state, null for none.
-  state.presentation = client.presentation();
+  state.presentation =
+    typeof client.presentation === "function" ? client.presentation() : null;
   return state;
 }
 
@@ -231,10 +232,12 @@ export function exposePolarisBridge(
   const onConfig = (): void => pushState();
   client.events.on("license", onLicense);
   client.events.on("config", onConfig);
-  // A new presentation member is a push too, so the renderer re-reads it (HA-13).
-  const offPresentation = client
-    .presentationSource()
-    .subscribe(() => pushState());
+  // A new presentation member is a push too, so the renderer re-reads it (HA-13). A host's own
+  // client double without the accessor simply carries none.
+  const offPresentation =
+    typeof client.presentationSource === "function"
+      ? client.presentationSource().subscribe(() => pushState())
+      : () => undefined;
 
   const forgetFlow = (id: string): void => {
     const f = flows.get(id);
