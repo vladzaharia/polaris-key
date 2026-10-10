@@ -147,7 +147,7 @@ function BuildsTab({
             className="rounded-lg border border-border bg-surface-raised"
           >
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
-              <h2 className="text-sm font-bold text-fg-strong">
+              <h2 className="text-sm font-semibold text-fg-strong">
                 {buildSummary(b)}
               </h2>
               <span className="font-mono text-xs text-fg-muted">
@@ -194,7 +194,7 @@ function BuildsTab({
           className="rounded-lg border border-border bg-surface-raised px-4"
         >
           {release.builds.length ? (
-            <h2 className="pt-2 text-sm font-bold text-fg-strong">
+            <h2 className="pt-2 text-sm font-semibold text-fg-strong">
               Files not tied to a build
             </h2>
           ) : null}
@@ -325,7 +325,7 @@ function ChannelsTab({
           return (
             <li key={c.channel} className="space-y-1 px-4 py-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono font-bold text-fg-strong">
+                <span className="font-mono font-medium text-fg-strong">
                   {c.channel}
                 </span>
                 {c.pointer === release.releaseId ? (
@@ -416,7 +416,7 @@ function DistributionTab({
               key={o.outletId}
               className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm"
             >
-              <span className="min-w-40 font-bold text-fg-strong">
+              <span className="min-w-40 font-medium text-fg-strong">
                 {label(OUTLET_KIND_LABELS, o.kind)}{" "}
                 <span className="font-mono text-xs font-normal text-fg-muted">
                   {o.outletId}
@@ -625,7 +625,7 @@ function LiveTile({
   return (
     <div className="min-w-0 border-b border-border px-5 py-3">
       <dt className="truncate text-xs text-fg-muted">{name}</dt>
-      <dd className="truncate text-sm font-bold tabular-nums text-fg-strong">
+      <dd className="truncate text-sm font-medium tabular-nums text-fg-strong">
         {children}
       </dd>
     </div>
@@ -699,7 +699,7 @@ function StatusTab({
       >
         <h2
           id="release-live"
-          className="border-b border-border px-5 py-3.5 text-base font-bold text-fg-strong"
+          className="border-b border-border px-5 py-3.5 text-base font-semibold text-fg-strong"
         >
           Where it’s live
         </h2>
@@ -861,7 +861,7 @@ export function RollBackDialog({
         <DialogBody className="space-y-4">
           {channels.length > 1 ? (
             <div className="flex items-center justify-between gap-3">
-              <span id="rollback-channel" className="text-sm font-bold">
+              <span id="rollback-channel" className="text-sm font-medium">
                 Channel
               </span>
               <Select
@@ -1110,7 +1110,7 @@ export function ReleaseRecord({
           <>
             {release.yank ? (
               // The reason is the point of a yank: it reads as a warning, not muted meta.
-              <span className="text-sm font-bold text-warning">
+              <span className="text-sm font-medium text-warning">
                 Yanked: {release.yank.reason}
               </span>
             ) : null}

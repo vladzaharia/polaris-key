@@ -5954,7 +5954,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-01b-cloud-sync-plan-amendment-two-stores-one.md",
-      "status": "todo"
+      "status": "awaiting-approval"
     },
     {
       "id": "U-27",
@@ -10070,7 +10070,7 @@
         "section change brand-18"
       ],
       "brief": "wp/ST-50-font-weight-sweep.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-51",
@@ -16417,7 +16417,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-49-swiftui-kit-and-swift-sdk-0-8-x-correctness.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-50",

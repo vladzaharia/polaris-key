@@ -255,7 +255,7 @@ function Result({ r: res }: { r: SimulateResponse }): React.ReactElement {
   return (
     <section aria-label="Simulation result" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-bold text-fg-strong">Result</h2>
+        <h2 className="text-base font-semibold text-fg-strong">Result</h2>
         <CopyButton
           value={JSON.stringify(res, null, 2)}
           label="Copy result as JSON"
@@ -388,22 +388,22 @@ function Result({ r: res }: { r: SimulateResponse }): React.ReactElement {
           <table className="w-full text-sm" aria-label="Packs">
             <thead className="border-b border-border text-left text-xs text-fg-muted">
               <tr>
-                <th scope="col" className="px-3 py-2 font-bold">
+                <th scope="col" className="px-3 py-2 font-medium">
                   Pack
                 </th>
-                <th scope="col" className="px-3 py-2 font-bold">
+                <th scope="col" className="px-3 py-2 font-medium">
                   Binding
                 </th>
-                <th scope="col" className="px-3 py-2 font-bold">
+                <th scope="col" className="px-3 py-2 font-medium">
                   Feed target
                 </th>
-                <th scope="col" className="px-3 py-2 font-bold">
+                <th scope="col" className="px-3 py-2 font-medium">
                   Floor
                 </th>
-                <th scope="col" className="px-3 py-2 font-bold">
+                <th scope="col" className="px-3 py-2 font-medium">
                   Expected
                 </th>
-                <th scope="col" className="px-3 py-2 font-bold">
+                <th scope="col" className="px-3 py-2 font-medium">
                   Runs
                 </th>
               </tr>
@@ -418,7 +418,7 @@ function Result({ r: res }: { r: SimulateResponse }): React.ReactElement {
       ) : null}
       {res.notes.length || res.errors.length ? (
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-fg-strong">Notes</h3>
+          <h3 className="text-sm font-semibold text-fg-strong">Notes</h3>
           <ul className="list-disc space-y-1 pl-5 text-xs text-fg">
             {res.notes.map((n) => (
               <li key={n}>{n}</li>
@@ -631,7 +631,7 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
           </FormField>
           {axes.size ? (
             <fieldset className="space-y-3">
-              <legend className="text-sm font-bold text-fg-strong">
+              <legend className="text-sm font-semibold text-fg-strong">
                 Variant
               </legend>
               {[...axes].map(([axis, values]) => (
@@ -691,7 +691,7 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
             {(f) => <Input {...f} mono placeholder="64 hex characters" />}
           </FormField>
           <fieldset className="space-y-2">
-            <legend className="text-sm font-bold text-fg-strong">
+            <legend className="text-sm font-semibold text-fg-strong">
               Update methods
             </legend>
             <p className="text-xs text-fg-muted">

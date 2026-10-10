@@ -377,7 +377,7 @@ function ScopePicker({
 }): React.ReactElement {
   return (
     <fieldset className="space-y-2">
-      <legend className="text-sm font-bold text-fg-strong">Scopes</legend>
+      <legend className="text-sm font-semibold text-fg-strong">Scopes</legend>
       {CI_SCOPES.map((s) => (
         <Checkbox
           key={s}

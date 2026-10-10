@@ -65,7 +65,7 @@ export function LibraryPage({
     // A short screen (§8) tightens the gap under the title, so a hero's download is on screen.
     <section className="pk-vt-scope space-y-8 short:space-y-4">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold leading-tight text-fg-strong desk:text-display">
+        <h1 className="text-3xl font-semibold leading-tight text-fg-strong desk:text-display">
           Your library
         </h1>
         <p className="text-fg-muted">
@@ -135,7 +135,7 @@ function LibraryBody({
                 {discoverCount === 1 ? "There is " : "There are "}
                 <a
                   href={href.discover()}
-                  className="font-bold text-accent-fg hover:underline"
+                  className="font-medium text-accent-fg hover:underline"
                 >
                   {discoverCount} more you can add in Discover
                 </a>
@@ -266,7 +266,7 @@ function ScaledLibrary({
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2
             id="all-h"
-            className="flex items-baseline gap-3 text-lg font-bold text-fg-strong"
+            className="flex items-baseline gap-3 text-lg font-semibold text-fg-strong"
           >
             All products
             <span className="text-sm font-normal text-fg-muted">
@@ -278,7 +278,7 @@ function ScaledLibrary({
               {summary} ·{" "}
               <button
                 type="button"
-                className="font-bold text-accent-fg hover:underline"
+                className="font-medium text-accent-fg hover:underline"
                 onClick={() => setParams({ q: null, filter: null })}
               >
                 Show all

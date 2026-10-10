@@ -125,7 +125,7 @@ export function DiscoverTile({
           {added ? (
             <span
               className={cn(
-                "absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2.5 py-0.5 text-sm font-bold text-success shadow-elevation-2",
+                "absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2.5 py-0.5 text-sm font-medium text-success shadow-elevation-2",
                 pop && "pk-pop-in",
               )}
             >
@@ -145,7 +145,10 @@ export function DiscoverTile({
               className="relative border-[3px] border-surface-raised shadow-elevation-2"
             />
             <div className="min-w-0 flex-1 pt-9">
-              <h3 id={id} className="truncate text-lg font-bold text-fg-strong">
+              <h3
+                id={id}
+                className="truncate text-lg font-semibold text-fg-strong"
+              >
                 <a
                   href={page}
                   // block: the name's full line is the link (24 px or taller), so a short name
@@ -188,7 +191,7 @@ export function DiscoverTile({
                 // Every way to add it, with its terms, is on the product page (S-21 §6.5).
                 <a
                   href={page}
-                  className="relative text-sm font-bold text-accent-fg hover:underline"
+                  className="relative text-sm font-medium text-accent-fg hover:underline"
                 >
                   {more}
                   <span className="sr-only"> to add {offer.name}</span>

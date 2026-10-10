@@ -181,7 +181,7 @@ export function ProductSettingsSection({
             <div className="space-y-0.5 px-5 pb-1 pt-4">
               <h3
                 id={`${id}-pending`}
-                className="text-sm font-bold text-fg-strong"
+                className="text-sm font-medium text-fg-strong"
               >
                 Not in effect yet
               </h3>
@@ -363,7 +363,7 @@ function ProductSettingRow({
       >
         {s.critical ? (
           <label className="block space-y-1 text-sm">
-            <span className="font-bold text-fg-strong">Reason</span>
+            <span className="font-medium text-fg-strong">Reason</span>
             <Textarea
               value={reason}
               onValueChange={setReason}

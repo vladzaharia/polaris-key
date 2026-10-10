@@ -128,11 +128,25 @@ XB=(
   -derivedDataPath "$BUILD/dd"
   CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=
 )
+# The gate's host app and its XCUITests (scheme PKGateHost): the real drop-in gate over a scripted
+# server, driven in the simulator (GateUITests).
+XB_GATE=(
+  -project "$HERE/PKPlatformHost.xcodeproj" -scheme PKGateHost
+  -destination "platform=iOS Simulator,id=$udid"
+  -derivedDataPath "$BUILD/dd"
+  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=
+)
 TIMEOUTS=(-test-timeouts-enabled YES -default-test-execution-time-allowance 120)
 
 xcodebuild build-for-testing "${XB[@]}" >"$BUILD/logs/xcodebuild-build.log" 2>&1 || {
   tail -40 "$BUILD/logs/xcodebuild-build.log"
   echo "run.sh: build FAILED; log: $BUILD/logs/xcodebuild-build.log" >&2
+  exit 65
+}
+
+xcodebuild build-for-testing "${XB_GATE[@]}" >"$BUILD/logs/xcodebuild-build-gate.log" 2>&1 || {
+  tail -40 "$BUILD/logs/xcodebuild-build-gate.log"
+  echo "run.sh: gate host build FAILED; log: $BUILD/logs/xcodebuild-build-gate.log" >&2
   exit 65
 }
 
@@ -156,8 +170,10 @@ rc=0
 run_suite() { # name, then the -only-testing selectors
   local name="$1" r=0
   shift
+  local args=("${XB[@]}")
+  if [ "$name" = "gate-ui" ]; then args=("${XB_GATE[@]}"); fi
   set +e
-  xcodebuild test-without-building "${XB[@]}" "${TIMEOUTS[@]}" "$@" \
+  xcodebuild test-without-building "${args[@]}" "${TIMEOUTS[@]}" "$@" \
     -resultBundlePath "$BUILD/logs/result-$name-$(date +%s).xcresult" \
     >"$BUILD/logs/xcodebuild-test-$name.log" 2>&1
   r=$?
@@ -175,6 +191,8 @@ run_suite services \
   -only-testing:PKPlatformHostTests/DistributorHostTests
 settle "after the services suite"
 run_suite kit-focus -only-testing:PKPlatformHostTests/KitFocusHostTests
+settle "after the kit-focus suite"
+run_suite gate-ui -only-testing:PKGateUITests
 if [ "$rc" -ne 0 ]; then
   exit "$rc"
 fi

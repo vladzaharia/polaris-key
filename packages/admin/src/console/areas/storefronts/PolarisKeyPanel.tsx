@@ -464,7 +464,7 @@ function ReadinessList({
               )}
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-fg-strong">
+              <p className="text-sm font-medium text-fg-strong">
                 {CHECK_TITLES[c.id]}
                 <span className="sr-only">: {STATE_WORDS[c.state]}</span>
               </p>
@@ -695,7 +695,7 @@ function PersonaPreview({
   const err = error ? describe(error) : null;
   return (
     <div className="border-t border-border px-5 py-4" data-persona>
-      <h3 className="text-sm font-bold text-fg-strong">Preview a person</h3>
+      <h3 className="text-sm font-semibold text-fg-strong">Preview a person</h3>
       <p className="mt-1 text-sm text-fg-muted">
         Describe someone and see Discover as they would. It is a made-up person:
         no account is looked up.
@@ -811,7 +811,7 @@ function TilePreview({ tile }: { tile: PolarisKeyTile }): React.ReactElement {
           }
         />
         <div className="min-w-0">
-          <p className="truncate text-base font-bold text-fg-strong">
+          <p className="truncate text-base font-semibold text-fg-strong">
             {tile.name}
           </p>
           {tile.developerName ? (
@@ -825,7 +825,9 @@ function TilePreview({ tile }: { tile: PolarisKeyTile }): React.ReactElement {
         <p className="text-sm text-fg">{tile.shortDescription}</p>
       ) : null}
       {first ? (
-        <p className="text-sm font-bold text-fg-strong">{reasonLine(first)}</p>
+        <p className="text-sm font-medium text-fg-strong">
+          {reasonLine(first)}
+        </p>
       ) : null}
       {tile.offer ? (
         <p className="text-sm text-fg-muted">{termsLine(tile.offer)}</p>
@@ -835,7 +837,7 @@ function TilePreview({ tile }: { tile: PolarisKeyTile }): React.ReactElement {
           +{more} more {more === 1 ? "way" : "ways"} to add it
         </p>
       ) : null}
-      <span className="inline-flex h-8 w-fit items-center rounded-md border border-border-strong px-3 text-sm font-bold text-fg">
+      <span className="inline-flex h-8 w-fit items-center rounded-md border border-border-strong px-3 text-sm font-medium text-fg">
         {tileAction(tile)}
       </span>
     </article>

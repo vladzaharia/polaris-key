@@ -90,3 +90,44 @@ public enum JSONValue: Sendable, Equatable, Codable {
         return nil
     }
 }
+
+// Reads as JSON in logs and `print`: `{"limit": 3, "tags": ["a", "b"]}` rather than the enum's
+// `object(["limit": PolarisKeyCore.JSONValue.int(3)])`. Keys are sorted so the text is stable.
+extension JSONValue: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        switch self {
+        case .string(let s): return Self.quoted(s)
+        case .int(let i): return String(i)
+        case .double(let d): return d.isFinite ? String(d) : "null"
+        case .bool(let b): return b ? "true" : "false"
+        case .null: return "null"
+        case .array(let a): return "[" + a.map(\.description).joined(separator: ", ") + "]"
+        case .object(let o):
+            return "{"
+                + o.keys.sorted().map { "\(Self.quoted($0)): \(o[$0]!.description)" }
+                .joined(separator: ", ") + "}"
+        }
+    }
+
+    public var debugDescription: String { description }
+
+    private static func quoted(_ s: String) -> String {
+        var out = "\""
+        for scalar in s.unicodeScalars {
+            switch scalar {
+            case "\"": out += "\\\""
+            case "\\": out += "\\\\"
+            case "\n": out += "\\n"
+            case "\r": out += "\\r"
+            case "\t": out += "\\t"
+            default:
+                if scalar.value < 0x20 {
+                    out += String(format: "\\u%04x", scalar.value)
+                } else {
+                    out.unicodeScalars.append(scalar)
+                }
+            }
+        }
+        return out + "\""
+    }
+}

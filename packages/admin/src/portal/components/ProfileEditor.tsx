@@ -246,7 +246,7 @@ export function ProfileEditor({
             />
           ))}
           <div className="min-w-0">
-            <p className="font-bold text-fg-strong [overflow-wrap:anywhere]">
+            <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
               {name.trim() || account.email}
             </p>
             <p className="text-xs text-fg-muted">{C["profile.preview"]}</p>
@@ -257,7 +257,7 @@ export function ProfileEditor({
           <div className="space-y-2">
             <label
               htmlFor={`${id}-name`}
-              className="text-sm font-bold text-fg-strong"
+              className="text-sm font-medium text-fg-strong"
             >
               {C["profile.name.label"]}
             </label>
@@ -318,7 +318,7 @@ export function ProfileEditor({
                             "pk-pressable inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm pointer-coarse:h-11",
                             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
                             on
-                              ? "border-accent bg-accent-subtle font-bold text-fg-strong"
+                              ? "border-accent bg-accent-subtle font-medium text-fg-strong"
                               : "border-border-strong text-fg hover:bg-hover hover:text-fg-strong",
                           )}
                         >
@@ -348,7 +348,7 @@ export function ProfileEditor({
             }
             className="min-w-0"
           >
-            <legend className="mb-2 text-sm font-bold text-fg-strong">
+            <legend className="mb-2 text-sm font-semibold text-fg-strong">
               {C["profile.picture.label"]}
             </legend>
             <div className="grid grid-cols-2 gap-3 @md:grid-cols-4">
@@ -397,7 +397,7 @@ export function ProfileEditor({
                 </span>
                 <span
                   id={`${id}-upload`}
-                  className="text-sm font-bold text-fg-strong"
+                  className="text-sm font-medium text-fg-strong"
                 >
                   {up.isPending
                     ? C["profile.picture.uploading"]
@@ -483,7 +483,7 @@ function YourChoiceTag({ show }: { show: boolean }): React.ReactElement {
   return (
     <span
       hidden={!show}
-      className="inline-flex h-6 items-center rounded-full bg-accent-subtle px-2 text-xs font-bold text-accent-fg"
+      className="inline-flex h-6 items-center rounded-full bg-accent-subtle px-2 text-xs font-medium text-accent-fg"
     >
       {C["profile.name.yourChoice"]}
     </span>
@@ -552,7 +552,7 @@ function PictureTileRadio({
         size={48}
         className="mb-1"
       />
-      <span className="max-w-full text-sm font-bold text-fg-strong [overflow-wrap:anywhere]">
+      <span className="max-w-full text-sm font-medium text-fg-strong [overflow-wrap:anywhere]">
         {tile.title}
       </span>
       {tile.note ? (
@@ -561,7 +561,7 @@ function PictureTileRadio({
         </span>
       ) : null}
       {inUse ? (
-        <span className="mt-1 inline-flex h-5 items-center rounded-full border border-border px-2 text-xs font-bold text-fg-strong">
+        <span className="mt-1 inline-flex h-5 items-center rounded-full border border-border px-2 text-xs font-medium text-fg-strong">
           {C["profile.picture.inUse"]}
         </span>
       ) : null}

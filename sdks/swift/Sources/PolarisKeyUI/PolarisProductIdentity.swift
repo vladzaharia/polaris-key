@@ -101,7 +101,13 @@ struct PolarisProductIdentity {
         /// The running app's name and icon, read once.
         @MainActor static let main: Bundled = {
             let info = Bundle.main.infoDictionary ?? [:]
-            let name = (info["CFBundleDisplayName"] as? String) ?? (info["CFBundleName"] as? String)
+            // `object(forInfoDictionaryKey:)` returns the localized value (InfoPlist.strings) when
+            // the app has one; the raw dictionary would show the development-language name.
+            func bundleString(_ key: String) -> String? {
+                (Bundle.main.object(forInfoDictionaryKey: key) as? String)
+                    .flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+            }
+            let name = bundleString("CFBundleDisplayName") ?? bundleString("CFBundleName")
             return Bundled(name: name, icon: appIcon(info), iconIsMasked: iconIsMaskedOnPlatform)
         }()
 

@@ -42,7 +42,7 @@ extension PolarisKeyClient {
 
     /// The update client: `check`, `decide`, the channel feed, release records, Sparkle helpers,
     /// and `packs`. Built on first read from the client's release-key pins; without pins it is
-    /// the check-only client (`decide()` raises `not-configured`).
+    /// the check-only client (`decide()` raises `not-configured`, or `invalid-options` when the pins were refused).
     public nonisolated var update: UpdateClient {
         var fresh = false
         let client = attachments.with { table -> UpdateClient in
@@ -52,10 +52,16 @@ extension PolarisKeyClient {
             if pinnedReleaseKeys.isEmpty {
                 built = UpdateClient(core: core)
             } else {
-                built =
-                    (try? UpdateClient(
-                        core: core, options: UpdateClientOptions(pinnedReleaseKeys: pinnedReleaseKeys)))
-                    ?? UpdateClient(core: core)
+                do {
+                    built = try UpdateClient(
+                        core: core, options: UpdateClientOptions(pinnedReleaseKeys: pinnedReleaseKeys))
+                } catch {
+                    // Refused pins are not "no pins": keep the refusal so `decide()` names it.
+                    let reason =
+                        (error as? PolarisError)
+                        ?? PolarisError(code: ErrorCode.invalidOptions, message: "\(error)")
+                    built = UpdateClient(core: core, configurationError: reason)
+                }
             }
             table[Self.updateKey] = built
             return built

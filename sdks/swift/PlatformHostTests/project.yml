@@ -66,7 +66,51 @@ targets:
         # Not -warnings-as-errors here: StoreKitTest's own headers use APIs deprecated in iOS 18,
         # and the flag reaches the clang importer's precompiled module for them.
         PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.platformhost.tests
+  # The gate's host and its UI tests: the real drop-in gate over a scripted server, driven by
+  # XCUITest (GateUITests). The scripted server, signer and fixtures are the unit tests' own
+  # TestSupport.swift, compiled in, not copied.
+  PKGateHost:
+    type: application
+    platform: iOS
+    sources:
+      - GateHost
+      - path: ../Tests/PolarisKeyTests/TestSupport.swift
+    dependencies:
+      - package: PolarisKey
+        product: PolarisKey
+      - package: PolarisKey
+        product: PolarisKeyUI
+    info:
+      path: build/generated/GateHost-Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleDisplayName: Tidewater Studio
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.gatehost
+        GENERATE_INFOPLIST_FILE: NO
+  PKGateUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [GateUITests]
+    dependencies:
+      - target: PKGateHost
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PKGateHost
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.gatehost.uitests
 schemes:
+  PKGateHost:
+    build:
+      targets:
+        PKGateHost: all
+        PKGateUITests: [test]
+    test:
+      config: Debug
+      targets: [PKGateUITests]
   PKPlatformHost:
     build:
       targets:

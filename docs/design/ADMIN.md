@@ -2234,7 +2234,7 @@ in parallel on disjoint files. Chunk 12 (portal) can start after chunk 3.
   area chunks write `font-normal`/`font-bold` as they rebuild each view, and the aliases go with
   the last old view (chunk 11).
   Superseded (2026-10-09, B7): the variable Rubik gives 400/500/600 in UI and 700 only in the
-  wordmark; ST-50 sweeps the console's `font-bold` uses to 500/600.
+  wordmark. ST-50 swept the console's `font-bold` uses to 500 and 600; `test/fontWeights.test.ts` keeps them out.
 - `data-service` values to brand `ServiceId`s, with `tools/services.json` and `gen services`
   (§0.3).
 - Favicons and manifest from the kit's `04-web/key`.

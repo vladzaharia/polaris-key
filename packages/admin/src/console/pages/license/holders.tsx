@@ -162,7 +162,7 @@ export function HolderLine({
     parts.push(
       <span key="f" className="inline-flex items-center gap-1">
         <KeyRound aria-hidden className="size-3.5 shrink-0" />
-        <strong className="font-bold text-fg">Floating</strong>
+        <strong className="font-semibold text-fg">Floating</strong>
       </span>,
       "anyone with the key",
     );
@@ -182,7 +182,7 @@ export function HolderLine({
         batch{" "}
         <Link
           to={r.licenseBatch(slug, l.batchId)}
-          className="font-bold text-accent-fg underline-offset-2 hover:underline"
+          className="font-medium text-accent-fg underline-offset-2 hover:underline"
         >
           {batch?.label ?? "Open batch"}
         </Link>

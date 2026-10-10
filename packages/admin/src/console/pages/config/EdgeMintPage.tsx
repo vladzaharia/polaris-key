@@ -411,7 +411,7 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
 
       {recipes.length > 0 && data.identity ? (
         <details className="rounded-lg border border-border bg-surface-raised px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-bold text-fg-strong">
+          <summary className="cursor-pointer font-medium text-fg-strong">
             Signing in also hands out device tokens
           </summary>
           <div className="mt-3 space-y-3">
@@ -596,7 +596,7 @@ function ApproveDrawer({
             <section aria-labelledby="recipe-fields" className="space-y-2">
               <h3
                 id="recipe-fields"
-                className="text-sm font-bold text-fg-strong"
+                className="text-sm font-medium text-fg-strong"
               >
                 Fields
               </h3>
@@ -757,7 +757,7 @@ function ApproveDrawer({
                 role="alert"
                 className="rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
               >
-                <p className="font-bold text-danger">{copy.title}</p>
+                <p className="font-semibold text-danger">{copy.title}</p>
                 <p className="text-fg">{copy.description}</p>
               </div>
             ) : null}
