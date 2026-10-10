@@ -80,21 +80,21 @@ public struct PolarisKeyPreview: View {
                 ],
                 onFix: { _ in }, onTryAgain: {})
         case .graceBanner:
-            PreviewHostApp()
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    GraceBannerView(screen: model.graceBanner, onReconnect: {}, onDismiss: {})
-                }
+            ZStack(alignment: .bottom) {
+                PreviewHostApp()
+                GraceBannerView(screen: model.graceBanner, onReconnect: {}, onDismiss: {})
+            }
         case .updatePrompt:
             let screen = model.updatePrompt
             if screen.state == .mandatory || screen.state == .revokedRequiredContent {
                 UpdatePromptView(screen: screen, onUpdate: {}, onLater: {})
             } else {
-                PreviewHostApp()
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        UpdatePromptView(
-                            screen: screen, fraction: model.inputs.update?.progress?.fraction,
-                            onUpdate: {}, onLater: {})
-                    }
+                ZStack(alignment: .bottom) {
+                    PreviewHostApp()
+                    UpdatePromptView(
+                        screen: screen, fraction: model.inputs.update?.progress?.fraction,
+                        onUpdate: {}, onLater: {})
+                }
             }
         case .updateProgress:
             PreviewSettingsHost {

@@ -46,10 +46,10 @@ public struct PolarisKeyGate<Content: View>: View {
 
     public var body: some View {
         PolarisKeyScope(model: model) {
-            // A banner insets the app's bottom safe area: its content rests above the glass and
-            // scrolls under it, never hidden behind it.
-            surface
-                .safeAreaInset(edge: .bottom, spacing: 0) { overlays }
+            ZStack(alignment: .bottom) {
+                surface
+                overlays
+            }
         }
         .task { model.start() }
         .onChange(of: theme) { _, theme in model.options.integrator = theme.integrator }

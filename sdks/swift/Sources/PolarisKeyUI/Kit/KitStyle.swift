@@ -39,17 +39,6 @@ public struct KitPalette: Sendable, Equatable {
     public var danger: Color
     /// Whether the accent is the host's tint (`native`, or `host` source).
     public var accentIsHostTint: Bool
-    /// The tint of the iOS 26 prominent glass. The glass lightens its tint, so a fill only just
-    /// at 4.5:1 under a white label measured below it on the render (4.47:1 on the iPad, in both
-    /// schemes): under a white label the tint is the fill 15 % toward black; otherwise the fill.
-    public var glassFill: Color? = nil
-
-    /// The prominent glass's tint.
-    var primaryGlassFill: Color { glassFill ?? accentSolid }
-
-    static func glassFill(solid: Color, onIsWhite: Bool) -> Color? {
-        onIsWhite ? solid.mix(with: .black, by: 0.15) : nil
-    }
 }
 
 /// The resolved style.
@@ -350,9 +339,11 @@ enum KitPaletteResolver {
                 let fg = BrandColor(hexString: r.fg), let subtle = BrandColor(hexString: r.subtle),
                 let focus = BrandColor(hexString: r.focus)
             {
-                p.accentSolid = solid.color
-                p.glassFill = KitPalette.glassFill(
-                    solid: solid.color, onIsWhite: r.on.lowercased() == "#ffffff")
+                // The system's prominent glass lightens its tint; a resolved fill only just at
+                // 4.5:1 under a white label measured below it in light. There the fill takes the
+                // accent's text colour, a step darker, so the label keeps 4.5:1 through the glass.
+                let white = r.on.lowercased() == "#ffffff"
+                p.accentSolid = !dark && white ? fg.color : solid.color
                 p.accentOn = on.color
                 p.accentFg = fg.color
                 p.accentSubtle = subtle.color
@@ -376,8 +367,6 @@ enum KitPaletteResolver {
             let focus = BrandColor(hexString: r.focus)
         {
             p.accentSolid = solid.color
-            p.glassFill = KitPalette.glassFill(
-                solid: solid.color, onIsWhite: r.on.lowercased() == "#ffffff")
             p.accentOn = on.color
             p.accentFg = fg.color
             p.accentSubtle = subtle.color
