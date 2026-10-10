@@ -94,7 +94,7 @@ export function RadioCards<V extends string = string>({
               <span className="size-2 scale-50 rounded-full bg-accent opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
             </span>
             <span className="min-w-0">
-              <span className="flex items-center gap-1.5 text-sm font-bold text-fg-strong">
+              <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong">
                 {o.icon ? (
                   <span aria-hidden className="[&_svg]:size-4">
                     {o.icon}

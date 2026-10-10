@@ -583,7 +583,7 @@ function MigrationsPanel({
           />
           {applied && applied.length > 0 ? (
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-fg-strong">
+              <h3 className="text-sm font-semibold text-fg-strong">
                 Applied ({formatCount(applied.length)})
               </h3>
               <ol className="space-y-1">

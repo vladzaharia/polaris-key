@@ -44,7 +44,7 @@ export function SettingsTemplate({
       >
         {rail ? (
           <nav aria-label="On this page" className="hidden xl:block">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-fg-muted">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-fg-muted">
               On this page
             </p>
             <ul className="sticky top-4 space-y-1 border-l border-border text-sm">
@@ -128,11 +128,14 @@ export function SettingsRow({
     <div className="min-w-0 space-y-1">
       <div className="flex flex-wrap items-center gap-2">
         {htmlFor ? (
-          <label htmlFor={htmlFor} className="text-sm font-bold text-fg-strong">
+          <label
+            htmlFor={htmlFor}
+            className="text-sm font-medium text-fg-strong"
+          >
             {label}
           </label>
         ) : (
-          <span className="text-sm font-bold text-fg-strong">{label}</span>
+          <span className="text-sm font-medium text-fg-strong">{label}</span>
         )}
         {source}
       </div>
@@ -209,7 +212,7 @@ export function DangerAction({
   return (
     <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 space-y-0.5">
-        <p className="text-sm font-bold text-fg-strong">{title}</p>
+        <p className="text-sm font-semibold text-fg-strong">{title}</p>
         <p className="text-sm text-fg-muted">{consequence}</p>
       </div>
       <div className="shrink-0">{action}</div>

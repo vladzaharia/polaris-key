@@ -408,7 +408,10 @@ export function SetupSnippets({
           aria-labelledby={`setup-${s.id}`}
           className="space-y-2"
         >
-          <h2 id={`setup-${s.id}`} className="text-sm font-bold text-fg-strong">
+          <h2
+            id={`setup-${s.id}`}
+            className="text-sm font-semibold text-fg-strong"
+          >
             {s.title}
           </h2>
           {s.warning ? <Callout tone="warning">{s.warning}</Callout> : null}

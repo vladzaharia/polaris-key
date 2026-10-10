@@ -155,7 +155,7 @@ export function PortalShell({
             aria-current={onLibrary ? "page" : undefined}
             className={cn(
               "flex h-full flex-col items-center justify-center gap-0.5 text-xs",
-              onLibrary ? "font-bold text-fg-strong" : "text-fg-muted",
+              onLibrary ? "font-medium text-fg-strong" : "text-fg-muted",
             )}
           >
             <Library aria-hidden className="size-5" />
@@ -165,7 +165,7 @@ export function PortalShell({
             <button
               type="button"
               onClick={() => activate.open()}
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-border-strong bg-surface-raised px-4 text-sm font-bold text-fg-strong"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-border-strong bg-surface-raised px-4 text-sm font-medium text-fg-strong"
             >
               <KeyRound aria-hidden className="size-4 text-accent-fg" />
               Activate
@@ -177,7 +177,7 @@ export function PortalShell({
               aria-current={onDiscover ? "page" : undefined}
               className={cn(
                 "flex h-full flex-col items-center justify-center gap-0.5 text-xs",
-                onDiscover ? "font-bold text-fg-strong" : "text-fg-muted",
+                onDiscover ? "font-medium text-fg-strong" : "text-fg-muted",
               )}
             >
               <span className="relative">
@@ -252,7 +252,7 @@ function NavLink({
       className={cn(
         "relative inline-flex items-center gap-2.5 px-1 text-md",
         active
-          ? "font-bold text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-accent"
+          ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-accent"
           : "text-fg-muted hover:text-fg-strong",
       )}
     >

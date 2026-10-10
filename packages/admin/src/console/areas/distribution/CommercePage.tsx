@@ -270,7 +270,7 @@ function AppStoreProducts({
     <section aria-labelledby="app-store-products" className="space-y-4">
       <h2
         id="app-store-products"
-        className="text-base font-bold text-fg-strong"
+        className="text-base font-semibold text-fg-strong"
       >
         App Store products
       </h2>

@@ -103,7 +103,7 @@ function NotOffered(): React.ReactElement {
   return (
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
-      <h1 className="text-3xl font-bold leading-tight text-fg-strong">
+      <h1 className="text-3xl font-semibold leading-tight text-fg-strong">
         There's nothing to add here
       </h1>
       <p className="text-fg-muted">
@@ -182,7 +182,7 @@ function StorefrontBody({
         ) : canAdd ? (
           <Button
             size="lg"
-            className="h-12 w-full px-6 font-bold desk:w-auto"
+            className="h-12 w-full px-6 font-medium desk:w-auto"
             iconStart={<Plus aria-hidden />}
             loading={claim.isPending}
             aria-describedby={error ? errorId : undefined}
@@ -332,14 +332,14 @@ function StorefrontHeader({
         <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
           <h1
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit text-headline font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit text-headline font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>
           {product.developerName ? (
             <p className="text-fg-muted">
               by{" "}
-              <span className="font-bold text-accent-fg">
+              <span className="font-medium text-accent-fg">
                 {product.developerName}
               </span>
             </p>
@@ -434,7 +434,7 @@ function PathLines({
         <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-accent-fg" />
       ) : null}
       <span className="min-w-0">
-        <span className="block font-bold text-fg-strong">{copy.text}</span>
+        <span className="block font-medium text-fg-strong">{copy.text}</span>
         <span className="block text-sm text-fg-muted">
           {pathTermsLine(path)}
         </span>
@@ -477,7 +477,7 @@ function StoreButtons({
             // One solid lead per page: the first store; any others are outlined.
             variant={lead && i === 0 ? "primary" : lead ? "outline" : "quiet"}
             size="lg"
-            className={cn(lead ? "h-12 w-full px-6 font-bold" : "h-11")}
+            className={cn(lead ? "h-12 w-full px-6 font-medium" : "h-11")}
           >
             <a
               href={l.url}

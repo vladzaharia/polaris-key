@@ -117,10 +117,10 @@ function SessionRow({
           )}
         </span>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="flex flex-wrap items-center gap-x-2 font-bold text-fg-strong">
+          <p className="flex flex-wrap items-center gap-x-2 font-medium text-fg-strong">
             <span className="min-w-0 break-words">{name}</span>
             {session.current ? (
-              <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-bold text-fg-strong">
+              <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-fg-strong">
                 This browser
               </span>
             ) : null}
@@ -130,7 +130,7 @@ function SessionRow({
         {session.current ? null : (
           <Button
             variant="ghost"
-            className="ml-auto h-10 font-bold"
+            className="ml-auto h-10 font-medium"
             loading={end.isPending}
             aria-label={`Sign out ${name}, ${meta}`}
             onClick={() =>
@@ -172,7 +172,7 @@ function Everywhere({ others }: { others: number }): React.ReactElement {
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-bold"
+          className="h-11 font-medium"
           iconStart={<LogOut aria-hidden />}
           aria-expanded={false}
           aria-controls="sign-out-everywhere"
@@ -196,7 +196,7 @@ function Everywhere({ others }: { others: number }): React.ReactElement {
           <h3
             ref={headingRef}
             tabIndex={-1}
-            className="font-bold text-fg-strong outline-none"
+            className="font-medium text-fg-strong outline-none"
           >
             Sign out everywhere?
           </h3>

@@ -314,7 +314,7 @@ function RotationStep({
       <span
         aria-hidden
         className={cn(
-          "mt-px inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold tabular-nums",
+          "mt-px inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium tabular-nums",
           state === "current" && "border-accent bg-accent text-accent-on",
           state === "done" && "border-accent text-accent-fg",
           state === "upcoming" && "border-border-strong text-fg-muted",
@@ -325,7 +325,7 @@ function RotationStep({
       <span className="min-w-0 space-y-0.5">
         <span
           className={cn(
-            "block text-sm font-bold",
+            "block text-sm font-medium",
             state === "upcoming" ? "text-fg-muted" : "text-fg-strong",
           )}
         >
@@ -609,7 +609,7 @@ function RefreshedLine({
                   value={pct}
                   from={first && !reduced ? 0 : undefined}
                   format={(n) => `${n}%`}
-                  className="font-bold tabular-nums text-fg-strong"
+                  className="font-medium tabular-nums text-fg-strong"
                 />
                 {refreshedTail(refresh)}
               </span>
@@ -673,7 +673,7 @@ function SigningKeyRow({
           ) : (
             <KeyRound aria-hidden className="size-3 text-fg-subtle" />
           )}
-          <span className="font-mono text-sm font-bold text-fg-strong">
+          <span className="font-mono text-sm font-medium text-fg-strong">
             {k.kid}
           </span>
           <StatusPill

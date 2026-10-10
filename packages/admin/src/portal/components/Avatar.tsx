@@ -104,7 +104,7 @@ export function Avatar({
       ) : (
         <span
           className={cn(
-            "inline-flex select-none items-center justify-center rounded-full bg-accent-subtle font-bold text-accent-fg",
+            "inline-flex select-none items-center justify-center rounded-full bg-accent-subtle font-medium text-accent-fg",
             s.box,
             s.text,
           )}

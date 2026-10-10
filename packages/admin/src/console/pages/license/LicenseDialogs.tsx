@@ -250,7 +250,7 @@ export function OfflineBundleDialog({
       {minted ? (
         <>
           <div className="px-6 pt-2 text-sm">
-            <p className="font-bold text-fg-strong">Bundle id</p>
+            <p className="font-medium text-fg-strong">Bundle id</p>
             <p className="mt-1 flex items-center gap-2">
               <code className="font-mono text-xs">{minted.bundleId}</code>
               <ValueCopyButton value={minted.bundleId} label="Copy ID" />

@@ -68,7 +68,7 @@ export function SignedBadge({
       className={cn(
         "pk-pill inline-flex items-center gap-1.5 whitespace-nowrap text-xs",
         variant === "chip"
-          ? "rounded-full border border-signed-border bg-signed px-2 py-0.5 font-bold text-signed-on"
+          ? "rounded-full border border-signed-border bg-signed px-2 py-0.5 font-medium text-signed-on"
           : "text-fg",
         className,
       )}

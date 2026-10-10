@@ -464,7 +464,10 @@ function StepTitle({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
       <div className="min-w-0 flex-1 space-y-1">
-        <h2 id="wizard-step-title" className="text-lg font-bold text-fg-strong">
+        <h2
+          id="wizard-step-title"
+          className="text-lg font-semibold text-fg-strong"
+        >
           {children}
         </h2>
         {description ? (
@@ -872,7 +875,9 @@ function TestFlightStep({
           />
         ) : (
           <fieldset className="space-y-3">
-            <legend className="text-sm font-bold text-fg-strong">Groups</legend>
+            <legend className="text-sm font-semibold text-fg-strong">
+              Groups
+            </legend>
             {groups.map((g) => (
               <Checkbox
                 key={g.id}
@@ -1504,7 +1509,7 @@ function SubmitStep({
             ) : null}
             {iaps.length || assets.length ? (
               <fieldset className="space-y-3">
-                <legend className="text-sm font-bold text-fg-strong">
+                <legend className="text-sm font-semibold text-fg-strong">
                   Also submit
                 </legend>
                 {iaps.map((i) => (
@@ -1638,7 +1643,7 @@ function StoreState({
               return (
                 <li key={v.id} className="space-y-2 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-bold text-fg-strong">
+                    <span className="text-sm font-medium text-fg-strong">
                       <span className="font-mono">{v.versionString}</span>{" "}
                       <span className="font-normal text-fg-muted">
                         {PLATFORM_LABEL[v.platform ?? ""] ?? v.platform}

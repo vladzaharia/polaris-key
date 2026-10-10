@@ -65,7 +65,7 @@ const theme = EditorView.theme({
 });
 
 const highlight = HighlightStyle.define([
-  { tag: tags.propertyName, color: "var(--pk-text-strong)", fontWeight: "700" },
+  { tag: tags.propertyName, color: "var(--pk-text-strong)", fontWeight: "600" },
   { tag: [tags.string], color: "var(--pk-text-default)" },
   { tag: [tags.number, tags.bool, tags.null], color: "var(--pk-accent-fg)" },
   { tag: [tags.punctuation, tags.bracket], color: "var(--pk-text-muted)" },
