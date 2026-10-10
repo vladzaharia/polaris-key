@@ -136,7 +136,7 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 
 | entry                         | contents                                                                              |
 | ----------------------------- | ------------------------------------------------------------------------------------- |
-| `@polaris-key/react`          | everything                                                                            |
+| `@polaris-key/react`          | everything except `createBrowserPacks` and the pack handlers (those are on `/packs`)  |
 | `@polaris-key/react/core`     | mode-agnostic types + the shared state model (no React)                               |
 | `@polaris-key/react/browser`  | the browser adapter + discovery client                                                |
 | `@polaris-key/react/desktop`  | the desktop adapter + the `PolarisBridge` IPC contract                                |
@@ -146,6 +146,22 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 | `@polaris-key/react/update`   | `useLatestVersion`, `useUpdateDecision`, `<UpdatePrompt>`, `createBrowserPacks`       |
 | `@polaris-key/react/release`  | `useChangelog`                                                                        |
 | `@polaris-key/react/packs`    | `createBrowserPacks` and the pack ports, with no React import (P4-18)                 |
+
+## Bundle size
+
+Measured on every build (`pnpm --filter @polaris-key/react size`: a Vite production build of each
+case, gzip, JS of the initial load over a bare React 18 app) and enforced in CI, which fails over
+budget. Packs, `@polaris-key/zstd-wasm` and `hash-wasm` load by dynamic `import()`, only when a pack
+or a release payload is first handled, so none of their wasm is emitted or inlined into the initial
+load.
+
+| app imports                              | gzip JS over bare React | budget |
+| ---------------------------------------- | ----------------------- | ------ |
+| `<PolarisKeyProvider>` + `useLicense`    | +76.3 KB                | 78 KB  |
+| `<PolarisKeyProvider>` + `<LicenseGate>` | +95.3 KB                | 98 KB  |
+
+The root no longer re-exports `createBrowserPacks` and the pack handlers; import them from
+`@polaris-key/react/packs`.
 
 ## Components
 
@@ -359,7 +375,7 @@ page's **content stamp** (bundled with the build; without one there are no packs
 release per pack, and `ensure` installs it into the Origin Private File System.
 
 ```ts
-import { createBrowserPacks } from "@polaris-key/react/update";
+import { createBrowserPacks } from "@polaris-key/react/packs";
 
 const packs = createBrowserPacks({
   baseUrl: "https://key.plrs.im",

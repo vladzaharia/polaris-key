@@ -22,7 +22,6 @@
 // It is a standalone function, like `decideBrowserUpdate`, so the adapter and the transcript
 // replayer drive the same code.
 
-import { createSHA256 } from "hash-wasm";
 import { verifyReleaseRecord } from "@polaris-key/client-core";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
@@ -233,6 +232,8 @@ export async function fetchReleaseBuild(
       ErrorCode.networkError,
     );
   }
+  // hash-wasm carries its wasm as base64: loaded here, on a download, never with the Provider.
+  const { createSHA256 } = await import("hash-wasm");
   const hasher = await createSHA256();
   hasher.init();
   hasher.update(bytes);
