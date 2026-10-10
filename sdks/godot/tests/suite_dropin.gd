@@ -130,6 +130,7 @@ func _regate(t: PKeyTestContext) -> void:
 	await sdk.identity.sign_out()
 	await _until(func() -> bool: return gate.visible and gate.activation.visible)
 	t.check("regate: after sign_out() the persistent gate shows key entry and Sign in", gate.visible and gate.activation._key.is_visible_in_tree() and gate.activation._sign_in.is_visible_in_tree(), "visible %s key %s signin %s" % [gate.visible, gate.activation._key.is_visible_in_tree(), gate.activation._sign_in.is_visible_in_tree()])
+	var gate_theme_ok: bool = PKeyUiTheme.is_stock(gate.theme)
 	var a11y: Control = gate.activation._key
 	if "accessibility_name" in a11y:
 		t.check("regate: the key field has an accessible name", String(a11y.get("accessibility_name")) != "", str(a11y.get("accessibility_name")))
@@ -142,6 +143,7 @@ func _regate(t: PKeyTestContext) -> void:
 	var view: PKeyBoot = sdk.boot_view
 	t.check("regate: a re-boot after sign_out() shows key entry and Sign in", view != null and view.gate.activation._key.is_visible_in_tree() and view.gate.activation._sign_in.is_visible_in_tree() and again["result"] == null)
 	t.check("regate: a boot without confirm_identity does not confirm", not view.gate.activation.sign_in_dialog.confirm_identity)
+	t.check("regate: the persistent gate carried the kit's theme", gate_theme_ok)
 	t.check("regate: the earlier persistent gate gave way to the new boot's", not is_instance_valid(gate) or gate.is_queued_for_deletion())
 	# A cold boot with no pointer focuses the first control, and ui_down walks the chain.
 	await _until(func() -> bool: return _tree().root.gui_get_focus_owner() != null and view.is_ancestor_of(_tree().root.gui_get_focus_owner()))
@@ -166,8 +168,31 @@ func _regate(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	t.check("regate: the sign-in dialog opened from the live gate has the SDK", panel.sign_in_dialog.sdk == sdk and panel.offline_dialog.sdk == sdk)
 	panel.open_mode("main")
+	await _focus_after_dialogs(t, view, panel)
 	sdk.queue_free()
 	await _tree().process_frame
+
+
+## Dialogs opened from the boot's gate open with the focus inside them, and closing one leaves it in
+## the form again (never on nothing).
+func _focus_after_dialogs(t: PKeyTestContext, view: PKeyBoot, panel: PKeyActivationPanel) -> void:
+	var inside := func(n: Node) -> bool:
+		var f := _tree().root.gui_get_focus_owner()
+		return f != null and n.is_ancestor_of(f) and f.is_visible_in_tree()
+	for how in ["sign-in", "offline", "confirm"]:
+		panel.open_mode("main")
+		await _tree().create_timer(0.3).timeout
+		if how == "confirm":
+			panel.open_mode("sign-in")
+			panel.sign_in_dialog.show_confirm({"identity": {"name": "Ada"}, "attachable": false})
+		else:
+			panel.open_mode(how)
+		await _until(func() -> bool: return inside.call(panel), 3.0)
+		var dialog: Node = panel.offline_dialog if how == "offline" else panel.sign_in_dialog
+		t.check("dialog focus: the %s dialog opened from the boot's gate has the focus inside it" % how, inside.call(dialog), str(_tree().root.gui_get_focus_owner()))
+		_press("ui_cancel")
+		await _until(func() -> bool: return panel.mode == "main" and inside.call(panel), 3.0)
+		t.check("dialog focus: Back from the %s dialog leaves the focus in the form" % how, panel.mode == "main" and inside.call(panel), "%s %s" % [panel.mode, _tree().root.gui_get_focus_owner()])
 
 
 static func _press(action: String) -> void:

@@ -573,6 +573,8 @@ func _keep_gate(to: Node) -> bool:
 	var kept := PKeyGateView.new()
 	kept.name = "PKeyPersistentGate"
 	kept.auto_sdk = false
+	# On the layer it has no parent view to inherit the kit's theme from.
+	kept.theme = theme if PKeyUiTheme.is_stock(theme) else (load(PKeyUiTheme.NEUTRAL_PATH) as Theme)
 	kept.allow_grace = gate.allow_grace
 	kept.offer_enrollment = gate.offer_enrollment
 	kept.confirm_identity = gate.confirm_identity
@@ -778,7 +780,12 @@ func _product_name() -> String:
 
 ## The screen the boot shows: its stage and outcome, and whether a question is open.
 func _screen_key() -> String:
-	return "%s|%s|%s|%s" % [state["stage"], state["outcome"], _block_reason, _consent_open]
+	# The embedded gate's own screen (activation, sign-in, offline, a full licence) and the sign-in
+	# dialog's state are part of it: a dialog opening or closing asks for the focus again.
+	var inner := ""
+	if gate != null and gate.visible:
+		inner = gate._screen_key() + "|" + gate.activation.sign_in_dialog._screen_key()
+	return "%s|%s|%s|%s|%s" % [state["stage"], state["outcome"], _block_reason, _consent_open, inner]
 
 
 ## A stop card puts the focus on its way forward; the consent card on Download.
