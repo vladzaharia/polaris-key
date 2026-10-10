@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-52.
 
+## Corrections (A-19 builder, 2026-10-10)
+
+- Adapter ids already are the canonical ids (`google-play`, `microsoft-store`); the wire kinds (`play`, `ms-store`) are aliases. 19 entries: every OUTLET_KIND once, plus the `direct` package-manager subkinds `homebrew` and `scoop`.
+- Shipped here: `tools/channels.json`, `tools/gen-channels.ts` (registered as `channels`), `packages/shared-manifest/src/channels.generated.ts`, the generated `reference/channels` page, and the two-way conformance test `tools/gen-channels.test.ts`.
+- Not shipped (worker and admin trees were off limits): migrating the label tables in `packages/admin` (`lib/labels.ts`, storefronts `data.ts`) and the worker/CLI readers onto `findChannel`/`channelLabel`, the lint that refuses store-label literals elsewhere, and the per-channel `features/ship-builds/channels/*` page rewrites. These stay open acceptance items.
+
 ## Goal
 
 One channel catalogue (tools/channels.json), as scoped below. Done when every acceptance criterion holds and the green gate passes.
