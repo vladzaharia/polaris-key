@@ -13,8 +13,10 @@
 // exception, `interrupted` for Ctrl-C (exit 130). `message` appears only where the Python kit
 // prints one: a usage error and an import-bundle failure.
 //
-// Exit codes: 0 success; 1 a refusal, an unusable license, a cancelled or declined step, any
-// failure; 2 usage; 130 interrupted (Ctrl-C).
+// Exit codes (the `cli` family's `exit` table in conformance/corpus/v2/ui-matrix.json, UK-51): 0
+// success; 1 a refusal, an unusable license (`status`), a network failure, a cancelled or declined
+// step, any failure; 2 usage; 4 a refused gate in a host CLI (`license_required` or
+// `not_entitled`, as `gh` exits for "requires authentication"); 130 interrupted (Ctrl-C).
 
 /** The `--json` schema version. Bumped only for a breaking change to the envelope. */
 export const CLI_JSON_VERSION = 1;
@@ -23,6 +25,8 @@ export const EXIT = {
   ok: 0,
   failed: 1,
   usage: 2,
+  /** A gate in a host CLI refused to run the host's command (UK-46's `requireLicense`). */
+  licenseRequired: 4,
   interrupted: 130,
 } as const;
 

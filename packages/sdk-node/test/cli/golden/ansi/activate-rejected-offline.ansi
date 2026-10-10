@@ -2,42 +2,42 @@
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
-[33m▲[39m  [1mCan't connect[22m
+[31m✗[39m  [1mCan't connect[22m
 [2m└[22m  Can't reach Polaris Key. Check your connection and try again.
 
 #### truecolor-80-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
-[33m▲[39m  [1mCan't connect[22m
+[31m✗[39m  [1mCan't connect[22m
 [2m└[22m  Can't reach Polaris Key. Check your connection and try again.
 
 #### ansi16-80
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
-[33m▲[39m  [1mCan't connect[22m
+[31m✗[39m  [1mCan't connect[22m
 [2m└[22m  Can't reach Polaris Key. Check your connection and try again.
 
 #### no-color-80
 ┌  [7m Tidewater Studio [27m · activate
 │
 ◇  [1mLicense key[22m · pkey_tidewater_••••••
-▲  [1mCan't connect[22m
+✗  [1mCan't connect[22m
 └  Can't reach Polaris Key. Check your connection and try again.
 
 #### ascii-80
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - activate[22m
 [2m|[22m
 [2mo[22m  [1mLicense key[22m [2m- pkey_tidewater_[22m******
-[33m![39m  [1mCan't connect[22m
+[31mx[39m  [1mCan't connect[22m
 [2m`[22m  Can't reach Polaris Key. Check your connection and try again.
 
 #### truecolor-60-dark
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
-[33m▲[39m  [1mCan't connect[22m
+[31m✗[39m  [1mCan't connect[22m
 [2m│[22m  Can't reach Polaris Key. Check your connection and
 [2m└[22m  try again.
 
@@ -45,7 +45,7 @@
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
-[33m▲[39m  [1mCan't connect[22m
+[31m✗[39m  [1mCan't connect[22m
 [2m│[22m  Can't reach Polaris Key. Check your connection and
 [2m└[22m  try again.
 
@@ -53,7 +53,7 @@
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
-[33m▲[39m  [1mCan't connect[22m
+[31m✗[39m  [1mCan't connect[22m
 [2m│[22m  Can't reach Polaris Key. Check your connection and
 [2m└[22m  try again.
 
@@ -61,7 +61,7 @@
 ┌  [7m Tidewater Studio [27m · activate
 │
 ◇  [1mLicense key[22m · pkey_tidewater_••••••
-▲  [1mCan't connect[22m
+✗  [1mCan't connect[22m
 │  Can't reach Polaris Key. Check your connection and
 └  try again.
 
@@ -69,6 +69,6 @@
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - activate[22m
 [2m|[22m
 [2mo[22m  [1mLicense key[22m [2m- pkey_tidewater_[22m******
-[33m![39m  [1mCan't connect[22m
+[31mx[39m  [1mCan't connect[22m
 [2m|[22m  Can't reach Polaris Key. Check your connection and
 [2m`[22m  try again.

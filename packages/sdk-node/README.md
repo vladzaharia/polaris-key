@@ -723,6 +723,13 @@ holds a key license asks before adding it to the account, and keeps it unless th
 own verification in epoch milliseconds. `client.update.packageName` returns the `update.packageName`
 the upgrade command is built from.
 
+**Changed in 0.8.x (UK-51).** A refusal the person can resolve (`status` on a revoked, expired or
+out-of-range license, a refused key, the device limit) is drawn as ▲ with its fix, and a failure,
+a network one included, as ✗. The exit codes are the `cli` family's table in `ui-matrix.json`:
+`EXIT.licenseRequired` (4) is new, for a gate in a host CLI that refuses the host's command
+(`--json` prints `"error": "license_required"` or `"not_entitled"`); `status` and a network failure
+still exit 1.
+
 ## Samples and recipes
 
 Runnable samples live in the repository's `examples/` directory:
