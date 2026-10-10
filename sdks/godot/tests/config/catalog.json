@@ -38,7 +38,7 @@
         "widget": "select",
         "optionLabels": { "light": "Hell", "dark": "Dunkel ☾" }
       },
-      "user": { "sync": "device", "listed": false }
+      "user": { "sync": "local", "listed": false }
     },
     {
       "key": "game.killSwitch",
@@ -84,7 +84,9 @@
     }
   ],
   "cloudSync": {
-    "collections": [{ "name": "progress", "access": "owner" }],
-    "saves": { "conflict": "mostRecent" }
+    "collections": [
+      { "name": "progress", "access": "owner" },
+      { "name": "saves", "template": "saves" }
+    ]
   }
 }

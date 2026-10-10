@@ -68,10 +68,12 @@ class MirrorTest {
 
     @Test
     fun userSettingsCarryTheirPoliciesWithDefaults() {
-        // U-04: a config key with a `user` block, in catalog order, `conflict` and `listed` filled in.
-        assertEquals(listOf("audio.musicVolume", "ui.theme"), ProductCatalog.userSettings.keys.toList())
+        // U-01b: every Editable config key, in catalog order, `conflict` and `listed` filled in; a
+        // locked key (enforced, hidden) is not a setting a person chooses.
+        assertEquals(listOf("dice.animSpeed", "audio.musicVolume", "ui.theme"), ProductCatalog.userSettings.keys.toList())
+        assertEquals(UserSettingPolicy(sync = "user", conflict = "lastWrite", listed = true), ProductCatalog.userSettings["dice.animSpeed"])
         assertEquals(UserSettingPolicy(sync = "user", conflict = "max", listed = true), ProductCatalog.userSettings["audio.musicVolume"])
-        assertEquals(UserSettingPolicy(sync = "device", conflict = "lastWrite", listed = false), ProductCatalog.userSettings["ui.theme"])
+        assertEquals(UserSettingPolicy(sync = "local", conflict = "lastWrite", listed = false), ProductCatalog.userSettings["ui.theme"])
     }
 
     @Test

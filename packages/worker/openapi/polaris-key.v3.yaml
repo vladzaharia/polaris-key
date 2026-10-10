@@ -20480,28 +20480,36 @@ components:
         cloudSync:
           type: object
           description: >
-            The data shape of the product's Cloud Sync data (U-04): `collections`, `open`,
-            `saves` and `migrations`. Limits and access policy are product settings, never here.
-            A console publish that omits it keeps the active version's block.
+            The data shape of the product's Cloud Sync records (plans/U-01b.md §3.1): declared
+            `collections` and the catalog `migrations` the server applies to synced values. The
+            quota is the `pkey.cloudSync.bytes` entitlement, never here. A console publish that
+            omits it keeps the active version's block.
           properties:
             collections:
               type: array
+              maxItems: 32
               items:
                 type: object
-                required: [name, access]
+                required: [name]
                 properties:
                   name: { type: string }
-                  access: { type: string, enum: [owner, ownerRead, server] }
+                  label: { type: string }
+                  template: { type: string, enum: [saves, session] }
+                  access: { type: string, enum: [owner] }
                   conflict:
-                    { type: string, enum: [revision, lastWrite, merge, union] }
-                  schema: { type: object, additionalProperties: true }
-                  onAttach:
                     {
                       type: string,
-                      enum: [keepCloud, keepLocal, merge, prompt],
+                      enum: [lastWrite, max, min, merge, union, revision],
                     }
-            open: { type: boolean }
-            saves: { type: object, additionalProperties: true }
+                  conflictField: { type: string }
+                  schema: { type: object, additionalProperties: true }
+                  maxRecords: { type: integer, minimum: 0, maximum: 10000 }
+                  files:
+                    type: object
+                    properties:
+                      maxBytes: { type: integer, minimum: 0 }
+                      keepRevisions: { type: integer, minimum: 0 }
+                  requires: { type: string }
             migrations:
               type: array
               items:

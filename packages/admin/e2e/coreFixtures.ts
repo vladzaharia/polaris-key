@@ -501,7 +501,7 @@ export const CORE_ROUTES: Record<string, unknown> = {
       ...(i < 3
         ? {
             user: {
-              sync: (["user", "platform", "device"] as const)[i],
+              sync: (["user", "platform", "local"] as const)[i],
               ...(i === 1 ? { listed: false } : {}),
             },
           }
@@ -509,11 +509,10 @@ export const CORE_ROUTES: Record<string, unknown> = {
     })),
     cloudSync: {
       collections: [
-        { name: "progress", access: "owner", onAttach: "merge" },
-        { name: "unlocks", access: "ownerRead", conflict: "union" },
-        { name: "support_notes", access: "server" },
+        { name: "saves", template: "saves", requires: "cloudSaves" },
+        { name: "progress", conflict: "max", conflictField: "level" },
+        { name: "unlocks", conflict: "union" },
       ],
-      saves: { conflict: "mostRecent", requiresFlag: "cloudSaves" },
       migrations: [{ toSchemaVersion: 8, rename: { k40: "k41" } }],
     },
   },
