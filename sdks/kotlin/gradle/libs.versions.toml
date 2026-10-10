@@ -21,7 +21,7 @@ playIntegrity = "1.6.0"
 # Play Billing for :billing (SP-K05): the latest 8.x on 2026-10-05. Google Play requires Billing
 # Library 8 or later for new apps and app updates from 31 August 2026; 8.3.0 declares minSdk 23
 # (below ours) and no minCompileSdk, so it builds under compileSdk 36 and AGP 8.6.1.
-playBilling = "8.3.0"
+playBilling = "9.1.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
