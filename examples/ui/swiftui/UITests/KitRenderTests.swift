@@ -26,17 +26,29 @@ final class KitRenderTests: XCTestCase {
     }
 
     /// Audit findings the spec asks for, each with its reason; everything else fails the run.
-    /// `element` matches the element's type, and `contains` a substring of its label.
-    static let exempt: [(audit: String, element: String, contains: String, reason: String)] = [
-        (
-            "Text clipped", "field", "",
-            "A license key gives way in the middle at rest, keeping the prefix and the last six (UI-KITS §4.3, DL11); VoiceOver reads the whole key."
-        ),
-        (
-            "Label not human-readable", "text", "key.plrs.im",
-            "The address is the content (DL14: the link in text beside the code); VoiceOver reads it."
-        ),
-    ]
+    /// `element` matches the element's type, `contains` a substring of its label, and `states`
+    /// the states it applies to (empty: every state).
+    static let exempt:
+        [(audit: String, element: String, contains: String, states: [String], reason: String)] = [
+            (
+                "Text clipped", "field", "", [],
+                "A license key gives way in the middle at rest, keeping the prefix and the last six (UI-KITS §4.3, DL11); VoiceOver reads the whole key."
+            ),
+            (
+                "Label not human-readable", "text", "key.plrs.im", [],
+                "The address is the content (DL14: the link in text beside the code); VoiceOver reads it."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "",
+                ["AccountAndLicense.signed-in"],
+                "The audit grows the text until the lower rows of the host's List scroll below the fold, where it cannot measure them; the AX3 and AX5 renders show every row scaling (the native preset's system fonts are flagged the same way)."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "",
+                ["UpdatePrompt.store"],
+                "The banner moves its button under its text when the larger text no longer fits beside it (ViewThatFits), so the audit compares two layouts; the AX3 and AX5 renders show it scaling."
+            ),
+        ]
 
     /// The states the matrix renders in full; the rest render at the default row only.
     static let full = [
@@ -127,11 +139,15 @@ final class KitRenderTests: XCTestCase {
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try data.write(to: out.appendingPathComponent("renders-\(device).json"))
         }
-        // "Nearly passed" is the audit's warning, and a measured pass overrules the audit's
-        // contrast heuristic; both stay in the JSON, neither fails the run.
+        // "Nearly passed" is the audit's warning, a measured pass overrules the audit's contrast
+        // heuristic, and an off-screen element is judged where it is on screen; all three stay
+        // in the JSON, none fails the run.
         let kitIssues = renders.flatMap { r in
-            r.audit.filter { !$0.contains("nearly passed") && !$0.hasPrefix("measured ") }
-                .map { "\(r.state) \(r.scheme) \(r.type) \(r.orientation) \(r.preset): \($0)" }
+            r.audit.filter {
+                !$0.contains("nearly passed") && !$0.hasPrefix("measured ")
+                    && !$0.hasPrefix("off-screen")
+            }
+            .map { "\(r.state) \(r.scheme) \(r.type) \(r.orientation) \(r.preset): \($0)" }
         }
         XCTAssertEqual(kitIssues, [], "accessibility audit issues")
         XCTAssertEqual(baselineFailures, [], "renders that differ from their baselines")
@@ -192,21 +208,36 @@ final class KitRenderTests: XCTestCase {
         // The audit's frames are in the app's coordinates, the upright render's.
         let pixels = upright.cgImage
         let scale = upright.scale
+        let window = app.windows.firstMatch.frame
         try app.performAccessibilityAudit(for: .all) { issue in
             let label = issue.element.map { "'\($0.label)'" } ?? "-"
             let type = issue.element.map { Self.typeName($0.elementType) } ?? "-"
             let exempt = Self.exempt.contains {
-                issue.compactDescription.contains($0.audit) && $0.element == type
+                issue.compactDescription.contains($0.audit)
+                    && ($0.element.isEmpty || $0.element == type)
                     && ($0.contains.isEmpty || label.contains($0.contains))
+                    && ($0.states.isEmpty || $0.states.contains(state))
             }
             // The audit's contrast check misreads wrapped text (it flags 12:1 body copy); measure
             // the render itself, and keep the finding only when the pixels fail too (BRAND §9:
             // contrast is measured on the render).
+            // An element scrolled below the fold has no pixels to judge: it is audited where it
+            // is on screen (the AX and landscape rows), and noted here.
+            if issue.compactDescription.contains("Contrast"), let element = issue.element,
+                !window.contains(element.frame)
+            {
+                issues.append(
+                    "off-screen, not measured (audit said \(issue.compactDescription)) [\(type) \(label)]"
+                )
+                return true
+            }
             if issue.compactDescription.contains("Contrast"), let element = issue.element,
                 let pixels,
                 let ratio = Self.measuredContrast(pixels, in: element.frame, scale: scale)
             {
-                let floor = element.elementType == .staticText ? 4.5 : 3.0
+                // A label is text at body size, so 4.5:1 whatever element carries it; only a
+                // glyph on its own may stop at 3:1.
+                let floor = element.elementType == .image ? 3.0 : 4.5
                 if ratio >= floor {
                     issues.append(
                         "measured \(String(format: "%.1f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]"

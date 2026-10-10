@@ -11,6 +11,10 @@ import Foundation
 import PolarisKeyUICore
 import SwiftUI
 
+#if canImport(UIKit)
+    import UIKit
+#endif
+
 /// The colours of one scheme.
 public struct KitPalette: Sendable, Equatable {
     public var page: Color
@@ -327,6 +331,26 @@ enum KitPaletteResolver {
         case .icon:
             input = derivedAccent
         case .host:
+            // The resolver still runs under `native` (DL13): the app's tint, as a colour, goes
+            // through it like any accent, so its label and links keep 4.5:1 (system blue under a
+            // white label measured 3.3 to 3.6:1).
+            if let tint = hostTint(dark: dark), let r = PolarisAccent.resolve(tint, dark: dark),
+                let solid = BrandColor(hexString: r.solid), let on = BrandColor(hexString: r.on),
+                let fg = BrandColor(hexString: r.fg), let subtle = BrandColor(hexString: r.subtle),
+                let focus = BrandColor(hexString: r.focus)
+            {
+                // The system's prominent glass lightens its tint; a resolved fill only just at
+                // 4.5:1 under a white label measured below it in light. There the fill takes the
+                // accent's text colour, a step darker, so the label keeps 4.5:1 through the glass.
+                let white = r.on.lowercased() == "#ffffff"
+                p.accentSolid = !dark && white ? fg.color : solid.color
+                p.accentOn = on.color
+                p.accentFg = fg.color
+                p.accentSubtle = subtle.color
+                p.focus = focus.color
+                p.accentIsHostTint = true
+                return p
+            }
             p.accentSolid = .accentColor
             p.accentFg = .accentColor
             p.accentOn = .white
@@ -353,6 +377,24 @@ enum KitPaletteResolver {
 }
 
 extension KitPaletteResolver {
+    /// The app's tint (its `AccentColor`, else the system's) in `#rrggbb` for one scheme, where the
+    /// platform can resolve it; nil keeps `Color.accentColor` as it is.
+    static func hostTint(dark: Bool) -> String? {
+        #if canImport(UIKit)
+            let traits = UITraitCollection(userInterfaceStyle: dark ? .dark : .light)
+            let color = UIColor(Color.accentColor).resolvedColor(with: traits)
+            var r: CGFloat = 0
+            var g: CGFloat = 0
+            var b: CGFloat = 0
+            var a: CGFloat = 0
+            guard color.getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+            func byte(_ v: CGFloat) -> Int { Int((min(max(v, 0), 1) * 255).rounded()) }
+            return String(format: "#%02x%02x%02x", byte(r), byte(g), byte(b))
+        #else
+            return nil
+        #endif
+    }
+
     /// The theme's per-role overrides (UI-KITS §3.1 `colors`).
     static func apply(_ overrides: [PolarisKeyTheme.ColorRole: String], to p: inout KitPalette) {
         for (role, hex) in overrides {
