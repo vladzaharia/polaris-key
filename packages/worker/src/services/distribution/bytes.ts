@@ -117,6 +117,7 @@ import {
   type PayloadTarget,
 } from "./payload.js";
 import { isPackSegment, isVariantSegment } from "./dictionary.js";
+import { SHA256SUMS_NAME, sha256sumsBody } from "./checksums.js";
 
 // ── Targets ──────────────────────────────────────────────────────────────────────────────────
 
@@ -456,7 +457,7 @@ function compute(
     case "build":
       return computeBuild(ctx, cleared, target);
     case "file":
-      return computeFile(ctx, cleared);
+      return computeFile(ctx, cleared, target);
     case "blob":
       return computeBlob(ctx, cleared, target);
     case "payload":
@@ -655,7 +656,28 @@ async function computeBuild(
 async function computeFile(
   ctx: ByteContext,
   { catalog, mode, file }: Cleared,
+  target: Extract<ByteTarget, { kind: "file" }>,
 ): Promise<Response> {
+  // DC-15: the generated SHA256SUMS of this release, whatever a developer published by that name.
+  // It is read after the same access decision as the files it lists.
+  if (target.name === SHA256SUMS_NAME && file?.release) {
+    const body = sha256sumsBody(
+      await catalog.artifacts(file.release.releaseId),
+    );
+    if (body === null) return notFound();
+    return new Response(ctx.req.method === "HEAD" ? null : body, {
+      status: 200,
+      headers: {
+        // The bytes host serves no text type at all (`core/bytesHost.ts`).
+        "content-type": isBytesHost(new URL(ctx.req.url), ctx.env)
+          ? "application/octet-stream"
+          : "text/plain; charset=utf-8",
+        "cache-control":
+          mode === "public" ? MOVING_BYTES_CACHE : PRIVATE_BYTES_CACHE,
+        "x-content-type-options": "nosniff",
+      },
+    });
+  }
   // The access decision checked this release's version; an artifact whose release row is
   // missing is not served on the strength of a check that saw nothing.
   if (!file?.release || !file.artifact) return notFound();

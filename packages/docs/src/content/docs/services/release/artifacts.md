@@ -96,6 +96,20 @@ lowercase hex digest — not the raw `shasum`-style `<digest>  <filename>` line,
 digest. This is exactly what the [install script](#the-install-script) verifies against
 before it will make anything executable.
 
+### SHA256SUMS
+
+Every release also has a generated `SHA256SUMS` at
+`GET /<product>/distribution/files/<releaseId>/SHA256SUMS`, on the bytes host and the console host,
+under the same access decision as the files it lists. It is derived from the release's artifact
+rows, never uploaded (a developer-published file of that name is not served in its place), and is
+in `sha256sum`'s format: one `<hex>  <name>` line per file, sorted by name. Download the files
+into one directory with it, then run `sha256sum --check SHA256SUMS`. Store-only locations, gated
+objects and names `sha256sum` cannot read back are left out. The public download page links it
+beside its file table.
+
+MD5 is refused: it is broken for verification, so there is no `MD5SUMS` and no MD5 column.
+(Maven's MD5 and SHA-1 sidecars stay, because Maven requires them.)
+
 ## Builds, files and blobs
 
 Three more byte routes serve what the [release model](/docs/services/release/truth-store/)

@@ -489,6 +489,39 @@ describe("the entitled access mode on the build, file and blob routes", () => {
     }
   });
 
+  it("SHA256SUMS follows the files' access: a bearer inside the window gets it privately, anonymous and out-of-window callers do not", async () => {
+    const s = await entitledSetup({ maxVersion: "1.0.0" });
+    const auth = { headers: { authorization: `Bearer ${s.token}` } };
+    for (const origin of [BYTES, CONSOLE]) {
+      const ok = await get(
+        s,
+        `${origin}/${SLUG}/release/files/v1.0.0/SHA256SUMS`,
+        auth,
+      );
+      expect(ok.status, origin).toBe(200);
+      expect(ok.headers.get("cache-control"), origin).toBe(
+        "private, no-store, no-transform",
+      );
+      expect(await ok.text(), origin).toBe(
+        `${sha256Hex(ASSET_BYTES[101]!)}  djdl-arm64\n`,
+      );
+      const anon = await get(
+        s,
+        `${origin}/${SLUG}/release/files/v1.0.0/SHA256SUMS`,
+      );
+      expect([401, 403], origin).toContain(anon.status);
+      expect(await anon.text(), origin).not.toMatch(/[0-9a-f]{64} {2}/);
+      // v1.1.0 is above the licence's window.
+      const out = await get(
+        s,
+        `${origin}/${SLUG}/release/files/v1.1.0/SHA256SUMS`,
+        auth,
+      );
+      expect(out.status, origin).toBe(403);
+      expect(await out.text(), origin).not.toMatch(/[0-9a-f]{64} {2}/);
+    }
+  });
+
   it("a blob is served only if a release carrying its digest passes the licence's window", async () => {
     // The gateway's decision for a blob names no version, so it proves only a usable licence;
     // without the per-release check, a licence capped at 1.0.0 could fetch v1.1.0 by hash.
