@@ -127,6 +127,7 @@ export function isSignInRefusal(error: {
     error.activation !== undefined ||
     error.code === ErrorCode.signInFailed ||
     error.code === ErrorCode.signInExpired ||
+    error.code === ErrorCode.signInDenied ||
     error.code === ErrorCode.keyEntryUnsupported
   );
 }

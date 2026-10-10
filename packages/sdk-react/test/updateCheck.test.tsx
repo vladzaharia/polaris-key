@@ -196,3 +196,96 @@ describe("one check behind every component", () => {
     adapter.dispose();
   });
 });
+
+describe("a check that throws synchronously", () => {
+  it("does not stick: the next check reaches the source again", async () => {
+    const { SharedCheck } = await import("../src/update/sharedCheck.js");
+    const shared = new SharedCheck();
+    const boom = (): never => {
+      throw new Error("sync boom");
+    };
+    expect(await shared.run(boom)).toBeNull();
+    expect(shared.get().error?.message).toBe("sync boom");
+    expect(shared.get().busy).toBe(false);
+    const ok = vi.fn(async () => ({
+      version: "1.0.0",
+      tag: "v1.0.0",
+      url: "https://dl.example/1",
+      updateAvailable: false,
+    }));
+    expect(await shared.run(ok)).toMatchObject({ version: "1.0.0" });
+    expect(ok).toHaveBeenCalledTimes(1);
+    expect(shared.get().error).toBeNull();
+  });
+
+  it("through the hook: a throwing fetcher, then a retry, hits the fetcher again", async () => {
+    const { renderHook, act } = await import("@testing-library/react");
+    const { useLatestVersion } =
+      await import("../src/update/useLatestVersion.js");
+    const calls: number[] = [];
+    const fetcher = vi.fn((): Promise<never> => {
+      calls.push(1);
+      if (calls.length === 1) throw new Error("sync");
+      return Promise.resolve({
+        version: "2.0.0",
+        tag: "v2",
+        url: "https://dl.example/2",
+        updateAvailable: true,
+      }) as never;
+    });
+    const bridge = makeFakeBridge(okBridgeState({ capabilities: withUpdate }));
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => NOW_SEC,
+      expectServices: withUpdate,
+    });
+    const { result } = renderHook(() => useLatestVersion({ fetcher }), {
+      wrapper: ({ children }) => (
+        <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+          {children}
+        </PolarisKeyProvider>
+      ),
+    });
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+    await act(async () => {
+      await result.current.check();
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(result.current.latest?.version).toBe("2.0.0");
+    adapter.dispose();
+  });
+});
+
+describe("links pass the kit's validator (DL14)", () => {
+  it("an update link that is not https has no action, and nothing opens", async () => {
+    const { openManageUrl } = await import("../src/components/PolarisLogin.js");
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const bridge = makeFakeBridge(okBridgeState({ capabilities: withUpdate }));
+    bridge.invoke = (async () => ({
+      version: "2.0.0",
+      tag: "v2",
+      url: "javascript:alert(1)",
+      updateAvailable: true,
+    })) as never;
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => NOW_SEC,
+      expectServices: withUpdate,
+    });
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <UpdatePrompt />
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(container.querySelector("[data-polaris-update]")).toBeTruthy(),
+    );
+    expect(container.querySelector("[data-polaris-update-action]")).toBeNull();
+    openManageUrl("javascript:alert(1)");
+    openManageUrl("http://evil.example/x");
+    expect(open).not.toHaveBeenCalled();
+    openManageUrl("https://key.plrs.im/activate?product=acme");
+    expect(open).toHaveBeenCalledTimes(1);
+    adapter.dispose();
+  });
+});

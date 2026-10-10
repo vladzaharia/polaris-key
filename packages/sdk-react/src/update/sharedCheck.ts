@@ -58,19 +58,24 @@ export class SharedCheck {
     )
       return Promise.resolve(this.snap.latest);
     this.set({ busy: true });
-    const run = (async (): Promise<VersionCheck | null> => {
-      try {
-        const latest = await ask();
-        this.okAt = now();
-        this.set({ latest, error: null, busy: false });
-        return latest;
-      } catch (e) {
-        this.set({ error: e as Error, busy: false });
-        return null;
-      } finally {
-        this.inflight = null;
-      }
-    })();
+    // `inflight` is assigned before anything can settle: a synchronous throw from `ask` is a
+    // rejection of this promise like any other, and its cleanup finds `run` already stored.
+    const run: Promise<VersionCheck | null> = Promise.resolve()
+      .then(ask)
+      .then(
+        (latest) => {
+          this.okAt = now();
+          this.set({ latest, error: null, busy: false });
+          return latest;
+        },
+        (e: unknown) => {
+          this.set({ error: e as Error, busy: false });
+          return null;
+        },
+      )
+      .finally(() => {
+        if (this.inflight === run) this.inflight = null;
+      });
     this.inflight = run;
     return run;
   }

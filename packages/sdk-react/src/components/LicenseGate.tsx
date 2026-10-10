@@ -27,6 +27,7 @@ import { REDUCED_MOTION, matches } from "./primitives/media.js";
 import { screenLogo } from "./brand.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
+import { openLink, safeLink } from "./links.js";
 import { errorSentence, errorTitle, type ErrorLike } from "./errors.js";
 import { activationTitle } from "../core/copy.js";
 import { useLatestVersion } from "../update/useLatestVersion.js";
@@ -243,9 +244,8 @@ function VersionBlock(props: { ctx: UseLicenseGate }): React.JSX.Element {
   const [busy, retry] = useRetry(ctx.retry);
   const offerUpdate = ctx.status === "version-too-old" && latest.enabled;
   const update = (): void => {
-    const url = latest.latest?.url;
-    if (url && typeof window !== "undefined")
-      window.open(url, "_blank", "noopener,noreferrer");
+    const url = safeLink(latest.latest?.url);
+    if (url) openLink(url);
     else void latest.check().catch(() => undefined);
   };
   return offerUpdate ? (

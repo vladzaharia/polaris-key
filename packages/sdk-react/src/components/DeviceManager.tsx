@@ -46,6 +46,7 @@ import { useIsomorphicLayoutEffect } from "./primitives/layout.js";
 import { TextField } from "./primitives/input.js";
 import { themePoweredBy } from "./brand.js";
 import { formatCopy } from "./format.js";
+import { safeLink } from "./links.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
 
 export interface DeviceManagerSlots {
@@ -486,9 +487,9 @@ function UnsupportedLine(props: {
       }}
     >
       <p style={mutedText}>{theme.copy.devicesUnsupportedBody}</p>
-      {manageUrl ? (
+      {safeLink(manageUrl) ? (
         <a
-          href={manageUrl}
+          href={safeLink(manageUrl)!}
           target="_blank"
           rel="noopener noreferrer"
           style={manageLink}

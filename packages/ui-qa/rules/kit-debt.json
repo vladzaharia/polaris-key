@@ -48,12 +48,6 @@
       "rule": "compose-system-alert",
       "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
       "count": 2
-    },
-    {
-      "kit": "react",
-      "rule": "react-uppercase",
-      "file": "packages/sdk-react/src/components/DeviceManager.tsx",
-      "count": 1
     }
   ]
 }

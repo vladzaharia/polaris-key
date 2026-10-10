@@ -52,7 +52,7 @@ import {
 import { TextField } from "./primitives/input.js";
 import { ExternalGlyph } from "./primitives/glyphs.js";
 import { SignInHandoff } from "./SignInHandoff.js";
-import { safeLink } from "./links.js";
+import { openLink, safeLink } from "./links.js";
 import { useWindowLayout } from "./primitives/layout.js";
 import { COARSE_POINTER, useMediaQuery } from "./primitives/media.js";
 import { screenLogo, themePoweredBy } from "./brand.js";
@@ -108,8 +108,9 @@ export function openManageUrl(
   let url = manageUrl;
   if (opts.returnUrl) url = withManageReturn(url, opts.returnUrl);
   if (opts.key) url = withManageKey(url, opts.key);
-  if (typeof window !== "undefined" && typeof window.open === "function")
-    window.open(url, "_blank", "noopener,noreferrer");
+  // Only a link the kit would show is one it opens (DL14).
+  const safe = safeLink(url);
+  if (safe) openLink(safe);
   return url;
 }
 

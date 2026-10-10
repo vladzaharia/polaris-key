@@ -1712,6 +1712,9 @@ export class BrowserAdapter implements PolarisAdapter {
           try {
             const r = await b.waitForSignIn(prompt, w);
             const out = signInResult(r);
+            // Cancelled while the last poll was in flight: the person has gone on (and may have
+            // started another sign-in), so this result is not theirs to apply.
+            if (w.signal?.aborted) return out;
             if (out.status === "ready")
               this.applyBearer({ busy: noBusy(), error: noErrors() });
             else
@@ -1719,14 +1722,18 @@ export class BrowserAdapter implements PolarisAdapter {
                 "identity",
                 new PolarisError(
                   out.status === "expired"
-                    ? "sign-in-expired"
-                    : "sign-in-failed",
+                    ? ErrorCode.signInExpired
+                    : out.status === "denied"
+                      ? ErrorCode.signInDenied
+                      : ErrorCode.signInFailed,
                   out.status === "error" ? out.message : out.status,
                 ),
               );
             return out;
           } catch (e) {
-            this.setBusy("identity", false);
+            // A cancel clears the busy flag itself; a late clear here would end the flag of the
+            // sign-in the person started next.
+            if (!w.signal?.aborted) this.setBusy("identity", false);
             throw e;
           }
         },

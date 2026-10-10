@@ -3,13 +3,13 @@
 // kit shows end users its neutral screens, and says the specifics once, in the console, outside
 // production builds.
 
-declare const process: { env?: { NODE_ENV?: string } };
+declare const process: { env: { NODE_ENV?: string } };
 
 /** True in a production build. Written as the literal `process.env.NODE_ENV` bundlers replace;
  *  where `process` does not exist (an unbundled page) it is not production. */
 export function isProduction(): boolean {
   try {
-    return process.env?.NODE_ENV === "production";
+    return process.env.NODE_ENV === "production";
   } catch {
     return false;
   }

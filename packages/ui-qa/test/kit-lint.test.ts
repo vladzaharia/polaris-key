@@ -126,6 +126,19 @@ describe("the per-kit source lints (bin/kit-lint.mjs)", () => {
     expect(lintKits(root).findings[0]!.detail).toMatch(/stale debt/);
   });
 
+  it("react-uppercase flags an upper-cased string, not a capitalised first letter", () => {
+    const root = seededRoot();
+    const dir = join(root, rules.kits.react!.roots[0]!);
+    writeFileSync(
+      join(dir, "caps.tsx"),
+      "const a = w.charAt(0).toUpperCase() + w.slice(1);\nconst b = title.toUpperCase();\n",
+    );
+    const hits = scan(root, ["react"]).filter((h) =>
+      h.file.endsWith("caps.tsx"),
+    );
+    expect(hits.map((h) => h.line)).toEqual([2]);
+  });
+
   it("skips generated files and honours a reasoned allow comment", () => {
     const root = seededRoot();
     const dir = join(root, rules.kits.godot!.roots[0]!);

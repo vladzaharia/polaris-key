@@ -51,6 +51,7 @@ import { bannerStyle } from "./primitives/card.js";
 import { screenLogo } from "./brand.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
+import { openLink, safeLink } from "./links.js";
 import { errorSentence, type ErrorLike } from "./errors.js";
 
 /** "{product} {version}" once the product's name and the version are known (update.title),
@@ -250,15 +251,14 @@ function VersionPrompt(
     );
   }
 
-  const act = (): void => {
-    if (onUpdate) {
-      onUpdate(check);
-      return;
-    }
-    if (check.latest?.url && typeof window !== "undefined") {
-      window.open(check.latest.url, "_blank", "noopener,noreferrer");
-    }
-  };
+  // A link is shown and opened only when it is https (DL14); a build the feed pointed at with
+  // anything else has no action.
+  const link = safeLink(check.latest?.url);
+  const act: (() => void) | null = onUpdate
+    ? () => onUpdate(check)
+    : link
+      ? () => openLink(link)
+      : null;
 
   const title = updateTitleFor(theme, check.latest?.version ?? null);
   const body = theme.copy.updateBody;
@@ -272,8 +272,9 @@ function VersionPrompt(
         title={title}
         body={body}
         logo={screenLogo(theme, "3.5rem")}
-        onRetry={act}
-        retryLabel={theme.copy.updateActionLabel}
+        {...(act
+          ? { onRetry: act, retryLabel: theme.copy.updateActionLabel }
+          : {})}
         scrim={theme.scheme ?? "dark"}
         onDismiss={dismiss}
         secondaryAction={
@@ -388,20 +389,16 @@ function DecisionPrompt(
       if (adapter.buildUrl)
         fallback = () => {
           void adapter.buildUrl?.(v, build).then((url) => {
-            if (url && typeof window !== "undefined")
-              window.open(url, "_blank", "noopener,noreferrer");
+            const link = safeLink(url);
+            if (link) openLink(link);
           });
         };
       break;
     }
     case "store": {
       label = c.updateStoreLabel;
-      const url = decision.listingUrl;
-      if (url)
-        fallback = () => {
-          if (typeof window !== "undefined")
-            window.open(url, "_blank", "noopener,noreferrer");
-        };
+      const url = safeLink(decision.listingUrl);
+      if (url) fallback = () => openLink(url);
       break;
     }
     case "platform":

@@ -415,7 +415,11 @@ export class DesktopAdapter implements PolarisAdapter {
         this.fail(
           "identity",
           new PolarisError(
-            "sign-in-failed",
+            r.kind === "expired"
+              ? "sign-in-expired"
+              : r.kind === "denied"
+                ? "sign-in-denied"
+                : "sign-in-failed",
             r.kind === "error" ? r.message : r.kind,
           ),
         );

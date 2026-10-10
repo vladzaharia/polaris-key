@@ -245,9 +245,9 @@
     {
       "id": "react-uppercase",
       "kit": "react",
-      "pattern": "textTransform:\\s*[\"']uppercase[\"']|\\.toUpperCase\\(\\)",
+      "pattern": "textTransform:\\s*[\"']uppercase[\"']|[A-Za-z_\\]]\\.toUpperCase\\(\\)",
       "spec": "§1.5 rule 6",
-      "says": "No all-caps labels."
+      "says": "No all-caps labels (a whole string upper-cased; capitalising a first letter is fine)."
     },
     {
       "id": "react-colour-literal",
