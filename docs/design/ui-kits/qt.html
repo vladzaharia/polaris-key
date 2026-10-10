@@ -8,11 +8,17 @@
     <style>
       /* The Python Qt kit (UK-12), drawn as Qt draws it rather than borrowed from the web
          variants. Qt Quick reads polaris_key/ui/qt/Theme.qml (generated): the platform variant's
-         measures (Windows 32 px controls at radius 4, GNOME/Linux 34 px at radius 8, macOS 28 pt
-         capsules), Rubik and the kit mono from the wheel. The QWidget parts read the generated
-         polaris_key_{dark,light}.qss: object names (#pkTitle, #pkPrimary, #pkKey, #pkCard) and the
-         product accent filled into its @pk-*@ placeholders. Linux Qt apps wear the KDE Breeze
-         window frame. */
+         measures (Windows 32 px controls at radius 4, GNOME 34 px at radius 8 with a pill
+         suggested action, KDE Breeze 32 px at radius 6, macOS 28 pt capsules), Rubik and the kit
+         mono from the wheel. The QWidget parts read the generated polaris_key_{dark,light}.qss:
+         object names (#pkTitle, #pkPrimary, #pkKey, #pkCard) and the product accent filled into
+         its @pk-*@ placeholders.
+         Two presets, drawn in every flow: polaris-key (the product accent through the resolver)
+         and native (the platform style's tint, font and control shapes; the resolver still keeps
+         text at 4.5:1 and fills at 3:1 on the host's surfaces).
+         Every window is a Qt Quick root of its own size: the layout reads the root's width and
+         height (container queries here), never the OS or the device. The host window's frame is
+         the OS's (.tb-*): the kit draws no title bar and no caption buttons. */
       :root {
         --q-win: #1f2025;
         --q-card: #2a2b31;
@@ -21,6 +27,21 @@
         --q-text: #ffffff;
         --q-mute: rgb(255 255 255 / 0.64);
         --q-ctl: rgb(255 255 255 / 0.08);
+        --q-ctl-edge: rgb(255 255 255 / 0.1);
+        /* Host tints for the native preset, per platform style (contrast-resolved on the host
+           surface: fill 3:1, label 4.5:1, text-safe step 4.5:1). */
+        --n-win: #4cc2ff;
+        --n-win-on: #000000;
+        --n-win-fg: #60cdff;
+        --n-kde: #3daee9;
+        --n-kde-on: #14161b;
+        --n-kde-fg: #5cbcee;
+        --n-gnome: #3584e4;
+        --n-gnome-on: #ffffff;
+        --n-gnome-fg: #78aeed;
+        --n-mac: #0a6fe8;
+        --n-mac-on: #ffffff;
+        --n-mac-fg: #6aa8ff;
       }
       [data-theme="light"] {
         --q-win: #f6f7f9;
@@ -30,14 +51,30 @@
         --q-text: #14161b;
         --q-mute: rgb(0 0 0 / 0.58);
         --q-ctl: rgb(0 0 0 / 0.06);
+        --q-ctl-edge: rgb(0 0 0 / 0.12);
+        --n-win: #0067c0;
+        --n-win-on: #ffffff;
+        --n-win-fg: #005a9e;
+        --n-kde: #1d7fbe;
+        --n-kde-on: #ffffff;
+        --n-kde-fg: #16699f;
+        --n-gnome: #1c71d8;
+        --n-gnome-on: #ffffff;
+        --n-gnome-fg: #1a5fb4;
+        --n-mac: #0064d1;
+        --n-mac-on: #ffffff;
+        --n-mac-fg: #0058b8;
       }
       .shot {
         position: relative;
         overflow: hidden;
         border-radius: 12px;
         isolation: isolate;
-        display: grid;
-        place-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 48px;
         padding: 48px;
       }
       .shot::before {
@@ -56,6 +93,19 @@
           radial-gradient(60% 80% at 100% 100%, #dad7e6 0%, transparent 60%),
           #eceef1;
       }
+      .shot > .cell {
+        display: grid;
+        gap: 12px;
+        justify-items: start;
+      }
+      .shot > .cell > .lbl {
+        font: 500 13px/18px var(--pk-font-sans);
+        color: #fff;
+        opacity: 0.86;
+      }
+      [data-theme="light"] .shot > .cell > .lbl {
+        color: #14161b;
+      }
       .win {
         position: relative;
         overflow: hidden;
@@ -63,6 +113,8 @@
         color: var(--q-text);
         font-size: 14px;
         line-height: 20px;
+        display: grid;
+        grid-template-rows: auto 1fr;
         box-shadow:
           0 0 0 1px rgb(0 0 0 / 0.45),
           0 28px 60px rgb(0 0 0 / 0.42);
@@ -72,7 +124,20 @@
           0 0 0 1px rgb(0 0 0 / 0.12),
           0 28px 60px rgb(6 9 18 / 0.2);
       }
-      /* Title bars: Windows 11 (Qt's default frame there), KDE Breeze, macOS. */
+      .win.os-win {
+        border-radius: 8px;
+      }
+      .win.os-kde {
+        border-radius: 6px;
+      }
+      .win.os-gnome {
+        border-radius: 14px;
+      }
+      .win.os-mac {
+        border-radius: 12px;
+      }
+      /* Title bars: Windows 11 (Qt's default frame there), KDE Breeze, macOS, GNOME header bar.
+         The host's, never the kit's. */
       .tb-win {
         height: 36px;
         display: flex;
@@ -141,82 +206,568 @@
       .tb-mac i:nth-child(3) {
         background: #28c840;
       }
+      .tb-gnome {
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        font: 600 14px/20px var(--pk-font-sans);
+        border-bottom: 1px solid var(--q-sep);
+      }
+      .tb-gnome .btns {
+        position: absolute;
+        inset-inline-end: 10px;
+        display: flex;
+        gap: 8px;
+      }
+      .tb-gnome .btns i {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--q-ctl);
+      }
 
-      /* Qt Quick controls, from Theme.qml. */
+      /* ---- Per-window tokens: the preset and the platform's tint ---- */
+      .win {
+        --a: var(--kit-accent);
+        --a-on: var(--kit-accent-on);
+        --a-fg: var(--kit-accent-fg);
+        --ring: var(--kit-focus);
+        --ctl-h: 32px;
+        --ctl-r: 4px;
+        --ctl-pad: 16px;
+        --title: 26px;
+      }
+      .win.os-gnome {
+        --ctl-h: 34px;
+        --ctl-r: 8px;
+      }
+      .win.os-kde {
+        --ctl-h: 32px;
+        --ctl-r: 6px;
+      }
+      .win.os-mac {
+        --ctl-h: 28px;
+        --ctl-r: 999px;
+        --ctl-pad: 14px;
+      }
+      .win.nat.os-win {
+        --a: var(--n-win);
+        --a-on: var(--n-win-on);
+        --a-fg: var(--n-win-fg);
+        --ring: var(--n-win-fg);
+        font-family:
+          "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      }
+      .win.nat.os-kde {
+        --a: var(--n-kde);
+        --a-on: var(--n-kde-on);
+        --a-fg: var(--n-kde-fg);
+        --ring: var(--n-kde-fg);
+        font-family: "Noto Sans", system-ui, sans-serif;
+      }
+      .win.nat.os-gnome {
+        --a: var(--n-gnome);
+        --a-on: var(--n-gnome-on);
+        --a-fg: var(--n-gnome-fg);
+        --ring: var(--n-gnome-fg);
+        font-family: "Adwaita Sans", Cantarell, system-ui, sans-serif;
+      }
+      .win.nat.os-mac {
+        --a: var(--n-mac);
+        --a-on: var(--n-mac-on);
+        --a-fg: var(--n-mac-fg);
+        --ring: var(--n-mac-fg);
+        font-family: -apple-system, system-ui, sans-serif;
+      }
+      .win.nat * {
+        font-family: inherit;
+      }
+
+      /* ---- The Qt Quick root: DL1 reads its width and height ---- */
+      .qroot {
+        container: qroot / size;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+      }
+      .stage {
+        height: 100%;
+      }
+      .gate {
+        height: 100%;
+        display: grid;
+        grid-template-columns: minmax(200px, 38%) 1fr;
+        gap: 32px;
+        padding: 16px;
+      }
+      .start {
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+        min-height: 0;
+      }
+      .os-gnome .start {
+        border-radius: 12px;
+      }
+      .start.art {
+        background: #0b3a48;
+      }
+      .start.art > svg {
+        position: absolute;
+        inset: 0;
+      }
+      .start.sunk .big {
+        display: block;
+      }
+      .start.sunk {
+        background: var(--q-sunken);
+        display: grid;
+        place-items: center;
+      }
+      .ico-strip {
+        display: none;
+        place-items: center;
+        position: absolute;
+        inset: 0;
+      }
+      .end {
+        display: grid;
+        align-content: start;
+        gap: 20px;
+        padding-block: 16px;
+        padding-inline-end: 32px;
+        min-width: 0;
+      }
+      .head {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+      .head .mark {
+        margin-bottom: 12px;
+        justify-self: start;
+      }
+      .nat .head .mark {
+        display: none;
+      }
+      .ttl {
+        font: 600 var(--title) / 1.2 var(--pk-font-sans);
+        letter-spacing: -0.01em;
+        margin: 0;
+        text-wrap: balance;
+      }
+      .nat .ttl {
+        letter-spacing: 0;
+      }
+      .mute {
+        color: var(--q-mute);
+      }
+      .by {
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--q-mute);
+      }
+      .lede {
+        margin: 8px 0 0;
+        color: var(--q-mute);
+        text-wrap: pretty;
+      }
+      .stack {
+        display: grid;
+        gap: 8px;
+        max-width: 320px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .links {
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        color: var(--q-mute);
+      }
+      .lbl2 {
+        font: 500 13px/18px var(--pk-font-sans);
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      /* Controls, from Theme.qml (pk) or the platform style (nat). */
       .qb {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        padding: 0 16px;
+        height: var(--ctl-h);
+        border-radius: var(--ctl-r);
+        padding: 0 var(--ctl-pad);
         font: 500 14px/1 var(--pk-font-sans);
         background: var(--q-ctl);
         color: var(--q-text);
         white-space: nowrap;
       }
       .qb.primary {
-        background: var(--kit-accent);
-        color: var(--kit-accent-on);
+        background: var(--a);
+        color: var(--a-on);
       }
-      .windows .qb {
-        height: 32px;
-        border-radius: 4px;
-        box-shadow: inset 0 0 0 1px var(--q-sep);
-      }
-      .gnome .qb {
-        height: 34px;
-        border-radius: 8px;
-      }
-      .mac .qb {
-        height: 28px;
+      .os-gnome .qb.primary {
         border-radius: 999px;
+      }
+      .os-win .qb:not(.primary),
+      .os-kde.nat .qb:not(.primary) {
+        box-shadow: inset 0 0 0 1px var(--q-ctl-edge);
+      }
+      .qb.block {
+        width: 100%;
+      }
+      .qb.focus,
+      .qfield.focus {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+      .qb.sm {
+        height: 28px;
+        padding: 0 12px;
         font-size: 13px;
-        padding: 0 14px;
+      }
+      .qlink {
+        color: var(--a-fg);
+        font-size: 13px;
       }
       .qfield {
         display: flex;
         align-items: center;
         gap: 8px;
         background: var(--q-sunken);
-        padding: 0 10px;
+        padding: 0 8px 0 12px;
+        min-height: var(--ctl-h);
+        border-radius: var(--ctl-r);
       }
-      .windows .qfield {
-        min-height: 32px;
-        border-radius: 4px;
-        box-shadow: inset 0 -2px 0 var(--kit-accent-fg);
-      }
-      .gnome .qfield {
-        min-height: 34px;
+      .os-mac .qfield {
         border-radius: 8px;
-        outline: 2px solid
-          color-mix(in oklab, var(--kit-focus) 70%, transparent);
-        outline-offset: -2px;
+      }
+      .os-win .qfield {
+        box-shadow: inset 0 -2px 0 var(--a-fg);
+      }
+      .nat .qfield {
+        box-shadow: inset 0 0 0 1px var(--q-ctl-edge);
       }
       .qfield .mono {
         flex: 1;
         font-size: 13px;
       }
-      .qt-title {
-        font: 600 26px/32px var(--pk-font-sans);
-        margin: 0;
-        text-wrap: balance;
+      /* At rest a key shows its start and its last six characters (the middle gives way). */
+      .qfield .k-key {
+        max-width: 232px;
       }
-      .qt-mute {
+      .verdict {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        font-size: 13px;
         color: var(--q-mute);
       }
-      .qt-label {
-        font: 500 13px/18px var(--pk-font-sans);
-        margin-bottom: 6px;
-        display: block;
+      .verdict .ic {
+        color: var(--pk-success);
       }
-      .art {
-        position: relative;
+      .code {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 12px 12px 20px;
+        border-radius: 12px;
+        background: var(--q-sunken);
+      }
+      .code .mono {
+        font: 600 28px/32px var(--pk-font-mono);
+        letter-spacing: 0.06em;
+      }
+      .wait {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--q-mute);
+      }
+      /* DL6: a refusal the person can resolve is a neutral callout under its control. */
+      .callout {
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: var(--q-sunken);
+        font-size: 13px;
+        line-height: 18px;
+        text-wrap: pretty;
+      }
+      .devs {
+        display: grid;
+        border-radius: 8px;
+        background: var(--q-card);
+        box-shadow: inset 0 0 0 1px var(--q-sep);
         overflow: hidden;
-        background: #0b3a48;
       }
-      .art svg {
+      .devs > div {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        padding: 6px 12px;
+      }
+      .devs > div + div {
+        border-top: 1px solid var(--q-sep);
+      }
+      .devs small {
+        display: block;
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--q-mute);
+      }
+
+      /* ---- DL1 by the root's size ---- */
+      /* Narrow (under 560 wide): one column; the identity panel is a one-line header strip. */
+      @container qroot (max-width: 559px) {
+        .gate {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          gap: 16px;
+        }
+        .start {
+          height: 64px;
+        }
+        .start.art {
+          background: var(--q-sunken);
+        }
+        .start.art > svg,
+        .start.sunk .big {
+          display: none;
+        }
+        .start .ico-strip {
+          display: grid;
+        }
+        .end {
+          padding-inline: 16px;
+        }
+        .head .mark {
+          display: none;
+        }
+      }
+      /* Tall: the heading block sits near the upper third, the actions dock at the bottom. */
+      @container qroot (max-width: 559px) and (min-height: 560px) {
+        .end {
+          grid-template-rows: auto auto auto;
+          align-content: stretch;
+          padding-block-end: 24px;
+        }
+        .end > .stack {
+          align-self: end;
+        }
+        .end > .links {
+          align-self: end;
+        }
+        .end {
+          grid-template-rows: 1fr auto auto;
+        }
+        .end > .head {
+          align-self: start;
+          padding-block-start: 48px;
+        }
+      }
+      /* Short landscape (under 30rem tall): still two columns, no scroll; decoration and
+         secondary lines give way first. */
+      @container qroot (max-height: 479px) and (min-width: 560px) {
+        .end {
+          gap: 12px;
+          padding-block: 8px;
+        }
+        .gate .head .mark,
+        .gate .lede {
+          display: none;
+        }
+        .gate .ttl {
+          font-size: 22px;
+        }
+      }
+      /* Large: a sheet-scale two-pane card on the product ambient, desktop type, never stretched. */
+      @container qroot (min-width: 1000px) {
+        .stage {
+          display: grid;
+          place-items: center;
+          background: color-mix(in oklab, var(--a) 12%, var(--q-win));
+        }
+        .gate {
+          width: 1040px;
+          height: 560px;
+          background: var(--q-win);
+          border-radius: 16px;
+          box-shadow: 0 0 0 1px var(--q-sep);
+          padding: 24px;
+        }
+        .gate .ttl {
+          font-size: 30px;
+        }
+        .end {
+          gap: 24px;
+          padding-block: 24px;
+        }
+      }
+      /* Message screens never split: one block, actions in a trailing row. */
+      .msg {
+        display: grid;
+        align-content: start;
+        justify-items: start;
+        gap: 16px;
+        padding: 32px 40px;
+        max-width: 560px;
+      }
+      .msg .row.end-row {
+        justify-content: flex-end;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .sglyph {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--q-ctl);
+      }
+      /* The host app behind a banner or a sheet: its own content, not the kit's. */
+      .host {
+        padding: 20px;
+        display: grid;
+        gap: 12px;
+        align-content: start;
+      }
+      .host i {
+        display: block;
+        height: 40px;
+        border-radius: 8px;
+        background: var(--q-card);
+        box-shadow: inset 0 0 0 1px var(--q-sep);
+      }
+      .banner {
+        position: absolute;
+        inset-inline: 16px;
+        inset-block-end: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 8px 8px 16px;
+        border-radius: 10px;
+        background: var(--q-card);
+        box-shadow:
+          inset 0 0 0 1px var(--q-sep),
+          0 8px 24px rgb(0 0 0 / 0.25);
+      }
+      .banner > span:first-child {
+        flex: 1;
+      }
+      /* MultiEffect scrim: dims the whole window evenly; the dialog sits over it. */
+      .scrim {
         position: absolute;
         inset: 0;
+        background: var(--kit-scrim);
+        z-index: 5;
+      }
+      .dlg {
+        position: absolute;
+        z-index: 6;
+        inset-inline: 0;
+        inset-block-start: 48px;
+        margin-inline: auto;
+        width: 440px;
+        padding: 24px;
+        border-radius: 12px;
+        background: var(--q-card);
+        box-shadow:
+          inset 0 0 0 1px var(--q-sep),
+          0 24px 48px rgb(0 0 0 / 0.35);
+        display: grid;
+        gap: 16px;
+      }
+      .os-gnome .dlg {
+        border-radius: 16px;
+      }
+      .dlg .row.end-row {
+        justify-content: flex-end;
+        margin-top: 8px;
+      }
+      .boot {
+        height: 100%;
+        display: grid;
+        align-content: center;
+        gap: 16px;
+        justify-items: center;
+        position: relative;
+      }
+      /* Settings: provenance groups. */
+      .set {
+        padding: 24px 32px;
+        display: grid;
+        gap: 8px;
+        align-content: start;
+      }
+      .set h2 {
+        font: 600 17px/24px var(--pk-font-sans);
+        margin: 0 0 8px;
+      }
+      .set h3 {
+        font: 600 13px/18px var(--pk-font-sans);
+        margin: 16px 0 4px;
+        color: var(--q-text);
+      }
+      .srow {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 48px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: var(--q-card);
+        box-shadow: inset 0 0 0 1px var(--q-sep);
+      }
+      .srow > .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .srow small {
+        display: block;
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--q-mute);
+      }
+      .srow .v {
+        color: var(--q-mute);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .sw {
+        width: 36px;
+        height: 20px;
+        border-radius: 999px;
+        background: var(--a);
+        position: relative;
+        flex: none;
+      }
+      .sw::after {
+        content: "";
+        position: absolute;
+        inset-block-start: 3px;
+        inset-inline-end: 3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--a-on);
       }
 
       /* QWidget parts, as the generated QSS draws them. */
@@ -264,7 +815,8 @@
         padding: 0;
       }
       .w-btn.focus {
-        box-shadow: 0 0 0 2px var(--kit-focus) inset;
+        outline: 2px solid var(--kit-focus);
+        outline-offset: 2px;
       }
       .w-btn.disabled {
         color: var(--pk-text-subtle);
@@ -279,7 +831,8 @@
         font: 400 13px/1 var(--pk-font-mono);
       }
       .w-edit.focus {
-        box-shadow: 0 0 0 2px var(--kit-focus) inset;
+        outline: 2px solid var(--kit-focus);
+        outline-offset: 2px;
       }
       .w-prog {
         height: 6px;
@@ -316,430 +869,13 @@
         font-size: 12px;
         color: var(--q-mute);
       }
-      .trio {
-        display: flex;
-        gap: 32px;
-        align-items: center;
-      }
-      .sbody {
-        padding: 30px 36px 28px;
-        display: grid;
-        justify-items: center;
-        text-align: center;
-        gap: 10px;
-        min-height: 280px;
-        align-content: center;
-      }
-      .sglyph {
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        background: var(--q-ctl);
-      }
     </style>
   </head>
   <body>
-    <template id="caps">
-      <span class="caps"
-        ><span>
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M0 5h10" stroke="currentColor" />
-          </svg> </span
-        ><span>
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <rect
-              x=".5"
-              y=".5"
-              width="9"
-              height="9"
-              rx="1.5"
-              fill="none"
-              stroke="currentColor"
-            />
-          </svg> </span
-        ><span>
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M0 0l10 10M10 0 0 10" stroke="currentColor" />
-          </svg> </span
-      ></span>
-    </template>
-    <main class="board">
-      <!-- 1. Qt Quick gate, Windows -->
-      <figure>
-        <figcaption>
-          qt · Qt Quick gate on Windows 11 (Theme.qml, platform "windows": 32 px
-          controls, radius 4)
-        </figcaption>
-        <div class="shot" data-shot="quick-gate">
-          <div
-            class="win windows"
-            style="
-              width: 760px;
-              height: 500px;
-              border-radius: 8px;
-              display: grid;
-              grid-template-rows: 36px 1fr;
-            "
-          >
-            <div class="tb-win">
-              <span
-                class="k-appicon"
-                data-art="tidewater"
-                data-size="16"
-                style="border-radius: 4px; box-shadow: none"
-              ></span
-              >Tidewater Studio<span class="cap-slot"></span>
-            </div>
-            <div style="display: grid; grid-template-columns: 290px 1fr">
-              <div
-                class="art"
-                style="margin: 14px 0 14px 14px; border-radius: 8px"
-              ></div>
-              <div
-                style="
-                  display: grid;
-                  align-content: center;
-                  padding: 0 52px;
-                  gap: 20px;
-                "
-              >
-                <div
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="56"
-                  style="border-radius: 12px"
-                ></div>
-                <div style="display: grid; gap: 4px">
-                  <h1 class="qt-title">Welcome to Tidewater Studio</h1>
-                  <span class="qt-mute" style="font-size: 12px"
-                    >by Harbor Audio</span
-                  >
-                  <p class="qt-mute" style="margin: 6px 0 0">
-                    Sign in or add your license to start.
-                  </p>
-                </div>
-                <div style="display: grid; gap: 8px; max-width: 300px">
-                  <span class="qb primary">Sign in</span>
-                  <span class="qb">Use a license key</span>
-                </div>
-                <div
-                  class="qt-mute"
-                  style="display: flex; gap: 20px; font-size: 13px"
-                >
-                  <span>Start a 14-day trial</span><span>Activate offline</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </figure>
-
-      <!-- 2. Qt Quick activate, Linux (KDE Plasma frame) -->
-      <figure>
-        <figcaption>
-          qt · Qt Quick activate on Linux (KDE Breeze frame; platform "gnome":
-          34 px, radius 8)
-        </figcaption>
-        <div class="shot" data-shot="quick-activate">
-          <div class="win gnome" style="width: 560px; border-radius: 10px">
-            <div class="tb-kde">
-              <span
-                class="ico k-appicon"
-                data-art="tidewater"
-                data-size="16"
-                style="border-radius: 4px; box-shadow: none"
-              ></span
-              >Add your license — Tidewater Studio
-              <span class="btns"
-                ><i data-icon="chevronDown" data-size="12"></i
-                ><i
-                  class="x"
-                  data-icon="x"
-                  data-size="12"
-                  style="color: #fff"
-                ></i
-              ></span>
-            </div>
-            <div style="padding: 26px 32px 28px; display: grid; gap: 18px">
-              <div
-                style="
-                  display: flex;
-                  gap: 10px;
-                  align-items: center;
-                  font-weight: 500;
-                "
-              >
-                <span
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="28"
-                  style="border-radius: 7px"
-                ></span
-                >Tidewater Studio
-                <span class="qt-mute" style="font-weight: 400">· Pro</span>
-              </div>
-              <div style="display: grid; gap: 4px">
-                <h1 class="qt-title" style="font-size: 22px; line-height: 28px">
-                  Add your license
-                </h1>
-                <p class="qt-mute" style="margin: 0">
-                  Your key is in the purchase email from Harbor Audio.
-                </p>
-              </div>
-              <div>
-                <span class="qt-label">License key</span>
-                <div class="qfield">
-                  <span class="mono"
-                    ><span class="k-key"
-                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
-                      ><span>3WPLDA</span></span
-                    ></span
-                  >
-                </div>
-                <div class="k-verdict" style="font-size: 13px; margin-top: 8px">
-                  <span data-icon="checkCircle" data-size="15"></span>
-                  <span
-                    ><b style="font-weight: 600; color: var(--q-text)"
-                      >Tidewater Studio Pro</b
-                    >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
-                  >
-                </div>
-              </div>
-              <div
-                style="
-                  display: flex;
-                  gap: 8px;
-                  justify-content: flex-end;
-                  margin-top: 4px;
-                "
-              >
-                <span class="qb">Cancel</span
-                ><span class="qb primary">Activate</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </figure>
-
-      <!-- 3. QWidget parts -->
-      <figure>
-        <figcaption>
-          qt · QWidget parts from the generated QSS (object names; the accent in
-          @pk-*@)
-        </figcaption>
-        <div class="shot" data-shot="widgets">
-          <div class="win mac" style="border-radius: 12px">
-            <div class="tb-mac"><i></i><i></i><i></i></div>
-            <div class="parts">
-              <div>
-                <h3>QFrame#pkCard · QLabel#pkTitle · #pkBody · #pkMeta</h3>
-                <div class="w-card">
-                  <span style="font: 600 22px/28px var(--pk-font-sans)"
-                    >Tidewater Studio Pro</span
-                  >
-                  <span>Lifetime license, 3 devices.</span>
-                  <span class="qt-mute" style="font-size: 12px"
-                    >mara@fennick.studio</span
-                  >
-                </div>
-              </div>
-              <div>
-                <h3>QLabel#pkCode (the kit mono)</h3>
-                <div class="w-card" style="justify-items: start">
-                  <span
-                    style="
-                      font: 600 28px/34px var(--pk-font-mono);
-                      letter-spacing: 0.06em;
-                    "
-                    >WDJB-MJHT</span
-                  >
-                  <span class="qt-mute" style="font-size: 12px"
-                    >Code expires in 9:12</span
-                  >
-                </div>
-              </div>
-              <div>
-                <h3>QPushButton · #pkPrimary · #pkDanger · #pkLink</h3>
-                <div
-                  style="
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 8px;
-                    align-items: center;
-                  "
-                >
-                  <span class="w-btn primary">Activate</span
-                  ><span class="w-btn">Cancel</span
-                  ><span class="w-btn danger">Remove</span
-                  ><span class="w-btn link">Where is my key?</span>
-                </div>
-              </div>
-              <div>
-                <h3>:focus · :disabled</h3>
-                <div style="display: flex; gap: 8px">
-                  <span class="w-btn primary focus">Activate</span
-                  ><span class="w-btn disabled">Continue</span>
-                </div>
-              </div>
-              <div>
-                <h3>QLineEdit#pkKey (:focus)</h3>
-                <div class="w-edit focus">pkey_tidewater_7Q2MXK9RV4…</div>
-              </div>
-              <div>
-                <h3>QProgressBar</h3>
-                <div style="display: grid; gap: 8px; padding-top: 6px">
-                  <div class="w-prog"><i></i></div>
-                  <span class="qt-mute" style="font-size: 12px"
-                    >38 of 61 MB · about 20 s left</span
-                  >
-                </div>
-              </div>
-              <div style="grid-column: 1 / -1">
-                <h3>QListView (selected row: the accent's subtle)</h3>
-                <div class="w-list">
-                  <div class="sel">
-                    <span data-icon="laptop" data-size="16"></span>Work
-                    laptop<small>last used 41 days ago</small>
-                  </div>
-                  <div>
-                    <span data-icon="tablet" data-size="16"></span>Mara’s
-                    iPad<small>yesterday</small>
-                  </div>
-                  <div>
-                    <span data-icon="laptop" data-size="16"></span>MacBook
-                    Pro<small>today</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </figure>
-
-      <!-- 4. Boot, status, error (Qt Quick, Windows) -->
-      <figure>
-        <figcaption>
-          qt · boot, status (blocked) and error (offline), Qt Quick on Windows
-        </figcaption>
-        <div class="shot" data-shot="states">
-          <div class="trio">
-            <div class="win windows" style="width: 420px; border-radius: 8px">
-              <div class="tb-win">
-                <span
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="16"
-                  style="border-radius: 4px; box-shadow: none"
-                ></span
-                >Tidewater Studio<span class="cap-slot"></span>
-              </div>
-              <div class="sbody">
-                <div
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="72"
-                  style="border-radius: 16px"
-                ></div>
-                <div class="k-progress" style="width: 160px; margin-top: 18px">
-                  <i style="width: 45%"></i>
-                </div>
-                <span class="qt-mute" style="font-size: 12px"
-                  >Checking your license</span
-                >
-              </div>
-            </div>
-            <div class="win windows" style="width: 420px; border-radius: 8px">
-              <div class="tb-win">
-                <span
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="16"
-                  style="border-radius: 4px; box-shadow: none"
-                ></span
-                >Tidewater Studio<span class="cap-slot"></span>
-              </div>
-              <div class="sbody">
-                <div
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="52"
-                  style="border-radius: 12px"
-                ></div>
-                <h1
-                  class="qt-title"
-                  style="font-size: 20px; line-height: 28px; margin-top: 8px"
-                >
-                  Your license has ended
-                </h1>
-                <p class="qt-mute" style="margin: 0">
-                  Tidewater Studio Pro ended on 30 September. Renew to keep
-                  working on your sessions.
-                </p>
-                <div
-                  style="
-                    display: flex;
-                    gap: 8px;
-                    justify-content: flex-end;
-                    width: 100%;
-                    margin-top: 16px;
-                  "
-                >
-                  <span class="qb">Use a different key</span
-                  ><span class="qb primary">Renew</span>
-                </div>
-              </div>
-            </div>
-            <div class="win windows" style="width: 420px; border-radius: 8px">
-              <div class="tb-win">
-                <span
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="16"
-                  style="border-radius: 4px; box-shadow: none"
-                ></span
-                >Tidewater Studio<span class="cap-slot"></span>
-              </div>
-              <div class="sbody">
-                <div class="sglyph" data-icon="wifiOff" data-size="22"></div>
-                <h1
-                  class="qt-title"
-                  style="font-size: 20px; line-height: 28px; margin-top: 8px"
-                >
-                  Can’t reach Harbor Audio
-                </h1>
-                <p class="qt-mute" style="margin: 0">
-                  Check your connection. You can keep working offline for 3 more
-                  days.
-                </p>
-                <div
-                  style="
-                    display: flex;
-                    gap: 8px;
-                    justify-content: flex-end;
-                    width: 100%;
-                    margin-top: 16px;
-                  "
-                >
-                  <span class="qb">Continue offline</span
-                  ><span class="qb primary">Try again</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </figure>
-    </main>
+    <main class="board" id="board"></main>
     <script>
-      document
-        .querySelectorAll(".cap-slot")
-        .forEach((s) =>
-          s.replaceWith(
-            document.getElementById("caps").content.cloneNode(true),
-          ),
-        );
-      const artSvg = `<svg width="100%" height="100%" viewBox="0 0 300 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="300" height="460" fill="#0b3a48"/><circle cx="210" cy="110" r="30" fill="#f5d38a"/>${[
+      /* Frame builders: board layout plus the kit's own markup, one function per screen. */
+      const ART = `<svg width="100%" height="100%" viewBox="0 0 300 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="300" height="460" fill="#0b3a48"/><circle cx="210" cy="110" r="30" fill="#f5d38a"/>${[
         0, 1, 2, 3,
       ]
         .map((i) => {
@@ -749,7 +885,222 @@
           return `<path d="${d}" stroke="${["#5fe3cf", "#8eeedd", "#bff5ea", "#5fe3cf"][i]}" stroke-width="9" fill="none" stroke-linecap="round" opacity="${(0.95 - i * 0.15).toFixed(2)}"/>`;
         })
         .join("")}</svg>`;
-      document.querySelectorAll(".art").forEach((a) => (a.innerHTML = artSvg));
+      const appIcon = (s, r) =>
+        `<span class="k-appicon" data-art="tidewater" data-size="${s}" style="border-radius:${r}px"></span>`;
+      const KEY = `<span class="mono"><span class="k-key"><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span><span>3WPLDA</span></span></span>`;
+      const CAPS = `<span class="caps"><span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10" stroke="currentColor"/></svg></span><span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x=".5" y=".5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor"/></svg></span><span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0 0 10" stroke="currentColor"/></svg></span></span>`;
+      const ext = `<span data-icon="external" data-size="14"></span>`;
+
+      /* The host window frame: the OS's, drawn around the kit. */
+      function chrome(os, title) {
+        const small = `<span class="${os === "kde" ? "ico " : ""}k-appicon" data-art="tidewater" data-size="16" style="border-radius:4px;box-shadow:none"></span>`;
+        if (os === "win")
+          return `<div class="tb-win">${small}${title}${CAPS}</div>`;
+        if (os === "kde")
+          return `<div class="tb-kde">${small}${title}<span class="btns"><i data-icon="chevronDown" data-size="12"></i><i class="x" data-icon="x" data-size="12" style="color:#fff"></i></span></div>`;
+        if (os === "gnome")
+          return `<div class="tb-gnome" data-ui-chrome>${title}<span class="btns"><i data-icon="x" data-size="12"></i></span></div>`;
+        return `<div class="tb-mac"><i></i><i></i><i></i></div>`;
+      }
+      function win(o) {
+        const cls = `win os-${o.os} ${o.nat ? "nat" : "pk"}`;
+        const attr = o.nat ? ' data-ui-preset="native"' : "";
+        return `<div class="${cls}"${attr} style="width:${o.w}px;height:${o.h}px">${chrome(o.os, o.title || "Tidewater Studio")}<div class="qroot"><div class="stage">${o.body}</div></div></div>`;
+      }
+      /* The identity panel: the product art (polaris-key), the icon alone on a sunken panel
+         (native), a header strip when the root is narrow. */
+      const start = (nat) =>
+        nat
+          ? `<div class="start sunk"><span class="big">${appIcon(96, 22)}</span><div class="ico-strip">${appIcon(32, 8)}</div></div>`
+          : `<div class="start art">${ART}<div class="ico-strip">${appIcon(32, 8)}</div></div>`;
+      const head = (title, by, lede, ico) =>
+        `<div class="head">${ico === false ? "" : `<span class="mark">${appIcon(48, 11)}</span>`}<h1 class="ttl">${title}</h1>${by ? `<span class="by" data-ui-no-strings>${by}</span>` : ""}${lede ? `<p class="lede">${lede}</p>` : ""}</div>`;
+      const btn = (t, c = "") => `<span class="qb ${c}">${t}</span>`;
+      /* Button order comes from the platform's DialogButtonBox: Windows and KDE put the
+         affirmative action first; GNOME and macOS end on it. */
+      function pair(os, yes, no) {
+        const y = btn(yes, "primary"),
+          n = btn(no);
+        return os === "win" || os === "kde" ? `${y}${n}` : `${n}${y}`;
+      }
+      const gate = (nat, endHtml) =>
+        `<div class="gate">${start(nat)}<div class="end">${endHtml}</div></div>`;
+
+      const welcomeEnd = (focus) =>
+        head(
+          "Welcome to Tidewater Studio",
+          "by Harbor Audio",
+          "Sign in or use a license key to continue.",
+        ) +
+        `<div class="stack">${btn("Sign in", "primary block " + (focus ? "focus" : ""))}${btn("Use a license key", "block")}</div><div class="links"><span>Start a free trial</span><span>Activate offline</span></div>`;
+      const welcome = (o) => gate(o.nat, welcomeEnd(o.focus));
+      const activateEnd = (o) =>
+        head(
+          "Enter your license key",
+          "",
+          "You’ll find it in your purchase email.",
+          false,
+        ) +
+        `<div><span class="lbl2">License key</span><div class="qfield">${KEY}${btn("Paste", "sm")}</div><div class="verdict"><span data-icon="checkCircle" data-size="16"></span><span>Tidewater Studio Pro · Lifetime</span></div></div>` +
+        `<div class="row">${pair(o.os, "Activate license", "Back")}</div>`;
+      const codeEnd = (o) =>
+        head(
+          "Finish in your browser",
+          "",
+          "Check the code there matches this one.",
+          false,
+        ) +
+        `<div class="stack" style="max-width:420px"><div class="code"><span class="mono">WDJB-MJHT</span>${btn(`<span data-icon="copy" data-size="14"></span>Copy`, "sm")}</div><div class="wait"><span data-countdown="0.84" data-size="16"></span><span>Code expires in 4:12</span></div><span class="by">Or go to tidewater.app/link</span></div>` +
+        `<div class="row">${pair(o.os, `Open browser again ${ext}`, "Cancel")}</div>`;
+      const limitEnd = (o) =>
+        head(
+          "Your license is on 3 of 3 devices",
+          "",
+          "To use it on this computer, replace one. You can add it back later.",
+          false,
+        ) +
+        `<div class="devs"><div><span data-icon="laptop" data-size="18"></span><span>Work laptop<small>Windows 11 · last used 41 days ago</small></span></div><div><span data-icon="tablet" data-size="18"></span><span>Mara’s iPad<small>iPadOS 26 · last used yesterday</small></span></div><div><span data-icon="laptop" data-size="18"></span><span>MacBook Pro<small>macOS 26 · last used today</small></span></div></div>` +
+        `<div class="callout">Replace a device in your browser. Tidewater Studio continues when you’re done.</div>` +
+        `<div class="row">${pair(o.os, `Open in browser ${ext}`, "Cancel")}</div>`;
+      const inline = (end) => (o) => gate(o.nat, end(o));
+
+      /* presentation: "sheet": a dialog over the dimmed host window. */
+      const sheet = (o) =>
+        `<div class="gate">${start(o.nat)}<div class="end">${head("Welcome to Tidewater Studio", "by Harbor Audio", "Sign in or use a license key to continue.")}<div class="stack">${btn("Sign in", "block")}${btn("Use a license key", "block")}</div></div></div><div class="scrim"></div><div class="dlg" role="dialog"><div class="head"><h2 class="ttl" style="font-size:20px">Enter your license key</h2><p class="lede" style="margin:4px 0 0">You’ll find it in your purchase email.</p></div><div><span class="lbl2">License key</span><div class="qfield">${KEY}${btn("Paste", "sm")}</div></div><div class="row end-row">${pair(o.os, "Activate license", "Cancel")}</div></div>`;
+
+      const W = 760,
+        H = 560;
+      const cell = (label, w) =>
+        `<div class="cell"><span class="lbl" data-ui-chrome>${label}</span>${w}</div>`;
+      const shots = [];
+      const shot = (name, caption, cells) =>
+        shots.push(
+          `<figure><figcaption>${caption}</figcaption><div class="shot" data-shot="${name}">${cells.join("")}</div></figure>`,
+        );
+      const w = (os, nat, width, height, fn, title) =>
+        win({ os, nat, w: width, h: height, title, body: fn({ os, nat }) });
+      const both = (os, fn, width = W, height = H) => [
+        cell("polaris-key", w(os, false, width, height, fn)),
+        cell("native", w(os, true, width, height, fn)),
+      ];
+
+      shot(
+        "quick-gate",
+        "<b>Gate</b> · Qt Quick on Windows 11, 760 × 560, both presets. The panel is the product art (polaris-key) or its icon alone (native).",
+        both("win", welcome),
+      );
+      shot(
+        "quick-shapes",
+        "<b>Gate shapes</b> · narrow, 440 × 640 (the panel is a header strip), and short landscape, 760 × 440 (two columns, no scroll).",
+        [
+          cell("narrow", w("win", false, 440, 640, welcome)),
+          cell("narrow, native", w("win", true, 440, 640, welcome)),
+          cell("short landscape", w("win", false, 760, 440, welcome)),
+        ],
+      );
+      shot(
+        "quick-large",
+        "<b>Gate, large</b> · 1280 × 820: a two-pane card on the product ambient, never stretched.",
+        [cell("polaris-key", w("win", false, 1280, 820, welcome))],
+      );
+      shot(
+        "quick-activate",
+        "<b>Activate</b> · inline in the Welcome window on Windows 11: the step replaces the end pane.",
+        both("win", inline(activateEnd)),
+      );
+      shot(
+        "quick-sign-in",
+        "<b>Sign in</b> · the inline code view on Windows 11. No QR on a desktop.",
+        both("win", inline(codeEnd)),
+      );
+      shot(
+        "quick-device-limit",
+        "<b>Device limit</b> · on the key path the fix is the browser: a neutral callout and one primary.",
+        both("win", inline(limitEnd)),
+      );
+      shot(
+        "quick-activate-sheet",
+        '<b>Activate, presentation: "sheet"</b> · over the dimmed window. KDE Breeze puts the affirmative first; other Linux sessions use the GNOME form.',
+        [
+          cell("KDE Breeze, polaris-key", w("kde", false, 720, 480, sheet)),
+          cell("GNOME, native", w("gnome", true, 720, 480, sheet)),
+        ],
+      );
+      shot(
+        "quick-focus",
+        "<b>Keyboard focus</b> · the ring shows on keyboard focus only: 2 px, in the product accent or the platform tint.",
+        [
+          cell(
+            "polaris-key",
+            w("win", false, W, H, (o) => welcome({ ...o, focus: true })),
+          ),
+          cell(
+            "native",
+            w("win", true, W, H, (o) => welcome({ ...o, focus: true })),
+          ),
+        ],
+      );
+
+      const settings = () =>
+        `<div class="set"><h2>Account and license</h2><h3>From Harbor Audio</h3><div class="srow"><span class="t">Update automatically</span><span class="v"><span class="sw"></span></span></div><div class="srow"><span class="t">Release channel</span><span class="v" data-ui-no-strings>Stable</span></div><h3>Managed settings</h3><div class="srow"><span class="t"><span>Cloud Sync</span><small>Set by Harbor Audio</small></span><span class="v">Off<span data-icon="lock" data-size="16"></span></span></div></div>`;
+      shot(
+        "settings",
+        "<b>Settings</b> · Qt Quick on Windows 11: what the developer ships and the person can change, then locked managed settings.",
+        both("win", settings, 600, 440),
+      );
+
+      const boot = `<div class="boot"><span class="k-shimmer"></span>${appIcon(72, 16)}<span class="mute" style="font-size:13px">Checking your license…</span></div>`;
+      const grace = `<div class="host"><i></i><i></i><i></i></div><div class="banner"><span>Offline · 3 days left to reconnect</span>${btn("Reconnect", "sm")}</div>`;
+      const msg = (ico, title, text, acts) =>
+        `<div class="msg">${ico}<div class="head"><h1 class="ttl" style="font-size:20px;line-height:28px">${title}</h1><p class="lede" style="margin:4px 0 0">${text}</p></div><div class="row end-row">${acts}</div></div>`;
+      const revoked = msg(
+        appIcon(48, 11),
+        "License disabled",
+        "This license has been disabled. Contact the developer.",
+        `${btn("Sign in", "primary")}${btn("Use another license")}<span class="qlink">Contact Harbor Audio</span>`,
+      );
+      const offline = msg(
+        `<div class="sglyph" data-icon="wifiOff" data-size="22"></div>`,
+        "Can’t connect",
+        "Can’t reach Polaris Key. Check your connection and try again.",
+        `${btn("Try again", "primary")}${btn("Continue offline")}`,
+      );
+      shot(
+        "states",
+        "<b>Boot, grace, revoked and network error</b> · Qt Quick on Windows 11. Loading is the shimmer and a label, never a part-filled bar.",
+        [
+          cell(
+            "boot",
+            win({ os: "win", nat: false, w: 420, h: 300, body: boot }),
+          ),
+          cell(
+            "grace",
+            win({ os: "win", nat: false, w: 420, h: 300, body: grace }),
+          ),
+          cell(
+            "revoked",
+            win({ os: "win", nat: false, w: 560, h: 300, body: revoked }),
+          ),
+          cell(
+            "network error",
+            win({ os: "win", nat: false, w: 560, h: 300, body: offline }),
+          ),
+        ],
+      );
+
+      shots.push(`<figure><figcaption><b>QWidget parts</b> · from the generated QSS, by object name, with the accent in the @pk-*@ placeholders. The native preset keeps the platform QStyle and applies only spacing and hierarchy.</figcaption>
+        <div class="shot" data-shot="widgets"><div class="win os-mac pk"><div class="tb-mac"><i></i><i></i><i></i></div>
+        <div class="parts">
+          <div><h3>QFrame#pkCard · QLabel#pkTitle · #pkBody · #pkMeta</h3><div class="w-card"><span style="font:600 22px/28px var(--pk-font-sans)">Tidewater Studio Pro</span><span>Pro license</span><span class="mute" style="font-size:12px">mara@fennick.studio</span></div></div>
+          <div><h3>QLabel#pkCode (the kit mono)</h3><div class="w-card" style="justify-items:start"><span style="font:600 28px/34px var(--pk-font-mono);letter-spacing:.06em">WDJB-MJHT</span><span class="mute" style="font-size:12px">Code expires in 9:12</span></div></div>
+          <div><h3>QPushButton · #pkPrimary · #pkDanger · #pkLink</h3><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="w-btn primary">Activate license</span><span class="w-btn">Cancel</span><span class="w-btn danger">Remove</span><span class="w-btn link">Activate offline</span></div></div>
+          <div><h3>:focus (keyboard) · :disabled</h3><div style="display:flex;gap:16px"><span class="w-btn primary focus">Activate license</span><span class="w-btn disabled">Continue</span></div></div>
+          <div><h3>QLineEdit#pkKey (:focus)</h3><div class="w-edit focus">pkey_tidewater_7Q2M…3WPLDA</div></div>
+          <div><h3>QProgressBar</h3><div style="display:grid;gap:8px;padding-top:6px"><div class="w-prog"><i></i></div><span class="mute" style="font-size:12px">Downloading · 38 of 61 MB</span><span class="mute" style="font-size:12px">About 20 seconds left</span></div></div>
+          <div style="grid-column:1/-1"><h3>QListView (selected row: the accent’s subtle)</h3><div class="w-list"><div class="sel"><span data-icon="laptop" data-size="16"></span>Work laptop<small>Windows 11 · last used 41 days ago</small></div><div><span data-icon="tablet" data-size="16"></span>Mara’s iPad<small>iPadOS 26 · last used yesterday</small></div><div><span data-icon="laptop" data-size="16"></span>MacBook Pro<small>macOS 26 · last used today</small></div></div></div>
+        </div></div></div></figure>`);
+
+      document.getElementById("board").innerHTML = shots.join("");
     </script>
   </body>
 </html>
