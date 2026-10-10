@@ -1,3 +1,4 @@
+import { columnBreaches as pageColumnBreaches } from "./pageChecks.js";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
@@ -109,6 +110,10 @@ export interface OpenOptions {
    * 200 % zoom in a 1280 × 800 window is a 640 × 400 viewport at 2 (`RESOLUTIONS`).
    */
   deviceScaleFactor?: number;
+  /** Emulate a Windows contrast theme (`forced-colors: active`). */
+  forcedColors?: "active" | "none";
+  /** Emulate `prefers-contrast` (default: no preference). */
+  contrast?: "more" | "no-preference";
 }
 
 export interface PortalHarness {
@@ -148,6 +153,8 @@ export async function startPortal(): Promise<PortalHarness> {
       viewport: { width: opts.width ?? 1440, height: opts.height ?? 900 },
       deviceScaleFactor: opts.deviceScaleFactor ?? 1,
       colorScheme: theme,
+      forcedColors: opts.forcedColors ?? "none",
+      contrast: opts.contrast ?? "no-preference",
       userAgent: USER_AGENT,
       locale: "en-US",
       timezoneId: "UTC",
@@ -270,6 +277,8 @@ export interface Resolution {
   width: number;
   height: number;
   deviceScaleFactor?: number;
+  /** Check this row in both themes (the rows without it alternate dark, light, … by position). */
+  bothThemes?: boolean;
 }
 
 /**
@@ -288,10 +297,27 @@ export const RESOLUTIONS: readonly Resolution[] = [
   { label: "2560", width: 2560, height: 1440 },
   // 200 % zoom in a 1280 × 800 window: half the CSS pixels at twice the density.
   { label: "zoom200", width: 640, height: 400, deviceScaleFactor: 2 },
-];
+  // 200 % zoom in a 1440 × 900 window.
+  { label: "zoom200-1440", width: 720, height: 450, deviceScaleFactor: 2 },
+  // 400 % zoom in a 1280 × 1024 window: 320 × 256 CSS px, WCAG 1.4.10 reflow.
+  { label: "zoom400", width: 320, height: 256, deviceScaleFactor: 4 },
+].map((r) => (r.label.startsWith("zoom") ? { ...r, bothThemes: true } : r));
 
-/** WCAG 2.2's minimum target size (SC 2.5.8, AA), in CSS px. */
-export const MIN_TARGET = 24;
+/** The wide desktop row of UI-KITS.md §7.1 (1920 × 1080): pixel baselines and the same checks. */
+export const WIDE: Resolution = { label: "1920", width: 1920, height: 1080 };
+
+/** The widest a page's content column may be at any window width: PORTAL.md §8, 82rem. */
+export const PORTAL_COLUMN_MAX = 1312;
+
+export { forcedColourBreaches, unlabelledScrollers } from "./pageChecks.js";
+
+/**
+ * The blocks directly inside `main` that break the portal's content column
+ * (`columnBreaches` in pageChecks.ts, capped at {@link PORTAL_COLUMN_MAX}).
+ */
+export function columnBreaches(page: Page): Promise<string[]> {
+  return pageColumnBreaches(page, "main > *", PORTAL_COLUMN_MAX);
+}
 
 /**
  * Pointer targets smaller than {@link MIN_TARGET} square that none of SC 2.5.8's exceptions
@@ -414,45 +440,54 @@ export const AXE_TAGS = [
 ];
 
 /** axe-core over the whole document; one line per failing node. */
-export async function axe(page: Page): Promise<string[]> {
+export async function axe(
+  page: Page,
+  /** Under forced colours the system picks the colours, and axe cannot model that: skip contrast. */
+  { forcedColors = false }: { forcedColors?: boolean } = {},
+): Promise<string[]> {
   const loaded = await page.evaluate(
     () => typeof (window as unknown as { axe?: unknown }).axe === "object",
   );
   // Evaluated over the DevTools protocol, which the page's CSP does not govern.
   if (!loaded) await page.evaluate(AXE_SOURCE);
-  return page.evaluate(async (tags) => {
-    const a = (
-      window as unknown as {
-        axe: {
-          run: (
-            ctx: Document,
-            opts: unknown,
-          ) => Promise<{
-            violations: {
-              id: string;
-              impact: string | null;
-              help: string;
-              nodes: { target: unknown[]; failureSummary?: string }[];
-            }[];
-          }>;
-        };
-      }
-    ).axe;
-    const r = await a.run(document, {
-      runOnly: { type: "tag", values: tags },
-      resultTypes: ["violations"],
-    });
-    return r.violations.flatMap((v) =>
-      v.nodes.map(
-        (n) =>
-          `${v.id} (${v.impact}): ${v.help} @ ${n.target.join(" ")}${
-            n.failureSummary
-              ? ` | ${n.failureSummary.replace(/\s+/g, " ")}`
-              : ""
-          }`,
-      ),
-    );
-  }, AXE_TAGS);
+  return page.evaluate(
+    async ({ tags, forcedColors }) => {
+      const a = (
+        window as unknown as {
+          axe: {
+            run: (
+              ctx: Document,
+              opts: unknown,
+            ) => Promise<{
+              violations: {
+                id: string;
+                impact: string | null;
+                help: string;
+                nodes: { target: unknown[]; failureSummary?: string }[];
+              }[];
+            }>;
+          };
+        }
+      ).axe;
+      const r = await a.run(document, {
+        runOnly: { type: "tag", values: tags },
+        resultTypes: ["violations"],
+      });
+      return r.violations
+        .filter((v) => !(forcedColors && v.id === "color-contrast"))
+        .flatMap((v) =>
+          v.nodes.map(
+            (n) =>
+              `${v.id} (${v.impact}): ${v.help} @ ${n.target.join(" ")}${
+                n.failureSummary
+                  ? ` | ${n.failureSummary.replace(/\s+/g, " ")}`
+                  : ""
+              }`,
+          ),
+        );
+    },
+    { tags: AXE_TAGS, forcedColors },
+  );
 }
 
 /** Let fonts, images and layout settle before a screenshot. */

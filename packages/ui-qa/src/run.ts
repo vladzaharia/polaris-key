@@ -56,6 +56,8 @@ export interface PageTarget {
   theme?: "dark" | "light";
   options?: LintOptions;
   viewport?: { width: number; height: number };
+  /** Browser zoom is a smaller CSS viewport at a higher ratio (400 % = 320 × 256 at 4). */
+  deviceScaleFactor?: number;
 }
 
 export interface TargetResult extends LintResult {
@@ -71,6 +73,7 @@ export async function lintTargets(
   for (const target of targets) {
     const page = await browser.newPage({
       viewport: target.viewport ?? { width: 3200, height: 2000 },
+      deviceScaleFactor: target.deviceScaleFactor ?? 1,
     });
     const consoleErrors: string[] = [];
     page.on("console", (m) => {

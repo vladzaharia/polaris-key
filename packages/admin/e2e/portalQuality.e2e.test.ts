@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, it } from "vitest";
 import {
   axe,
+  columnBreaches,
   h1Count,
   horizontalOverflow,
   matchBaseline,
@@ -13,12 +14,13 @@ import { PENDING, SHIPPED } from "./portalStates.js";
 
 /**
  * The customer site's quality bar (PORTAL.md §8, §9 item 10; PX-20). Every shipped §4 state, in
- * both themes at 1440 and 390 px:
+ * both themes at 1920, 1440 and 390 px:
  *
  * - zero Content-Security-Policy violations under the Worker's exact policy;
  * - zero axe violations (WCAG 2.2 A/AA and best practices);
  * - exactly one visible `h1`;
- * - no horizontal page scroll, at 1440 and at 360 px;
+ * - no horizontal page scroll, at 1920, 1440 and at 360 px;
+ * - at 1440 and 1920 px, a content column no wider than 82rem and centred (`columnBreaches`);
  * - its visual baseline (portalHarness.ts explains the platform sets and how to re-record).
  *
  * The key pages in {@link TABLET} also get one tablet baseline, at 768 px in the dark theme, where
@@ -32,6 +34,8 @@ import { PENDING, SHIPPED } from "./portalStates.js";
 const WIDTHS = [
   { label: "desktop", width: 1440, height: 900 },
   { label: "mobile", width: 390, height: 844 },
+  // UI-KITS.md §7.1's wide desktop: the content column stays capped and centred (PORTAL.md §8).
+  { label: "wide", width: 1920, height: 1080 },
 ] as const;
 const THEMES: Theme[] = ["dark", "light"];
 /** One tablet baseline per key page (dark, 768 × 1024): the header's compact row, the shelves. */
@@ -91,6 +95,10 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
             expect
               .soft(await horizontalOverflow(o.page), "horizontal scroll")
               .toBeLessThanOrEqual(0);
+            if (w.width >= 1440)
+              expect
+                .soft(await columnBreaches(o.page), "content column")
+                .toEqual([]);
             const visual = await matchBaseline(o.page, name);
             expect
               .soft(

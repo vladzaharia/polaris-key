@@ -461,3 +461,45 @@
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * Forced colours (Windows contrast themes; WCAG 1.4.11, UI-KITS.md §7.1): the browser swaps every
+ * colour for the system palette and drops box-shadow, so every boundary and state the design
+ * draws with a fill or a ring must survive as a border or an outline in a system colour.
+ * Outside this block the ring, selected, hover and checked states keep their service accent.
+ *
+ *   - icons and glyphs take CanvasText;
+ *   - buttons, inputs and cards get a 1 px ButtonText border;
+ *   - selected tabs, segmented items and radio cards get a 2 px ButtonText border (a non-colour
+ *     cue that does not depend on the fill);
+ *   - the status pill and the signed badge keep a visible border (the success text pill gets one
+ *     too, so a status is a word and a shape, never colour alone);
+ *   - the focus ring is a 2 px Highlight outline.
+ */
+@media (forced-colors: active) {
+  svg {
+    color: CanvasText;
+  }
+  :where(button, [role="button"], input, select, textarea, [data-variant]) {
+    border: 1px solid ButtonText;
+  }
+  [role="tab"][aria-selected="true"],
+  [role="tab"][data-state="active"],
+  [role="radio"][aria-checked="true"],
+  [role="radio"][data-state="checked"],
+  [data-state="on"],
+  [aria-current="page"],
+  [aria-pressed="true"] {
+    border: 2px solid ButtonText;
+    background: Canvas;
+  }
+  [data-status],
+  .pk-pill {
+    border: 1px solid ButtonText;
+  }
+  :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+}

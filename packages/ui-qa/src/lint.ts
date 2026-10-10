@@ -24,6 +24,17 @@ import {
 } from "./strings.ts";
 import type { Violation } from "./types.ts";
 
+/** `1920x1080` or `320x256@4` (a width, a height, an optional device pixel ratio). */
+export function parseSize(size: string): {
+  width: number;
+  height: number;
+  ratio: number;
+} {
+  const m = /^(\d+)x(\d+)(?:@(\d+(?:\.\d+)?))?$/.exec(size);
+  if (!m) throw new Error(`bad --size "${size}": use WIDTHxHEIGHT[@ratio]`);
+  return { width: +m[1]!, height: +m[2]!, ratio: m[3] ? +m[3] : 1 };
+}
+
 export const STRING_DEBT = "packages/ui-qa/rules/strings.debt.json";
 
 export interface LintRun {
@@ -39,6 +50,8 @@ export interface LintArgs {
   themes?: Array<"dark" | "light">;
   css?: string[];
   html?: string[];
+  /** Window sizes for `html` pages, `WIDTHxHEIGHT[@ratio]`: `1920x1080`, `320x256@4` (400 % zoom). */
+  sizes?: string[];
   strings?: boolean;
   kits?: boolean;
   recordStringDebt?: boolean;
@@ -103,12 +116,19 @@ export async function runLint(
         options: { allRules: true },
       });
     for (const page of args.html ?? [])
-      targets.push({
-        name: page,
-        url: /^https?:/.test(page)
-          ? page
-          : `${srv.base}/${page.replace(/^\/+/, "")}`,
-      });
+      for (const size of args.sizes?.length ? args.sizes : [undefined]) {
+        const s = size ? parseSize(size) : undefined;
+        targets.push({
+          name: s ? `${page} @ ${size}` : page,
+          url: /^https?:/.test(page)
+            ? page
+            : `${srv.base}/${page.replace(/^\/+/, "")}`,
+          ...(s && {
+            viewport: { width: s.width, height: s.height },
+            deviceScaleFactor: s.ratio,
+          }),
+        });
+      }
     const results = await lintTargets(br, targets);
     for (const r of results) {
       const board = boards.find((b) => b.name === r.target.name);
