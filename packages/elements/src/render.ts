@@ -69,17 +69,30 @@ const CLOSE = "";
  * One catalog string, with each argument that carries someone's own text (`view.isolate`) in a
  * `<bdi>` run (plans/HA-12.md Q5). A missing argument stays visible as `{name}`.
  */
-/** The view's arguments, plus the kit-side phrase a message may name: `{thisDevice}`, the current
- *  device in the platform's own word (part.thisDevice, by form factor). */
+/** The view's arguments, plus what the kit knows that a message may name: `{thisDevice}` (the
+ *  current device in the platform's own word, capitalised where it starts a sentence),
+ *  `{device}` where the view names no device (this device), and `{developer}` (the identity's). */
 function argsOf(
   c: RenderCtx,
+  key: string,
   extra: Record<string, string | number>,
 ): Record<string, string | number> {
   const args: Record<string, string | number> = { ...c.view.args, ...extra };
-  if (args.thisDevice === undefined && c.copy.has("part.thisDevice"))
-    args.thisDevice = c.copy.format("part.thisDevice", {
-      formFactor: c.input.platform?.formFactor ?? "other",
-    });
+  const raw = c.copy.raw(key) ?? "";
+  const formFactor = c.input.platform?.formFactor ?? "other";
+  if (args.thisDevice === undefined && raw.includes("{thisDevice}")) {
+    const initial = /(^|[.!?]\s+)\{thisDevice\}/.test(raw);
+    const k = initial ? "part.thisDeviceTitle" : "part.thisDevice";
+    if (c.copy.has(k)) args.thisDevice = c.copy.format(k, { formFactor });
+  }
+  if (
+    args.device === undefined &&
+    raw.includes("{device}") &&
+    c.copy.has("part.thisDevice")
+  )
+    args.device = c.copy.format("part.thisDevice", { formFactor });
+  const developer = c.resolved.identity.developer;
+  if (args.developer === undefined && developer) args.developer = developer;
   return args;
 }
 
@@ -88,7 +101,7 @@ export function text(
   key: string,
   extra: Record<string, string | number> = {},
 ): TemplateResult {
-  const args = argsOf(c, extra);
+  const args = argsOf(c, key, extra);
   const isolated = new Set(c.view.isolate);
   const marked: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(args))
@@ -114,7 +127,7 @@ export function plain(
   key: string,
   extra: Record<string, string | number> = {},
 ): string {
-  return c.copy.format(key, argsOf(c, extra));
+  return c.copy.format(key, argsOf(c, key, extra));
 }
 
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────

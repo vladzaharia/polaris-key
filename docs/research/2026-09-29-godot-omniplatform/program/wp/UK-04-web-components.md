@@ -156,7 +156,9 @@ platform-name keys (`part.platform.<os>`) and no title-role key for the Replace 
 (the form uses `deviceLimit.title`, the same words); `ConfigRowInput` has no `label` (the elements
 read one when the adapter passes the catalog entry's); `signin.replace.open` and, on macOS,
 `signin.replace.openSystem` are in the Replace step's copy though the web confirms inline (D-80),
-so the elements draw them as quiet links; the provider row's `{provider}` has no input to fill it.
+so the elements draw them as quiet links; the provider row's `{provider}` and a store-origin
+license row's `{store}` have no input to fill them (the elements fill `{thisDevice}`, `{device}`
+and `{developer}` from what the kit knows).
 
 **Continue here, in this order:**
 

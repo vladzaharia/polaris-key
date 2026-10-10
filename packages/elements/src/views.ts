@@ -701,7 +701,9 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
             : nothing}
           ${keys.has("signin.choice.meta")
             ? html`<span class="meta"
-                >${text(c, "signin.choice.meta", metaArgs)}</span
+                >${metaArgs.origin
+                  ? text(c, "signin.choice.meta", metaArgs)
+                  : metaArgs.term}</span
               >`
             : nothing}
           ${full && keys.has("signin.choice.tag.full")

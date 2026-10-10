@@ -303,7 +303,8 @@ p {
   font-weight: var(--pk-kit-type-title-weight);
   text-wrap: balance;
 }
-.title:focus {
+.title:focus,
+.pk-root[data-keyboard] .title:focus-visible {
   outline: none;
 }
 .title[data-size="display"] {
