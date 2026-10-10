@@ -47,6 +47,7 @@ import { PLATFORM_ORDER, PlatformGlyphs, type PlatformKey } from "./Glyphs.js";
 import { KeyField } from "./KeyField.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * Activate license (PORTAL.md §4.17–4.19, §5.2 `ActivateDialog`): always a modal over the
@@ -476,7 +477,7 @@ export function ActivateDialog({
               className="font-medium"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("signin.cancel")}
             </Button>
             <Button
               type="submit"
@@ -484,7 +485,7 @@ export function ActivateDialog({
               loading={preview.isPending || claim.isPending || leaving}
               disabled={check.kind === "empty" || blocksResend(serverVerdict)}
             >
-              Continue
+              {t("signin.continue")}
             </Button>
           </DialogFooter>
         </form>
@@ -517,7 +518,7 @@ function RefusalActions({
         className="font-medium"
         onClick={onDifferentKey}
       >
-        Use a different key
+        {t("signin.key.differentKey")}
       </Button>
       {onAddEmail ? (
         <Button
@@ -536,7 +537,7 @@ function RefusalActions({
           className="font-medium"
           onClick={() => window.location.assign(signInUrl)}
         >
-          Sign in to that account
+          {t("signin.key.ownedSignIn")}
         </Button>
       ) : null}
     </>
@@ -793,8 +794,8 @@ export function ConfirmStep({
   const terms = lic
     ? [
         lic.expiresAt === null
-          ? "Lifetime"
-          : `Until ${formatDay(lic.expiresAt)}`,
+          ? t("signin.term.lifetime")
+          : t("signin.term.until", { date: formatDay(lic.expiresAt) }),
         lic.deviceLimit
           ? `up to ${lic.deviceLimit} ${lic.deviceLimit === 1 ? "device" : "devices"}`
           : null,
@@ -889,7 +890,7 @@ export function ConfirmStep({
           className="shrink-0 font-medium"
           onClick={onBack}
         >
-          Back
+          {t("signin.replace.back")}
         </Button>
         {/* A long product name is cut short with an ellipsis rather than spilling out of the
             button (PS-05 review M5); the name is read in full (the label, the heading above). */}

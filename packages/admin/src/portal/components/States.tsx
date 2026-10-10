@@ -4,6 +4,7 @@ import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
 import { cn } from "../../lib/cn.js";
 import { portalErrorCopy } from "../errors.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * A failed load, in the person's words with a Retry (PORTAL.md §4.28, §6.4). Never the HTTP
@@ -41,7 +42,7 @@ export function ErrorPanel({
           iconStart={<RefreshCw aria-hidden />}
           onClick={onRetry}
         >
-          Try again
+          {t("signin.retry")}
         </Button>
       ) : null}
     </div>

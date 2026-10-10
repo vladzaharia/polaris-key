@@ -7,8 +7,8 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { ProductCard } from "../src/console/pages/global/Home.js";
-import type { ProductAttention } from "../src/console/pages/global/attention.js";
+import { ProductCard } from "../src/console/sections/global/pages/Home.js";
+import type { ProductAttention } from "../src/console/sections/global/model/attention.js";
 import type { ProductDetail } from "../src/api.js";
 import { configureAxe } from "vitest-axe";
 import {

@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "../../../lib/cn.js";
 import type { PortalProvider } from "../../api.js";
 import { AppleGlyph, GoogleGlyph, SteamGlyph } from "../Glyphs.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * The provider row (PORTAL.md §4.1, owner decision 2026-10-04): Apple, Google and Steam as
@@ -26,7 +27,10 @@ export function providerLabel(
   p: PortalProvider,
   mode: "continue" | "connect",
 ): string {
-  return mode === "connect" ? `Connect ${NAME[p]}` : `Continue with ${NAME[p]}`;
+  return t(
+    mode === "connect" ? "signin.provider.connect" : "signin.provider.continue",
+    { provider: NAME[p] },
+  );
 }
 
 export function ProviderRow({
@@ -49,7 +53,9 @@ export function ProviderRow({
     <div
       role="group"
       aria-label={
-        mode === "connect" ? "Or connect another account" : "Or continue with"
+        mode === "connect"
+          ? "Or connect another account"
+          : t("signin.provider.group")
       }
       data-count={list.length}
       className={cn(

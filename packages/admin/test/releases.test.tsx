@@ -55,9 +55,9 @@ vi.mock("../src/api.js", async (importOriginal) => ({
 }));
 
 const { ReleasesPage } =
-  await import("../src/console/pages/release/ReleasesPage.js");
+  await import("../src/console/sections/release/pages/ReleasesPage.js");
 const { ReleaseRecord } =
-  await import("../src/console/pages/release/ReleaseRecord.js");
+  await import("../src/console/sections/release/pages/ReleaseRecord.js");
 
 const PRODUCT: ProductDetail = {
   slug: "djdl",
@@ -1064,7 +1064,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
 
   it("names each store's own halt for a mirrored rollout (P0-47)", async () => {
     const { haltBlocker, storeHalt } =
-      await import("../src/console/areas/distribution/RolloutDialogs.js");
+      await import("../src/console/sections/distribution/components/RolloutDialogs.js");
     const mirror = (source: string, over: Record<string, unknown> = {}) =>
       rollout(source, {
         mirrored: true,

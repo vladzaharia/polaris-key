@@ -19,7 +19,7 @@ import type {
 } from "../src/api.js";
 import { ApiError } from "../src/api.js";
 import { confirmFor } from "../src/lib/actions.js";
-import { actionIdOf } from "../src/console/pages/release/PolicyDialog.js";
+import { actionIdOf } from "../src/console/sections/release/components/PolicyDialog.js";
 import { CHANNELS, SLUG, STORE } from "./releaseFixture.js";
 import {
   expectNoAxeViolations,
@@ -62,7 +62,7 @@ vi.mock("../src/api.js", async (importOriginal) => ({
 }));
 
 const { ChannelsPage } =
-  await import("../src/console/pages/release/ChannelsPage.js");
+  await import("../src/console/sections/release/pages/ChannelsPage.js");
 
 const PRODUCT: ProductDetail = {
   slug: SLUG,

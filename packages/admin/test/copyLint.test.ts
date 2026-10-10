@@ -7,6 +7,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
@@ -27,8 +28,13 @@ import { describe, expect, it } from "vitest";
  * comparisons, `className` and the like, paths, and code-shaped tokens inside a sentence
  * (`dist_outlets`, `outletId`, `…/outlets`) are not copy.
  *
- * It scans the console: `src/` without `portal/` (the customer portal; its copy moves to the kit
- * copy catalog, P0-36) and `kit/` (the component gallery's fixtures).
+ * It scans the console: `src/` without `portal/` (the customer portal, below) and `kit/` (the
+ * component gallery's fixtures).
+ *
+ * The customer portal reads the kit copy catalog through `t()` (src/lib/copy.ts; P0-36), so its
+ * lint is stricter and has no ledger: no portal file spells out a sentence the catalog holds
+ * (`lintCatalogCopy`), and the four console words never appear. A portal string the catalog does
+ * not word yet is not a finding; it waits for its catalog key.
  *
  * The strings that predate the lint are recorded in copy.debt.json; the packages that rebuild
  * those pages clear them. The test fails on a string the ledger does not hold (new debt) and on a
@@ -594,5 +600,156 @@ describe("the console copy lint's fixture", () => {
     );
     expect(proseOf("outletId and dist_outlets.kind")).toBe("and");
     expect(proseOf("The outlet stays.")).toBe("The outlet stays.");
+  });
+});
+
+/**
+ * The portal's catalog rule (P0-36): a customer-facing string the kit copy catalog already holds is
+ * read with `t(key)`, never typed again. A literal or JSX text that equals a catalog message is a
+ * finding, so a catalog edit moves the portal with every kit and a retyped string cannot drift.
+ *
+ * A message matches when it is exact text of 4 or more characters, or has arguments and 12 or more
+ * characters of fixed text (`Sign-in is turned off for {product}. Contact {developer}.` matches a
+ * template of that shape; `{tier} license` is too loose to match and is not read). Plural and select messages, terminal copy
+ * (`cli.*`) and screen-reader labels (`a11y.*`) are not matched.
+ */
+const MIN_EXACT = 4;
+const MIN_FIXED_WITH_ARGS = 12;
+
+interface CatalogPattern {
+  key: string;
+  re: RegExp;
+}
+
+function catalogPatterns(): CatalogPattern[] {
+  const out: CatalogPattern[] = [];
+  for (const [key, value] of Object.entries(KIT_COPY_EN)) {
+    if (/^(cli|a11y)\./.test(key) || /\{\w+, *(plural|select),/.test(value))
+      continue;
+    const text = collapse(value);
+    const fixed = text.replace(/\{\w+\}/g, "");
+    const hasArgs = fixed.length !== text.length;
+    if (fixed.length < (hasArgs ? MIN_FIXED_WITH_ARGS : MIN_EXACT)) continue;
+    const re = text
+      .split(/\{\w+\}/)
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("(?:.+?|…)");
+    out.push({ key, re: new RegExp(`^${re}$`) });
+  }
+  return out;
+}
+
+/**
+ * Catalog messages whose words the portal also uses for something else. A string that equals one is
+ * not a finding, because it is the same words and not the same sentence; each entry says why. A
+ * catalog key that fits belongs in `t()`, not here.
+ */
+const SAME_WORDS: Record<string, string> = {
+  "devices.remove":
+    "'Remove' is one verb: it heads the confirm sentence ('Remove {name}?') and labels the remove button for an email, a passkey, a library entry and a license, not only a device",
+  "core.activation.ok.title":
+    "'Activated' is the date label on the License card, not the result of an activation",
+  "signin.choice.origin.storeKey":
+    "'License key ending 1234' names the key in its screen-reader label, not where a license came from",
+  "core.codes.service-unavailable.title":
+    "'Not available' is the page title of a product the person cannot open, not a refusal",
+  "core.codes.service-disabled.title":
+    "same as core.codes.service-unavailable.title",
+  "core.codes.mint-unavailable.title":
+    "same as core.codes.service-unavailable.title",
+};
+
+/** Whole strings that read like a catalog message but are another sentence, each with its reason. */
+const OTHER_SENTENCES: Record<string, string> = {
+  "Included with your {…} account":
+    "the Discover reason for a product the person's own identity provider includes; the catalog's 'Included with {org}' names an organization",
+};
+
+export interface CatalogFinding extends CopyString {
+  keys: string[];
+}
+
+/** The strings in one portal file's source that a catalog message already words. */
+export function lintCatalogCopy(
+  source: string,
+  fileName = "x.tsx",
+  patterns: readonly CatalogPattern[] = catalogPatterns(),
+): CatalogFinding[] {
+  const found: CatalogFinding[] = [];
+  for (const s of copyStrings(source, fileName)) {
+    const text = s.text.replace(/\{…\}/g, "…");
+    if (s.text in OTHER_SENTENCES) continue;
+    const keys = patterns
+      .filter((p) => p.re.test(text) && !(p.key in SAME_WORDS))
+      .map((p) => p.key);
+    if (keys.length) found.push({ ...s, keys });
+  }
+  return found;
+}
+
+describe("the portal copy lint", () => {
+  const patterns = catalogPatterns();
+  const portal = consoleFiles(join(SRC, "portal")).map((p) => ({
+    rel: `portal/${relative(join(SRC, "portal"), p).split(sep).join("/")}`,
+    source: readFileSync(p, "utf8"),
+  }));
+
+  it("scans the whole portal and reads a real catalog", () => {
+    expect(portal.length).toBeGreaterThan(60);
+    expect(patterns.length).toBeGreaterThan(100);
+    expect(patterns.map((p) => p.key)).toContain("signin.code.tooMany");
+  });
+
+  it("finds no string the kit copy catalog already holds", () => {
+    const found = portal.flatMap((f) =>
+      lintCatalogCopy(f.source, f.rel, patterns).map(
+        (c) =>
+          `${f.rel}:${c.line} "${c.text}" is ${c.keys.join(" or ")}; use t()`,
+      ),
+    );
+    expect(found).toEqual([]);
+  });
+
+  it("finds none of the console's banned words in the portal", () => {
+    const found = portal.flatMap((f) =>
+      lintCopy(f.source, f.rel).map(
+        (c) => `${f.rel}:${c.line} ${c.rule}: "${c.text}"`,
+      ),
+    );
+    expect(found).toEqual([]);
+  });
+
+  it("flags a hard-coded catalog string, whatever carries it (negative control)", () => {
+    const hard = [
+      `export const A = () => <button>Try again</button>;`,
+      `export const B = () => <p>Too many tries. Send a new code.</p>;`,
+      `const C = "Sign in again to carry on where you were.";`,
+      `const D = <Button label={"Use a different email"} />;`,
+      `const E = \`That code has expired. Send a new code.\`;`,
+      "const F = `Sign-in is turned off for ${name}. Contact ${dev}.`;",
+    ].join("\n");
+    const hit = lintCatalogCopy(hard, "x.tsx", patterns).map(
+      (f) => `${f.line} ${f.keys[0]}`,
+    );
+    expect(hit).toEqual([
+      "1 common.tryAgain",
+      "2 signin.code.tooMany",
+      "3 signin.session.toastBody",
+      "4 signin.code.differentEmail",
+      "5 signin.code.expired",
+      "6 signin.off.product",
+    ]);
+  });
+
+  it("passes copy read through t(), identifiers, and strings the catalog lacks", () => {
+    const ok = [
+      `import { t } from "../../lib/copy.js";`,
+      `export const A = () => <button>{t("common.tryAgain")}</button>;`,
+      `const B = t("signin.code.tooMany");`,
+      `const C = "Nothing in the catalog says this sentence.";`,
+      `const D = <Row id="Cancel" className="Cancel me" data-label="Cancel" />;`,
+      `const E = kind === "Cancel";`,
+    ].join("\n");
+    expect(lintCatalogCopy(ok, "x.tsx", patterns)).toEqual([]);
   });
 });

@@ -57,7 +57,7 @@ vi.mock("../src/api.js", async () => {
 
 const { ApiError, SERVICE_ERROR_MESSAGES } = await import("../src/api.js");
 const { ServicesPage, chainFlip, dependentsOf, needsOf } =
-  await import("../src/console/pages/core/Services.js");
+  await import("../src/console/sections/core/pages/Services.js");
 
 /** Everything but Config, on the derived registration policy. */
 function state(over: Partial<ServicesResponse> = {}): ServicesResponse {

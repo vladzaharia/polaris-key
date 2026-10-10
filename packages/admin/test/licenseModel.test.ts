@@ -9,25 +9,25 @@ import {
   effectivePolicy,
   licenseState,
   tierSummary,
-} from "../src/console/pages/license/shared.js";
+} from "../src/console/sections/license/components/shared.js";
 import {
   termsPatch,
   type TermsValues,
-} from "../src/console/pages/license/LicenseTerms.js";
+} from "../src/console/sections/license/pages/LicenseTerms.js";
 import {
   EMPTY_TIER,
   tierCreateBody,
   tierPatchBody,
   validateTier,
-} from "../src/console/pages/license/TierForm.js";
+} from "../src/console/sections/license/components/TierForm.js";
 import {
   createBody,
   validateHolder,
-} from "../src/console/pages/license/CreateLicenseDialog.js";
+} from "../src/console/sections/license/components/CreateLicenseDialog.js";
 import {
   modeOf,
   policyPatch,
-} from "../src/console/pages/license/EnrollmentPage.js";
+} from "../src/console/sections/license/pages/EnrollmentPage.js";
 import { EDU, PRO } from "./licenseFixture.js";
 
 const NOW = Date.UTC(2026, 9, 4, 12);

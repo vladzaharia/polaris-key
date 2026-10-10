@@ -18,6 +18,7 @@ import { KeyMask } from "../KeyMask.js";
 import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * The License card (§4.20): the tier as a neutral pill at the top right of the card's header, the
@@ -30,7 +31,7 @@ import { SectionCard } from "./Card.js";
  * names the tier and its short origin ("Pro · Key …3WPLDA", "Standard · Sign-in", "Free · From
  * Acme"). How the licence reached the person is the **License source** fact beside "Activated",
  * in plain words the Worker's `origin` decides (PX-23, S-24 D21): "Key ending 3WPLDA" or "Added
- * with a key", "Steam key", "From Steam", "From <Developer>", and "Automatic Grant" for one
+ * with a key", "Steam key", "From Steam", "From <Developer>", and "Automatic grant" for one
  * granted through OIDC at sign-in (owner polish 2026-10-07). The term is not repeated as a meta
  * line: "Access" already says it (owner, 2026-10-06). Every licence is account-bound, so none is
  * labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
@@ -164,10 +165,10 @@ function LicenseFacts({
   });
   const access =
     detail.expiresAt === null
-      ? "Lifetime"
+      ? t("signin.term.lifetime")
       : detail.expiresAt <= now
         ? `Ended ${formatDay(detail.expiresAt)}`
-        : `Until ${formatDay(detail.expiresAt)}`;
+        : t("signin.term.until", { date: formatDay(detail.expiresAt) });
   const key = detail.keys.find((k) => k.status === "active") ?? detail.keys[0];
   const includes = detail.entitlements.filter((e) => e.key !== "channels");
   const channels = detail.channels;
@@ -228,7 +229,7 @@ function LicenseFacts({
       </dl>
       {key ? (
         <div className="space-y-2">
-          <p className="text-xs text-fg-muted">License key</p>
+          <p className="text-xs text-fg-muted">{t("part.keyField.label")}</p>
           <div className="flex items-center rounded-md border border-border bg-surface-sunken px-3 py-2.5">
             <KeyMask slug={product.slug} last4={key.last4} />
           </div>

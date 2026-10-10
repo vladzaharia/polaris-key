@@ -38,6 +38,7 @@ import {
 } from "../model/discover.js";
 import { mediaUrl } from "../model/library.js";
 import { href, useDocumentTitle } from "../router.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The storefront product page, `#/discover/:product` (PS-05; notes/S-21 §6.5): a product the
@@ -74,7 +75,7 @@ export function StorefrontPage({
         ? null
         : notFound
           ? "Not available"
-          : "Something went wrong",
+          : t("core.fallback.title"),
   );
   if (q.isPending || library.isPending || held) return <StorefrontSkeleton />;
   if (notFound) return <NotOffered />;

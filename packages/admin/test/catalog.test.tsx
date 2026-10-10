@@ -8,7 +8,7 @@ import { apiError, bootConfig } from "./configHarness.js";
 import {
   guessDefault,
   labelFromKey,
-} from "../src/console/pages/config/CatalogEntryForm.js";
+} from "../src/console/sections/config/components/CatalogEntryForm.js";
 
 /**
  * Config → Catalog (docs/design/ADMIN.md §6.6.1) and its editor (§6.6.2), driven through the

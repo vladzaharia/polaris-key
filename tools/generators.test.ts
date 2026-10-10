@@ -33,6 +33,14 @@ const tracked = execFileSync(
   .split("\0")
   .filter(Boolean);
 
+// Compile each glob once; testing it against every tracked file is then a plain regex scan.
+const compiled = new Map<string, RegExp>();
+function anyTracked(glob: string): boolean {
+  let re = compiled.get(glob);
+  if (!re) compiled.set(glob, (re = globToRegExp(glob)));
+  return tracked.some((f) => re.test(f));
+}
+
 // A banner is a comment line that opens with GENERATED or @generated, within the first lines.
 const BANNER =
   /^[ \t]*(?:\/\/|#|\/\*+|\*|<!--|\{\/\*|;|--)[ \t]*(?:GENERATED|@generated)\b/m;
@@ -60,19 +68,20 @@ describe("the registry", () => {
   it("matches every output glob to a tracked file", () => {
     for (const g of GENERATORS)
       for (const glob of g.outputs)
-        expect(
-          tracked.some((f) => globToRegExp(glob).test(f)),
-          `${g.id}: ${glob}`,
-        ).toBe(true);
+        expect(anyTracked(glob), `${g.id}: ${glob}`).toBe(true);
   });
 
   it("matches every input glob to a tracked file", () => {
     for (const g of GENERATORS)
       for (const glob of g.inputs)
-        expect(
-          tracked.some((f) => globToRegExp(glob).test(f)),
-          `${g.id}: ${glob}`,
-        ).toBe(true);
+        expect(anyTracked(glob), `${g.id}: ${glob}`).toBe(true);
+  });
+});
+
+describe("the glob scan", () => {
+  it("rejects a glob that matches no tracked file (negative control)", () => {
+    expect(anyTracked("no/such/dir/**")).toBe(false);
+    expect(anyTracked("tools/generators.test.ts")).toBe(true);
   });
 });
 

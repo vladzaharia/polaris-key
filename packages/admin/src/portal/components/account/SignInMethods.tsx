@@ -10,6 +10,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
+import { t } from "../../../lib/copy.js";
+import { expiredCodeText, wrongCodeText } from "../../copy/codeEntry.js";
 import { Callout } from "../../../ui/Callout.js";
 import { Input } from "../../../ui/Input.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
@@ -134,7 +136,9 @@ function SignInEmailOnly({
 }): React.ReactElement {
   return (
     <>
-      <h3 className="mb-2 text-xs font-semibold text-fg-muted">Email</h3>
+      <h3 className="mb-2 text-xs font-semibold text-fg-muted">
+        {t("signin.email.label")}
+      </h3>
       <ul className="divide-y divide-border border-y border-border">
         <li className="flex items-center gap-3 py-3">
           <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
@@ -425,7 +429,7 @@ function MethodGroups({
 
       <div>
         <h3 id={ids.email} tabIndex={-1} className={GROUP_HEADING}>
-          Email
+          {t("signin.email.label")}
           <span className="font-normal"> · sign in with a code</span>
         </h3>
         <ul className="divide-y divide-border">
@@ -653,7 +657,7 @@ function ConnectRow({
             variant="outline"
             className="ml-auto h-10 font-medium"
             loading={busy}
-            aria-label={`Connect ${name}`}
+            aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
           >
             Connect
@@ -686,7 +690,7 @@ function ConnectRow({
               requestAnimationFrame(() => buttonRef.current?.focus());
             }}
           >
-            Cancel
+            {t("signin.cancel")}
           </Button>
         </div>
       ) : null}
@@ -766,7 +770,7 @@ function AddEmail({
     const value = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
       setInvalid(true);
-      setError("Enter a full email address, like name@example.com.");
+      setError(t("signin.email.invalid"));
       document.getElementById(fieldId)?.focus();
       return;
     }
@@ -790,7 +794,7 @@ function AddEmail({
           setInvalid(true);
         setError(
           err instanceof PortalApiError && err.status === 422
-            ? "Enter a full email address, like name@example.com."
+            ? t("signin.email.invalid")
             : err instanceof PortalApiError && err.code === "email_unavailable"
               ? "We can't send email right now. Try again later."
               : changeErrorText(err),
@@ -822,19 +826,9 @@ function AddEmail({
       if (isStepUpRequired(err)) setStep({ kind: "stepUp" });
       else if (err instanceof PortalApiError && err.code === "invalid_code") {
         const left = err.triesLeft;
-        setError(
-          left === 0
-            ? "Too many tries. Send a new code."
-            : `That code isn't right. Check the email and try again.${
-                left !== undefined && left <= 2
-                  ? left === 1
-                    ? " 1 try left."
-                    : ` ${left} tries left.`
-                  : ""
-              }`,
-        );
+        setError(wrongCodeText(left));
       } else if (err instanceof PortalApiError && err.code === "signin_expired")
-        setError("That code has expired. Send a new code.");
+        setError(expiredCodeText());
       else setError(changeErrorText(err));
     } finally {
       setBusy(false);
@@ -924,7 +918,7 @@ function AddEmail({
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" onClick={close}>
-                  Cancel
+                  {t("signin.cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -938,7 +932,7 @@ function AddEmail({
                   className="text-sm font-medium"
                   onClick={() => void send()}
                 >
-                  Send a new code
+                  {t("signin.code.resend")}
                 </Button>
               </div>
             </form>
@@ -981,17 +975,17 @@ function AddEmail({
               )}
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={close}>
-                  Cancel
+                  {t("signin.cancel")}
                 </Button>
                 <Button type="submit" loading={busy}>
-                  Send code
+                  {t("signin.gate.sendCode")}
                 </Button>
               </div>
             </form>
           )}
           {step.kind === "stepUp" ? (
             <Button variant="outline" onClick={close}>
-              Cancel
+              {t("signin.cancel")}
             </Button>
           ) : null}
         </div>
@@ -1131,7 +1125,7 @@ function AddPasskey({
               requestAnimationFrame(() => buttonRef.current?.focus());
             }}
           >
-            Cancel
+            {t("signin.cancel")}
           </Button>
         </div>
       ) : null}

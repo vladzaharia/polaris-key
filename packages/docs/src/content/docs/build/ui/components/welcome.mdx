@@ -5,6 +5,7 @@ sidebar:
   order: 7
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,15 @@ The gate's first screen: the product hero, Sign in, Use a license key, and the e
 
 ## In each kit
 
-No kit documents Welcome here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="SwiftUI">
+    **Drop-in.** The gate's first screen inside `.polarisKeyGate`: the 120 pt hero icon, `Welcome to <Product>`, `by <Developer>`, Sign in (Liquid Glass primary) and Use a license key (glass secondary); a one-path product says so in the lede and shows that path inline.
+
+    **Styled part.** `WelcomeView(screen:onSignIn:onUseKey:onExtra:inline:)` and `.welcomeStyle(_:)`.
+
+    **Headless.** `KitStates.welcome(_:)`; `PolarisKeyGateModel.welcome`.
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+</Tabs>

@@ -40,6 +40,7 @@ import {
   useRoute,
   type PortalRoute,
 } from "./router.js";
+import { t } from "../lib/copy.js";
 
 /**
  * The customer site, Polaris Key at `key.plrs.im` (docs/design/PORTAL.md).
@@ -76,8 +77,8 @@ function Boot(): React.ReactElement {
     else if (session.data === null && wasSignedIn.current) {
       wasSignedIn.current = false;
       if (!consumeQuietSignOut())
-        toast.info("You were signed out", {
-          description: "Sign in again to carry on where you were.",
+        toast.info(t("signin.session.toastTitle"), {
+          description: t("signin.session.toastBody"),
         });
     }
   }, [session.data]);
@@ -107,7 +108,7 @@ function Boot(): React.ReactElement {
         <BootTitle title={copy.title} />
         <p className="text-fg-muted">{copy.description}</p>
         <Button variant="outline" onClick={() => void session.refetch()}>
-          Try again
+          {t("signin.retry")}
         </Button>
       </StarScreen>
     );

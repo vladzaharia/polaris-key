@@ -53,4 +53,14 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
     `--json` contract and the fallbacks.
 
   </TabItem>
+  <TabItem label="SwiftUI">
+    **Drop-in.** Step 2 of the form: "Finish in your browser" with the system browser sheet, or the code view with Copy, the address with Copy and the countdown ring; no QR on iPhone or iPad (DL14).
+
+    **Styled part.** `SignInHandoffView(screen:request:onCopyLink:)`, `CodeDisplay(code:)` and `CountdownRing(expiresAt:total:)`.
+
+    **Headless.** `KitStates.signInHandoff(_:)`; `KitSignInRequest` carries the public user code and pages, never the poll credential.
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
 </Tabs>

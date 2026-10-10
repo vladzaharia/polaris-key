@@ -39,8 +39,9 @@ public struct PlatformAvailability: Sendable, Equatable {
     public static var current: PlatformAvailability {
         var a = PlatformAvailability.none
         #if os(iOS) && canImport(MarketplaceKit)
-        if #available(iOS 17.4, *) { a.appDistributor = true }
-        if #available(iOS 17.5, *) { a.appDistributorWeb = true }
+        // AppDistributor (17.4) and its `web` case (17.5) are below the iOS 18 floor.
+        a.appDistributor = true
+        a.appDistributorWeb = true
         #endif
         #if compiler(>=6.3) && canImport(BackgroundAssets) && (os(iOS) || os(macOS))
         if #available(iOS 26.4, macOS 26.4, *) { a.managedAssetPacks = true }

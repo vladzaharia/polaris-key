@@ -8,6 +8,7 @@ import { useActivate } from "../activate.js";
 import { href, type PortalRoute } from "../router.js";
 import { AccountMenu } from "./AccountMenu.js";
 import { Lockup } from "./Lockup.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The signed-in frame (PORTAL.md §3.2, §5.2 `PortalShell`):
@@ -121,11 +122,13 @@ export function PortalShell({
               variant="action"
               className="hidden h-10 shrink-0 px-3 desk:inline-flex mid:px-4 pointer-coarse:h-11"
               iconStart={<KeyRound aria-hidden />}
-              aria-label="Activate license"
+              aria-label={t("activate.submit")}
               onClick={() => activate.open()}
             >
-              <span className="mid:hidden">Activate</span>
-              <span className="hidden mid:inline">Activate license</span>
+              <span className="mid:hidden">
+                {t("core.gate.needs-activation.title")}
+              </span>
+              <span className="hidden mid:inline">{t("activate.submit")}</span>
             </Button>
             <AccountMenu account={account} />
           </div>
@@ -168,7 +171,7 @@ export function PortalShell({
               className="inline-flex h-10 items-center gap-2 rounded-full border border-border-strong bg-surface-raised px-4 text-sm font-medium text-fg-strong"
             >
               <KeyRound aria-hidden className="size-4 text-accent-fg" />
-              Activate
+              {t("core.gate.needs-activation.title")}
             </button>
           </div>
           {showDiscover ? (

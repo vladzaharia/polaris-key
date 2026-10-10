@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "../../../lib/cn.js";
 import { Lockup } from "../Lockup.js";
 import { ProductIcon } from "../ProductIcon.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * The one sign-in frame (SIGN-IN.md §3.1, PORTAL.md §5.2 `LoginCard`): the lockup above, the
@@ -172,7 +173,7 @@ export function CardHeader({
           {developer ? ` · ${developer}` : null}
         </p>
         <p className="text-sm text-fg-muted">
-          Your license, downloads and devices
+          {t("signin.header.contextLine")}
         </p>
       </div>
     </div>

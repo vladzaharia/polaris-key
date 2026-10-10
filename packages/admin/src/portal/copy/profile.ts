@@ -1,11 +1,13 @@
 /**
  * Account → Profile's copy (PORTAL.md §4.26 Profile, §4.30, §6.2 "Profile"; PX-22).
  *
- * Marked for the copy catalog (UK-02a): the catalog serves the SDK UI kits today and the portal
- * does not read it yet, so the strings live here under the `profile.*` keys they move to, and the
+ * The catalog (`lib/copy.ts` `t()`) holds no `profile.*` keys yet, so the strings live here under
+ * the keys they will take, except the two it words (`signin.cancel`, `signin.retry`); the
  * sentences built from data are the functions below the table. US spelling, sentence case, no
  * jargon (§6.1): a sign-in method, never an "identity link".
  */
+
+import { t } from "../../lib/copy.js";
 export const PROFILE_COPY = {
   "profile.title": "Profile",
   "profile.subtitle":
@@ -37,10 +39,10 @@ export const PROFILE_COPY = {
   "profile.note":
     "Pictures are copied to Polaris Key, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.",
   "profile.save": "Save profile",
-  "profile.cancel": "Cancel",
+  "profile.cancel": t("signin.cancel"),
   "profile.saved": "Profile saved",
   "profile.loadError": "Your profile didn't load",
-  "profile.retry": "Try again",
+  "profile.retry": t("signin.retry"),
   "profile.removedMethod": "a sign-in method you removed",
   "profile.error.invalidName": "Enter a name.",
   "profile.error.invalidBirthdate": "Enter a date from 1900 to today.",

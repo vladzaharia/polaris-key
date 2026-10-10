@@ -6,6 +6,7 @@ import { formatDay } from "../../model/library.js";
 import { releaseNotes } from "../../model/markdown.js";
 import { Markdown } from "../Markdown.js";
 import { SectionCard } from "./Card.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * What's new (§4.20): the newest release's notes, then earlier versions, three at first with
@@ -35,7 +36,7 @@ export function WhatsNew({
   return (
     <SectionCard
       id="new"
-      title={`What's new in ${latest.version}`}
+      title={t("releaseNotes.title", { product: latest.version })}
       subtitle={[
         latest.title,
         latest.publishedAt ? formatDay(latest.publishedAt) : null,

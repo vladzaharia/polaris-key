@@ -43,7 +43,8 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError } = await import("../src/api.js");
-const { DevicesPage } = await import("../src/console/pages/core/Devices.js");
+const { DevicesPage } =
+  await import("../src/console/sections/core/pages/Devices.js");
 const { useRoute } = await import("../src/console/router.js");
 
 const NOW = Math.floor(Date.now() / 1000);

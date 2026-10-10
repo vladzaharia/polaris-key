@@ -1594,16 +1594,16 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.account": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
-    "ui.gate": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.activate": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.signin": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.devicelimit": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.devices": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.update": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.settings": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.paywall": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.theme": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.i18n": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.gate": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.activate": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.signin": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.devicelimit": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.devices": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.update": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.settings": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.paywall": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.theme": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.i18n": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
     "server.license": CapabilityRow(status: "planned", service: "license", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "server.signin": CapabilityRow(status: "planned", service: "identity", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1612,4 +1612,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "eebea774e5b428eaca4b7576cf40a457cb6c174f53467fa96ecaba1238b35e28"
+public let CAPABILITY_DIGEST = "809c14d711580a9c088a49f4e0f485efbfa2825aedb813769ca692820427d49f"

@@ -779,7 +779,7 @@ export const SHIPPED: ShippedState[] = [
     ready: (p) => h1(p, "Quill"),
   },
   {
-    // A sign-in licence: the Standard pill in the License card's header, "Automatic Grant" as its
+    // A sign-in licence: the Standard pill in the License card's header, "Automatic grant" as its
     // source (owner polish 2026-10-07), its devices with "1 of 5 devices in use".
     section: "4.20",
     id: "product-sign-in",
@@ -789,7 +789,7 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Quill");
       await p.getByText("1 of 5 devices in use").first().waitFor();
-      await licenseSourceIs(p, "Automatic Grant");
+      await licenseSourceIs(p, "Automatic grant");
       await p.getByText("Living room PC").first().waitFor();
     },
   },
@@ -819,7 +819,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/p/drift-kart?license=lic_drift-kart-acct",
     ready: async (p) => {
       await h1(p, "Drift Kart");
-      await licenseSourceIs(p, "Automatic Grant");
+      await licenseSourceIs(p, "Automatic grant");
     },
   },
   {

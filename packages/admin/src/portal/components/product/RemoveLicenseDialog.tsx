@@ -6,6 +6,7 @@ import { PortalApiError } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
 import { licenseStatus, type LibraryProduct } from "../../model/library.js";
 import { licenseOptionLabel } from "../../model/product.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * **Remove from my library** (docs/design/PORTAL.md §4.20's overflow menu; notes/S-24 §5.5, §10,
@@ -100,9 +101,8 @@ export function RemoveLicenseDialog({
 function removeErrorCopy(err: unknown): { title: string; description: string } {
   if (err instanceof PortalApiError && err.code === "not_removable")
     return {
-      title: "Can't remove",
-      description:
-        "This license can't be added back with a key, so it stays in your library.",
+      title: t("core.codes.not_removable.title"),
+      description: t("core.codes.not_removable.message"),
     };
   return portalErrorCopy(err);
 }

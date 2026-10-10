@@ -105,3 +105,10 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-39 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-39 done`.
+
+## Corrections (as built)
+
+- Layout: `console/sections/<section>/{index.tsx,pages,components,model,data.ts}`; sections are core, license, config, release, identity, sync, global, platform, distribution, feeds, storefronts, update. `console/pages/index.tsx` and `types.ts` stay (the lazy section loader). Files were classified by name (dialogs, forms, panels, drawers and shared helpers under `components/`; non-data `.ts` under `model/`).
+- Page budget: `packages/admin/test/pageBudget.test.ts` covers every file under `sections/`, not only the seven named pages; the 40-odd files over 600 lines are listed with ceilings at their current size (shrink only), and the test carries a negative control.
+- Update `FeedPage` is now `UpdateChannelsPage` (`sections/update/pages/UpdateChannelsPage.tsx`).
+- Not done: `TabPanel` on every record (MO-13 follow-up) is left to the packages that rebuild those records.

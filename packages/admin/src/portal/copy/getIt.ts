@@ -4,9 +4,9 @@ import type { PlatformKey } from "../components/Glyphs.js";
  * Get it's copy for stores and install sources (PORTAL.md §4.20; P0-48), on the product page and
  * in the focused download flow.
  *
- * Marked for the copy catalog the way `profile.ts` is (UK-02a): the portal does not read the
- * catalog yet (P0-36 moves it there), so the strings live here under the `getIt.*` keys they move
- * to, and the sentences built from data are the functions below the table. US spelling, sentence
+ * The catalog (`lib/copy.ts` `t()`) holds no `getIt.*` keys yet, so, like `profile.ts`, the strings
+ * live here under the keys they will take, and the sentences built from data are the functions
+ * below the table. US spelling, sentence
  * case, no jargon (§6.1): "Other ways to install", never "install sources".
  */
 export const GET_IT_COPY = {

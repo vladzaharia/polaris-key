@@ -2,6 +2,8 @@ import * as React from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { Fingerprint, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
+import { t } from "../../../lib/copy.js";
+import { expiredCodeText, wrongCodeText } from "../../copy/codeEntry.js";
 import {
   portalApi,
   PortalApiError,
@@ -293,7 +295,7 @@ export function StepUp({
               className="text-sm font-medium"
               onClick={() => void sendCode()}
             >
-              Send a new code
+              {t("signin.code.resend")}
             </Button>
           </div>
         </form>
@@ -405,12 +407,11 @@ function sendErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
     if (err.code === "turnstile_failed")
       return "The security check didn't run here. Confirm it's you another way.";
-    if (err.code === "signin_expired")
-      return "That code has expired. Send a new one.";
+    if (err.code === "signin_expired") return expiredCodeText();
     if (err.status === 429 && err.retryAfter !== undefined)
       return `Wait ${Math.max(1, Math.ceil(err.retryAfter))} seconds, then send a new code.`;
     if (err.status === 429)
-      return "Too many codes. Try again in a few minutes.";
+      return t("signin.rateLimited", { minutes: "a few" });
     if (err.code === "email_unavailable" || err.code === "auth_method_disabled")
       return "We can't send email right now. Try again later.";
   }
@@ -420,15 +421,9 @@ function sendErrorText(err: unknown): string {
 function codeErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
     if (err.code === "invalid_code") {
-      if (err.triesLeft === 0) return "Too many tries. Send a new code.";
-      const wrong = "That code isn't right. Check the email and try again.";
-      const left = err.triesLeft;
-      if (left !== undefined && left <= 2)
-        return `${wrong} ${left === 1 ? "1 try left." : `${left} tries left.`}`;
-      return wrong;
+      return wrongCodeText(err.triesLeft);
     }
-    if (err.code === "signin_expired")
-      return "That code has expired. Send a new code.";
+    if (err.code === "signin_expired") return expiredCodeText();
   }
   return commonErrorText(err);
 }

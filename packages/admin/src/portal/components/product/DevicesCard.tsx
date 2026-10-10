@@ -34,6 +34,7 @@ import { focusPageHeading, scrollBehavior } from "../../router.js";
 import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * Devices (§4.20, §4.22): the devices using a seat, each with **Remove**, which expands the row
@@ -83,7 +84,11 @@ export function DevicesCard({
   const idle = (view?.devices.length ?? 0) - active.length;
   const signIn = view ? isSignInLicense(view) : false;
   return (
-    <SectionCard id="devices" title="Devices" className="pk-vt-scope">
+    <SectionCard
+      id="devices"
+      title={t("account.devices")}
+      className="pk-vt-scope"
+    >
       {loading ? (
         <Skeleton className="h-28 w-full" />
       ) : error || !view ? (
@@ -273,7 +278,7 @@ function pageHeading(from: HTMLElement | null): HTMLElement | null {
 }
 
 function deviceName(d: PortalDevice): string {
-  return d.label?.trim() || "Unnamed device";
+  return d.label?.trim() || t("devices.unnamed");
 }
 
 function DeviceGlyph({
@@ -381,7 +386,7 @@ export function DeviceRow({
               if (!gone) setConfirming(true);
             }}
           >
-            Remove
+            {t("devices.remove")}
           </Button>
         )}
       </div>
@@ -472,7 +477,7 @@ export function DeviceRow({
                   });
                 }}
               >
-                Remove
+                {t("devices.remove")}
               </Button>
             </div>
           </div>

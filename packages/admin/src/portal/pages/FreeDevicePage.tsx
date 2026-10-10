@@ -44,6 +44,7 @@ import {
   useDocumentTitle,
 } from "../router.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
+import { t } from "../../lib/copy.js";
 
 /** The `for=` label as display text only (it is never markup): trimmed and bounded. */
 export function forLabel(raw: string | null): string | null {
@@ -143,7 +144,7 @@ export function lastSeenText(
 }
 
 function deviceName(d: PortalProductDevice): string {
-  return d.label?.trim() || "Unnamed device";
+  return d.label?.trim() || t("devices.unnamed");
 }
 
 function DeviceGlyph({ platform }: { platform: string | null }) {
@@ -228,7 +229,7 @@ function FreeDevice({
     <>
       {" "}
       Go back to {name} and press{" "}
-      <strong className="text-fg-strong">Try again</strong>.
+      <strong className="text-fg-strong">{t("signin.retry")}</strong>.
     </>
   ) : null;
   const card = (children: React.ReactNode) => (
@@ -369,7 +370,9 @@ function FreeDevice({
       ) : null}
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button asChild size="lg" variant="outline" className="h-12">
-          <a href={returnUrl ?? href.product(product.product)}>Cancel</a>
+          <a href={returnUrl ?? href.product(product.product)}>
+            {t("signin.cancel")}
+          </a>
         </Button>
         <Button
           size="lg"

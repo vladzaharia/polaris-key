@@ -3,6 +3,8 @@
  * base64url>`, case-sensitive, never grouped or re-cased.
  */
 
+import { t } from "../../lib/copy.js";
+
 /**
  * The masked display: the prefix, the slug, an ellipsis and the last 4 (`pkey_tidewater_…KQ2w`).
  * Without the last 4 (today's Worker keeps none, G7) it ends at the ellipsis.
@@ -234,7 +236,7 @@ function ownedVerdict(name: string, extras: KeyVerdictExtras): KeyVerdict {
   return {
     code: "license_owned",
     tone: "danger",
-    message: `This ${name} license is already in another Polaris Key account. A license never moves by its key.`,
+    message: t("core.codes.license_owned.message", { product: name }),
     ...(signInUrl ? { signInUrl } : {}),
   };
 }
@@ -309,7 +311,7 @@ export function claimVerdict(
  *  `key_entry_limit` (`conformance/parity/copy.en.json`, PX-W9) is the same sentence without the
  *  product, for SDKs that cannot name it. */
 export function noEntriesCopy(name: string): string {
-  return `This key has no entries left in ${name}. Add it to your account and ${name} signs you in instead.`;
+  return t("signin.key.noEntries", { product: name });
 }
 
 /**

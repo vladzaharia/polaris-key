@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
+import { t, tParts } from "../../lib/copy.js";
+import { expiredCodeText, wrongCodeText } from "../copy/codeEntry.js";
 import {
   portalApi,
   PortalApiError,
@@ -39,7 +41,8 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
  *   on to sign-in, after which the Activate dialog opens with it filled in (the same round trip
  *   as `/activate#key=…`).
  *
- * Copy is inlined with its `signin.*` key (§5.2) until UK-02a ships the catalog.
+ * Copy is the kit copy catalog's `signin.*` strings (§5.2) through `t()`; the few sentences it does
+ * not word yet are written here under the key they will take.
  */
 type Step =
   | { kind: "methods"; email?: string; notice?: string }
@@ -93,12 +96,12 @@ export function SignInPage(): React.ReactElement {
   useSessionRecheck(step.kind === "code");
   useDocumentTitle(
     step.kind === "code"
-      ? "Check your email"
+      ? t("signin.code.title")
       : step.kind === "refused"
         ? "This account can't sign in"
         : step.kind === "key"
-          ? "Have a license key?"
-          : "Sign in",
+          ? t("signin.link.key")
+          : t("signin.methods.titleApp"),
   );
 
   const ctx = caps.data?.product;
@@ -134,7 +137,7 @@ export function SignInPage(): React.ReactElement {
               {
                 kind: "methods",
                 email: step.email,
-                // signin.code.expiredRestart (PX-W4; joins the §5.2 catalog with UK-02a)
+                // signin.code.expiredRestart (PX-W4): no catalog key yet
                 notice: "That sign-in has expired. Continue to get a new code.",
               },
               "back",
@@ -215,7 +218,7 @@ function Unreachable({
         iconStart={<RefreshCw aria-hidden />}
         onClick={onRetry}
       >
-        Try again
+        {t("signin.retry")}
       </Button>
     </>
   );
@@ -223,18 +226,13 @@ function Unreachable({
 
 function startErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
-    // signin.rateLimited (the Worker's 429 carries no wait yet, so no {minutes})
+    // The Worker's 429 carries no wait yet, so `{minutes}` reads "a few".
     if (err.status === 429 || err.code === "rate_limited")
-      return "Too many codes. Try again in a few minutes.";
-    // signin.emailDown
+      return t("signin.rateLimited", { minutes: "a few" });
     if (err.code === "email_unavailable" || err.code === "email_not_configured")
-      return "We can't send email right now. Try another way to sign in.";
-    // signin.email.invalid
-    if (err.status === 422)
-      return "Enter a full email address, like name@example.com.";
-    // signin.off.any
-    if (err.code === "auth_method_disabled")
-      return "Sign-in is unavailable. Try again later.";
+      return t("signin.emailDown");
+    if (err.status === 422) return t("signin.email.invalid");
+    if (err.code === "auth_method_disabled") return t("signin.off.any");
     if (err.code === "turnstile_failed")
       return "The security check did not pass. Try again.";
   }
@@ -309,7 +307,9 @@ function MethodsStep({
   const providers = caps.auth.providers ?? [];
   const magic = caps.auth.magic;
   const oidc = caps.auth.oidc;
-  const ssoLabel = `Continue with ${caps.auth.oidcName ?? "single sign-on"}`;
+  const ssoLabel = t("signin.provider.continue", {
+    provider: caps.auth.oidcName ?? "single sign-on",
+  });
   const ssoHref = `/login?return_to=${encodeURIComponent(returnTo())}`;
 
   if (!magic && !oidc && providers.length === 0) {
@@ -318,10 +318,11 @@ function MethodsStep({
         <Title>Sign-in is turned off</Title>
         <p className="text-fg-muted">
           {context
-            ? // signin.off.product
-              `Sign-in is turned off for ${context.name}. Contact ${context.developerName ?? "its developer"}.`
-            : // signin.off.any
-              "Sign-in is unavailable. Try again later."}
+            ? t("signin.off.product", {
+                product: context.name,
+                developer: context.developerName ?? "its developer",
+              })
+            : t("signin.off.any")}
         </p>
       </>
     );
@@ -332,7 +333,7 @@ function MethodsStep({
     const value = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
       setInvalid(true);
-      setError("Enter a full email address, like name@example.com.");
+      setError(t("signin.email.invalid"));
       return;
     }
     setInvalid(false);
@@ -353,14 +354,14 @@ function MethodsStep({
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
   const title = carriedName
-    ? `Sign in to add ${carriedName}` // signin.key.carriedTitle
+    ? `Sign in to add ${carriedName}` // signin.key.carriedTitle (no catalog key yet)
     : context
-      ? "Sign in" // signin.methods.titleApp
-      : "Sign in to Polaris Key"; // signin.methods.title
+      ? t("signin.methods.titleApp")
+      : t("signin.methods.title");
   const lede = carriedName
     ? `Your key is ready. Sign in or create an account, and ${carriedName} joins your library.` // signin.key.carriedLede
     : context
-      ? `Use the email you bought ${context.name} with.` // signin.methods.ledeApp
+      ? t("signin.methods.ledeApp", { product: context.name })
       : null;
 
   return (
@@ -382,7 +383,7 @@ function MethodsStep({
               htmlFor="pk-signin-email"
               className="text-sm font-medium text-fg-strong"
             >
-              Email
+              {t("signin.email.label")}
             </label>
             <Input
               id="pk-signin-email"
@@ -411,7 +412,7 @@ function MethodsStep({
             loading={sending}
             iconEnd={<ArrowRight aria-hidden />}
           >
-            Continue
+            {t("signin.continue")}
           </Button>
         </form>
       ) : null}
@@ -457,8 +458,7 @@ function MethodsStep({
             onClick={onKey}
             icon={<KeyRound aria-hidden className="size-4" />}
           >
-            {/* signin.link.key */}
-            Have a license key?
+            {t("signin.link.key")}
           </QuietLink>
         </QuietLinks>
       ) : null}
@@ -470,7 +470,7 @@ function Divider(): React.ReactElement {
   return (
     <div className="flex items-center gap-3 text-sm text-fg-muted" aria-hidden>
       <span className="h-px flex-1 bg-border" />
-      or
+      {t("signin.or")}
       <span className="h-px flex-1 bg-border" />
     </div>
   );
@@ -479,16 +479,9 @@ function Divider(): React.ReactElement {
 function codeErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
     if (err.code === "invalid_code") {
-      const left = err.triesLeft;
-      if (left === 0) return "Too many tries. Send a new code."; // signin.code.tooMany
-      const wrong = "That code isn't right. Check the email and try again."; // signin.code.wrong
-      // signin.code.triesLeft, with two or fewer left
-      if (left !== undefined && left <= 2)
-        return `${wrong} ${left === 1 ? "1 try left." : `${left} tries left.`}`;
-      return wrong;
+      return wrongCodeText(err.triesLeft);
     }
-    if (err.code === "signin_expired")
-      return "That code has expired. Send a new code."; // signin.code.expired
+    if (err.code === "signin_expired") return expiredCodeText();
     if (err.status === 429 || err.code === "rate_limited")
       return "Too many tries. Wait a minute, then try again.";
     if (err.code === "forbidden" || err.code === "email_in_use")
@@ -577,9 +570,8 @@ function CodeStep({
     setStatus(null);
     try {
       const out = await portalApi.resendSignInCode();
-      // signin.code.resent
       setStatus({
-        text: `We sent a new code and link to ${email}.`,
+        text: t("signin.code.resent", { email }),
         tone: "success",
       });
       setCode("");
@@ -609,7 +601,7 @@ function CodeStep({
         // one to use.
         setCapped(true);
         setStatus({
-          // signin.code.noMore (PX-W4; joins the §5.2 catalog with UK-02a)
+          // signin.code.noMore (PX-W4): no catalog key yet
           text: "No more codes can be sent for this sign-in. The latest code still works.",
           tone: "muted",
         });
@@ -628,12 +620,17 @@ function CodeStep({
   return (
     <>
       <div className="space-y-2">
-        <Title>Check your email</Title>
+        <Title>{t("signin.code.title")}</Title>
         <p className="text-fg">
-          {/* signin.code.sent */}
-          We sent a code and a sign-in link to{" "}
-          <span className="font-medium text-fg-strong">{email}</span>. Both work
-          for 10 minutes.
+          {tParts("signin.code.sent", ["email"]).map((part, i) =>
+            typeof part === "string" ? (
+              part
+            ) : (
+              <span key={i} className="font-medium text-fg-strong">
+                {email}
+              </span>
+            ),
+          )}
         </p>
       </div>
       <form
@@ -668,10 +665,7 @@ function CodeStep({
             </p>
           ) : null}
         </div>
-        <p className="text-sm text-fg-muted">
-          {/* signin.code.link */}
-          Or open the link in the email. Keep this tab open.
-        </p>
+        <p className="text-sm text-fg-muted">{t("signin.code.link")}</p>
         <Button
           type="submit"
           size="lg"
@@ -679,7 +673,7 @@ function CodeStep({
           disabled={code.length !== CODE_LENGTH}
           loading={verifying}
         >
-          Continue
+          {t("signin.continue")}
         </Button>
       </form>
       {/* Always in the tree so the resend is announced; visually hidden while empty. */}
@@ -698,17 +692,15 @@ function CodeStep({
       <QuietLinks>
         {capped ? null : wait > 0 ? (
           <span className="inline-flex min-h-11 items-center px-1 text-fg-muted">
-            {/* signin.code.resendIn */}
-            Send a new code in {clock}
+            {t("signin.code.resendIn", { time: clock })}
           </span>
         ) : (
           <QuietLink onClick={() => void resend()}>
-            {sending ? "Sending…" : "Send a new code"}
+            {sending ? "Sending…" : t("signin.code.resend")}
           </QuietLink>
         )}
         <QuietLink onClick={onChangeEmail}>
-          {/* signin.code.differentEmail */}
-          Use a different email
+          {t("signin.code.differentEmail")}
         </QuietLink>
       </QuietLinks>
     </>
@@ -744,8 +736,7 @@ function RefusedStep({
         className="h-12 w-full text-base font-semibold"
         onClick={onChangeEmail}
       >
-        {/* signin.code.differentEmail */}
-        Use a different email
+        {t("signin.code.differentEmail")}
       </Button>
     </>
   );
@@ -765,8 +756,8 @@ function KeyStep({
   return (
     <>
       <div className="space-y-2">
-        {/* signin.link.key: the on-ramp keeps the link's words as its title */}
-        <Title>Have a license key?</Title>
+        {/* The on-ramp keeps the link's words as its title. */}
+        <Title>{t("signin.link.key")}</Title>
         <p className="text-fg-muted">
           {/* signin.key.onrampLede */}
           Paste the key from your receipt email. Sign in next, and it joins your
@@ -812,11 +803,11 @@ function KeyStep({
           className="h-12 w-full text-base font-semibold"
           iconEnd={<ArrowRight aria-hidden />}
         >
-          Continue
+          {t("signin.continue")}
         </Button>
       </form>
       <QuietLinks>
-        <QuietLink onClick={onBack}>Back</QuietLink>
+        <QuietLink onClick={onBack}>{t("signin.replace.back")}</QuietLink>
       </QuietLinks>
     </>
   );

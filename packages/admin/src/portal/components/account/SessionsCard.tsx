@@ -19,6 +19,7 @@ import { sessionMethodText } from "../../model/methods.js";
 import { scrollBehavior } from "../../router.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "../product/Card.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * Where you're signed in (PORTAL.md §4.26; I-07's account sessions): the browsers signed in to
@@ -121,7 +122,7 @@ function SessionRow({
             <span className="min-w-0 break-words">{name}</span>
             {session.current ? (
               <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-fg-strong">
-                This browser
+                {t("signin.replace.thisBrowser")}
               </span>
             ) : null}
           </p>
@@ -145,7 +146,7 @@ function SessionRow({
               })
             }
           >
-            Sign out
+            {t("common.signOut")}
           </Button>
         )}
       </div>
@@ -227,7 +228,7 @@ function Everywhere({ others }: { others: number }): React.ReactElement {
                 requestAnimationFrame(() => buttonRef.current?.focus());
               }}
             >
-              Cancel
+              {t("signin.cancel")}
             </Button>
             <Button
               variant="danger"

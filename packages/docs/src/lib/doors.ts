@@ -134,6 +134,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "build/ui/components/index",
               "build/ui/frameworks/index",
               "build/ui/frameworks/react",
+              "build/ui/frameworks/swiftui",
               "build/ui/frameworks/compose",
               "build/ui/frameworks/terminal-node",
               "build/ui/frameworks/terminal-python",

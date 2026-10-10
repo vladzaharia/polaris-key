@@ -68,21 +68,19 @@ public struct SystemDistributor: DistributorSource {
 
     public func current() async throws -> DistributorCase {
         #if os(iOS) && canImport(MarketplaceKit)
-        if #available(iOS 17.4, *) {
-            let d = try await AppDistributor.current
-            switch d {
-            case .appStore: return .appStore
-            case .testFlight: return .testFlight
-            case .marketplace(let id): return .marketplace(id)
-            case .other: return .other
-            default:
-                // `.web` is iOS 17.5: naming it in a `case` does not compile at a 17.0 floor.
-                if #available(iOS 17.5, *), case .web = d { return .web }
-                return .other
-            }
+        // The iOS 18 floor has AppDistributor (17.4) and its `web` case (17.5).
+        let d = try await AppDistributor.current
+        switch d {
+        case .appStore: return .appStore
+        case .testFlight: return .testFlight
+        case .marketplace(let id): return .marketplace(id)
+        case .web: return .web
+        case .other: return .other
+        @unknown default: return .other
         }
+        #else
+        throw PlatformUnavailable(reason: "runtime", detail: "AppDistributor is iOS only")
         #endif
-        throw PlatformUnavailable(reason: "version", detail: "AppDistributor needs iOS 17.4")
     }
 }
 
