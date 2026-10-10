@@ -415,6 +415,210 @@ describe("licensed R2 downloads from the portal", () => {
     expect(await refused.text()).not.toContain("githubusercontent");
   });
 
+  it("bytes host: GET 200, Range 206 and HEAD, all private and forced to download", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const url = await ticketedUrl(w, p);
+    const want = new TextDecoder().decode(bytesFor(WIN));
+
+    const get = await fetchUrl(w, url);
+    expect(get.status, await get.clone().text()).toBe(200);
+    expect(await get.text()).toBe(want);
+    expect(get.headers.get("cache-control")).toBe(
+      "private, no-store, no-transform",
+    );
+    expect(get.headers.get("content-disposition")).toMatch(/^attachment/);
+    expect(get.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(get.headers.get("set-cookie")).toBeNull();
+
+    const range = await fetchUrl(w, url, { headers: { range: "bytes=0-4" } });
+    expect(range.status).toBe(206);
+    expect(await range.text()).toBe(want.slice(0, 5));
+
+    const head = await fetchUrl(w, url, { method: "HEAD" });
+    expect(head.status).toBe(200);
+
+    // The same URL without the ticket is today's no-credential answer.
+    const bare = new URL(url);
+    bare.search = "";
+    expect((await fetchUrl(w, bare)).status).toBe(401);
+  });
+
+  it("expiry: an expired ticket is refused like a missing one", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const url = await ticketedUrl(w, p);
+    vi.setSystemTime((NOW + 119) * 1000);
+    expect((await fetchUrl(w, url)).status).toBe(200);
+    vi.setSystemTime((NOW + 120) * 1000);
+    const res = await fetchUrl(w, url);
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "download_auth_required",
+    );
+  });
+
+  it("binding: a ticket presented for another file, release or product is refused", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const url = await ticketedUrl(w, p);
+    const ticket = url.searchParams.get("ticket")!;
+    for (const path of [
+      `/${SLUG}/distribution/files/${encodeURIComponent("app@1.2.0")}/Diceroll-1.2.0-windows-arm64.zip`,
+      `/${SLUG}/distribution/files/${encodeURIComponent("app@1.1.0")}/Diceroll-1.1.0-windows-x86_64.zip`,
+    ]) {
+      const res = await fetchUrl(
+        w,
+        `${BYTES}${path}?ticket=${encodeURIComponent(ticket)}`,
+      );
+      expect(res.status, path).toBe(401);
+    }
+    // A tampered ticket on the right file.
+    const tampered = new URL(url);
+    tampered.searchParams.set("ticket", `${ticket.slice(0, -1)}A`);
+    if (tampered.searchParams.get("ticket") === ticket)
+      tampered.searchParams.set("ticket", `${ticket.slice(0, -1)}B`);
+    expect((await fetchUrl(w, tampered)).status).toBe(401);
+    // The file's bytes replaced under the same name: the ticket bound the old SHA-256.
+    await w.db.run(
+      `UPDATE release_artifacts SET sha256 = ? WHERE product = ? AND release_id = ? AND name = ?`,
+      "c".repeat(64),
+      SLUG,
+      "app@1.2.0",
+      WIN,
+    );
+    expect((await fetchUrl(w, url)).status).toBe(401);
+  });
+
+  it("two artifacts sharing a name in one release: the shadowed one's ticket fails closed", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const original = await artifactOf(w, "app@1.2.0", WIN);
+    // A second row with the same name and other bytes. The `files` route serves the first
+    // artifact (by id) with that name, so a ticket minted for this one binds a SHA-256 the bytes
+    // host never sees for that URL.
+    const dupId = `${original.artifact_id}~dup`;
+    await w.db.run(
+      `INSERT INTO release_artifacts
+         (product, release_id, artifact_id, name, kind, platform, arch, content_type,
+          size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
+          metadata_json, created_at)
+       SELECT product, release_id, ?, name, kind, platform, arch, content_type,
+              size_bytes, ?, source_url, storage_key, sparkle_signature, access,
+              metadata_json, created_at
+         FROM release_artifacts
+        WHERE product = ? AND release_id = ? AND artifact_id = ?`,
+      dupId,
+      "f".repeat(64),
+      SLUG,
+      "app@1.2.0",
+      original.artifact_id,
+    );
+    const minted = await mint(w, p, "app@1.2.0", dupId);
+    expect(minted.status, await minted.clone().text()).toBe(201);
+    const { url: path } = (await minted.json()) as { url: string };
+    const res = await redeem(
+      w,
+      decodeURIComponent(path.replace(/^\/download\//, "")),
+    );
+    expect(res.status).toBe(302);
+    expect((await fetchUrl(w, res.headers.get("location")!)).status).toBe(401);
+    // The served artifact's own ticket still works.
+    expect((await fetchUrl(w, await ticketedUrl(w, p))).status).toBe(200);
+  });
+
+  it("entitled: the ticket answers where the wire answer would be 401 unauthorized", async () => {
+    const w = await world("entitled");
+    const p = await account(w);
+    const url = await ticketedUrl(w, p);
+    expect((await fetchUrl(w, url)).status).toBe(200);
+    const bad = new URL(url);
+    bad.searchParams.set("ticket", "v1.AAAAAAAA.1.x");
+    const res = await fetchUrl(w, bad);
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      "unauthorized",
+    );
+  });
+
+  it("console host: a ticket there is ignored", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const url = await ticketedUrl(w, p);
+    const onConsole = new URL(`${CONSOLE}${url.pathname}${url.search}`);
+    expect((await fetchUrl(w, onConsole)).status).toBe(401);
+  });
+
+  it("revocation: a licence revoked or suspended, expired, or detached before redemption gets 404", async () => {
+    const cases: Array<[string, (w: World, p: Portal) => Promise<unknown>]> = [
+      [
+        // Revoked or suspended: the licence vocabulary's `disabled` (licenses.status).
+        "revoked (disabled)",
+        (w, p) =>
+          w.db.run(
+            "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+            SLUG,
+            p.licenseId,
+          ),
+      ],
+      [
+        "expired",
+        (w, p) =>
+          w.db.run(
+            "UPDATE licenses SET expires_at = ? WHERE product = ? AND id = ?",
+            NOW - 1,
+            SLUG,
+            p.licenseId,
+          ),
+      ],
+      [
+        "detached",
+        (w, p) =>
+          w.db.run(
+            "UPDATE licenses SET account_id = NULL WHERE product = ? AND id = ?",
+            SLUG,
+            p.licenseId,
+          ),
+      ],
+    ];
+    for (const [label, revoke] of cases) {
+      const w = await world("licensed");
+      const p = await account(w);
+      const t = await token(w, p);
+      await revoke(w, p);
+      const res = await redeem(w, t);
+      expect(res.status, label).toBe(404);
+      expect(res.headers.get("location"), label).toBeNull();
+    }
+  });
+
+  it("single use: the portal token redeems once; the ticket it gave stays reusable for 120 s", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const t = await token(w, p);
+    const first = await redeem(w, t);
+    expect(first.status).toBe(302);
+    expect((await redeem(w, t)).status).toBe(404);
+    const url = new URL(first.headers.get("location")!);
+    expect((await fetchUrl(w, url)).status).toBe(200);
+    expect((await fetchUrl(w, url)).status).toBe(200);
+  });
+
+  it("entitled: a release outside the licence's window is refused at mint", async () => {
+    const w = await world("entitled");
+    const p = await account(w, { maxVersion: "1.1.0" });
+    const { artifact_id } = await artifactOf(w, "app@1.2.0", WIN);
+    expect((await mint(w, p, "app@1.2.0", artifact_id)).status).toBe(403);
+    // Inside the window it is served.
+    const url = await ticketedUrl(
+      w,
+      p,
+      "app@1.1.0",
+      "Diceroll-1.1.0-windows-x86_64.zip",
+    );
+    expect((await fetchUrl(w, url)).status).toBe(200);
+  });
+
   it("fails closed: with the key or the bytes host unset, files are not_hosted and nothing mints", async () => {
     for (const env of [
       { DOWNLOAD_TICKET_KEY: undefined },
