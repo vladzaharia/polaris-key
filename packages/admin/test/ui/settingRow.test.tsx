@@ -20,7 +20,7 @@ const axe = configureAxe({ rules: { "color-contrast": { enabled: false } } });
 const conflict = Object.assign(new Error("conflict"), { status: 409 });
 
 function row(over: Partial<SettingRowProps> = {}) {
-  const save = vi.fn(async () => ({ ok: true }));
+  const save = vi.fn(async (_v: unknown, _c: unknown) => ({ ok: true }));
   const props: SettingRowProps = {
     id: "s1",
     settingKey: "grace.days",
