@@ -32,7 +32,7 @@ public struct UpdatePromptView: View {
                 }
             } content: {
                 if let body = screen.line("update.mandatoryBody") ?? screen.line("update.revokedContent") {
-                    KitText(body, .body, color: .muted, alignment: .center)
+                    KitText(body, .body, color: .default, alignment: .center)
                 }
             } actions: {
                 KitButton(line: CopyLine("update.install"), kind: .primary, action: onUpdate)
@@ -135,7 +135,7 @@ public struct ReleaseNotesView: View {
                     KitText(CopyLine("releaseNotes.error"), .body, color: .default)
                     KitButton(line: CopyLine("common.tryAgain"), kind: .secondary, action: onRetry)
                 case .empty:
-                    KitText(CopyLine("releaseNotes.empty"), .body, color: .muted)
+                    KitText(CopyLine("releaseNotes.empty"), .body, color: .default)
                 case .list:
                     ForEach(notes, id: \.version) { note in
                         Section {

@@ -5,6 +5,7 @@
   "testRoots": [
     "sdks/swift/Tests/PolarisKeyTests",
     "sdks/swift/Tests/PolarisKeyUICoreTests",
+    "sdks/swift/Tests/PolarisKeyUISnapshotTests",
     "tools/gen-mirrors.test.ts"
   ],
   "features": {

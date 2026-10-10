@@ -76,7 +76,7 @@ public struct WelcomeView<Inline: View>: View {
                 if let lede = screen.line("welcome.lede") ?? screen.line("welcome.ledeKeyOnly")
                     ?? screen.line("welcome.ledeSignInOnly")
                 {
-                    KitText(lede, .body, color: .muted, alignment: .center)
+                    KitText(lede, .body, color: .default, alignment: .center)
                 }
                 if screen.state == .capabilityLimited { inline() }
             }
@@ -154,7 +154,7 @@ public struct StatusScreenView: View {
             }
         } content: {
             VStack(spacing: 8) {
-                if let message { KitText(message, .body, color: .muted, alignment: .center) }
+                if let message { KitText(message, .body, color: .default, alignment: .center) }
                 if let allowed { KitText(allowed, .meta, color: .subtle, alignment: .center) }
             }
         } actions: {

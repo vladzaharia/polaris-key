@@ -70,6 +70,62 @@ public struct PolarisKeyPreview: View {
                 PreviewHostApp()
                 GraceBannerView(screen: model.graceBanner, onReconnect: {}, onDismiss: {})
             }
+        case .updatePrompt:
+            let screen = model.updatePrompt
+            if screen.state == .mandatory || screen.state == .revokedRequiredContent {
+                UpdatePromptView(screen: screen, onUpdate: {}, onLater: {})
+            } else {
+                ZStack(alignment: .bottom) {
+                    PreviewHostApp()
+                    UpdatePromptView(screen: screen, onUpdate: {}, onLater: {})
+                }
+            }
+        case .updateProgress:
+            PreviewSettingsHost {
+                Section {
+                    UpdateProgressView(
+                        screen: KitStates.updateProgress(model.inputs),
+                        fraction: model.inputs.update?.progress?.fraction, onRetry: {})
+                }
+            }
+        case .releaseNotes:
+            NavigationStack {
+                ReleaseNotesView(
+                    screen: KitStates.releaseNotes(model.inputs),
+                    notes: model.inputs.releaseNotes ?? [], onRetry: {})
+            }
+        case .accountAndLicense:
+            PreviewSettingsHost {
+                AccountAndLicenseSection(
+                    screen: KitStates.accountAndLicense(model.inputs), tier: "Pro",
+                    holder: "Mara Fennick", version: "2.4.1", devices: "2 of 3",
+                    onManage: {}, onSignOut: {})
+            }
+        case .devices:
+            PreviewSettingsHost {
+                DevicesSection(
+                    screen: KitStates.devices(model.inputs), devices: model.inputs.devices ?? [],
+                    onRemove: { _ in }, onRetry: {})
+            }
+        case .settings:
+            PreviewSettingsHost {
+                SettingsSection(
+                    screen: KitStates.settings(model.inputs), rows: model.inputs.config ?? [])
+            }
+        case .paywall:
+            PaywallView(screen: KitStates.paywall(model.inputs), onPortal: {}, onRedeem: {})
+        case .entitlementGate:
+            EntitlementGate(screen: KitStates.entitlementGate(model.inputs)) {
+                PreviewHostApp()
+            } locked: {
+                PaywallView(
+                    screen: KitStates.paywall(
+                        {
+                            var i = model.inputs
+                            i.offers = KitOffers(available: true)
+                            return i
+                        }()), onPortal: {}, onRedeem: {})
+            }
         default:
             PreviewHostApp()
         }
@@ -88,6 +144,18 @@ struct PreviewHostApp: View {
                 }
                 .navigationTitle(style.identity.name)
             }
+        }
+    }
+}
+
+/// A host's settings screen, for the panes that join it.
+struct PreviewSettingsHost<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        NavigationStack {
+            Form { content() }
+                .navigationTitle("Settings")
         }
     }
 }

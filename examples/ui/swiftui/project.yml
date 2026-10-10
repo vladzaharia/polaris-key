@@ -10,6 +10,12 @@ options:
 packages:
   PolarisKey:
     path: ../../../sdks/swift
+  # The baselines' comparison (UI-KITS §7.1): swift-snapshot-testing's image diffing, used by the
+  # render tests only; the app never links it. 1.15: later lines import Swift Testing, which a UI
+  # test bundle cannot load ("cannot load module 'Testing'").
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    exactVersion: 1.15.4
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -60,6 +66,8 @@ targets:
     sources: [UITests]
     dependencies:
       - target: TidewaterKit
+      - package: SnapshotTesting
+        product: SnapshotTesting
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

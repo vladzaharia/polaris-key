@@ -113,8 +113,8 @@ struct KitButtonSkin: ViewModifier {
                 content
                     .buttonStyle(
                         KitGlassStyle(
-                            label: p.textStrong, reduceMotion: style.reduceMotion,
-                            height: style.controlHeight))
+                            label: p.textStrong, ground: p.raised, dark: style.dark,
+                            reduceMotion: style.reduceMotion, height: style.controlHeight))
             } else if style.reduceTransparency || style.increaseContrast {
                 content
                     .buttonStyle(
@@ -164,6 +164,10 @@ struct KitCapsuleStyle: ButtonStyle {
 @available(iOS 26.0, macOS 26.0, *)
 struct KitGlassStyle: ButtonStyle {
     let label: Color
+    /// The raised surface the glass is tinted toward, so the label's contrast never depends on
+    /// what is behind the button (DL2: opaque enough on any ground).
+    let ground: Color
+    let dark: Bool
     let reduceMotion: Bool
     let height: CGFloat
 
@@ -176,7 +180,8 @@ struct KitGlassStyle: ButtonStyle {
             .padding(.vertical, 7)
             .frame(minHeight: height)
             .contentShape(Capsule())
-            .glassEffect(.regular.interactive(), in: Capsule())
+            .glassEffect(
+                .regular.tint(ground.opacity(dark ? 0.55 : 0.85)).interactive(), in: Capsule())
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
             .opacity(isEnabled ? 1 : 0.42)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)

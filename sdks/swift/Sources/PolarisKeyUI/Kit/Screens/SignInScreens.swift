@@ -126,7 +126,7 @@ public struct SignInView: View {
                     color: .muted)
             }
         case .expired:
-            KitText(CopyLine("signin.handoff.tooLong"), .body, color: .muted)
+            KitText(CopyLine("signin.handoff.tooLong"), .body, color: .default)
         }
     }
 
@@ -230,7 +230,7 @@ public struct SignInMethodsView: View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.md)) {
                 if let lede = screen.line("signin.methods.ledeApp") {
-                    KitText(lede, .body, color: .muted)
+                    KitText(lede, .body, color: .default)
                 }
                 if let error = screen.line("signIn.methodError") ?? screen.line("signIn.noMethods") {
                     KitText(error, .meta, color: .danger)
@@ -299,7 +299,7 @@ public struct SignInHandoffView: View {
                 switch screen.state {
                 case .waiting, .starting, .finishing:
                     if let body = screen.line("signin.handoff.browserBody") {
-                        KitText(body, .body, color: .muted)
+                        KitText(body, .body, color: .default)
                     }
                     HStack(spacing: style.space(.xs)) {
                         ProgressView().controlSize(.small).accessibilityHidden(true)
@@ -310,7 +310,7 @@ public struct SignInHandoffView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityAddTraits(.updatesFrequently)
                 case .noBrowser, .linkCopied:
-                    KitText(CopyLine("signin.handoff.noBrowserBody"), .body, color: .muted)
+                    KitText(CopyLine("signin.handoff.noBrowserBody"), .body, color: .default)
                     if let url = request?.verificationUriComplete {
                         HStack {
                             Text(KitLinks.display(url))
@@ -335,7 +335,7 @@ public struct SignInHandoffView: View {
                     if let message = screen.copy.first(where: {
                         $0.key.hasSuffix(".message") || $0.key == "signin.handoff.cancelled"
                     }) {
-                        KitText(message, .body, color: .muted)
+                        KitText(message, .body, color: .default)
                     }
                 case .none:
                     EmptyView()
@@ -346,7 +346,7 @@ public struct SignInHandoffView: View {
 
     @ViewBuilder private func codeView(_ style: KitResolvedStyle) -> some View {
         if let body = screen.line("signin.handoff.codeBody") {
-            KitText(body, .body, color: .muted)
+            KitText(body, .body, color: .default)
         }
         if let request {
             CodeDisplay(code: request.userCode)
@@ -396,7 +396,7 @@ public struct LicenseChoiceView: View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.md)) {
                 if let lede = screen.line("signin.choice.lede") {
-                    KitText(lede, .body, color: .muted)
+                    KitText(lede, .body, color: .default)
                 }
                 if screen.state == .loading {
                     LoadingIndicator(CopyLine("common.loading"))

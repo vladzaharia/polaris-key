@@ -9,6 +9,8 @@
 //
 // run.sh drives it: `PKEY_KIT_SHOTS=<dir> ./run.sh` (CI passes TEST_RUNNER_PKEY_KIT_SHOTS).
 
+import SnapshotTesting
+import UIKit
 import XCTest
 
 final class KitRenderTests: XCTestCase {
@@ -42,13 +44,24 @@ final class KitRenderTests: XCTestCase {
         "Welcome.default.drift-kart", "Welcome.default.no-presentation", "Welcome.busy",
         "Welcome.capability-limited", "Activate.empty", "Activate.typing", "Activate.parsed",
         "Activate.cut-short", "Activate.busy", "Activate.rejected", "Activate.device-limit",
-        "Activate.done", "SignIn.methods", "SignIn.handoff", "SignIn.finishing", "SignIn.done",
-        "SignIn.error", "SignIn.expired", "SignInHandoff.no-browser", "SignInHandoff.starting",
-        "SignInHandoff.code", "SignInHandoff.denied", "SignInHandoff.expired",
+        "Activate.done", "SignIn.methods", "SignIn.handoff", "SignIn.finishing", "SignIn.choose",
+        "SignIn.replace", "SignIn.key", "SignIn.done", "SignIn.error", "SignIn.expired",
+        "SignInHandoff.no-browser", "SignInHandoff.starting", "SignInHandoff.code",
+        "SignInHandoff.denied", "SignInHandoff.expired", "LicenseChoice.many", "LicenseChoice.one",
+        "LicenseChoice.all-full", "LicenseChoice.replace-open", "LicenseChoice.none-keys",
         "DeviceLimit.browser-mode", "DeviceLimit.default", "StatusScreen.revoked",
         "StatusScreen.expired", "StatusScreen.version-too-old", "StatusScreen.version-too-new",
         "StatusScreen.channel-not-entitled", "GraceBanner.days-left", "GraceBanner.last-day",
+        "UpdatePrompt.available", "UpdatePrompt.mandatory", "UpdatePrompt.store",
+        "UpdatePrompt.ready", "UpdateProgress.downloading", "ReleaseNotes.list",
+        "AccountAndLicense.signed-in", "AccountAndLicense.key-only", "AccountAndLicense.offline",
+        "Settings.list", "Settings.locked", "Devices.list", "Devices.empty", "Devices.error",
+        "Devices.browser-mode", "Paywall.offers", "Paywall.not-available",
+        "EntitlementGate.not-entitled",
     ]
+
+    /// The states rendered again in a launch pack, for the catalog's i18n proof.
+    static let localized = ["Welcome.default", "Activate.device-limit", "SignInHandoff.code"]
 
     var out: URL? {
         let env = ProcessInfo.processInfo.environment
@@ -71,7 +84,8 @@ final class KitRenderTests: XCTestCase {
     func testRenders() throws {
         let only = ProcessInfo.processInfo.environment["PKEY_KIT_ONLY"]
             ?? ProcessInfo.processInfo.environment["TEST_RUNNER_PKEY_KIT_ONLY"]
-        let states = only.map { $0.split(separator: ",").map(String.init) } ?? Self.all
+        let states =
+            only.flatMap { $0.isEmpty ? nil : $0.split(separator: ",").map(String.init) } ?? Self.all
         var renders: [Render] = []
         for state in states {
             for scheme in ["dark", "light"] {
@@ -87,25 +101,40 @@ final class KitRenderTests: XCTestCase {
             renders.append(try render(state, scheme: "dark", preset: "native"))
             renders.append(try render(state, scheme: "light", preset: "native"))
         }
+        let env = ProcessInfo.processInfo.environment
+        if (env["PKEY_KIT_QUICK"] ?? env["TEST_RUNNER_PKEY_KIT_QUICK"]) != "1" {
+            for state in Self.localized where states.contains(state) {
+                for locale in ["de", "ja"] {
+                    renders.append(try render(state, scheme: "dark", locale: locale))
+                }
+            }
+        }
         XCUIDevice.shared.orientation = .portrait
         if let out {
             let data = try JSONEncoder.pretty.encode(renders)
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try data.write(to: out.appendingPathComponent("renders-\(device).json"))
         }
-        let kitIssues = renders.flatMap { r in r.audit.map { "\(r.state) \(r.scheme) \(r.type): \($0)" } }
+        // "Nearly passed" is the audit's warning, recorded in the JSON but not a failure.
+        let kitIssues = renders.flatMap { r in
+            r.audit.filter { !$0.contains("nearly passed") }
+                .map { "\(r.state) \(r.scheme) \(r.type) \(r.orientation) \(r.preset): \($0)" }
+        }
         XCTAssertEqual(kitIssues, [], "accessibility audit issues")
+        XCTAssertEqual(baselineFailures, [], "renders that differ from their baselines")
     }
 
     @MainActor
     private func render(
         _ state: String, scheme: String, type: String = "L",
-        orientation: UIDeviceOrientation = .portrait, preset: String = "polaris-key"
+        orientation: UIDeviceOrientation = .portrait, preset: String = "polaris-key",
+        locale: String? = nil
     ) throws -> Render {
         XCUIDevice.shared.orientation = orientation
         let app = XCUIApplication()
-        var args = ["-pkeyState", state, "-pkeyScheme", scheme]
+        var args = ["-pkeyState", state, "-pkeyScheme", scheme, "-pkeyFreezeTime"]
         if preset == "native" { args += ["-pkeyPreset", "native"] }
+        if let locale { args += ["-pkeyLocale", locale] }
         let category: String
         switch type {
         case "AX3": category = "UICTContentSizeCategoryAccessibilityExtraLarge"
@@ -114,7 +143,7 @@ final class KitRenderTests: XCTestCase {
         }
         args += ["-UIPreferredContentSizeCategoryName", category]
         let env = ProcessInfo.processInfo.environment
-        if let extra = env["PKEY_KIT_EXTRA_ARGS"] ?? env["TEST_RUNNER_PKEY_KIT_EXTRA_ARGS"] {
+        if let extra = env["PKEY_KIT_EXTRA_ARGS"] ?? env["TEST_RUNNER_PKEY_KIT_EXTRA_ARGS"], !extra.isEmpty {
             args += extra.split(separator: " ").map(String.init)
         }
         app.launchArguments = args
@@ -124,7 +153,8 @@ final class KitRenderTests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.9)
 
         let orientationName = orientation == .portrait ? "portrait" : "landscape"
-        let name = "\(device)-\(orientationName)-\(type)-\(preset)-\(scheme)"
+        let name =
+            "\(device)-\(orientationName)-\(type)-\(preset)\(locale.map { "-\($0)" } ?? "")-\(scheme)"
         let shot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: shot)
         attachment.name = "\(state) \(name)"
@@ -135,6 +165,9 @@ final class KitRenderTests: XCTestCase {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             try shot.pngRepresentation.write(to: dir.appendingPathComponent("\(name).png"))
         }
+        try baseline(
+            shot.image, state: state, name: name,
+            isDefault: locale == nil && isDefaultRow(type, orientation, preset))
 
         var issues: [String] = []
         try app.performAccessibilityAudit(for: .all) { issue in
@@ -158,6 +191,61 @@ final class KitRenderTests: XCTestCase {
         return Render(
             state: state, device: device, orientation: orientationName, type: type, preset: preset,
             scheme: scheme, audit: issues, voiceOver: voiceOver)
+    }
+
+    var baselineFailures: [String] = []
+
+    /// The default row (portrait, L, the Polaris Key preset): the docs subset, flat at the top of
+    /// the baseline directory as `<component>-<state>[-variant]-<scheme>.png` (ui-qa's and the docs'
+    /// layout); every other row in `<component>-<state>/<device>-…-<scheme>.png`.
+    func isDefaultRow(_ type: String, _ orientation: UIDeviceOrientation, _ preset: String) -> Bool {
+        type == "L" && orientation == .portrait && preset == "polaris-key"
+    }
+
+    static func baselineName(_ state: String) -> String {
+        // "SignInHandoff.code" → "sign-in-handoff-code"; "Welcome.default.drift-kart" keeps its variant.
+        let parts = state.split(separator: ".", maxSplits: 1).map(String.init)
+        let component = parts[0].replacingOccurrences(
+            of: "([a-z0-9])([A-Z])", with: "$1-$2", options: .regularExpression
+        ).lowercased()
+        return parts.count > 1 ? "\(component)-\(parts[1].replacingOccurrences(of: ".", with: "-"))" : component
+    }
+
+    /// Compare a render with its committed baseline (swift-snapshot-testing's image diffing), at
+    /// 1x so the baselines stay small; record it instead under PKEY_KIT_RECORD=1.
+    @MainActor
+    func baseline(_ image: UIImage, state: String, name: String, isDefault: Bool) throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let root = (env["PKEY_KIT_BASELINES"] ?? env["TEST_RUNNER_PKEY_KIT_BASELINES"]),
+            !root.isEmpty
+        else { return }
+        let record = (env["PKEY_KIT_RECORD"] ?? env["TEST_RUNNER_PKEY_KIT_RECORD"]) == "1"
+        let base = Self.baselineName(state)
+        let scheme = name.hasSuffix("-dark") ? "dark" : "light"
+        let url: URL =
+            isDefault && device.hasPrefix("iphone-440")
+            ? URL(fileURLWithPath: root).appendingPathComponent("\(base)-\(scheme).png")
+            : URL(fileURLWithPath: root).appendingPathComponent(base).appendingPathComponent("\(name).png")
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let size = CGSize(width: image.size.width, height: image.size.height)
+        let small = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        if record {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try small.pngData()?.write(to: url)
+            return
+        }
+        guard let reference = UIImage(contentsOfFile: url.path) else {
+            baselineFailures.append("\(url.lastPathComponent): no baseline (record with PKEY_KIT_RECORD=1)")
+            return
+        }
+        let diffing = Diffing<UIImage>.image(precision: 0.995, perceptualPrecision: 0.98, scale: 1)
+        if let (message, _) = diffing.diff(reference, small) {
+            baselineFailures.append("\(base)/\(name): \(message)")
+        }
     }
 
     static func typeName(_ t: XCUIElement.ElementType) -> String {

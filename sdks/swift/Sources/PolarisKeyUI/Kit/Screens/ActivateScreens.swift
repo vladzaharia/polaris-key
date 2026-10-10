@@ -33,7 +33,7 @@ public struct ActivateView: View {
             VStack(alignment: .leading, spacing: 6) {
                 KitText("activate.title", [:], .title, color: .strong)
                     .accessibilityAddTraits(.isHeader)
-                KitText("activate.lede", [:], .body, color: .muted)
+                KitText("activate.lede", [:], .body, color: .default)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
@@ -78,7 +78,7 @@ struct ActivateBody: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     KitText(screen.lineOrKey("core.activation.ok.title"), .headline, color: .strong)
-                    KitText(screen.lineOrKey("core.activation.ok.message"), .body, color: .muted)
+                    KitText(screen.lineOrKey("core.activation.ok.message"), .body, color: .default)
                 }
             }
         case .deviceLimit, .rejected:
@@ -199,7 +199,7 @@ public struct DeviceLimitView: View {
                 )
                 .accessibilityAddTraits(.isHeader)
                 if let lede = screen.line("deviceLimit.lede") ?? screen.line("deviceLimit.browser") {
-                    KitText(lede, .body, color: .muted)
+                    KitText(lede, .body, color: .default)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

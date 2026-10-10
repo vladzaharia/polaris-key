@@ -129,6 +129,7 @@ extension PolarisKeyPreviewState {
     /// Every preview, component by component.
     public static let all: [PolarisKeyPreviewState] =
         gate + welcome + signIn + activate + deviceLimit + statusAndGrace + update + settings
+        + devicesAndPaywall
 
     /// The previews of one component.
     public static func of(_ component: KitComponent) -> [PolarisKeyPreviewState] {
@@ -385,6 +386,27 @@ extension PolarisKeyPreviewState {
         .init(
             .updatePrompt, "up-to-date",
             base { $0.update = KitUpdate(action: "none", reason: "up-to-date") }),
+        .init(
+            .updatePrompt, "ready",
+            base { $0.update = KitUpdate(action: "code-ready", version: "2.5.0") }),
+        .init(
+            .updateProgress, "downloading",
+            base {
+                $0.update = KitUpdate(
+                    action: "binary", version: "2.5.0",
+                    progress: KitUpdateProgress(phase: "download", fraction: 0.4))
+            }),
+        .init(
+            .releaseNotes, "list",
+            base {
+                $0.releaseNotes = [
+                    KitReleaseNote(
+                        version: "2.5.0", date: "2026-09-30",
+                        notes: "Faster sync. Fixes a crash on launch."),
+                    KitReleaseNote(
+                        version: "2.4.1", date: "2026-08-12", notes: "Fixes the mixer on Windows."),
+                ]
+            }),
     ]
 
     static let settings: [PolarisKeyPreviewState] = [
@@ -394,5 +416,52 @@ extension PolarisKeyPreviewState {
         .init(
             .accountAndLicense, "key-only", base { $0.account = KitAccount(signedIn: false) }),
         .init(.settings, "list", base { $0.config = config }),
+        .init(
+            .settings, "locked",
+            base {
+                $0.config =
+                    config + [
+                        KitConfigRow(
+                            key: "net.lockdown", type: "boolean", source: "enforced", locked: true,
+                            org: "Fennick Studio", value: .bool(true))
+                    ]
+            }),
+        .init(
+            .accountAndLicense, "offline",
+            base {
+                $0.account = KitAccount(signedIn: true, holder: "account")
+                $0.gate = KitGate(status: .grace, graceDaysLeft: 5)
+            }),
+    ]
+
+    static let devicesAndPaywall: [PolarisKeyPreviewState] = [
+        .init(
+            .devices, "list",
+            base {
+                var list = devices
+                list[2].current = true
+                $0.devices = list
+            }),
+        .init(.devices, "empty", base { $0.devices = [] }),
+        .init(.devices, "error", base { $0.error = KitError(code: "device_list_failed") }),
+        .init(.devices, "browser-mode", base { $0.browserMode = true }),
+        .init(
+            .paywall, "offers",
+            base {
+                $0.entitlement = KitEntitlement(name: "pro.export", entitled: false)
+                $0.offers = KitOffers(available: true)
+            }),
+        .init(
+            .paywall, "not-available",
+            base {
+                $0.entitlement = KitEntitlement(name: "pro.export", entitled: false)
+                $0.offers = KitOffers(available: false)
+            }),
+        .init(
+            .entitlementGate, "not-entitled",
+            base { $0.entitlement = KitEntitlement(name: "pro.export", entitled: false) }),
+        .init(
+            .entitlementGate, "entitled",
+            base { $0.entitlement = KitEntitlement(name: "pro.export", entitled: true) }),
     ]
 }

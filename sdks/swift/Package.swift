@@ -230,6 +230,15 @@ let package = Package(
             dependencies: ["PolarisKeyUICore", "PolarisKeyCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // The SwiftUI kit (UK-07): its resolution and layout rules on the host, and the coverage of
+        // the simulator baselines in __Snapshots__ (recorded by examples/ui/swiftui/run.sh, which
+        // renders every state on the iOS simulator; read by ui-qa and the docs).
+        .testTarget(
+            name: "PolarisKeyUISnapshotTests",
+            dependencies: ["PolarisKeyUI", "PolarisKeyUICore"],
+            exclude: ["__Snapshots__"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         // PolarisKeyPlatform against fakes only: StoreKit Testing loads no products under
         // `swift test`, and the Keychain answers -34018 without a host app (S-09). The StoreKit
         // tests run in the hosted XCTest project under PlatformHostTests/ instead.

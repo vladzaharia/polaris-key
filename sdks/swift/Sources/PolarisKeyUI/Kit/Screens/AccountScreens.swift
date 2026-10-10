@@ -160,7 +160,7 @@ public struct DevicesSection: View {
                 }
                 Button(strings.string("common.tryAgain"), action: onRetry)
             case .empty:
-                KitText(CopyLine("devices.empty"), .body, color: .muted)
+                KitText(CopyLine("devices.empty"), .body, color: .default)
             case .browserMode:
                 KitText(CopyLine("devices.browser"), .body, color: .default)
             default:
@@ -258,7 +258,7 @@ public struct PaywallView: View {
             }
         } content: {
             if let includes = screen.line("paywall.includes") {
-                KitText(includes, .body, color: .muted, alignment: .center)
+                KitText(includes, .body, color: .default, alignment: .center)
             }
         } actions: {
             KitActionStack {

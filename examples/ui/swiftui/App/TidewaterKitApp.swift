@@ -2,7 +2,8 @@
 //
 //   no arguments          the gallery of every preview state, on the fixture product (no Worker)
 //   -pkeyState <id>       one state full-screen (the render tests use it), e.g. Welcome.default
-//   -pkeyScheme dark|light, -pkeyPreset native, -pkeyAccent #rrggbb, -pkeyAmbient off
+//   -pkeyScheme dark|light, -pkeyPreset native, -pkeyAccent #rrggbb, -pkeyAmbient off,
+//   -pkeyFreezeTime (countdowns stop, for baselines), -pkeyLocale de
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -40,6 +41,7 @@ struct Root: View {
         }
         if let accent = value("-pkeyAccent") { theme.accent = .color(accent) }
         if value("-pkeyAmbient") == "off" { theme.ambient = false }
+        if let locale = value("-pkeyLocale") { theme.locale = locale }
         return theme
     }
 
@@ -50,7 +52,9 @@ struct Root: View {
             } else if let id = value("-pkeyState"),
                 let state = PolarisKeyPreviewState.all.first(where: { $0.id == id })
             {
-                PolarisKeyPreview(state, iconData: TidewaterIcon.png)
+                PolarisKeyPreview(
+                    state, iconData: TidewaterIcon.png,
+                    frozenTime: args.contains("-pkeyFreezeTime"))
             } else {
                 PolarisKeyGallery()
             }
