@@ -7807,6 +7807,44 @@ expiresAt))` (`core/graceClamp.ts`, `core/documents.ts` `clampGraceUntil`): the 
   an offline copy, writes nothing (checked) and carries licence ids, tiers and counts only: no
   name, email or key.
 
+### Licence and add-on lifecycle (LX-12)
+
+A licence's `status` stays `active`/`disabled`; `ended_reason` records why it ended (`revoked`,
+`superseded`, `refunded`, `chargeback`). A grant (an add-on) is `active`, `past_due`,
+`suppressed`, `revoked` or `refunded`. Both state machines are one table each
+(`core/licensing/lifecycle.ts`), and every writer's SQL is derived from them
+(`lifecycleWrites.ts`).
+
+- **The database cannot take a transition the table lacks.** Each UPDATE is guarded by its
+  event's source states, so a stale read or a concurrent write changes nothing rather than
+  moving a row along a missing edge. An operator's Enable that races a refund finds the row
+  refunded and leaves it. A test runs every cell of both tables against SQLite.
+- **No refund grace.** A full refund or a chargeback ends the item in the second it is written.
+  The contribution predicate reads only `state` and `expires_at`, never `grace_until`, so no
+  value in that column can extend access. `licensing.refundGraceHours` is still registered and
+  has no effect (LX-40 removes it). A partial refund never reaches the lifecycle.
+- **An operator cannot undo a refund.** Enable on a refunded or charged-back licence answers 409
+  and writes nothing, and `reinstate` of a refunded grant is refused. Only the store's reversal
+  of that refund or chargeback restores the item. To give access anyway an operator issues a new
+  licence or add-on, which is its own audited act.
+- **A store's reversal cannot lift an operator's end.** A refund or chargeback reversal moves only
+  an item that money ended. An item an operator revoked, a merge superseded or a support action
+  suppressed stays ended.
+- **Money ends are recorded over other ends.** A refund or chargeback of an item an operator has
+  already ended replaces that reason, so the record always shows that the money went back.
+  Residual: a single reason column cannot hold both ends. If such an item's refund is later
+  reversed, the item becomes active again although the operator had ended it. The audit log keeps
+  both steps, and the operator can revoke it again.
+- **Store grants keep their own writer.** Until LX-11 retires the dual-write, a store grant's
+  state is the projection of `license_store_grants`, so the lifecycle's grant writers exclude
+  store sources: an operator cannot reinstate a refunded store purchase through them. Store
+  refunds still revoke through `applyStoreGrant`, as `revoked`, until CM-22 routes them through
+  the lifecycle as `refunded`.
+- **No wire change.** A disabled licence's document request gets the same 401 whatever its
+  reason (tested). The reason reaches devices only with LX-18's wire amendment. `ended_reason` and
+  `superseded_by` are licence metadata, not personal data, and stay on a deleted product's
+  licences with the rest of their shape.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, and the SDK does not trust it.** Every

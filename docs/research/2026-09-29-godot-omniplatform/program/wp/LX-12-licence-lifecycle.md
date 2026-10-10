@@ -54,10 +54,43 @@ There is no term model beyond one `expires_at` (G8, [S-19 §4.3](../../notes/S-1
 2. Grace.
 3. Tests.
 
+## Corrections found in the code (2026-10-09)
+
+- **No grace, so "after the grace" is "at once".** With `refundGraceHours` dropped, the first
+  criterion is met when a refunded grant stops counting in the second the refund is written. The
+  registered `licensing.refundGraceHours` setting stays registered, unread; LX-40 removes it with
+  the other licensing-model settings.
+- **No migration.** LX-08 already added `ended_reason`, `superseded_by` and both vocabularies
+  (triggers). LX-12 adds no column, trigger or index. It does not backfill the licences disabled
+  before it: rule 5 sends value backfills through P0-49, which is not built. Those rows read as
+  `suspended` (LX-41's table already has that state). The migration gate is therefore not
+  exercised.
+- **The two machines are one module.** `core/licensing/lifecycle.ts` holds the licence and grant
+  tables (pure, imports nothing, as LX-32's `terms.ts`). `lifecycleWrites.ts` derives every
+  guarded UPDATE, the bulk `CASE` form and the grant contribution predicate from those tables.
+  `GRANT_STATES` moved there from `core/grants.ts`, which re-exports it.
+- **The writers.** Four paths disable a licence today, and each now writes its reason. The
+  console's Disable and a batch's Disable unused keys write `revoked`, and so does a product's
+  deletion. The sign-in merge of an enrolled licence (`activateFromIdentity`) writes
+  `superseded`, with `superseded_by`. Enable clears the reason, and is refused (409) for
+  `refunded` and `chargeback`: only the store's reversal undoes a money end.
+  `admin/repo.ts`'s `setLicenseStatus` is gone. No path refunds or charges back a licence yet:
+  those events are for CM-05 and CM-22.
+- **Grant reads.** The one grant a document reads before LX-09, the licence's `oidc` grant, now
+  goes through the lifecycle's contribution predicate (`active` or `past_due`, inside
+  `expires_at`). No stored row changes value, so documents are byte-identical. The grant writers
+  exclude store-sourced grants until LX-11 retires the dual-write. Store refunds still project as
+  `revoked` until CM-22 routes them through the lifecycle.
+- **Console.** No console file changes. The admin licence summary carries `endedReason` and
+  `supersededBy` (OpenAPI `AdminLicenseSummary`) for LX-14 to show.
+
 ## Acceptance criteria
 
-- [ ] A refunded grant stops contributing after the grace (test).
-- [ ] `ended_reason` is set on disable (test).
+- [x] A refunded grant stops contributing after the grace (test). With no grace it stops at once:
+      `test/licenseLifecycle.test.ts` "a refunded grant stops counting at once".
+- [x] `ended_reason` is set on disable (test): `licenseLifecycle.test.ts` (Disable, product
+      deletion), `licenseBatches.test.ts` (Disable unused keys), `enroll.test.ts` (the merge's
+      `superseded`).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

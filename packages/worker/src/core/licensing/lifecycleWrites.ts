@@ -102,7 +102,9 @@ export function licenseTransitionStatement(
   const params: DbParam[] = [];
   if (args.event === "supersede") {
     if (!args.supersededBy)
-      throw new Error("licenseTransitionStatement: supersede needs supersededBy");
+      throw new Error(
+        "licenseTransitionStatement: supersede needs supersededBy",
+      );
     sets.push("superseded_by = ?");
     params.push(args.supersededBy);
   }

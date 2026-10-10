@@ -187,7 +187,9 @@ export function licenseTransition(
 }
 
 /** The `status` a licence in `state` has. */
-export function licenseStatusOf(state: LicenseLifecycleState): "active" | "disabled" {
+export function licenseStatusOf(
+  state: LicenseLifecycleState,
+): "active" | "disabled" {
   return state === "active" ? "active" : "disabled";
 }
 

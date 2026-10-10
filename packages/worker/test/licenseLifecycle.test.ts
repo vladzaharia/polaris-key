@@ -121,9 +121,11 @@ describe("the lifecycle tables, cell by cell", () => {
         [...LICENSE_EVENTS].sort(),
       );
       for (const event of LICENSE_EVENTS)
-        expect(
-          [state, event, LICENSE_TRANSITIONS[state][event]],
-        ).toEqual([state, event, LICENSE_EXPECTED.get(state)!.get(event)]);
+        expect([state, event, LICENSE_TRANSITIONS[state][event]]).toEqual([
+          state,
+          event,
+          LICENSE_EXPECTED.get(state)!.get(event),
+        ]);
     }
   });
 
@@ -204,17 +206,17 @@ describe("the lifecycle tables, cell by cell", () => {
         expect(grantContributes({ state: after, expires_at: null }, NOW)).toBe(
           false,
         );
-        expect(
-          grantContributes({ state: after, expires_at: later }, NOW),
-        ).toBe(false);
+        expect(grantContributes({ state: after, expires_at: later }, NOW)).toBe(
+          false,
+        );
       }
     }
   });
 
   it("reads a licence's state from status first, then its reason", () => {
-    expect(licenseLifecycleState({ status: "active", ended_reason: null })).toBe(
-      "active",
-    );
+    expect(
+      licenseLifecycleState({ status: "active", ended_reason: null }),
+    ).toBe("active");
     // A stale reason on an active row (a Worker older than LX-12 re-enabled it) reads active.
     expect(
       licenseLifecycleState({ status: "active", ended_reason: "refunded" }),
@@ -224,9 +226,9 @@ describe("the lifecycle tables, cell by cell", () => {
     ).toBe("suspended");
     expect(licenseLifecycleState({ status: "disabled" })).toBe("suspended");
     for (const r of LICENSE_ENDED_REASONS) {
-      expect(licenseLifecycleState({ status: "disabled", ended_reason: r })).toBe(
-        r,
-      );
+      expect(
+        licenseLifecycleState({ status: "disabled", ended_reason: r }),
+      ).toBe(r);
       expect(licenseEndedReason({ status: "disabled", ended_reason: r })).toBe(
         r,
       );
@@ -433,7 +435,12 @@ describe("the writers apply exactly the table", () => {
         actor: "system:commerce",
         now: NOW + 1,
       }),
-    ).toEqual({ from: "active", outcome: "refunded", changed: true, to: "refunded" });
+    ).toEqual({
+      from: "active",
+      outcome: "refunded",
+      changed: true,
+      to: "refunded",
+    });
     // Replayed: nothing changes.
     expect(
       await transitionLicense(db, {
@@ -443,7 +450,12 @@ describe("the writers apply exactly the table", () => {
         actor: "system:commerce",
         now: NOW + 2,
       }),
-    ).toEqual({ from: "refunded", outcome: "same", changed: false, to: "refunded" });
+    ).toEqual({
+      from: "refunded",
+      outcome: "same",
+      changed: false,
+      to: "refunded",
+    });
     expect(
       await transitionLicense(db, {
         product: SLUG,
@@ -452,7 +464,12 @@ describe("the writers apply exactly the table", () => {
         actor: "op-1",
         now: NOW + 3,
       }),
-    ).toEqual({ from: "refunded", outcome: "refused", changed: false, to: "refunded" });
+    ).toEqual({
+      from: "refunded",
+      outcome: "refused",
+      changed: false,
+      to: "refunded",
+    });
     expect(await licenseRow(db, "lic_r")).toMatchObject({
       status: "disabled",
       ended_reason: "refunded",
@@ -493,7 +510,12 @@ describe("the writers apply exactly the table", () => {
         actor: "op-1",
         now: NOW + 5,
       }),
-    ).toEqual({ from: "revoked", outcome: "active", changed: false, to: "refunded" });
+    ).toEqual({
+      from: "revoked",
+      outcome: "active",
+      changed: false,
+      to: "refunded",
+    });
     expect(await licenseRow(db, "lic_race")).toMatchObject({
       status: "disabled",
       ended_reason: "refunded",
@@ -559,7 +581,12 @@ describe("the writers apply exactly the table", () => {
         actor: "op-1",
         now: NOW + 2,
       }),
-    ).toEqual({ from: "refunded", outcome: "refused", changed: false, to: "refunded" });
+    ).toEqual({
+      from: "refunded",
+      outcome: "refused",
+      changed: false,
+      to: "refunded",
+    });
     expect(
       await transitionGrant(db, {
         product: SLUG,
@@ -568,7 +595,12 @@ describe("the writers apply exactly the table", () => {
         actor: "commerce",
         now: NOW + 3,
       }),
-    ).toEqual({ from: "refunded", outcome: "active", changed: true, to: "active" });
+    ).toEqual({
+      from: "refunded",
+      outcome: "active",
+      changed: true,
+      to: "active",
+    });
   });
 
   it("leaves a store-sourced grant to the store-grant projection: no event writes it", async () => {
@@ -805,9 +837,9 @@ describe("the licence document", () => {
     expect(entitlementsOf((await document(NOW + 100)).body)).toHaveProperty(
       "polarisVpn",
     );
-    expect(
-      entitlementsOf((await document(NOW + 101)).body),
-    ).not.toHaveProperty("polarisVpn");
+    expect(entitlementsOf((await document(NOW + 101)).body)).not.toHaveProperty(
+      "polarisVpn",
+    );
   });
 
   it("no wire change: an ended licence's answer is the same bytes whatever its reason", async () => {
@@ -954,7 +986,9 @@ describe("ended_reason is written with every disable", () => {
     ).json()) as Record<string, unknown>;
     expect(read).toMatchObject({ status: "disabled", endedReason: null });
     expect(
-      await (await call("POST", `/license/licenses/${licenseId}/enable`)).json(),
+      await (
+        await call("POST", `/license/licenses/${licenseId}/enable`)
+      ).json(),
     ).toMatchObject({ status: "active", endedReason: null });
   });
 

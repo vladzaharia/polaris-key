@@ -175,6 +175,45 @@ A few consequences worth stating plainly:
   until its `expiresAt`, then on `graceUntil`. Wire contract v3 §4.3 is explicit that for an
   offline install the grace bound _is_ the revocation lever.
 
+### Why a license ended
+
+A disabled license records why in `ended_reason`, written in the same statement that disables it:
+
+| Reason       | Written when                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `revoked`    | an operator disables it (**Disable**, **Disable unused keys**) or deletes the product                                                                   |
+| `superseded` | another license replaced it: an enrolled license merged into the license of the person who signed in on its device. `superseded_by` names that license. |
+| `refunded`   | its sale was fully refunded                                                                                                                             |
+| `chargeback` | its sale was charged back                                                                                                                               |
+
+A license disabled before reasons were recorded has none.
+
+- **Refunds have no grace.** A full refund or a chargeback ends the license at once; a partial
+  refund ends nothing.
+- **Only the store undoes a refund.** The store's reversal of that refund or chargeback restores
+  the license. **Enable** answers `409` for it: to give the person access anyway, issue a new
+  license. Enable restores a license that ended for any other reason.
+- **The first end stays, except for money.** Disabling an ended license changes nothing; a refund
+  or chargeback still replaces an earlier reason, so the record says when the money went back.
+- **No wire change.** A disabled license's document request gets the same `401` whatever the
+  reason.
+
+### Add-on states
+
+Each add-on a holder has (a grant) is in one state:
+
+| State        | Meaning                                         | Counts |
+| ------------ | ----------------------------------------------- | ------ |
+| `active`     | held                                            | yes    |
+| `past_due`   | a renewal failed and the store is retrying      | yes    |
+| `suppressed` | an operator hid it                              | no     |
+| `revoked`    | it no longer holds, or an operator revoked it   | no     |
+| `refunded`   | its purchase was fully refunded or charged back | no     |
+
+A grant that counts stops at its own `expires_at`. One that does not count stops in the second
+its state is written. A refunded add-on comes back only through the store's reversal; an operator
+restores any other.
+
 Devices have their own two-value status — `authorized` and `deauthorized`. Deauthorizing purges
 the device's fingerprint and facts rows and frees its seat.
 
@@ -253,10 +292,12 @@ two-seat license admit a third machine no further (`403 device_limit`).
 A product's licensing settings decide how these nouns combine: whether a device sees only its own
 licence's entitlements or everything its holder has (`entitlementModel`), whose entitlements those
 are (`entitlementHolder`), which licence a device runs on (`anchorPolicy`, `reanchor`), whether
-offline grace may outlast a licence's expiry (`clampGraceToExpiry`), and how long a refunded grant
-keeps working (`refundGraceHours`). They are declared under `licensing:` in `.pkey/product` (see
+offline grace may outlast a licence's expiry (`clampGraceToExpiry`). They are declared under
+`licensing:` in `.pkey/product` (see
 [Licensing settings](/docs/build/manifest/authoring/#licensing-settings-licensing)) and edited on
 **License → Settings**, where a change claims the setting from the manifest until you revert it.
+`refundGraceHours` is accepted and has no effect: refunds have no grace
+([Why a license ended](/docs/services/license/model/#why-a-license-ended)).
 
 `clampGraceToExpiry` is in effect: on (the default), a license that expires inside its offline
 window gets documents whose `graceUntil` stops at the expiry, so an offline install cannot outlive
