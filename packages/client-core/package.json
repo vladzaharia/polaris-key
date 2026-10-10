@@ -124,6 +124,6 @@
   },
   "devDependencies": {
     "@polaris-key/zstd-wasm": "workspace:*",
-    "@types/node": "^22.14.0"
+    "@types/node": "^22.20.5"
   }
 }

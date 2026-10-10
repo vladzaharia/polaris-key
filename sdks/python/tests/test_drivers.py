@@ -95,8 +95,9 @@ def _velopack_client():
     return c
 
 
-@pytest.mark.parametrize("restart,kind,last", [(True, "handed-off", "apply-restart"), (False, "restart-required", "apply-on-exit")])
-def test_velopack_drives_the_update_manager(restart, kind, last) -> None:
+@pytest.mark.parametrize("restart", [True, False])
+@pytest.mark.parametrize("version", ["1.3.0", "1.4.0"])
+def test_velopack_refuses_unverifiable_packages_before_manager_creation(restart, version) -> None:
     made = []
 
     def factory(url, channel):
@@ -106,24 +107,11 @@ def test_velopack_drives_the_update_manager(restart, kind, last) -> None:
 
     c = _velopack_client()
     c.update.set_driver(VelopackDriver("win-x64", restart=restart, manager_factory=factory))
-    out = c.update.install(UpdateDecision(action="binary", release=DecisionRelease("1.3.0", 1, "a" * 64), build="win"))
-    assert out.kind == kind
-    m = made[0]
-    assert m.url == f"{BASE_URL}/{PRODUCT}/update/stable/velopack/" and m.channel == "win-x64"
-    assert m.calls == ["check", "download", last]
-    assert [e["event"] for e in c.update_journal.events()] == ["update_downloaded", "update_applied"]
-    c.close()
-
-
-def test_velopack_without_the_package_is_unsupported_dependency() -> None:
-    def factory(url, channel):
-        raise ImportError("no velopack")
-
-    c = _velopack_client()
-    out = VelopackDriver("linux-x64", manager_factory=factory).install(
-        c, UpdateDecision(action="binary", release=DecisionRelease("1.3.0", 1, "a" * 64))
-    )
-    assert out.kind == "unsupported" and out.reason == "dependency"
+    out = c.update.install(UpdateDecision(action="binary", release=DecisionRelease(version, 1, "a" * 64), build="win"))
+    assert out.kind == "unsupported" and out.reason == "runtime"
+    assert "signed release record" in out.detail
+    assert made == []
+    assert list(c.update_journal.events()) == []
     c.close()
 
 

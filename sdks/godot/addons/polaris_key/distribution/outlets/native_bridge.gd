@@ -8,7 +8,8 @@ extends RefCounted
 ##   is_available()           the plugin is installed and usable here
 ##   check_now()              ask the native updater to look for an update (its own UI)
 ##   install_and_relaunch()   hand the update to the native updater, which installs it and
-##                            relaunches the game
+##                            relaunches the game (AppImage refuses this generic hook; it needs
+##                            PKeyUpdater.install_appimage(check) with the verified record)
 ##   feed_url                 the feed the native updater reads, from this session's discovery
 ##                            (P3-09's routes: the appcast, WinSparkle's XML, Velopack's
 ##                            directory, …)
@@ -94,6 +95,9 @@ func check_now() -> PKeyApplyResult:
 
 
 func install_and_relaunch() -> PKeyApplyResult:
+	# This also covers custom native objects and Engine singletons that bypass the facade.
+	if id() == "velopack":
+		return PKeyApplyResult.failed(PKeyErrors.UNSUPPORTED, "Velopack installation is disabled until the exact applied package can be verified against the pinned-key-signed release record (version, size and SHA-256).", {"feature": PKeyConstants.Feature.UPDATE_DRIVER, "reason": PKeyConstants.UnsupportedReason.RUNTIME, "bridge": id()})
 	return await _forward("install_and_relaunch")
 
 

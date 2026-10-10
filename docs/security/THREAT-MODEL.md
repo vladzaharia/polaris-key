@@ -3738,6 +3738,23 @@ guard with P3-12, each of which extends this section.
   model): a compromised Worker or KEK can choose among CI-signed releases, but cannot ship bytes
   no release key signed, because every SDK verifies the record's signature, and then the
   payload's `size` and SHA-256 against the record, before staging.
+- **Velopack automatic installation fails closed.** The Node and Python manager APIs and
+  Godot native bridge do not expose the exact package bytes handed to the installer. Their
+  install entry points return `unsupported` (`runtime`) before checking or downloading a feed;
+  Godot's facade and Windows GDExtension also refuse direct apply calls. A matching version or
+  distribution-controlled checksum is not release-key authorization. Godot retains the adapter's
+  manual download-link fallback. Re-enabling installation requires verifying the exact applied
+  package's version, size and SHA-256 against the pinned-key-verified release record, including
+  delta reconstruction and the deferred apply boundary.
+- **Godot AppImage installs preserve release authorization at the executable boundary.**
+  The direct adapter passes the successful update check to `install_appimage(check)`, which
+  selects the AppImage payload from its verified release record. Bytes are downloaded into a
+  private, randomly named sibling directory, verified against the record's exact size and
+  SHA-256, made executable for the owner only, and atomically renamed over `$APPIMAGE` before
+  relaunch. Download, integrity, permission or rename failure preserves the original executable
+  and never relaunches it. The generic AppImage install hook refuses calls; a custom native
+  plugin cannot bypass this path. `appimageupdatetool -j` is informational only: zsync consistency
+  and an external tool's successful exit are never release authorization.
 - **Release keys are never product keys.** If a product key were pinned or declared as a release
   key, the Worker would hold the private half of a "release key" and the two-signer property
   would be gone without a trace. Three checks keep them apart: `verifyReleaseRecord` refuses at
