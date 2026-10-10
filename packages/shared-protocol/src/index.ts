@@ -88,6 +88,7 @@ export type {
 
 export type {
   DocProfile,
+  SignedInUser,
   LicenseDoc,
   LicenseStatus,
   BlockReason,

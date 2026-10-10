@@ -13,6 +13,7 @@ import * as release from "../src/release.js";
 import * as trust from "../src/trust.js";
 import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
+import type { DocProfile, SignedInUser } from "../src/license.js";
 
 describe("@polaris-key/protocol layout", () => {
   it("core carries wire contract v4", () => {
@@ -372,6 +373,33 @@ describe("@polaris-key/protocol layout", () => {
     expect(barrel.BACKEND_LICENSE_MAX_BYTES).toBe(
       core.BACKEND_LICENSE_MAX_BYTES,
     );
+  });
+
+  it("the signed-in subject (WIRE-CONTRACT-V4 §2.1, §8, plans/SP-54.md §2)", () => {
+    // One declaration in /core; /identity re-exports the same value, and the barrel neither.
+    expect(core.PAIRWISE_SUBJECT_PATTERN).toBe("^ps_[A-Za-z0-9_-]{22}$");
+    expect(identity.PAIRWISE_SUBJECT_PATTERN).toBe(
+      core.PAIRWISE_SUBJECT_PATTERN,
+    );
+    expect("PAIRWISE_SUBJECT_PATTERN" in barrel).toBe(false);
+    // `profile.user` is optional and carries the subject only.
+    const user: SignedInUser = { subject: `ps_${"A".repeat(22)}` };
+    const withUser: DocProfile = {
+      name: "Grace Hopper",
+      firstName: "Grace",
+      email: "grace@example.com",
+      activatedAt: 1690000000,
+      user,
+    };
+    const withoutUser: DocProfile = { ...withUser };
+    delete withoutUser.user;
+    expect(Object.keys(withoutUser)).toEqual([
+      "name",
+      "firstName",
+      "email",
+      "activatedAt",
+    ]);
+    expect(Object.keys(withUser.user!)).toEqual(["subject"]);
   });
 
   it("the presentation limits (WIRE-CONTRACT-V4 §5.5, plans/HA-12.md §2.5)", () => {
