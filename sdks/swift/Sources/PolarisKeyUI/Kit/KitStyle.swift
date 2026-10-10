@@ -62,10 +62,13 @@ public struct KitResolvedStyle: Sendable, Equatable {
     public var radius: PolarisKeyTheme.Radius = .md
     public var serviceCues = false
 
-    /// Liquid Glass is available (iOS 26) and transparency is not reduced.
+    /// Liquid Glass is available (iOS 26) and transparency is not reduced. Glass needs the iOS 26
+    /// SDK (Xcode 26, Swift 6.2): an older toolchain compiles the glass out and draws the fallback.
     public var usesGlass: Bool {
         guard !reduceTransparency, !forcesMaterial else { return false }
+        #if compiler(>=6.2)
         if #available(iOS 26.0, macOS 26.0, *) { return true }
+        #endif
         return false
     }
 
