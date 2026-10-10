@@ -1,6 +1,8 @@
 // The Node conformance runner for `conformance/corpus/v2/sync-scenarios.json`: the Cloud Sync
-// client state machine (`@polaris-key/client-core/cloud-sync`, plans/U-01.md §4.1,
-// WIRE-CONTRACT-V4 §11.5). It covers React too, since both JS SDKs drive the same `client-core`.
+// client state machine (`@polaris-key/client-core/cloud-sync`, plans/U-01.md §4.1 as amended by
+// plans/U-01b.md §4, WIRE-CONTRACT-V4 §11.5). It covers React too, since both JS SDKs drive the
+// same `client-core`, and `settingCases` against `@polaris-key/catalog`'s `syncedSettings`, the
+// routing every JS host hands the machine.
 //
 // THE TEMPLATE FOR EVERY OTHER SDK'S RUNNER (U-06 Python, U-07 Swift and Kotlin, U-21 Godot).
 // A runner needs only three seams in its SDK: a fake clock it can advance, a fake transport that
@@ -8,7 +10,8 @@
 // `clientId`s that returns `init.clientIds` in order. Then, for each scenario:
 //
 //   1. build the client from `init` (catalog, document, clock, subject, network, options) with
-//      an empty journal (`init.journal` is null in version 1);
+//      an empty journal (`init.journal` is null in version 2), then, when `init.legacyLocal` is
+//      not null, hand it to the one-time `config.local` import (`importLocal`);
 //   2. run each step: `local` calls the SDK method named by `call` with `args` and, when the step
 //      has `expect`, compares the call's result ({ok: true} or {ok: false, error}); `advance`
 //      moves the fake clock by `ms`, firing every timer due on the way in time order; `network`
@@ -20,6 +23,14 @@
 //      (a subset of settingState), `journal` (the normalised journal, exactly), `requests` and
 //      `events` (exactly, since the previous assert), `status` and `licence` (exactly; the
 //      licence state is never touched by Cloud Sync).
+//   4. for each `settingCases` entry, compare the SDK's port of `userSettingIssues` over
+//      `entries` with `issues` (key, code, severity); when `routes` is not null (no error issue),
+//      derive the routes with the port of `syncedSettings` and compare them exactly, and check
+//      that every key in `open` has no route.
+//
+// Error codes are the canonical ones (`bad_request`, `managed_by_admin`). An SDK that ships a
+// native code for the same refusal maps canonical to native in its runner (Godot's
+// `invalid-options`), and `conformance/parity/errors.json` stays the arbiter.
 //
 // A runner never edits the file, skips a scenario or loosens a comparison (AGENTS.md rule 1).
 
@@ -28,10 +39,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  syncedSettings,
+  userSettingIssues,
+  type ConfigEntry,
+} from "@polaris-key/catalog";
+import {
   CloudSyncMachine,
   SYNC_DEBOUNCE_MS,
   SYNC_MAX_CLOCK_SKEW_MS,
   SYNC_MAX_MUTATIONS,
+  SYNC_MAX_VALUE_BYTES,
   SYNC_PENDING_DAYS,
   SYNC_SIGNOUT_FLUSH_MS,
   relaunch,
@@ -58,8 +75,18 @@ interface Scenario {
     licence: Obj;
     clientIds: string[];
     options: { onSignOut: "clear" | "keep" };
+    legacyLocal: Record<string, Json> | null;
   };
   steps: Obj[];
+}
+
+interface SettingCase {
+  name: string;
+  description: string;
+  entries: ConfigEntry[];
+  issues: { key: string; code: string; severity: string }[];
+  routes: Obj[] | null;
+  open: string[];
 }
 
 interface SyncScenarios {
@@ -71,6 +98,7 @@ interface SyncScenarios {
   asserts: string[];
   rules: { id: string }[];
   scenarios: Scenario[];
+  settingCases: SettingCase[];
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -83,10 +111,10 @@ const corpus = JSON.parse(
 
 function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
   switch (name) {
-    case "setConfig":
-      return m.setConfig(args[0] as string, args[1] as Json);
-    case "clearConfig":
-      return m.clearConfig(args[0] as string);
+    case "set":
+      return m.set(args[0] as string, args[1] as Json);
+    case "clear":
+      return m.clear(args[0] as string);
     case "put":
       return m.put(args[0] as string, args[1] as string, args[2] as Json);
     case "add":
@@ -104,13 +132,14 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
 
 describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client state machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(corpus.syncScenariosVersion).toBe(1);
+    expect(corpus.syncScenariosVersion).toBe(2);
     expect(corpus.constants).toEqual({
       debounceMs: SYNC_DEBOUNCE_MS,
       signOutFlushMs: SYNC_SIGNOUT_FLUSH_MS,
       pendingDays: SYNC_PENDING_DAYS,
       maxMutationsPerPush: SYNC_MAX_MUTATIONS,
       maxClockSkewMs: SYNC_MAX_CLOCK_SKEW_MS,
+      maxValueBytes: SYNC_MAX_VALUE_BYTES,
     });
   });
 
@@ -140,6 +169,11 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
       };
       const licence = structuredClone(sc.init.licence);
       let m = new CloudSyncMachine(opts);
+      if (sc.init.legacyLocal !== null)
+        expect(
+          m.importLocal(sc.init.legacyLocal),
+          `${sc.name}: import`,
+        ).toEqual({ ok: true });
       for (const [i, step] of sc.steps.entries()) {
         const [kind, raw] = Object.entries(step)[0] as [string, Obj];
         const where = `${sc.name}, step ${i + 1} (${kind})`;
@@ -205,4 +239,27 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
       }
     });
   }
+
+  for (const c of corpus.settingCases)
+    it(`settingCases: ${c.name}`, () => {
+      const issues = c.entries.flatMap((e) =>
+        userSettingIssues(e as unknown as Record<string, unknown>).map((i) => ({
+          key: e.key,
+          code: i.code,
+          severity: i.severity,
+        })),
+      );
+      expect(issues, `${c.name}: issues`).toEqual(c.issues);
+      if (c.routes === null) {
+        expect(issues.some((i) => i.severity === "error")).toBe(true);
+        return;
+      }
+      const routes = syncedSettings({ entries: c.entries });
+      expect(routes, `${c.name}: routes`).toEqual(c.routes);
+      for (const key of c.open)
+        expect(
+          routes.some((r) => r.key === key),
+          `${c.name}: ${key} is open`,
+        ).toBe(false);
+    });
 });
