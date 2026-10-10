@@ -357,6 +357,23 @@ describe("@polaris-key/protocol layout", () => {
     expect(preview.status).toBe("confirm");
   });
 
+  it("the product-backend constants (WIRE-CONTRACT-V4 §14, plans/SP-53.md §2)", () => {
+    expect(core.HEADER_LICENSE).toBe("X-PKey-License");
+    expect(core.BACKEND_AUTH_SCHEME).toBe("PKey-License");
+    expect(core.BACKEND_LICENSE_MAX_BYTES).toBe(16384);
+    expect(core.BACKEND_TRUST_REFRESH_SECONDS).toBe(900);
+    // What an app adds to its own CORS allow-list. `Authorization` stays the app's own.
+    expect([...core.POLARIS_REQUEST_HEADERS]).toEqual([
+      "X-PKey-License",
+      "X-PKey-Device",
+    ]);
+    expect(barrel.HEADER_LICENSE).toBe(core.HEADER_LICENSE);
+    expect(barrel.POLARIS_REQUEST_HEADERS).toBe(core.POLARIS_REQUEST_HEADERS);
+    expect(barrel.BACKEND_LICENSE_MAX_BYTES).toBe(
+      core.BACKEND_LICENSE_MAX_BYTES,
+    );
+  });
+
   it("the presentation limits (WIRE-CONTRACT-V4 §5.5, plans/HA-12.md §2.5)", () => {
     expect(core.PRESENTATION_TEXT_MAX_BYTES).toBe(1024);
     expect(core.PRESENTATION_URL_MAX_BYTES).toBe(2048);
