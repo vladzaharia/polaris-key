@@ -8,6 +8,8 @@ only API (no deprecated aliases).
 
 Trust custody and offline bundles.
 
+- **Signed-in user (`license.signedinuser`).** `license_user(doc)`, `client.license.get_license_user()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is `None`. The terminal kit's `status` reads "signed in" from it, no longer from the holder's email, so a key-activated device reads as not signed in.
+
 - **Pin two keys.** A verified manifest signed by one pinned key that lists another pinned key as
   `revoked` (its exact bytes) retires that pin on this install for good. The manifest is stored as
   signed evidence (`pinRevocations`) and re-checked at every start. A manifest that revokes its own

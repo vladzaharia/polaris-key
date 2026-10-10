@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 70 | 9 | 30 | 0 |
-| React | `web`, `desktop-bridge` | 66 | 17 | 26 | 0 |
-| Python | `python` | 70 | 9 | 30 | 0 |
-| Swift | `macos`, `ios` | 82 | 7 | 19 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 77 | 7 | 25 | 0 |
-| Kotlin | `android`, `jvm` | 73 | 6 | 29 | 1 |
+| Node | `node` | 71 | 9 | 30 | 0 |
+| React | `web`, `desktop-bridge` | 67 | 17 | 26 | 0 |
+| Python | `python` | 71 | 9 | 30 | 0 |
+| Swift | `macos`, `ios` | 83 | 7 | 19 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 78 | 7 | 25 | 0 |
+| Kotlin | `android`, `jvm` | 74 | 6 | 29 | 1 |
 
 ## Core
 
@@ -49,6 +49,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.signedinuser` | Signed-in user: profile.user.subject read beside the claims | `cases.json` `licenseUserCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.enroll` | Keyless enrolment | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |

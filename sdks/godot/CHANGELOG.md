@@ -11,6 +11,8 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 Local-trust fixes, and the product's presentation.
 
+- **Signed-in user (`license.signedinuser`).** `PolarisKey.license.get_license_user()` returns `{subject}` from the verified licence document's `profile.user`, or null when it is absent or malformed (a key-activated device is null).
+
 - **Product presentation (`core.presentation`).** `PolarisKey.presentation()` returns the
   product's name, developer, accents and icon from discovery ({} for none);
   `PolarisKey.presentation_icon(px, scale)` fetches one icon size without credentials or

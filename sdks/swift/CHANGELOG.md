@@ -8,6 +8,8 @@ deprecated aliases).
 
 Gate and SDK correctness.
 
+- **Signed-in user (`license.signedinuser`).** `licenseUser(_:)`, `LicenseClient.licenseUser()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is nil.
+
 - **A blocking gate has a way out.** An expired licence offers Renew or manage (with
   `GateOptions.renewURL`), Try again, Use a different key and Sign in; a revoked one offers Use a
   different key and Sign in; the explanation is worded for the controls it has. Use a different
