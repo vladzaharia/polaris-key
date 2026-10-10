@@ -28,8 +28,8 @@ export {
   renderSwift,
   renderTs,
   sortedJson,
-  userPolicies,
-  type UserPolicy,
+  settingPolicies,
+  type SettingPolicy,
 } from "@polaris-key/cli/mirrors";
 
 type Lang = MirrorLang;
