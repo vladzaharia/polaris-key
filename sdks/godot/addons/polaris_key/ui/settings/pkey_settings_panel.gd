@@ -236,18 +236,20 @@ func _narrow_lists(narrow: bool) -> void:
 		panel.set_meta(&"pkey_narrow_side", side)
 
 
-## The list is as tall as its rows, up to the room the screen leaves, then scrolls: ending on a row
-## boundary so no row is cut in half.
+## The list is as tall as its rows, up to the room the screen leaves, then scrolls and fills that room
+## (a fade over the clipped edge says there is more; snapping to a row edge left a third of it empty).
 func _list_height() -> float:
+	var need := _inset.get_combined_minimum_size().y
+	return minf(need, _list_room())
+
+
+## The height the screen leaves the list under the head and the badge.
+func _list_room() -> float:
 	var room := available_height()
 	room -= _frame_head_height()
 	if _powered_by.visible:
 		room -= _powered_by.get_combined_minimum_size().y + role("section_gap")
-	room = maxf(room, 0.0)
-	var need := _inset.get_combined_minimum_size().y
-	if need > room:
-		return _row_boundary(room)
-	return need
+	return maxf(room, 0.0)
 
 
 ## The head and rows wrap as the widths settle: the list's height is taken again until it holds.
@@ -336,19 +338,6 @@ func _align_advanced_row() -> void:
 			right = roundi(box.get_content_margin(SIDE_RIGHT))
 	_advanced_row.add_theme_constant_override("margin_left", left)
 	_advanced_row.add_theme_constant_override("margin_right", right)
-
-
-## The largest height up to `room` at which a whole row ends (the pane's own row boundaries).
-func _row_boundary(room: float) -> float:
-	var best := 0.0
-	for k in _controls:
-		var rowc := (_controls[k]["row"] as Control)
-		if not rowc.is_visible_in_tree():
-			continue
-		var bottom := rowc.global_position.y + rowc.size.y - _inset.global_position.y
-		if bottom <= room and bottom > best:
-			best = bottom
-	return best if best > 0.0 else room
 
 
 func _update_fade() -> void:
@@ -731,6 +720,9 @@ func _ensure_visible(ctl: Control) -> void:
 	var margin := ring + role("section_gap")
 	var origin := _inset.global_position.y
 	var top := row.global_position.y - origin - margin
+	# The first row of a group brings its heading into view with it.
+	if row.get_index() == 0 and row.get_parent() != null and row.get_parent().get_parent() != null and row.get_parent().get_parent().get_parent() is VBoxContainer:
+		top = minf(top, (row.get_parent().get_parent().get_parent() as Control).global_position.y - origin - float(PKeyUiTheme.RING_WIDTH + PKeyUiTheme.RING_OFFSET))
 	var bottom := row.global_position.y + row.size.y - origin + margin
 	var page := _scroll.size.y
 	if bottom - top > page:

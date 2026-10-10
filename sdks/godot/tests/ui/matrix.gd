@@ -639,6 +639,9 @@ static func _settings_column_problems(p: PKeySettingsPanel) -> PackedStringArray
 			var right := (n["plus"] as Control).get_global_rect().position.x - input.get_global_rect().end.x
 			if absf(left - right) > 1.0 and not (n["input"] is HSlider):
 				out.append("%s has uneven stepper gaps (%.1f and %.1f)" % [row.name, left, right])
+	# A list that scrolls fills the room the screen leaves it (never snapped short to a row edge).
+	if p._scroll.is_visible_in_tree() and p._inset.get_combined_minimum_size().y > p._list_room() + 1.0 and p._scroll.size.y + 1.5 < p._list_room():
+		out.append("the settings list is %.0f px of the %.0f px the screen leaves it" % [p._scroll.size.y, p._list_room()])
 	if not is_nan(edge) and p._advanced.is_visible_in_tree() and absf(p._advanced.get_global_rect().end.x - edge) > 1.5:
 		out.append("the advanced switch ends at %.1f, not on the column edge %.1f" % [p._advanced.get_global_rect().end.x, edge])
 	return out
