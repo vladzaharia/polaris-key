@@ -461,18 +461,23 @@ export function ProfileEditor({
             ) : null}
           </fieldset>
 
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <label
-                htmlFor={`${id}-birthdate`}
-                className="text-sm font-semibold text-fg-strong"
-              >
-                {C["profile.birthdate.label"]}
-              </label>
-              <span className="text-xs text-fg-muted">
+          {/* The note explains the name and picture, so it stays with them. */}
+          <p className="flex gap-2 text-sm text-fg-muted">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>{C["profile.note"]}</span>
+          </p>
+
+          {/* I-33: private, so set apart from what an app may receive. */}
+          <div className="space-y-2 border-t border-border pt-5">
+            <label
+              htmlFor={`${id}-birthdate`}
+              className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium text-fg-strong"
+            >
+              {C["profile.birthdate.label"]}
+              <span className="text-xs font-normal text-fg-muted">
                 {C["profile.birthdate.optional"]}
               </span>
-            </div>
+            </label>
             <div className="flex flex-wrap items-center gap-2">
               <Input
                 ref={birthRef}
@@ -489,11 +494,17 @@ export function ProfileEditor({
                     : birthHintId
                 }
                 onValueChange={typeBirthdate}
-                className="w-full max-w-56"
+                // The native calendar button inside takes focus without the input being
+                // :focus-visible, so the ring follows plain :focus here.
+                className="min-w-36 max-w-56 flex-1 focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface-page"
               />
               {birthdate ? (
-                <Button variant="ghost" onClick={removeBirthdate}>
-                  {C["profile.birthdate.remove"]}
+                <Button
+                  variant="ghost"
+                  aria-label={C["profile.birthdate.remove"]}
+                  onClick={removeBirthdate}
+                >
+                  {C["profile.birthdate.removeShort"]}
                 </Button>
               ) : null}
             </div>
@@ -506,11 +517,6 @@ export function ProfileEditor({
               {C["profile.birthdate.hint"]}
             </p>
           </div>
-
-          <p className="flex gap-2 text-sm text-fg-muted">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>{C["profile.note"]}</span>
-          </p>
 
           {error?.field === "form" ? (
             <p role="alert" className="text-sm text-danger">

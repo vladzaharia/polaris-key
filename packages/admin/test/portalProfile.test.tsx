@@ -391,7 +391,7 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
 
 describe("the birth date (I-33): optional, private, added, changed and removed here", () => {
   const birthField = (card: HTMLElement) =>
-    within(card).getByLabelText("Birth date") as HTMLInputElement;
+    within(card).getByLabelText(/^Birth date/) as HTMLInputElement;
 
   it("says it is optional and private, and the card shows nothing while there is none", async () => {
     mockFetch(profileRoutes(CHOSEN));
@@ -426,14 +426,16 @@ describe("the birth date (I-33): optional, private, added, changed and removed h
       expect(patches()).toEqual([{ birthdate: "1987-02-28" }]),
     );
     expect(
-      await within(card).findByText("Born February 28, 1987"),
+      await within(card).findByText("Born February 28, 1987 · private to you"),
     ).toBeTruthy();
   });
 
   it("Remove birth date sends null and moves focus to the emptied field", async () => {
     mockFetch(profileRoutes({ ...CHOSEN, birthdate: "1987-02-28" }));
     const card = await openProfile();
-    expect(within(card).getByText("Born February 28, 1987")).toBeTruthy();
+    expect(
+      within(card).getByText("Born February 28, 1987 · private to you"),
+    ).toBeTruthy();
     await userEvent.click(
       within(card).getByRole("button", { name: "Edit profile" }),
     );
@@ -475,7 +477,7 @@ describe("the birth date (I-33): optional, private, added, changed and removed h
           body: {
             error: "bad_request",
             reason: "invalid_birthdate",
-            message: "Enter a real date, no later than today.",
+            message: "Enter a date from 1900 to today.",
           },
         },
       }),
@@ -486,7 +488,7 @@ describe("the birth date (I-33): optional, private, added, changed and removed h
       within(card).getByRole("button", { name: "Save profile" }),
     );
     const alert = await within(card).findByRole("alert");
-    expect(alert.textContent).toBe("Enter a real date, no later than today.");
+    expect(alert.textContent).toBe("Enter a date from 1900 to today.");
     const field = birthField(card);
     expect(field.getAttribute("aria-invalid")).toBe("true");
     expect(field.getAttribute("aria-describedby")).toContain(alert.id);

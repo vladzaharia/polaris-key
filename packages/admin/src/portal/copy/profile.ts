@@ -33,6 +33,7 @@ export const PROFILE_COPY = {
   "profile.birthdate.optional": "Optional",
   "profile.birthdate.hint": "Private to you. Apps never receive it.",
   "profile.birthdate.remove": "Remove birth date",
+  "profile.birthdate.removeShort": "Remove",
   "profile.note":
     "Pictures are copied to Polaris Key, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.",
   "profile.save": "Save profile",
@@ -42,7 +43,7 @@ export const PROFILE_COPY = {
   "profile.retry": "Try again",
   "profile.removedMethod": "a sign-in method you removed",
   "profile.error.invalidName": "Enter a name.",
-  "profile.error.invalidBirthdate": "Enter a real date, no later than today.",
+  "profile.error.invalidBirthdate": "Enter a date from 1900 to today.",
   "profile.error.unknownSource":
     "That sign-in method isn't on this account anymore. Choose again.",
   "profile.error.noName":
@@ -105,7 +106,10 @@ export function chipLabel(provider: string, name: string): string {
   return `Use the name ${name} from ${provider}`;
 }
 
-/** `profile.birthdate.line`: the Profile card's line, with the date as the locale writes it. */
+/**
+ * `profile.birthdate.line`: the Profile card's line, with the date as the locale writes it. It
+ * says it is private right there, under a subtitle about what apps may receive.
+ */
 export function bornLine(date: string): string {
-  return `Born ${date}`;
+  return `Born ${date} · private to you`;
 }

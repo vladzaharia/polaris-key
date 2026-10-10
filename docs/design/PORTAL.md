@@ -1254,11 +1254,14 @@ code** (45, 48).
 The first card on Account (`#/account/profile`). **Edit profile** opens it in place:
 
 - A **preview** (the picture as it will look, with its source badge, and the name).
-- **Display name** with a **Your choice** tag once typed, and chips **Use a name from** each linked
+- **Screen name** (I-33) with a **Your choice** tag once typed, and chips **Use a name from** each linked
   method that supplied one (Steam "marafox", Google "Mara Fennick", Game Center "Mara F.").
 - **Picture** as radio tiles: each linked provider that supplied one (Steam avatar, Google
   picture), **Initials**, and **Upload** (PNG or JPEG, up to 5 MB; cropped to a square). The tile in
   use says **In use**. Apple never appears as a picture source.
+- Below a hairline, **Birth date** (I-33), labelled **Optional**: a date field with **Remove**
+  while one is set, and "Private to you. Apps never receive it." Read-only, the card adds
+  "Born <date> · private to you" with a lock, only when there is one.
 - **Save profile** and **Cancel**.
 
 **Rules.**

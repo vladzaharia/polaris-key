@@ -69,11 +69,7 @@ export interface ProfileDraft {
   birthdate?: BirthdateDraft;
 }
 
-export const NO_DRAFT: ProfileDraft = {
-  name: null,
-  picture: null,
-  birthdate: null,
-};
+export const NO_DRAFT: ProfileDraft = { name: null, picture: null };
 
 /** The birth date the editor's field shows: `YYYY-MM-DD`, or `""` for none. */
 export function draftBirthdate(

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pencil, Upload } from "lucide-react";
+import { Lock, Pencil, Upload } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { toast } from "../../ui/toast.js";
@@ -109,7 +109,8 @@ export function ProfileCard({
                   </p>
                 ) : null}
                 {profile?.birthdate ? (
-                  <p className="text-sm text-fg-muted">
+                  <p className="flex items-center gap-1.5 text-sm text-fg-muted">
+                    <Lock aria-hidden className="size-3.5 shrink-0" />
                     {bornLine(formatBirthdate(profile.birthdate))}
                   </p>
                 ) : null}

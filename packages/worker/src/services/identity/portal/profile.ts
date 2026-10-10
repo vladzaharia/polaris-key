@@ -74,7 +74,7 @@ const CHANGE_REFUSALS: Record<
     body: {
       error: "bad_request",
       reason: "invalid_birthdate",
-      message: "Enter a real date, no later than today.",
+      message: "Enter a date from 1900 to today.",
     },
   },
   unknown_source: {
