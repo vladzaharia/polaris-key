@@ -53,6 +53,17 @@ Service table in every language.
 - Reads: `tools/services.json`, `tools/gen-services.ts`.
 - Writes: `packages/shared-manifest/src/services.generated.ts`, `packages/admin/src/services.generated.ts`, `packages/sdk-node/src/services.generated.ts`, `packages/sdk-react/src/core/services.generated.ts`, `sdks/python/src/polaris_key/_services.py`, `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift`, `sdks/godot/addons/polaris_key/core/services_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt`.
 
+### channels
+
+Distribution-channel catalogue.
+
+- Run: default, pre-commit.
+- Regenerate: `pnpm gen channels`.
+- Check: `pnpm gen channels --check`.
+- Underlying: `pnpm exec tsx tools/gen-channels.ts`.
+- Reads: `tools/channels.json`, `tools/gen-channels.ts`.
+- Writes: `packages/shared-manifest/src/channels.generated.ts`, `packages/docs/src/content/docs/reference/channels.mdx`.
+
 ### transcripts
 
 HTTP transcripts recorded through the Worker router, and their Godot mirror.

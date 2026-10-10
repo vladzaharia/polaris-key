@@ -302,6 +302,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
             "reference/parity",
             "reference/routes",
             "reference/generators",
+            "reference/channels",
             "reference/what-apps-collect",
           ),
           {

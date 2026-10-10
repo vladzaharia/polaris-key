@@ -207,6 +207,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `corpus`             | `pnpm gen corpus`             | Signed conformance corpus (v2) and its one Godot mirror                           |
 | `ui-matrix`          | `pnpm gen ui-matrix`          | UI-kit state matrix (the corpus's ui-matrix.json)                                 |
 | `services`           | `pnpm gen services`           | Service table in every language                                                   |
+| `channels`           | `pnpm gen channels`           | Distribution-channel catalogue                                                    |
 | `transcripts`        | `pnpm gen transcripts`        | HTTP transcripts recorded through the Worker router, and their Godot mirror       |
 | `constants`          | `pnpm gen constants`          | SDK constants: error codes, headers, enums, feature ids, core copy                |
 | `platform-inventory` | `pnpm gen platform-inventory` | Platform inventory from the tagged Env members                                    |
