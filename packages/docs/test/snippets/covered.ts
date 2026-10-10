@@ -17,6 +17,9 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}sdks/node/your-own-ui.md`, language: "ts" },
   { path: `${BUILD}quickstart/react.md`, language: "ts" },
   { path: `${BUILD}sdks/react/your-own-ui.md`, language: "ts" },
+  { path: `${BUILD}ui/frameworks/react.mdx`, language: "ts" },
+  { path: `${BUILD}ui/frameworks/terminal-node.mdx`, language: "ts" },
+  { path: `${BUILD}ui/frameworks/terminal-python.mdx`, language: "python" },
   { path: `${BUILD}quickstart/python.md`, language: "python" },
   { path: `${BUILD}sdks/python/your-own-ui.md`, language: "python" },
 ];

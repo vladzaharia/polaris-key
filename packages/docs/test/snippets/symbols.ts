@@ -31,6 +31,7 @@ const NOT_EXPORTS = new Set([
   "polarisKey",
   // Python built-ins and the one third-party class the docs name.
   "TimeoutError",
+  "DeprecationWarning",
   "TypeError",
   "ValueError",
   "MockTransport",

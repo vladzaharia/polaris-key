@@ -21,9 +21,12 @@ devices and updates full screen.
 ## Install
 
 ```sh
-pip install "polaris-key[cli]"    # rich renders the styled output
-pip install "polaris-key[tui]"    # adds the Textual app
+uv add "polaris-key[keyring,cli]"    # rich renders the styled output
+uv add "polaris-key[keyring,tui]"    # adds the Textual app
 ```
+
+The feed is an explicit index in `pyproject.toml`, never an extra index; the snippet, and pip and
+Poetry, are in [Installing the SDKs from the feeds](/docs/build/install-from-feeds/#python-pip-uv-and-poetry).
 
 rich is optional: without it the kit writes the same escape sequences itself, and with it rich
 renders them (including on legacy Windows consoles). Nothing else in the SDK needs either.
@@ -35,15 +38,33 @@ name, so its fix lines and help name its command:
 
 ```python
 import argparse
-from polaris_key.cli import register_argparse
+
+from polaris_key import PolarisKeyClient
+from polaris_key.cli import ClientOptions, register_argparse
+
+import polaris_config
+
+
+def client_factory(opts: ClientOptions) -> PolarisKeyClient:
+    # Spread the generated config. A factory built from opts.trust alone drops the base URL and
+    # the release keys, and its writes go to production.
+    return PolarisKeyClient.create(**{**polaris_config.CONFIG, "version": opts.version})
+
 
 parser = argparse.ArgumentParser(prog="tidewater")
-register_argparse(parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater")
-args = parser.parse_args(); raise SystemExit(args.func(args))
+register_argparse(
+    parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater"
+)
+args = parser.parse_args()
+raise SystemExit(args.func(args))
 ```
 
-`polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` do the same for
-click and typer. The verbs:
+`client_factory` takes the `ClientOptions` the parsed flags make and returns a client; `polaris_config`
+is the module `pkey sdk --lang python --write` generates
+([quickstart](/docs/build/quickstart/python/)). Today every mounted verb still asks for `--product`;
+binding the client once, `verbs=` for an end-user set and `require_license` for your own commands are
+planned in UK-48. `polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` do
+the same for click and typer. The verbs:
 
 | Verb                  | What it draws                                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -70,12 +91,17 @@ Layer (b) is `Kit` and `screens`: each screen takes a headless view and returns 
 cut in the middle) and `qr`.
 
 ```python
-from polaris_key.ui.terminal import Terminal, screens
-from polaris_key.ui.core.models import gate_view
+import time
 
-term = Terminal.create(client=client, verb="status")
-view = gate_view(client.status().status, now=now)
-term.device.print(screens.gate(term.kit, view))
+from polaris_key import PolarisKeyClient
+from polaris_key.ui.core.models import gate_view
+from polaris_key.ui.terminal import Terminal, screens
+
+
+def show_status(client: PolarisKeyClient) -> None:
+    term = Terminal.create(client=client, verb="status")
+    view = gate_view(client.status().status, now=int(time.time()))
+    term.device.print(screens.gate(term.kit, view))
 ```
 
 ## Headless
@@ -83,7 +109,9 @@ term.device.print(screens.gate(term.kit, view))
 Layer (c) is `polaris_key.ui.core.models`: functions from SDK results to a catalog component and
 state (`gate_view`, `parse_key`, `activation_view`, `update_view`, `boot_view`,
 `settings_view`, `release_notes_view`) and the `SignInModel` state machine. A host that draws its
-own terminal UI uses them with `polaris_key.ui.core.Copy` and gets the same states and copy keys.
+own terminal UI uses them with `polaris_key.ui.core.Copy` and gets the same states and copy keys
+([Your own UI](/docs/build/sdks/python/your-own-ui/#headless-views)). `run_gate` and
+`ActivateViewModel` are planned in UK-02b and UK-12; they do not exist yet.
 
 ## Machine-readable output
 
