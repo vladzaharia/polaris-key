@@ -42,6 +42,23 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections (verified against the code)
+
+- The branch is based on `fix/godot-ui-responsive`, so registering that worktree is this branch.
+  Its review nits and the settings-on-a-short-screen defect are the first commits.
+- `boot()` resolves at READY in `PKeyBoot.run()`, so the scene and the autoload agree;
+  `resolve_on_stop` is read there. A second call joins a run in progress and, after a stop, restarts.
+- "Not ok until documents verify" covers a document that arrives and does not verify (an unpinned
+  signer, a clock outside its window). A document that does not arrive (no answer, a 5xx) keeps the
+  activation ok: the token is good and the next sync fetches it (`license/test_reregister.gd`).
+- The friendly device name is the boot's host setting (`options.device_name` when empty); the
+  contract's default (model, else the OS name) is unchanged.
+- Key entry follows the outlet's `commerce` capability (`store-iap`), so the Microsoft Store now
+  hides it too.
+- The matrix gains 2532x1170@3 and 750x1334@2 for the settings list. The other screens fail there
+  today (the offline dialog's Import below the fold in the native and custom looks, the German and
+  Japanese gate a few points wide at 375 pt, a Polaris Key card that scrolls at 844x390): UK-11.
+
 ## Acceptance criteria
 
 - [ ] OFFLINE → Try again → READY resolves the awaited `boot()` and changes the scene.

@@ -630,7 +630,8 @@ static func _settings_column_problems(p: PKeySettingsPanel) -> PackedStringArray
 		var end := last.get_global_rect().end.x
 		if is_nan(edge):
 			edge = end
-		elif absf(end - edge) > 1.0:
+		elif absf(end - edge) > 1.5:
+			# (A stepper's field measures a pixel or so wider on 4.4 than on 4.7: not a ragged edge.)
 			out.append("%s ends at %.1f, not on the column edge %.1f" % [row.name, end, edge])
 		if n.has("minus") and n.has("plus") and (n["minus"] as Control).is_visible_in_tree():
 			var input := n["input"] as Control
@@ -638,7 +639,7 @@ static func _settings_column_problems(p: PKeySettingsPanel) -> PackedStringArray
 			var right := (n["plus"] as Control).get_global_rect().position.x - input.get_global_rect().end.x
 			if absf(left - right) > 1.0 and not (n["input"] is HSlider):
 				out.append("%s has uneven stepper gaps (%.1f and %.1f)" % [row.name, left, right])
-	if not is_nan(edge) and p._advanced.is_visible_in_tree() and absf(p._advanced.get_global_rect().end.x - edge) > 1.0:
+	if not is_nan(edge) and p._advanced.is_visible_in_tree() and absf(p._advanced.get_global_rect().end.x - edge) > 1.5:
 		out.append("the advanced switch ends at %.1f, not on the column edge %.1f" % [p._advanced.get_global_rect().end.x, edge])
 	return out
 
