@@ -168,7 +168,7 @@
       "type": "array",
       "items": { "$ref": "#/$defs/edgeMintRecipe" }
     },
-    "cloudSync": { "$ref": "#/$defs/cloudSync" },
+    "cloudSync": false,
     "release": {
       "description": "Deprecated: write the release block in .pkey/release. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "type": "object",
@@ -790,84 +790,6 @@
       "type": "string",
       "maxLength": 267,
       "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http://(?:localhost|127\\.0\\.0\\.1))(?::[0-9]{1,5})?$"
-    },
-    "cloudSyncLimits": {
-      "description": "Per-person Cloud Sync limits, each at most the platform ceiling (settings 256 KiB, collections 64 MiB, saves 1 GiB per person).",
-      "type": "object",
-      "properties": {
-        "totalBytes": { "type": "integer", "minimum": 0 },
-        "settingsBytes": { "type": "integer", "minimum": 0 },
-        "records": { "type": "integer", "minimum": 0 },
-        "collectionBytes": { "type": "integer", "minimum": 0 },
-        "saves": {
-          "type": "object",
-          "properties": {
-            "slots": { "type": "integer", "minimum": 0 },
-            "maxBytes": { "type": "integer", "minimum": 0 },
-            "keepRevisions": { "type": "integer", "minimum": 0 }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "cloudSync": {
-      "description": "Cloud Sync limits and access policy, persisted as claimable product settings. The data shape (collections, saves, migrations) lives in .pkey/schema's cloudSync block.",
-      "type": "object",
-      "properties": {
-        "limits": {
-          "description": "The licensed per-person limits.",
-          "type": "object",
-          "properties": {
-            "totalBytes": { "type": "integer", "minimum": 0 },
-            "settingsBytes": { "type": "integer", "minimum": 0 },
-            "records": { "type": "integer", "minimum": 0 },
-            "collectionBytes": { "type": "integer", "minimum": 0 },
-            "saves": {
-              "type": "object",
-              "properties": {
-                "slots": { "type": "integer", "minimum": 0 },
-                "maxBytes": { "type": "integer", "minimum": 0 },
-                "keepRevisions": { "type": "integer", "minimum": 0 }
-              },
-              "additionalProperties": false
-            },
-            "byTier": {
-              "description": "Tier id → limits; the tier of the highest-rank contributing licence applies.",
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/cloudSyncLimits" }
-            },
-            "byEntitlement": {
-              "description": "Limit → a numeric catalog flag (combined by max) that raises it.",
-              "type": "object",
-              "properties": {
-                "totalBytes": { "type": "string" },
-                "saveSlots": { "type": "string" }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        "unlicensed": {
-          "description": "Signed-in people with no usable licence for the product: limits no higher than the licensed ones; saves off unless saves is true.",
-          "type": "object",
-          "properties": {
-            "limits": { "$ref": "#/$defs/cloudSyncLimits" },
-            "saves": { "type": "boolean" }
-          },
-          "additionalProperties": false
-        },
-        "writes": {
-          "type": "object",
-          "properties": {
-            "requireLicense": { "type": "boolean" },
-            "minTrust": { "enum": [null, "basic", "attested"] }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
     },
     "assetSrc": {
       "description": "Where an image's bytes come from: an https URL, or a relative path in the product's own repository, resolved at the synced commit (private repositories included). A repo path has an optional leading ./, no leading /, no . or .. segment, at most 512 characters, and ends in .png, .jpg, .jpeg, .webp, .gif or .avif (lower case).",

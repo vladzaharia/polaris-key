@@ -119,6 +119,10 @@
       "status": "implemented",
       "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) StateFlows and config.changes emit every change (ConfigLocalTest)."
     },
+    "config.sync": {
+      "status": "planned",
+      "wp": "U-07"
+    },
     "devices.fingerprint": {
       "status": "implemented",
       "note": ":core derives fingerprints and device ids from supplied inputs (every fingerprint.json section in :conformance); on Android :android's AndroidFingerprintSource reads ANDROID_ID (else a random anchor kept in the Keystore), Build.MODEL and the RAM bucket, checked against the corpus vectors, ramBuckets and deviceIds (AndroidFingerprintTest)."
@@ -446,6 +450,22 @@
     "commerce.receipt": {
       "status": "implemented",
       "note": "client.commerce (:sdk's CommerceClient, P6-01): binding() and claim(store, payload) with claimPlay, claimSteam and claimAppStore, ClaimResult Ok / NotOwned / AttestationRequired / Refused(code, reason) (the host syncs after an Ok claim, as the transcript pins), attest-and-retry on attestation_required, hiddenHere/isUnlocked (App Store 3.1.3(b)); the commerce-claim transcript replays. Steam claims work on the JVM (the host passes the GetAuthTicketForWebApi hex ticket); Play Billing's one-call purchase and restore are :billing's PolarisPlayBilling in polaris-key-billing (obfuscatedAccountId = the binding, claim, acknowledge after the claim)."
+    },
+    "sync.scenarios": {
+      "status": "planned",
+      "wp": "U-07"
+    },
+    "sync.settings": {
+      "status": "planned",
+      "wp": "U-07"
+    },
+    "sync.conflict": {
+      "status": "planned",
+      "wp": "U-08"
+    },
+    "sync.saves": {
+      "status": "planned",
+      "wp": "U-23"
     }
   }
 }

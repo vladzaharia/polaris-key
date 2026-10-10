@@ -159,10 +159,11 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         );
       }
     }
-    // Cloud Sync (U-04, plans/U-01.md §3): the `user` blocks and the catalog's `cloudSync` block
-    // pass the manifest's own rules. The console's editor edits entries only, so a body without
-    // `cloudSync` carries the active version's block forward rather than dropping it; it is
-    // checked against the new entries either way (a removed flag or rename target refuses).
+    // Cloud Sync (plans/U-01b.md §3.2): the `user` blocks and the catalog's `cloudSync` block
+    // pass the manifest's own rules (errors only: a `user` block on a locked key is a warning).
+    // The console's editor edits entries only, so a body without `cloudSync` carries the active
+    // version's block forward rather than dropping it; it is checked against the new entries
+    // either way (a removed flag or rename target refuses).
     const cloudSync =
       typeof catalogJson === "object" &&
       catalogJson !== null &&
@@ -172,7 +173,6 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     const syncIssues = validateCatalogCloudSync({
       entries: catalog.entries,
       cloudSync,
-      tierIds: new Set((await listTiers(db, slug)).map((t) => t.id)),
     });
     if (syncIssues.length > 0) {
       return err(422, ErrorCode.BadRequest, "invalid catalog", {

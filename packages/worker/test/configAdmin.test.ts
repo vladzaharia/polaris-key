@@ -193,7 +193,7 @@ describe("catalog history and the expectedVersion guard (A-6)", () => {
   });
 });
 
-describe("Cloud Sync declarations on a console publish (U-04)", () => {
+describe("Cloud Sync declarations on a console publish (U-04, U-01b)", () => {
   const SETTING = {
     ...ENTRY("audio.volume"),
     schema: { type: "number", minimum: 0, maximum: 1 },
@@ -240,10 +240,11 @@ describe("Cloud Sync declarations on a console publish (U-04)", () => {
     const { db, call } = await setup();
     for (const entry of [
       { ...ENTRY("a"), kind: "secret", user: { sync: "user" } },
-      { ...ENTRY("a"), managementDefault: "enforced", user: { sync: "user" } },
       { ...ENTRY("a"), user: { sync: "user", conflict: "max" } },
       { ...ENTRY("a"), user: { sync: "user", conflict: "union" } },
       { ...ENTRY("a"), user: { sync: "everywhere" } },
+      // The retired per-device scope.
+      { ...ENTRY("a"), user: { sync: "device" } },
     ]) {
       const res = await call("PUT", "config/catalog", {
         catalog: { schemaVersion: 0, entries: [entry] },
@@ -256,6 +257,23 @@ describe("Cloud Sync declarations on a console publish (U-04)", () => {
       (a) => a.action === "schema.publish",
     );
     expect(audits).toHaveLength(0);
+  });
+
+  it("publishes a user block on a locked key: it has no effect, so it is only a warning", async () => {
+    const { call } = await setup();
+    const res = await call("PUT", "config/catalog", {
+      catalog: {
+        schemaVersion: 0,
+        entries: [
+          {
+            ...ENTRY("a"),
+            managementDefault: "enforced",
+            user: { sync: "user" },
+          },
+        ],
+      },
+    });
+    expect(res.status).toBe(200);
   });
 
   it("refuses a publish that leaves the carried cloudSync block pointing at nothing", async () => {
@@ -271,14 +289,18 @@ describe("Cloud Sync declarations on a console publish (U-04)", () => {
             schema: { type: "boolean" },
           },
         ],
-        cloudSync: { saves: { requiresFlag: "cloudSaves" } },
+        cloudSync: {
+          collections: [
+            { name: "saves", template: "saves", requires: "cloudSaves" },
+          ],
+        },
       },
     });
     // The console drops the flag; the carried block still names it.
     const res = await publish(call, ["theme"]);
     expect(res.status).toBe(422);
     expect(((await res.json()) as { fields: string[] }).fields[0]).toMatch(
-      /^\/cloudSync\/saves\/requiresFlag/,
+      /^\/cloudSync\/collections\/0\/requires/,
     );
   });
 });

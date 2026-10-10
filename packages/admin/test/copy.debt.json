@@ -160,12 +160,6 @@
     {
       "rule": "grant",
       "file": "console/settings.generated.ts",
-      "text": "The numeric catalog flags (combined by max) that raise a person's total bytes or save slots, so a purchase can grant more storage.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/settings.generated.ts",
       "text": "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
       "count": 1
     },

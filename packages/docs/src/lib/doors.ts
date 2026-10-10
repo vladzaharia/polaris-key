@@ -91,6 +91,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
       { label: "Get started", items: leaves("help/index", "help/activate") },
       { label: "Sign in", items: leaves("help/sign-in") },
       { label: "Devices", items: leaves("help/devices") },
+      { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Downloads and updates",
         items: leaves("help/download", "help/update"),

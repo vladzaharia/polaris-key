@@ -76,11 +76,11 @@ describe("browser fetchSchema()", () => {
     expect(calls).toEqual(["https://key.plrs.im/acme/config/schema"]);
   });
 
-  it("a catalog carrying Cloud Sync's user and cloudSync members still parses (U-04)", async () => {
+  it("a catalog carrying Cloud Sync's user and cloudSync members still parses (U-04, U-01b)", async () => {
     const synced = {
       ...CATALOG,
-      entries: [{ ...CATALOG.entries[0]!, user: { sync: "device" } }],
-      cloudSync: { collections: [{ name: "progress", access: "owner" }] },
+      entries: [{ ...CATALOG.entries[0]!, user: { sync: "local" } }],
+      cloudSync: { collections: [{ name: "saves", template: "saves" }] },
     };
     const { fetchImpl } = fetchWith(() => json(synced));
     await expect(browser(fetchImpl).fetchSchema()).resolves.toEqual(synced);

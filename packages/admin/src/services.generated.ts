@@ -158,7 +158,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     slug: "sync",
     label: "Cloud Sync",
     summary:
-      "A signed-in person's settings, collections and saves, synced across devices.",
+      "A signed-in person's settings, saves and other records, synced across devices.",
     accent: "sync",
     icon: "Cloud",
     docs: "/docs/services/sync/",

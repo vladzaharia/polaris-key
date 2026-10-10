@@ -519,6 +519,11 @@ export const Feature = {
   configMint: "config.mint",
   configMirror: "config.mirror",
   configLocal: "config.local",
+  configSync: "config.sync",
+  syncScenarios: "sync.scenarios",
+  syncSettings: "sync.settings",
+  syncConflict: "sync.conflict",
+  syncSaves: "sync.saves",
   devicesFingerprint: "devices.fingerprint",
   devicesFacts: "devices.facts",
   devicesRegister: "devices.register",
@@ -622,6 +627,11 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "config.mint",
   "config.mirror",
   "config.local",
+  "config.sync",
+  "sync.scenarios",
+  "sync.settings",
+  "sync.conflict",
+  "sync.saves",
   "devices.fingerprint",
   "devices.facts",
   "devices.register",
@@ -1314,7 +1324,7 @@ export const OUTLET_MATRIX_VERSION = 1;
 export const PLAN_MATRIX_VERSION = 2;
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-export const SYNC_SCENARIOS_VERSION = 1;
+export const SYNC_SCENARIOS_VERSION = 2;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 1;
@@ -1584,6 +1594,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "config.mint": { status: "implemented", service: "config", na: [] },
   "config.mirror": { status: "implemented", service: "config", na: [] },
   "config.local": { status: "implemented", service: "sdk", na: [] },
+  "config.sync": { status: "planned", service: "sync", na: [] },
+  "sync.scenarios": { status: "planned", service: "sync", na: [] },
+  "sync.settings": { status: "planned", service: "sync", na: [] },
+  "sync.conflict": { status: "planned", service: "sync", na: [] },
+  "sync.saves": { status: "planned", service: "sync", na: [] },
   "devices.fingerprint": {
     status: "na",
     service: "core",
@@ -1755,4 +1770,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "5c3d1337628d825d0509313d6f9d568a1455e3b46a2527142c67421eea287033";
+  "550261fc37927bd2ffd3c9aa47cf9b684ffa307f2c98943259c32022df7853bc";

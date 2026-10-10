@@ -131,8 +131,8 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 - **`enforced`/`hidden` (remote)** — the document's own value always wins; nothing client-side can
   override it. `hidden` additionally never appears in a `listUserConfig`-style enumeration, so a
   settings UI cannot render a key that should not be shown at all.
-- **local override** — a user setting, or a programmatic override the client itself stores. Only
-  reachable when the remote state is `default`.
+- **local override** — a synced setting, or a programmatic override the client itself stores.
+  Only reachable when the remote state is `default`.
 - **environment** — `PKEY_CONFIG_` plus the key with every `.` replaced by `__`:
   `run.concurrency` becomes `PKEY_CONFIG_run__concurrency`. The value is parsed when it is one
   strict JSON text (no duplicate member names, no lone surrogate, every number zero or of

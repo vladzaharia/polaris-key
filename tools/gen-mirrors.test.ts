@@ -14,7 +14,7 @@ import {
   renderPython,
   renderSwift,
   renderTs,
-  userPolicies,
+  settingPolicies,
   sortedJson,
 } from "./gen-mirrors.js";
 
@@ -104,7 +104,7 @@ describe("gen-mirrors", () => {
     expect(out).not.toContain("managementDefault: .default");
   });
 
-  describe("user settings (U-04)", () => {
+  describe("settable keys (plans/U-01b.md D2)", () => {
     const WITH_USER: ProductCatalog = {
       ...CATALOG,
       entries: [
@@ -119,11 +119,29 @@ describe("gen-mirrors", () => {
           schema: { type: "string" },
           user: { sync: "local", listed: false },
         },
+        {
+          key: "ui.accent",
+          kind: "config",
+          category: "UI",
+          label: "Accent",
+          description: "",
+          schema: { type: "string" },
+        },
+        {
+          key: "ops.region",
+          kind: "config",
+          category: "Ops",
+          label: "Region",
+          description: "",
+          schema: { type: "string" },
+          managementDefault: "enforced",
+          user: { sync: "user" },
+        },
       ],
     };
 
-    it("lists only config keys with a user block, defaults applied", () => {
-      expect(userPolicies(WITH_USER)).toEqual([
+    it("lists every Editable config key, with or without a user block, defaults applied", () => {
+      expect(settingPolicies(WITH_USER)).toEqual([
         { key: "run.concurrency", sync: "user", conflict: "max", listed: true },
         {
           key: "ui.panel",
@@ -131,35 +149,40 @@ describe("gen-mirrors", () => {
           conflict: "lastWrite",
           listed: false,
         },
+        {
+          key: "ui.accent",
+          sync: "user",
+          conflict: "lastWrite",
+          listed: true,
+        },
       ]);
-      expect(userPolicies(CATALOG)).toEqual([]);
+      // Negative control: a locked key (even with a user block) and a flag are not settable.
+      const keys = settingPolicies(WITH_USER).map((p) => p.key);
+      expect(keys).not.toContain("ops.region");
+      expect(keys).not.toContain(VPN.key);
     });
 
-    it("every language names the typed user-setting keys and their policies", () => {
+    it("every language names the typed settable keys and their policies", () => {
       const ts = renderTs(WITH_USER);
       expect(ts).toContain(
-        'export type UserSettingKey = "run.concurrency" | "ui.panel";',
+        'export type UserSettingKey = "run.concurrency" | "ui.panel" | "ui.accent";',
       );
       expect(ts).toContain(
         '"ui.panel": { sync: "local", conflict: "lastWrite", listed: false },',
       );
-      expect(renderTs(CATALOG)).toContain(
-        "export type UserSettingKey = never;",
+      expect(ts).toContain(
+        'export type UserSettingSync = "user" | "platform" | "local";',
       );
+      expect(ts).not.toContain('"device"');
       const py = renderPython(WITH_USER);
       expect(py).toContain(
-        'UserSettingKey = Literal["run.concurrency", "ui.panel"]',
+        'UserSettingKey = Literal["run.concurrency", "ui.panel", "ui.accent"]',
       );
       expect(py).toContain(
         '"run.concurrency": UserSettingPolicy(sync="user", conflict="max", listed=True),',
       );
-      // `Literal[]` does not parse.
-      expect(renderPython(CATALOG)).toContain("UserSettingKey = str\n");
       expect(renderSwift(WITH_USER)).toContain(
         '"ui.panel": UserSettingPolicy(sync: "local", conflict: "lastWrite", listed: false),',
-      );
-      expect(renderSwift(CATALOG)).toContain(
-        "static let userSettings: [String: UserSettingPolicy] = [:]",
       );
       expect(renderGdscript(WITH_USER)).toContain(
         'const USER_SETTINGS := {\n\t"run.concurrency": {\n\t\t"conflict": "max",',
@@ -167,7 +190,21 @@ describe("gen-mirrors", () => {
       expect(renderKotlin(WITH_USER)).toContain(
         '"run.concurrency" to UserSettingPolicy(sync = "user", conflict = "max", listed = true),',
       );
-      expect(renderKotlin(CATALOG)).toContain(
+    });
+
+    it("a catalog of only locked keys, secrets and flags has no settable key", () => {
+      const NONE: ProductCatalog = {
+        ...CATALOG,
+        entries: CATALOG.entries.filter((e) => e.kind !== "config"),
+      };
+      expect(settingPolicies(NONE)).toEqual([]);
+      expect(renderTs(NONE)).toContain("export type UserSettingKey = never;");
+      // `Literal[]` does not parse.
+      expect(renderPython(NONE)).toContain("UserSettingKey = str\n");
+      expect(renderSwift(NONE)).toContain(
+        "static let userSettings: [String: UserSettingPolicy] = [:]",
+      );
+      expect(renderKotlin(NONE)).toContain(
         "userSettings: Map<String, UserSettingPolicy> = emptyMap()",
       );
     });

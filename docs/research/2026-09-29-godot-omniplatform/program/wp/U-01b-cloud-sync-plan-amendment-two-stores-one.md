@@ -60,6 +60,39 @@ The consolidation replaced U-01's licence layer, save routes and per-store vocab
 2. Run the §7 precondition and record the result in the PR.
 3. Implement §7 item 1 in one corpus-lane hold; run the green gate; hand off.
 
+## Corrections found while executing (2026-10-09)
+
+The code is the fact; these differ from `plans/U-01b.md` and are recorded here (Steps 1).
+
+- **Platform settings live in Core's platform slice.** `cloudSync.writesPaused` and
+  `cloudSync.quota.defaultBytes` are registered in `core/settings/platform.ts`, not in
+  `services/sync/settings.ts`: the registry refuses a service slice that contributes a
+  platform-scope entry (`core/settings/rules.ts`, `checkSlice`). The sync slice keeps only
+  `cloudSync.ceiling.bytes`. The plan names no confirm level for the kill switch; it is L2 on, L1
+  off (the `config.pause-writes` mockup confirms with a passkey).
+- **`settingCases` carries the user-block issues.** "A row for an array-typed `merge`
+  (refused)" cannot be a route: `syncedSettings` maps every entry. Each case therefore lists the
+  `userSettingIssues` it expects (key, code, severity), and `routes` is `null` exactly when an
+  issue is an error (the catalog never publishes). A second refused row pins the retired
+  `device` scope.
+- **The Node runner depends on `@polaris-key/catalog`** (for `syncedSettings` and
+  `userSettingIssues`), so `conformance/runners/node/package.json` and `pnpm-lock.yaml` change.
+- **`CLOUD_SYNC_SAVE_SLOTS` (16) is exported by `@polaris-key/catalog`** for the `saves`
+  template; U-05 moves it to `@polaris-key/protocol/sync` as `SYNC_SAVE_SLOTS`, as §2.5 says.
+- **Two mirror fixtures carried the old vocabulary.** `sdks/godot/tests/config/catalog.json`
+  and `sdks/kotlin/config/src/test/resources/catalog.json` used `sync: "device"` and
+  `cloudSync.saves`; they move to `local` and a `saves`-template collection, and the Godot and
+  Kotlin mirror tests expect every Editable key in `USER_SETTINGS`.
+- **The docs pages named by the docs plan do not exist yet.** `features/cloud-sync/*`, `help/sync`
+  and `help/remove-from-library` arrive with DOC-03a, DOC-05b and DOC-09c (all `todo`). The
+  content lands at its current homes, which those packages move: `services/sync/index.md` (the
+  skeleton with its status line), `users/sync.md` (new) and `users/portal.md` (synced data).
+- **The machine also refuses an invalid value** of a synced key with `bad_request` (D8's
+  shipped `config.set` behaviour), after the lock checks and beside the 8 KiB bound.
+- **The §7 precondition is read-only on production** and was not run from this branch; the lead
+  runs it before merge (no active catalog carries `"cloudSync"` or `"sync":"device"`, no product
+  manifest carries `cloudSync`).
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
@@ -68,12 +101,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every command in `plans/U-01b.md` §10 passes.
-- [ ] No signed corpus file changes; `sync-scenarios.json` is v2 with its Godot mirror.
-- [ ] Every §3.2 row has its rule-9 mutation entry and schema change.
-- [ ] The §7 precondition result is recorded in the PR.
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] Every command in `plans/U-01b.md` §10 passes (Kotlin's mirror test needs a JDK and is left to CI).
+- [x] No signed corpus file changes; `sync-scenarios.json` is v2 with its Godot mirror.
+- [x] Every §3.2 row has its rule-9 mutation entry and schema change.
+- [ ] The §7 precondition result is recorded in the PR. It is read-only on production, so the lead runs it before merge (see the corrections above).
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`. They land at their current homes until DOC-03a, DOC-05b and DOC-09c build those trees (see the corrections above).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

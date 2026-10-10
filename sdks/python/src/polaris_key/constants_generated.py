@@ -663,6 +663,11 @@ class Feature:
     CONFIG_MINT: Final = "config.mint"
     CONFIG_MIRROR: Final = "config.mirror"
     CONFIG_LOCAL: Final = "config.local"
+    CONFIG_SYNC: Final = "config.sync"
+    SYNC_SCENARIOS: Final = "sync.scenarios"
+    SYNC_SETTINGS: Final = "sync.settings"
+    SYNC_CONFLICT: Final = "sync.conflict"
+    SYNC_SAVES: Final = "sync.saves"
     DEVICES_FINGERPRINT: Final = "devices.fingerprint"
     DEVICES_FACTS: Final = "devices.facts"
     DEVICES_REGISTER: Final = "devices.register"
@@ -765,6 +770,11 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "config.mint",
     "config.mirror",
     "config.local",
+    "config.sync",
+    "sync.scenarios",
+    "sync.settings",
+    "sync.conflict",
+    "sync.saves",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
@@ -1496,7 +1506,7 @@ PLAN_MATRIX_VERSION: Final[int] = 2
 
 
 #: `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-SYNC_SCENARIOS_VERSION: Final[int] = 1
+SYNC_SCENARIOS_VERSION: Final[int] = 2
 
 
 #: `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
@@ -1813,6 +1823,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "config.mint": CapabilityRow("implemented", "config", ()),
         "config.mirror": CapabilityRow("implemented", "config", ()),
         "config.local": CapabilityRow("implemented", "sdk", ()),
+        "config.sync": CapabilityRow("planned", "sync", ()),
+        "sync.scenarios": CapabilityRow("planned", "sync", ()),
+        "sync.settings": CapabilityRow("planned", "sync", ()),
+        "sync.conflict": CapabilityRow("planned", "sync", ()),
+        "sync.saves": CapabilityRow("planned", "sync", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
         "devices.register": CapabilityRow("implemented", "core", ()),
@@ -1887,4 +1902,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "80b25ebf198d16ad9d52cec0de8a4a13994b7924bf9ac95bc700ce0aa485eee8"
+CAPABILITY_DIGEST: Final[str] = "33e4c9879463e824319faf8b3600dd2d0d2e5c27cfa34919a4c98a8879c55601"

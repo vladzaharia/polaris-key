@@ -364,6 +364,11 @@ class Feature:
 	const CONFIG_MINT := "config.mint"
 	const CONFIG_MIRROR := "config.mirror"
 	const CONFIG_LOCAL := "config.local"
+	const CONFIG_SYNC := "config.sync"
+	const SYNC_SCENARIOS := "sync.scenarios"
+	const SYNC_SETTINGS := "sync.settings"
+	const SYNC_CONFLICT := "sync.conflict"
+	const SYNC_SAVES := "sync.saves"
 	const DEVICES_FINGERPRINT := "devices.fingerprint"
 	const DEVICES_FACTS := "devices.facts"
 	const DEVICES_REGISTER := "devices.register"
@@ -437,7 +442,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -852,7 +857,7 @@ const OUTLET_MATRIX_VERSION := 1
 const PLAN_MATRIX_VERSION := 2
 
 ## `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-const SYNC_SCENARIOS_VERSION := 1
+const SYNC_SCENARIOS_VERSION := 2
 
 ## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 const DEVICE_LABEL_VERSION := 1
@@ -1087,6 +1092,11 @@ static func capabilities() -> Dictionary:
 		"config.mint": {"status": "implemented", "service": "config", "na": []},
 		"config.mirror": {"status": "implemented", "service": "config", "na": []},
 		"config.local": {"status": "implemented", "service": "sdk", "na": []},
+		"config.sync": {"status": "planned", "service": "sync", "na": []},
+		"sync.scenarios": {"status": "planned", "service": "sync", "na": []},
+		"sync.settings": {"status": "planned", "service": "sync", "na": []},
+		"sync.conflict": {"status": "planned", "service": "sync", "na": []},
+		"sync.saves": {"status": "planned", "service": "sync", "na": []},
 		"devices.fingerprint": {"status": "implemented", "service": "core", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"devices.facts": {"status": "implemented", "service": "core", "na": []},
 		"devices.register": {"status": "implemented", "service": "core", "na": []},
@@ -1160,4 +1170,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "dcf4ce56b1da18781c3d3e4c96dcac6508ae2f001dba5b59a3c7b87914355832"
+const CAPABILITY_DIGEST := "a0cf7965a68c5dd0a9849da022c9c5ae6e00a75965496f5ec7536f5bb956ac55"

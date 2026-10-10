@@ -519,6 +519,11 @@ public enum Feature {
     public static let configMint = "config.mint"
     public static let configMirror = "config.mirror"
     public static let configLocal = "config.local"
+    public static let configSync = "config.sync"
+    public static let syncScenarios = "sync.scenarios"
+    public static let syncSettings = "sync.settings"
+    public static let syncConflict = "sync.conflict"
+    public static let syncSaves = "sync.saves"
     public static let devicesFingerprint = "devices.fingerprint"
     public static let devicesFacts = "devices.facts"
     public static let devicesRegister = "devices.register"
@@ -621,6 +626,11 @@ public let FEATURE_VALUES: [String] = [
     "config.mint",
     "config.mirror",
     "config.local",
+    "config.sync",
+    "sync.scenarios",
+    "sync.settings",
+    "sync.conflict",
+    "sync.saves",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
@@ -1225,7 +1235,7 @@ public let OUTLET_MATRIX_VERSION = 1
 public let PLAN_MATRIX_VERSION = 2
 
 /// `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-public let SYNC_SCENARIOS_VERSION = 1
+public let SYNC_SCENARIOS_VERSION = 2
 
 /// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 public let DEVICE_LABEL_VERSION = 1
@@ -1481,6 +1491,11 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "config.mint": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.mirror": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.local": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "config.sync": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.scenarios": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.settings": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -1554,4 +1569,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "e231707ecec1758b33a733cd09244062186b6a60c2bf5c13c4f463626b8432bc"
+public let CAPABILITY_DIGEST = "f3e8ce85fe7354f862859e8900327a92a4a65d2272a197a8a23098141ab59162"

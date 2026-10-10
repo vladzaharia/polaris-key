@@ -13,7 +13,10 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
-import { DEFAULT_TRUST_POLICY } from "../src/core/deviceTrust.js";
+import {
+  DEFAULT_TRUST_POLICY,
+  parseTrustPolicy,
+} from "../src/core/deviceTrust.js";
 import { loadProduct } from "../src/core/products.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
@@ -186,5 +189,67 @@ describe("trust-policy admin resource", () => {
     const w = await world();
     expect((await call(w, "POST", { body: POLICY })).status).toBe(405);
     expect((await call(w, "GET", { path: "/extra" })).status).toBe(404);
+  });
+});
+
+// The expand step for the trust-policy column (plans/U-01b.md §6.1): a policy a later build stored
+// with an operation this build does not know still reads with its other members, while the PUT
+// stays strict.
+describe("stored policies from a later build", () => {
+  const LATER = { mint: "attested", enforce: true, cloudSyncWrite: "attested" };
+
+  it("parse with the unknown operation dropped and every other member kept", () => {
+    expect(parseTrustPolicy(JSON.stringify(LATER))).toEqual({
+      ...DEFAULT_TRUST_POLICY,
+      mint: "attested",
+      enforce: true,
+    });
+    expect(
+      parseTrustPolicy(
+        JSON.stringify({
+          ...POLICY,
+          cloudSyncWrite: "basic",
+          laterOp: "attested",
+        }),
+      ),
+    ).toEqual(POLICY);
+  });
+
+  it("load that way from the products row", async () => {
+    const w = await world();
+    await w.db.run(
+      "UPDATE products SET trust_policy_json = ?, trust_policy_source = 'admin' WHERE slug = ?",
+      JSON.stringify(LATER),
+      SLUG,
+    );
+    expect((await loadProduct(w.env, w.db, SLUG))!.trustPolicy).toMatchObject({
+      mint: "attested",
+      enforce: true,
+    });
+  });
+
+  it("are still refused by the PUT", async () => {
+    const w = await world();
+    const r = await call(w, "PUT", { body: LATER });
+    expect(r.status).toBe(400);
+    expect(await stored(w.db)).toEqual({
+      trust_policy_json: null,
+      trust_policy_source: "default",
+    });
+  });
+
+  it("read as the default when an unknown member is not a trust level (negative control)", () => {
+    expect(
+      parseTrustPolicy(
+        JSON.stringify({ mint: "attested", enforce: true, laterOp: "strict" }),
+      ),
+    ).toEqual(DEFAULT_TRUST_POLICY);
+    expect(
+      parseTrustPolicy(JSON.stringify({ mint: "attested", extra: { a: 1 } })),
+    ).toEqual(DEFAULT_TRUST_POLICY);
+    // A known operation with a bad value is not rescued either.
+    expect(
+      parseTrustPolicy(JSON.stringify({ mint: "strict", enforce: true })),
+    ).toEqual(DEFAULT_TRUST_POLICY);
   });
 });

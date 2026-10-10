@@ -1,11 +1,16 @@
 // `conformance/corpus/v2/sync-scenarios.json`: the Cloud Sync client scenario corpus
-// (plans/U-01.md §4.1, Q1; S-17 §5.13; WIRE-CONTRACT-V4 §11.5).
+// (plans/U-01.md §4.1, Q1, as amended by plans/U-01b.md §4 and its Revision 2; S-17 §5.13;
+// WIRE-CONTRACT-V4 §11.5).
 //
 // HTTP transcripts pin the wire; this file pins what a client does between requests: optimistic
 // reads over the journal, the debounce, HLC folding and pre-contact re-stamping, conflict rebase,
 // one outstanding compare-and-swap per target, the per-subject partitions, the first-sign-in
 // move, sign-out with pending operations, principal changes, `403 account_required` and a `/sync`
-// 401. Every push and journal rule of S-17 §5.4 has at least one scenario.
+// 401. Every push and journal rule of S-17 §5.4 has at least one scenario. Version 2 (U-01b) adds
+// the setting routes (synced, local, locked, refused) and open settings, the one-time import of
+// the legacy `config.local` store at the HLC floor, record field policies, the other 403s, the
+// paused state, the parked quota and entitlement refusals, and `settingCases`: catalog entries
+// in, `syncedSettings` routes out.
 //
 // LITERAL DATA. Unlike the matrices whose expectations a generator-local reference recomputes,
 // every expectation here is written out by hand and this module imports NO `client-core`: the
@@ -18,7 +23,7 @@
 // Append-only: a scenario's expectations never change under the same `syncScenariosVersion`;
 // a vocabulary or expectation change bumps it.
 
-export const SYNC_SCENARIOS_VERSION = 1;
+export const SYNC_SCENARIOS_VERSION = 2;
 
 type J = null | boolean | number | string | J[] | { [k: string]: J };
 type Obj = { [k: string]: J };
@@ -37,8 +42,8 @@ const STEPS = [
 ] as const;
 
 const CALLS = [
-  "setConfig",
-  "clearConfig",
+  "set",
+  "clear",
   "put",
   "add",
   "remove",
@@ -155,8 +160,8 @@ const RULES: { id: string; title: string; ref: string }[] = [
   {
     id: "locked-key",
     title:
-      "A set on an enforced or hidden key is refused locally with setting-locked and journals nothing",
-    ref: "plans/U-01.md §2.3; S-17 §5.5",
+      "A set on an enforced or hidden key is refused locally with managed_by_admin and journals nothing",
+    ref: "plans/U-01b.md §2.5, D8; S-17 §5.5",
   },
   {
     id: "invalid-value",
@@ -182,6 +187,55 @@ const RULES: { id: string; title: string; ref: string }[] = [
       "The journal survives a relaunch, debounced edits are committed on exit, and start pushes them",
     ref: "S-17 §5.4 (journal flushes)",
   },
+  // Version 2 (plans/U-01b.md §4 and Revision 2).
+  {
+    id: "open-settings",
+    title:
+      "A key the catalog does not declare is an open setting: user scope, lastWrite, schema-less, at most 8 KiB of canonical JSON",
+    ref: "plans/U-01b.md D3, §2.5",
+  },
+  {
+    id: "setting-routes",
+    title:
+      "A synced key is pushed with its route's scope; a local key stays on the device and never moves; a locked key is managed_by_admin; a secret, a flag or an invalid value is bad_request",
+    ref: "plans/U-01b.md §2.5, D8",
+  },
+  {
+    id: "local-import",
+    title:
+      "The legacy config.local store is imported once at the HLC floor, so any newer cloud value wins",
+    ref: "plans/U-01b.md §2.5 (Import)",
+  },
+  {
+    id: "record-field-policy",
+    title:
+      "A lastWrite, max or min record is a stamped set the server resolves; on conflict the client takes the server copy and enqueues nothing",
+    ref: "plans/U-01b.md D4, §2.2",
+  },
+  {
+    id: "forbidden-blocks",
+    title:
+      "403 attestation_required blocks with reason attestation and any other 403 but account_required with reason forbidden; both keep the journal and wait for refresh",
+    ref: "plans/U-01b.md §2.5 (403)",
+  },
+  {
+    id: "writes-paused",
+    title:
+      "503 writes_paused on a push keeps the journal and shows paused, never blocked; the next trigger retries and a 200 push clears it",
+    ref: "plans/U-01b.md R4; WIRE-CONTRACT-V4 §13.9",
+  },
+  {
+    id: "parked-rejection",
+    title:
+      "quota_exceeded and entitlement_required park a setting edit on the device, still read and never lost, until more room or a sign-in re-sends it as a new mutation with its clock; every other rejection reverts",
+    ref: "plans/U-01b.md R5",
+  },
+  {
+    id: "quota-never-deletes",
+    title:
+      "A quota below the person's usage removes nothing, and a clear still passes",
+    ref: "plans/U-01b.md R4 rule 5; WIRE-CONTRACT-V4 §13.1",
+  },
 ];
 
 // ── fixtures ───────────────────────────────────────────────────────────────────────────────
@@ -197,6 +251,18 @@ const BIND = "input.bindings";
 const BEST = "stats.bestScore";
 const THEME = "ui.theme";
 
+// Version 2's keys: a platform-scoped synced key, a local key, a catalog-locked key, a secret, a
+// flag, and two keys no catalog declares (open settings).
+const PLAT = "input.sensitivity";
+const WINDOW = "ui.windowSize";
+const REGION = "ops.region";
+const TOKEN = "api.token";
+const BETA = "beta.newUi";
+const OPEN = "mods.lastProfile";
+const OPEN2 = "mods.theme";
+/** The HLC floor every imported `config.local` value carries (plans/U-01b.md §2.5). */
+const FLOOR = "000000000000:0000";
+
 const ALICE = "sub_alice";
 const BOB = "sub_bob";
 const ZED = "sub_zed";
@@ -207,25 +273,44 @@ const cid = (n: number): string => `c_${`client${n}`.padStart(22, "0")}`;
 const C1 = cid(1);
 const C2 = cid(2);
 
+/** A synced route, as `syncedSettings` hands it to the machine (plans/U-01b.md §2.5). */
+const synced = (
+  key: string,
+  policy: string,
+  schema: Obj,
+  scope = "user",
+): Obj => ({ key, route: "synced", scope, policy, schema });
+
 const CATALOG: Obj = {
   settings: [
-    {
-      key: VOL,
-      policy: "lastWrite",
-      schema: { type: "number", minimum: 0, maximum: 1 },
-    },
-    {
-      key: QUAL,
-      policy: "lastWrite",
-      schema: { type: "string", enum: ["low", "medium", "high"] },
-    },
-    { key: BIND, policy: "merge", schema: { type: "object" } },
-    { key: BEST, policy: "max", schema: { type: "integer", minimum: 0 } },
-    { key: THEME, policy: "lastWrite", schema: { type: "string" } },
+    synced(VOL, "lastWrite", { type: "number", minimum: 0, maximum: 1 }),
+    synced(QUAL, "lastWrite", {
+      type: "string",
+      enum: ["low", "medium", "high"],
+    }),
+    synced(BIND, "merge", { type: "object" }),
+    synced(BEST, "max", { type: "integer", minimum: 0 }),
+    synced(THEME, "lastWrite", { type: "string" }),
   ],
   collections: [
     { name: "progress", policy: "revision", resolve: "keepLocal" },
     { name: "unlocks", policy: "union" },
+  ],
+};
+
+/** Version 2's routed catalog: every route `syncedSettings` derives, and a `max` collection. */
+const ROUTED_CATALOG: Obj = {
+  settings: [
+    ...(CATALOG.settings as Obj[]),
+    synced(PLAT, "lastWrite", { type: "number" }, "platform"),
+    { key: WINDOW, route: "local" },
+    { key: REGION, route: "locked" },
+    { key: TOKEN, route: "refused" },
+    { key: BETA, route: "refused" },
+  ],
+  collections: [
+    ...(CATALOG.collections as Obj[]),
+    { name: "slots", policy: "max", field: "playtime" },
   ],
 };
 
@@ -240,19 +325,27 @@ const DOCUMENT: Obj = {
   locked: [THEME],
 };
 
+const ROUTED_DOCUMENT: Obj = {
+  values: {
+    ...(DOCUMENT.values as Obj),
+    [PLAT]: 1,
+    [WINDOW]: "1280x720",
+    [REGION]: "eu",
+    [BETA]: false,
+  },
+  locked: DOCUMENT.locked!,
+};
+
 const LICENCE: Obj = {
   state: "valid",
   lastSyncUnauthorized: false,
   documents: ["license", "config"],
 };
 
-const LIMITS: Obj = {
-  maxMutationsPerPush: 100,
-  maxPushBytes: 262144,
-  maxValueBytes: 8192,
-  settingsBytes: 65536,
-  totalBytes: 268435456,
-};
+/** The pull's quota (§13.4): the requesting device's resolved `pkey.cloudSync.bytes`. */
+const QUOTA: Obj = { bytes: 268435456, files: true };
+/** The person's usage, person-wide. The reference ignores both, except to re-send parked edits. */
+const USAGE: Obj = { bytes: 0, settings: 0, records: 0, files: 0 };
 
 function init(over: Obj = {}): Obj {
   return {
@@ -265,15 +358,22 @@ function init(over: Obj = {}): Obj {
     licence: LICENCE,
     clientIds: [C1, C2],
     options: { onSignOut: "clear" },
+    legacyLocal: null,
     ...over,
   };
 }
 
 // Mutations (the wire form; `j` adds the journal-only marks).
-const target = (key: string): Obj => ({ setting: key, scope: "user" });
-const set = (id: number, key: string, value: J, h: string): Obj => ({
+const target = (key: string, scope = "user"): Obj => ({ setting: key, scope });
+const set = (
+  id: number,
+  key: string,
+  value: J,
+  h: string,
+  scope = "user",
+): Obj => ({
   mutationId: id,
-  target: target(key),
+  target: target(key, scope),
   op: "set",
   value,
   editedHlc: h,
@@ -347,7 +447,24 @@ const removeEl = (
   element,
   observedSeq,
 });
-const j = (m: Obj, marks: { preContact?: true; moved?: true }): Obj => ({
+/** A `lastWrite`, `max` or `min` record write: a stamped set, no base version (U-01b D4). */
+const stamped = (
+  id: number,
+  collection: string,
+  rid: string,
+  value: J,
+  h: string,
+): Obj => ({
+  mutationId: id,
+  target: { record: [collection, rid] },
+  op: "set",
+  value,
+  editedHlc: h,
+});
+const j = (
+  m: Obj,
+  marks: { preContact?: true; moved?: true; parked?: string },
+): Obj => ({
   ...m,
   ...marks,
 });
@@ -364,13 +481,25 @@ const pushReq = (clientId: string, cursor: number, mutations: Obj[]): Obj => ({
 });
 
 // Responses.
-const change = (key: string, value: J, version: number, h: string): Obj => ({
+const change = (
+  key: string,
+  value: J,
+  version: number,
+  h: string,
+  scope = "user",
+): Obj => ({
   setting: key,
-  scope: "user",
+  scope,
   value,
   version,
   editedHlc: h,
   updatedBy: "device",
+});
+const tombstone = (key: string, version: number, h: string): Obj => ({
+  setting: key,
+  scope: "user",
+  version,
+  editedHlc: h,
 });
 const recChange = (
   collection: string,
@@ -391,20 +520,30 @@ interface PullArgs {
   lastMutationId?: number;
   more?: boolean;
   aliases?: Obj;
+  quota?: Obj;
+  usage?: Obj;
 }
-const pullBody = (a: PullArgs): Obj => ({
-  subject: a.subject ?? ALICE,
-  serverNow: a.serverNow,
-  cursor: a.cursor,
-  more: a.more ?? false,
-  lastMutationId: a.lastMutationId ?? 0,
-  catalogVersion: 1,
-  aliases: a.aliases ?? {},
-  limits: LIMITS,
-  usage: { bytes: 0, records: 0, saves: 0 },
-  changes: a.changes ?? [],
-  tombstones: a.tombstones ?? [],
-});
+/** §13.4's body. `empty: true` only on a cursor-0 answer with nothing in it. */
+const pullBody = (a: PullArgs): Obj => {
+  const changes = a.changes ?? [];
+  const tombstones = a.tombstones ?? [];
+  return {
+    subject: a.subject ?? ALICE,
+    serverNow: a.serverNow,
+    cursor: a.cursor,
+    more: a.more ?? false,
+    lastMutationId: a.lastMutationId ?? 0,
+    catalogVersion: 1,
+    aliases: a.aliases ?? {},
+    quota: a.quota ?? QUOTA,
+    usage: a.usage ?? USAGE,
+    ...(a.cursor === 0 && changes.length === 0 && tombstones.length === 0
+      ? { empty: true }
+      : {}),
+    changes,
+    tombstones,
+  };
+};
 const pushBody = (a: PullArgs & { results: Obj[] }): Obj => ({
   ...pullBody(a),
   results: a.results,
@@ -419,6 +558,11 @@ const conflict = (id: number, server: Obj): Obj => ({
   mutationId: id,
   status: "conflict",
   server,
+});
+const rejected = (id: number, code: string): Obj => ({
+  mutationId: id,
+  status: "rejected",
+  code,
 });
 const respond = (body: Obj, status = 200): Obj => ({
   respond: { status, body },
@@ -495,6 +639,9 @@ function scenarios(): Scenario[] {
   const add = (sc: Omit<Scenario, "wp">): void => {
     s.push({ ...sc, wp: "U-18" });
   };
+  const addV2 = (sc: Omit<Scenario, "wp">): void => {
+    s.push({ ...sc, wp: "U-01b" });
+  };
 
   add({
     name: "optimistic-read-pending",
@@ -509,10 +656,10 @@ function scenarios(): Scenario[] {
         events: [changed([VOL], "remote")],
         status: st("idle", 0),
       }),
-      local("setConfig", [VOL, 0.6], { ok: true }),
+      local("set", [VOL, 0.6], { ok: true }),
       assert({
         values: { [VOL]: val(0.6, "pending") },
-        states: { [VOL]: { pending: true, invalid: false, locked: false } },
+        states: { [VOL]: { sync: "pending", invalid: false, locked: false } },
         events: [changed([VOL], "local")],
         requests: [],
         status: st("pending", 1),
@@ -535,7 +682,7 @@ function scenarios(): Scenario[] {
       ),
       assert({
         values: { [VOL]: val(0.6, "cloud") },
-        states: { [VOL]: { pending: false, invalid: false, locked: false } },
+        states: { [VOL]: { sync: "synced", invalid: false, locked: false } },
         journal: { [ALICE]: partition(C1, 2, 6, []) },
         events: [],
         requests: [],
@@ -552,12 +699,12 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2, [change(BEST, 120, 2, hlc(T0 - 1000))]),
-      local("setConfig", [BEST, 100], { ok: true }),
+      local("set", [BEST, 100], { ok: true }),
       assert({
         values: { [BEST]: val(120, "pending") },
         events: [changed([BEST], "remote")],
       }),
-      local("setConfig", [BEST, 150], { ok: true }),
+      local("set", [BEST, 150], { ok: true }),
       assert({
         values: { [BEST]: val(150, "pending") },
         events: [changed([BEST], "local")],
@@ -587,11 +734,11 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(1),
-      local("setConfig", [VOL, 0.3]),
+      local("set", [VOL, 0.3]),
       advance(500),
-      local("setConfig", [VOL, 0.4]),
+      local("set", [VOL, 0.4]),
       advance(500),
-      local("setConfig", [VOL, 0.5]),
+      local("set", [VOL, 0.5]),
       advance(1999),
       assert({
         requests: [],
@@ -632,7 +779,7 @@ function scenarios(): Scenario[] {
     init: init({ clock: { now: T0 + FAST, offsetMs: -FAST, contacted: true } }),
     steps: [
       ...started(1),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       assert({ requests: [pushReq(C1, 1, [set(1, VOL, 0.6, hlc(T0))])] }),
       respond(
@@ -644,7 +791,7 @@ function scenarios(): Scenario[] {
           changes: [change(VOL, 0.6, 2, hlc(T0))],
         }),
       ),
-      local("setConfig", [VOL, 0.7]),
+      local("set", [VOL, 0.7]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 2, [set(2, VOL, 0.7, hlc(T0 + 62_000))])],
@@ -673,9 +820,9 @@ function scenarios(): Scenario[] {
       network: "offline",
     }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
-      local("setConfig", [QUAL, "high"]),
+      local("set", [QUAL, "high"]),
       advance(2000),
       assert({
         requests: [],
@@ -718,7 +865,7 @@ function scenarios(): Scenario[] {
           ],
         }),
       ),
-      local("setConfig", [VOL, 0.7]),
+      local("set", [VOL, 0.7]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 3, [set(3, VOL, 0.7, hlc(T0 + 4000))])],
@@ -736,7 +883,7 @@ function scenarios(): Scenario[] {
       network: "offline",
     }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       assert({
         journal: {
@@ -760,7 +907,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(5, [change(VOL, 0.5, 3, hlc(T0 + 10_000))]),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 5, [set(1, VOL, 0.6, hlc(T0))])],
@@ -798,8 +945,8 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(5, [change(VOL, 0.5, 3, hlc(T0 + 10_000))]),
-      local("setConfig", [VOL, 0.6]),
-      local("setConfig", [QUAL, "high"]),
+      local("set", [VOL, 0.6]),
+      local("set", [QUAL, "high"]),
       advance(2000),
       assert({
         requests: [
@@ -829,7 +976,7 @@ function scenarios(): Scenario[] {
         values: { [VOL]: val(0.5, "cloud"), [QUAL]: val("high", "cloud") },
         journal: { [ALICE]: partition(C1, 3, 6, []) },
       }),
-      local("setConfig", [QUAL, "low"]),
+      local("set", [QUAL, "low"]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 6, [set(3, QUAL, "low", hlc(T0 + 2000))])],
@@ -858,7 +1005,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(1),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       assert({ requests: [pushReq(C1, 1, [set(1, VOL, 0.6, hlc(T0))])] }),
       respond(errorBody("unavailable", "Try again later."), 503),
@@ -1045,7 +1192,7 @@ function scenarios(): Scenario[] {
     rules: ["partition", "push-5-sign-out-pending"],
     init: init({ network: "offline" }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       signOut(),
       assert({
@@ -1112,8 +1259,8 @@ function scenarios(): Scenario[] {
       clock: { now: T0, offsetMs: 0, contacted: false },
     }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
-      local("setConfig", [BIND, { jump: "j", crouch: "ctrl" }]),
+      local("set", [VOL, 0.6]),
+      local("set", [BIND, { jump: "j", crouch: "ctrl" }]),
       advance(2000),
       assert({
         requests: [],
@@ -1196,8 +1343,8 @@ function scenarios(): Scenario[] {
     rules: ["first-sign-in"],
     init: init({ subject: null }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
-      local("setConfig", [QUAL, "high"]),
+      local("set", [VOL, 0.6]),
+      local("set", [QUAL, "high"]),
       advance(2000),
       signIn(ALICE),
       assert({
@@ -1245,7 +1392,7 @@ function scenarios(): Scenario[] {
     steps: [
       ...started(3, [change(VOL, 0.5, 3, hlc(T0 - 1000))]),
       signOut(),
-      local("setConfig", [VOL, 0.7]),
+      local("set", [VOL, 0.7]),
       advance(2000),
       assert({
         events: [
@@ -1292,7 +1439,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
@@ -1311,7 +1458,7 @@ function scenarios(): Scenario[] {
         journal: { [ALICE]: partition(C1, 2, 0, [set(1, VOL, 0.6, hlc(T0))]) },
         status: st("blocked", 0, "account_required"),
       }),
-      local("setConfig", [VOL, 0.4]),
+      local("set", [VOL, 0.4]),
       advance(2000),
       assert({
         requests: [],
@@ -1358,7 +1505,7 @@ function scenarios(): Scenario[] {
         licence: LICENCE,
         status: st("blocked", 0, "account_required"),
       }),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       local("refresh"),
       assert({
@@ -1384,7 +1531,7 @@ function scenarios(): Scenario[] {
       clock: { now: T0, offsetMs: 0, contacted: false },
     }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       { relaunch: {} },
       assert({
@@ -1411,7 +1558,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
@@ -1463,11 +1610,11 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       assert({ requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])] }),
       respond(errorBody("unauthorized", "Device token revoked."), 401),
-      local("setConfig", [QUAL, "high"]),
+      local("set", [QUAL, "high"]),
       advance(2000),
       local("flush"),
       assert({
@@ -1516,7 +1663,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       signOut(),
       assert({
         requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
@@ -1548,7 +1695,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       signOut(),
       advance(4999),
       assert({
@@ -1577,7 +1724,7 @@ function scenarios(): Scenario[] {
     rules: ["push-5-sign-out-pending"],
     init: init({ network: "offline" }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       signOut({ discardUnsynced: true }),
       assert({
@@ -1599,7 +1746,7 @@ function scenarios(): Scenario[] {
     rules: ["push-5-sign-out-pending", "partition"],
     init: init({ network: "offline" }),
     steps: [
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       signOut(),
       advance(30 * DAY - 1),
@@ -1653,7 +1800,7 @@ function scenarios(): Scenario[] {
     steps: [
       ...started(4, [change(VOL, 0.5, 4, hlc(T0 - 1000))]),
       network("offline"),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       { relaunch: { journal: "lost" } },
       assert({
@@ -1661,7 +1808,7 @@ function scenarios(): Scenario[] {
         values: { [VOL]: val(0.8, "document") },
         requests: [],
       }),
-      local("setConfig", [VOL, 0.7]),
+      local("set", [VOL, 0.7]),
       advance(2000),
       network("online"),
       assert({ requests: [pullReq(0, C2)] }),
@@ -1686,8 +1833,8 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(1),
-      local("setConfig", [VOL, 0.6]),
-      local("setConfig", [QUAL, "high"]),
+      local("set", [VOL, 0.6]),
+      local("set", [QUAL, "high"]),
       advance(2000),
       assert({
         requests: [
@@ -1746,7 +1893,7 @@ function scenarios(): Scenario[] {
         change(QUAL, "low", 39, hlc(T0 - 500)),
       ]),
       network("offline"),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(2000),
       network("online"),
       assert({
@@ -1804,7 +1951,7 @@ function scenarios(): Scenario[] {
       ...started(2, [
         change(BIND, { jump: "space", crouch: "ctrl" }, 2, hlc(T0 - 1000)),
       ]),
-      local("setConfig", [BIND, { jump: "j", crouch: "ctrl", dash: "shift" }]),
+      local("set", [BIND, { jump: "j", crouch: "ctrl", dash: "shift" }]),
       advance(2000),
       assert({
         requests: [
@@ -1837,7 +1984,7 @@ function scenarios(): Scenario[] {
         },
         events: [changed([BIND], "remote")],
       }),
-      local("setConfig", [BIND, { jump: "j", crouch: "c" }]),
+      local("set", [BIND, { jump: "j", crouch: "c" }]),
       advance(2000),
       assert({
         requests: [
@@ -1917,16 +2064,11 @@ function scenarios(): Scenario[] {
   const OLD_CATALOG: Obj = {
     settings: [
       ...(CATALOG.settings as Obj[]),
-      {
-        key: "gfx.q",
-        policy: "lastWrite",
-        schema: { type: "string", enum: ["low", "medium", "high"] },
-      },
-      {
-        key: "audio.legacyReverb",
-        policy: "lastWrite",
-        schema: { type: "boolean" },
-      },
+      synced("gfx.q", "lastWrite", {
+        type: "string",
+        enum: ["low", "medium", "high"],
+      }),
+      synced("audio.legacyReverb", "lastWrite", { type: "boolean" }),
     ],
     collections: CATALOG.collections!,
   };
@@ -1958,7 +2100,7 @@ function scenarios(): Scenario[] {
         values: { "gfx.q": val("high", "cloud"), [QUAL]: val("high", "cloud") },
         events: [changed(["gfx.q", QUAL], "remote")],
       }),
-      local("setConfig", ["gfx.q", "low"]),
+      local("set", ["gfx.q", "low"]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 3, [set(1, "gfx.q", "low", hlc(T0))])],
@@ -1975,7 +2117,7 @@ function scenarios(): Scenario[] {
         }),
       ),
       assert({ values: { "gfx.q": val("low", "cloud") }, events: [] }),
-      local("setConfig", ["audio.legacyReverb", true]),
+      local("set", ["audio.legacyReverb", true]),
       advance(2000),
       assert({
         requests: [
@@ -2004,23 +2146,19 @@ function scenarios(): Scenario[] {
   add({
     name: "locked-key-refused",
     description:
-      "A set on a key the document enforces is refused with setting-locked and journals nothing, while the server's stored value stays out of the read; an unknown key is setting-unknown.",
+      "A set on a key the document enforces is refused with managed_by_admin and journals nothing, while the server's stored value stays out of the read.",
     rules: ["locked-key"],
     init: init(),
     steps: [
       ...started(2, [change(THEME, "light", 2, hlc(T0 - 1000))]),
-      local("setConfig", [THEME, "light"], {
+      local("set", [THEME, "light"], {
         ok: false,
-        error: "setting-locked",
-      }),
-      local("setConfig", ["no.such.key", 1], {
-        ok: false,
-        error: "setting-unknown",
+        error: "managed_by_admin",
       }),
       advance(2000),
       assert({
         values: { [THEME]: val("dark", "document") },
-        states: { [THEME]: { pending: false, invalid: false, locked: true } },
+        states: { [THEME]: { sync: "synced", invalid: false, locked: true } },
         journal: { [ALICE]: partition(C1, 1, 2, []) },
         requests: [],
         events: [],
@@ -2039,13 +2177,13 @@ function scenarios(): Scenario[] {
       ...started(2, [change(VOL, 1.5, 2, hlc(T0 - 1000))]),
       assert({
         values: { [VOL]: val(0.8, "document") },
-        states: { [VOL]: { pending: false, invalid: true, locked: false } },
+        states: { [VOL]: { sync: "synced", invalid: true, locked: false } },
         events: [],
       }),
-      local("setConfig", [VOL, 0.4]),
+      local("set", [VOL, 0.4]),
       assert({
         values: { [VOL]: val(0.4, "pending") },
-        states: { [VOL]: { pending: true, invalid: false, locked: false } },
+        states: { [VOL]: { sync: "pending", invalid: false, locked: false } },
         events: [changed([VOL], "local")],
       }),
     ],
@@ -2059,7 +2197,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2, [change(QUAL, "low", 2, hlc(T0 - 1000))]),
-      local("setConfig", [QUAL, "high"]),
+      local("set", [QUAL, "high"]),
       advance(2000),
       respond(
         pushBody({
@@ -2093,7 +2231,7 @@ function scenarios(): Scenario[] {
     init: init(),
     steps: [
       ...started(2),
-      local("setConfig", [VOL, 0.6]),
+      local("set", [VOL, 0.6]),
       advance(1000),
       { relaunch: {} },
       assert({
@@ -2109,7 +2247,7 @@ function scenarios(): Scenario[] {
           changes: [change(VOL, 0.6, 3, hlc(T0))],
         }),
       ),
-      local("setConfig", [VOL, 0.7]),
+      local("set", [VOL, 0.7]),
       advance(2000),
       assert({
         requests: [pushReq(C1, 3, [set(2, VOL, 0.7, hlc(T0 + 1000))])],
@@ -2117,7 +2255,944 @@ function scenarios(): Scenario[] {
     ],
   });
 
+  // ── version 2 (plans/U-01b.md §4 and Revision 2) ────────────────────────────────────────────
+
+  const routed = (over: Obj = {}): Obj =>
+    init({ catalog: ROUTED_CATALOG, document: ROUTED_DOCUMENT, ...over });
+  const LOWERED: Obj = { bytes: 1_048_576, files: false };
+  const OVER: Obj = { bytes: 2_097_152, settings: 12, records: 0, files: 0 };
+
+  addV2({
+    name: "open-setting-synced",
+    description:
+      "A key the catalog does not declare is an open setting: read at once, pushed with scope user under lastWrite, read from the cloud once acknowledged, and another device's open setting arrives in a pull.",
+    rules: ["open-settings", "optimistic-read"],
+    init: routed(),
+    steps: [
+      ...started(3),
+      local("set", [OPEN, { deck: "red" }], { ok: true }),
+      assert({
+        values: { [OPEN]: val({ deck: "red" }, "pending") },
+        states: { [OPEN]: { sync: "pending", invalid: false, locked: false } },
+        events: [changed([OPEN], "local")],
+        requests: [],
+        status: st("pending", 1),
+      }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 3, [set(1, OPEN, { deck: "red" }, hlc(T0))])],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 4,
+          lastMutationId: 1,
+          results: [ok(1, 4)],
+          changes: [change(OPEN, { deck: "red" }, 4, hlc(T0))],
+        }),
+      ),
+      assert({
+        values: { [OPEN]: val({ deck: "red" }, "cloud") },
+        states: { [OPEN]: { sync: "synced", invalid: false, locked: false } },
+        events: [],
+        status: st("idle", 0),
+      }),
+      network("offline"),
+      network("online"),
+      assert({ requests: [pullReq(4, C1)] }),
+      respond(
+        pullBody({
+          serverNow: T0 + 4000,
+          cursor: 5,
+          changes: [change(OPEN2, "neon", 5, hlc(T0 + 3000))],
+        }),
+      ),
+      assert({
+        values: {
+          [OPEN2]: val("neon", "cloud"),
+          [OPEN]: val({ deck: "red" }, "cloud"),
+        },
+        events: [changed([OPEN2], "remote")],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  const AT_LIMIT = "x".repeat(8190); // 8,192 bytes of canonical JSON with its quotes
+  addV2({
+    name: "open-setting-too-large",
+    description:
+      "A value over 8 KiB of canonical JSON is refused with bad_request and journals nothing; one of exactly 8 KiB is accepted.",
+    rules: ["open-settings"],
+    init: routed(),
+    steps: [
+      ...started(3),
+      local("set", [OPEN, `${AT_LIMIT}x`], {
+        ok: false,
+        error: "bad_request",
+      }),
+      assert({ events: [], requests: [], status: st("idle", 0) }),
+      local("set", [OPEN, AT_LIMIT], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 3, [set(1, OPEN, AT_LIMIT, hlc(T0))])],
+        events: [changed([OPEN], "local")],
+      }),
+    ],
+  });
+
+  addV2({
+    name: "local-key-stays-local",
+    description:
+      "A local key set signed out and signed in is never moved at sign-in and never in a push, and always reads from the device, after sign-out too.",
+    rules: ["setting-routes", "first-sign-in"],
+    init: routed({ subject: null }),
+    steps: [
+      local("set", [WINDOW, "1920x1080"], { ok: true }),
+      local("set", [VOL, 0.6], { ok: true }),
+      assert({
+        values: {
+          [WINDOW]: val("1920x1080", "device"),
+          [VOL]: val(0.6, "pending"),
+        },
+        states: {
+          [WINDOW]: { sync: "local", invalid: false, locked: false },
+        },
+        events: [changed([WINDOW], "local"), changed([VOL], "local")],
+        requests: [],
+        status: st("local", 1),
+      }),
+      advance(2000),
+      signIn(ALICE),
+      assert({
+        requests: [pushReq(C1, 0, [set(1, VOL, 0.6, hlc(T0))])],
+        journal: {
+          [ALICE]: partition(C1, 2, 0, [
+            j(set(1, VOL, 0.6, hlc(T0)), { moved: true }),
+          ]),
+        },
+        values: { [WINDOW]: val("1920x1080", "device") },
+        events: [],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 1,
+          lastMutationId: 1,
+          results: [ok(1, 1)],
+          changes: [change(VOL, 0.6, 1, hlc(T0))],
+        }),
+      ),
+      local("set", [WINDOW, "2560x1440"], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [],
+        values: {
+          [WINDOW]: val("2560x1440", "device"),
+          [VOL]: val(0.6, "cloud"),
+        },
+        states: {
+          [WINDOW]: { sync: "local", invalid: false, locked: false },
+        },
+        journal: { [ALICE]: partition(C1, 2, 1, []) },
+        events: [changed([WINDOW], "local")],
+        status: st("idle", 0),
+      }),
+      signOut(),
+      assert({
+        values: {
+          [WINDOW]: val("2560x1440", "device"),
+          [VOL]: val(0.8, "document"),
+        },
+        events: [signedOut("signOut", 0), changed([VOL], "remote")],
+        status: st("local", 0),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "secret-key-refused",
+    description:
+      "While Cloud Sync is on, a set or clear of a declared secret or flag, or a value its schema refuses, is bad_request; a key the catalog locks is managed_by_admin. None journals or sends anything.",
+    rules: ["setting-routes", "locked-key"],
+    init: routed(),
+    steps: [
+      ...started(2),
+      local("set", [TOKEN, "s3cr3t"], { ok: false, error: "bad_request" }),
+      local("clear", [TOKEN], { ok: false, error: "bad_request" }),
+      local("set", [BETA, true], { ok: false, error: "bad_request" }),
+      local("set", [VOL, 1.5], { ok: false, error: "bad_request" }),
+      local("set", [REGION, "us"], {
+        ok: false,
+        error: "managed_by_admin",
+      }),
+      advance(2000),
+      assert({
+        values: {
+          [BETA]: val(false, "document"),
+          [VOL]: val(0.8, "document"),
+          [REGION]: val("eu", "document"),
+        },
+        states: { [REGION]: { sync: "synced", invalid: false, locked: true } },
+        journal: { [ALICE]: partition(C1, 1, 2, []) },
+        requests: [],
+        events: [],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "platform-scope-target",
+    description:
+      "A key routed with platform scope is pushed with scope platform; an open setting in the same push with scope user.",
+    rules: ["setting-routes", "open-settings"],
+    init: routed(),
+    steps: [
+      ...started(2),
+      local("set", [PLAT, 0.5], { ok: true }),
+      local("set", [OPEN, "speedrun"], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [
+          pushReq(C1, 2, [
+            set(1, PLAT, 0.5, hlc(T0), "platform"),
+            set(2, OPEN, "speedrun", hlc(T0, 1)),
+          ]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 4,
+          lastMutationId: 2,
+          results: [ok(1, 3), ok(2, 4)],
+          changes: [
+            change(PLAT, 0.5, 3, hlc(T0), "platform"),
+            change(OPEN, "speedrun", 4, hlc(T0, 1)),
+          ],
+        }),
+      ),
+      assert({
+        values: {
+          [PLAT]: val(0.5, "cloud"),
+          [OPEN]: val("speedrun", "cloud"),
+        },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "config-local-import-loses-to-cloud",
+    description:
+      "The legacy config.local store is imported once at the HLC floor: a synced key and an open setting move at sign-in, and a newer cloud value beats the import (conflict, server copy, origin merge, nothing enqueued); a local key lands on the device and never moves; a locked or secret key is not imported.",
+    rules: ["local-import", "first-sign-in"],
+    init: routed({
+      subject: null,
+      clock: { now: T0, offsetMs: 0, contacted: false },
+      legacyLocal: {
+        [VOL]: 0.3,
+        [OPEN]: "legacy",
+        [WINDOW]: "800x600",
+        [REGION]: "us",
+        [TOKEN]: "old",
+      },
+    }),
+    steps: [
+      assert({
+        requests: [],
+        journal: {
+          local: {
+            settings: {
+              [VOL]: { value: 0.3, editedHlc: FLOOR },
+              [OPEN]: { value: "legacy", editedHlc: FLOOR },
+            },
+          },
+        },
+        values: {
+          [VOL]: val(0.3, "device"),
+          [OPEN]: val("legacy", "device"),
+          [WINDOW]: val("800x600", "device"),
+          [REGION]: val("eu", "document"),
+        },
+        events: [changed([VOL, OPEN, WINDOW], "local")],
+        status: st("local", 0),
+      }),
+      signIn(ALICE),
+      assert({
+        requests: [pullReq(0, C1)],
+        journal: {
+          [ALICE]: partition(C1, 3, 0, [
+            j(set(1, VOL, 0.3, FLOOR), { moved: true }),
+            j(set(2, OPEN, "legacy", FLOOR), { moved: true }),
+          ]),
+        },
+        events: [],
+      }),
+      respond(
+        pullBody({
+          serverNow: T0,
+          cursor: 5,
+          changes: [change(VOL, 0.5, 4, hlc(T0 - 60_000))],
+        }),
+      ),
+      assert({
+        requests: [
+          pushReq(C1, 5, [
+            set(1, VOL, 0.3, FLOOR),
+            set(2, OPEN, "legacy", FLOOR),
+          ]),
+        ],
+        values: { [VOL]: val(0.3, "pending") },
+        events: [],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 6,
+          lastMutationId: 2,
+          results: [
+            conflict(1, {
+              value: 0.5,
+              version: 4,
+              editedHlc: hlc(T0 - 60_000),
+            }),
+            ok(2, 6),
+          ],
+          changes: [change(OPEN, "legacy", 6, FLOOR)],
+        }),
+      ),
+      assert({
+        values: {
+          [VOL]: val(0.5, "cloud"),
+          [OPEN]: val("legacy", "cloud"),
+          [WINDOW]: val("800x600", "device"),
+        },
+        events: [changed([VOL], "merge")],
+        journal: { [ALICE]: partition(C1, 3, 6, []) },
+        requests: [],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "record-max-field-conflict",
+    description:
+      "A record in a max collection is a stamped set the server resolves on playtime; when the server keeps a larger one the push gets conflict, and the client takes the server copy and enqueues nothing.",
+    rules: ["record-field-policy"],
+    init: routed(),
+    steps: [
+      assert({ requests: [pullReq(0, C1)] }),
+      respond(
+        pullBody({
+          serverNow: T0,
+          cursor: 3,
+          changes: [
+            recChange("slots", "1", { playtime: 500, chapter: "2" }, 2),
+          ],
+        }),
+      ),
+      local("put", ["slots", "1", { playtime: 300, chapter: "3" }], {
+        ok: true,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 3, [
+            stamped(1, "slots", "1", { playtime: 300, chapter: "3" }, hlc(T0)),
+          ]),
+        ],
+        records: {
+          "slots/1": val({ playtime: 300, chapter: "3" }, "pending"),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 3,
+          lastMutationId: 1,
+          results: [
+            conflict(1, { value: { playtime: 500, chapter: "2" }, version: 2 }),
+          ],
+        }),
+      ),
+      assert({
+        records: { "slots/1": val({ playtime: 500, chapter: "2" }, "cloud") },
+        journal: { [ALICE]: partition(C1, 2, 3, []) },
+        requests: [],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "attestation-required-blocks",
+    description:
+      "403 attestation_required blocks Cloud Sync with reason attestation: the journal is kept, licence state is untouched, later edits wait, and a document refresh resumes it.",
+    rules: ["forbidden-blocks"],
+    init: init(),
+    steps: [
+      ...started(2),
+      local("set", [VOL, 0.6]),
+      advance(2000),
+      assert({ requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])] }),
+      respond(
+        errorBody(
+          "attestation_required",
+          "This product needs an attested device.",
+        ),
+        403,
+      ),
+      local("set", [QUAL, "high"]),
+      advance(2000),
+      local("flush"),
+      assert({
+        requests: [],
+        licence: LICENCE,
+        journal: {
+          [ALICE]: partition(C1, 3, 2, [
+            set(1, VOL, 0.6, hlc(T0)),
+            set(2, QUAL, "high", hlc(T0 + 2000)),
+          ]),
+        },
+        values: { [VOL]: val(0.6, "pending") },
+        status: st("blocked", 2, "attestation"),
+      }),
+      local("refresh", [], { ok: true }),
+      assert({
+        requests: [
+          pushReq(C1, 2, [
+            set(1, VOL, 0.6, hlc(T0)),
+            set(2, QUAL, "high", hlc(T0 + 2000)),
+          ]),
+        ],
+        status: st("syncing", 2),
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 4000,
+          cursor: 4,
+          lastMutationId: 2,
+          results: [ok(1, 3), ok(2, 4)],
+          changes: [
+            change(VOL, 0.6, 3, hlc(T0)),
+            change(QUAL, "high", 4, hlc(T0 + 2000)),
+          ],
+        }),
+      ),
+      assert({ status: st("idle", 0), licence: LICENCE }),
+    ],
+  });
+
+  addV2({
+    name: "other-403-blocks",
+    description:
+      "Any other 403 blocks with reason forbidden and waits for a document refresh; unlike account_required it neither signs out nor offers sign-in.",
+    rules: ["forbidden-blocks"],
+    init: init(),
+    steps: [
+      assert({ requests: [pullReq(0, C1)] }),
+      respond(errorBody("forbidden", "Cloud Sync is not available here."), 403),
+      assert({
+        events: [],
+        licence: LICENCE,
+        journal: { [ALICE]: partition(C1, 1, 0, []) },
+        status: st("blocked", 0, "forbidden"),
+      }),
+      local("set", [VOL, 0.6]),
+      advance(2000),
+      assert({
+        requests: [],
+        values: { [VOL]: val(0.6, "pending") },
+        status: st("blocked", 1, "forbidden"),
+      }),
+      local("refresh", [], { ok: true }),
+      assert({
+        requests: [pushReq(C1, 0, [set(1, VOL, 0.6, hlc(T0))])],
+        status: st("syncing", 1),
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 3,
+          lastMutationId: 1,
+          results: [ok(1, 3)],
+          changes: [change(VOL, 0.6, 3, hlc(T0))],
+        }),
+      ),
+      assert({
+        values: { [VOL]: val(0.6, "cloud") },
+        status: st("idle", 0),
+        licence: LICENCE,
+      }),
+    ],
+  });
+
+  const PAUSED = errorBody("writes_paused", "Cloud Sync writes are paused.");
+  addV2({
+    name: "writes-paused-keeps-journal",
+    description:
+      "503 writes_paused on a push keeps the journal and the value and shows paused, never blocked, with no refresh needed; the next trigger retries, and the push that lands clears it.",
+    rules: ["writes-paused", "push-1-last-mutation-id"],
+    init: init(),
+    steps: [
+      ...started(2),
+      local("set", [VOL, 0.6]),
+      advance(2000),
+      assert({ requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])] }),
+      respond(PAUSED, 503),
+      assert({
+        journal: { [ALICE]: partition(C1, 2, 2, [set(1, VOL, 0.6, hlc(T0))]) },
+        values: { [VOL]: val(0.6, "pending") },
+        states: { [VOL]: { sync: "pending", invalid: false, locked: false } },
+        requests: [],
+        events: [],
+        licence: LICENCE,
+        status: st("paused", 1),
+      }),
+      local("flush", [], { ok: true }),
+      assert({
+        requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
+        status: st("syncing", 1),
+      }),
+      respond(PAUSED, 503),
+      assert({ requests: [], status: st("paused", 1) }),
+      local("flush"),
+      assert({ requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])] }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 3,
+          lastMutationId: 1,
+          results: [ok(1, 3)],
+          changes: [change(VOL, 0.6, 3, hlc(T0))],
+        }),
+      ),
+      assert({
+        values: { [VOL]: val(0.6, "cloud") },
+        journal: { [ALICE]: partition(C1, 2, 3, []) },
+        events: [],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  /** The steps every quota scenario starts with: a set refused with quota_exceeded, parked. */
+  const parkedOnQuota = (): Obj[] => [
+    ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
+    local("set", [VOL, 0.6]),
+    advance(2000),
+    assert({
+      requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
+      events: [changed([VOL], "remote"), changed([VOL], "local")],
+    }),
+    respond(
+      pushBody({
+        serverNow: T0 + 2000,
+        cursor: 2,
+        lastMutationId: 1,
+        results: [rejected(1, "quota_exceeded")],
+        quota: LOWERED,
+        usage: OVER,
+      }),
+    ),
+    assert({
+      values: { [VOL]: val(0.6, "pending") },
+      states: { [VOL]: { sync: "pending", invalid: false, locked: false } },
+      journal: {
+        [ALICE]: partition(C1, 2, 2, [
+          j(set(1, VOL, 0.6, hlc(T0)), { parked: "quota" }),
+        ]),
+      },
+      events: [],
+      requests: [],
+      status: st("pending", 1, "quota"),
+    }),
+  ];
+
+  addV2({
+    name: "quota-rejected-keeps-value",
+    description:
+      "A set refused with quota_exceeded parks on the device: the value still reads, sync stays pending, the status gives reason quota, no rejected event fires and nothing is resent; it survives a relaunch, and a pull with no more room keeps it parked.",
+    rules: ["parked-rejection", "relaunch"],
+    init: init(),
+    steps: [
+      ...parkedOnQuota(),
+      { relaunch: {} },
+      assert({
+        requests: [pullReq(2, C1)],
+        journal: {
+          [ALICE]: partition(C1, 2, 2, [
+            j(set(1, VOL, 0.6, hlc(T0)), { parked: "quota" }),
+          ]),
+        },
+        values: { [VOL]: val(0.6, "pending") },
+        status: st("syncing", 1, "quota"),
+      }),
+      respond(
+        pullBody({
+          serverNow: T0 + 3000,
+          cursor: 2,
+          quota: LOWERED,
+          usage: OVER,
+        }),
+      ),
+      assert({
+        requests: [],
+        values: { [VOL]: val(0.6, "pending") },
+        events: [],
+        status: st("pending", 1, "quota"),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "quota-raised-retries",
+    description:
+      "Once a pull shows more room, a quota-parked edit is re-sent as a new mutation with its original clock, and lands.",
+    rules: ["parked-rejection"],
+    init: init(),
+    steps: [
+      ...parkedOnQuota(),
+      network("offline"),
+      network("online"),
+      assert({ requests: [pullReq(2, C1)] }),
+      respond(
+        pullBody({
+          serverNow: T0 + 4000,
+          cursor: 3,
+          usage: OVER,
+        }),
+      ),
+      assert({
+        requests: [pushReq(C1, 3, [set(2, VOL, 0.6, hlc(T0))])],
+        journal: { [ALICE]: partition(C1, 3, 3, [set(2, VOL, 0.6, hlc(T0))]) },
+        status: st("syncing", 1),
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 4000,
+          cursor: 4,
+          lastMutationId: 2,
+          results: [ok(2, 4)],
+          changes: [change(VOL, 0.6, 4, hlc(T0))],
+          usage: OVER,
+        }),
+      ),
+      assert({
+        values: { [VOL]: val(0.6, "cloud") },
+        journal: { [ALICE]: partition(C1, 3, 4, []) },
+        events: [],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "quota-lowered-deletes-nothing",
+    description:
+      "A pull whose quota is below the person's usage removes nothing on the device, and a clear still passes.",
+    rules: ["quota-never-deletes"],
+    init: init(),
+    steps: [
+      ...started(3, [
+        change(VOL, 0.5, 2, hlc(T0 - 1000)),
+        change(QUAL, "high", 3, hlc(T0 - 500)),
+      ]),
+      network("offline"),
+      network("online"),
+      assert({
+        requests: [pullReq(3, C1)],
+        events: [changed([VOL, QUAL], "remote")],
+      }),
+      respond(
+        pullBody({ serverNow: T0, cursor: 3, quota: LOWERED, usage: OVER }),
+      ),
+      assert({
+        values: { [VOL]: val(0.5, "cloud"), [QUAL]: val("high", "cloud") },
+        events: [],
+        status: st("idle", 0),
+      }),
+      local("clear", [VOL], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 3, [clear(1, VOL, hlc(T0))])],
+        events: [changed([VOL], "local")],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 4,
+          lastMutationId: 1,
+          results: [ok(1, 4)],
+          tombstones: [tombstone(VOL, 4, hlc(T0))],
+          quota: LOWERED,
+          usage: { bytes: 2_097_000, settings: 11, records: 0, files: 0 },
+        }),
+      ),
+      assert({
+        values: { [VOL]: val(0.8, "document"), [QUAL]: val("high", "cloud") },
+        journal: { [ALICE]: partition(C1, 2, 4, []) },
+        events: [],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV2({
+    name: "terminal-rejection-reverts",
+    description:
+      "value_invalid is terminal: the value reverts to the snapshot and a rejected event fires. entitlement_required in the same push parks instead, and the next sign-in re-sends it as a new mutation with its clock.",
+    rules: ["parked-rejection", "push-1-last-mutation-id"],
+    init: init(),
+    steps: [
+      ...started(2, [change(QUAL, "low", 2, hlc(T0 - 1000))]),
+      local("set", [QUAL, "high"]),
+      local("set", [VOL, 0.6]),
+      advance(2000),
+      assert({
+        requests: [
+          pushReq(C1, 2, [
+            set(1, VOL, 0.6, hlc(T0, 1)),
+            set(2, QUAL, "high", hlc(T0)),
+          ]),
+        ],
+        events: [
+          changed([QUAL], "remote"),
+          changed([QUAL], "local"),
+          changed([VOL], "local"),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 2,
+          lastMutationId: 2,
+          results: [
+            rejected(1, "entitlement_required"),
+            rejected(2, "value_invalid"),
+          ],
+        }),
+      ),
+      assert({
+        events: [
+          { type: "rejected", mutationId: 2, code: "value_invalid" },
+          changed([QUAL], "remote"),
+        ],
+        values: { [QUAL]: val("low", "cloud"), [VOL]: val(0.6, "pending") },
+        journal: {
+          [ALICE]: partition(C1, 3, 2, [
+            j(set(1, VOL, 0.6, hlc(T0, 1)), { parked: "entitlement" }),
+          ]),
+        },
+        requests: [],
+        status: st("pending", 1, "entitlement"),
+      }),
+      signOut(),
+      signIn(ALICE),
+      assert({
+        requests: [pushReq(C1, 0, [set(3, VOL, 0.6, hlc(T0, 1))])],
+        events: [
+          signedOut("signOut", 1),
+          unsynced(1),
+          changed([VOL, QUAL], "remote"),
+          changed([VOL], "remote"),
+        ],
+        journal: {
+          [ALICE]: partition(C1, 4, 0, [set(3, VOL, 0.6, hlc(T0, 1))]),
+        },
+        status: st("syncing", 1),
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 4,
+          lastMutationId: 3,
+          results: [ok(3, 3)],
+          changes: [
+            change(VOL, 0.6, 3, hlc(T0, 1)),
+            change(QUAL, "low", 2, hlc(T0 - 1000)),
+          ],
+        }),
+      ),
+      assert({
+        values: { [VOL]: val(0.6, "cloud"), [QUAL]: val("low", "cloud") },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
   return s;
+}
+
+// ── settingCases: catalog entries in, `syncedSettings` routes out (plans/U-01b.md §3.1) ──────
+
+interface SettingCase {
+  name: string;
+  description: string;
+  entries: Obj[];
+  /** `userSettingIssues` of every entry, in entry order: a publish refuses any `error`. */
+  issues: Obj[];
+  /** `syncedSettings(entries)`, or `null` when an `error` issue means the catalog never
+   *  publishes, so no client derives routes from it. */
+  routes: Obj[] | null;
+  /** Keys no entry declares: each has no route, so a client treats it as an open setting. */
+  open: string[];
+}
+
+const entry = (key: string, schema: Obj, over: Obj = {}): Obj => ({
+  key,
+  kind: "config",
+  category: "general",
+  label: key,
+  description: `The ${key} setting.`,
+  schema,
+  ...over,
+});
+
+function settingCases(): SettingCase[] {
+  const volume = { type: "number", minimum: 0, maximum: 1 };
+  const best = { type: "integer", minimum: 0 };
+  return [
+    {
+      name: "default-user-scope",
+      description:
+        "An Editable config key with no user block is a synced setting: user scope, lastWrite, listed, with its schema.",
+      entries: [entry(VOL, volume)],
+      issues: [],
+      routes: [
+        {
+          key: VOL,
+          route: "synced",
+          scope: "user",
+          policy: "lastWrite",
+          listed: true,
+          schema: volume,
+        },
+      ],
+      open: [],
+    },
+    {
+      name: "platform-max",
+      description:
+        "A user block tunes the route: platform scope, the max policy on a number, and listed false.",
+      entries: [
+        entry(BEST, best, {
+          user: { sync: "platform", conflict: "max", listed: false },
+        }),
+      ],
+      issues: [],
+      routes: [
+        {
+          key: BEST,
+          route: "synced",
+          scope: "platform",
+          policy: "max",
+          listed: false,
+          schema: best,
+        },
+      ],
+      open: [],
+    },
+    {
+      name: "local-key",
+      description:
+        "user.sync local keeps the key on the device: a local route.",
+      entries: [entry(WINDOW, { type: "string" }, { user: { sync: "local" } })],
+      issues: [],
+      routes: [{ key: WINDOW, route: "local" }],
+      open: [],
+    },
+    {
+      name: "catalog-locked",
+      description:
+        "managementDefault enforced or hidden locks the key whatever its user block says; the block is a no-op warning.",
+      entries: [
+        entry(
+          THEME,
+          { type: "string" },
+          { managementDefault: "enforced", user: { sync: "user" } },
+        ),
+        entry(REGION, { type: "string" }, { managementDefault: "hidden" }),
+      ],
+      issues: [
+        {
+          key: THEME,
+          code: "user_setting_locked_default",
+          severity: "warning",
+        },
+      ],
+      routes: [
+        { key: THEME, route: "locked" },
+        { key: REGION, route: "locked" },
+      ],
+      open: [],
+    },
+    {
+      name: "secret-and-flag",
+      description:
+        "A secret and a flag are never a person's setting: refused routes (config.set answers bad_request while Cloud Sync is on).",
+      entries: [
+        entry(TOKEN, { type: "string" }, { kind: "secret" }),
+        entry(BETA, { type: "boolean" }, { kind: "flag" }),
+      ],
+      issues: [],
+      routes: [
+        { key: TOKEN, route: "refused" },
+        { key: BETA, route: "refused" },
+      ],
+      open: [],
+    },
+    {
+      name: "undeclared-key-is-open",
+      description:
+        "A key the catalog does not declare gets no route: the client syncs it as an open setting.",
+      entries: [entry(QUAL, { type: "string" })],
+      issues: [],
+      routes: [
+        {
+          key: QUAL,
+          route: "synced",
+          scope: "user",
+          policy: "lastWrite",
+          listed: true,
+          schema: { type: "string" },
+        },
+      ],
+      open: [OPEN, OPEN2],
+    },
+    {
+      name: "array-merge-refused",
+      description:
+        "merge stays object-only: a list setting cannot combine (a set is an object of booleans), so a publish refuses it and no client derives routes.",
+      entries: [
+        entry(
+          "ui.recentDecks",
+          { type: "array", items: { type: "string" }, uniqueItems: true },
+          { user: { conflict: "merge" } },
+        ),
+      ],
+      issues: [
+        {
+          key: "ui.recentDecks",
+          code: "user_conflict_type_mismatch",
+          severity: "error",
+        },
+      ],
+      routes: null,
+      open: [],
+    },
+    {
+      name: "device-scope-retired",
+      description:
+        "user.sync device is retired with no alias: a publish refuses it (use local).",
+      entries: [entry(BIND, { type: "object" }, { user: { sync: "device" } })],
+      issues: [{ key: BIND, code: "invalid_user_setting", severity: "error" }],
+      routes: null,
+      open: [],
+    },
+  ];
 }
 
 // ── the self-check ─────────────────────────────────────────────────────────────────────────
@@ -2210,13 +3285,32 @@ function selfCheck(file: Obj): void {
   }
   for (const r of ruleIds)
     if (!covered.has(r)) fail(`rule ${r} has no scenario`);
+  const caseNames = new Set<string>();
+  for (const c of file.settingCases as unknown as SettingCase[]) {
+    const at = (m: string): never => fail(`settingCases ${c.name}: ${m}`);
+    if (!NAME_RE.test(c.name)) at("name is not kebab-case");
+    if (caseNames.has(c.name)) at("duplicate name");
+    caseNames.add(c.name);
+    const keys = new Set(c.entries.map((e) => String(e.key)));
+    const refused = c.issues.some((i) => i.severity === "error");
+    if (refused !== (c.routes === null))
+      at("routes is null exactly when an issue is an error");
+    for (const i of c.issues)
+      if (!keys.has(String(i.key))) at(`issue for undeclared ${String(i.key)}`);
+    if (c.routes) {
+      const routed = c.routes.map((r) => String(r.key));
+      if (routed.join() !== [...keys].join())
+        at("one route per entry, in entry order");
+    }
+    for (const k of c.open) if (keys.has(k)) at(`open key ${k} is declared`);
+  }
 }
 
 export function buildSyncScenarios(): Obj {
   const file: Obj = {
     syncScenariosVersion: SYNC_SCENARIOS_VERSION,
     description:
-      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1). Each scenario starts from `init` and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. Literal data, not generated by an implementation.",
+      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Literal data, not generated by an implementation.",
     product: PRODUCT,
     constants: {
       debounceMs: 2000,
@@ -2224,12 +3318,14 @@ export function buildSyncScenarios(): Obj {
       pendingDays: 30,
       maxMutationsPerPush: 100,
       maxClockSkewMs: 300000,
+      maxValueBytes: 8192,
     },
     steps: [...STEPS],
     calls: [...CALLS],
     asserts: [...ASSERTS],
     rules: RULES,
     scenarios: scenarios() as unknown as J,
+    settingCases: settingCases() as unknown as J,
   };
   selfCheck(file);
   return file;

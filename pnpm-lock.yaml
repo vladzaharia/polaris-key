@@ -88,6 +88,9 @@ importers:
 
   conformance/runners/node:
     dependencies:
+      '@polaris-key/catalog':
+        specifier: workspace:*
+        version: link:../../../packages/shared-catalog
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../../../packages/client-core

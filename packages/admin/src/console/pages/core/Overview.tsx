@@ -80,7 +80,7 @@ import {
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "./activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
-import { noCatalog, userSettings } from "../sync/data.js";
+import { declaresSaves, noCatalog, userSettings } from "../sync/data.js";
 import { fetchSigningKeys } from "./Keys.js";
 import {
   SDK_OPTIONS,
@@ -1178,13 +1178,13 @@ function SyncTile({ slug }: { slug: string }): React.ReactElement {
       {data !== undefined ? (
         <>
           <Big>
-            {formatCount(settings)} user{" "}
+            {formatCount(settings)} synced{" "}
             {settings === 1 ? "setting" : "settings"}
           </Big>
           <Line>
             {formatCount(collections)}{" "}
             {collections === 1 ? "collection" : "collections"} · saves{" "}
-            {data?.cloudSync?.saves ? "declared" : "not declared"}
+            {declaresSaves(data ?? null) ? "declared" : "not declared"}
           </Line>
         </>
       ) : null}

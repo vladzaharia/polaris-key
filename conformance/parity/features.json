@@ -76,6 +76,10 @@
       "title": "Config"
     },
     {
+      "id": "sync",
+      "title": "Cloud Sync"
+    },
+    {
       "id": "devices",
       "title": "Devices and identity"
     },
@@ -191,8 +195,13 @@
       "service": "core",
       "title": "Product presentation from discovery: name, developer, accent, verified icon",
       "proof": [
-        { "kind": "transcript" },
-        { "kind": "corpus", "file": "presentation-matrix.json" }
+        {
+          "kind": "transcript"
+        },
+        {
+          "kind": "corpus",
+          "file": "presentation-matrix.json"
+        }
       ],
       "allowedNa": []
     },
@@ -564,6 +573,84 @@
       "note": "S-17 §5.11's names, so U-06 and U-20 add sync state under the same API. Device-local only. The unit proof persists, clears, validates against the catalog type and emits change events (SDK-PARITY-PASS §3.11)."
     },
     {
+      "id": "config.sync",
+      "family": "config",
+      "title": "Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "sync-scenarios.json",
+          "family": "settingCases",
+          "wp": "U-01b"
+        },
+        {
+          "kind": "transcript",
+          "wp": "U-05"
+        }
+      ],
+      "allowedNa": [],
+      "note": "plans/U-01b.md D8: the shipped config.set, config.clear, config.setting(key) and onConfigChange, with no second settings API. settingCases pins the routes a host derives; U-05's cloudsync-* transcripts pin the wire."
+    },
+    {
+      "id": "sync.scenarios",
+      "family": "sync",
+      "title": "The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "sync-scenarios.json",
+          "wp": "U-01b"
+        }
+      ],
+      "allowedNa": [],
+      "note": "client-core's reference machine replays every scenario in the Node runner; each SDK's port replays the same file (plans/U-01b.md §5)."
+    },
+    {
+      "id": "sync.settings",
+      "family": "sync",
+      "title": "Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush()",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "U-05"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "sync.conflict",
+      "family": "sync",
+      "title": "One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "unit"
+        },
+        {
+          "kind": "transcript",
+          "wp": "U-08"
+        }
+      ],
+      "allowedNa": [],
+      "note": "revision is the only policy that prompts; every other one is applied by the server (plans/U-01b.md §2.2)."
+    },
+    {
+      "id": "sync.saves",
+      "family": "sync",
+      "title": "cloudSync.saves on records and files: list, read, write, delete, revisions",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "U-10"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
       "id": "devices.fingerprint",
       "family": "devices",
       "title": "Components, hashing, device id",
@@ -798,8 +885,13 @@
       "title": "Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1)",
       "service": "identity",
       "proof": [
-        { "kind": "corpus", "file": "device-label.json" },
-        { "kind": "transcript" }
+        {
+          "kind": "corpus",
+          "file": "device-label.json"
+        },
+        {
+          "kind": "transcript"
+        }
       ],
       "allowedNa": [
         {
@@ -814,7 +906,12 @@
       "family": "devices",
       "title": "Identity off for a product: every sign-in entry fails fast, licences keep working",
       "service": "identity",
-      "proof": [{ "kind": "transcript", "wp": "PX-W17" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "PX-W17"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -822,7 +919,12 @@
       "family": "devices",
       "title": "Key entry on an Identity product: keyEntries on success, and the key-entry-limit refusal with manageUrl",
       "service": "identity",
-      "proof": [{ "kind": "transcript", "wp": "PX-W9b" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "PX-W9b"
+        }
+      ],
       "allowedNa": [],
       "note": "PX-W9 (WIRE-CONTRACT-V4 §12.2): an activation by key on a product with Identity on exposes keyEntries {used, limit} on ok, and the typed key-entry-limit result (keyEntries, manageUrl) when a new device meets the licence's limit with refusals on. Never an auth failure: the client keeps its state and never retries. Pinned by keyentry-limit.json, keyentry-refusals-off.json and keyentry-identity-off.json; client-core's keyEntries table (PX-W9b) pins readKeyEntries. I-09 adds step 3: a licence in an account refused to a new device with license_owned and signInUrl (keyentry-owned.json); the typed license-owned result is I-10a's and I-10b's."
     },
@@ -1926,8 +2028,14 @@
       "title": "Kit states: gate, boot, status screen, grace banner and toasts",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "gate" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "gate"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "Components: PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast."
@@ -1938,8 +2046,14 @@
       "title": "Kit states: welcome, license key activation and offline activation",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "activate" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "activate"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [
         {
@@ -1961,8 +2075,14 @@
       "title": "Kit states: the one sign-in form, with its license choice and Replace a device",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "signIn" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "signIn"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "Components: SignIn, SignInHandoff, LicenseChoice, in the inline, sheet and browser presentations (plans/UK-02b.md D1)."
@@ -1973,8 +2093,14 @@
       "title": "Kit states: the device-limit screen, in the app or in the browser",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "deviceLimit" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "deviceLimit"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "Component: DeviceLimit."
@@ -1985,8 +2111,14 @@
       "title": "Kit states: the device list, rename and remove",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "devices" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "devices"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "Component: Devices."
@@ -1997,8 +2129,14 @@
       "title": "Kit states: update prompt, update progress and release notes",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "update" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "update"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "Components: UpdatePrompt, UpdateProgress, ReleaseNotes."
@@ -2009,8 +2147,14 @@
       "title": "Kit states: the account and license pane and settings",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "settings" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "settings"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "Components: AccountAndLicense, Settings."
@@ -2021,8 +2165,14 @@
       "title": "Kit states: paywall and entitlement gate",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "paywall" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "paywall"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "Components: Paywall, EntitlementGate."
@@ -2033,8 +2183,14 @@
       "title": "Theme resolution: name, accent source, colour scheme, icon and preset",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "theme" },
-        { "kind": "snapshot" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "theme"
+        },
+        {
+          "kind": "snapshot"
+        }
       ],
       "allowedNa": [],
       "note": "UI-KITS §1.2 and §3.4: integrator, then presentation, then the icon, then ink; native takes the host's accent."
@@ -2045,9 +2201,18 @@
       "title": "Catalog lookup and the ICU-subset formatter in the launch locales",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "ui-matrix.json", "family": "i18n" },
-        { "kind": "snapshot" },
-        { "kind": "generated", "command": "pnpm gen brand --check" }
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "i18n"
+        },
+        {
+          "kind": "snapshot"
+        },
+        {
+          "kind": "generated",
+          "command": "pnpm gen brand --check"
+        }
       ],
       "allowedNa": [],
       "note": "Kit copy and core copy per locale, per-key fallback, plural categories and the formFactor select."

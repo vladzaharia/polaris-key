@@ -270,7 +270,7 @@
     "contribute/corpus": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "programme-id": 42,
+      "programme-id": 43,
       "count": 1
     },
     "contribute/index": {
@@ -312,8 +312,7 @@
     },
     "features/cloud-sync/index": {
       "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1
+      "frontmatter-last-reviewed": 1
     },
     "features/licensing/access": {
       "frontmatter-type": 1,
@@ -667,6 +666,12 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
       "help-word": 28,
+      "time-word": 1
+    },
+    "help/sync": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 7,
       "time-word": 1
     },
     "help/update": {

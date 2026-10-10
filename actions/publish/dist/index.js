@@ -1314,7 +1314,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "array",
       "items": { "$ref": "#/$defs/edgeMintRecipe" }
     },
-    "cloudSync": { "$ref": "#/$defs/cloudSync" },
+    "cloudSync": false,
     "release": {
       "description": "Deprecated: write the release block in .pkey/release. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "type": "object",
@@ -1936,84 +1936,6 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "string",
       "maxLength": 267,
       "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http://(?:localhost|127\\\\.0\\\\.0\\\\.1))(?::[0-9]{1,5})?$"
-    },
-    "cloudSyncLimits": {
-      "description": "Per-person Cloud Sync limits, each at most the platform ceiling (settings 256 KiB, collections 64 MiB, saves 1 GiB per person).",
-      "type": "object",
-      "properties": {
-        "totalBytes": { "type": "integer", "minimum": 0 },
-        "settingsBytes": { "type": "integer", "minimum": 0 },
-        "records": { "type": "integer", "minimum": 0 },
-        "collectionBytes": { "type": "integer", "minimum": 0 },
-        "saves": {
-          "type": "object",
-          "properties": {
-            "slots": { "type": "integer", "minimum": 0 },
-            "maxBytes": { "type": "integer", "minimum": 0 },
-            "keepRevisions": { "type": "integer", "minimum": 0 }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "cloudSync": {
-      "description": "Cloud Sync limits and access policy, persisted as claimable product settings. The data shape (collections, saves, migrations) lives in .pkey/schema's cloudSync block.",
-      "type": "object",
-      "properties": {
-        "limits": {
-          "description": "The licensed per-person limits.",
-          "type": "object",
-          "properties": {
-            "totalBytes": { "type": "integer", "minimum": 0 },
-            "settingsBytes": { "type": "integer", "minimum": 0 },
-            "records": { "type": "integer", "minimum": 0 },
-            "collectionBytes": { "type": "integer", "minimum": 0 },
-            "saves": {
-              "type": "object",
-              "properties": {
-                "slots": { "type": "integer", "minimum": 0 },
-                "maxBytes": { "type": "integer", "minimum": 0 },
-                "keepRevisions": { "type": "integer", "minimum": 0 }
-              },
-              "additionalProperties": false
-            },
-            "byTier": {
-              "description": "Tier id → limits; the tier of the highest-rank contributing licence applies.",
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/cloudSyncLimits" }
-            },
-            "byEntitlement": {
-              "description": "Limit → a numeric catalog flag (combined by max) that raises it.",
-              "type": "object",
-              "properties": {
-                "totalBytes": { "type": "string" },
-                "saveSlots": { "type": "string" }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        "unlicensed": {
-          "description": "Signed-in people with no usable licence for the product: limits no higher than the licensed ones; saves off unless saves is true.",
-          "type": "object",
-          "properties": {
-            "limits": { "$ref": "#/$defs/cloudSyncLimits" },
-            "saves": { "type": "boolean" }
-          },
-          "additionalProperties": false
-        },
-        "writes": {
-          "type": "object",
-          "properties": {
-            "requireLicense": { "type": "boolean" },
-            "minTrust": { "enum": [null, "basic", "attested"] }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
     },
     "assetSrc": {
       "description": "Where an image's bytes come from: an https URL, or a relative path in the product's own repository, resolved at the synced commit (private repositories included). A repo path has an optional leading ./, no leading /, no . or .. segment, at most 512 characters, and ends in .png, .jpg, .jpeg, .webp, .gif or .avif (lower case).",
@@ -3976,14 +3898,13 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "deprecated": { "type": "boolean" },
         "since": { "type": "string" },
         "user": {
-          "description": "CONFIG kinds only: makes the key a user setting — persisted on the device by the Config SDK and, for a signed-in device with Cloud Sync on, synced. sync: user (roams everywhere) · platform (within desktop, mobile, console or web) · device (per device, never roams) · local (never leaves the device). conflict: lastWrite (default) · max · min (number schemas) · merge (object schemas, per top-level member); never union. listed: shown in settings panels (default true).",
+          "description": "CONFIG kinds only: tunes a synced setting. Every Editable config key (no managementDefault of enforced or hidden) syncs for a signed-in person while Cloud Sync is on, with or without this block; on a locked key the block has no effect (a validator warning). sync: user (default; roams everywhere) · platform (within desktop, mobile, console or web) · local (never leaves the device). conflict: lastWrite (default) · max · min (number schemas) · merge (object schemas, per top-level member; a set is an object of booleans); never union or revision. listed: shown in settings panels (default true).",
           "type": "object",
           "properties": {
-            "sync": { "enum": ["user", "platform", "device", "local"] },
+            "sync": { "enum": ["user", "platform", "local"] },
             "conflict": { "enum": ["lastWrite", "max", "min", "merge"] },
             "listed": { "type": "boolean" }
           },
-          "required": ["sync"],
           "additionalProperties": false
         }
       },
@@ -4006,20 +3927,17 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         },
         {
-          "$comment": "user is only valid on config entries (user_setting_wrong_kind), and never on a key whose managementDefault is enforced or hidden (user_setting_locked_default).",
+          "$comment": "user is only valid on config entries (user_setting_wrong_kind). On a key whose managementDefault is enforced or hidden it has no effect, which the validator reports as a warning (user_setting_locked_default).",
           "if": { "required": ["user"] },
           "then": {
-            "properties": {
-              "kind": { "const": "config" },
-              "managementDefault": { "enum": ["default"] }
-            },
+            "properties": { "kind": { "const": "config" } },
             "required": ["kind"]
           }
         }
       ]
     },
     "cloudSync": {
-      "description": "The data shape of the product's Cloud Sync data (the Cloud Sync service): collections of records, save slots, and the migrations the server applies to synced values. Limits and access policy are not here: they are settings in .pkey/product's cloudSync block.",
+      "description": "The data shape of the product's Cloud Sync records (the Cloud Sync service): its collections and the migrations the server applies to synced values. A person's quota is not here: it is the pkey.cloudSync.bytes entitlement a tier, a licence override or an add-on sets.",
       "type": "object",
       "properties": {
         "collections": {
@@ -4033,68 +3951,70 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
                 "type": "string",
                 "pattern": "^[A-Za-z0-9._:-]{1,126}(?:\\\\.\\\\*)?$"
               },
+              "label": {
+                "description": "Shown in the console and the portal. Default: the template's label, else the name.",
+                "type": "string",
+                "minLength": 1
+              },
+              "template": {
+                "description": "saves (save slots: revision, 16 slots per person, a 32 MiB file with 5 older versions, and playtime, progress, chapter, formatVersion and a base64 thumbnail of about 32 KiB) · session (lastWrite, 16 records, an 8 MiB file with 1 older version). The declaration's own members override the template's, except a saves collection's slot count.",
+                "enum": ["saves", "session"]
+              },
               "access": {
-                "description": "owner (the signed-in person's devices write) · ownerRead (devices read; the console or the developer backend writes) · server (never delivered to devices).",
-                "enum": ["owner", "ownerRead", "server"]
+                "description": "owner, the only value (the signed-in person's devices read and write); omit it.",
+                "enum": ["owner"]
               },
               "conflict": {
-                "description": "revision (compare-and-swap, default) · lastWrite · merge (per top-level field) · union (a set: array schema with uniqueItems).",
-                "enum": ["revision", "lastWrite", "merge", "union"]
+                "description": "revision (compare-and-swap, default) · lastWrite · max · min (the record whose conflictField is larger or smaller) · merge (per top-level field) · union (a set: array schema with uniqueItems). The server applies every policy.",
+                "enum": [
+                  "lastWrite",
+                  "max",
+                  "min",
+                  "merge",
+                  "union",
+                  "revision"
+                ]
+              },
+              "conflictField": {
+                "description": "For max and min only: the number property of the schema the server compares.",
+                "type": "string"
               },
               "schema": {
                 "description": "A Draft-07-subset schema every record value must satisfy.",
                 "type": "object"
               },
-              "onAttach": {
-                "description": "What happens to a device's local records at its first sign-in (default prompt). A server collection cannot keepLocal.",
-                "enum": ["keepCloud", "keepLocal", "merge", "prompt"]
+              "maxRecords": {
+                "description": "The most records one person keeps here (at most 10,000). Not allowed on a saves collection: its 16 slots are a platform constant.",
+                "type": "integer",
+                "minimum": 1
+              },
+              "files": {
+                "description": "The one file a record may carry: its largest size in bytes (at most 1 GiB) and how many older versions are kept.",
+                "type": "object",
+                "properties": {
+                  "maxBytes": { "type": "integer", "minimum": 0 },
+                  "keepRevisions": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "requires": {
+                "description": "An entitlement the anchor licence must grant before a record is written: a catalog flag or a system entitlement.",
+                "type": "string"
               }
             },
-            "required": ["name", "access"],
+            "required": ["name"],
+            "allOf": [
+              {
+                "$comment": "A saves collection's slots are a platform constant (16), so it may not set maxRecords.",
+                "if": {
+                  "properties": { "template": { "const": "saves" } },
+                  "required": ["template"]
+                },
+                "then": { "not": { "required": ["maxRecords"] } }
+              }
+            ],
             "additionalProperties": false
           }
-        },
-        "open": {
-          "description": "true: undeclared collection names are allowed at default limits (default false).",
-          "type": "boolean"
-        },
-        "saves": {
-          "type": "object",
-          "properties": {
-            "conflict": {
-              "description": "How two divergent saves of a slot resolve, in the SDK (default prompt).",
-              "enum": [
-                "prompt",
-                "mostRecent",
-                "longestPlaytime",
-                "highestProgress"
-              ]
-            },
-            "requiresFlag": {
-              "description": "A catalog flag the person's effective entitlements must grant for saves to be written.",
-              "type": "string"
-            },
-            "metadata": {
-              "type": "object",
-              "properties": {
-                "schema": { "type": "object" },
-                "playtimeField": { "type": "string" },
-                "progressField": { "type": "string" }
-              },
-              "additionalProperties": false
-            },
-            "thumbnail": {
-              "type": "object",
-              "properties": { "maxBytes": { "type": "integer", "minimum": 0 } },
-              "additionalProperties": false
-            },
-            "format": {
-              "type": "object",
-              "properties": { "refuseNewer": { "type": "boolean" } },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
         },
         "migrations": {
           "type": "array",
@@ -8532,7 +8452,7 @@ var require_compose_collection = __commonJS({
     var resolveBlockMap = require_resolve_block_map();
     var resolveBlockSeq = require_resolve_block_seq();
     var resolveFlowCollection = require_resolve_flow_collection();
-    function resolveCollection(CN, ctx, token, onError, tagName, tag2) {
+    function resolveCollection2(CN, ctx, token, onError, tagName, tag2) {
       const coll = token.type === "block-map" ? resolveBlockMap.resolveBlockMap(CN, ctx, token, onError, tag2) : token.type === "block-seq" ? resolveBlockSeq.resolveBlockSeq(CN, ctx, token, onError, tag2) : resolveFlowCollection.resolveFlowCollection(CN, ctx, token, onError, tag2);
       const Coll = coll.constructor;
       if (tagName === "!" || tagName === Coll.tagName) {
@@ -8556,7 +8476,7 @@ var require_compose_collection = __commonJS({
       }
       const expType = token.type === "block-map" ? "map" : token.type === "block-seq" ? "seq" : token.start.source === "{" ? "map" : "seq";
       if (!tagToken || !tagName || tagName === "!" || tagName === YAMLMap2.YAMLMap.tagName && expType === "map" || tagName === YAMLSeq2.YAMLSeq.tagName && expType === "seq") {
-        return resolveCollection(CN, ctx, token, onError, tagName);
+        return resolveCollection2(CN, ctx, token, onError, tagName);
       }
       let tag2 = ctx.schema.tags.find((t) => t.tag === tagName && t.collection === expType);
       if (!tag2) {
@@ -8570,10 +8490,10 @@ var require_compose_collection = __commonJS({
           } else {
             onError(tagToken, "TAG_RESOLVE_FAILED", `Unresolved tag: ${tagName}`, true);
           }
-          return resolveCollection(CN, ctx, token, onError, tagName);
+          return resolveCollection2(CN, ctx, token, onError, tagName);
         }
       }
-      const coll = resolveCollection(CN, ctx, token, onError, tagName, tag2);
+      const coll = resolveCollection2(CN, ctx, token, onError, tagName, tag2);
       const res = tag2.resolve?.(coll, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg), ctx.options) ?? coll;
       const node = identity.isNode(res) ? res : new Scalar.Scalar(res);
       node.range = coll.range;
@@ -12730,7 +12650,6 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 var USER_SETTING_SYNC_SCOPES = [
   "user",
   "platform",
-  "device",
   "local"
 ];
 var USER_SETTING_CONFLICTS = [
@@ -12739,44 +12658,31 @@ var USER_SETTING_CONFLICTS = [
   "min",
   "merge"
 ];
-var CLOUD_SYNC_ACCESS = [
-  "owner",
-  "ownerRead",
-  "server"
-];
-var COLLECTION_CONFLICTS = [
-  "revision",
+var SYNC_CONFLICTS = [
   "lastWrite",
+  "max",
+  "min",
   "merge",
-  "union"
+  "union",
+  "revision"
 ];
-var COLLECTION_ON_ATTACH = [
-  "keepCloud",
-  "keepLocal",
-  "merge",
-  "prompt"
+var CLOUD_SYNC_ACCESS = ["owner"];
+var CLOUD_SYNC_TEMPLATE_NAMES = [
+  "saves",
+  "session"
 ];
-var SAVE_CONFLICT_POLICIES = [
-  "prompt",
-  "mostRecent",
-  "longestPlaytime",
-  "highestProgress"
-];
-var CLOUD_SYNC_TRUST_LEVELS = ["basic", "attested"];
 var CLOUD_SYNC_COLLECTION_PATTERN = "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
 var CLOUD_SYNC_MAX_MERGE_MEMBERS = 256;
+var CLOUD_SYNC_SAVE_SLOTS = 16;
 var KiB = 1024;
 var MiB = 1024 * KiB;
 var GiB = 1024 * MiB;
 var CLOUD_SYNC_CEILINGS = {
   perPerson: {
-    settingsBytes: 256 * KiB,
-    collectionBytes: 64 * MiB,
-    /** One record. */
-    recordBytes: 1 * MiB,
-    /** All saves of one person, and so also any one slot. */
-    saveBytes: 1 * GiB,
-    totalBytes: 256 * KiB + 64 * MiB + 1 * GiB
+    /** About 1.06 GiB: the owner-confirmed per-person total (settings, records and files). */
+    bytes: 256 * KiB + 64 * MiB + 1 * GiB,
+    /** One file. */
+    fileBytes: 1 * GiB
   },
   perProduct: {
     bytes: 50 * GiB,
@@ -12785,44 +12691,75 @@ var CLOUD_SYNC_CEILINGS = {
   }
 };
 var CLOUD_SYNC_DEFAULTS = {
-  licensed: {
-    totalBytes: 256 * MiB,
-    settingsBytes: 64 * KiB,
-    records: 1e4,
-    collectionBytes: 5 * MiB,
-    saves: { slots: 16, maxBytes: 32 * MiB, keepRevisions: 5 }
-  },
-  unlicensed: {
-    totalBytes: 1 * MiB,
-    settingsBytes: 64 * KiB,
-    records: 1e3,
-    collectionBytes: 512 * KiB,
-    saves: { slots: 1, maxBytes: 8 * MiB, keepRevisions: 1 }
-  },
-  /** Saves are off for an unlicensed person unless the product sets `unlicensed.saves`. */
-  unlicensedSaves: false,
-  settings: { maxKeys: 256, maxValueBytes: 8 * KiB },
-  collections: { maxDeclared: 32, maxRecordBytes: 64 * KiB },
+  /** A person's quota when nothing sets `pkey.cloudSync.bytes` (the `cloudSync.quota.defaultBytes`
+   *  setting's default). */
+  quotaBytes: 256 * MiB,
+  /** A signed-in person with no usable licence, on a product with no Anonymous devices tier:
+   *  1 MiB, and files are refused. */
+  unlicensedQuotaBytes: 1 * MiB,
+  /** Declared and open settings share one budget (D3). `maxValueBytes` bounds an open setting. */
+  settings: { maxKeys: 256, maxValueBytes: 8 * KiB, maxBytes: 64 * KiB },
+  records: { maxRecordBytes: 64 * KiB, maxRecords: 1e4, maxCollections: 32 },
+  files: { maxBytes: 32 * MiB, keepRevisions: 5 },
   push: { maxMutations: 100, maxBytes: 256 * KiB, perMinutePerDevice: 60 },
-  saveTransfersPerHour: 30
+  fileTransfersPerHour: 30
 };
-var CLOUD_SYNC_LIMIT_MEMBERS = [
-  { member: "totalBytes", ceiling: CLOUD_SYNC_CEILINGS.perPerson.totalBytes },
-  {
-    member: "settingsBytes",
-    ceiling: CLOUD_SYNC_CEILINGS.perPerson.settingsBytes
+var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB / 3);
+var CLOUD_SYNC_TEMPLATES = {
+  saves: {
+    label: "Saves",
+    conflict: "revision",
+    maxRecords: CLOUD_SYNC_SAVE_SLOTS,
+    files: {
+      maxBytes: CLOUD_SYNC_DEFAULTS.files.maxBytes,
+      keepRevisions: CLOUD_SYNC_DEFAULTS.files.keepRevisions
+    },
+    schema: {
+      type: "object",
+      properties: {
+        playtime: { type: "number", minimum: 0 },
+        progress: { type: "number", minimum: 0, maximum: 1 },
+        chapter: { type: "string", maxLength: 128 },
+        formatVersion: { type: "integer" },
+        thumbnail: {
+          type: "string",
+          contentEncoding: "base64",
+          maxLength: CLOUD_SYNC_THUMBNAIL_MAX_CHARS
+        }
+      }
+    }
   },
-  { member: "records", ceiling: null },
-  {
-    member: "collectionBytes",
-    ceiling: CLOUD_SYNC_CEILINGS.perPerson.collectionBytes
+  session: {
+    label: "Session",
+    conflict: "lastWrite",
+    maxRecords: 16,
+    files: { maxBytes: 8 * MiB, keepRevisions: 1 }
   }
-];
-var CLOUD_SYNC_SAVE_LIMIT_MEMBERS = [
-  { member: "slots", ceiling: null },
-  { member: "maxBytes", ceiling: CLOUD_SYNC_CEILINGS.perPerson.saveBytes },
-  { member: "keepRevisions", ceiling: null }
-];
+};
+function isEditable(entry) {
+  return entry.managementDefault !== "enforced" && entry.managementDefault !== "hidden";
+}
+function settingRoute(entry) {
+  if (entry.kind !== "config")
+    return { key: entry.key, route: "refused" };
+  if (!isEditable(entry))
+    return { key: entry.key, route: "locked" };
+  const user = entry.user ?? {};
+  const sync = user.sync ?? "user";
+  if (sync === "local")
+    return { key: entry.key, route: "local" };
+  return {
+    key: entry.key,
+    route: "synced",
+    scope: sync,
+    policy: user.conflict ?? "lastWrite",
+    listed: user.listed ?? true,
+    ...entry.schema !== void 0 ? { schema: entry.schema } : {}
+  };
+}
+function syncedSettings(catalog) {
+  return catalog.entries.map(settingRoute);
+}
 var USER_BLOCK_MEMBERS = /* @__PURE__ */ new Set(["sync", "conflict", "listed"]);
 var isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var oneOf = (v, values) => typeof v === "string" && values.includes(v);
@@ -12844,80 +12781,45 @@ function userSettingIssues(entry) {
   if (user === void 0)
     return [];
   const out = [];
+  const error = (code, at, message) => {
+    out.push({ code, severity: "error", at, message });
+  };
   if (!isPlainObject(user)) {
-    out.push({
-      code: "invalid_user_setting",
-      at: "user",
-      message: "user must be an object with sync (user, platform, device or local), and optionally conflict and listed."
-    });
+    error("invalid_user_setting", "user", "user must be an object with optional sync (user, platform or local), conflict and listed.");
     return out;
   }
   for (const member of Object.keys(user)) {
     if (!USER_BLOCK_MEMBERS.has(member))
-      out.push({
-        code: "invalid_user_setting",
-        at: `user.${member}`,
-        message: `user.${member} is not a user-setting member (sync, conflict, listed).`
-      });
+      error("invalid_user_setting", `user.${member}`, `user.${member} is not a synced-setting member (sync, conflict, listed).`);
   }
-  if (!oneOf(user.sync, USER_SETTING_SYNC_SCOPES))
-    out.push({
-      code: "invalid_user_setting",
-      at: "user.sync",
-      message: "user.sync is required and must be user, platform, device or local."
-    });
+  if (user.sync === "device")
+    error("invalid_user_setting", "user.sync", "user.sync device is retired: a reinstall gets a new device id, so the value could not survive it. Use local to keep a value on the device.");
+  else if (user.sync !== void 0 && !oneOf(user.sync, USER_SETTING_SYNC_SCOPES))
+    error("invalid_user_setting", "user.sync", "user.sync must be user, platform or local.");
   if (user.listed !== void 0 && typeof user.listed !== "boolean")
-    out.push({
-      code: "invalid_user_setting",
-      at: "user.listed",
-      message: "user.listed must be a boolean."
-    });
+    error("invalid_user_setting", "user.listed", "user.listed must be a boolean.");
   if (user.conflict === "union") {
-    out.push({
-      code: "user_conflict_union",
-      at: "user.conflict",
-      message: "user.conflict cannot be union; hold a set as an object of booleans with conflict: merge."
-    });
+    error("user_conflict_union", "user.conflict", "user.conflict cannot be union; hold a set as an object of booleans with conflict: merge.");
   } else if (user.conflict !== void 0 && !oneOf(user.conflict, USER_SETTING_CONFLICTS)) {
-    out.push({
-      code: "invalid_user_setting",
-      at: "user.conflict",
-      message: "user.conflict must be lastWrite, max, min or merge."
-    });
+    error("invalid_user_setting", "user.conflict", "user.conflict must be lastWrite, max, min or merge.");
   }
   if (entry.kind !== "config")
-    out.push({
-      code: "user_setting_wrong_kind",
-      at: "user",
-      message: "user is only valid on config entries."
-    });
+    error("user_setting_wrong_kind", "user", "user is only valid on config entries.");
   if (entry.managementDefault === "enforced" || entry.managementDefault === "hidden")
     out.push({
       code: "user_setting_locked_default",
+      severity: "warning",
       at: "user",
-      message: "user is not allowed on a key whose managementDefault is enforced or hidden."
+      message: "user has no effect on a key whose managementDefault is enforced or hidden: the key is locked, so it never syncs."
     });
   const schema = isPlainObject(entry.schema) ? entry.schema : {};
   if ((user.conflict === "max" || user.conflict === "min") && !schemaTypeIn(schema, ["number", "integer"]))
-    out.push({
-      code: "user_conflict_type_mismatch",
-      at: "user.conflict",
-      message: `user.conflict ${String(user.conflict)} needs a number schema.`
-    });
+    error("user_conflict_type_mismatch", "user.conflict", `user.conflict ${String(user.conflict)} needs a number schema.`);
   if (user.conflict === "merge") {
     if (!schemaTypeIn(schema, ["object"])) {
-      out.push({
-        code: "user_conflict_type_mismatch",
-        at: "user.conflict",
-        message: "user.conflict merge needs an object schema."
-      });
-    } else {
-      if (mergeMembersOverLimit(schema))
-        out.push({
-          code: "merge_members_over_limit",
-          at: "schema",
-          message: `A merged value has at most ${CLOUD_SYNC_MAX_MERGE_MEMBERS} top-level members (maxProperties and declared properties).`
-        });
+      error("user_conflict_type_mismatch", "user.conflict", "user.conflict merge needs an object schema; a set is an object of booleans.");
+    } else if (mergeMembersOverLimit(schema)) {
+      error("merge_members_over_limit", "schema", `A merged value has at most ${CLOUD_SYNC_MAX_MERGE_MEMBERS} top-level members (maxProperties and declared properties).`);
     }
   }
   return out;
@@ -14014,6 +13916,12 @@ var RESERVED_ENTITLEMENT_KEYS = [
     key: "license.tierLabel",
     type: "string",
     rule: "The license's tier label."
+  },
+  {
+    key: "pkey.cloudSync.bytes",
+    type: "integer",
+    rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Sync reads it from the anchor licence as the person's quota in bytes (256 MiB when unset).",
+    injected: false
   }
 ];
 var RESERVED_ENTITLEMENT_PREFIXES = [
@@ -14148,36 +14056,29 @@ function reservedNameDeclarations(catalog) {
   return out;
 }
 var COLLECTION_RE = new RegExp(CLOUD_SYNC_COLLECTION_PATTERN);
-var CATALOG_MEMBERS = /* @__PURE__ */ new Set(["collections", "open", "saves", "migrations"]);
+var CATALOG_MEMBERS = /* @__PURE__ */ new Set(["collections", "migrations"]);
 var COLLECTION_MEMBERS = /* @__PURE__ */ new Set([
   "name",
+  "label",
+  "template",
   "access",
   "conflict",
+  "conflictField",
   "schema",
-  "onAttach"
+  "maxRecords",
+  "files",
+  "requires"
 ]);
-var SAVES_MEMBERS = /* @__PURE__ */ new Set([
-  "conflict",
-  "requiresFlag",
-  "metadata",
-  "thumbnail",
-  "format"
-]);
+var FILES_MEMBERS = /* @__PURE__ */ new Set(["maxBytes", "keepRevisions"]);
 var MIGRATION_MEMBERS = /* @__PURE__ */ new Set([
   "toSchemaVersion",
   "rename",
   "mapValues",
   "drop"
 ]);
-var PRODUCT_MEMBERS = /* @__PURE__ */ new Set(["limits", "unlicensed", "writes"]);
-var LIMIT_MEMBERS = /* @__PURE__ */ new Set([
-  ...CLOUD_SYNC_LIMIT_MEMBERS.map((m) => m.member),
-  "saves"
-]);
-var SAVE_LIMIT_MEMBERS = new Set(
-  CLOUD_SYNC_SAVE_LIMIT_MEMBERS.map((m) => m.member)
+var SYSTEM_KEYS = new Set(
+  RESERVED_ENTITLEMENT_KEYS.map((k) => k.key)
 );
-var BY_ENTITLEMENT_MEMBERS = /* @__PURE__ */ new Set(["totalBytes", "saveSlots"]);
 function validateCloudSync(errors, warnings, ctx) {
   const flags = flagEntries(ctx.entries);
   const keys = declaredKeys(ctx.entries);
@@ -14185,7 +14086,7 @@ function validateCloudSync(errors, warnings, ctx) {
   if (ctx.catalogChecked && ctx.entries) {
     for (const [i, raw] of ctx.entries.entries()) {
       if (!isRecord22(raw) || raw.user === void 0) continue;
-      if (validateUserBlock(errors, raw, `/entries/${i}/user`)) {
+      if (validateUserBlock(errors, warnings, raw, `/entries/${i}/user`)) {
         if (raw.user.sync !== "local")
           declaresSync = true;
       }
@@ -14196,8 +14097,12 @@ function validateCloudSync(errors, warnings, ctx) {
     validateCatalogBlock(errors, ctx.catalogCloudSync, flags, keys);
   }
   if (ctx.productCloudSync !== void 0) {
-    declaresSync = true;
-    validateProductBlock(errors, ctx.productCloudSync, ctx.tierIds, flags);
+    shape(
+      errors,
+      "product",
+      "/cloudSync",
+      "The cloudSync block in .pkey/product is retired. A person's Cloud Sync quota is the pkey.cloudSync.bytes entitlement: set it on a tier, a licence override or an add-on. Collections belong in .pkey/schema's cloudSync block."
+    );
   }
   if (declaresSync && !ctx.syncEnabled) {
     add(
@@ -14205,18 +14110,24 @@ function validateCloudSync(errors, warnings, ctx) {
       "product",
       "/modules/sync",
       "cloud_sync_block_without_service",
-      "The manifest declares synced user settings or a cloudSync block, but the Cloud Sync service is off; settings stay on the device until it is enabled."
+      "The manifest declares synced settings or a cloudSync block, but the Cloud Sync service is off; settings stay on the device until it is enabled."
     );
   }
 }
-function validateUserBlock(errors, entry, path30) {
+function validateUserBlock(errors, warnings, entry, path30) {
   const issues = userSettingIssues(entry);
   for (const issue of issues) {
     const where2 = issue.at === "schema" ? path30.replace(/\/user$/, "/schema") : issue.at === "user" ? path30 : `${path30}/${issue.at.slice("user.".length)}`;
-    add(errors, "schema", where2, issue.code, issue.message);
+    add(
+      issue.severity === "warning" ? warnings : errors,
+      "schema",
+      where2,
+      issue.code,
+      issue.message
+    );
   }
-  return isRecord22(entry.user) && isOneOf(entry.user.sync, USER_SETTING_SYNC_SCOPES) && !issues.some(
-    (i) => i.code === "invalid_user_setting" && i.at !== "user.listed" && i.at !== "user.conflict"
+  return isRecord22(entry.user) && !issues.some(
+    (i) => i.severity === "error" && i.code === "invalid_user_setting" && i.at !== "user.listed" && i.at !== "user.conflict"
   );
 }
 function mergeMemberLimit(errors, schema, path30) {
@@ -14235,29 +14146,42 @@ function validateCatalogBlock(errors, block, flags, keys) {
     shape(errors, "schema", base, "cloudSync must be an object.");
     return;
   }
-  unknownMembers(errors, "schema", block, CATALOG_MEMBERS, base);
-  if (block.open !== void 0 && typeof block.open !== "boolean") {
-    shape(
-      errors,
-      "schema",
-      `${base}/open`,
-      "cloudSync.open must be a boolean."
-    );
+  for (const k of Object.keys(block)) {
+    if (CATALOG_MEMBERS.has(k)) continue;
+    const at = `${base}/${escapePointer2(k)}`;
+    if (k === "saves")
+      shape(
+        errors,
+        "schema",
+        at,
+        `cloudSync.saves is retired: declare a collection with template: "saves" in cloudSync.collections. A save is a record that may carry one file, and its conflict policy is the collection's.`
+      );
+    else if (k === "open")
+      shape(
+        errors,
+        "schema",
+        at,
+        "cloudSync.open is retired: every collection is declared in cloudSync.collections. Undeclared settings sync as open settings without it."
+      );
+    else shape(errors, "schema", at, `${k} is not a member here.`);
   }
   if (block.collections !== void 0) {
-    if (!Array.isArray(block.collections) || block.collections.length > CLOUD_SYNC_DEFAULTS.collections.maxDeclared) {
+    const max = CLOUD_SYNC_DEFAULTS.records.maxCollections;
+    if (!Array.isArray(block.collections) || block.collections.length > max) {
       shape(
         errors,
         "schema",
         `${base}/collections`,
-        `cloudSync.collections must be a list of at most ${CLOUD_SYNC_DEFAULTS.collections.maxDeclared} collections.`
+        `cloudSync.collections must be a list of at most ${max} collections.`
       );
     } else {
-      validateCollections(errors, block.collections, `${base}/collections`);
+      validateCollections(
+        errors,
+        block.collections,
+        flags,
+        `${base}/collections`
+      );
     }
-  }
-  if (block.saves !== void 0) {
-    validateSaves(errors, block.saves, flags, `${base}/saves`);
   }
   if (block.migrations !== void 0) {
     if (!Array.isArray(block.migrations)) {
@@ -14274,7 +14198,7 @@ function validateCatalogBlock(errors, block, flags, keys) {
     }
   }
 }
-function validateCollections(errors, collections, base) {
+function validateCollections(errors, collections, flags, base) {
   const names = [];
   for (const [i, raw] of collections.entries()) {
     const path30 = `${base}/${i}`;
@@ -14282,29 +14206,55 @@ function validateCollections(errors, collections, base) {
       shape(errors, "schema", path30, "A collection must be an object.");
       continue;
     }
-    unknownMembers(errors, "schema", raw, COLLECTION_MEMBERS, path30);
-    if (!isOneOf(raw.access, CLOUD_SYNC_ACCESS)) {
+    for (const k of Object.keys(raw)) {
+      if (COLLECTION_MEMBERS.has(k)) continue;
+      if (k === "onAttach")
+        shape(
+          errors,
+          "schema",
+          `${path30}/onAttach`,
+          "onAttach is retired with no replacement: the first sign-in is an ordinary sync, and records the device made before it are pushed create-only."
+        );
+      else
+        shape(
+          errors,
+          "schema",
+          `${path30}/${escapePointer2(k)}`,
+          `${k} is not a member here.`
+        );
+    }
+    if (raw.access !== void 0 && !isOneOf(raw.access, CLOUD_SYNC_ACCESS)) {
       shape(
         errors,
         "schema",
         `${path30}/access`,
-        "A collection's access is required and must be owner, ownerRead or server."
+        "A collection's access is owner, the only value (the signed-in person's devices read and write it); omit access. ownerRead, server and public collections are not supported."
       );
     }
-    if (raw.conflict !== void 0 && !isOneOf(raw.conflict, COLLECTION_CONFLICTS)) {
+    if (raw.label !== void 0 && (typeof raw.label !== "string" || raw.label === "")) {
+      shape(
+        errors,
+        "schema",
+        `${path30}/label`,
+        "A collection's label must be a non-empty string."
+      );
+    }
+    const template = raw.template === void 0 ? void 0 : isOneOf(raw.template, CLOUD_SYNC_TEMPLATE_NAMES) ? raw.template : null;
+    if (template === null) {
+      shape(
+        errors,
+        "schema",
+        `${path30}/template`,
+        `A collection's template must be one of ${CLOUD_SYNC_TEMPLATE_NAMES.join(", ")}.`
+      );
+    }
+    const t = template ? CLOUD_SYNC_TEMPLATES[template] : void 0;
+    if (raw.conflict !== void 0 && !isOneOf(raw.conflict, SYNC_CONFLICTS)) {
       shape(
         errors,
         "schema",
         `${path30}/conflict`,
-        "A collection's conflict must be revision, lastWrite, merge or union."
-      );
-    }
-    if (raw.onAttach !== void 0 && !isOneOf(raw.onAttach, COLLECTION_ON_ATTACH)) {
-      shape(
-        errors,
-        "schema",
-        `${path30}/onAttach`,
-        "A collection's onAttach must be keepCloud, keepLocal, merge or prompt."
+        `A collection's conflict must be one of ${SYNC_CONFLICTS.join(", ")}.`
       );
     }
     if (raw.schema !== void 0 && !isRecord22(raw.schema)) {
@@ -14315,8 +14265,98 @@ function validateCollections(errors, collections, base) {
         "A collection's schema must be an object."
       );
     }
-    const schema = isRecord22(raw.schema) ? raw.schema : {};
-    if (raw.conflict === "union" && !(schemaTypeIs(schema, ["array"]) && schema.uniqueItems === true)) {
+    if (raw.conflictField !== void 0 && typeof raw.conflictField !== "string") {
+      shape(
+        errors,
+        "schema",
+        `${path30}/conflictField`,
+        "A collection's conflictField must name a property of its schema."
+      );
+    }
+    if (raw.requires !== void 0 && typeof raw.requires !== "string") {
+      shape(
+        errors,
+        "schema",
+        `${path30}/requires`,
+        "A collection's requires must name an entitlement."
+      );
+    }
+    const conflict = isOneOf(raw.conflict, SYNC_CONFLICTS) ? raw.conflict : t?.conflict ?? "revision";
+    const schema = isRecord22(raw.schema) ? raw.schema : t?.schema ?? {};
+    if (raw.maxRecords !== void 0) {
+      if (template === "saves") {
+        shape(
+          errors,
+          "schema",
+          `${path30}/maxRecords`,
+          `A saves collection keeps ${CLOUD_SYNC_SAVE_SLOTS} slots per person, a platform constant; remove maxRecords.`
+        );
+      } else if (!positiveInteger(raw.maxRecords)) {
+        shape(
+          errors,
+          "schema",
+          `${path30}/maxRecords`,
+          "A collection's maxRecords must be a positive integer."
+        );
+      } else {
+        ceilingCheck(
+          errors,
+          raw.maxRecords,
+          CLOUD_SYNC_DEFAULTS.records.maxRecords,
+          `${path30}/maxRecords`
+        );
+      }
+    }
+    if (raw.files !== void 0) {
+      const f = raw.files;
+      if (!isRecord22(f) || Object.keys(f).some((k) => !FILES_MEMBERS.has(k)) || f.maxBytes !== void 0 && !nonNegativeInteger(f.maxBytes) || f.keepRevisions !== void 0 && !nonNegativeInteger(f.keepRevisions)) {
+        shape(
+          errors,
+          "schema",
+          `${path30}/files`,
+          "A collection's files has maxBytes and keepRevisions (non-negative integers)."
+        );
+      } else {
+        ceilingCheck(
+          errors,
+          f.maxBytes,
+          CLOUD_SYNC_CEILINGS.perPerson.fileBytes,
+          `${path30}/files/maxBytes`
+        );
+      }
+    }
+    if (typeof raw.requires === "string" && !flags.has(raw.requires) && !SYSTEM_KEYS.has(raw.requires)) {
+      add(
+        errors,
+        "schema",
+        `${path30}/requires`,
+        "cloud_sync_unknown_entitlement",
+        `requires names ${raw.requires}, which is neither a flag in the catalog nor a system entitlement.`
+      );
+    }
+    if (conflict === "max" || conflict === "min") {
+      const field = typeof raw.conflictField === "string" ? raw.conflictField : void 0;
+      const props = isRecord22(schema.properties) ? schema.properties : {};
+      const prop = field === void 0 ? void 0 : props[field];
+      if (raw.conflictField === void 0 || field !== void 0 && !(isRecord22(prop) && schemaTypeIs(prop, ["number", "integer"]))) {
+        add(
+          errors,
+          "schema",
+          `${path30}/conflictField`,
+          "collection_conflict_field",
+          `A ${conflict} collection needs conflictField naming a number property of its schema; the server keeps the record whose field is ${conflict === "max" ? "larger" : "smaller"}.`
+        );
+      }
+    } else if (raw.conflictField !== void 0) {
+      add(
+        errors,
+        "schema",
+        `${path30}/conflictField`,
+        "collection_conflict_field",
+        "conflictField is only for a max or min collection."
+      );
+    }
+    if (conflict === "union" && !(schemaTypeIs(schema, ["array"]) && schema.uniqueItems === true)) {
       add(
         errors,
         "schema",
@@ -14325,17 +14365,8 @@ function validateCollections(errors, collections, base) {
         "A union collection needs a schema of type array with uniqueItems: true."
       );
     }
-    if (raw.conflict === "merge") {
+    if (conflict === "merge") {
       mergeMemberLimit(errors, schema, `${path30}/schema`);
-    }
-    if (raw.access === "server" && raw.onAttach === "keepLocal") {
-      add(
-        errors,
-        "schema",
-        `${path30}/onAttach`,
-        "on_attach_keep_local_forbidden",
-        "A server collection is never on a device, so it cannot set onAttach: keepLocal."
-      );
     }
     if (typeof raw.name !== "string" || !COLLECTION_RE.test(raw.name)) {
       add(
@@ -14369,74 +14400,6 @@ function namesOverlap(a, b) {
   if (pa && b.startsWith(pa)) return true;
   if (pb && a.startsWith(pb)) return true;
   return false;
-}
-function validateSaves(errors, saves, flags, path30) {
-  if (!isRecord22(saves)) {
-    shape(errors, "schema", path30, "cloudSync.saves must be an object.");
-    return;
-  }
-  unknownMembers(errors, "schema", saves, SAVES_MEMBERS, path30);
-  if (saves.conflict !== void 0 && !isOneOf(saves.conflict, SAVE_CONFLICT_POLICIES)) {
-    shape(
-      errors,
-      "schema",
-      `${path30}/conflict`,
-      "cloudSync.saves.conflict must be prompt, mostRecent, longestPlaytime or highestProgress."
-    );
-  }
-  if (saves.requiresFlag !== void 0) {
-    if (typeof saves.requiresFlag !== "string") {
-      shape(
-        errors,
-        "schema",
-        `${path30}/requiresFlag`,
-        "cloudSync.saves.requiresFlag must name a catalog flag."
-      );
-    } else if (!flags.has(saves.requiresFlag)) {
-      add(
-        errors,
-        "schema",
-        `${path30}/requiresFlag`,
-        "cloud_sync_unknown_flag",
-        `cloudSync.saves.requiresFlag names ${saves.requiresFlag}, which is not a flag in the catalog.`
-      );
-    }
-  }
-  if (saves.metadata !== void 0) {
-    const md = saves.metadata;
-    if (!isRecord22(md) || Object.keys(md).some(
-      (k) => !["schema", "playtimeField", "progressField"].includes(k)
-    ) || md.schema !== void 0 && !isRecord22(md.schema) || md.playtimeField !== void 0 && typeof md.playtimeField !== "string" || md.progressField !== void 0 && typeof md.progressField !== "string") {
-      shape(
-        errors,
-        "schema",
-        `${path30}/metadata`,
-        "cloudSync.saves.metadata has schema (an object), playtimeField and progressField (strings)."
-      );
-    }
-  }
-  if (saves.thumbnail !== void 0) {
-    const t = saves.thumbnail;
-    if (!isRecord22(t) || Object.keys(t).some((k) => k !== "maxBytes") || t.maxBytes !== void 0 && !nonNegativeInteger(t.maxBytes)) {
-      shape(
-        errors,
-        "schema",
-        `${path30}/thumbnail`,
-        "cloudSync.saves.thumbnail has maxBytes (a non-negative integer)."
-      );
-    }
-  }
-  if (saves.format !== void 0) {
-    const f = saves.format;
-    if (!isRecord22(f) || Object.keys(f).some((k) => k !== "refuseNewer") || f.refuseNewer !== void 0 && typeof f.refuseNewer !== "boolean") {
-      shape(
-        errors,
-        "schema",
-        `${path30}/format`,
-        "cloudSync.saves.format has refuseNewer (a boolean)."
-      );
-    }
-  }
 }
 function validateMigration(errors, m, keys, path30) {
   if (!isRecord22(m)) {
@@ -14503,247 +14466,15 @@ function validateMigration(errors, m, keys, path30) {
     }
   }
 }
-function validateProductBlock(errors, block, tierIds, flags) {
-  const base = "/cloudSync";
-  if (!isRecord22(block)) {
-    shape(errors, "product", base, "cloudSync must be an object.");
-    return;
-  }
-  unknownMembers(errors, "product", block, PRODUCT_MEMBERS, base);
-  let licensed = {};
-  if (block.limits !== void 0) {
-    const limits = block.limits;
-    if (!isRecord22(limits)) {
-      shape(
-        errors,
-        "product",
-        `${base}/limits`,
-        "cloudSync.limits must be an object."
-      );
-    } else {
-      licensed = limits;
-      const extra = /* @__PURE__ */ new Set([...LIMIT_MEMBERS, "byTier", "byEntitlement"]);
-      limitsBlock(errors, limits, `${base}/limits`, extra);
-      if (limits.byTier !== void 0) {
-        if (!isRecord22(limits.byTier)) {
-          shape(
-            errors,
-            "product",
-            `${base}/limits/byTier`,
-            "cloudSync.limits.byTier maps tier ids to limits."
-          );
-        } else {
-          for (const [tier, tierLimits] of Object.entries(limits.byTier)) {
-            const path30 = `${base}/limits/byTier/${escapePointer2(tier)}`;
-            if (!tierIds.has(tier)) {
-              add(
-                errors,
-                "product",
-                path30,
-                "cloud_sync_unknown_tier",
-                `cloudSync.limits.byTier names ${tier}, which is not a declared tier.`
-              );
-            }
-            if (!isRecord22(tierLimits)) {
-              shape(
-                errors,
-                "product",
-                path30,
-                "A tier's limits must be an object."
-              );
-            } else {
-              limitsBlock(errors, tierLimits, path30, LIMIT_MEMBERS);
-            }
-          }
-        }
-      }
-      if (limits.byEntitlement !== void 0) {
-        byEntitlement(
-          errors,
-          limits.byEntitlement,
-          flags,
-          `${base}/limits/byEntitlement`
-        );
-      }
-    }
-  }
-  if (block.unlicensed !== void 0) {
-    const u = block.unlicensed;
-    const path30 = `${base}/unlicensed`;
-    if (!isRecord22(u)) {
-      shape(errors, "product", path30, "cloudSync.unlicensed must be an object.");
-    } else {
-      unknownMembers(errors, "product", u, /* @__PURE__ */ new Set(["limits", "saves"]), path30);
-      if (u.saves !== void 0 && typeof u.saves !== "boolean") {
-        shape(
-          errors,
-          "product",
-          `${path30}/saves`,
-          "cloudSync.unlicensed.saves must be a boolean."
-        );
-      }
-      if (u.limits !== void 0) {
-        if (!isRecord22(u.limits)) {
-          shape(
-            errors,
-            "product",
-            `${path30}/limits`,
-            "cloudSync.unlicensed.limits must be an object."
-          );
-        } else {
-          limitsBlock(errors, u.limits, `${path30}/limits`, LIMIT_MEMBERS);
-          unlicensedWithinLicensed(
-            errors,
-            u.limits,
-            licensed,
-            `${path30}/limits`
-          );
-        }
-      }
-    }
-  }
-  if (block.writes !== void 0) {
-    const w = block.writes;
-    const path30 = `${base}/writes`;
-    if (!isRecord22(w) || Object.keys(w).some((k) => k !== "requireLicense" && k !== "minTrust") || w.requireLicense !== void 0 && typeof w.requireLicense !== "boolean" || w.minTrust !== void 0 && w.minTrust !== null && !isOneOf(w.minTrust, CLOUD_SYNC_TRUST_LEVELS)) {
-      shape(
-        errors,
-        "product",
-        path30,
-        "cloudSync.writes has requireLicense (a boolean) and minTrust (null, basic or attested)."
-      );
-    }
-  }
-}
-function limitsBlock(errors, limits, path30, allowed) {
-  unknownMembers(errors, "product", limits, allowed, path30);
-  for (const { member, ceiling } of CLOUD_SYNC_LIMIT_MEMBERS) {
-    ceilingCheck(errors, limits[member], ceiling, `${path30}/${member}`);
-  }
-  if (limits.saves !== void 0) {
-    if (!isRecord22(limits.saves)) {
-      shape(
-        errors,
-        "product",
-        `${path30}/saves`,
-        "saves limits must be an object."
-      );
-      return;
-    }
-    unknownMembers(
-      errors,
-      "product",
-      limits.saves,
-      SAVE_LIMIT_MEMBERS,
-      `${path30}/saves`
-    );
-    for (const { member, ceiling } of CLOUD_SYNC_SAVE_LIMIT_MEMBERS) {
-      ceilingCheck(
-        errors,
-        limits.saves[member],
-        ceiling,
-        `${path30}/saves/${member}`
-      );
-    }
-  }
-}
 function ceilingCheck(errors, value, ceiling, path30) {
-  if (value === void 0) return;
-  if (!nonNegativeInteger(value)) {
-    shape(errors, "product", path30, "A limit must be a non-negative integer.");
-    return;
-  }
-  if (ceiling !== null && value > ceiling) {
-    add(
-      errors,
-      "product",
-      path30,
-      "cloud_sync_limit_over_ceiling",
-      `${path30.slice(1).replaceAll("/", ".")} is ${value}, above the platform ceiling of ${ceiling}.`
-    );
-  }
-}
-function unlicensedWithinLicensed(errors, unlicensed, licensed, path30) {
-  const defaults = CLOUD_SYNC_DEFAULTS.licensed;
-  for (const { member } of CLOUD_SYNC_LIMIT_MEMBERS) {
-    const own = licensed[member];
-    over(
-      errors,
-      unlicensed[member],
-      nonNegativeInteger(own) ? own : defaults[member],
-      `${path30}/${member}`
-    );
-  }
-  if (isRecord22(unlicensed.saves)) {
-    const ls = isRecord22(licensed.saves) ? licensed.saves : {};
-    for (const { member } of CLOUD_SYNC_SAVE_LIMIT_MEMBERS) {
-      const own = ls[member];
-      over(
-        errors,
-        unlicensed.saves[member],
-        nonNegativeInteger(own) ? own : defaults.saves[member],
-        `${path30}/saves/${member}`
-      );
-    }
-  }
-}
-function over(errors, value, licensed, path30) {
-  if (nonNegativeInteger(value) && value > licensed) {
-    add(
-      errors,
-      "product",
-      path30,
-      "cloud_sync_limit_over_ceiling",
-      `${path30.slice(1).replaceAll("/", ".")} is ${value}, above the licensed limit of ${licensed}.`
-    );
-  }
-}
-function byEntitlement(errors, raw, flags, path30) {
-  if (!isRecord22(raw)) {
-    shape(
-      errors,
-      "product",
-      path30,
-      "cloudSync.limits.byEntitlement maps totalBytes and saveSlots to flag keys."
-    );
-    return;
-  }
-  unknownMembers(errors, "product", raw, BY_ENTITLEMENT_MEMBERS, path30);
-  for (const [member, flag] of Object.entries(raw)) {
-    if (!BY_ENTITLEMENT_MEMBERS.has(member)) continue;
-    const at = `${path30}/${member}`;
-    if (typeof flag !== "string") {
-      shape(
-        errors,
-        "product",
-        at,
-        "A byEntitlement value must name a catalog flag."
-      );
-      continue;
-    }
-    const entry = flags.get(flag);
-    if (!entry) {
-      add(
-        errors,
-        "product",
-        at,
-        "cloud_sync_unknown_flag",
-        `cloudSync.limits.byEntitlement.${member} names ${flag}, which is not a flag in the catalog.`
-      );
-      continue;
-    }
-    const schema = isRecord22(entry.schema) ? entry.schema : {};
-    const combine = entry.combine;
-    if (!schemaTypeIs(schema, ["number", "integer"]) || combine !== void 0 && combine !== "max") {
-      add(
-        errors,
-        "product",
-        at,
-        "cloud_sync_entitlement_not_max",
-        `Flag ${flag} must be a number combined by max to raise a Cloud Sync limit.`
-      );
-    }
-  }
+  if (!nonNegativeInteger(value) || value <= ceiling) return;
+  add(
+    errors,
+    "schema",
+    path30,
+    "cloud_sync_limit_over_ceiling",
+    `${path30.slice(1).replaceAll("/", ".")} is ${value}, above the platform ceiling of ${ceiling}.`
+  );
 }
 function flagEntries(entries) {
   const out = /* @__PURE__ */ new Map();
@@ -14787,6 +14518,9 @@ function escapePointer2(s) {
 }
 function nonNegativeInteger(v) {
   return typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+}
+function positiveInteger(v) {
+  return nonNegativeInteger(v) && v >= 1;
 }
 function isOneOf(v, values) {
   return typeof v === "string" && values.includes(v);
@@ -19670,7 +19404,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Edge mint signing key refs must be stable uppercase names."
       );
     }
-    if (raw.ttlSeconds !== void 0 && !positiveInteger(raw.ttlSeconds)) {
+    if (raw.ttlSeconds !== void 0 && !positiveInteger2(raw.ttlSeconds)) {
       add4(
         errors,
         "release",
@@ -19819,7 +19553,6 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       catalogCloudSync: isRecord6(manifest.schema) ? manifest.schema.cloudSync : void 0,
       productCloudSync: productRoot.cloudSync,
       catalogChecked: catalog !== null && modules.includes("config"),
-      tierIds,
       syncEnabled: modules.includes("sync")
     });
   }
@@ -22367,7 +22100,7 @@ function normalizeIdentityBlock(raw) {
     out.redirectPaths = raw.redirectPaths.filter(isString);
   return Object.keys(out).length > 0 ? out : void 0;
 }
-function positiveInteger(v) {
+function positiveInteger2(v) {
   return typeof v === "number" && Number.isInteger(v) && v > 0;
 }
 function nonNegativeInteger2(v) {
@@ -29642,17 +29375,32 @@ import { mkdir as mkdir2, readFile as readFile6, writeFile as writeFile5 } from 
 import path7 from "node:path";
 var BANNER = "// @generated by tools/gen-mirrors.ts — do not edit. Run `pnpm gen mirrors`.";
 var PY_BANNER = "# @generated by tools/gen-mirrors.ts — do not edit. Run `pnpm gen mirrors`.";
-function userPolicies(catalog) {
-  return catalog.entries.filter((e) => e.kind === "config" && e.user !== void 0).map((e) => ({
-    key: e.key,
-    sync: e.user.sync,
-    conflict: e.user.conflict ?? "lastWrite",
-    listed: e.user.listed ?? true
-  }));
+function settingPolicies(catalog) {
+  const listed = new Map(
+    catalog.entries.map((e) => [e.key, e.user?.listed ?? true])
+  );
+  const out = [];
+  for (const r of syncedSettings(catalog)) {
+    if (r.route === "synced")
+      out.push({
+        key: r.key,
+        sync: r.scope,
+        conflict: r.policy,
+        listed: r.listed
+      });
+    else if (r.route === "local")
+      out.push({
+        key: r.key,
+        sync: "local",
+        conflict: "lastWrite",
+        listed: listed.get(r.key) ?? true
+      });
+  }
+  return out;
 }
 function renderTs(catalog) {
   const keys = catalog.entries.map((e) => JSON.stringify(e.key)).join(" | ");
-  const users = userPolicies(catalog);
+  const users = settingPolicies(catalog);
   const userKeys = users.map((u) => JSON.stringify(u.key)).join(" | ");
   const userRows = users.map(
     (u) => `  ${JSON.stringify(u.key)}: { sync: ${JSON.stringify(u.sync)}, conflict: ${JSON.stringify(u.conflict)}, listed: ${u.listed} },`
@@ -29682,13 +29430,13 @@ export interface ConfigEntry {
   ui?: Record<string, unknown>;
   dependsOn?: { key: string; equals: unknown };
   accessor?: string;
-  user?: { sync: UserSettingSync; conflict?: UserSettingConflict; listed?: boolean };
+  user?: { sync?: UserSettingSync; conflict?: UserSettingConflict; listed?: boolean };
 }
 
-export type UserSettingSync = "user" | "platform" | "device" | "local";
+export type UserSettingSync = "user" | "platform" | "local";
 export type UserSettingConflict = "lastWrite" | "max" | "min" | "merge";
 
-/** A user setting's policy, with the defaults applied. */
+/** A settable key's policy, with the defaults applied. */
 export interface UserSettingPolicy {
   sync: UserSettingSync;
   conflict: UserSettingConflict;
@@ -29698,7 +29446,7 @@ export interface UserSettingPolicy {
 /** Every declared key in this catalog. */
 export type ConfigKey = ${keys || "never"};
 
-/** Every user setting (a config key with a \`user\` block) in this catalog. */
+/** Every settable key (an Editable config key: synced, or local) in this catalog. */
 export type UserSettingKey = ${userKeys || "never"};
 
 export const USER_SETTINGS: Readonly<Record<UserSettingKey, UserSettingPolicy>> = {
@@ -29750,7 +29498,7 @@ function pyEntry(e) {
 function renderPython2(catalog) {
   const keys = catalog.entries.map((e) => JSON.stringify(e.key)).join(", ");
   const rows = catalog.entries.map(pyEntry).join(",\n");
-  const users = userPolicies(catalog);
+  const users = settingPolicies(catalog);
   const userKey = users.length ? `Literal[${users.map((u) => JSON.stringify(u.key)).join(", ")}]` : "str";
   const userRows = users.map(
     (u) => `    ${JSON.stringify(u.key)}: UserSettingPolicy(sync=${JSON.stringify(u.sync)}, conflict=${JSON.stringify(u.conflict)}, listed=${u.listed ? "True" : "False"}),`
@@ -29800,7 +29548,7 @@ def entries_by_kind(kind: str) -> list[ConfigEntry]:
 
 @dataclass(frozen=True)
 class UserSettingPolicy:
-    """A user setting's policy (a config key with a \`user\` block), defaults applied."""
+    """A settable key's policy (an Editable config key), defaults applied."""
 
     sync: str
     conflict: str = "lastWrite"
@@ -29847,7 +29595,7 @@ function renderSwift2(catalog) {
     const grantLabel = e.grantLabel ? swiftStr(e.grantLabel) : "nil";
     return `    ConfigSchemaEntry(key: ${swiftStr(e.key)}, kind: .${e.kind}, category: ${swiftStr(e.category)}, label: ${swiftStr(e.label)}, description: ${swiftStr(e.description)}, widget: ${swiftOptStr(ui.widget)}, help: ${swiftOptStr(ui.help)}, placeholder: ${swiftOptStr(ui.placeholder)}, order: ${swiftOptInt(ui.order)}, scopes: ${swiftStringArray(ui.scopes)}, advanced: ${ui.advanced ? "true" : "false"}, unit: ${swiftOptStr(ui.unit)}, optionLabels: ${swiftStringDict(ui.optionLabels)}, adminSection: ${swiftOptStr(ui.adminSection)}, isSecret: ${e.kind === "secret" ? "true" : "false"}, managementDefault: ${mgmt}, userGrant: ${e.userGrant ? "true" : "false"}, grantLabel: ${grantLabel}, dependsOnKey: ${dep}, dependsOnEquals: ${depEquals})`;
   }).join(",\n");
-  const userRows = userPolicies(catalog).map(
+  const userRows = settingPolicies(catalog).map(
     (u) => `        ${swiftStr(u.key)}: UserSettingPolicy(sync: ${swiftStr(u.sync)}, conflict: ${swiftStr(u.conflict)}, listed: ${u.listed}),`
   ).join("\n");
   const userDict = userRows ? `[
@@ -29885,7 +29633,7 @@ struct ConfigSchemaEntry: Identifiable, Sendable {
     var id: String { key }
 }
 
-/// A user setting's policy (a config key with a \`user\` block), defaults applied.
+/// A settable key's policy (an Editable config key), defaults applied.
 struct UserSettingPolicy: Sendable, Equatable {
     let sync: String
     let conflict: String
@@ -29900,7 +29648,7 @@ ${rows}
     static func entry(for key: String) -> ConfigSchemaEntry? {
         entries.first { $0.key == key }
     }
-    /// Every user setting, by key.
+    /// Every settable key (synced or local), by key.
     static let userSettings: [String: UserSettingPolicy] = ${userDict}
 }
 `;
@@ -29982,8 +29730,8 @@ const ENTRIES := ${gdValue(entries)}
 
 const DEFAULTS := ${gdValue(defaults)}
 
-## Every user setting (a config key with a \`user\` block) and its policy, defaults applied.
-const USER_SETTINGS := ${gdValue(Object.fromEntries(userPolicies(catalog).map((u) => [u.key, { sync: u.sync, conflict: u.conflict, listed: u.listed }])))}
+## Every settable key (an Editable config key: synced, or local) and its policy, defaults applied.
+const USER_SETTINGS := ${gdValue(Object.fromEntries(settingPolicies(catalog).map((u) => [u.key, { sync: u.sync, conflict: u.conflict, listed: u.listed }])))}
 
 
 ## The entry for \`key\` (read-only), or an empty Dictionary.
@@ -30040,7 +29788,7 @@ function ktStringMap(values) {
   return `mapOf(${entries.map(([k, v]) => `${ktStr(k)} to ${ktStr(String(v))}`).join(", ")})`;
 }
 function ktUserMap(catalog) {
-  const users = userPolicies(catalog);
+  const users = settingPolicies(catalog);
   if (users.length === 0) return "emptyMap()";
   const rows = users.map(
     (u) => `        ${ktStr(u.key)} to UserSettingPolicy(sync = ${ktStr(u.sync)}, conflict = ${ktStr(u.conflict)}, listed = ${u.listed}),`
@@ -30131,7 +29879,7 @@ public data class ConfigSchemaEntry(
     val defaultJson: String?,
 )
 
-/** A user setting's policy (a config key with a \`user\` block), defaults applied. */
+/** A settable key's policy (an Editable config key), defaults applied. */
 public data class UserSettingPolicy(
     val sync: String,
     val conflict: String,
@@ -30152,7 +29900,7 @@ ${rows}
 
     public fun entriesByKind(kind: ConfigKind): List<ConfigSchemaEntry> = entries.filter { it.kind == kind }
 
-    /** Every user setting, by key, in catalog order. */
+    /** Every settable key (synced or local), by key, in catalog order. */
     public val userSettings: Map<String, UserSettingPolicy> = ${ktUserMap(catalog)}
 }
 `;

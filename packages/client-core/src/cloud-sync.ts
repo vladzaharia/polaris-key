@@ -1,16 +1,21 @@
-// The Cloud Sync reference client state machine (plans/U-01.md §2.3, §2.4, §4.1; S-17 §5.4–§5.6).
+// The Cloud Sync reference client state machine (plans/U-01.md §2.3, §2.4, §4.1, amended by
+// plans/U-01b.md §2.5 and its Revision 2; S-17 §5.4–§5.6).
 //
 // Client behaviour, outside the wire contract: the journal reducer, the hybrid logical clock,
-// the per-key debounce, conflict rebase, the per-subject partitions and the first-sign-in move.
+// the per-key debounce, conflict rebase, the per-subject partitions, the first-sign-in move, the
+// setting routes (synced, local, locked, refused, and open settings), the one-time import of the
+// legacy `config.local` store, the paused state and the parked rejections.
 // `conformance/corpus/v2/sync-scenarios.json` pins it scenario by scenario, and
 // `conformance/runners/node/syncScenarios.test.ts` replays every scenario through it; the other
 // SDKs' runners replay the same file. WIRE-CONTRACT-V4 §11.5 is the prose form.
 //
-// The machine does no I/O. It owns a fake-able clock (`advance`), queues the requests it would
-// send (`takeRequests`) and the events it would emit (`takeEvents`), and is told what the
-// transport answered (`receive`). At most one request is in flight. Retry backoff and the live
-// poke are host concerns and are not modelled: a request-level failure waits for the next
-// trigger (a commit, `flush`, `network online`, `refresh`, sign-in or relaunch).
+// The machine does no I/O and imports no catalog: the host derives the setting routes with
+// `@polaris-key/catalog`'s `syncedSettings` and passes them in. It owns a fake-able clock
+// (`advance`), queues the requests it would send (`takeRequests`) and the events it would emit
+// (`takeEvents`), and is told what the transport answered (`receive`). At most one request is in
+// flight. Retry backoff (including `Retry-After` on `writes_paused`) and the live poke are host
+// concerns and are not modelled: a request-level failure waits for the next trigger (a commit,
+// `flush`, `network online`, `refresh`, sign-in or relaunch).
 //
 // Nothing here touches licence state. No module reachable from `gate.ts`, `store.ts` or
 // `verify.ts` imports this one (`test/cloudSyncIsolation.test.ts`, T5).
@@ -24,8 +29,12 @@ export type Json =
   | Json[]
   | { [k: string]: Json };
 
-/** Per-key debounce of `setConfig` (S-17 §5.4). U-05 moves these into `@polaris-key/protocol/sync`. */
+/** Per-key debounce of `set` (S-17 §5.4). U-05 moves these into `@polaris-key/protocol/sync`. */
 export const SYNC_DEBOUNCE_MS = 2000;
+/** The most canonical-JSON bytes one setting value may take (D3); a larger `set` is `bad_request`. */
+export const SYNC_MAX_VALUE_BYTES = 8192;
+/** The clock every imported `config.local` value carries: any cloud value or tombstone beats it. */
+export const SYNC_IMPORT_HLC = "000000000000:0000";
 /** How long `signOut` waits for its flush before reporting what stayed unsynced (rule 5). */
 export const SYNC_SIGNOUT_FLUSH_MS = 5000;
 /** Days a signed-out partition keeps its pending operations (rule 5). */
@@ -54,22 +63,43 @@ export interface ValueSchema {
   enum?: Json[];
 }
 
-/** A catalog `config` key with a `user` block, as the client sees it. */
-export interface SettingDecl {
-  key: string;
-  policy: SettingPolicy;
-  schema?: ValueSchema;
-}
+/**
+ * How the client treats one declared catalog key (`@polaris-key/catalog`'s `syncedSettings`).
+ * `synced`: pushed with its scope and resolved by its policy. `local`: kept on the device in
+ * `deviceLocal`, never pushed. `locked`: the catalog locks it (`managed_by_admin`). `refused`: a
+ * `secret` or `flag` (`bad_request`). A key with no route is an OPEN setting: `user` scope,
+ * `lastWrite`, schema-less (D3).
+ */
+export type SettingRoute =
+  | {
+      key: string;
+      route: "synced";
+      scope: "user" | "platform";
+      policy: SettingPolicy;
+      schema?: ValueSchema;
+    }
+  | { key: string; route: "local" | "locked" | "refused" };
 
-/** A collection (U-09). `resolve` stands in for a developer conflict hook. */
+/** The one conflict vocabulary, as a record collection uses it (plans/U-01b.md §2.2). */
+export type CollectionPolicy =
+  | "revision"
+  | "union"
+  | "lastWrite"
+  | "max"
+  | "min"
+  | "merge";
+
+/** A collection (U-09). `field` is the number property a `max`/`min` collection compares (the
+ *  server applies it). `resolve` stands in for a developer conflict hook on a `revision` one. */
 export interface CollectionDecl {
   name: string;
-  policy: "revision" | "union";
+  policy: CollectionPolicy;
+  field?: string;
   resolve?: "keepServer" | "keepLocal";
 }
 
 export interface CloudSyncCatalog {
-  settings: SettingDecl[];
+  settings: SettingRoute[];
   collections?: CollectionDecl[];
 }
 
@@ -81,7 +111,7 @@ export interface CloudSyncDocument {
 }
 
 export type SyncTarget =
-  | { setting: string; scope: "user" }
+  | { setting: string; scope: "user" | "platform" }
   | { record: [string, string] };
 
 export type SyncOpName =
@@ -105,12 +135,18 @@ export interface WireMutation {
   baseVersion?: number | "*";
 }
 
-/** A journalled mutation: the wire form plus two journal-only marks. */
+/** Why a setting mutation waits on the device instead of being sent (plans/U-01b.md R5). */
+export type ParkReason = "quota" | "entitlement";
+
+/** A journalled mutation: the wire form plus the journal-only marks. */
 export interface JournalOp extends WireMutation {
   /** Stamped before the install's first server contact (re-stamped at first contact). */
   preContact?: true;
   /** Moved from the local partition at first sign-in (its losers report `origin: "merge"`). */
   moved?: true;
+  /** Refused with `quota_exceeded` or `entitlement_required`: kept, still read, not sent, and
+   *  re-sent as a new mutation (same `editedHlc`) when the quota grows or at sign-in. */
+  parked?: ParkReason;
 }
 
 /** A setting held in the local partition. */
@@ -139,9 +175,16 @@ interface Partition {
   /** The local partition's own values. */
   device: Record<string, DeviceSetting>;
   signedOutAt: number | null;
+  /** The last `quota.bytes − usage.bytes` a 200 carried; a larger one re-sends quota-parked ops. */
+  headroom: number | null;
 }
 
-type Blocked = null | "account_required" | "unauthorized";
+type Blocked =
+  | null
+  | "account_required"
+  | "unauthorized"
+  | "attestation"
+  | "forbidden";
 
 /** Everything that survives a relaunch. */
 export interface CloudSyncPersisted {
@@ -152,6 +195,10 @@ export interface CloudSyncPersisted {
   contacted: boolean;
   aliases: Record<string, string>;
   blocked: Blocked;
+  /** `local`-route values: the SDK's `config.local` store. Never moved, never pushed. */
+  deviceLocal: Record<string, Json>;
+  /** Whether `importLocal` has run on this install. */
+  imported: boolean;
 }
 
 export interface CloudSyncOptions {
@@ -164,6 +211,10 @@ export interface CloudSyncOptions {
   subject?: string | null;
   network?: "online" | "offline";
   onSignOut?: "clear" | "keep";
+  /** The host's `config.local` store, for a machine built with no persisted state. */
+  deviceLocal?: Record<string, Json>;
+  /** `importLocal` already ran on this install. */
+  imported?: boolean;
   /** The random source for new `clientId`s. */
   newClientId: () => string;
 }
@@ -197,13 +248,28 @@ export interface EffectiveValue {
 }
 
 export interface SyncStatus {
-  state: "local" | "idle" | "pending" | "syncing" | "offline" | "blocked";
+  state:
+    | "local"
+    | "idle"
+    | "pending"
+    | "syncing"
+    | "offline"
+    | "paused"
+    | "blocked";
   pending: number;
-  reason?: "account_required" | "unauthorized";
+  /** Why it is blocked, or why parked edits wait (`quota`, `entitlement`). */
+  reason?:
+    | "account_required"
+    | "unauthorized"
+    | "attestation"
+    | "forbidden"
+    | ParkReason;
 }
 
 export interface SettingState {
-  pending: boolean;
+  /** `local` with no principal or for a `local` key; `pending` while a draft or journal operation
+   *  (a parked one included) exists; `synced` otherwise. */
+  sync: "local" | "pending" | "synced";
   invalid: boolean;
   locked: boolean;
 }
@@ -252,6 +318,22 @@ export function jsonEqual(a: unknown, b: unknown): boolean {
 
 const byteOrder = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
+
+/** Canonical JSON: object members in byte order, no whitespace. */
+function canonicalJson(v: Json): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
+  if (isObject(v))
+    return `{${Object.keys(v)
+      .sort(byteOrder)
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson(v[k] as Json)}`)
+      .join(",")}}`;
+  return JSON.stringify(v);
+}
+
+/** The UTF-8 length of a value's canonical JSON (the 8 KiB setting bound, D3). */
+export function jsonBytes(v: Json): number {
+  return new TextEncoder().encode(canonicalJson(v)).length;
+}
 
 export function formatHlc(physicalMs: number, counter: number): string {
   if (
@@ -340,6 +422,9 @@ function applyRecordOp(
   switch (op.op) {
     case "set":
       return clone(op.value as Json);
+    case "setMember":
+    case "removeMember":
+      return applySettingOp("merge", base, op);
     case "add": {
       const arr = Array.isArray(base) ? [...base] : [];
       if (!arr.some((x) => jsonEqual(x, op.element)))
@@ -368,14 +453,24 @@ function newPartition(clientId: string | null): Partition {
     records: {},
     device: {},
     signedOutAt: null,
+    headroom: null,
   };
 }
 
 /** The wire form of a journalled mutation (journal-only marks stripped). */
 export function wireOf(op: JournalOp): WireMutation {
-  const { preContact: _p, moved: _m, ...wire } = op;
+  const { preContact: _p, moved: _m, parked: _k, ...wire } = op;
   return clone(wire);
 }
+
+/** The rejection codes that park a setting edit instead of reverting it (R5). */
+const PARKING: Readonly<Record<string, ParkReason>> = {
+  quota_exceeded: "quota",
+  entitlement_required: "entitlement",
+};
+
+const errorCode = (body: Json | undefined): unknown =>
+  isObject(body) && isObject(body.error) ? body.error.code : undefined;
 
 // ── the machine ─────────────────────────────────────────────────────────────────────────────
 
@@ -394,6 +489,8 @@ export class CloudSyncMachine {
   private signingOut: { deadline: number; discard: boolean } | null = null;
   private needSnapshot = false;
   private pullWanted = false;
+  /** A push got `503 writes_paused`; the next 200 push clears it (R4). Not persisted. */
+  private paused = false;
   private outbox: SyncRequest[] = [];
   private events: SyncEvent[] = [];
 
@@ -415,6 +512,8 @@ export class CloudSyncMachine {
           contacted: opts.contacted ?? false,
           aliases: {},
           blocked: null,
+          deviceLocal: clone(opts.deviceLocal ?? {}),
+          imported: opts.imported ?? false,
         };
     this.s.partitions[LOCAL_PARTITION] ??= newPartition(null);
     if (this.s.subject !== null) this.partitionFor(this.s.subject);
@@ -453,12 +552,53 @@ export class CloudSyncMachine {
 
   // ── SDK calls ─────────────────────────────────────────────────────────────────────────────
 
-  setConfig(key: string, value: Json): CallResult {
+  /** `config.set` while Cloud Sync is on. */
+  set(key: string, value: Json): CallResult {
     return this.edit(key, { value: clone(value) });
   }
 
-  clearConfig(key: string): CallResult {
+  /** `config.clear` while Cloud Sync is on. */
+  clear(key: string): CallResult {
     return this.edit(key, { clear: true });
+  }
+
+  /**
+   * Once per install, with the legacy `config.local` contents (§2.5 "Import"). Synced and
+   * undeclared keys enter at the HLC floor, so a newer cloud value always wins; `local` keys stay
+   * on the device; locked, refused, invalid and over-size values are not imported (they stay in
+   * `config.local`, read as today and never synced). A second call does nothing.
+   */
+  importLocal(values: Record<string, Json>): CallResult {
+    if (this.s.imported) return { ok: true };
+    this.s.imported = true;
+    const before = this.valueMap();
+    const local = this.s.partitions[LOCAL_PARTITION]!;
+    for (const key of Object.keys(values).sort(byteOrder)) {
+      const value = values[key] as Json;
+      const r = this.route(key);
+      if (r?.route === "locked" || r?.route === "refused") continue;
+      if (r?.route === "synced" && !valueValid(value, r.schema)) continue;
+      if (jsonBytes(value) > SYNC_MAX_VALUE_BYTES) continue;
+      if (r?.route === "local") {
+        if (!(key in this.s.deviceLocal))
+          this.s.deviceLocal[key] = clone(value);
+        continue;
+      }
+      if (this.s.subject === null) {
+        if (!(key in local.device))
+          local.device[key] = {
+            value: clone(value),
+            editedHlc: SYNC_IMPORT_HLC,
+          };
+        continue;
+      }
+      this.enqueueSetting(this.active(), key, value, SYNC_IMPORT_HLC, {
+        moved: true,
+      });
+    }
+    this.emitChanges(before, new Map(), "local");
+    this.kick();
+    return { ok: true };
   }
 
   /** Commit every debounced edit now and push. */
@@ -468,38 +608,88 @@ export class CloudSyncMachine {
     return { ok: true };
   }
 
-  /** A licence or config document fetch succeeded: the only thing that lifts a `/sync` 401. */
+  /** A licence or config document fetch succeeded: the only thing that lifts a `/sync` 401 or a
+   *  non-`account_required` 403. */
   refresh(): CallResult {
-    if (this.s.blocked === "unauthorized") {
+    if (
+      this.s.blocked === "unauthorized" ||
+      this.s.blocked === "attestation" ||
+      this.s.blocked === "forbidden"
+    ) {
       this.s.blocked = null;
       this.kick();
     }
     return { ok: true };
   }
 
-  /** Write a `revision` record (compare-and-swap; rule 3). */
+  /** Write a record: compare-and-swap for `revision` (rule 3), a stamped `set` for `lastWrite`,
+   *  `max` and `min`, member operations for `merge`. */
   put(collection: string, id: string, value: Json): CallResult {
     const decl = this.collection(collection);
-    if (!decl || decl.policy !== "revision")
+    if (!decl || decl.policy === "union")
       return { ok: false, error: "collection-unknown" };
     if (this.s.subject === null) return { ok: false, error: "signed-out" };
     const p = this.active();
     const rk = recordKey(collection, id);
     const target = { record: [collection, id] as [string, string] };
-    if (this.inFlightTouches(rk)) {
-      p.held[rk] = clone(value);
+    const isRecord = (o: JournalOp): boolean =>
+      "record" in o.target && recordKey(...o.target.record) === rk;
+    if (decl.policy === "revision") {
+      if (this.inFlightTouches(rk)) {
+        p.held[rk] = clone(value);
+      } else {
+        const queued = p.pending.find(isRecord);
+        if (queued) queued.value = clone(value);
+        else
+          this.enqueue(p, {
+            target,
+            op: "set",
+            value: clone(value),
+            baseVersion: p.records[rk]?.version ?? "*",
+          });
+      }
     } else {
-      const queued = p.pending.find(
-        (o) => "record" in o.target && recordKey(...o.target.record) === rk,
-      );
-      if (queued) queued.value = clone(value);
-      else
-        this.enqueue(p, {
-          target,
-          op: "set",
-          value: clone(value),
-          baseVersion: p.records[rk]?.version ?? "*",
-        });
+      const editedHlc = this.tickHlc();
+      const marks = this.s.contacted ? {} : { preContact: true as const };
+      if (decl.policy === "merge") {
+        const current = this.record(collection, id)?.value;
+        const cur = isObject(current) ? current : {};
+        const next = isObject(value) ? value : {};
+        for (const member of Object.keys(next).sort(byteOrder))
+          if (!(member in cur) || !jsonEqual(cur[member], next[member]))
+            this.enqueue(p, {
+              target,
+              op: "setMember",
+              member,
+              value: clone(next[member] as Json),
+              editedHlc,
+              ...marks,
+            });
+        for (const member of Object.keys(cur).sort(byteOrder))
+          if (!(member in next))
+            this.enqueue(p, {
+              target,
+              op: "removeMember",
+              member,
+              editedHlc,
+              ...marks,
+            });
+      } else {
+        const queued = this.inFlightTouches(rk)
+          ? undefined
+          : p.pending.find((o) => isRecord(o) && o.op === "set");
+        if (queued) {
+          queued.value = clone(value);
+          queued.editedHlc = editedHlc;
+        } else
+          this.enqueue(p, {
+            target,
+            op: "set",
+            value: clone(value),
+            editedHlc,
+            ...marks,
+          });
+      }
     }
     this.kick();
     return { ok: true };
@@ -526,40 +716,28 @@ export class CloudSyncMachine {
     const p = this.partitionFor(subject);
     p.signedOutAt = null;
     const local = this.s.partitions[LOCAL_PARTITION]!;
-    for (const key of Object.keys(local.device).sort(byteOrder)) {
+    const moving = Object.keys(local.device)
+      .filter((key) => this.syncs(key))
+      .sort(byteOrder);
+    // A sign-in change re-sends every parked edit (R5), except one a moved local edit replaces.
+    for (const key of moving) this.dropParkedByLocalEdit(p, key);
+    this.unpark(p, () => true);
+    for (const key of moving) {
       const d = local.device[key]!;
-      const decl = this.decl(key);
-      const target = { setting: key, scope: "user" as const };
       const marks = {
         moved: true as const,
         ...(d.preContact ? { preContact: true as const } : {}),
       };
-      if (d.cleared || decl?.policy !== "merge" || !isObject(d.value)) {
-        this.enqueue(
-          p,
-          d.cleared
-            ? { target, op: "clear", editedHlc: d.editedHlc, ...marks }
-            : {
-                target,
-                op: "set",
-                value: clone(d.value as Json),
-                editedHlc: d.editedHlc,
-                ...marks,
-              },
-        );
-      } else {
-        for (const member of Object.keys(d.value).sort(byteOrder))
-          this.enqueue(p, {
-            target,
-            op: "setMember",
-            member,
-            value: clone(d.value[member]),
-            editedHlc: d.editedHlc,
-            ...marks,
-          });
-      }
+      if (d.cleared)
+        this.enqueue(p, {
+          target: this.targetOf(key),
+          op: "clear",
+          editedHlc: d.editedHlc,
+          ...marks,
+        });
+      else this.enqueueSetting(p, key, d.value as Json, d.editedHlc, marks);
+      delete local.device[key];
     }
-    local.device = {};
     this.s.subject = subject;
     this.pullWanted = true;
     this.needSnapshot = false;
@@ -577,7 +755,7 @@ export class CloudSyncMachine {
       !discard &&
       this.network === "online" &&
       this.s.blocked === null &&
-      p.pending.length + Object.keys(p.held).length > 0
+      this.sendable(p) > 0
     ) {
       this.signingOut = {
         deadline: this.nowMs + SYNC_SIGNOUT_FLUSH_MS,
@@ -636,13 +814,19 @@ export class CloudSyncMachine {
     if (!req) throw new Error("respond: no request is in flight");
     this.inFlight = null;
     let proceed = false;
-    if (
-      "error" in res ||
-      res.status >= 500 ||
-      [400, 413, 429].includes(res.status)
-    ) {
+    if ("error" in res) {
       // Request-level failure: nothing was processed and the journal is unchanged (rule 1).
       // The next trigger retries; backoff is the host's.
+    } else if (
+      res.status === 503 &&
+      req.kind === "push" &&
+      errorCode(res.body) === "writes_paused"
+    ) {
+      // R4: the operator paused writes. The journal is unchanged (rule 1), pulls still work,
+      // and the next trigger retries (the host's backoff honours Retry-After).
+      this.paused = true;
+    } else if (res.status >= 500 || [400, 413, 429].includes(res.status)) {
+      // Request-level failure, as above.
     } else if (res.status === 401) {
       this.s.blocked = "unauthorized";
     } else if (res.status === 403) {
@@ -655,6 +839,9 @@ export class CloudSyncMachine {
         this.events.push({ type: "signInOffered", signInUrl: url });
         return;
       }
+      // The journal is kept; a document refresh lifts either block.
+      this.s.blocked =
+        err.code === "attestation_required" ? "attestation" : "forbidden";
     } else if (res.status === 409) {
       this.clientMismatch(req);
       proceed = true;
@@ -664,12 +851,13 @@ export class CloudSyncMachine {
       this.needSnapshot = true;
       proceed = true;
     } else if (res.status === 200 && isObject(res.body)) {
+      if (req.kind === "push") this.paused = false;
       this.ok(req, res.body);
       proceed = true;
     }
     if (this.signingOut && this.s.subject !== null) {
       const p = this.active();
-      if (!proceed || p.pending.length + Object.keys(p.held).length === 0) {
+      if (!proceed || this.sendable(p) === 0) {
         this.leave("signOut", this.signingOut.discard);
         return;
       }
@@ -682,25 +870,35 @@ export class CloudSyncMachine {
   get(key: string): EffectiveValue {
     const docValue = this.document.values[key] ?? null;
     const doc: EffectiveValue = { value: clone(docValue), from: "document" };
-    const decl = this.decl(key);
-    if (!decl || this.locked(key)) return doc;
+    const r = this.route(key);
+    // A lock beats the person's own choice, the `local` slot included.
+    if (this.locked(key) || r?.route === "locked" || r?.route === "refused")
+      return doc;
+    if (r?.route === "local")
+      return key in this.s.deviceLocal
+        ? { value: clone(this.s.deviceLocal[key] as Json), from: "device" }
+        : doc;
     const layer = this.layer(key);
     if (!layer || layer.value === undefined) return doc;
-    if (!valueValid(layer.value, decl.schema)) return doc;
+    if (!valueValid(layer.value, this.schemaOf(key))) return doc;
     return { value: clone(layer.value), from: layer.from };
   }
 
   settingState(key: string): SettingState {
-    const decl = this.decl(key);
-    const layer = decl ? this.layer(key) : undefined;
+    const r = this.route(key);
+    const layer = this.syncs(key) ? this.layer(key) : undefined;
     return {
-      pending: layer?.pending ?? false,
+      sync:
+        this.s.subject === null || r?.route === "local"
+          ? "local"
+          : layer?.pending
+            ? "pending"
+            : "synced",
       invalid:
-        !!decl &&
         layer !== undefined &&
         layer.value !== undefined &&
-        !valueValid(layer.value, decl.schema),
-      locked: this.locked(key),
+        !valueValid(layer.value, this.schemaOf(key)),
+      locked: this.locked(key) || r?.route === "locked",
     };
   }
 
@@ -728,9 +926,13 @@ export class CloudSyncMachine {
     if (this.s.blocked)
       return { state: "blocked", pending, reason: this.s.blocked };
     if (this.s.subject === null) return { state: "local", pending };
-    if (this.network === "offline") return { state: "offline", pending };
-    if (this.inFlight) return { state: "syncing", pending };
-    return { state: pending > 0 ? "pending" : "idle", pending };
+    const parked = this.parkedReason();
+    const at = (state: SyncStatus["state"]): SyncStatus =>
+      parked ? { state, pending, reason: parked } : { state, pending };
+    if (this.network === "offline") return at("offline");
+    if (this.inFlight) return at("syncing");
+    if (this.paused) return at("paused");
+    return at(pending > 0 ? "pending" : "idle");
   }
 
   /** The journal, normalised: what every SDK's journal must hold, whatever its encoding. */
@@ -757,11 +959,34 @@ export class CloudSyncMachine {
 
   // ── internals ─────────────────────────────────────────────────────────────────────────────
 
-  private decl(key: string): SettingDecl | undefined {
+  /** The key's route (an old name resolves through the pull's aliases); `undefined`: open. */
+  private route(key: string): SettingRoute | undefined {
     return (
       this.catalog.settings.find((d) => d.key === key) ??
       this.catalog.settings.find((d) => d.key === this.alias(key))
     );
+  }
+
+  /** Whether the key travels through the journal: a synced key or an open setting. */
+  private syncs(key: string): boolean {
+    const r = this.route(key);
+    return r === undefined || r.route === "synced";
+  }
+
+  private policyOf(key: string): SettingPolicy {
+    const r = this.route(key);
+    return r?.route === "synced" ? r.policy : "lastWrite";
+  }
+
+  private schemaOf(key: string): ValueSchema | undefined {
+    const r = this.route(key);
+    return r?.route === "synced" ? r.schema : undefined;
+  }
+
+  /** A synced key is pushed with its route's scope, an open setting with `user`. */
+  private targetOf(key: string): SyncTarget {
+    const r = this.route(key);
+    return { setting: key, scope: r?.route === "synced" ? r.scope : "user" };
   }
 
   private collection(name: string): CollectionDecl | undefined {
@@ -803,6 +1028,23 @@ export class CloudSyncMachine {
     return drafts + p.pending.length + Object.keys(p.held).length;
   }
 
+  /** What a push can still carry: every journalled operation that is not parked, plus held. */
+  private sendable(p: Partition): number {
+    return (
+      p.pending.filter((o) => !o.parked).length + Object.keys(p.held).length
+    );
+  }
+
+  private parkedReason(): ParkReason | undefined {
+    if (this.s.subject === null) return undefined;
+    const kinds = new Set(this.active().pending.map((o) => o.parked));
+    return kinds.has("quota")
+      ? "quota"
+      : kinds.has("entitlement")
+        ? "entitlement"
+        : undefined;
+  }
+
   private tickHlc(): string {
     const physical = this.nowMs + this.s.offsetMs;
     if (physical > this.s.hlc[0]) this.s.hlc = [physical, 0];
@@ -815,8 +1057,8 @@ export class CloudSyncMachine {
   ):
     | { value: Json | undefined; from: ValueFrom; pending: boolean }
     | undefined {
-    const decl = this.decl(key);
-    if (!decl) return undefined;
+    if (!this.syncs(key)) return undefined;
+    const policy = this.policyOf(key);
     const target = this.alias(key);
     const matches = (k: string): boolean => this.alias(k) === target;
     let value: Json | undefined;
@@ -831,7 +1073,7 @@ export class CloudSyncMachine {
       }
       for (const op of p.pending)
         if ("setting" in op.target && matches(op.target.setting)) {
-          value = applySettingOp(decl.policy, value, op);
+          value = applySettingOp(policy, value, op);
           pending = true;
         }
     } else {
@@ -847,9 +1089,9 @@ export class CloudSyncMachine {
         const d = this.drafts[k]!;
         value = d.clear
           ? undefined
-          : decl.policy === "merge"
+          : policy === "merge"
             ? clone(d.value)
-            : applySettingOp(decl.policy, value, { op: "set", value: d.value });
+            : applySettingOp(policy, value, { op: "set", value: d.value });
         pending = true;
       }
     if (!has && !pending) return undefined;
@@ -861,9 +1103,31 @@ export class CloudSyncMachine {
     return { value, from, pending };
   }
 
+  /** Every open setting the device knows of: in the snapshot, the journal or a draft. */
+  private openKeys(): string[] {
+    const keys = new Set<string>();
+    const add = (k: string): void => {
+      if (this.route(k) === undefined) keys.add(k);
+    };
+    if (this.s.subject !== null) {
+      const p = this.active();
+      for (const k of Object.keys(p.settings)) add(k);
+      for (const op of p.pending)
+        if ("setting" in op.target) add(op.target.setting);
+    } else {
+      for (const k of Object.keys(this.s.partitions[LOCAL_PARTITION]!.device))
+        add(k);
+    }
+    for (const k of Object.keys(this.drafts)) add(k);
+    return [...keys];
+  }
+
   private valueMap(): Map<string, Json> {
     const m = new Map<string, Json>();
-    for (const d of this.catalog.settings) m.set(d.key, this.get(d.key).value);
+    for (const r of this.catalog.settings)
+      if (r.route === "synced" || r.route === "local")
+        m.set(r.key, this.get(r.key).value);
+    for (const k of this.openKeys()) m.set(k, this.get(k).value);
     return m;
   }
 
@@ -874,8 +1138,13 @@ export class CloudSyncMachine {
   ): void {
     const after = this.valueMap();
     const groups = new Map<ChangeOrigin, string[]>();
-    for (const [k, v] of after) {
-      if (jsonEqual(before.get(k), v)) continue;
+    for (const k of new Set([...before.keys(), ...after.keys()])) {
+      // A key known on one side only read as the document's value on the other.
+      const was = before.has(k)
+        ? before.get(k)
+        : (this.document.values[k] ?? null);
+      const is = after.has(k) ? after.get(k) : this.get(k).value;
+      if (jsonEqual(was, is)) continue;
       const o = overrides.get(k) ?? origin;
       groups.set(o, [...(groups.get(o) ?? []), k]);
     }
@@ -890,14 +1159,35 @@ export class CloudSyncMachine {
     }
   }
 
+  /**
+   * `set` and `clear` (§2.5), journalling nothing on a refusal: a declared `secret` or `flag` is
+   * `bad_request`; a catalog lock or a lock in the current document is `managed_by_admin`; a value
+   * that fails the key's schema, or is over `SYNC_MAX_VALUE_BYTES`, is `bad_request`. A `local`
+   * key is written to `deviceLocal`; anything else is drafted, an undeclared key as an open
+   * setting.
+   */
   private edit(
     key: string,
     change: { value?: Json; clear?: true },
   ): CallResult {
-    const decl = this.decl(key);
-    if (!decl) return { ok: false, error: "setting-unknown" };
-    if (this.locked(key)) return { ok: false, error: "setting-locked" };
+    const r = this.route(key);
+    if (r?.route === "refused") return { ok: false, error: "bad_request" };
+    if (r?.route === "locked" || this.locked(key))
+      return { ok: false, error: "managed_by_admin" };
+    if (!change.clear) {
+      const value = change.value as Json;
+      if (r?.route === "synced" && !valueValid(value, r.schema))
+        return { ok: false, error: "bad_request" };
+      if (jsonBytes(value) > SYNC_MAX_VALUE_BYTES)
+        return { ok: false, error: "bad_request" };
+    }
     const before = this.valueMap();
+    if (r?.route === "local") {
+      if (change.clear) delete this.s.deviceLocal[key];
+      else this.s.deviceLocal[key] = clone(change.value as Json);
+      this.emitChanges(before, new Map(), "local");
+      return { ok: true };
+    }
     this.drafts[key] = {
       ...change,
       editedHlc: this.tickHlc(),
@@ -916,7 +1206,7 @@ export class CloudSyncMachine {
   private commitDraft(key: string): void {
     const d = this.drafts[key];
     if (!d) return;
-    const decl = this.decl(key) as SettingDecl;
+    const policy = this.policyOf(key);
     const marks = d.preContact ? { preContact: true as const } : {};
     if (this.s.subject === null) {
       // The local partition keeps one value per key, its policy already applied.
@@ -928,9 +1218,9 @@ export class CloudSyncMachine {
       } else {
         const base = prior && !prior.cleared ? prior.value : undefined;
         const value =
-          decl.policy === "merge"
+          policy === "merge"
             ? clone(d.value as Json)
-            : (applySettingOp(decl.policy, base, {
+            : (applySettingOp(policy, base, {
                 op: "set",
                 value: d.value,
               }) as Json);
@@ -939,50 +1229,62 @@ export class CloudSyncMachine {
       return;
     }
     const p = this.active();
-    const target = { setting: key, scope: "user" as const };
+    delete this.drafts[key];
+    this.dropParkedByLocalEdit(p, key);
     if (d.clear) {
-      delete this.drafts[key];
       this.enqueue(p, {
-        target,
+        target: this.targetOf(key),
         op: "clear",
         editedHlc: d.editedHlc,
         ...marks,
       });
       return;
     }
-    if (decl.policy !== "merge") {
-      delete this.drafts[key];
+    this.enqueueSetting(p, key, d.value as Json, d.editedHlc, marks);
+  }
+
+  /**
+   * Journal a whole value for `key`: one `set`, or, for a `merge` key, one member operation per
+   * member that differs from the current view (the view without this edit).
+   */
+  private enqueueSetting(
+    p: Partition,
+    key: string,
+    value: Json,
+    editedHlc: string,
+    marks: { preContact?: true; moved?: true },
+  ): void {
+    const target = this.targetOf(key);
+    if (this.policyOf(key) !== "merge" || !isObject(value)) {
       this.enqueue(p, {
         target,
         op: "set",
-        value: clone(d.value as Json),
-        editedHlc: d.editedHlc,
+        value: clone(value),
+        editedHlc,
         ...marks,
       });
       return;
     }
-    // A merge key: diff the new object against the view without this draft, member by member.
-    delete this.drafts[key];
-    const current = this.layer(key)?.value;
+    const current =
+      this.s.subject === null ? undefined : this.layer(key)?.value;
     const cur = isObject(current) ? current : {};
-    const next = isObject(d.value) ? d.value : {};
-    for (const member of Object.keys(next).sort(byteOrder))
-      if (!(member in cur) || !jsonEqual(cur[member], next[member]))
+    for (const member of Object.keys(value).sort(byteOrder))
+      if (!(member in cur) || !jsonEqual(cur[member], value[member]))
         this.enqueue(p, {
           target,
           op: "setMember",
           member,
-          value: clone(next[member]),
-          editedHlc: d.editedHlc,
+          value: clone(value[member] as Json),
+          editedHlc,
           ...marks,
         });
     for (const member of Object.keys(cur).sort(byteOrder))
-      if (!(member in next))
+      if (!(member in value))
         this.enqueue(p, {
           target,
           op: "removeMember",
           member,
-          editedHlc: d.editedHlc,
+          editedHlc,
           ...marks,
         });
   }
@@ -992,6 +1294,32 @@ export class CloudSyncMachine {
     p.nextMutationId += 1;
     p.pending.push(full);
     return full;
+  }
+
+  /** A newer local edit of a `lastWrite` or `merge` key replaces its parked edits (R5). A `max`
+   *  or `min` key keeps them: the server decides by value, so the older edit may still win. */
+  private dropParkedByLocalEdit(p: Partition, key: string): void {
+    const policy = this.policyOf(key);
+    if (policy !== "lastWrite" && policy !== "merge") return;
+    const target = this.alias(key);
+    p.pending = p.pending.filter(
+      (o) =>
+        !(
+          o.parked &&
+          "setting" in o.target &&
+          this.alias(o.target.setting) === target
+        ),
+    );
+  }
+
+  /** Re-send parked edits as NEW mutations with their original clock (rule 1: a processed
+   *  mutationId is never resent). */
+  private unpark(p: Partition, which: (reason: ParkReason) => boolean): void {
+    const parked = p.pending.filter((o) => o.parked && which(o.parked));
+    if (parked.length === 0) return;
+    p.pending = p.pending.filter((o) => !parked.includes(o));
+    for (const { mutationId: _id, parked: _k, ...rest } of parked)
+      this.enqueue(p, rest);
   }
 
   private unionOp(
@@ -1049,7 +1377,9 @@ export class CloudSyncMachine {
       this.outbox.push({ method: "GET", path: pullPath(cursor) });
       return;
     }
-    const batch = p.pending.slice(0, SYNC_MAX_MUTATIONS);
+    const batch = p.pending
+      .filter((o) => !o.parked)
+      .slice(0, SYNC_MAX_MUTATIONS);
     if (batch.length > 0) {
       this.inFlight = {
         kind: "push",
@@ -1141,6 +1471,10 @@ export class CloudSyncMachine {
     const p = this.active();
     const before = this.valueMap();
     const overrides = new Map<string, ChangeOrigin>();
+    const batch = p.pending.filter((o) =>
+      req.mutationIds.includes(o.mutationId),
+    );
+    const parkedNow: JournalOp[] = [];
     const results = Array.isArray(body.results) ? body.results : [];
     for (const r of results) {
       if (!isObject(r) || typeof r.mutationId !== "number") continue;
@@ -1150,9 +1484,28 @@ export class CloudSyncMachine {
           req.mutationIds.includes(o.mutationId),
       );
       if (at < 0) continue;
-      const [op] = p.pending.splice(at, 1);
-      this.result(p, op!, r, overrides);
+      const op = p.pending[at]!;
+      const park =
+        r.status === "rejected" && "setting" in op.target
+          ? PARKING[String(r.code)]
+          : undefined;
+      if (park) {
+        // R5: a retryable refusal keeps the edit on the device, still read, until it can land.
+        op.parked = park;
+        parkedNow.push(op);
+        continue;
+      }
+      p.pending.splice(at, 1);
+      this.result(p, op, r, overrides);
     }
+    // A parked edit that a later edit of the same value already replaces is dropped.
+    for (const op of parkedNow)
+      if (
+        [...batch, ...p.pending].some(
+          (q) => q !== op && q.mutationId > op.mutationId && sameValue(op, q),
+        )
+      )
+        p.pending = p.pending.filter((o) => o !== op);
     // The pull members: a cursor-0 request answers with a snapshot, which replaces ours.
     if (req.cursor === 0 && typeof body.cursor === "number") {
       p.settings = {};
@@ -1160,12 +1513,13 @@ export class CloudSyncMachine {
     }
     for (const c of Array.isArray(body.changes) ? body.changes : []) {
       if (!isObject(c) || typeof c.version !== "number") continue;
-      if (typeof c.setting === "string")
+      if (typeof c.setting === "string") {
         p.settings[c.setting] = {
           value: clone(c.value ?? null),
           version: c.version,
         };
-      else if (Array.isArray(c.record) && c.record.length === 2)
+        this.dropParkedByRemote(p, c.setting, c.editedHlc);
+      } else if (Array.isArray(c.record) && c.record.length === 2)
         p.records[recordKey(String(c.record[0]), String(c.record[1]))] = {
           value: clone(c.value ?? null),
           version: c.version,
@@ -1173,8 +1527,10 @@ export class CloudSyncMachine {
     }
     for (const t of Array.isArray(body.tombstones) ? body.tombstones : []) {
       if (!isObject(t)) continue;
-      if (typeof t.setting === "string") delete p.settings[t.setting];
-      else if (Array.isArray(t.record) && t.record.length === 2)
+      if (typeof t.setting === "string") {
+        delete p.settings[t.setting];
+        this.dropParkedByRemote(p, t.setting, t.editedHlc);
+      } else if (Array.isArray(t.record) && t.record.length === 2)
         delete p.records[recordKey(String(t.record[0]), String(t.record[1]))];
     }
     if (typeof body.cursor === "number") p.cursor = body.cursor;
@@ -1184,9 +1540,39 @@ export class CloudSyncMachine {
         if (typeof v === "string") aliases[k] = v;
       this.s.aliases = aliases;
     }
+    // R5: more room than the last response showed re-sends the quota-parked edits.
+    const quota = isObject(body.quota) ? body.quota.bytes : undefined;
+    const usage = isObject(body.usage) ? body.usage.bytes : undefined;
+    if (typeof quota === "number" && typeof usage === "number") {
+      const headroom = quota - usage;
+      if (p.headroom !== null && headroom > p.headroom)
+        this.unpark(p, (reason) => reason === "quota");
+      p.headroom = headroom;
+    }
     this.needSnapshot = false;
     this.pullWanted = body.more === true;
     this.emitChanges(before, overrides, "remote");
+  }
+
+  /** A newer remote value of a `lastWrite` key replaces its parked `set` or `clear` (R5). */
+  private dropParkedByRemote(
+    p: Partition,
+    serverKey: string,
+    editedHlc: Json | undefined,
+  ): void {
+    if (typeof editedHlc !== "string") return;
+    p.pending = p.pending.filter(
+      (o) =>
+        !(
+          o.parked &&
+          "setting" in o.target &&
+          (o.op === "set" || o.op === "clear") &&
+          this.alias(o.target.setting) === serverKey &&
+          this.policyOf(o.target.setting) === "lastWrite" &&
+          o.editedHlc !== undefined &&
+          o.editedHlc < editedHlc
+        ),
+    );
   }
 
   private result(
@@ -1200,7 +1586,6 @@ export class CloudSyncMachine {
       const key = op.target.setting;
       const serverKey =
         typeof r.renamedTo === "string" ? r.renamedTo : this.alias(key);
-      const decl = this.decl(key);
       if (op.moved) overrides.set(key, "merge");
       if (status === "ok") {
         if (r.dropped === true) {
@@ -1208,9 +1593,9 @@ export class CloudSyncMachine {
           for (const d of this.catalog.settings)
             if (this.alias(d.key) === this.alias(key))
               overrides.set(d.key, "migration");
-        } else if (decl && typeof r.version === "number") {
+        } else if (typeof r.version === "number") {
           const value = applySettingOp(
-            decl.policy,
+            this.policyOf(key),
             p.settings[serverKey]?.value,
             op,
           );
@@ -1226,6 +1611,7 @@ export class CloudSyncMachine {
             version: server.version,
           };
       } else if (status === "rejected") {
+        // A terminal refusal: the value reverts to the snapshot and the app is told.
         this.events.push({
           type: "rejected",
           mutationId: op.mutationId,
@@ -1252,8 +1638,13 @@ export class CloudSyncMachine {
           version: server.version,
         };
         // Rule 2: the resolution is a NEW mutation on the server's version; N is never resent.
+        // Only `revision` resolves on the device; every other policy took the server's copy.
         if (rk in p.held) rebaseOn = server.version;
-        else if (decl?.resolve === "keepLocal" && op.op === "set") {
+        else if (
+          decl?.policy === "revision" &&
+          decl.resolve === "keepLocal" &&
+          op.op === "set"
+        ) {
           rebaseOn = server.version;
           rebaseValue = op.value;
         }
@@ -1323,8 +1714,18 @@ export class CloudSyncMachine {
   }
 }
 
+/** Whether two setting operations write the same value: the same key, and the same member
+ *  unless one of them writes the whole value. */
+function sameValue(a: JournalOp, b: JournalOp): boolean {
+  if (!("setting" in a.target) || !("setting" in b.target)) return false;
+  if (a.target.setting !== b.target.setting) return false;
+  const whole = (o: JournalOp): boolean => o.op === "set" || o.op === "clear";
+  return whole(a) || whole(b) || a.member === b.member;
+}
+
 /** Relaunch: persist, then restore with the same host options (`lost` drops the journal; the
- *  device binding, `subject`, is device state and survives). */
+ *  device binding, `subject`, is device state and survives, and so does the `config.local` store
+ *  behind `deviceLocal`). */
 export function relaunch(
   machine: CloudSyncMachine,
   opts: CloudSyncOptions,
@@ -1339,6 +1740,8 @@ export function relaunch(
       offsetMs: 0,
       contacted: false,
       subject: saved.subject,
+      deviceLocal: saved.deviceLocal,
+      imported: saved.imported,
     });
   return new CloudSyncMachine(
     { ...opts, now: machine.now, network: machine.networkState },

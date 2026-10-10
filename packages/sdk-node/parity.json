@@ -110,6 +110,10 @@
       "status": "implemented",
       "note": "client.config.set/clear/setting and onConfigChange: persisted in the state directory, validated against the catalog type, refused for an admin-managed key, with per-key and wildcard change events (SP-N13)."
     },
+    "config.sync": {
+      "status": "planned",
+      "wp": "U-06"
+    },
     "devices.fingerprint": {
       "status": "implemented"
     },
@@ -405,6 +409,22 @@
     "commerce.receipt": {
       "status": "implemented",
       "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."
+    },
+    "sync.scenarios": {
+      "status": "planned",
+      "wp": "U-06"
+    },
+    "sync.settings": {
+      "status": "planned",
+      "wp": "U-06"
+    },
+    "sync.conflict": {
+      "status": "planned",
+      "wp": "U-08"
+    },
+    "sync.saves": {
+      "status": "planned",
+      "wp": "U-22"
     }
   }
 }

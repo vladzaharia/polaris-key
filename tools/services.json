@@ -82,7 +82,7 @@
     {
       "slug": "sync",
       "label": "Cloud Sync",
-      "summary": "A signed-in person's settings, collections and saves, synced across devices.",
+      "summary": "A signed-in person's settings, saves and other records, synced across devices.",
       "defaultEnabled": false,
       "requires": ["config", "identity"],
       "legacyModules": [],

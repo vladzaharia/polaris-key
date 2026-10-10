@@ -62,18 +62,34 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       of `json`, `yaml`, `yml` is read, and `pkey validate` warns when there are more.
 
 - [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`, plus an
-      optional top-level `cloudSync` block (Cloud Sync's data shape: `collections`, `open`,
-      `saves`, `migrations`). Maps to the `product_schema` row. For an entry's fields, including
-      the `user` block that makes a config key a user setting, use the `adding-a-catalog-entry`
-      skill.
+      optional top-level `cloudSync` block (Cloud Sync's records: `collections` and
+      `migrations`). Maps to the `product_schema` row. For an entry's fields, including the
+      optional `user` block that tunes a synced setting, use the `adding-a-catalog-entry` skill.
+- [ ] With Cloud Sync (`sync`) on, **every Editable `config` key is a synced setting** (no
+      `managementDefault` of `enforced` or `hidden`); a key the catalog does not declare syncs too,
+      as an **open setting** (`lastWrite`, schema-less, at most 8 KiB). Declared and open settings
+      share one budget: 256 keys and 64 KiB per person. An app treats an undeclared key as
+      untrusted input, because any device of the person can write it; a key that matters is
+      declared with a schema, given `user: { sync: "local" }`, or locked.
+- [ ] A **collection** declares a namespace of records: `name`, optional `label`, `template`
+      (`saves`: 16 save slots per person, `revision`, one file of up to 32 MiB with 5 older
+      versions, and `playtime`, `progress`, `chapter`, `formatVersion` and a base64 `thumbnail`;
+      `session`: `lastWrite`, 16 records, an 8 MiB file), `conflict` (`lastWrite`, `max`, `min`,
+      `merge`, `union`, `revision`; `max`/`min` need a number `conflictField`), `schema`,
+      `maxRecords` (≤ 10,000, never on a `saves` collection), `files` (`maxBytes` ≤ 1 GiB and
+      `keepRevisions`) and `requires` (a catalog flag or a system entitlement the anchor licence
+      must grant). `access` is `owner` only. Retired, refused with no warning period:
+      `cloudSync.saves` (use `template: "saves"`), `cloudSync.open`, `onAttach` (the first
+      sign-in is an ordinary sync) and `user.sync: "device"` (use `local`).
 - [ ] **`product`** (required) — product metadata, the `modules` block (enabled services),
       `devices.registration`, `web.origins`, OIDC, the `identity:` block, profiles, tiers,
-      provisioning hooks,
-      `fingerprint`, `autoIssue`, `secrets.required`, and `cloudSync` (Cloud Sync's `limits`,
-      `unlicensed` and `writes`, within the platform ceilings; `byTier` keys must name declared
-      tiers, `byEntitlement` values numeric `combine: max` flags). Maps to `products` (incl. `services_json`,
+      provisioning hooks, `fingerprint`, `autoIssue` and `secrets.required`. Maps to `products`
+      (incl. `services_json`,
       `web_origins_json`) plus
-      `oidc_config`, `profiles`, `tiers`, `provisioning_config`.
+      `oidc_config`, `profiles`, `tiers`, `provisioning_config`. There is no `cloudSync` block
+      here any more (the validator refuses one): a person's Cloud Sync quota is the
+      `pkey.cloudSync.bytes` entitlement (256 MiB when unset) that a tier, a licence override or
+      an add-on sets, and the ceiling and the pause are console settings.
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
       channels, install/appcast settings, edge-mint recipes, and the app deliverable with its
       artifact map. Maps to `release_config`, `release_deliverables` and `edge_mint_config`.

@@ -132,6 +132,7 @@ describe("GET /api/platform/reserved-names", () => {
       "app.maxVersion",
       "license.tier",
       "license.tierLabel",
+      "pkey.cloudSync.bytes",
     ]);
     expect(res.body.prefixes).toEqual(["license.", "app.", "pkey."]);
     const bySlug = Object.fromEntries(

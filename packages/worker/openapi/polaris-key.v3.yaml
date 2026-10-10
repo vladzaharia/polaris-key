@@ -258,7 +258,7 @@ paths:
                         settings: false
                         collections: false
                         saves: false
-                        endpoints: { pull: null, push: null, saves: null }
+                        endpoints: { pull: null, push: null, files: null }
                 configOnly:
                   summary: A config-only product — the other six are bare `enabled:false`
                   value:
@@ -20043,11 +20043,13 @@ components:
             blobs: https://key.plrs.im/acme/distribution/blobs/sha256/{sha256}
     SyncFragment:
       description: >
-        Cloud Sync's fragment (U-04; plans/U-01.md §2.5). `{"enabled": false}` when off. When on,
-        `settings`, `collections` and `saves` say which kinds of Cloud Sync data the product
-        serves, and each endpoint is a URL or `null`: an SDK uses an endpoint only when it is
-        present. Each capability turns true, and its endpoint appears, when the package serving
-        it ships (settings and pull/push with U-05, which also adds `limits`).
+        Cloud Sync's fragment (U-04; plans/U-01b.md D9, WIRE-CONTRACT-V4 §13.5). `{"enabled":
+        false}` when off. When on, `settings`, `collections` and `saves` say which kinds of Cloud
+        Sync data the product serves, and each endpoint is a URL or `null`: an SDK uses an
+        endpoint only when it is present. Each capability turns true, and its endpoint appears,
+        when the package serving it ships (settings and pull/push with U-05, collections with
+        U-09, saves and the files on records with U-10). The quota is not here: it depends on the
+        requesting device's licence, so the pull carries it.
       oneOf:
         - type: object
           required: [enabled]
@@ -20064,18 +20066,18 @@ components:
             saves: { type: boolean }
             endpoints:
               type: object
-              required: [pull, push, saves]
+              required: [pull, push, files]
               properties:
                 pull: { type: [string, "null"] }
                 push: { type: [string, "null"] }
-                saves: { type: [string, "null"] }
+                files: { type: [string, "null"] }
       examples:
         - { enabled: false }
         - enabled: true
           settings: false
           collections: false
           saves: false
-          endpoints: { pull: null, push: null, saves: null }
+          endpoints: { pull: null, push: null, files: null }
     Jwks:
       type: object
       description: >
@@ -20825,28 +20827,36 @@ components:
         cloudSync:
           type: object
           description: >
-            The data shape of the product's Cloud Sync data (U-04): `collections`, `open`,
-            `saves` and `migrations`. Limits and access policy are product settings, never here.
-            A console publish that omits it keeps the active version's block.
+            The data shape of the product's Cloud Sync records (plans/U-01b.md §3.1): declared
+            `collections` and the catalog `migrations` the server applies to synced values. The
+            quota is the `pkey.cloudSync.bytes` entitlement, never here. A console publish that
+            omits it keeps the active version's block.
           properties:
             collections:
               type: array
+              maxItems: 32
               items:
                 type: object
-                required: [name, access]
+                required: [name]
                 properties:
                   name: { type: string }
-                  access: { type: string, enum: [owner, ownerRead, server] }
+                  label: { type: string }
+                  template: { type: string, enum: [saves, session] }
+                  access: { type: string, enum: [owner] }
                   conflict:
-                    { type: string, enum: [revision, lastWrite, merge, union] }
-                  schema: { type: object, additionalProperties: true }
-                  onAttach:
                     {
                       type: string,
-                      enum: [keepCloud, keepLocal, merge, prompt],
+                      enum: [lastWrite, max, min, merge, union, revision],
                     }
-            open: { type: boolean }
-            saves: { type: object, additionalProperties: true }
+                  conflictField: { type: string }
+                  schema: { type: object, additionalProperties: true }
+                  maxRecords: { type: integer, minimum: 0, maximum: 10000 }
+                  files:
+                    type: object
+                    properties:
+                      maxBytes: { type: integer, minimum: 0 }
+                      keepRevisions: { type: integer, minimum: 0 }
+                  requires: { type: string }
             migrations:
               type: array
               items:

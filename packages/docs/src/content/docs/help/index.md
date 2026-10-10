@@ -24,6 +24,7 @@ across several products. This section covers every surface you might run into, f
 | [Activation](/docs/users/activation/)              | The four ways to get a product running: a license key, signing in, free enrollment, or an offline bundle. |
 | [The customer portal](/docs/users/portal/)         | Signing in on the web, your licenses, claiming a key, downloads, and deleting your account.               |
 | [Devices](/docs/users/devices/)                    | What counts as a device, seat limits, and renaming or disconnecting one.                                  |
+| [Cloud Sync](/docs/help/sync/)                     | How settings and saves follow you between devices, and what its messages mean.                            |
 | [Updates](/docs/users/updates/)                    | How new versions reach you, and why an old build might ask you to update.                                 |
 | [Downloads and app stores](/docs/users/downloads/) | Adding an AltStore, SideStore or F-Droid source, Obtainium, and Scoop.                                    |
 | [Troubleshooting](/docs/users/troubleshooting/)    | Common activation, device, and sign-in problems, explained.                                               |

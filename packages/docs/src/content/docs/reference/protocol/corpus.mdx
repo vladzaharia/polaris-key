@@ -23,7 +23,7 @@ only corpus. `corpusVersion 2`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
 `planMatrixVersion 2`, `deviceLabelVersion 1`,
 `presentationMatrixVersion 1`, `uiMatrixVersion 2`,
-`contentCorpusVersion 2`, `syncScenariosVersion 1`.
+`contentCorpusVersion 2`, `syncScenariosVersion 2`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
 `releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
 beside `expect` on every case whose payload holds a number that cannot be a wire integer, and the
@@ -81,7 +81,7 @@ WIRE-CONTRACT-V4 §11.2: the capability defaults per outlet kind and their narro
 
 WIRE-CONTRACT-V4 §11.4: `plan` (request weight 16384), `selectVariant` and `planTarget`. Chunk targets are inline, so the planner never parses an index; the `plan-real-*` rows are the content set's own menu. The generator recomputes every row and case.
 
-## Cloud Sync scenarios (`sync-scenarios.json`): 35 scenarios over 21 rules
+## Cloud Sync scenarios (`sync-scenarios.json`): 49 scenarios over 29 rules
 
 WIRE-CONTRACT-V4 §11.5, client behaviour beside the contract: the journal, the debounce, the HLC and pre-contact re-stamping, conflict rebase, one outstanding compare-and-swap per record, the per-subject partitions, the first-sign-in move, sign-out with pending operations, principal changes, `account_required` and a `/sync` 401, each scenario a run of SDK calls, clock moves and scripted server answers. Literal data (`tools/sync-scenarios.ts`), not computed by an implementation; `@polaris-key/client-core/cloud-sync` is checked against it like every SDK, by the Node runner `conformance/runners/node/syncScenarios.test.ts`.
 

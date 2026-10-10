@@ -149,7 +149,6 @@ export const SECURITY_WIDENING_KEYS: readonly string[] = [
   "release.sparkleEd25519Pub",
   "update.metadataAccess",
   "distribution.access",
-  "cloudSync.writes",
   // ST-19b: the manifest-declared settings that widen access.
   "core.registration",
   "identity.provisioning",

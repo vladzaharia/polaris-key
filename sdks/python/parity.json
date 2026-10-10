@@ -101,6 +101,10 @@
     "config.local": {
       "status": "implemented"
     },
+    "config.sync": {
+      "status": "planned",
+      "wp": "U-06"
+    },
     "devices.fingerprint": {
       "status": "implemented"
     },
@@ -394,6 +398,22 @@
     "commerce.receipt": {
       "status": "implemented",
       "note": "polaris_key.commerce: binding() and claim(store, payload) over the P6-01 bridge, plus claim_steam(ticket_hex, dlc_app_id), claim_play() and claim_app_store(), which sync on success; the host's Steamworks binding supplies the ticket, so there is no store dependency. Refusals keep the server's code and reason (ClaimNotOwned, ClaimAttestationRequired, ClaimRefused). tests/test_commerce.py and the commerce-claim transcript."
+    },
+    "sync.scenarios": {
+      "status": "planned",
+      "wp": "U-06"
+    },
+    "sync.settings": {
+      "status": "planned",
+      "wp": "U-06"
+    },
+    "sync.conflict": {
+      "status": "planned",
+      "wp": "U-08"
+    },
+    "sync.saves": {
+      "status": "planned",
+      "wp": "U-22"
     }
   }
 }

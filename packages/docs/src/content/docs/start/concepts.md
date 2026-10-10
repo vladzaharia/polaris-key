@@ -155,8 +155,9 @@ signed settings without taking licensing, and another take a release feed withou
     through Core (the **descriptor hooks**, below).
   - **[identity](/docs/services/identity/)** — product OIDC, browser sessions, the customer
     portal.
-  - **[sync](/docs/services/sync/)** — **Cloud Sync**: a signed-in person's user settings,
-    collections and saves, synced across their devices. It requires `config` and `identity`.
+  - **[sync](/docs/services/sync/)** — **Cloud Sync**: a signed-in person's settings, saves and
+    other records, with their files, synced across their devices. It requires `config` and
+    `identity`.
 
 ### Enablement
 
@@ -427,8 +428,8 @@ Note that **profile** is already taken twice — the reusable managed-payload ba
   - **hidden** — `enforced` **and** withheld from user-facing enumeration (still applied
     internally).
 - **scope** — where a catalog key is meaningful (the `UiHints.scopes` field): one or more of
-  `profile`, `license`, `device`, `user` (`user` is a hint; a user setting's `user.sync` is what is
-  enforced).
+  `profile`, `license`, `device`, `user` (`user` is a hint; where a synced setting roams is its
+  `user.sync`).
 - **manifest** — the files in a product's repo that describe it: `schema` (the config catalog),
   `product` (metadata + enabled services + registration policy + OIDC + tiers + provisioning),
   and `release` (release config + minters), each in JSON or YAML. They live in exactly one
@@ -440,23 +441,37 @@ The nouns of the Cloud Sync service (slug `sync`). Product copy and the console 
 SDKs name the namespace `cloudSync` (`cloud_sync` in Python and GDScript), never `sync`, which
 already means the document sync.
 
-- **Cloud Sync** — the service that stores and syncs a person's user settings, collections and
-  saves for one product. It is off by default and requires Config and Identity: there is no Cloud
-  Sync without signing in through the product.
-- **user setting** — a catalog `config` key that declares a `user` block (`sync`: `user`,
-  `platform`, `device` or `local`; `conflict`: `lastWrite`, `max`, `min` or `merge`; `listed`).
-  Its chosen value is kept on the device by the Config SDK and, with Cloud Sync, synced; the
-  operator can still enforce it, which is why an `enforced` or `hidden` management default refuses
-  the block.
+- **Cloud Sync** — the service that stores and syncs a person's settings, records and files for
+  one product. It is off by default and requires Config and Identity: there is no Cloud Sync
+  without signing in through the product.
+- **synced setting** — any Editable catalog `config` key (one whose `managementDefault` is not
+  `enforced` or `hidden`). Its chosen value fills the device's `local` slot and, with Cloud Sync,
+  roams to the person's other devices. An optional `user` block tunes it: `sync` (`user`,
+  `platform` or `local`, which keeps the value on the device), `conflict` (`lastWrite`, `max`,
+  `min` or `merge`) and `listed`. Replaces **user setting**, and its `device` scope, which no
+  longer exist.
+- **open setting** — a key the catalog does not declare, set by the game itself. It syncs as a
+  `user`-scope `lastWrite` value of at most 8 KiB, sharing the person's settings budget (256 keys,
+  64 KiB). An app treats its value as untrusted input.
 - **account override** (user-level managed config) — an operator-authored managed-payload layer
   for one account on one product. It replaces the licence override for config and secrets on
   every product; a licence keeps its entitlement overrides. A device gets the layer of the
   account signed in on it, else of its licence's owner; an unowned (floating) licence has none.
-- **collection** — a developer-declared namespace of **records** (JSON values keyed by id) held
-  for the Cloud Sync principal, declared in the catalog's `cloudSync` block.
-- **save** — a named slot holding an opaque blob plus metadata and revisions.
-- **Cloud Sync data** — the umbrella for user settings, collections and saves held in Cloud Sync.
-  With the account override it makes up the account × product data.
+- **collection** — a namespace of **records** the catalog's `cloudSync` block declares, held for
+  the Cloud Sync principal. "Collection" is the code word; `saves` and `session` are its
+  templates.
+- **record** — one JSON value in a collection, keyed by id, at most 64 KiB. A record may carry
+  one **file**.
+- **file** — the bytes attached to a record (a save's data, for example), stored with its older
+  versions.
+- **saves template** — the collection template for save slots: 16 slots per person, each record
+  holding `playtime`, `progress`, `chapter`, `formatVersion` and a `thumbnail`, plus one file.
+- **save** — a record of the `saves` template, which may carry one file.
+- **Cloud Sync data** — the umbrella for the settings, records and files held in Cloud Sync. With
+  the account override it makes up the account × product data.
+- **Cloud Sync quota** — how many bytes of Cloud Sync data a person may keep on a product: the
+  entitlement `pkey.cloudSync.bytes`, read from the anchor licence of the device that writes (256
+  MiB when nothing sets it; 1 MiB and no files without a licence). Lowering it deletes nothing.
 - **Cloud Sync principal** — whose Cloud Sync data it is: the account signed in on the device, as
   the product's pairwise subject; the same account the licensing model calls the holder. A device
   activated with a licence key has no Cloud Sync principal and keeps its settings on the device.

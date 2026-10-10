@@ -87,7 +87,7 @@ const ENTRIES := [
 		},
 		"user": {
 			"listed": false,
-			"sync": "device",
+			"sync": "local",
 		},
 	},
 	{
@@ -168,17 +168,22 @@ const DEFAULTS := {
 	"ui.theme": "dark",
 }
 
-## Every user setting (a config key with a `user` block) and its policy, defaults applied.
+## Every settable key (an Editable config key: synced, or local) and its policy, defaults applied.
 const USER_SETTINGS := {
 	"audio.musicVolume": {
 		"conflict": "max",
 		"listed": true,
 		"sync": "user",
 	},
+	"dice.animSpeed": {
+		"conflict": "lastWrite",
+		"listed": true,
+		"sync": "user",
+	},
 	"ui.theme": {
 		"conflict": "lastWrite",
 		"listed": false,
-		"sync": "device",
+		"sync": "local",
 	},
 }
 

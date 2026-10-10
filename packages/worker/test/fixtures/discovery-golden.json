@@ -224,7 +224,7 @@
         "endpoints": {
           "pull": null,
           "push": null,
-          "saves": null
+          "files": null
         }
       }
     }

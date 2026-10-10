@@ -400,7 +400,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   {
     thing: "The Cloud Sync data shape (.pkey/schema's cloudSync block)",
     reason:
-      "Catalog content, not behaviour: the collections, saves and migrations a client needs are published with the catalog (S-18 Q5). Cloud Sync's limits and access policy are the cloudSync.* settings.",
+      "Catalog content, not behaviour: the collections (saves among them) and migrations a client needs are published with the catalog (S-18 Q5). A person's quota is the pkey.cloudSync.bytes entitlement, set on tiers, licences and add-ons; the operator's controls are the cloudSync.* settings.",
     shows: "Config → Catalog; pkey validate",
     covers: { ids: ["manifest:schema:cloudSync"] },
   },
