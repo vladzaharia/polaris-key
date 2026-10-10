@@ -4,6 +4,7 @@
   "runtimes": ["web", "desktop-bridge"],
   "testRoots": [
     "packages/sdk-react/test",
+    "packages/elements/test",
     "packages/client-core/test",
     "packages/ui-core/test",
     "conformance/runners/node",
@@ -410,54 +411,47 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "ui.gate": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit's <PolarisKeyGate> starts itself inside <PolarisKeyProvider> (test/kitGate.test.tsx); (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx, baselines under test/visual/__screenshots__/kit.*); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.activate": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx, baselines under test/visual/__screenshots__/kit.*); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.signin": {
       "status": "planned",
       "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "note": "The SignIn, SignInHandoff and LicenseChoice components render every signIn row (test/kitMatrix.test.tsx); the drop-in's one sign-in form driven by SignInModel is the rest of UK-05. Elements via UK-04; the Electron renderer via UK-06."
     },
     "ui.devicelimit": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx, baselines under test/visual/__screenshots__/kit.*); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.devices": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx, baselines under test/visual/__screenshots__/kit.*); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.update": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx, baselines under test/visual/__screenshots__/kit.*); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.settings": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx, baselines under test/visual/__screenshots__/kit.*); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.paywall": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx, baselines under test/visual/__screenshots__/kit.*); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.theme": {
       "status": "planned",
       "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "note": "The kit resolves the theme and identity through ui-core (test/kit.test.tsx); running the theme family of ui-matrix.json is the rest of UK-05. Elements via UK-04; the Electron renderer via UK-06."
     },
     "ui.i18n": {
       "status": "planned",
       "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "note": "The kit formats through ui-core's catalog with the launch locales loaded on demand; running the i18n family and the locale renders is the rest of UK-05. Elements via UK-04; the Electron renderer via UK-06."
     },
     "commerce.receipt": {
       "status": "implemented",

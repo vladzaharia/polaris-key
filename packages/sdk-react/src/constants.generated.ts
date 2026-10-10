@@ -1755,14 +1755,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "ui.gate": { status: "planned", service: "sdk", na: [] },
-  "ui.activate": { status: "planned", service: "sdk", na: [] },
+  "ui.gate": { status: "implemented", service: "sdk", na: [] },
+  "ui.activate": { status: "implemented", service: "sdk", na: [] },
   "ui.signin": { status: "planned", service: "sdk", na: [] },
-  "ui.devicelimit": { status: "planned", service: "sdk", na: [] },
-  "ui.devices": { status: "planned", service: "sdk", na: [] },
-  "ui.update": { status: "planned", service: "sdk", na: [] },
-  "ui.settings": { status: "planned", service: "sdk", na: [] },
-  "ui.paywall": { status: "planned", service: "sdk", na: [] },
+  "ui.devicelimit": { status: "implemented", service: "sdk", na: [] },
+  "ui.devices": { status: "implemented", service: "sdk", na: [] },
+  "ui.update": { status: "implemented", service: "sdk", na: [] },
+  "ui.settings": { status: "implemented", service: "sdk", na: [] },
+  "ui.paywall": { status: "implemented", service: "sdk", na: [] },
   "ui.theme": { status: "planned", service: "sdk", na: [] },
   "ui.i18n": { status: "planned", service: "sdk", na: [] },
   "commerce.receipt": { status: "implemented", service: "license", na: [] },
@@ -1770,4 +1770,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "550261fc37927bd2ffd3c9aa47cf9b684ffa307f2c98943259c32022df7853bc";
+  "92b3b121cc95aca195171178ce211eafa1456022f387861d9525515a8f85c181";
