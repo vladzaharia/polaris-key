@@ -1,7 +1,7 @@
 /**
  * P0-48: the written gate lists agree with CI. AGENTS.md, CONTRIBUTING.md and the docs site's
  * contributor setup page each say their green gate is "what CI runs"; this keeps that true for
- * the drift gates. Every `… -- --check` command the required `js` job of
+ * the drift gates. Every `… --check` command the required `js` job of
  * `.github/workflows/ci.yml` runs must appear, verbatim, in each list. (The lead's own gate
  * script lives outside the repository, so it cannot be checked here.)
  */
@@ -24,7 +24,7 @@ function ciDriftGates(): string[] {
   const ci = parseYaml(read(".github", "workflows", "ci.yml")) as Workflow;
   return (ci.jobs.js?.steps ?? [])
     .map((s) => s.run?.trim() ?? "")
-    .filter((run) => /^pnpm .*-- --check$/.test(run));
+    .filter((run) => /^pnpm .*--check$/.test(run));
 }
 
 const LISTS: [string, string][] = [
@@ -49,8 +49,8 @@ describe("the green-gate lists name every drift gate CI runs", () => {
 
   it("finds CI's drift gates", () => {
     // A rename of the job or a reshaped step would otherwise leave nothing to compare.
-    expect(gates).toContain("pnpm gen:corpus -- --check");
-    expect(gates).toContain("pnpm gen:settings -- --check");
+    // One registry-driven step replaces the per-family checks (tools/generators.ts).
+    expect(gates).toContain("pnpm gen --check");
   });
 
   for (const [file, text] of LISTS)
