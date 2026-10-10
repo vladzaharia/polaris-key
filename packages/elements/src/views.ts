@@ -1,0 +1,876 @@
+// One template per component form (screen, pane, banner, toast, inline) over `placeKeys`, plus the
+// content a few components draw themselves: the key field, the user code, device and license
+// rows, progress, release notes and settings rows. Every string is a key of the view (DL8).
+
+import { html, nothing, type TemplateResult } from "lit";
+import { ifDefined } from "lit/directives/if-defined.js";
+import { countdown, type View } from "@polaris-key/ui-core";
+
+import { LAYOUTS, type Layout } from "./layout.js";
+import {
+  actions,
+  button,
+  callout,
+  a11yOnly,
+  codeDisplay,
+  copyAddress,
+  GLYPHS,
+  qrCode,
+  keyField,
+  links,
+  paragraphs,
+  placeKeys,
+  plain,
+  productHeader,
+  progressBar,
+  seatMeter,
+  shimmer,
+  text,
+  titles,
+  type RenderCtx,
+} from "./render.js";
+
+const ERROR_PREFIXES = ["core.codes.", "core.activation."];
+const isErrorKey = (k: string) =>
+  ERROR_PREFIXES.some((p) => k.startsWith(p)) ||
+  /(Failed|\.failed|methodError|\.error)$/.test(k);
+
+/** Keys the content of a component draws itself. */
+function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
+  const { view, input } = c;
+  const keys = new Set(view.copy);
+  switch (view.component) {
+    case "Activate": {
+      const verdict = [
+        "part.keyField.verdict",
+        "part.keyField.cutShort",
+        "part.keyField.malformed",
+        "part.keyField.empty",
+        "part.keyField.forProduct",
+      ].filter((k) => keys.has(k));
+      const invalid = verdict.some(
+        (k) =>
+          k !== "part.keyField.verdict" && k !== "part.keyField.forProduct",
+      );
+      const editing = [
+        "empty",
+        "typing",
+        "parsed",
+        "cut-short",
+        "rejected",
+      ].includes(view.state);
+      const used = input.activation?.deviceCount;
+      const limit = input.activation?.limit;
+      return html`${editing
+        ? keyField(c, invalid, verdict.length ? "pk-verdict" : null)
+        : nothing}
+      ${keys.has("part.seatMeter.caption") &&
+      used !== undefined &&
+      limit !== undefined
+        ? seatMeter(c, used, limit)
+        : nothing}
+      ${verdict.length
+        ? html`<p
+            id="pk-verdict"
+            class=${invalid ? "message" : "meta"}
+            data-tone=${ifDefined(invalid ? "danger" : undefined)}
+            data-part="verdict"
+            aria-live="polite"
+          >
+            ${verdict.map(
+              (k) => html`<span data-key=${k}>${text(c, k)}</span>`,
+            )}
+          </p>`
+        : nothing}`;
+    }
+    case "SignIn":
+    case "SignInHandoff": {
+      const code = codeDisplay(c);
+      const url = c.view.decisions.link;
+      const showUrl = keys.has("signin.handoff.url") && url?.display;
+      return html`${code} ${qrCode(c, url?.qr ? url.url : null)}
+      ${showUrl
+        ? html`<p class="body" data-key="signin.handoff.url">
+            ${text(c, "signin.handoff.url", { url: url!.display! })}
+            ${copyAddress(c)}
+          </p>`
+        : keys.has("signin.handoff.url")
+          ? html`<p class="body" data-key="signin.handoff.url">
+              ${text(c, "signin.handoff.url")}
+            </p>`
+          : copyAddress(c)}
+      ${keys.has("part.keyField.label") ? keyField(c, false, null) : nothing}`;
+    }
+    case "DeviceLimit":
+      return deviceLimitContent(c);
+    case "LicenseChoice":
+      return licenseRows(c);
+    case "Devices":
+      return deviceRows(c);
+    case "ReleaseNotes":
+      return releaseNotes(c);
+    case "Settings":
+      return settingsRows(c);
+    case "OfflineActivation":
+      return keys.has("offlineActivation.paste")
+        ? html`<div class="field" data-part="response">
+            <label class="label" for="pk-response"
+              >${text(c, "offlineActivation.paste")}</label
+            >
+            <textarea
+              id="pk-response"
+              rows="3"
+              spellcheck="false"
+              data-mono
+            ></textarea>
+            ${keys.has("offlineActivation.dropHint")
+              ? html`<span class="meta" data-key="offlineActivation.dropHint"
+                  >${text(c, "offlineActivation.dropHint")}</span
+                >`
+              : nothing}
+          </div>`
+        : nothing;
+    case "AccountAndLicense":
+      return accountRows(c);
+    default:
+      return nothing;
+  }
+}
+
+function progressFor(c: RenderCtx): TemplateResult | typeof nothing {
+  const { view, input } = c;
+  if (view.component === "Boot" && view.state === "fetching") {
+    const e = input.stage?.emit;
+    if (
+      e?.type === "fetch_progress" &&
+      typeof e.done === "number" &&
+      typeof e.total === "number" &&
+      e.total > 0
+    )
+      return progressBar(c, e.done / e.total);
+  }
+  const p = input.update?.progress;
+  if (
+    (view.component === "UpdatePrompt" && view.state === "downloading") ||
+    (view.component === "UpdateProgress" &&
+      (view.state === "downloading" || view.state === "paused"))
+  )
+    return progressBar(c, p?.fraction ?? 0);
+  if (view.copy.includes("a11y.progress"))
+    return progressBar(c, p?.fraction ?? 0);
+  return nothing;
+}
+
+/** A locked value (ChannelPicker, a managed setting): the lock glyph, named. */
+function locked(c: RenderCtx): TemplateResult | typeof nothing {
+  if (!c.view.copy.includes("a11y.locked")) return nothing;
+  return html`<span
+    role="img"
+    data-key="a11y.locked"
+    aria-label=${plain(c, "a11y.locked")}
+    >${GLYPHS.lock()}</span
+  >`;
+}
+
+const LOADING: Record<string, readonly string[]> = {
+  PolarisKeyGate: ["booting"],
+  Boot: ["progress", "fetching"],
+  LicenseChoice: ["loading"],
+  Devices: ["loading"],
+  ReleaseNotes: ["loading"],
+  AccountAndLicense: ["loading"],
+  Settings: ["loading"],
+  Paywall: ["loading", "purchasing"],
+  EntitlementGate: ["loading"],
+  SignInHandoff: ["starting", "finishing"],
+  SignIn: ["finishing"],
+};
+
+function isLoading(view: View): boolean {
+  return LOADING[view.component]?.includes(view.state) ?? false;
+}
+
+/** A blocking step: the card on the product ambient (DL1, DL2, DL5). */
+function screen(c: RenderCtx, layout: Layout): TemplateResult {
+  const { view } = c;
+  const p = placeKeys(view, layout);
+  const errorKeys = p.body.filter(isErrorKey);
+  const body = p.body.filter((k) => !isErrorKey(k));
+  const heroTitle = layout.header === "hero";
+  const ambient = c.resolved.theme.ambient;
+  const showIdentity = layout.header !== "none";
+  // DL5: the product's name appears once: in the title when the title names it.
+  const name = c.resolved.identity.name || c.resolved.theme.name;
+  const titleNames =
+    p.titles.length > 0 && name !== "" && plain(c, p.titles[0]!).includes(name);
+  const loading = isLoading(view);
+  // Refusals (DL6) and errors (DL7) whose message is the screen: the title reads as the message.
+  return html`<section
+    class="stage"
+    part="stage"
+    data-part="stage"
+    data-kind="screen"
+    ?data-split=${layout.split === true}
+  >
+    ${ambient
+      ? html`<div class="ambient" aria-hidden="true">
+          ${c.resolved.iconUrl
+            ? html`<img src=${c.resolved.iconUrl} alt="" />`
+            : nothing}
+        </div>`
+      : nothing}
+    <div
+      class="card step"
+      part="card"
+      data-part="card"
+      data-align=${heroTitle ? "center" : "start"}
+      aria-busy=${ifDefined(loading ? "true" : undefined)}
+    >
+      ${loading ? shimmer() : nothing}
+      <div class="split passport">
+        ${showIdentity
+          ? productHeader(c, layout.header, {
+              name: !titleNames,
+              developer: view.copy.includes("common.byDeveloper"),
+            })
+          : nothing}
+      </div>
+      <div class="texts" data-part="texts">
+        ${titles(c, p.titles, heroTitle ? "display" : "title")}
+        ${paragraphs(
+          c,
+          body.filter((k) => k !== "common.byDeveloper"),
+        )}
+        ${p.meta.length
+          ? html`<p class="status-line" data-part="status" role="status">
+              ${p.meta.map(
+                (k, i) =>
+                  html`${i ? " · " : ""}<span data-key=${k}
+                      >${text(c, k)}</span
+                    >`,
+              )}
+            </p>`
+          : nothing}
+      </div>
+      ${contentFor(c)} ${progressFor(c)} ${callout(c, errorKeys)}
+      ${actions(c, p.controls)} ${links(c, p.links)} ${a11yOnly(c)}
+      ${p.footnote.length ? paragraphs(c, p.footnote, "footnote") : nothing}
+    </div>
+  </section>`;
+}
+
+/** An embedded pane (DL2): start edge, at most 40rem, its own frame unless `bare`. */
+function pane(c: RenderCtx, layout: Layout): TemplateResult {
+  const p = placeKeys(c.view, layout);
+  const errorKeys = p.body.filter(isErrorKey);
+  const body = p.body.filter((k) => !isErrorKey(k));
+  const loading = isLoading(c.view);
+  return html`<section
+    class="pane step"
+    part="pane"
+    data-part="pane"
+    aria-busy=${ifDefined(loading ? "true" : undefined)}
+  >
+    ${loading ? shimmer() : nothing}
+    ${productHeader(c, layout.header === "none" ? "none" : "compact")}
+    <div class="texts" data-part="texts">
+      ${titles(c, p.titles, "section")} ${paragraphs(c, body)}
+      ${p.meta.length
+        ? html`<p class="status-line" data-part="status" role="status">
+            ${p.meta.map(
+              (k, i) =>
+                html`${i ? " · " : ""}<span data-key=${k}>${text(c, k)}</span>`,
+            )}
+          </p>`
+        : nothing}
+    </div>
+    ${loading
+      ? html`<div class="skeleton" aria-hidden="true">
+          <span></span><span data-short></span>
+        </div>`
+      : nothing}
+    ${locked(c)} ${contentFor(c)} ${progressFor(c)} ${callout(c, errorKeys)}
+    ${actions(c, p.controls, true)} ${links(c, p.links)} ${a11yOnly(c)}
+  </section>`;
+}
+
+function statusGlyph(view: View): TemplateResult | typeof nothing {
+  const s = view.state;
+  if (view.component === "Toast")
+    return s === "success"
+      ? GLYPHS.success()
+      : s === "warning"
+        ? GLYPHS.warning()
+        : s === "error"
+          ? GLYPHS.warning()
+          : GLYPHS.info();
+  if (view.component === "GraceBanner") return GLYPHS.offline();
+  if (view.component === "CloudSyncStatus")
+    return s === "offline"
+      ? GLYPHS.offline()
+      : s === "synced"
+        ? GLYPHS.success()
+        : s === "syncing"
+          ? nothing
+          : GLYPHS.warning();
+  return nothing;
+}
+
+function statusOf(view: View): string {
+  if (view.component === "Toast")
+    return view.state === "error"
+      ? "danger"
+      : view.state === "warning"
+        ? "warning"
+        : view.state === "success"
+          ? "success"
+          : "neutral";
+  if (view.component === "CloudSyncStatus")
+    return view.state === "conflict" || view.state === "error"
+      ? "warning"
+      : view.state === "synced"
+        ? "success"
+        : "neutral";
+  return "neutral";
+}
+
+/** A banner or a toast: one line plus its consequence, at most two actions. */
+function strip(
+  c: RenderCtx,
+  layout: Layout,
+  kind: "banner" | "toast",
+): TemplateResult {
+  const p = placeKeys(c.view, layout);
+  const lines = [...p.titles, ...p.body, ...p.meta];
+  const role = c.view.decisions.tone === "danger" ? "alert" : "status";
+  return html`<div
+    class=${kind}
+    part=${kind}
+    data-part=${kind}
+    data-status=${statusOf(c.view)}
+    role=${role}
+  >
+    ${statusGlyph(c.view)}
+    <div class="texts">
+      ${lines.map(
+        (k, i) =>
+          html`<span class=${i === 0 ? "label" : "meta"} data-key=${k}
+            >${text(c, k)}</span
+          >`,
+      )}
+      ${progressFor(c)}
+    </div>
+    ${p.controls.length
+      ? html`<div class="actions" data-layout="row" data-part="actions">
+          ${p.controls.map((k) =>
+            button(
+              c,
+              k,
+              k === c.view.decisions.primary ? "primary" : "secondary",
+            ),
+          )}
+        </div>`
+      : nothing}
+    ${kind === "toast" && c.view.copy.includes("a11y.toastTimer")
+      ? html`<span class="timer" aria-hidden="true"></span>`
+      : nothing}
+    ${a11yOnly(c)}
+  </div>`;
+}
+
+/** A small status inside the host's layout. */
+function inline(c: RenderCtx, layout: Layout): TemplateResult {
+  const p = placeKeys(c.view, layout);
+  const lines = [...p.titles, ...p.meta, ...p.body];
+  return html`<div
+    class="inline-status"
+    part="status"
+    data-part="status"
+    data-status=${statusOf(c.view)}
+    role="status"
+  >
+    ${statusGlyph(c.view)}
+    ${lines.map(
+      (k) =>
+        html`<span class=${p.titles.includes(k) ? "label" : ""} data-key=${k}
+          >${text(c, k)}</span
+        >`,
+    )}
+    ${progressFor(c)} ${a11yOnly(c)}
+    ${p.controls.map((k) =>
+      button(c, k, k === c.view.decisions.primary ? "primary" : "secondary"),
+    )}
+    ${links(c, p.links)}
+  </div>`;
+}
+
+/** Draw one view in its component's form; `hidden` draws nothing. */
+export function renderView(c: RenderCtx): TemplateResult | typeof nothing {
+  if (c.view.state === "hidden") return nothing;
+  const layout = LAYOUTS[c.view.component];
+  switch (layout.kind) {
+    case "screen":
+      return screen(c, layout);
+    case "pane":
+      return pane(c, layout);
+    case "banner":
+      return strip(c, layout, "banner");
+    case "toast":
+      return strip(c, layout, "toast");
+    case "inline":
+      return inline(c, layout);
+  }
+}
+
+// ── Rows ─────────────────────────────────────────────────────────────────────────────────────
+
+function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
+  const keys = new Set(c.view.copy);
+  const used =
+    c.input.activation?.deviceCount ?? c.input.replaceView?.seats.used;
+  const limit =
+    c.input.activation?.limit ?? c.input.replaceView?.seats.limit ?? undefined;
+  const devices = c.input.devices ?? [];
+  const link = c.view.decisions.link;
+  const qr = qrCode(c, link?.qr ? link.url : null);
+  if (!keys.has("signin.replace.meta") && !keys.has("part.seatMeter.caption"))
+    return qr;
+  // Least recent preselected (SIGN-IN.md §3.7).
+  const order = devices
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => (b.d.lastSeenDays ?? 0) - (a.d.lastSeenDays ?? 0));
+  const leastRecent = order[0]?.i;
+  const selected =
+    c.input.selected !== undefined ? Number(c.input.selected) : leastRecent;
+  const pick = selected !== undefined ? devices[selected] : undefined;
+  return html`${qr}${keys.has("part.seatMeter.caption") &&
+  used !== undefined &&
+  limit != null
+    ? seatMeter(c, used, limit)
+    : nothing}
+  ${keys.has("signin.replace.meta")
+    ? html`<div
+        class="list"
+        role="radiogroup"
+        aria-labelledby="pk-title"
+        data-part="device-list"
+      >
+        ${devices.map(
+          (d, i) =>
+            html`<div
+              class="row"
+              role="radio"
+              part="device-row"
+              data-part="device-row"
+              tabindex=${i === selected ? "0" : "-1"}
+              aria-checked=${i === selected ? "true" : "false"}
+              @click=${() => c.pick(String(i))}
+              @keydown=${(e: KeyboardEvent) =>
+                radioKeys(e, c, i, devices.length)}
+            >
+              <span
+                aria-label=${keys.has("a11y.formFactor")
+                  ? plain(c, "a11y.formFactor", {
+                      formFactor: d.formFactor ?? "other",
+                    })
+                  : ""}
+                role="img"
+              >
+                ${GLYPHS.device(d.formFactor)}
+              </span>
+              <span>
+                <span class="row-title"><bdi>${d.name ?? ""}</bdi></span
+                ><br />
+                <span class="meta">
+                  ${text(c, "signin.replace.meta", {
+                    platform: d.platform ?? "",
+                    when: days(d.lastSeenDays),
+                  })}
+                  ${i === leastRecent && keys.has("signin.replace.leastRecent")
+                    ? html` · ${text(c, "signin.replace.leastRecent")}`
+                    : nothing}
+                </span>
+              </span>
+              ${i === selected ? GLYPHS.check() : html`<span></span>`}
+            </div>`,
+        )}
+      </div>`
+    : nothing}
+  ${keys.has("deviceLimit.confirmTitle") && pick
+    ? html`<div class="callout" data-part="confirm">
+        <span class="callout-title"
+          >${text(c, "deviceLimit.confirmTitle", {
+            device: pick.name ?? "",
+          })}</span
+        >
+        ${keys.has("deviceLimit.consequence")
+          ? html`<span
+              >${text(c, "deviceLimit.consequence", {
+                device: pick.name ?? "",
+                thisDevice: plain(c, "part.thisDevice", {
+                  formFactor: c.input.platform?.formFactor ?? "computer",
+                }),
+              })}</span
+            >`
+          : nothing}
+      </div>`
+    : nothing}`;
+}
+
+function radioKeys(e: KeyboardEvent, c: RenderCtx, i: number, n: number): void {
+  const next =
+    e.key === "ArrowDown" || e.key === "ArrowRight"
+      ? (i + 1) % n
+      : e.key === "ArrowUp" || e.key === "ArrowLeft"
+        ? (i - 1 + n) % n
+        : null;
+  if (e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    c.pick(String(i));
+  } else if (next !== null) {
+    e.preventDefault();
+    c.pick(String(next));
+    const host = (e.currentTarget as HTMLElement).parentElement;
+    queueMicrotask(() =>
+      (host?.children[next] as HTMLElement | undefined)?.focus(),
+    );
+  }
+}
+
+/** "today", "yesterday", "3 days ago": passed to the copy as text (dates are the caller's). */
+function days(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "";
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  return rtf.format(-n, "day");
+}
+
+const ORIGIN_KEY: Readonly<Record<string, string>> = {
+  store: "signin.choice.origin.store",
+  key: "signin.choice.origin.keyAdded",
+  free: "signin.choice.origin.free",
+  developer: "signin.choice.origin.developer",
+  signin: "signin.choice.origin.signIn",
+};
+
+function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
+  const keys = new Set(c.view.copy);
+  const view = c.input.choices;
+  const rows = view?.choices ?? [];
+  const selected = c.input.selected ?? view?.preselected ?? null;
+  // A row of its own for keep, create and a first automatic license (never blurred, Must not).
+  const special = (
+    key: string,
+    meta: string | null,
+    tag: string | null,
+    id: string,
+  ) =>
+    html`<div
+      class="row"
+      role="radio"
+      data-part="license-row"
+      tabindex="0"
+      aria-checked=${selected === id || c.view.state === "new"
+        ? "true"
+        : "false"}
+      @click=${() => c.pick(id)}
+    >
+      <span></span>
+      <span>
+        <span class="row-title" data-key=${key}>${text(c, key)}</span>
+        ${tag && keys.has(tag)
+          ? html` <span class="pill" data-key=${tag}>${text(c, tag)}</span>`
+          : nothing}
+        ${meta && keys.has(meta)
+          ? html`<br /><span class="meta" data-key=${meta}
+                >${text(c, meta)}</span
+              >`
+          : nothing}
+      </span>
+      ${GLYPHS.check()}
+    </div>`;
+  if (c.view.state === "keep")
+    return html`<div class="list" role="radiogroup">
+      ${special("signin.choice.keep", "signin.choice.keepMeta", null, "keep")}
+    </div>`;
+  if (c.view.state === "create")
+    return html`<div class="list" role="radiogroup">
+      ${special(
+        "signin.choice.create",
+        "signin.choice.createMeta",
+        null,
+        "create",
+      )}
+    </div>`;
+  if (c.view.state === "new")
+    return html`<div class="list" role="radiogroup">
+      <div
+        class="row"
+        role="radio"
+        aria-checked="true"
+        data-part="license-row"
+        tabindex="0"
+      >
+        <span class="pill">${String(c.view.args.tier ?? "")}</span>
+        <span>
+          <span class="row-title" data-key="signin.choice.metaNew"
+            >${text(c, "signin.choice.metaNew")}</span
+          >
+          <span class="pill" data-key="signin.choice.tag.new"
+            >${text(c, "signin.choice.tag.new")}</span
+          >
+        </span>
+        ${GLYPHS.check()}
+      </div>
+    </div>`;
+  const tagged = ["signin.choice.tag.current", "signin.choice.tag.full"].filter(
+    (k) => keys.has(k),
+  );
+  if (!keys.has("signin.choice.group") && tagged.length === 0) return nothing;
+  const shownRows = keys.has("signin.choice.group")
+    ? rows
+    : rows.filter(
+        (r) =>
+          (keys.has("signin.choice.tag.current") && r.current) ||
+          (keys.has("signin.choice.tag.full") && r.state !== "free"),
+      );
+  return html`<div
+    class="list"
+    role="radiogroup"
+    aria-label=${keys.has("signin.choice.group")
+      ? plain(c, "signin.choice.group")
+      : ""}
+    data-part="license-list"
+    data-key=${ifDefined(
+      keys.has("signin.choice.group") ? "signin.choice.group" : undefined,
+    )}
+  >
+    ${shownRows.map((r, i) => {
+      const full = r.state !== "free";
+      const on = r.id === selected || (selected === null && i === 0 && !full);
+      const origin = ORIGIN_KEY[r.origin];
+      const term =
+        r.expiresAt === null ? "signin.term.lifetime" : "signin.term.until";
+      const date = r.expiresAt
+        ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
+        : "";
+      const metaArgs = {
+        origin: origin && keys.has(origin) ? plain(c, origin) : "",
+        term: keys.has(term) ? plain(c, term, { date }) : "",
+      };
+      return html`<div
+        class="row"
+        role=${full ? "group" : "radio"}
+        data-part="license-row"
+        tabindex=${full ? "-1" : on ? "0" : "-1"}
+        aria-checked=${ifDefined(full ? undefined : on ? "true" : "false")}
+        @click=${() => (full ? undefined : c.pick(r.id))}
+      >
+        <span class="pill">${r.tierName}</span>
+        <span>
+          ${keys.has("signin.choice.devices") && r.seats.limit !== null
+            ? html`<span class="row-title num"
+                  >${text(c, "signin.choice.devices", {
+                    used: r.seats.used,
+                    limit: r.seats.limit,
+                  })}</span
+                ><br />`
+            : nothing}
+          ${keys.has("signin.choice.meta")
+            ? html`<span class="meta"
+                >${text(c, "signin.choice.meta", metaArgs)}</span
+              >`
+            : nothing}
+          ${full && keys.has("signin.choice.tag.full")
+            ? html` <span class="pill" data-key="signin.choice.tag.full"
+                >${text(c, "signin.choice.tag.full")}</span
+              >`
+            : nothing}
+          ${r.current && keys.has("signin.choice.tag.current")
+            ? html` <span class="pill" data-key="signin.choice.tag.current"
+                >${text(c, "signin.choice.tag.current")}</span
+              >`
+            : nothing}
+        </span>
+        ${on ? GLYPHS.check() : html`<span></span>`}
+      </div>`;
+    })}
+  </div>`;
+}
+
+function deviceRows(c: RenderCtx): TemplateResult | typeof nothing {
+  const keys = new Set(c.view.copy);
+  if (keys.has("devices.renameLabel")) {
+    const device = String(c.view.args.device ?? "");
+    return html`<div class="field" data-part="rename">
+      <label class="label" for="pk-rename"
+        >${text(c, "devices.renameLabel")}</label
+      >
+      <div class="field-row">
+        <input
+          id="pk-rename"
+          .value=${device}
+          data-key="devices.renameLabel"
+          autocomplete="off"
+        />
+        ${keys.has("common.save")
+          ? button(
+              c,
+              "common.save",
+              c.view.decisions.primary === "common.save"
+                ? "primary"
+                : "secondary",
+            )
+          : nothing}
+        ${keys.has("common.cancel")
+          ? button(c, "common.cancel", "secondary")
+          : nothing}
+      </div>
+    </div>`;
+  }
+  if (keys.has("devices.removeConfirm"))
+    return html`<div class="callout" data-part="confirm">
+      <span>${text(c, "devices.removeConfirm")}</span>
+      <div class="actions" data-layout="row">
+        ${button(c, "devices.remove", "danger")}
+        ${button(c, "common.cancel", "secondary")}
+      </div>
+    </div>`;
+  if (!keys.has("devices.meta")) return nothing;
+  const list = c.input.devices ?? [];
+  return html`<ul class="list" data-part="device-list">
+    ${list.map(
+      (d) =>
+        html`<li class="row" part="device-row" data-part="device-row">
+          <span
+            role="img"
+            aria-label=${plain(c, "a11y.formFactor", {
+              formFactor: d.formFactor ?? "other",
+            })}
+            >${GLYPHS.device(d.formFactor)}</span
+          >
+          <span>
+            <span class="row-title"
+              >${d.name
+                ? html`<bdi>${d.name}</bdi>`
+                : text(c, "devices.unnamed")}</span
+            ><br />
+            <span class="meta">
+              ${d.current && keys.has("part.thisDeviceTitle")
+                ? html`${text(c, "part.thisDeviceTitle", {
+                    formFactor: d.formFactor ?? "other",
+                  })}
+                  · `
+                : nothing}
+              ${text(c, "devices.meta", {
+                platform: d.platform ?? "",
+                when: days(d.lastSeenDays),
+              })}
+            </span>
+          </span>
+          <span class="row-actions">
+            ${button(c, "devices.rename", "link", {
+              label: plain(c, "a11y.renameDevice", { device: d.name ?? "" }),
+            })}
+            ${d.current
+              ? nothing
+              : button(c, "devices.remove", "link", {
+                  label: plain(c, "a11y.removeDevice", {
+                    device: d.name ?? "",
+                  }),
+                })}
+          </span>
+        </li>`,
+    )}
+  </ul>`;
+}
+
+function releaseNotes(c: RenderCtx): TemplateResult | typeof nothing {
+  const keys = new Set(c.view.copy);
+  if (!keys.has("releaseNotes.version")) return nothing;
+  return html`<div class="texts" data-part="notes">
+    ${(c.input.releaseNotes ?? []).map(
+      (n) =>
+        html`<article class="texts" data-part="note">
+          <h2 class="title" data-size="section">
+            ${text(c, "releaseNotes.version", { version: n.version })}
+          </h2>
+          ${keys.has("releaseNotes.released")
+            ? html`<span class="meta"
+                >${text(c, "releaseNotes.released", { date: n.date })}</span
+              >`
+            : nothing}
+          ${n.notes
+            .split(/\n+/)
+            .map((line) => html`<p class="body">${line}</p>`)}
+        </article>`,
+    )}
+  </div>`;
+}
+
+function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
+  const keys = new Set(c.view.copy);
+  const rows = c.input.config ?? [];
+  const shown = [...keys].filter(
+    (k) =>
+      k.startsWith("settings.") &&
+      (k.startsWith("settings.source.") ||
+        k === "settings.on" ||
+        k === "settings.off" ||
+        k === "settings.setBy" ||
+        k === "settings.setByGuardian" ||
+        k === "settings.fromDeveloper" ||
+        k === "settings.range" ||
+        k === "settings.search"),
+  );
+  if (rows.length === 0 && shown.length === 0) return nothing;
+  return html`<ul class="list" data-part="settings-list">
+    ${rows.map(
+      (r) =>
+        html`<li class="row" part="settings-row" data-part="settings-row">
+          <span></span>
+          <span><span class="row-title">${r.key}</span></span>
+          <span class="meta"
+            >${r.locked && keys.has("settings.setBy")
+              ? text(c, "settings.setBy", { org: r.org ?? "" })
+              : r.value === undefined
+                ? ""
+                : String(r.value)}</span
+          >
+        </li>`,
+    )}
+    ${shown
+      .filter((k) => !(k === "settings.setBy" && rows.some((r) => r.locked)))
+      .map(
+        (k) =>
+          html`<li class="row">
+            <span></span><span class="meta" data-key=${k}>${text(c, k)}</span
+            ><span></span>
+          </li>`,
+      )}
+  </ul>`;
+}
+
+function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
+  const keys = [
+    "account.tier",
+    "account.devices",
+    "account.cloudSync",
+    "account.updates",
+    "account.autoUpdate",
+    "account.channel",
+    "account.version",
+    "account.managedSettings",
+  ].filter((k) => c.view.copy.includes(k));
+  if (keys.length === 0) return nothing;
+  return html`<ul class="list" data-part="account-list">
+    ${keys.map(
+      (k) =>
+        html`<li class="row" data-part="settings-row">
+          <span></span><span class="row-title" data-key=${k}>${text(c, k)}</span
+          ><span></span>
+        </li>`,
+    )}
+  </ul>`;
+}
+
+export { countdown };

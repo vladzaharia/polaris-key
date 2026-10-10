@@ -1,0 +1,57 @@
+{
+  "name": "@polaris-key/elements",
+  "version": "0.0.0",
+  "description": "The Polaris Key UI kit as web components (Lit 3): every UI-KITS §4.1 component as a pk-* element over @polaris-key/ui-core, the shared styles.css and data-part contract, in the product's accent.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/styles.css"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./headless": {
+      "types": "./dist/headless.d.ts",
+      "default": "./dist/headless.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node scripts/emit-css.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:browser": "vitest run -c vitest.browser.config.ts",
+    "test:visual": "vitest run -c vitest.browser.config.ts test/browser/visual.browser.test.ts",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.mjs\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@polaris-key/brand": "workspace:*",
+    "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/node": "workspace:*",
+    "@polaris-key/ui-core": "workspace:*",
+    "lit": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitest/browser-playwright": "4.1.11",
+    "axe-core": "^4.13.0",
+    "jsdom": "^26.0.0",
+    "playwright": "1.63.0",
+    "vite": "^8.0.0",
+    "vitest": "4.1.11"
+  }
+}

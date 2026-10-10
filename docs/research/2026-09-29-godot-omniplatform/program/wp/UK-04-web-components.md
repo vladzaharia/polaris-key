@@ -104,6 +104,61 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Progress and continuation (2026-10-10)
+
+Built so far on `wp/UK-04-elements` (`packages/elements`), in two slices:
+
+1. **The package and every component.** Lit 3 over ui-core: the shared stylesheet (`src/styles.ts`,
+   brand's typed tokens on `:host` and the kit root's `[data-theme]`, the kit rules in
+   `@layer polaris-key`, logical properties, rem type; written to `dist/styles.css` at build), the
+   theme API (`PolarisKey.theme`, `<pk-provider>`, the element's `theme`; identity through
+   ui-core's `watchProductIdentity` and the SDK's `PresentationSource`, no fetch or icon cache of
+   its own), copy through brand's generated tables and ui-core's `Copy` (the eight packs load on
+   demand), all 23 components as `pk-*` elements on ui-core's `ViewModel` (DL7's delay), the
+   `<pk-gate>` drop-in (Welcome, StatusScreen, the grace banner, the app slot), where each key goes
+   (`src/layout.ts`), the styled parts (`src/render.ts`) and `pk-action`, `pk-input`, `pk-select`
+   events. `test/matrix.test.ts` (jsdom) draws all 356 component rows of `ui-matrix.json` through
+   their elements and holds the DOM to the catalog's roles.
+2. **Real Chromium.** `test/browser/render.browser.test.ts`: every component state (the first row
+   of each) at 390 × 844 and 1440 × 900 in dark and light, axe (WCAG 2.x A/AA) on every render, no
+   sideways scroll, title and primary in the first viewport, the DL9 keyboard path, and forced
+   colours; 503 renders. `PKEY_KIT_SHOTS=<dir>` writes the PNGs.
+
+**Continue here, in this order:**
+
+1. **Baselines and the cross-renderer diff.** Committing PNGs under
+   `packages/elements/test/visual/__screenshots__/` turns on `pnpm ui:report`'s React/elements pixel
+   diff, which fails on any name only one side has (`packages/ui-qa/src/pixeldiff.ts`). React's 26
+   baselines are its pre-UK-05 kit with different scene names, so they cannot match until UK-05
+   renders on this `styles.css`. Lead decision needed: gate the diff on UK-05 (for example, active
+   only when `@polaris-key/react` depends on `@polaris-key/elements`), then record the baselines
+   with a `toMatchScreenshot`-style compare at the §7.1 rows (both presets, 200 % text, 400 % zoom,
+   `prefers-contrast: more`) and in WebKit.
+2. **Look fixes seen on the renders:** platform ids print raw (`windows`, `ios`, `macos`; DL8 wants
+   macOS) because the catalog has no platform-name keys (a UK-02a catalog addition); in the split
+   (DL1) the links row centres while the end pane is start-aligned; DeviceLimit draws
+   `deviceLimit.heading` as the h1 above `deviceLimit.title` (pick the order with design); the dark
+   passport reads as a black slab (use the blurred icon, DL1); Settings rows show the raw catalog
+   key, not the field's label.
+3. **The sign-in form's step elements** (`pk-sign-in-methods`, `pk-replace-device`,
+   `pk-sign-in-done`), `presentation="sheet"` as a `<dialog>` with `@starting-style` and the scrim,
+   `replace`, View Transitions between steps (SIGN-IN.md §3.18), and the Fluent, GNOME and Mac sheet
+   variants from `theme.platform` (the kit tokens exist in brand's `kit.css`).
+4. **A live adapter** for `<pk-gate>`'s `config` (client-core gate, the sign-in primitives) and the
+   `examples/ui/elements/` static and htmx samples with fixture adapters and `--live`.
+5. **The CDN route** `key.plrs.im/elements/<major>/pk.js` (an esbuild bundle, immutable, SRI),
+   its OpenAPI entry and `routeCoverage` row (rule 10), the THREAT-MODEL row, and the release
+   closure. A new public package needs a tag deploy to register on npm (UK-03's rule).
+6. **The rest of the acceptance list:** `pnpm ui:lint` over the element renders, `parity.json`
+   for the elements with the `ui.*` rows, the docs framework page and kit tabs (UK-16 scaffold),
+   the Tailwind v4 preset (from UK-22), and the UX reviews (`pkey-ux-reviewer`, BUILT mode).
+
+**Model notes for UK-03 (ui-core), not changed here:** some states name a `primary` their `copy`
+leaves out (Welcome `busy` and `capability-limited`, LicenseChoice `raced` and `new`); the
+elements draw the primary anyway (DL4: a busy control keeps its label, and a capability-limited
+Welcome would otherwise have no way forward). The matrix's code rows carry no `userCode`, so the
+renders add one (`WDJB-MJHT`).
+
 ## Goal
 
 Any web page can gate itself with two lines (`<script type=module>` + `<pk-gate>`), every component exists as a Lit 3 element in the Polaris look, and the elements own the shared stylesheet and DOM contract that React reuses.
