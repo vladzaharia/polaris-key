@@ -13,6 +13,10 @@ extends PKeyUiView
 ## The labels to show when there is no SDK (snapshots); null reads the SDK.
 var labels_override: Variant = null
 
+## At most this many grants are chips; the rest collapse into "+N".
+const MAX_CHIPS := 4
+
+var _lead: Label
 var _chips: HFlowContainer
 var _bound := false
 
@@ -23,10 +27,17 @@ func _build() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_chips = HFlowContainer.new()
 	_chips.name = "Chips"
+	_chips.theme_type_variation = "PKeyActions"
+	_lead = Label.new()
+	_lead.name = "Lead"
+	_lead.theme_type_variation = "PKeyMuted"
+	_lead.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_lead.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	# A row of chips: centred within the space the game gives the badge, never forced wider.
 	max_content_width = 0.0
 	if "alignment" in _chips:
 		_chips.set("alignment", 1)
+	_chips.add_child(_lead)
 	add_child(_chips)
 
 
@@ -66,15 +77,45 @@ func _render() -> void:
 		labels = labels_override
 	elif sdk != null and sdk.get("license") != null:
 		labels = granted(sdk.config, sdk.license, entitlement)
-	var chips := _chips.get_children()
-	while chips.size() < labels.size():
-		var l := label(_chips, "Chip%d" % chips.size(), "PKeyBadge")
+	# One lead-in, then the grants as chips: the first four, the rest as "+N".
+	var shown: Array = []
+	for i in mini(labels.size(), MAX_CHIPS):
+		shown.append(tr(labels[i]))
+	if labels.size() > MAX_CHIPS:
+		shown.append(c().text("badge_more", labels.size() - MAX_CHIPS))
+	_lead.text = c().text("badge_lead")
+	_lead.visible = not labels.is_empty()
+	var chips: Array = []
+	for ch in _chips.get_children():
+		if ch != _lead:
+			chips.append(ch)
+	while chips.size() < shown.size():
+		var l := label(_chips, "Chip%d" % chips.size(), "PKeyBadge", true)
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		# The grant label is catalog data, formatted into translated copy.
 		chips.append(l)
 	for i in chips.size():
 		var l: Label = chips[i]
-		l.visible = i < labels.size()
+		l.visible = i < shown.size()
 		if l.visible:
-			l.text = c().text("badge_included", tr(labels[i]))
+			l.text = shown[i]
 	visible = not labels.is_empty()
+
+
+## The flow is as wide as its chips side by side (the lead-in, the chips and their gaps), within
+## the room the screen leaves, before it wraps: a centred badge never becomes a column of chips
+## while the screen has room.
+func _arrange(m: Dictionary) -> void:
+	super(m)
+	var gap := float(_chips.get_theme_constant("h_separation"))
+	var sum := 0.0
+	var count := 0
+	for ch in _chips.get_children():
+		if ch is Control and (ch as Control).visible:
+			sum += (ch as Control).get_combined_minimum_size().x
+			count += 1
+	sum += maxf(0.0, count - 1.0) * gap
+	var room: float = (m["room"] as Vector2).x - 2.0 * maxf(GUTTER, gutter()) - side_padding(self)
+	_chips.custom_minimum_size.x = minf(sum, maxf(room, 0.0))
+	# The row is as wide as its chips (wrapping at the room), centred in a strip across the width.
+	_chips.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

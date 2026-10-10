@@ -154,10 +154,16 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 				var r := node.get_global_rect()
 				var vr := v.get_global_rect()
 				var dx := absf(r.get_center().x - vr.get_center().x)
-				var fits_v := r.size.y <= vr.size.y
+				# A banner floats at the top of whatever rect it is given; only its sides are centred.
+				var fits_v: bool = r.size.y <= vr.size.y and not (v is PKeyUpdatePrompt and v.presentation() == "banner")
 				var dy := absf(r.get_center().y - vr.get_center().y) if fits_v else 0.0
-				var maxw: float = maxf(v.max_content_width, 480.0)
+				# A two-column landscape card is as wide as a wide card (PKeyUiTheme.MEASURES).
+				var maxw: float = maxf(v.max_content_width, float(PKeyUiTheme.MEASURES["card_width_wide"]))
 				var ok: bool = dx <= 1.5 and dy <= 1.5 and r.size.x <= maxw + 1.0 and r.position.x >= PKeyUiView.GUTTER - 1.0 and r.end.x <= sz.x - PKeyUiView.GUTTER + 1.0
+				# A phone's portrait screen is full-bleed for the scenes that bleed: the page fills it.
+				if v.phone_screen() and node != null:
+					# (a gate's card keeps the page margin to the edge; a dialog's is edge to edge)
+					ok = r.size.x >= vr.size.x - 2.0 * v.role("page_margin") - 1.0
 				if t.check("layout: %s / %s centred at %dx%d (%s)" % [c[0], c[1], sz.x, sz.y, look], ok, "rect %s in %s" % [r, vr]):
 					checked += 1
 				_free(v)
@@ -173,7 +179,8 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 		elif c[0] == "banner" and c[1] == "grace":
 			var b: PKeyUiView = await _build(c)
 			var line := b.find_child("Line0", true, false) as Label
-			t.check("layout: banner lines centred", line != null and line.horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER)
+			# The banner is a centred card; its glyph and lines read from the start.
+			t.check("layout: banner lines start-aligned beside the glyph", line != null and line.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT)
 			_free(b)
 	t.check("layout: coverage", seen.size() >= 8 and cases.size() == seen.size() + LAYOUT_EXTRA.size() and checked == cases.size() * LAYOUT_SIZES.size() * LAYOUT_LOOKS.size(), "%d checks over %s" % [checked, cases.map(func(x): return "%s / %s" % [x[0], x[1]])])
 
@@ -230,6 +237,17 @@ func _focus(t: PKeyTestContext, all: Array) -> void:
 				_press("ui_down")
 				await _tree().process_frame
 				steps += 1
+		# Every control a pad can reach has a name a screen reader can read (Godot 4.5+ has the
+		# property; a button reads its own text).
+		var unnamed: Array = []
+		for ctl in chain:
+			if not ("accessibility_name" in ctl):
+				continue
+			var named := String(ctl.get("accessibility_name")) != "" or (ctl is BaseButton and String(ctl.get("text")) != "")
+			if not named:
+				unnamed.append(String(v.get_path_to(ctl)))
+		if "accessibility_name" in v:
+			t.check("accessibility: %s / %s names every control" % [c[0], c[1]], unnamed.is_empty(), str(unnamed))
 		var missing: Array = want.filter(func(x): return not seen.has(x))
 		var names: Array = missing.map(func(x): return String(v.get_path_to(x)))
 		if t.check("focus: %s / %s reaches every control with ui_down" % [c[0], c[1]], missing.is_empty() and (want.is_empty() or not seen.is_empty()), "missing %s" % [names]):
@@ -279,6 +297,9 @@ func _copy(t: PKeyTestContext, all: Array) -> void:
 func _behaviour(t: PKeyTestContext) -> void:
 	await _settings(t)
 	await _update_prompt(t)
+	await _dialogs_take_focus(t)
+	await _gate_limit_focus(t)
+	await _focus_follows_screen(t)
 	await _never_covering(t)
 	_activation_copy(t)
 	_sign_in_copy(t)
@@ -299,21 +320,21 @@ func _settings(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	var keys: Array = p.rows.map(func(r): return r["key"])
 	t.check("settings: hidden keys are never rows (document hidden, catalog hidden, secrets, flags)", not keys.has("game.tuning") and not keys.has("debug.overlay") and not keys.has("leaderboard.key") and not keys.has("extras.skins"), str(keys))
-	t.check("settings: grouped by category, sorted by ui.order", keys == ["game.killSwitch", "audio.volume", "audio.muted", "ui.theme", "ui.reducedMotion", "net.proxyUrl", "net.proxyPassword", "notes.motd"], str(keys))
+	t.check("settings: grouped by category, sorted by ui.order", keys == ["game.killSwitch", "audio.volume", "audio.muted", "audio.pitch", "ui.theme", "ui.reducedMotion", "net.proxyUrl", "net.proxyPassword", "notes.motd"], str(keys))
 	var kill := _row_nodes(p, "game.killSwitch")
-	var kill_input: CheckButton = kill.get("input")
-	t.check("settings: an enforced setting is a disabled control", kill_input != null and kill_input.disabled and kill_input.button_pressed, str(kill_input))
-	t.check("settings: an enforced setting says \"Set by djdl\" with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by djdl" and (kill["badge"] as Label).text == "Locked")
+	var kill_input: Control = kill.get("input")
+	t.check("settings: an enforced setting is text, never a dimmed control", kill_input is Label and not (kill_input as Label).text.is_empty() and not kill_input is BaseButton, str(kill_input))
+	t.check("settings: an enforced setting says who set it (the product's name) with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by %s" % PKeySettingsController.product_name(sdk) and not PKeySettingsController.product_name(sdk).is_empty() and (kill["lock"] as Control).visible and (kill["lock_row"] as Control).visible)
 	var before: StringName = sdk.config.get_source("audio.volume")
 	var vol := _row_nodes(p, "audio.volume")
-	var spin: SpinBox = vol.get("input")
+	var spin: Range = vol.get("input")
 	spin.value = 35
 	await _tree().process_frame
 	var store: PKeyOverrideStore = sdk.config.get_override_store()
 	t.check("settings: editing a default setting writes the override store", store.has_override("audio.volume") and store.get_override("audio.volume") == 35, str(store.values))
 	t.check("settings: ... and get_source() becomes local", before == &"remote-default" and sdk.config.get_source("audio.volume") == &"local" and sdk.config.get_value("audio.volume") == 35, "%s -> %s" % [before, sdk.config.get_source("audio.volume")])
 	vol = _row_nodes(p, "audio.volume")
-	t.check("settings: a local row shows its badge and Reset to default", (vol["badge"] as Label).text == "Changed by you" and (vol["reset"] as Button).visible)
+	t.check("settings: a local row shows its badge and Reset to default", (vol["status"] as Label).text == "Changed by you" and (vol["reset"] as Button).visible)
 	(vol["reset"] as Button).pressed.emit()
 	await _tree().process_frame
 	t.check("settings: Reset to default clears the override", not store.has_override("audio.volume") and sdk.config.get_source("audio.volume") == &"remote-default")
@@ -330,6 +351,234 @@ func _settings(t: PKeyTestContext) -> void:
 	sdk.queue_free()
 
 
+static func _joy_button(button: int) -> void:
+	for pressed in [true, false]:
+		var e := InputEventJoypadButton.new()
+		e.button_index = button
+		e.pressed = pressed
+		_tree().root.push_input(e)
+
+
+## A dialog opened over a focused game control takes the focus (a pad's A answers the dialog, never
+## the game's button), a pad's B closes it, and the game's control has its focus back (the pad's
+## real button events, and the engine's default input map without a joypad binding).
+func _dialogs_take_focus(t: PKeyTestContext) -> void:
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = true
+	PKeyUiView.mobile_override = false
+	PKeyUiView.pad_only_override = false
+	# The pad bindings: a joypad A and B on ui_accept and ui_cancel, once, the game's own kept.
+	PKeyUiView.ensure_pad_bindings()
+	for pair in [["ui_accept", JOY_BUTTON_A], ["ui_cancel", JOY_BUTTON_B]]:
+		var pads := InputMap.action_get_events(pair[0]).filter(func(e): return e is InputEventJoypadButton and (e as InputEventJoypadButton).button_index == pair[1])
+		t.check("dialog focus: %s has the pad's joypad binding exactly once" % pair[0], pads.size() == 1, str(pads.size()))
+	var cases := {
+		"update modal": func() -> Control:
+			var p := PKeyUpdatePrompt.new()
+			p.outlet = "direct"
+			p.modal = true
+			p.show_when_current = true
+			p.auto_sdk = false
+			_tree().root.add_child(p)
+			p.show_result(_sc.update_check({"action": "binary", "method": "download", "release": {"version": "1.5.0", "seq": 15, "sha256": "ab"}, "build": "macos-dmg", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}))
+			return p,
+		"standalone sign-in": func() -> Control:
+			var d := PKeySignInDialog.new()
+			d.now_source = func(): return SCENARIOS.NOW
+			d.auto_sdk = false
+			_tree().root.add_child(d)
+			d.show_prompt(_sc.prompt_fixture())
+			d.closed.connect(func() -> void: d.visible = false)
+			return d,
+		"standalone offline": func() -> Control:
+			var d := PKeyOfflineDialog.new()
+			d.web_override = 0
+			d.product = "djdl"
+			d.device_id = "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+			d.auto_sdk = false
+			_tree().root.add_child(d)
+			d.refresh_view()
+			d.closed.connect(func() -> void: d.visible = false)
+			return d,
+	}
+	for name in cases:
+		var game := Button.new()
+		game.text = "Game menu"
+		var pressed := [0]
+		game.pressed.connect(func() -> void: pressed[0] += 1)
+		_tree().root.add_child(game)
+		game.grab_focus()
+		await _tree().process_frame
+		var dialog: Control = cases[name].call()
+		await _tree().create_timer(0.35).timeout
+		var owner := _tree().root.gui_get_focus_owner()
+		t.check("dialog focus: %s takes the focus from the game's control" % name, owner != null and dialog.is_ancestor_of(owner), str(owner))
+		_joy_button(JOY_BUTTON_A)
+		await _tree().process_frame
+		t.check("dialog focus: %s, a pad's A never presses the game's button" % name, pressed[0] == 0, str(pressed[0]))
+		_joy_button(JOY_BUTTON_B)
+		await _tree().process_frame
+		await _tree().process_frame
+		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
+		_free(dialog)
+		_free(game)
+	# Settings freed instead of hidden: the game's control has its focus back too.
+	var game := Button.new()
+	game.text = "Game menu"
+	_tree().root.add_child(game)
+	game.grab_focus()
+	await _tree().process_frame
+	var sdk: Node = await _sc.settings_sdk({})
+	var panel := PKeySettingsPanel.new()
+	panel.sdk = sdk
+	panel.auto_sdk = false
+	_tree().root.add_child(panel)
+	await _tree().create_timer(0.35).timeout
+	var owner := _tree().root.gui_get_focus_owner()
+	t.check("dialog focus: settings takes the focus from the game's control", owner != null and panel.is_ancestor_of(owner), str(owner))
+	panel.get_parent().remove_child(panel)
+	panel.queue_free()
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("dialog focus: settings freed by the game gives the focus back", _tree().root.gui_get_focus_owner() == game, str(_tree().root.gui_get_focus_owner()))
+	# A view the game moves to another parent keeps the control that opened it; closing it later
+	# still gives that control the focus back.
+	game.grab_focus()
+	await _tree().process_frame
+	var moved := PKeySettingsPanel.new()
+	moved.sdk = sdk
+	moved.auto_sdk = false
+	_tree().root.add_child(moved)
+	await _tree().create_timer(0.35).timeout
+	var stand_in := Control.new()
+	_tree().root.add_child(stand_in)
+	moved.get_parent().remove_child(moved)
+	stand_in.add_child(moved)
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("dialog focus: a re-parented view keeps its opener", moved.get("_opener") == game, str(moved.get("_opener")))
+	moved.visible = false
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("dialog focus: a re-parented view, once closed, gives the focus back", _tree().root.gui_get_focus_owner() == game, str(_tree().root.gui_get_focus_owner()))
+	_free(stand_in)
+	sdk.queue_free()
+	_free(game)
+
+
+## A stand-in SDK whose license answers the device limit after a short wait (the real busy -> await
+## -> result path, not a direct `show_result`).
+class LimitLicense:
+	extends RefCounted
+
+	func activate_with_key(_key: String) -> PKeyActivationResult:
+		await (Engine.get_main_loop() as SceneTree).create_timer(0.3).timeout
+		var r := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
+		r.limit = 3
+		r.device_count = 3
+		r.manage_url = "https://key.plrs.im/activate?product=djdl"
+		return r
+
+
+class LimitSdk:
+	extends Node
+	signal state_changed(s)
+	var license := LimitLicense.new()
+
+	func status() -> Dictionary:
+		return {"status": "needs-activation"}
+
+
+static func _key_event(vp: Viewport, code: int) -> void:
+	for pressed in [true, false]:
+		var e := InputEventKey.new()
+		e.keycode = code
+		e.physical_keycode = code
+		e.pressed = pressed
+		vp.push_input(e)
+
+
+static func _joy_in(vp: Viewport, button: int) -> void:
+	for pressed in [true, false]:
+		var e := InputEventJoypadButton.new()
+		e.button_index = button
+		e.pressed = pressed
+		vp.push_input(e)
+
+
+## The device limit reached through the gate (type a key, Activate by pad A, Enter in the field, or a
+## result handed in directly): the limit view's primary has the focus, with its ring, afterwards.
+## The activation panel sits inside the gate, which owns the focus (it was `<none>` before).
+func _gate_limit_focus(t: PKeyTestContext) -> void:
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = true
+	PKeyUiView.mobile_override = false
+	PKeyUiView.pad_only_override = false
+	PKeyUiView.ensure_pad_bindings()
+	for how in ["pad A on Activate", "Enter in the key field", "a result handed in directly"]:
+		var sdk := LimitSdk.new()
+		_tree().root.add_child(sdk)
+		var vp := SubViewport.new()
+		vp.size = Vector2i(1280, 720)
+		_tree().root.add_child(vp)
+		var g := PKeyGateView.new()
+		g.auto_sdk = false
+		g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, true, false))
+		vp.add_child(g)
+		g.sdk = sdk
+		g.activation.sdk = sdk
+		g.show_state({"status": "needs-activation"})
+		await _tree().create_timer(0.1).timeout
+		var key := g.find_child("KeyInput", true, false) as LineEdit
+		key.grab_focus()
+		key.text = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV"
+		await _tree().process_frame
+		match how:
+			"pad A on Activate":
+				(g.find_child("Activate", true, false) as Button).grab_focus()
+				await _tree().process_frame
+				_joy_in(vp, JOY_BUTTON_A)
+			"Enter in the key field":
+				_key_event(vp, KEY_ENTER)
+			_:
+				var r: PKeyActivationResult = await sdk.license.activate_with_key("k")
+				g.activation.show_result(r, "k")
+		await _tree().create_timer(0.8).timeout
+		var f := vp.gui_get_focus_owner()
+		var shows := not g.activation.limit.is_empty()
+		t.check("gate limit focus: %s reaches the device limit" % how, shows)
+		t.check("gate limit focus: %s, the limit view's primary has the focus" % how, shows and f != null and f.name == "FreeDevice", str(f))
+		var ring := f != null and f.has_focus() and f.focus_mode != Control.FOCUS_NONE and not (f.get_theme_stylebox("focus") is StyleBoxEmpty) and f.is_visible_in_tree() and g.get_global_rect().encloses(f.get_global_rect())
+		t.check("gate limit focus: %s, the focused control draws a ring and is on screen" % how, ring, "%s %s %s %s" % [f, f.get_theme_stylebox("focus") if f else null, f.get_global_rect() if f else null, g.get_global_rect()])
+		vp.queue_free()
+		sdk.queue_free()
+
+
+## The sign-in starts with focus on Cancel (nothing else exists yet); when the code arrives, and
+## again when it expires, the focus moves to the new screen's primary.
+func _focus_follows_screen(t: PKeyTestContext) -> void:
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = true
+	var d := PKeySignInDialog.new()
+	d.now_source = func(): return SCENARIOS.NOW
+	d.auto_sdk = false
+	_tree().root.add_child(d)
+	d.show_starting()
+	await _tree().create_timer(0.35).timeout
+	t.check("focus follows the screen: sign-in starting holds focus inside", d._has_focus_inside())
+	d.show_prompt(_sc.prompt_fixture())
+	await _tree().process_frame
+	await _tree().process_frame
+	var f := _tree().root.gui_get_focus_owner()
+	t.check("focus follows the screen: the code arriving moves focus from Cancel to Open browser", f != null and f.name == "OpenBrowser", str(f))
+	d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	await _tree().process_frame
+	await _tree().process_frame
+	f = _tree().root.gui_get_focus_owner()
+	t.check("focus follows the screen: an expired code moves focus to Get a new code", f != null and f.name == "TryAgain", str(f))
+	_free(d)
+
+
 func _update_prompt(t: PKeyTestContext) -> void:
 	var rel := {"version": "1.5.0", "seq": 15, "sha256": "ab"}
 	var locked: PKeyUpdateCheck = _sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false})
@@ -341,7 +590,7 @@ func _update_prompt(t: PKeyTestContext) -> void:
 	p.show_result(_sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}))
 	t.check("update: a dismissable answer may be modal", p.presentation() == "modal")
 	p.show_result(locked)
-	var dismiss := p.get_node("Body/Actions/Dismiss") as Button
+	var dismiss := p.find_child("Dismiss", true, false) as Button
 	t.check("update: a mandatory answer is a banner even when modal is asked", p.presentation() == "banner" and p.anchor_bottom == 0.0, "%s anchor_bottom=%s" % [p.presentation(), p.anchor_bottom])
 	t.check("update: a locked answer has no dismiss", not dismiss.visible)
 	p._on_dismiss()
@@ -401,7 +650,7 @@ func _never_covering(t: PKeyTestContext) -> void:
 		await _tree().process_frame
 		var pr := boot.prompt.get_global_rect()
 		var br := boot.get_global_rect()
-		var dismiss := boot.prompt.get_node("Body/Actions/Dismiss") as Button
+		var dismiss := boot.prompt.find_child("Dismiss", true, false) as Button
 		t.check("never covering: a %s answer in PKeyBoot is a strip at the top" % kind, boot.prompt.is_visible_in_tree() and boot.prompt.presentation() == "banner" and pr.size.y > 0.0 and pr.size.y < br.size.y * 0.25 and is_equal_approx(pr.position.y, br.position.y), "prompt %s in boot %s" % [pr, br])
 		t.check("never covering: a %s answer in PKeyBoot has no dismiss" % kind, not dismiss.visible)
 		t.check("never covering: PKeyBoot's prompt overlay takes no input", boot.get_node("Overlay").mouse_filter == Control.MOUSE_FILTER_IGNORE)
@@ -497,7 +746,7 @@ func _gate(t: PKeyTestContext) -> void:
 	g.show_state({"status": "grace", "grace_until": 0})
 	t.check("gate: grace with allow_grace false blocks", g.screen == "grace-blocked" and g.get_node("Center/Card").visible)
 	g.show_state({"status": "expired"})
-	(g.get_node("Center/Card/Body/Actions/Retry") as Button).pressed.emit()
+	(g.find_child("Retry", true, false) as Button).pressed.emit()
 	t.check("gate: expired's Retry asks the owner to retry", retried[0] == 1)
 	_free(g)
 
@@ -539,10 +788,14 @@ func _controllers(t: PKeyTestContext) -> void:
 	# SDK parity §3.18: key entry is hidden on store outlets automatically (App Store 3.1.1, Play).
 	var store := PKeyActivationController.capabilities(true, true, true, false, true)
 	t.check("activation: a store outlet hides key entry and the offline file, keeps sign-in and enrolment", not store["key_entry"] and not store["offline"] and store["sign_in"] and store["continue_free"], str(store))
-	for kind in ["app-store", "testflight", "play", "play-testing"]:
+	# It follows the outlet's effective capabilities (commerce `store-iap`), never a list of its own.
+	for kind in ["app-store", "testflight", "play", "play-testing", "ms-store"]:
 		t.check("activation: %s hides key entry" % kind, PKeyActivationController.store_hides_key_entry(kind))
-	for kind in ["direct", "steam", "itch", "ms-store", ""]:
+	for kind in ["direct", "steam", "itch", "web", "flathub", "unknown", ""]:
 		t.check("activation: %s keeps key entry" % kind, not PKeyActivationController.store_hides_key_entry(kind))
+	for kind in PKeyDecision.CAPABILITY_DEFAULTS:
+		var commerce: String = PKeyDecision.effective_capabilities(kind, {"platform": ""})["commerce"]
+		t.check("activation: %s key entry follows commerce %s" % [kind, commerce], PKeyActivationController.store_hides_key_entry(kind) == (commerce == "store-iap"))
 	var panel := PKeyActivationPanel.new()
 	panel.auto_sdk = false
 	_sc.add(panel)
