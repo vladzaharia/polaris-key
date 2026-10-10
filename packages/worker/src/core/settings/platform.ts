@@ -14,6 +14,7 @@
  * Adding an entry is a THREAT-MODEL §9 review trigger.
  */
 
+import { CLOUD_SYNC_CEILINGS, CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
 import {
   DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
   DEFAULT_RESERVED_NAMES_MODE,
@@ -58,6 +59,10 @@ export const ASSET_RELEASE_QUOTA_MAX = 10 * 1024 ** 4;
 export const ASSETS_DOCS = "/docs/admin/presentation/";
 
 const PLATFORM_DOCS = "/docs/admin/platform-settings/";
+
+/** The lowest platform default quota (1 MiB, the licence-less quota): below it no person could
+ *  keep even the settings budget's worth of data. */
+export const CLOUD_SYNC_QUOTA_DEFAULT_MIN = CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes;
 
 export const PLATFORM_SLICE: readonly SettingDef[] = [
   // ── A-13's four (live) ──────────────────────────────────────────────────────────────────
@@ -419,6 +424,64 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     readers: ["core/assetSettings.ts", "core/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
+  }),
+
+  // ── Cloud Sync (plans/U-01b.md D5, D6, R1; U-05 adds the readers) ───────────────────────
+  // The deployment's one Cloud Sync kill switch. Pausing restricts (no write lands), so the
+  // permissive side is off; a platform lock, never a product value. Reads keep working and
+  // nothing is deleted: a device keeps its journal and retries after the pause (`writes_paused`).
+  setting({
+    key: "cloudSync.writesPaused",
+    scope: "platform",
+    service: "platform",
+    area: "cloudSync",
+    label: "Pause Cloud Sync writes",
+    description:
+      "Pauses every Cloud Sync write on this deployment. Reads keep working, devices keep their unsynced changes and retry after the pause, and nothing is deleted.",
+    keywords: ["cloud sync", "kill switch", "pause", "writes_paused"],
+    docs: "/docs/services/sync/",
+    value: { kind: "switch" },
+    defaultValue: "off",
+    merge: "policy",
+    policyBound: "lock",
+    // Off is the permissive side: with the pause off, every write is admitted.
+    widensWhen: "off",
+    ownership: "operator",
+    critical: true,
+    confirm: { on: "L2", off: "L1" },
+    storage: { kind: "scalar" },
+    since: "U-01b",
+    pending: { wp: "U-05" },
+  }),
+  // The quota a person gets when no tier, licence override or add-on sets `pkey.cloudSync.bytes`.
+  // Clamped to the per-person ceiling; lowering it deletes nothing (a person over it can still
+  // read, clear and delete). One write reaches every product with Cloud Sync on, so it takes the
+  // passkey confirm with ST-16's fan-out dialog. LX-34 later adopts it as the registry default of
+  // the `pkey.cloudSync.bytes` entitlement.
+  setting({
+    key: "cloudSync.quota.defaultBytes",
+    scope: "platform",
+    service: "platform",
+    area: "cloudSync",
+    label: "Default Cloud Sync quota",
+    description:
+      "How many bytes of Cloud Sync data one person may keep on a product when no tier, licence or add-on sets pkey.cloudSync.bytes. A change reaches every product with Cloud Sync on; lowering it deletes nothing.",
+    keywords: ["cloud sync", "quota", "storage", "pkey.cloudSync.bytes"],
+    docs: "/docs/services/sync/",
+    value: {
+      kind: "integer",
+      unit: "bytes",
+      min: CLOUD_SYNC_QUOTA_DEFAULT_MIN,
+      max: CLOUD_SYNC_CEILINGS.perPerson.bytes,
+    },
+    defaultValue: CLOUD_SYNC_DEFAULTS.quotaBytes,
+    merge: "cascade",
+    ownership: "operator",
+    critical: true,
+    confirm: { up: "L2", down: "L2" },
+    storage: { kind: "scalar" },
+    since: "U-01b",
+    pending: { wp: "U-05" },
   }),
 
   // ── Product defaults (ST-16 wires them; owner decision 2: live inheritance) ─────────────
