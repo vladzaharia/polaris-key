@@ -284,36 +284,69 @@ service back on, nor re-open registration after an operator closed it. "Revert t
 ownership back and changes nothing else — the manifest re-applies on the next resync, not
 immediately, so the operator's escape hatch never depends on a GitHub round trip that can fail.
 
-### User settings and Cloud Sync data
+### Synced settings and Cloud Sync records
 
-A `config` entry with a `user` block is a **user setting**: a value the person chooses, kept on
-the device and, with [Cloud Sync](/docs/services/sync/) on, synced for people who sign in. The
-catalog's top-level `cloudSync` block declares the shape of the rest of the product's Cloud Sync
-data (collections, saves, catalog migrations):
+With [Cloud Sync](/docs/services/sync/) on, every Editable `config` key is a **synced setting**:
+the value a signed-in person chooses follows them to their other devices. Editable means the
+catalog sets no `managementDefault` of `enforced` or `hidden`. A `user` block is optional tuning;
+without one, a key behaves as `{ "sync": "user", "conflict": "lastWrite", "listed": true }`:
 
 ```jsonc
 {
-  "key": "audio.musicVolume",
+  "key": "stats.bestScore",
   "kind": "config",
-  "schema": { "type": "number", "minimum": 0, "maximum": 1 },
-  "default": 0.8,
-  // sync: user | platform | device | local; conflict: lastWrite | max | min | merge
-  "user": { "sync": "user", "conflict": "lastWrite" },
+  "schema": { "type": "integer", "minimum": 0 },
+  "default": 0,
+  // sync: user | platform | local; conflict: lastWrite | max | min | merge
+  "user": { "sync": "platform", "conflict": "max" },
 }
 ```
 
-The block is refused on a `secret` or `flag`, under an `enforced` or `hidden` management default,
-and with a conflict policy the value's schema cannot support. The full rules are on the
+- `sync: "local"` keeps a key on the device; nothing else does. `device` is retired and refused:
+  use `local`.
+- The block is refused on a `secret` or `flag`, and with a conflict policy the value's schema
+  cannot support (`max` and `min` need a number, `merge` an object; a set is an object of
+  booleans). On an `enforced` or `hidden` key it has no effect, and `pkey validate` warns.
+- A key the catalog does not declare is an **open setting**: it syncs as `lastWrite`, without a
+  schema, up to 8 KiB. Declared and open settings share one budget of 256 keys and 64 KiB per
+  person. Any device of the person can write an open setting, so treat an undeclared key as
+  untrusted input; declare a key that matters with a schema, give it `sync: "local"`, or lock it.
+
+The catalog's top-level `cloudSync` block declares the product's **records**: `collections` and
+the catalog `migrations` the server applies to synced values. A `saves` collection is the
+save-slot template (16 slots per person, `revision`, one file per save and a small thumbnail):
+
+```jsonc
+"cloudSync": {
+  "collections": [
+    { "name": "saves", "template": "saves", "requires": "cloudSaves" },
+    {
+      "name": "scores",
+      "conflict": "max",
+      "conflictField": "best",
+      "schema": { "type": "object", "properties": { "best": { "type": "integer" } } },
+      "maxRecords": 100,
+    },
+  ],
+}
+```
+
+A collection's `conflict` is one of `lastWrite`, `max`, `min`, `merge`, `union` and `revision`
+(the default), and `max` and `min` name the number `conflictField` the server compares.
+`maxRecords` is at most 10,000 and not allowed on a `saves` collection; `files.maxBytes` is at
+most 1 GiB; `requires` names a catalog flag or a system entitlement. Retired with no warning
+period: `cloudSync.saves` (use `template: "saves"`), `cloudSync.open` and a collection's
+`onAttach` (the first sign-in is an ordinary sync). The full rules are on the
 [Cloud Sync](/docs/services/sync/#validation) page.
 
-## Cloud Sync limits: `cloudSync`
+## Cloud Sync storage
 
-`.pkey/product`'s `cloudSync` block sets the product's per-person limits and write policy:
-`limits` (with `byTier` and `byEntitlement` raises), `unlicensed` (signed-in people with no usable
-licence) and `writes`. Every limit stays within the platform ceilings, and `unlicensed` within the
-licensed limits (`cloud_sync_limit_over_ceiling`). Declaring either `cloudSync` block, or a user
-setting that syncs, while the `sync` service is off is a warning, not an error: settings stay on
-the device until it is on.
+`.pkey/product` has no `cloudSync` block, and `pkey validate` refuses one. A person's storage is
+the `pkey.cloudSync.bytes` entitlement, read from the anchor licence: a tier, a licence override
+or an add-on sets it, and 256 MiB applies when nothing does. A signed-in person with no usable
+licence gets 1 MiB and no files. Declaring a `cloudSync` block, or a `user` block that syncs,
+while the `sync` service is off is a warning, not an error: settings stay on the device until it
+is on.
 
 ```jsonc
 {
@@ -321,14 +354,6 @@ the device until it is on.
     "config": { "enabled": true },
     "identity": { "enabled": true },
     "sync": { "enabled": true },
-  },
-  "cloudSync": {
-    "limits": {
-      "totalBytes": 268435456,
-      "byTier": { "pro": { "totalBytes": 536870912 } },
-    },
-    "unlicensed": { "saves": false },
-    "writes": { "requireLicense": false },
   },
 }
 ```

@@ -85,26 +85,39 @@ The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
 text (WIRE-CONTRACT-V3 §2.2.1 rule 2: no duplicate names, every number zero or of magnitude
 10^−307 up to below 10^308, at most 64 deep), else the raw string.
 
-### 4b. Make it a user setting? (config kinds only)
+### 4b. Tune how it syncs? (config kinds only)
 
-A `user` block makes a `config` key a value the **person** chooses: kept on the device by the
-Config SDK and, with the `sync` (Cloud Sync) service on and the person signed in, synced.
+With the `sync` (Cloud Sync) service on and the person signed in, **every Editable `config` key
+syncs** (Editable: no `managementDefault` of `enforced` or `hidden`). A `user` block is optional
+tuning; without one the key behaves as `{ "sync": "user", "conflict": "lastWrite", "listed": true }`.
 
 ```json
-"user": { "sync": "user", "conflict": "lastWrite", "listed": true }
+"user": { "sync": "platform", "conflict": "max" }
 ```
 
-- [ ] `sync` (required): `user` (every device), `platform` (per platform family), `device`
-      (stored per device), `local` (never leaves the device).
+- [ ] `sync` (default `user`): `user` (every device of the person), `platform` (per platform
+      family), `local` (never leaves the device: write it to keep a key off Cloud Sync).
+      `device` is retired and refused (`invalid_user_setting`): use `local`.
 - [ ] `conflict` (default `lastWrite`): `max`/`min` need a number schema; `merge` an object
-      schema with at most 256 top-level members; never `union`.
+      schema with at most 256 top-level members (a set is an object of booleans); never `union`
+      or `revision`, which are record policies. A list setting gets `lastWrite` only.
 - [ ] `listed` (default `true`): whether settings panels show it.
-- [ ] Refused on a `secret` or `flag` and under an `enforced` or `hidden` management default
-      (the operator locked it, so it is not the person's to choose). The rules live once, in
-      `@polaris-key/catalog`'s `userSettingIssues`, used by the manifest validator, the
-      console's publish route and the catalog editor.
+- [ ] Refused on a `secret` or `flag` (`config.set` refuses those keys with `bad_request` while
+      Cloud Sync is on). On an `enforced` or `hidden` key the block has no effect and the
+      validator warns (`user_setting_locked_default`): the operator locked it, so it never syncs.
+      The rules live once, in `@polaris-key/catalog`'s `userSettingIssues`, used by the manifest
+      validator, the console's publish route and the catalog editor; `syncedSettings` derives
+      each key's route (`synced`, `local`, `locked`, `refused`).
+- [ ] A key the catalog does not declare is an **open setting**: it syncs too, schema-less and
+      `lastWrite`, at most 8 KiB. Declared and open settings share 256 keys and 64 KiB per
+      person. An app treats an undeclared key as untrusted input (any device of the person can
+      write it); declare a key that matters with a schema, route it `local`, or lock it.
 - [ ] A synced `user` block while Cloud Sync is off is a warning
       (`cloud_sync_block_without_service`): the value stays on the device until it is on.
+- [ ] Storage is not a catalog member: a person's quota is the `pkey.cloudSync.bytes`
+      entitlement (256 MiB when unset), which a tier, a licence override or an add-on sets. A
+      catalog may declare it as an `integer` flag; any other type is an incompatible reserved
+      name.
 
 ### 5. Choose `delivery` (secret kinds only)
 
