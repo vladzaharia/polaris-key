@@ -169,6 +169,33 @@ public enum StoreError: Error, Sendable, Equatable {
     case encoding
 }
 
+extension StoreError: LocalizedError {
+    /// A sentence that names the cause and the fix, so `error.localizedDescription` is not the
+    /// bare `PolarisKeyCore.StoreError error 1` Foundation falls back to. `-34018`
+    /// (`errSecMissingEntitlement`) is the one a new app meets first: the build carries no
+    /// keychain entitlement.
+    public var errorDescription: String? {
+        switch self {
+        case .keychain(let status):
+            if status == StoreError.missingEntitlement {
+                return "The Keychain refused the device token (error -34018): this build has no "
+                    + "keychain entitlement. Add the Keychain Sharing capability (a "
+                    + "keychain-access-groups entitlement) to the app target, or sign the build."
+            }
+            return "The Keychain could not store the device token (error \(status))."
+        case .io(let path, let code):
+            return "The device token file at \(path) could not be written (errno \(code))."
+        case .symlink(let path):
+            return "The device token path \(path) is a symbolic link, so it was not used."
+        case .encoding:
+            return "The device token record could not be encoded."
+        }
+    }
+
+    /// `errSecMissingEntitlement`.
+    static let missingEntitlement: OSStatus = -34018
+}
+
 // ── Store status (P1b-09 plan §2.3) ──────────────────────────────────────────────────
 
 /// Where a token store keeps the token. Stable identifiers, shared with every SDK

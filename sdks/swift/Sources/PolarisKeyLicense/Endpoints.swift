@@ -63,6 +63,11 @@ public enum ActivationResult: Sendable, Equatable {
     /// without a token), `local-only`, or `store-failed` (the token could not be persisted).
     case error(code: String, message: String, status: Int? = nil)
 
+    // `.ok` carries the device token (`pkeyt_…`), a bearer credential. Every textual route to the
+    // value (`String(describing:)`, `String(reflecting:)`, `dump`, `print`, a log line) goes
+    // through the members below, which draw it as `<redacted>`. Read it with a pattern match.
+    static let redacted = "<redacted>"
+
     /// The kind's code: the wire code for a refusal, a client code for `.error`, `""` for `.ok`.
     public var code: String {
         switch self {
@@ -151,6 +156,59 @@ public enum ActivationResult: Sendable, Equatable {
         default: break
         }
         return p
+    }
+}
+
+extension ActivationResult: CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
+    public var description: String {
+        switch self {
+        case .ok(_, let schemaVersion):
+            return "ActivationResult.ok(token: \(Self.redacted), schemaVersion: \(schemaVersion))"
+        case .deviceLimit(let limit, let count, let url):
+            return "ActivationResult.deviceLimit(limit: \(Self.show(limit)), deviceCount: \(Self.show(count)), manageURL: \(Self.show(url)))"
+        case .unauthorized: return "ActivationResult.unauthorized"
+        case .fingerprintRequired: return "ActivationResult.fingerprintRequired"
+        case .hardwareMismatch(let drift, let changed):
+            return "ActivationResult.hardwareMismatch(drift: \(Self.show(drift)), changed: \(Self.show(changed)))"
+        case .enrollDisabled: return "ActivationResult.enrollDisabled"
+        case .enrollClaimed: return "ActivationResult.enrollClaimed"
+        case .licenseDisabled: return "ActivationResult.licenseDisabled"
+        case .licenseExpired: return "ActivationResult.licenseExpired"
+        case .attestationRequired: return "ActivationResult.attestationRequired"
+        case .rateLimited(let after):
+            return "ActivationResult.rateLimited(retryAfterSeconds: \(Self.show(after)))"
+        case .refused(let code, let status, let message):
+            return "ActivationResult.refused(code: \(code), status: \(status), message: \(Self.show(message)))"
+        case .error(let code, let message, let status):
+            return "ActivationResult.error(code: \(code), message: \(message), status: \(Self.show(status)))"
+        }
+    }
+
+    public var debugDescription: String { description }
+
+    /// What `dump` and `Mirror` show: the same case with the token drawn as `<redacted>`.
+    public var customMirror: Mirror {
+        switch self {
+        case .ok(_, let schemaVersion):
+            return Mirror(
+                self,
+                children: [
+                    (
+                        label: "ok",
+                        value: (token: Self.redacted, schemaVersion: schemaVersion) as Any
+                    )
+                ], displayStyle: .enum)
+        default:
+            return Mirror(
+                self, children: [(label: Optional(kind), value: description as Any)],
+                displayStyle: .enum)
+        }
+    }
+
+    private static func show<T>(_ value: T?) -> String {
+        value.map { "\($0)" } ?? "nil"
     }
 }
 
