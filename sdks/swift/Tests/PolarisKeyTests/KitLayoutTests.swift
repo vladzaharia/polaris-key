@@ -575,7 +575,7 @@
         /// "Use a different key": the form and its Activate are on screen, with Cancel.
         func testTheDifferentKeyFormKeepsActivateOnScreen() {
             check(
-                screen: "gate-different-key", roles: [.activate],
+                screen: "gate-different-key", roles: [.primaryAction, .keyField],
                 sizes: [
                     KitSizes.iPhoneSE, KitSizes.iPhoneSELandscape, KitSizes.iPhoneMax,
                     KitSizes.iPad, KitSizes.macSmall, KitSizes.mac,

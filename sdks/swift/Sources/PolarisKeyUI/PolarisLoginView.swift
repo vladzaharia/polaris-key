@@ -396,8 +396,12 @@ struct PolarisGateSurface<Content: View>: View {
                     activationForm(layout, compact: fit.compressed, keyOnly: differentKey)
                 }
                 if differentKey {
-                    Button(theme.copy.kit.cancelButton) { showsKeyForm = false }
-                        .controlSize(.large)
+                    Button {
+                        showsKeyForm = false
+                    } label: {
+                        Text(theme.copy.kit.cancelButton).frame(maxWidth: .infinity)
+                    }
+                    .controlSize(.large)
                         .modifier(KitTint(color: accentTextTint))
                         .modifier(PolarisButtonSkin(style: style, prominent: false))
                         .modifier(PolarisButtonFont(style: style))
