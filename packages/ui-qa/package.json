@@ -15,7 +15,7 @@
     "lint": "prettier --check \"src/**/*.{ts,js}\" \"test/**/*.ts\" \"e2e/**/*.ts\" \"bin/**/*.mjs\" \"rules/**/*.json\""
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.20.5",
     "@types/pngjs": "^6.0.5",
     "playwright": "1.63.0",
     "pngjs": "7.0.0",
