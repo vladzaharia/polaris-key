@@ -3745,3 +3745,25 @@ chips (`commerce.offer-price-invalid`), the "In the same change" summary box
 (`commerce.add-to-offer`), phone bottom-sheet dialogs with the primary above Cancel, the drawer
 timeline (`commerce.purchase`), and typed-confirm gating (the primary disabled until the word is
 typed, `commerce.offer-stop-selling`).
+
+## Desktop kit flows by window shape (`uk56-desktop-kits`)
+
+`sdk.macos-gate`, `sdk.windows-gate` and `sdk.gnome-gate` draw one fixture product's gate on a
+desktop kit, in both presets, by window shape. Appended at the end of `mockup.css`; no earlier rule
+was edited.
+
+- **`.kit-welcome.shape`**: DL1 on a window. The panes read the window's own width (the
+  `.kit-host` container), not the board's: two panes from 560, a 56px strip below. The start pane
+  is `.art` (product art) under `polaris-key` and `.kit-pane` (the icon on `surface-sunken`) under
+  `native`. The end pane is top-aligned. `.short` is a 300px landscape window with the header on one
+  line (`.kit-head.inline`); `.sheet` inside a `.kit-stage` is the large window: a sheet-scale card
+  on a flat ground.
+- **`.window.mac`, `.window.win`, `.window.gnome`**: the host's window chrome (never the kit's).
+  The kit draws no title bar and no static accent rule under it.
+- **`.kit-host[data-pk-platform][data-pk-preset="native"]`**: the host's tint (the OS's own, not a
+  brand colour), the macOS bordered field and the Fluent field. `polaris-key` is the default and
+  needs no attribute: the product's accent drives every role.
+- **`.kit-stack.cap`**: a stack of block buttons capped at 320. **`.kit-input.mid`**: a key that
+  middle-elides at rest (the text carries the ellipsis).
+- Order of buttons: macOS Cancel then the default; Windows the primary first; GNOME Cancel then the
+  suggested pill at the end.

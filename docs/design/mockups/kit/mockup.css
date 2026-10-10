@@ -24219,3 +24219,613 @@ summary:focus-visible {
 tr.chg {
   display: table-row;
 }
+
+/* ── uk56-desktop-kits: desktop kit flows by window shape (macOS, Windows, GNOME) ─────────────
+   .kit-welcome.shape: DL1 reads the window's own width (the .kit-host container), never the
+   board's: two panes from 560px, a one-line strip of the product's art (or, under native, its
+   icon on the quiet ground) below. The end pane is top-aligned, never centred. .short is a short
+   landscape window (no inner scroll, header on one line); .sheet is the large window: one sheet
+   scale card on a flat ground, never stretched. [data-pk-preset="native"] hands the tint, the
+   pane and the field style to the host; the host tints below are the OS's own, not the brand's. */
+.kit-welcome.shape {
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+}
+.kit-welcome.shape > :is(.art, .kit-pane) {
+  height: 56px;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+@container (min-width: 560px) {
+  .kit-welcome.shape {
+    grid-template-columns: clamp(160px, 34%, 300px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .kit-welcome.shape > :is(.art, .kit-pane) {
+    height: auto;
+  }
+}
+.kit-welcome.shape .kit-form {
+  width: 100%;
+  max-width: 560px;
+  justify-content: flex-start;
+  padding-top: var(--sp-8);
+}
+.kit-welcome.shape .kit-stack.cap {
+  max-width: 320px;
+}
+.kit-welcome.shape.short {
+  height: 300px;
+}
+.kit-welcome.shape.short .kit-form {
+  padding-top: var(--sp-6);
+}
+.kit-head.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.kit-head.inline > .logo + * {
+  margin-top: 0;
+}
+.kit-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pk-surface-sunken);
+}
+.kit-pane > .logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+@container (min-width: 560px) {
+  .kit-pane > .logo {
+    width: 88px;
+    height: 88px;
+    border-radius: 22px;
+  }
+}
+.kit-stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--sp-8);
+  background: var(--pk-surface-sunken);
+}
+.kit-welcome.shape.sheet {
+  width: 100%;
+  max-width: 1040px;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--pk-surface-page);
+  box-shadow: var(--pk-elevation-3);
+}
+.kit-welcome.shape.sheet .kit-form {
+  max-width: 560px;
+}
+/* The key at rest shows its start and end; a middle ellipsis never hides the end. */
+.kit-input.mid > span:first-child {
+  text-overflow: clip;
+}
+/* Platform idiom, both presets. */
+.window.win {
+  border-radius: 8px;
+}
+.window.gnome {
+  border-radius: 14px;
+}
+.window.gnome .window-bar {
+  justify-content: center;
+}
+.window.gnome .window-controls {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--sp-2);
+  margin: 0;
+}
+.window.gnome .window-controls > .ic {
+  padding-inline: var(--sp-2);
+}
+.window.mac .window-bar {
+  justify-content: center;
+}
+.window.mac .window-bar > .term-dots {
+  position: absolute;
+  inset-inline-start: var(--sp-4);
+}
+.kit-host[data-pk-platform="gnome"] .kit-btn {
+  border-radius: 9999px;
+}
+.kit-host[data-pk-platform="gnome"] .kit-stack.cap,
+.kit-host[data-pk-platform="gnome"] .kit-links {
+  align-items: stretch;
+}
+.kit-host[data-pk-platform="gnome"] .kit-links {
+  justify-content: flex-start;
+}
+/* native: the host's tint and its control styles. */
+.kit-host[data-pk-preset="native"][data-pk-platform="macos"] {
+  --kit-accent: #0067d9;
+  --kit-accent-on: #ffffff;
+  --kit-accent-subtle: color-mix(in oklab, #0067d9 14%, var(--pk-surface-raised));
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="windows"] {
+  --kit-accent: #0067c0;
+  --kit-accent-on: #ffffff;
+  --kit-accent-subtle: color-mix(in oklab, #0067c0 14%, var(--pk-surface-raised));
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="gnome"] {
+  --kit-accent: #1c71d8;
+  --kit-accent-on: #ffffff;
+  --kit-accent-subtle: color-mix(in oklab, #1c71d8 14%, var(--pk-surface-raised));
+}
+[data-theme="dark"] .kit-host[data-pk-preset="native"][data-pk-platform="windows"] {
+  --kit-accent: #60cdff;
+  --kit-accent-on: #060912;
+}
+[data-theme="dark"] .kit-host[data-pk-preset="native"][data-pk-platform="gnome"] {
+  --kit-accent: #78aeed;
+  --kit-accent-on: #060912;
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="macos"] .kit-input {
+  border-radius: 8px;
+  background: var(--pk-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--mk-line);
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="windows"] .kit-btn:not(.primary):not(.ghost) {
+  box-shadow: inset 0 0 0 1px var(--mk-line);
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="windows"] .kit-input {
+  background: var(--pk-surface-raised);
+  box-shadow: inset 0 -2px 0 var(--mk-line), inset 0 0 0 1px var(--mk-line);
+}
+/* ── end uk56-desktop-kits ── */
+/* uk56-desktop-kits (2): .frame-grid.shapes has 600px cells (two to a row from 1344px of board),
+   so a default window is two panes and a .w-narrow window (480px, the Mac sheet width) is a strip. */
+.frame-grid.shapes {
+  --frame-w: 600px;
+}
+.window.w-narrow {
+  width: 100%;
+  max-width: 480px;
+}
+/* uk56-desktop-kits (3): under native, text and ring in the host's tint use its text-safe step. */
+.kit-host[data-pk-preset="native"] .kit-link {
+  color: var(--host-tint-fg);
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="macos"] {
+  --host-tint-fg: #0060c8;
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="windows"] {
+  --host-tint-fg: #0067c0;
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="gnome"] {
+  --host-tint-fg: #1a5fb4;
+}
+[data-theme="dark"] .kit-host[data-pk-preset="native"][data-pk-platform="macos"] {
+  --host-tint-fg: #5aa9ff;
+}
+[data-theme="dark"] .kit-host[data-pk-preset="native"][data-pk-platform="windows"] {
+  --host-tint-fg: #60cdff;
+}
+[data-theme="dark"] .kit-host[data-pk-preset="native"][data-pk-platform="gnome"] {
+  --host-tint-fg: #78aeed;
+}
+
+/* ── uk56-tv-vision-qt-kits: Qt (KDE form), tvOS and visionOS kit flows ───────────────────────
+   .kit-scale draws a fixed-size stage (a 1920×1080 TV, a visionOS room) at its true measures and
+   scales it to the cell: the stage keeps real type and targets, so the frame reads as that
+   surface, and nothing in it is sized by the board. [data-pk-preset="native"] on the stage hands
+   the tint, the focus style and the identity pane to the system. The host tints are the
+   platform's own, not the brand's. A QR appears only on the TV stage. */
+.kit-scale {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px var(--mk-line);
+}
+.kit-scale.tv {
+  --ks-w: 1920px;
+  --ks-h: 1080px;
+  aspect-ratio: 16 / 9;
+}
+.kit-scale.vision {
+  --ks-w: 1280px;
+  --ks-h: 800px;
+  aspect-ratio: 8 / 5;
+}
+.kit-scale.vision-tall {
+  --ks-w: 640px;
+  --ks-h: 800px;
+  aspect-ratio: 4 / 5;
+  max-width: 420px;
+}
+.kit-scale > .kit-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--ks-w);
+  height: var(--ks-h);
+  overflow: hidden;
+  transform-origin: 0 0;
+  transform: scale(tan(atan2(100cqw, var(--ks-w))));
+  background: var(--pk-surface-page);
+  color: var(--pk-text-default);
+  font: var(--pk-kit-type-body-weight) var(--pk-kit-type-body-size) / var(--pk-kit-type-body-line-height) var(--pk-kit-type-body-family);
+}
+.kit-canvas[data-pk-preset="native"] {
+  --kit-accent: #0a84ff;
+  --kit-accent-on: #ffffff;
+  --kit-accent-subtle: color-mix(in oklab, #0a84ff 16%, var(--pk-surface-raised));
+}
+[data-theme="dark"] .kit-canvas[data-pk-preset="native"] {
+  --kit-accent: #409cff;
+  --kit-accent-on: #060912;
+}
+.kit-canvas[data-pk-preset="native"] .kit-link {
+  color: var(--kit-accent);
+}
+
+/* tvOS: 76px capsule controls, TV type, inside the 90 × 60 title-safe area. */
+.kit-canvas.tv {
+  --pk-kit-control-height: 76px;
+  --pk-kit-control-height-compact: 56px;
+  --pk-kit-radius-control: 9999px;
+  --pk-kit-radius-group: 28px;
+  --pk-kit-radius-form: 20px;
+  --pk-kit-card-pad: 0px;
+  --pk-kit-type-title-size: 64px;
+  --pk-kit-type-title-line-height: 72px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-body-size: 32px;
+  --pk-kit-type-body-line-height: 44px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-label-size: 32px;
+  --pk-kit-type-label-line-height: 44px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-button-size: 32px;
+  --pk-kit-type-button-line-height: 40px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-meta-size: 28px;
+  --pk-kit-type-meta-line-height: 40px;
+  --pk-kit-type-footnote-size: 28px;
+  --pk-kit-type-footnote-line-height: 40px;
+}
+.kit-canvas.tv > .tv-ground {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0.4;
+  -webkit-mask-image: linear-gradient(to bottom, black 20%, transparent 85%);
+  mask-image: linear-gradient(to bottom, black 20%, transparent 85%);
+}
+.kit-canvas.tv > .tv-ground > .art {
+  position: absolute;
+  inset: -80px;
+  aspect-ratio: auto;
+  border-radius: 0;
+  filter: blur(80px) saturate(1.4);
+}
+.tv-safe {
+  position: absolute;
+  inset: 60px 90px;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-auto-rows: min-content;
+  column-gap: var(--sp-16);
+  align-content: start;
+  padding-top: var(--sp-12);
+}
+.tv-safe.message {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1040px;
+}
+.tv-start,
+.tv-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-6);
+  min-width: 0;
+}
+.kit-canvas.tv .kit-brand {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.kit-canvas.tv .logo.lg {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+}
+.kit-canvas.tv .kit-head {
+  gap: var(--sp-4);
+}
+.tv-url {
+  margin: 0;
+  font: 500 44px/56px var(--pk-font-mono);
+  color: var(--pk-text-strong);
+}
+.tv-code {
+  font: 600 96px/112px var(--pk-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--pk-text-strong);
+}
+.tv-qr {
+  display: block;
+  width: 319px;
+  height: 319px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.92);
+  color: var(--pk-brand-page);
+}
+.tv-qr > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tv-device {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font: var(--pk-kit-type-meta-weight) var(--pk-kit-type-meta-size) / var(--pk-kit-type-meta-line-height) var(--pk-kit-type-meta-family);
+  color: var(--pk-text-muted);
+}
+.tv-device > .ic {
+  width: 32px;
+  height: 32px;
+}
+.tv-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+.tv-actions.row {
+  flex-direction: row;
+  gap: var(--sp-6);
+}
+.kit-canvas.tv .kit-btn {
+  padding: 0 var(--sp-10);
+}
+.kit-canvas.tv .kit-count > .kit-ring {
+  width: 28px;
+  height: 28px;
+}
+.kit-canvas.tv .kit-state {
+  padding: var(--sp-6);
+  max-width: 880px;
+}
+.kit-canvas.tv .kit-state > .ic {
+  width: 32px;
+  height: 32px;
+}
+/* The focus engine: the focused control lifts to 1.05 under a 3px ring at a 2px offset. */
+.kit-canvas.tv .kit-btn.focus {
+  transform: scale(1.05);
+  transform-origin: left center;
+  outline: 3px solid color-mix(in oklab, var(--kit-accent) 45%, var(--pk-text-strong));
+  outline-offset: 2px;
+}
+.kit-canvas.tv[data-pk-preset="native"] .kit-btn {
+  background: var(--mk-fill);
+}
+.kit-canvas.tv[data-pk-preset="native"] .kit-btn.focus {
+  background: var(--pk-text-strong);
+  color: var(--pk-surface-page);
+  outline: 0;
+  box-shadow: var(--pk-elevation-3);
+}
+
+/* visionOS: glass windows in a room, 60pt targets, ornaments on the bottom edge. */
+.kit-canvas.vp {
+  --pk-kit-control-height: 60px;
+  --pk-kit-control-height-compact: 44px;
+  --pk-kit-radius-control: 9999px;
+  --pk-kit-radius-group: 20px;
+  --pk-kit-radius-form: 16px;
+  --pk-kit-card-pad: 32px;
+  --pk-kit-type-title-size: 29px;
+  --pk-kit-type-title-line-height: 36px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-body-size: 17px;
+  --pk-kit-type-body-line-height: 24px;
+  --pk-kit-type-label-size: 17px;
+  --pk-kit-type-label-line-height: 24px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-button-size: 17px;
+  --pk-kit-type-button-line-height: 24px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-meta-size: 15px;
+  --pk-kit-type-meta-line-height: 20px;
+  --pk-kit-type-footnote-size: 13px;
+  --pk-kit-type-footnote-line-height: 18px;
+  background:
+    radial-gradient(60% 55% at 22% 18%, color-mix(in oklab, var(--pk-brand-violet) 20%, transparent), transparent),
+    linear-gradient(180deg, var(--pk-surface-sunken), color-mix(in oklab, var(--pk-surface-sunken) 70%, var(--pk-surface-raised)));
+}
+.kit-canvas.vp > .vp-object {
+  position: absolute;
+  top: 56px;
+  left: 56px;
+  width: 300px;
+  height: 460px;
+  border-radius: 28px;
+  background: color-mix(in oklab, var(--pk-text-strong) 12%, transparent);
+}
+.vp-window {
+  position: absolute;
+  top: 88px;
+  left: 50%;
+  translate: -50% 0;
+  width: 860px;
+  height: 520px;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  border-radius: 44px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--pk-surface-raised) 56%, transparent);
+  -webkit-backdrop-filter: blur(48px) saturate(1.5);
+  backdrop-filter: blur(48px) saturate(1.5);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--pk-text-strong) 16%, transparent),
+    var(--pk-elevation-3);
+}
+.vp-window.tall {
+  top: 56px;
+  width: 480px;
+  height: 640px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 120px minmax(0, 1fr);
+}
+.vp-window > .vp-art,
+.vp-window > .vp-pane {
+  margin: var(--sp-3);
+  border-radius: 32px;
+  overflow: hidden;
+  position: relative;
+}
+.vp-window > .vp-art > .art {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+.vp-window > .vp-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--pk-surface-sunken) 60%, transparent);
+}
+.vp-window > .vp-pane > .logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+}
+.vp-window.tall > .vp-pane > .logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+.vp-window .kit-form {
+  justify-content: flex-start;
+}
+.vp-window .kit-stack.cap {
+  max-width: 360px;
+}
+.kit-canvas.vp .kit-btn:not(.primary) {
+  background: color-mix(in oklab, var(--pk-text-strong) 14%, transparent);
+}
+/* Gaze hover is the focus signal: the control brightens and lifts, with no ring or glow. */
+.kit-canvas.vp .kit-btn.gaze {
+  filter: brightness(1.14);
+  transform: scale(1.03);
+}
+.vp-ornament {
+  position: absolute;
+  top: 620px;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-3) var(--sp-6);
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--pk-surface-raised) 60%, transparent);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  backdrop-filter: blur(40px) saturate(1.5);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--pk-text-strong) 16%, transparent),
+    var(--pk-elevation-3);
+  font: var(--pk-kit-type-label-weight) var(--pk-kit-type-label-size) / var(--pk-kit-type-label-line-height) var(--pk-kit-type-label-family);
+  color: var(--pk-text-strong);
+}
+.vp-window.tall ~ .vp-ornament {
+  top: 708px;
+}
+.vp-ornament .kit-link {
+  font-weight: 500;
+}
+.vp-ornament .kit-btn {
+  height: var(--pk-kit-control-height-compact);
+}
+.vp-ornament > .ic {
+  width: 20px;
+  height: 20px;
+}
+
+/* Qt: KDE Plasma's Breeze form (affirmative before Cancel, from QDialogButtonBox) and its tint. */
+.kit-host[data-pk-platform="kde"] {
+  --pk-kit-control-height: 32px;
+  --pk-kit-control-height-compact: 28px;
+  --pk-kit-radius-control: 5px;
+  --pk-kit-radius-form: 5px;
+  --pk-kit-radius-group: 6px;
+  --pk-kit-card-pad: 24px;
+  --pk-kit-type-title-size: 24px;
+  --pk-kit-type-title-line-height: 32px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-body-size: 14px;
+  --pk-kit-type-body-line-height: 20px;
+  --pk-kit-type-label-size: 14px;
+  --pk-kit-type-label-line-height: 20px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-button-size: 14px;
+  --pk-kit-type-button-line-height: 20px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-meta-size: 12px;
+  --pk-kit-type-meta-line-height: 16px;
+  --pk-kit-type-footnote-size: 12px;
+  --pk-kit-type-footnote-line-height: 16px;
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="kde"] {
+  --kit-accent: #1d6fa5;
+  --kit-accent-on: #ffffff;
+  --kit-accent-subtle: color-mix(in oklab, #1d6fa5 14%, var(--pk-surface-raised));
+}
+[data-theme="dark"] .kit-host[data-pk-preset="native"][data-pk-platform="kde"] {
+  --kit-accent: #3daee9;
+  --kit-accent-on: #060912;
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="kde"] .kit-btn:not(.primary):not(.ghost),
+.kit-host[data-pk-preset="native"][data-pk-platform="kde"] .kit-input {
+  box-shadow: inset 0 0 0 1px var(--mk-line);
+}
+.kit-host[data-pk-preset="native"][data-pk-platform="kde"] .kit-input {
+  background: var(--pk-surface-raised);
+}
+.window.kde {
+  border-radius: 6px;
+}
+.kit-actions.end {
+  justify-content: flex-end;
+}
+.kit-host.dialog > .kit-form {
+  max-width: 480px;
+  margin-inline: auto;
+}
+/* Stage frames in pairs: polaris-key beside native from 1280px, one under it. */
+.kit-pairs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-8) var(--sp-4);
+  align-items: start;
+}
+.kit-pairs > .board-item {
+  min-width: 0;
+}
+@container screen (min-width: 1280px) {
+  .kit-pairs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.vp-window.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* ── end uk56-tv-vision-qt-kits ── */
