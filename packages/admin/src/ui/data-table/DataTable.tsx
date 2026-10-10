@@ -700,7 +700,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     const href = rowHref(row);
     // A block, so a truncating cell inside it gets a bounded width (phone cards especially).
     const cls =
-      "block min-w-0 max-w-full font-bold text-fg-strong underline-offset-2 hover:text-accent-fg hover:underline";
+      "block min-w-0 max-w-full font-medium text-fg-strong underline-offset-2 hover:text-accent-fg hover:underline";
     if (LinkComponent) {
       return (
         <span data-row-link-wrap className="block min-w-0">
@@ -911,7 +911,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       inert={!bulkOpen || undefined}
       className="pk-transient flex min-h-10 flex-wrap items-center gap-2 rounded-md border border-border bg-accent-subtle px-3 py-1.5"
     >
-      <span className="text-sm font-bold text-fg-strong tabular-nums">
+      <span className="text-sm font-medium text-fg-strong tabular-nums">
         {bulk.allMatching && pagination.mode === "cursor" && pagination.total
           ? `All ${formatCount(pagination.total)} selected`
           : `${formatCount(bulk.count)} selected`}
@@ -993,7 +993,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 className="w-56 p-2"
               >
                 <fieldset>
-                  <legend className="px-2 pb-1 text-xs font-bold text-fg-muted">
+                  <legend className="px-2 pb-1 text-xs font-semibold text-fg-muted">
                     Show columns
                   </legend>
                   {hideable.map((c) => (
@@ -1029,7 +1029,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     onClick={() => setDensity(d)}
                     className={cn(
                       "h-7 rounded-sm px-2 text-xs capitalize text-fg-muted",
-                      density === d && "bg-hover font-bold text-fg-strong",
+                      density === d && "bg-hover font-medium text-fg-strong",
                     )}
                   >
                     {d}
@@ -1179,7 +1179,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                       : undefined
                 }
                 className={cn(
-                  "h-9 px-3 align-middle text-xs leading-4 font-bold whitespace-nowrap text-fg-muted",
+                  "h-9 px-3 align-middle text-xs leading-4 font-medium whitespace-nowrap text-fg-muted",
                   alignClass(meta?.numeric ? "end" : meta?.align),
                   stickyPrimary(col) &&
                     cn(stickyPrimary(col), "z-[3] bg-surface-raised"),

@@ -82,7 +82,7 @@ export function ManagedField({
   );
   const header = (
     <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <span className="font-bold text-fg-strong">{entry.label}</span>
+      <span className="font-medium text-fg-strong">{entry.label}</span>
       <code className="min-w-0 font-mono text-xs font-normal text-fg-muted [overflow-wrap:anywhere]">
         {entry.key}
       </code>
@@ -115,7 +115,7 @@ export function ManagedField({
               <p className="text-xs text-fg-muted">{entry.description}</p>
             ) : null}
             <p className="text-xs text-fg-muted">
-              <span className="font-bold text-fg">Not set</span>
+              <span className="font-medium text-fg">Not set</span>
               {inherited ? (
                 <>
                   {" "}
@@ -203,7 +203,7 @@ export function ManagedField({
         />
         <div className="flex flex-col items-end gap-0.5 text-xs text-fg-muted">
           {inherited && overrideIgnored ? (
-            <span className="text-right font-bold text-warning">
+            <span className="text-right font-medium text-warning">
               {capitalize(inherited.source)} enforces{" "}
               {formatValue(inherited.value)}; this value is ignored. Choose
               Enforced to override it.
@@ -225,7 +225,7 @@ export function ManagedField({
           secret the console has no value to resend, so choosing Default really does clear it:
           say so rather than letting the stored secret vanish on save. */}
       {secret && secretConfigured && state === "default" && !value ? (
-        <p className="text-xs font-bold text-warning">
+        <p className="text-xs font-medium text-warning">
           Saving with Default removes the stored secret: the server keeps no
           value for an unmanaged key.
         </p>

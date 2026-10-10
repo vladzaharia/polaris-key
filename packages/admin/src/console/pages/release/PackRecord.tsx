@@ -117,7 +117,7 @@ function VariantCard({
           <ul className="space-y-0.5 text-xs">
             {v.deltas.map((d, i) => (
               <li key={i}>
-                <span className="font-bold">{d.scope}</span>
+                <span className="font-medium">{d.scope}</span>
                 {d.method ? (
                   <span className="text-fg-muted"> {d.method}</span>
                 ) : null}{" "}
@@ -277,7 +277,7 @@ function ReleaseDrawer({
             </Callout>
           ) : null}
           <section className="space-y-3">
-            <h3 className="text-sm font-bold text-fg-strong">
+            <h3 className="text-sm font-semibold text-fg-strong">
               Variants ({release.variants.length})
             </h3>
             {release.variants.length ? (
@@ -330,7 +330,10 @@ function FilesTab({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1.5">
-          <span id="files-release" className="text-sm font-bold text-fg-strong">
+          <span
+            id="files-release"
+            className="text-sm font-medium text-fg-strong"
+          >
             Release
           </span>
           <Select
@@ -350,7 +353,7 @@ function FilesTab({
           <div className="space-y-1.5">
             <span
               id="files-variant"
-              className="text-sm font-bold text-fg-strong"
+              className="text-sm font-medium text-fg-strong"
             >
               Variant
             </span>

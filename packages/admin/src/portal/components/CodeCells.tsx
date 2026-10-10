@@ -31,7 +31,7 @@ export function CodeCells({
           <div
             key={i}
             className={cn(
-              "flex h-14 items-center justify-center rounded-md border bg-surface-sunken font-mono text-2xl font-bold text-fg-strong",
+              "flex h-14 items-center justify-center rounded-md border bg-surface-sunken font-mono text-2xl font-semibold text-fg-strong",
               invalid
                 ? "border-danger"
                 : focused && i === at

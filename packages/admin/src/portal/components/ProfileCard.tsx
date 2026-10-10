@@ -95,7 +95,7 @@ export function ProfileCard({
                 badge={providerBadge(badge)}
               />
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-fg-strong [overflow-wrap:anywhere]">
+                <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
                   {showName}
                 </p>
                 {profile ? (

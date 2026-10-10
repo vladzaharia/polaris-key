@@ -63,7 +63,7 @@ export function BreakGlassDialog({
       onConfirm={() => onConfirm(trimmed)}
     >
       <div className="space-y-1">
-        <label htmlFor={id} className="text-sm font-bold text-fg-strong">
+        <label htmlFor={id} className="text-sm font-medium text-fg-strong">
           Reason
         </label>
         <Textarea

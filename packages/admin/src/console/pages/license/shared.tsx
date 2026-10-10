@@ -390,7 +390,7 @@ export function EffectivePolicy({
       aria-label={title}
       className="rounded-lg border border-border bg-surface-sunken p-4"
     >
-      <h3 className="text-sm font-bold text-fg-strong">{title}</h3>
+      <h3 className="text-sm font-semibold text-fg-strong">{title}</h3>
       {description ? (
         <p className="mt-0.5 text-xs text-fg-muted">{description}</p>
       ) : null}

@@ -85,7 +85,7 @@ export function KeyField({
 
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="text-sm font-bold text-fg-strong">
+      <label htmlFor={id} className="text-sm font-medium text-fg-strong">
         License key
       </label>
       <div
@@ -108,7 +108,7 @@ export function KeyField({
             parts ? (
               <>
                 <span className="text-fg-subtle">{parts.prefix}</span>
-                <span className="font-bold text-accent-fg">{parts.slug}</span>
+                <span className="font-medium text-accent-fg">{parts.slug}</span>
                 <span className="text-fg-subtle">{parts.sep}</span>
                 <span className="text-fg-strong">{parts.rest}</span>
               </>
@@ -152,7 +152,7 @@ export function KeyField({
             <button
               type="button"
               onClick={() => void paste()}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong bg-surface-raised px-2.5 text-sm font-bold text-fg-strong hover:bg-hover"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong bg-surface-raised px-2.5 text-sm font-medium text-fg-strong hover:bg-hover"
             >
               <ClipboardPaste aria-hidden className="size-4 text-accent-fg" />
               Paste

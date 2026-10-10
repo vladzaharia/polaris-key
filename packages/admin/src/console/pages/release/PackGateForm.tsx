@@ -92,7 +92,9 @@ export function PackGateForm({
     <Form form={form} aria-label={`${deliverable.id} delivery gate`}>
       <div className="max-w-3xl space-y-6 rounded-lg border border-border bg-surface-raised p-4 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-fg-strong">Delivery gate</h2>
+          <h2 className="text-base font-semibold text-fg-strong">
+            Delivery gate
+          </h2>
           {row ? (
             <SourceBadge source={row.source} path=".pkey/distribution" />
           ) : (
