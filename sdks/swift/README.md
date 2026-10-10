@@ -44,18 +44,22 @@ swift package-registry set --scope polaris-key https://pkg.plrs.im/swift/polaris
 
 ```swift
 // Package.swift
-dependencies: [
-    .package(id: "polaris-key.PolarisKey", from: "0.1.0")
-],
-targets: [
-    .target(name: "MyApp", dependencies: [
-        .product(name: "PolarisKey", package: "polaris-key.PolarisKey"),
-        .product(name: "PolarisKeyUI", package: "polaris-key.PolarisKey"),
-        // The signed update decision (macOS and iOS). Sparkle is linked on macOS only — see
-        // "Updates" below.
-        .product(name: "PolarisKeyUpdate", package: "polaris-key.PolarisKey"),
-    ])
-]
+let package = Package(
+    name: "MyApp",
+    platforms: [.macOS(.v14), .iOS(.v17)],   // the package's minimums; a lower target fails to resolve
+    dependencies: [
+        .package(id: "polaris-key.PolarisKey", from: "0.9.3")
+    ],
+    targets: [
+        .target(name: "MyApp", dependencies: [
+            .product(name: "PolarisKey", package: "polaris-key.PolarisKey"),
+            .product(name: "PolarisKeyUI", package: "polaris-key.PolarisKey"),
+            // The signed update decision (macOS and iOS). Sparkle is linked on macOS only — see
+            // "Updates" below.
+            .product(name: "PolarisKeyUpdate", package: "polaris-key.PolarisKey"),
+        ])
+    ]
+)
 ```
 
 Signature enforcement and the other clients:
@@ -248,8 +252,9 @@ let prompt = try await client.identity.beginSignIn(deviceName: "Living-room Appl
 // URL as a QR code; never on a phone, tablet or Mac (SIGN-IN.md D-67).
 let signIn = Task { try await client.identity.waitForSignIn(prompt) }
 // …cancel `signIn` if the player backs out: polling stops and it throws CancellationError.
-if try await signIn.value == .ready {
+if case .ready(let ready) = try await signIn.value {
     // The device token is stored and the post-activation sync has already run.
+    // `ready.identity` names who signed in (name, email) when the Worker said.
 }
 ```
 
@@ -262,11 +267,12 @@ or `.error`). `prompt.deviceCode` is the poll credential: never show it. A sign-
 signed-in identity's **own** licence; it does not attach a licence this device already held.
 
 **After `.ready`, show on the device which account signed in.** Anyone holding the user code can
-complete the sign-in on the verification page, so the player must be able to see a mis-binding:
-`.ready` carries no identity itself, but the post-acquisition sync has already run, so
-`await client.currentDevice().profile` (or `LicenseClient.profile()`) returns the signed licence
-profile (`name`, `email`) to show — for example "Signed in as Ada Lovelace
-<ada@example.com>" with a way to sign out.
+complete the sign-in on the verification page, so the player must be able to see a mis-binding.
+`.ready(let ready)` carries `ready.identity` (name and email, when the Worker said) and
+`ready.attached`; the post-acquisition sync has already run, so `await client.currentDevice().profile`
+(or `LicenseClient.profile()`) returns the signed licence profile too. Show "Signed in as Ada
+Lovelace <ada@example.com>" with a way out: `PolarisSignIn` does, ending in Continue and
+"Not you?" (which signs out and starts again).
 
 `SignInPrompt` and `MintedToken` print (`print`, `String(describing:)`, `debugPrint`, `dump`)
 with `deviceCode` / `token` as `[redacted]`; the properties themselves read normally.
@@ -407,33 +413,94 @@ Three depths, all first-class:
 
 ## SwiftUI gate
 
-`PolarisLoginView` renders by status: an OIDC sign-in button + license-key entry card when
-activation is needed, an offline-grace banner over your content, version-block and
-expired/revoked screens, and your own UI once usable (`ok` / `grace` / `not-applicable`).
+One modifier gates the app: it puts the model in the environment, syncs when the scene becomes
+active and wraps your content in the gate. The gate draws nothing but its ground until the client
+has been read (a licensed launch never flashes the activation card), shows the activation form
+when a licence is needed, an offline-grace banner over your content, and for a blocking state the
+actions that can change it, then your own UI once usable (`ok` / `grace` / `not-applicable`).
 
 ```swift
 import PolarisKey
 import PolarisKeyUI
+import SwiftUI
 
-@StateObject var gate = PolarisGateModel(
-    license: client.license,
-    sync: { await client.sync() }   // the gate renders licence state; a sync is Core's
-)
+@main
+struct MyApp: App {
+    @State private var client: PolarisKeyClient?
 
-var body: some View {
-    PolarisLoginView(
-        model: gate,
-        theme: PolarisTheme(
-            accent: .teal,                       // optional: your app's tint otherwise
-            copy: PolarisCopy(productName: "DJDL"),
-            logo: { AnyView(Image("BrandLogo").resizable().scaledToFit().frame(width: 56)) }
-        ),
-        onSignIn: { startMyOIDCFlow() }   // the SDK is transport-agnostic about the browser dance
-    ) {
-        MyAppRootView()   // shown when usable
+    var body: some Scene {
+        WindowGroup {
+            Group {
+                if let client {
+                    MyAppRootView().polarisKey(
+                        client,
+                        theme: PolarisTheme(copy: PolarisCopy(productName: "DJDL")),
+                        options: GateOptions(returnURL: "myapp://activated"))
+                }
+            }
+            .task {
+                do { client = try await PolarisKeyClient.fromBundle() } catch {
+                    print("Polaris Key: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 }
 ```
+
+`GateOptions` is what you decide about the gate (`PolarisTheme` is how it looks):
+
+| Option                    | Default                     | What it does                                                                                                                        |
+| ------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `showsKeyEntry`           | `true`                      | The licence-key field. Turn it off where the store's rules forbid key entry (App Store 3.1.1); sign-in and your own actions remain. |
+| `offersOfflineActivation` | `false` on iOS, else `true` | "Activate offline", for a machine with no network. A phone has one, so iOS leaves it out unless you ask.                            |
+| `offersFreeTier`          | `false`                     | "Continue free" (keyless enrolment); hidden for good once the server answers `enroll_disabled`.                                     |
+| `returnURL`               | none                        | Where the portal sends the person back after **Replace a device** (the device-limit refusal's link carries it).                     |
+| `renewURL`                | none                        | Your renewal or account page. An expired licence then leads with **Renew or manage**; without it, with **Try again**.               |
+| `blockedAction`           | none                        | Your own action on an expired, revoked or version-blocked gate (a support link, an Update button), drawn under the gate's.          |
+
+A blocking state always has a way out (one filled action, the rest quiet): **expired** offers Renew
+or manage (when `renewURL` is set), Try again, Use a different key and Sign in; **revoked** offers
+Use a different key and Sign in; a version block offers Try again and your own action. **Use a
+different key** shows the activation form on the same screen and **Cancel** goes back, so nothing
+needs a relaunch. The explanation is worded for the controls the gate really has.
+
+`PolarisLoginView` is the same gate over a `PolarisGateModel` you hold, for a host that brings its
+own sign-in (`onSignIn:`):
+
+```swift
+struct GatedRoot: View {
+    @StateObject private var gate: PolarisGateModel
+    let client: PolarisKeyClient
+
+    init(client: PolarisKeyClient) {
+        self.client = client
+        _gate = StateObject(
+            wrappedValue: PolarisGateModel(
+                license: client.license,
+                sync: { _ = await client.sync() },   // the gate renders licence state; a sync is Core's
+                returnURL: "myapp://activated"))
+    }
+
+    var body: some View {
+        PolarisLoginView(
+            model: gate,
+            theme: PolarisTheme(
+                accent: .teal,                       // optional: your app's tint otherwise
+                copy: PolarisCopy(productName: "DJDL"),
+                logo: { AnyView(Image("BrandLogo").resizable().scaledToFit().frame(width: 56)) }
+            ),
+            onSignIn: { startMyOIDCFlow() }   // the SDK is transport-agnostic about the browser dance
+        ) {
+            MyAppRootView()   // shown when usable
+        }
+    }
+}
+```
+
+An accent you pass (`accent:`) goes through the same contrast resolver as a product's registered
+accent: the button fill and its label clear 4.5:1 and so does the accent text, in both colour
+schemes (white on `#FF6A3D` is 2.85:1 as given).
 
 **Native by default.** Out of the box the gate looks like your app: system fonts with Dynamic Type,
 your app's tint (`.tint(_:)` / the asset catalog accent), system colours that follow dark and
@@ -455,7 +522,8 @@ material. On macOS the kit's sheets size to their content and fit a 480 × 520 w
 **Polaris Key branding is an opt-in**, with one modifier on the gate or any ancestor:
 
 ```swift
-PolarisLoginView(model: gate) { MyAppRootView() }
+MyAppRootView()
+    .polarisKey(client)
     .polarisKeyBranding(.polarisKey)
 ```
 
@@ -557,13 +625,13 @@ let update = try UpdateClient(
 let check = try await update.decide(channel: "latest")
 // check.channel == "stable" (the feed's own claim), check.feed == .network, check.errors == []
 switch check.decision {
-case .store(_, let listingUrl, _, _, _):
+case .store(_, let listingUrl, _, _, _, _):
     // open listingUrl, or the page you compiled in when it is nil (AltStore, iOS web distribution)
     _ = listingUrl
-case .binary(_, let release, let build, _, _, _, _):
+case .binary(_, let release, let build, _, _, _, _, _):
     let url = await update.buildURL(version: release.version, buildId: build)
     // download, check the payload's `size` and `sha256` against the record, then stage
-case .none, .codeReady, .platform, .blocked:
+case .none, .codeReady, .platform, .blocked, .packs:
     break
 }
 if isUndismissable(check.decision) {

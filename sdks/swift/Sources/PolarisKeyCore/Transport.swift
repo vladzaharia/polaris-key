@@ -38,14 +38,20 @@ public struct PolarisError: Error, Sendable, Equatable {
     /// stays a `PolarisError` with its old code so existing `catch` sites keep matching. Nil for
     /// every other code.
     public let unsupported: Unsupported?
+    /// A person-facing sentence for this occurrence, when the catalog's sentence for `code` is
+    /// about another service (`not-configured` reads as licensing copy). `localizedDescription`
+    /// prefers it; nil uses the catalog sentence for `code`.
+    public let userMessage: String?
 
     public init(
-        code: String, message: String, detail: String? = nil, unsupported: Unsupported? = nil
+        code: String, message: String, detail: String? = nil, unsupported: Unsupported? = nil,
+        userMessage: String? = nil
     ) {
         self.code = code
         self.message = message
         self.detail = detail
         self.unsupported = unsupported
+        self.userMessage = userMessage
     }
 
     // ── Client-side codes ────────────────────────────────────────────────────────────────

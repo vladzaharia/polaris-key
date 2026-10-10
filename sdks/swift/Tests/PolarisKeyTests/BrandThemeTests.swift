@@ -103,18 +103,45 @@
             XCTAssertEqual(PolarisPalette.standard(.polarisKey, for: .light), .brandLight)
         }
 
-        func testAccentOverrideAppliesInBothSchemesAndLeavesTheRest() {
+        func testAccentOverrideAppliesInBothSchemesAndLeavesTheRest() throws {
             let theme = PolarisTheme(accent: .teal, accentOn: .black)
             XCTAssertTrue(theme.setsTint(), "an explicit accent is applied even natively")
             for branding in PolarisBranding.allCases {
                 for scheme in [ColorScheme.dark, .light] {
                     let resolved = theme.resolvedPalette(for: scheme, branding: branding)
                     let base = PolarisPalette.standard(branding, for: scheme)
-                    XCTAssertEqual(resolved.accent, .teal)
-                    XCTAssertEqual(resolved.accentText, .teal)
+                    // The colour goes through the resolver for this scheme.
+                    let input = try XCTUnwrap(Color.teal.polarisHex(for: scheme))
+                    let want = try XCTUnwrap(PolarisAccent.resolve(input, dark: scheme != .light))
+                    XCTAssertEqual(resolved.accent, BrandColor(hexString: want.solid)?.color)
+                    XCTAssertEqual(resolved.accentText, BrandColor(hexString: want.fg)?.color)
+                    XCTAssertEqual(resolved.focus, BrandColor(hexString: want.focus)?.color)
+                    // `accentOn` is the integrator's, as given.
                     XCTAssertEqual(resolved.onAccent, .black)
                     XCTAssertEqual(resolved.page, base.page)
-                    XCTAssertEqual(resolved.focus, base.focus)
+                }
+            }
+        }
+
+        /// White on `#FF6A3D` is 2.85:1. Through the resolver the fill and its label, and the
+        /// accent text on the page, clear 4.5:1 in both schemes and both presets.
+        func testAnOrangeAccentClearsContrastInBothSchemes() throws {
+            let orange = Color(red: 1, green: 106.0 / 255, blue: 61.0 / 255)
+            XCTAssertEqual(orange.polarisHex(for: .light), "#ff6a3d")
+            let theme = PolarisTheme(accent: orange)
+            for branding in PolarisBranding.allCases {
+                for scheme in [ColorScheme.dark, .light] {
+                    let p = theme.resolvedPalette(for: scheme, branding: branding)
+                    let fill = try XCTUnwrap(p.accent.polarisHex(for: scheme))
+                    let label = try XCTUnwrap(p.onAccent.polarisHex(for: scheme))
+                    let text = try XCTUnwrap(p.accentText.polarisHex(for: scheme))
+                    XCTAssertGreaterThanOrEqual(
+                        PolarisAccent.contrast(label, fill), 4.5, "label on fill \(branding) \(scheme)")
+                    for ground in PolarisAccent.surfaces(dark: scheme == .dark) {
+                        XCTAssertGreaterThanOrEqual(
+                            PolarisAccent.contrast(text, ground), 4.5,
+                            "text on \(ground) \(branding) \(scheme)")
+                    }
                 }
             }
         }
