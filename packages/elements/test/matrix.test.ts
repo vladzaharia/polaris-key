@@ -10,7 +10,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { Copy, viewOf, type ComponentName } from "@polaris-key/ui-core";
 import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 
-import { TAGS, type PkElement, type PkSignIn } from "../src/index.js";
+import { LAYOUTS, TAGS, type PkElement, type PkSignIn } from "../src/index.js";
 import {
   COMPONENT_FAMILIES,
   readMatrix,
@@ -142,7 +142,8 @@ for (const family of COMPONENT_FAMILIES) {
       // confirm's is the danger fill).
       if (
         view.decisions.primary !== null &&
-        view.component !== "PolarisKeyGate"
+        view.component !== "PolarisKeyGate" &&
+        !(LAYOUTS[view.component].quiet ?? []).includes(view.decisions.primary)
       )
         expect(
           root.querySelector(

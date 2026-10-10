@@ -15,6 +15,8 @@ export { stylesCss } from "./styles.js";
 export { tokenCss } from "./tokens.js";
 // DL14's QR, for the states that may draw one (a TV or console code, an offline request).
 export { encodeQr } from "@polaris-key/node/qr";
+// DL8: platform names, never a raw id.
+export { platformLabel } from "./platforms.js";
 // The theme and copy resolution both renderers run (§1.2, §3.1, §4.7): one copy table per locale
 // on the page, one identity path through ui-core.
 export { copyFor, ensureLocale, onCopyLoaded, provideTable } from "./copy.js";
@@ -80,7 +82,8 @@ function ordered(keys: string[], layout: Layout): string[] {
  * filled control (DL4), drawn as a control wherever the layout would otherwise put its key: a
  * busy control keeps its label, a capability-limited Welcome keeps its one path, a link or a
  * title key that is the state's fix (Activate's Replace a device, LicenseChoice's key) is filled.
- * Only a primary the component draws inside its own content (a row's Remove) stays there.
+ * A primary the component draws inside its own content (a row's Remove) stays there, and one the
+ * layout keeps `quiet` stays a link.
  */
 export function placeKeys(view: View, layout: Layout) {
   const all = view.copy.filter((k) => !k.startsWith("a11y."));
@@ -89,15 +92,17 @@ export function placeKeys(view: View, layout: Layout) {
   const controls = layout.controls.filter(
     (k) => all.includes(k) || (k === primary && !content.has(k)),
   );
+  const quiet = new Set(layout.quiet ?? []);
   if (
     primary !== null &&
     all.includes(primary) &&
     !content.has(primary) &&
+    !quiet.has(primary) &&
     !controls.includes(primary)
   )
     controls.unshift(primary);
   const links = (layout.links ?? []).filter(
-    (k) => all.includes(k) && k !== primary,
+    (k) => all.includes(k) && (k !== primary || quiet.has(k)),
   );
   const placed = new Set([...controls, ...links, ...content]);
   const rest = all.filter((k) => !placed.has(k));
