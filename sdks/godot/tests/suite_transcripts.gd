@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
+# @pkey-feature core.discover core.presentation core.sync core.cache config.schema config.mint devices.register devices.report
 # @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicelabel
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
@@ -47,6 +47,11 @@ extends RefCounted
 # payload an earlier step fetched, so the SDK resumes with Range and If-Range. `result` is `ok`
 # (with the verified file's `size` and `sha256`), `refused` for a wire or SDK error code
 # (PKeyConstants.ERROR_CODE_VALUES) with its `code`, else `error`.
+#
+# `discover` reports the result's `kind` as `result` and PolarisKey.presentation() as
+# `presentation` (core.presentation: the normalised member, or null when there is none), so
+# `discovery-presentation` checks the member and then its removal. Each replay's presentation
+# cache is a scratch directory of its own.
 #
 # `activate` and `enroll` report the PKeyActivationResult's `kind` as `result` and, on a refusal,
 # its `code` (the body's wire code, activate-refusals). `boot` is PolarisKey.boot() with a
@@ -115,6 +120,8 @@ static func replay(tr: Dictionary) -> Array:
 		opts.store_root = PKeyTestFixtures.scratch_dir("transcript-journal")
 	var sdk := PKeyTestFixtures.new_sdk()
 	sdk.set_meta("pkey_platform", String(tr["initial"].get("platform", "")))
+	var presentation_dir := PKeyTestFixtures.scratch_dir("transcript-presentation")
+	sdk.presentation_source.cache_dir = presentation_dir
 	var fails: Array = []
 	var cr: PKeyResult = sdk.configure(opts)
 	if not cr.ok:
@@ -148,6 +155,9 @@ static func replay(tr: Dictionary) -> Array:
 					fails.append("%s step %d (%s): %s: expected %s, got %s" % [tr["id"], i, step["action"], key, JSON.stringify(step["expect"][key]), JSON.stringify(observed.get(key))])
 	sdk.queue_free()
 	server.queue_free()
+	PKeyTestFixtures.remove_tree(presentation_dir)
+	# configure() bound the kit to this replay's presentation; the next suite starts without it.
+	PKeyUiTheme.use_presentation(null)
 	return fails
 
 
@@ -158,6 +168,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		"discover":
 			var r: PKeyResult = await sdk.discover()
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
+			var p: Dictionary = sdk.presentation()
+			out["presentation"] = p if not p.is_empty() else null
 		"fetchSchema":
 			out["catalog"] = await sdk.config.fetch_schema()
 		"mintToken":
