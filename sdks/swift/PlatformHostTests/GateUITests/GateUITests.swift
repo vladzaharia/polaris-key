@@ -28,6 +28,11 @@ final class GateUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+        // The accessibility tree as VoiceOver reads it: every element's type, label and value.
+        let tree = XCTAttachment(string: app.debugDescription)
+        tree.name = "\(name)-accessibility-tree"
+        tree.lifetime = .keepAlways
+        add(tree)
     }
 
     private func button(_ label: String) -> XCUIElement { app.buttons[label] }
@@ -68,6 +73,7 @@ final class GateUITests: XCTestCase {
         button("Use a different key").tap()
         waitFor(keyField, "the licence-key field")
         XCTAssertTrue(button("Cancel").exists, "the form can be backed out of")
+        XCTAssertFalse(button("Sign in").exists, "Sign in is one step back, not repeated")
         shot("expired-different-key")
 
         // Cancel returns to the blocking state; the form is one tap away again.

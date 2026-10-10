@@ -252,6 +252,8 @@ struct PolarisGateSurface<Content: View>: View {
     var onActivateOffline: (() -> Void)? = nil
     /// False hides key entry (a store outlet whose rules forbid it, App Store 3.1.1).
     var showsKeyEntry: Bool = true
+    /// Starts with the form showing (render tests and previews of that step).
+    var showsKeyFormInitially = false
     let content: () -> Content
 
     @Environment(\.colorScheme) private var colorScheme
@@ -330,6 +332,7 @@ struct PolarisGateSurface<Content: View>: View {
         }
         .onChange(of: licenseKey) { _, _ in errorDismissed = true }
         .onChange(of: status) { _, _ in showsKeyForm = false }
+        .onAppear { if showsKeyFormInitially { showsKeyForm = true } }
     }
 
     /// The gate's ground before the first read of the client: no card, no copy (the answer is a
@@ -389,7 +392,9 @@ struct PolarisGateSurface<Content: View>: View {
             }
         } act: { layout in
             VStack(spacing: PolarisSpace.s) {
-                PolarisFitReader { fit in activationForm(layout, compact: fit.compressed) }
+                PolarisFitReader { fit in
+                    activationForm(layout, compact: fit.compressed, keyOnly: differentKey)
+                }
                 if differentKey {
                     Button(theme.copy.kit.cancelButton) { showsKeyForm = false }
                         .controlSize(.large)
@@ -412,19 +417,22 @@ struct PolarisGateSurface<Content: View>: View {
     /// `compact` (a compressed page, such as a phone in landscape) trims decoration so the whole
     /// act, including a device-limit callout's action, stays above the fold: no key
     /// label, regular-size controls and tighter spacing. The structure stays the same either way.
-    @ViewBuilder private func activationForm(_ layout: PolarisKitLayout, compact: Bool = false)
-        -> some View
-    {
+    @ViewBuilder private func activationForm(
+        _ layout: PolarisKitLayout, compact: Bool = false, keyOnly: Bool = false
+    ) -> some View {
         let keyHasText = !licenseKey.trimmingCharacters(in: .whitespaces).isEmpty
         let deviceLimit = manageLink != nil && visibleError != nil
             && PolarisManagePresentation.current == .button
         // One prominent action at a time: the device-limit callout's Replace when it shows, else
         // Activate once the field has text, else Sign in.
-        let activateProminent = showsKeyEntry && keyHasText && !deviceLimit
-        let signInProminent = onSignIn != nil && !activateProminent && !deviceLimit
+        // After "Use a different key" the person has chosen the key: Activate is the one filled
+        // action and Sign in (one step back) is not repeated.
+        let signIn = keyOnly ? nil : onSignIn
+        let activateProminent = showsKeyEntry && (keyHasText || keyOnly) && !deviceLimit
+        let signInProminent = signIn != nil && !activateProminent && !deviceLimit
 
         VStack(spacing: compact ? PolarisSpace.xs : PolarisSpace.s) {
-            if let onSignIn {
+            if let onSignIn = signIn {
                 gateButton(
                     theme.copy.signInButton, prominent: signInProminent, role: .primary,
                     disabled: isWorking, compact: compact, action: onSignIn)
