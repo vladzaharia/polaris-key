@@ -2,9 +2,10 @@
  * LX-12: the licence and add-on lifecycle (notes/S-19 §7.6, plans/LX-01.md §2.5, as the DX
  * consolidation of 2026-10-07 amended them: no refund grace).
  *
- * Two state machines, each ONE table. Every writer of a licence's `status`/`ended_reason` or a
- * grant's `state` goes through them (`lifecycleWrites.ts` derives its SQL from these tables), and
- * a test walks every cell.
+ * Two state machines, each ONE table, and a test walks every cell. `lifecycleWrites.ts` derives
+ * its SQL from these tables. Every writer of a licence's `status`/`ended_reason` goes through it.
+ * A grant's `state` does too, except where LX-08's two projections write it: the store-grant
+ * dual-write (`active`/`revoked`, until LX-11) and the `oidc` grant's sign-in upsert (`active`).
  *
  * ── LICENCES ─────────────────────────────────────────────────────────────────────────────────
  *
@@ -27,10 +28,11 @@
  *
  * 1. **No refund grace.** A full refund or a chargeback ends the item at once; a partial refund
  *    never reaches this module. `grace_until` is not read (`grantContributes`).
- * 2. **Money ends are the strongest.** A refund or chargeback that arrives after an item already
- *    ended for another reason replaces that reason, so the record always says the money went
- *    back. Among the other ends the first one stays; for grants, `revoked` (the entitlement no
- *    longer holds) replaces `suppressed` (an operator hid one that did).
+ * 2. **Money ends are the strongest.** A refund or chargeback that arrives after an item ended
+ *    for any other reason replaces that reason, so the record always says the money went back.
+ *    Otherwise the first end stays (a chargeback after a refund changes nothing), except that for
+ *    grants `revoked` (the entitlement no longer holds) replaces `suppressed` (an operator hid one
+ *    that did).
  * 3. **Only the store undoes a money end.** A refund is undone only by the store's reversal of
  *    that refund, a chargeback only by the reversal of that chargeback. An operator cannot
  *    reinstate a refunded or charged-back item (`refused`): to give the person access anyway they
