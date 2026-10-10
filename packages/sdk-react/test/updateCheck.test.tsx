@@ -363,3 +363,38 @@ describe("links pass the kit's validator (DL14)", () => {
     adapter.dispose();
   });
 });
+
+describe("focus never falls to the page", () => {
+  it("a Try again that finds an update whose link failed the safety check lands on Later", async () => {
+    let answer: () => Response = () => new Response("{}", { status: 503 });
+    const adapter = cookieAdapter(() => answer());
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <UpdatePrompt showWhenCurrent />
+      </PolarisKeyProvider>,
+    );
+    const retry = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-update-retry]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    retry.focus();
+    answer = () =>
+      new Response(
+        JSON.stringify({
+          version: "2.0.0",
+          tag: "v2",
+          url: "javascript:alert(1)",
+        }),
+      );
+    fireEvent.click(retry);
+    const later = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-update-dismiss]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(container.querySelector("[data-polaris-update-action]")).toBeNull();
+    expect(document.activeElement).toBe(later);
+    adapter.dispose();
+  });
+});

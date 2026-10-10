@@ -89,13 +89,20 @@ function UpdateBanner(props: {
 }): React.JSX.Element {
   const { locked } = props;
   const action = useRef<HTMLButtonElement>(null);
+  const dismiss = useRef<HTMLButtonElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (props.focusAction) action.current?.focus();
+    // The action, or, when its link failed the safety check and there is none, Later, or the
+    // banner itself: focus never falls to the page.
+    if (props.focusAction)
+      (action.current ?? dismiss.current ?? root.current)?.focus();
     // Once, when it appears.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <div
+      ref={root}
+      tabIndex={-1}
       className={props.className}
       {...(locked
         ? { role: "alert", "data-polaris-update-mandatory": "" }
@@ -105,6 +112,7 @@ function UpdateBanner(props: {
         ...bannerStyle(locked ? "warning" : "neutral"),
         justifyContent: "flex-start",
         textAlign: "start",
+        outline: "none",
       }}
       data-polaris-update={props.marker}
     >
@@ -133,6 +141,7 @@ function UpdateBanner(props: {
         ) : null}
         {locked ? null : (
           <Button
+            ref={dismiss}
             variant="secondary"
             size="compact"
             onClick={props.onDismiss}

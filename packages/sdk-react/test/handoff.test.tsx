@@ -372,6 +372,11 @@ describe("the device-code hand-off (bearer)", () => {
       "[data-polaris-handoff-cancel]",
     ) as HTMLElement;
     expect(document.activeElement).toBe(cancel);
+    // Not the hand-off's title, and Cancel is not dressed as the primary.
+    expect(container.querySelector("h2")!.textContent).not.toBe(
+      "Finish in your browser",
+    );
+    expect(cancel.style.background).not.toBe("var(--pk-accent)");
     fireEvent.click(cancel);
     await flush(0);
     expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy();
@@ -430,10 +435,44 @@ describe("the hand-off inside the revoked and expired screens", () => {
     expect(container.querySelector("[data-polaris-code]")!.textContent).toBe(
       "WDJB-MJHT",
     );
+    // The code sits in the head with the title, under the product's icon and name; only the
+    // buttons are in the docked tail.
+    const head = container.querySelector("[data-polaris-head]")!;
+    expect(head.querySelector("[data-polaris-code]")).toBeTruthy();
+    expect(
+      head.querySelector("[data-polaris-handoff-header]")!.textContent,
+    ).toBe("TTidewater");
+    const tail = container.querySelector("[data-polaris-tail]")!;
+    expect(tail.querySelector("[data-polaris-code]")).toBeNull();
+    expect(tail.querySelector("[data-polaris-handoff-open]")).toBeTruthy();
     fireEvent.click(container.querySelector("[data-polaris-handoff-cancel]")!);
     await flush(0);
     expect(container.querySelector("h2")!.textContent).toBe("Signed out");
     expect(labels()).toContain("Try again");
+    adapter.dispose();
+  });
+});
+
+describe("an old error is not announced again", () => {
+  it("Sign in after a failed sign-in, the code expiring, then Cancel: no stale alert comes back", async () => {
+    const server = scripted([{ status: 200, body: { status: "timeout" } }]);
+    const { container, adapter } = mount(server.fetchImpl);
+    await startSignIn(container);
+    await flush(5_000);
+    expect(container.querySelector("[data-polaris-signin-error]")).toBeTruthy();
+    // Sign in again: the error is cleared, the hand-off is up.
+    fireEvent.click(container.querySelector("[data-polaris-oidc]")!);
+    await flush(10);
+    expect(container.querySelector("[data-polaris-signin-error]")).toBeNull();
+    await flush(601_000);
+    expect(
+      container.querySelector('[data-polaris-handoff="expired"]'),
+    ).toBeTruthy();
+    fireEvent.click(container.querySelector("[data-polaris-handoff-cancel]")!);
+    await flush(0);
+    expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy();
+    expect(container.querySelector("[data-polaris-signin-error]")).toBeNull();
+    expect(container.querySelector("[role=alert]")).toBeNull();
     adapter.dispose();
   });
 });
@@ -458,6 +497,9 @@ describe("forced colours", () => {
       ) as HTMLElement;
       expect(open.style.background.toLowerCase()).toBe("highlight");
       expect(open.style.color.toLowerCase()).toBe("highlighttext");
+      // Forced colours would paint a Canvas backplate behind the label; the pair is kept.
+      expect(open.getAttribute("style")).toMatch(/forced-color-adjust:\s*none/);
+      expect(open.style.borderColor.toLowerCase()).toBe("highlight");
       const cancel = container.querySelector(
         "[data-polaris-handoff-cancel]",
       ) as HTMLElement;

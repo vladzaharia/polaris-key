@@ -17,6 +17,7 @@
 // the key form submits on Enter; the field has a real <label>; errors are `role="alert"`;
 // busy actions are announced with `aria-busy` and keep their labels.
 
+import { createPortal } from "react-dom";
 import {
   forwardRef,
   useCallback,
@@ -107,7 +108,12 @@ export interface PolarisLoginProps {
    * @internal The gate's expired and revoked screens learn when a hand-off is up (and whether
    * its code ran out), so they can retitle themselves and put their own Try again away.
    */
-  onHandoff?: (view: "waiting" | "expired" | null) => void;
+  onHandoff?: (view: "waiting" | "expired" | "unavailable" | null) => void;
+  /**
+   * @internal Where an embedding screen wants the code shown (in its own head, beside its
+   * title, so a phone keeps the code with the title): the card portals it there.
+   */
+  codeSlot?: HTMLElement | null;
 }
 
 /**
@@ -234,7 +240,13 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
     const hand = useHandoff(handle);
     const handoffExpired = hand?.expired ?? false;
     const onHandoff = props.onHandoff;
-    const handoffView = hand ? (hand.expired ? "expired" : "waiting") : null;
+    const handoffView = hand
+      ? hand.expired
+        ? "expired"
+        : hand.unusable
+          ? "unavailable"
+          : "waiting"
+      : null;
     useEffect(() => {
       onHandoff?.(handoffView);
     }, [onHandoff, handoffView]);
@@ -251,12 +263,21 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
       const refusal = keyRefusal(licenseError);
       if (refusal) setKeyErr(refusal);
     }, [licenseError]);
+    // The identity error that stood when the person last pressed Sign in: it is old news, and
+    // must not come back (and be announced again) when the hand-off closes.
+    const staleIdentity = useRef<unknown>(identityError);
+    const expiredRef = useRef(handoffExpired);
+    expiredRef.current = handoffExpired;
     useEffect(() => {
-      if (!identityError) return;
+      if (!identityError || identityError === staleIdentity.current) return;
+      // The expired view already says the code ran out; the poll's own "expired" is the same
+      // news and must not wait behind it to be announced again on Cancel.
+      if (expiredRef.current && identityError.code === "sign-in-expired")
+        return;
       setSignInErr(identityError);
       // A sign-in that failed ends the hand-off, except one already showing its own expiry.
-      if (!handoffExpired) setHandle(null);
-    }, [identityError, handoffExpired]);
+      if (!expiredRef.current) setHandle(null);
+    }, [identityError]);
 
     const titleId = useId();
     const keyInputId = useId();
@@ -362,6 +383,7 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
     function signIn(): void {
       setKeyErr(null);
       setSignInErr(null);
+      staleIdentity.current = state.error.identity;
       void Promise.resolve(auth.signInWithOidc())
         .then((started) => {
           // The cookie page navigates away and never gets here; a bearer page or a host that
@@ -460,7 +482,7 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
                 style={inWindow ? screenTitle : titleText}
                 dir="auto"
               >
-                {hand
+                {hand && !hand.unusable
                   ? hand.expired
                     ? theme.copy.handoffExpiredTitle
                     : theme.copy.handoffTitle
@@ -483,7 +505,14 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
 
         {hand ? (
           <>
-            {heading ? null : <HandoffCode theme={theme} hand={hand} />}
+            {heading ? null : props.codeSlot ? (
+              createPortal(
+                <HandoffCode theme={theme} hand={hand} />,
+                props.codeSlot,
+              )
+            ) : (
+              <HandoffCode theme={theme} hand={hand} />
+            )}
             <HandoffActions
               theme={theme}
               hand={hand}

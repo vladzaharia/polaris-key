@@ -203,13 +203,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             : null),
           // Forced colours drop an author fill, so the one primary is drawn in the system's
           // selection pair: a solid block no other button has.
+          // `forcedColorAdjust: none` keeps the system pair: left on `auto`, the browser paints a
+          // Canvas backplate behind the label and the label disappears.
           ...(forced && variant === "primary"
-            ? { background: "Highlight", color: "HighlightText" }
+            ? {
+                background: "Highlight",
+                color: "HighlightText",
+                borderColor: "Highlight",
+                forcedColorAdjust: "none",
+              }
             : null),
           ...(disabled ? { opacity: 0.42, cursor: "not-allowed" } : null),
           ...(busy && !disabled ? { cursor: "progress" } : null),
           ...style,
           ...ring.style,
+          // The focus ring is a system colour here, so it shows on the Highlight fill.
+          ...(forced && variant === "primary" && ring.style.outline
+            ? { outlineColor: "CanvasText" }
+            : null),
         }}
         onFocus={ring.onFocus}
         onBlur={ring.onBlur}

@@ -300,7 +300,7 @@ export function HandoffActions(props: HandoffActionsProps): React.JSX.Element {
         <p
           id={expiredId}
           role="status"
-          style={{ ...mutedText, ...prettyText }}
+          style={{ ...mutedText, ...prettyText, textAlign: "center" }}
           data-polaris-handoff-expired=""
         >
           {copy.handoffExpiredBody}
@@ -330,12 +330,15 @@ export function HandoffActions(props: HandoffActionsProps): React.JSX.Element {
         style={{ ...actionPanel, gap: SPACE["3"] }}
         data-polaris-handoff="unusable"
       >
-        <p role="status" style={{ ...mutedText, ...prettyText }}>
+        <p
+          role="status"
+          style={{ ...mutedText, ...prettyText, textAlign: "center" }}
+        >
           {copy.noMethodsLabel}
         </p>
         <Button
           ref={primary}
-          variant="primary"
+          variant="secondary"
           onClick={onCancel}
           data-polaris-handoff-cancel=""
         >
@@ -371,6 +374,8 @@ export function HandoffActions(props: HandoffActionsProps): React.JSX.Element {
             ...prettyText,
             display: "flex",
             flexWrap: "wrap",
+            justifyContent: "center",
+            textAlign: "center",
             columnGap: SPACE["3"],
           }}
           data-polaris-handoff-meta=""

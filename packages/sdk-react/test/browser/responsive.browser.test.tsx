@@ -46,6 +46,7 @@ declare module "vitest/browser" {
   interface BrowserCommands {
     kitShot: (file: string) => Promise<void>;
     emulateScheme: (scheme: "dark" | "light" | null) => Promise<void>;
+    emulateForced: (forced: "active" | null) => Promise<void>;
   }
 }
 declare const __PKEY_KIT_SHOTS__: string;
@@ -422,6 +423,59 @@ describe('colorScheme "system" on a light host with the OS dark', () => {
         `${__PKEY_KIT_SHOTS__}/react.${SYSTEM_ON_LIGHT_HOST.id}/${size.label}-os-dark.png`,
       );
   });
+});
+
+/** The sRGB channels of a computed `rgb()` / `rgba()` colour. */
+function channels(css: string): [number, number, number] {
+  const m = /rgba?\(\s*([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)/.exec(css);
+  if (!m) throw new Error(`not an rgb colour: ${css}`);
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+function luminance([r, g, b]: [number, number, number]): number {
+  const lin = (v: number): number => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+describe("forced colours", () => {
+  afterEach(async () => {
+    await commands.emulateForced(null);
+  });
+
+  // In forced-colors mode a browser replaces an author's colours and paints a Canvas backplate
+  // behind text unless `forced-color-adjust: none` keeps the pair, which left the primary's label
+  // black on black. The label must be readable: the kit's pair, at 4.5:1, and not adjusted away.
+  it.each(["dark", "light"] as const)(
+    "the primary's label is readable and its pair is kept (%s)",
+    async (scheme) => {
+      await commands.emulateForced("active");
+      await page.viewport(390, 844);
+      const scene = SCENES.find((s) => s.id === "signin-handoff")!;
+      const rootEl = await mount(scene, scheme);
+      const primary = rootEl.querySelector(scene.primary!) as HTMLElement;
+      const cs = getComputedStyle(primary);
+      expect(cs.forcedColorAdjust).toBe("none");
+      const label = luminance(channels(cs.color));
+      const fill = luminance(channels(cs.backgroundColor));
+      const contrast =
+        (Math.max(label, fill) + 0.05) / (Math.min(label, fill) + 0.05);
+      expect(contrast).toBeGreaterThanOrEqual(4.5);
+      // And the primary is not drawn like the other buttons (a distinct fill).
+      const other = rootEl.querySelector(
+        "[data-polaris-handoff-cancel]",
+      ) as HTMLElement;
+      expect(getComputedStyle(other).backgroundColor).not.toBe(
+        cs.backgroundColor,
+      );
+      if (__PKEY_KIT_SHOTS__)
+        await commands.kitShot(
+          `${__PKEY_KIT_SHOTS__}/react.forced-primary/${scheme}.png`,
+        );
+    },
+  );
 });
 
 describe("focus by keyboard", () => {

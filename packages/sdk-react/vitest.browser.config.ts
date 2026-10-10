@@ -9,7 +9,8 @@ interface PlaywrightPage {
     screenshot(options: { path: string }): Promise<unknown>;
   };
   emulateMedia(options: {
-    colorScheme: "dark" | "light" | null;
+    colorScheme?: "dark" | "light" | null;
+    forcedColors?: "active" | "none" | null;
   }): Promise<void>;
 }
 
@@ -49,6 +50,11 @@ export default defineConfig({
             .screenshot({ path: file });
         },
         // The OS colour scheme (`prefers-color-scheme`), for colorScheme "system"; null resets.
+        // Forced colours (`forced-colors: active`), the OS high-contrast mode; null resets.
+        async emulateForced(ctx, forced: "active" | null) {
+          const page = (ctx as unknown as { page: PlaywrightPage }).page;
+          await page.emulateMedia({ forcedColors: forced });
+        },
         async emulateScheme(ctx, scheme: "dark" | "light" | null) {
           const page = (ctx as unknown as { page: PlaywrightPage }).page;
           await page.emulateMedia({ colorScheme: scheme });

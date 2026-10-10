@@ -20,6 +20,7 @@ import {
 } from "../react/hooks.js";
 import { SPACE } from "@polaris-key/brand";
 import { PolarisLogin, openManageUrl } from "./PolarisLogin.js";
+import { HandoffHeader } from "./SignInHandoff.js";
 import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
 import {
@@ -383,9 +384,14 @@ function StatusScreen(props: {
   const [busy, retry, failure] = useRetry(ctx.retry);
   // While a sign-in's hand-off is up the screen yields to it: its title, and no second button
   // that reads like Cancel (Try again returns with the methods).
-  const [handoff, setHandoff] = useState<"waiting" | "expired" | null>(null);
+  const [handoff, setHandoff] = useState<
+    "waiting" | "expired" | "unavailable" | null
+  >(null);
+  // The head's slot for the code: it sits with the title, and only the buttons dock (DL1).
+  const [codeSlot, setCodeSlot] = useState<HTMLElement | null>(null);
+  const live = handoff === "waiting" || handoff === "expired";
   const failureId = useId();
-  const title = handoff
+  const title = live
     ? handoff === "expired"
       ? theme.copy.handoffExpiredTitle
       : theme.copy.handoffTitle
@@ -396,19 +402,29 @@ function StatusScreen(props: {
     <MessageScreen
       title={title}
       body={
-        handoff ? "" : revoked ? theme.copy.revokedBody : theme.copy.expiredBody
+        live ? "" : revoked ? theme.copy.revokedBody : theme.copy.expiredBody
       }
-      logo={screenLogo(theme)}
+      logo={live ? <HandoffHeader theme={theme} /> : screenLogo(theme)}
+      headExtra={
+        live ? (
+          <div
+            ref={setCodeSlot}
+            style={{ display: "contents" }}
+            data-polaris-code-slot=""
+          />
+        ) : null
+      }
       extra={
         <PolarisLogin
           heading={false}
           bare
           differentKey
           onHandoff={setHandoff}
+          codeSlot={codeSlot}
           {...(props.returnUrl ? { returnUrl: props.returnUrl } : {})}
         />
       }
-      {...(handoff
+      {...(live
         ? {}
         : {
             onRetry: retry,
@@ -418,7 +434,7 @@ function StatusScreen(props: {
             retryDescribedBy: failure ? failureId : undefined,
           })}
       notice={
-        failure && !handoff ? (
+        failure && !live ? (
           <p
             id={failureId}
             role="alert"

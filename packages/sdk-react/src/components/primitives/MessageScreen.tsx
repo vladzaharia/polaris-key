@@ -89,6 +89,8 @@ export interface MessageScreenProps {
   logo?: ReactNode;
   /** Content after the body: the sign-in methods an expired or revoked screen embeds. */
   extra?: ReactNode;
+  /** Content under the body in the head, with the title (a live code that belongs beside it). */
+  headExtra?: ReactNode;
   /** A message under the actions (a failed Try again says so here), announced when it appears. */
   notice?: ReactNode;
   /** A second action after the primary, in the same stack (a dialog's "Later"). */
@@ -125,6 +127,7 @@ export function MessageScreen(props: MessageScreenProps): React.JSX.Element {
     extra,
     secondaryAction,
     notice,
+    headExtra,
     retryVariant,
     onRetry,
     retryLabel,
@@ -153,6 +156,7 @@ export function MessageScreen(props: MessageScreenProps): React.JSX.Element {
         extra={extra}
         secondaryAction={secondaryAction}
         notice={notice}
+        headExtra={headExtra}
         retryVariant={retryVariant}
         onRetry={onRetry}
         retryLabel={retryLabel}
@@ -175,6 +179,7 @@ function MessageCard(props: MessageScreenProps): React.JSX.Element {
     extra,
     secondaryAction,
     notice,
+    headExtra,
     retryVariant = "primary",
     onRetry,
     retryLabel = fallbackRetry,
@@ -249,6 +254,7 @@ function MessageCard(props: MessageScreenProps): React.JSX.Element {
             {body}
           </p>
         ) : null}
+        {headExtra}
       </div>
       {bleed && hasTail ? <div aria-hidden="true" style={grow(2)} /> : null}
       {hasTail ? (
