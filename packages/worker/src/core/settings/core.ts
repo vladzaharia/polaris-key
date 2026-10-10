@@ -202,11 +202,9 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   // ST-19b: `.pkey/product`'s `secrets.required`, names only. A manifest names a secret and never
   // carries its value: an operator sets each value on Keys & secrets, sealed in `product_secrets`,
-  // and only its presence is shown. No Worker file reads `secrets.required` yet (the validator
-  // collects it for `pkey validate`; the console's setup check derives the required names from
-  // `oidc` and `edgeMint`), so the entry is pending on ST-08 with no readers and storage `none`.
-  // ST-08, which owns the `table:product_secrets` PENDING entry, extends this entry with that
-  // table and its readers rather than registering a second one.
+  // and only its presence is shown. ST-08 extended the entry with the `product_secrets` table
+  // (its adapter and readers) instead of registering a second one: the names come from the
+  // manifest, the sealed values from the table, and only presence is ever read back.
   setting({
     key: "core.secrets",
     rbacArea: "keys",
@@ -235,9 +233,46 @@ export const CORE_SLICE: readonly SettingDef[] = [
     manifest: { path: "product:secrets.required" },
     sensitivity: "secret",
     confirm: { change: "L0" },
-    storage: { kind: "none" },
+    readers: [
+      "core/managedSecrets.ts",
+      "core/products.ts",
+      "console/handlers/products.ts",
+    ],
+    storage: { kind: "rich", adapter: "product_secrets" },
     since: "ST-19b",
-    pending: { wp: "ST-08" },
+  }),
+  // ST-08: the signing keyring on Keys & secrets. Rows live in `product_keys` (migration 0003);
+  // the sealed private half never leaves the Worker, so the setting is the public record.
+  setting({
+    key: "core.keys",
+    rbacArea: "keys",
+    scope: "product",
+    service: "core",
+    area: "keys",
+    label: "Signing keys",
+    description:
+      "The product's Ed25519 signing keys: one active key signs licences, config and the feed, retired keys stay published so older documents still verify. The private half is sealed and never shown. Rotating or retiring a key changes what devices accept.",
+    keywords: ["signing", "kid", "rotate", "keyring", "ed25519", "retire"],
+    docs: "/docs/operate/console/keys-and-secrets/",
+    value: {
+      kind: "json",
+      schema: "product_keys rows: kid, status, public key (core/signing.ts)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    critical: true,
+    confirm: { change: "L2" },
+    wire: ["document", "discovery"],
+    readers: [
+      "core/signing.ts",
+      "platform/keyvault.ts",
+      "keyTransitions.ts",
+      "console/handlers/products.ts",
+    ],
+    storage: { kind: "rich", adapter: "product_keys" },
+    since: "ST-08",
   }),
   setting({
     key: "core.presentation",

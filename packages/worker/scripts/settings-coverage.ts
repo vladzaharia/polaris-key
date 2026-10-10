@@ -493,28 +493,10 @@ export const PENDING: readonly PendingEntry[] = [
     note: "older spelling of email.sender",
   },
   { target: "env:EMAIL_APPLE_RELAY", owner: "ST-09", note: "email.appleRelay" },
-  // Operator-owned product objects the settings hub hosts.
-  { target: "table:product_keys", owner: "ST-08", note: "core.keys" },
-  {
-    target: "table:product_secrets",
-    owner: "ST-08",
-    note: "extends core.secrets (ST-19b registered it, pending on ST-08)",
-  },
-  {
-    target: "table:release_channel_floors",
-    owner: "ST-08",
-    note: "release.channelFloors",
-  },
-  {
-    target: "table:release_pack_floors",
-    owner: "ST-08",
-    note: "release.channelFloors (packs)",
-  },
-  { target: "column:release_pack_floors.source", owner: "ST-08" },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 26;
+export const PENDING_CEILING = 21;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];
