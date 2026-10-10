@@ -1,0 +1,18 @@
+---
+/**
+ * An admonition (style guide §8): four types, each with one meaning. The title states the point
+ * ("The key is shown once"), never "Note". On Help a `caution` is titled Important.
+ */
+import { Aside } from "@astrojs/starlight/components";
+import type { CalloutType } from "../../lib/docs";
+
+export interface Props {
+  type: CalloutType;
+  /** The point of the callout. Required: a callout without one is not allowed. */
+  title: string;
+}
+
+const { type, title } = Astro.props;
+---
+
+<div class="pk-callout" data-callout={type}><Aside type={type} title={title}><slot /></Aside></div>

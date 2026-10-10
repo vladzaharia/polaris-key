@@ -1,0 +1,26 @@
+---
+/**
+ * A region of a compiled source file (docs plan §4): the examples tree or an SDK's docs-snippets
+ * target, between `docs:start <region>` and `docs:end <region>` comments. The file name shows as
+ * the block's title; setup lines outside the region stay hidden.
+ */
+import { Code } from "@astrojs/starlight/components";
+import { readSnippet } from "../../lib/snippet";
+
+export interface Props {
+  /** Repo-relative path of the source file, e.g. `packages/sdk-node/test/docs-snippets/gate.ts`. */
+  src: string;
+  /** The region name. Omit to show the whole file. */
+  region?: string;
+  /** The code language. Default: from the file extension. */
+  lang?: string;
+  /** The block title. Default: the file name. */
+  title?: string;
+}
+
+const { src, region, lang, title } = Astro.props;
+const { code, file } = readSnippet(src, region);
+const language = lang ?? src.split(".").pop() ?? "text";
+---
+
+<Code code={code} lang={language} title={title ?? file} />

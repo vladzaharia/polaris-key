@@ -1,0 +1,12 @@
+---
+/**
+ * Numbered steps (style guide §6): an ordered list, one action per step. Use a plain Markdown
+ * ordered list inside; each step starts with where it runs (`**Console**`, `**App**`,
+ * `**Server**`, `**CLI**`) and bold UI labels exactly as the screen shows them.
+ */
+import { Steps as StarlightSteps } from "@astrojs/starlight/components";
+
+export type Props = Record<string, never>;
+---
+
+<div class="pk-steps"><StarlightSteps><slot /></StarlightSteps></div>

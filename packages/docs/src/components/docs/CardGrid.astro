@@ -1,0 +1,13 @@
+---
+/** A grid of cards: `FeatureCard`s, or Starlight `Card`s. */
+import { CardGrid as StarlightCardGrid } from "@astrojs/starlight/components";
+
+export interface Props {
+  /** Lay the cards out two across on wide screens. */
+  stagger?: boolean;
+}
+
+const { stagger = false } = Astro.props;
+---
+
+<div class="pk-card-grid"><StarlightCardGrid stagger={stagger}><slot /></StarlightCardGrid></div>

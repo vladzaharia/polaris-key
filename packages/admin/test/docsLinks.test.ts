@@ -19,9 +19,9 @@ describe("docsFor", () => {
 
   it("prefers the page's own declaration over the section fallback", () => {
     // `licenses` declares its own page; its section fallback is the License service landing.
-    expect(docsFor("licenses")).toBe("/docs/admin/licenses-and-devices/");
+    expect(docsFor("licenses")).toBe("/docs/features/licensing/manage-licenses/");
     const licenseSection = SECTIONS.find((s) => s.key === "license");
-    expect(licenseSection?.docs).toBe("/docs/services/license/");
+    expect(licenseSection?.docs).toBe("/docs/features/licensing/");
   });
 
   it("every section carries a fallback so no page can resolve to nothing", () => {

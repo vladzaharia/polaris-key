@@ -1,0 +1,27 @@
+---
+/**
+ * A card that routes to a feature (docs plan §3.2.1): its name, one line, and the feature's
+ * service accent through `data-service`.
+ */
+import { FEATURES, type FeatureId } from "../../lib/features";
+
+export interface Props {
+  feature: FeatureId;
+  /** One line: what the reader gets. Required. */
+  description: string;
+  /** Default: the feature's overview, `/docs/features/<feature>/`. */
+  href?: string;
+}
+
+const { feature, description, href } = Astro.props;
+const meta = FEATURES[feature];
+---
+
+<a
+  class="pk-feature-card"
+  data-service={meta.accent}
+  href={href ?? `/docs/features/${feature}/`}
+>
+  <strong>{meta.label}</strong>
+  <span>{description}</span>
+</a>

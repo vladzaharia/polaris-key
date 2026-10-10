@@ -1,0 +1,40 @@
+---
+/**
+ * The "States to handle" block of an own-UI guide (docs plan §3.6, §7.4): every state the app must
+ * show, with the copy key it reads and the Help page a person lands on. The Help link is the
+ * message-id redirector, so another deployment gets its own Help.
+ */
+import { helpCodePath } from "../../lib/helpMessages";
+
+export interface StateRow {
+  /** The state, as the reader names it: "Device limit reached". */
+  state: string;
+  /** The copy-catalog key the app reads, e.g. `activation.device-limit`. */
+  copyKey: string;
+  /** The message id the Help link goes to. Default: `copyKey`. */
+  helpId?: string;
+}
+
+export interface Props {
+  states: readonly StateRow[];
+}
+
+const { states } = Astro.props;
+---
+
+<table class="pk-states-to-handle">
+  <thead>
+    <tr><th>State</th><th>Copy key</th><th>Help link</th></tr>
+  </thead>
+  <tbody>
+    {
+      states.map((row) => (
+        <tr>
+          <td>{row.state}</td>
+          <td><code>{row.copyKey}</code></td>
+          <td><code>{helpCodePath(row.helpId ?? row.copyKey)}</code></td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

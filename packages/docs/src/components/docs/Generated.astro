@@ -1,0 +1,24 @@
+---
+/**
+ * Generated SDK usage (docs plan §4): `renderUsage(feature, lang, lane)` from SP-33, whose
+ * goldens compile in every SDK lane. The generator does not exist yet, so a page that uses this
+ * component fails the build rather than ship an empty block; the props below are the contract.
+ */
+import type { LaneId, SdkId } from "../../lib/docs";
+
+export interface Props {
+  /** A feature id from `src/lib/features.ts`, or a SP-33 usage feature key. */
+  feature: string;
+  /** Default: the page's selected SDK. */
+  sdk?: SdkId;
+  /** Default: the page's selected lane. */
+  lane?: LaneId;
+  /** Which block of the feature's usage to show. */
+  part?: "usage" | "install" | "states";
+}
+
+const { feature, sdk, lane, part = "usage" } = Astro.props;
+throw new Error(
+  `<Generated feature="${feature}" part="${part}"${sdk ? ` sdk="${sdk}"` : ""}${lane ? ` lane="${lane}"` : ""}>: SP-33's renderUsage is not built yet; use <Snippet> until it ships`,
+);
+---

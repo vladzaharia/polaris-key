@@ -23,7 +23,9 @@ import { CORE_SCHEMA, load as loadYaml } from "js-yaml";
 const here = dirname(fileURLToPath(import.meta.url));
 const docsRoot = join(here, "..");
 const repo = join(docsRoot, "..", "..");
-const outDir = join(docsRoot, "src", "content", "docs", "reference");
+// Paths are relative to src/content/docs. Most pages live in reference/; the corpus and the
+// fingerprint constants are protocol pages, and the data model is a contributor page.
+const outDir = join(docsRoot, "src", "content", "docs");
 
 const read = (...segments) => readFileSync(join(repo, ...segments), "utf8");
 
@@ -965,14 +967,14 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 // ── driver ─────────────────────────────────────────────────────────────────────
 export const EMITTERS = {
-  "validation-codes.mdx": manifestValidationCodes,
-  "config-entry.mdx": configEntryReference,
-  "error-codes.mdx": errorCodes,
-  "fingerprint-constants.mdx": fingerprintConstants,
-  "routes.mdx": routeTable,
-  "data-model.mdx": dataModel,
-  "corpus.mdx": corpusInventory,
-  "parity.mdx": parityMatrix,
+  "reference/validation-codes.mdx": manifestValidationCodes,
+  "reference/config-entry.mdx": configEntryReference,
+  "reference/error-codes.mdx": errorCodes,
+  "reference/protocol/fingerprint-constants.mdx": fingerprintConstants,
+  "reference/routes.mdx": routeTable,
+  "contribute/data-model.mdx": dataModel,
+  "reference/protocol/corpus.mdx": corpusInventory,
+  "reference/parity.mdx": parityMatrix,
 };
 
 const check = process.argv.includes("--check");
@@ -984,16 +986,17 @@ if (
   let stale = 0;
   for (const [file, emit] of Object.entries(EMITTERS)) {
     const target = join(outDir, file);
+    mkdirSync(dirname(target), { recursive: true });
     const next = emit();
     const current = existsSync(target) ? readFileSync(target, "utf8") : null;
     if (check) {
       if (current !== next) {
-        console.error(`stale: src/content/docs/reference/${file}`);
+        console.error(`stale: src/content/docs/${file}`);
         stale += 1;
       }
     } else if (current !== next) {
       writeFileSync(target, next);
-      console.log(`wrote reference/${file}`);
+      console.log(`wrote ${file}`);
     }
   }
   if (check && stale) process.exit(1);

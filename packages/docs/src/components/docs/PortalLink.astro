@@ -1,0 +1,12 @@
+---
+/** A link into the customer portal on the same origin, "Open your library ↗". */
+export interface Props {
+  /** The portal path, e.g. `library` or `account`. */
+  to: string;
+}
+
+const { to } = Astro.props;
+const href = `/${to.replace(/^\/+/, "")}`;
+---
+
+<a class="pk-portal-link" href={href} target="_blank" rel="noopener"><slot>Open the portal</slot> ↗</a>

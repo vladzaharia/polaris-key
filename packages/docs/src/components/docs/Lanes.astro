@@ -1,0 +1,36 @@
+---
+/**
+ * The two integration lanes around app code (docs plan §3.6, §4): Drop-in UI kit and Your own
+ * UI, at the same depth. Each lane is a labelled section in the server-rendered text, so neither
+ * hides inside a tab and a Markdown export keeps both. `?lane=kit|library` selects one.
+ *
+ *   <Lanes intro="The drop-in kit renders the screens. Your own UI calls the client.">
+ *     <Fragment slot="kit">…</Fragment>
+ *     <Fragment slot="library">…</Fragment>
+ *   </Lanes>
+ */
+import { LANE_IDS, LANE_LABELS, SYNC_KEYS, type LaneId } from "../../lib/docs";
+
+export interface Props {
+  /** The first paragraph above the lanes: says what the two lanes hold. Required. */
+  intro: string;
+  /** The lanes the page shows. Default: both. */
+  lanes?: readonly LaneId[];
+}
+
+const { intro, lanes = LANE_IDS } = Astro.props;
+---
+
+<div class="pk-lanes" data-sync-key={SYNC_KEYS.lane}>
+  <p>{intro}</p>
+  {
+    lanes.map((lane) => (
+      <section class="pk-lane" data-lane={lane} aria-label={LANE_LABELS[lane]}>
+        <p class="pk-lane__label">
+          <strong>{LANE_LABELS[lane]}</strong>
+        </p>
+        <slot name={lane} />
+      </section>
+    ))
+  }
+</div>

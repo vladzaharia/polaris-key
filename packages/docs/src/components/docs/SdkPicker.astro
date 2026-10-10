@@ -1,0 +1,36 @@
+---
+/**
+ * The page-level SDK picker (docs plan §4): one choice, kept in `?sdk=` and in the browser, that
+ * every `<Generated>`, `<Snippet>` and `<InstallSteps>` on the page follows. Unstyled: it renders
+ * a labelled list of links, so the answer survives a flattened export. DOC-02a styles it.
+ */
+import { SDK_IDS, SDK_LABELS, SYNC_KEYS, type SdkId } from "../../lib/docs";
+
+export interface Props {
+  /** The SDKs the page covers, in display order. Default: all six. */
+  sdks?: readonly SdkId[];
+  /** The SDK shown first. Default: the first of `sdks`. */
+  initial?: SdkId;
+}
+
+const { sdks = SDK_IDS, initial = sdks[0] } = Astro.props;
+---
+
+<nav
+  class="pk-sdk-picker"
+  aria-label="SDK"
+  data-sync-key={SYNC_KEYS.sdk}
+  data-initial={initial}
+>
+  <ul>
+    {
+      sdks.map((sdk) => (
+        <li>
+          <a href={`?sdk=${sdk}`} data-sdk={sdk}>
+            {SDK_LABELS[sdk]}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>

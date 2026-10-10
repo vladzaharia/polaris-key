@@ -268,7 +268,9 @@ export const GENERATORS: Generator[] = [
       "conformance/transcripts/**",
     ],
     outputs: [
-      "packages/docs/src/content/docs/reference/{config-entry,corpus,data-model,error-codes,fingerprint-constants,parity,routes,validation-codes}.mdx",
+      "packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx",
+      "packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx",
+      "packages/docs/src/content/docs/contribute/data-model.mdx",
     ],
     write: [{ argv: ["pnpm", "--filter", "@polaris-key/docs", "gen"] }],
     check: [{ argv: ["pnpm", "--filter", "@polaris-key/docs", "gen:check"] }],

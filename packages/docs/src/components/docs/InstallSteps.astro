@@ -1,0 +1,63 @@
+---
+/**
+ * The install steps for one SDK (docs plan §4): the registry routing first, then the install.
+ * Both halves come from the CLI's own `feedsSetup()`, the function behind `pkey feeds setup`, so
+ * the docs and the CLI print the same lines. Our packages are published only on pkg.plrs.im; a
+ * bare install would ask the public registry, so no page shows an install without its routing.
+ */
+import { Code } from "@astrojs/starlight/components";
+import { feedsSetup } from "../../../../cli/src/feedSetup";
+import { SDK_LABELS, type SdkId } from "../../lib/docs";
+
+export interface Props {
+  sdk: SdkId;
+}
+
+/** The feed ecosystem, the scope or group the feed routes, and the package to install. */
+const FEEDS: Record<
+  SdkId,
+  { ecosystem: string; namespace: string[]; package: string }
+> = {
+  node: { ecosystem: "npm", namespace: ["scope=@polaris-key"], package: "@polaris-key/node" },
+  react: { ecosystem: "npm", namespace: ["scope=@polaris-key"], package: "@polaris-key/react" },
+  python: { ecosystem: "pypi", namespace: [], package: "polaris-key" },
+  swift: { ecosystem: "swift", namespace: ["scope=polaris-key"], package: "PolarisKey" },
+  kotlin: { ecosystem: "maven", namespace: ["groupPrefixes=im.plrs.key"], package: "polaris-key-core" },
+  godot: { ecosystem: "godot", namespace: [], package: "polaris_key" },
+};
+
+const { sdk } = Astro.props;
+const feed = FEEDS[sdk];
+const { snippets } = JSON.parse(
+  feedsSetup({
+    ecosystem: feed.ecosystem,
+    owner: "polaris-key",
+    namespace: feed.namespace,
+    package: feed.package,
+    json: true,
+  }),
+) as {
+  snippets: {
+    id: string;
+    title: string;
+    description?: string;
+    warning?: string;
+    filename?: string;
+    language: string;
+    code: string;
+  }[];
+};
+---
+
+<div class="pk-install-steps" data-sdk={sdk}>
+  <p>Route the package scope to the Polaris Key feed, then install {SDK_LABELS[sdk]}.</p>
+  {
+    snippets.map((s) => (
+      <section data-snippet={s.id}>
+        <p>{s.title}</p>
+        {s.warning && <p>{s.warning}</p>}
+        <Code code={s.code} lang={s.language} title={s.filename ?? "Terminal"} />
+      </section>
+    ))
+  }
+</div>

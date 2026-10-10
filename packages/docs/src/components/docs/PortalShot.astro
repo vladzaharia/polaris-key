@@ -1,0 +1,42 @@
+---
+/**
+ * A portal screen from the portal's committed visual baselines (style guide §9): a dark and light
+ * pair swapped by the reader's theme, and the phone capture on narrow screens. Nothing is
+ * captured by hand. The caption names the element ("The **Activate license** dialog"); the alt
+ * text says what the screen shows and what to press.
+ */
+import {
+  PORTAL_SHOT_IDS,
+  portalShot,
+  type PortalShotId,
+} from "../../lib/portalShots";
+
+export interface Props {
+  /** A baseline state from `PORTAL_SHOT_IDS`, e.g. `activate-enter`. */
+  id: PortalShotId;
+  /** Names the element shown. */
+  caption: string;
+  /** What the screen shows and what to press. */
+  alt: string;
+}
+
+const { id, caption, alt } = Astro.props;
+if (!(PORTAL_SHOT_IDS as readonly string[]).includes(id))
+  throw new Error(`<PortalShot id="${id}">: add the state to PORTAL_SHOT_IDS in src/lib/portalShots.ts`);
+const desktop = portalShot(id, "desktop");
+const mobile = portalShot(id, "mobile");
+if (desktop === null)
+  throw new Error(`<PortalShot id="${id}">: no committed ${id}-desktop-{dark,light}.png portal baseline`);
+---
+
+<figure class="pk-portal-shot" data-shot={id}>
+  <picture class="pk-portal-shot__dark">
+    {mobile && <source media="(max-width: 600px)" srcset={mobile.dark.src} />}
+    <img src={desktop.dark.src} width={desktop.dark.width} height={desktop.dark.height} alt={alt} loading="lazy" decoding="async" />
+  </picture>
+  <picture class="pk-portal-shot__light">
+    {mobile && <source media="(max-width: 600px)" srcset={mobile.light.src} />}
+    <img src={desktop.light.src} width={desktop.light.width} height={desktop.light.height} alt={alt} loading="lazy" decoding="async" />
+  </picture>
+  <figcaption>{caption}</figcaption>
+</figure>

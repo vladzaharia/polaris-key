@@ -1,0 +1,24 @@
+---
+/**
+ * The chip row under a title (style guide §8): the features, the role and the SDK minimum the
+ * page needs. Requirements are chips, not callouts.
+ */
+import { FEATURES, type FeatureId } from "../../lib/features";
+
+export interface Props {
+  features?: readonly FeatureId[];
+  /** The console role, e.g. "Product admin". */
+  role?: string;
+  /** SDK minimums as written on the page: "Node 22.13 or later". */
+  sdk?: readonly string[];
+}
+
+const { features = [], role, sdk = [] } = Astro.props;
+---
+
+<p class="pk-requires">
+  <strong>Requires</strong>
+  {features.map((f) => <span class="pk-chip" data-kind="feature" data-service={FEATURES[f].accent}>{FEATURES[f].label}</span>)}
+  {role && <span class="pk-chip" data-kind="role">{role}</span>}
+  {sdk.map((s) => <span class="pk-chip" data-kind="sdk">{s}</span>)}
+</p>

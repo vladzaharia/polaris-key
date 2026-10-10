@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://key.plrs.im/docs/schemas/help-messages.schema.json",
+  "title": "Help messages",
+  "description": "Maps every consumer-facing message id of the copy catalog (conformance/parity/copy.en.json) to the Help page that explains it. The id is the heading anchor and the /docs/help/code/<id>/ redirect path. DOC-03a owns the shape; DOC-05a fills the data.",
+  "type": "object",
+  "required": ["version", "pages", "messages", "developerOnly"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "pages": {
+      "description": "The pages under help/messages/, by file name without extension. `index` is the A to Z index.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["title"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "group": {
+            "description": "The Help task group the page sits last in (docs plan section 3.2).",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "messages": {
+      "description": "One entry per message id. A catalog `codes` key is its own id; a `gate` or `activation` key is prefixed with its group and a dot; the fallback is `fallback`.",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^(?:fallback|(?:gate|activation)\\.[a-z0-9]+(?:-[a-z0-9]+)*|[a-z0-9]+(?:_[a-z0-9]+)*)$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["page"],
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "description": "A key of `pages`, other than `index`.",
+            "type": "string"
+          },
+          "entry": {
+            "description": "Ids that carry the same on-screen title share one heading; give them the same `entry` and the first id owns the heading.",
+            "type": "string"
+          },
+          "article": {
+            "description": "A Help article (path under help/) this message links to.",
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*$"
+          },
+          "why": {
+            "description": "Why you see this: one or two plain sentences.",
+            "type": "string"
+          },
+          "fix": {
+            "description": "What to do: one or two plain sentences.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "developerOnly": {
+      "description": "Ids listed under Other messages as developer-only: the app's developer needs to fix them.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    }
+  }
+}
