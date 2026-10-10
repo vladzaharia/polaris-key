@@ -85,6 +85,7 @@ import {
 } from "../../../core/licenseHolders.js";
 import { licenseDeviceLimit, licenseTerms } from "../../../core/authz.js";
 import type { LicenseRow } from "../../../core/data.js";
+import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { handleAdminDevices } from "./devices.js";
@@ -96,7 +97,7 @@ import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 export function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
   const channels = raw.filter((c) => typeof c === "string") as string[];
-  return JSON.stringify(channels);
+  return JSON.stringify(withIncludedChannels(channels));
 }
 
 /**

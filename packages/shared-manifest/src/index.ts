@@ -1151,8 +1151,8 @@ export const CANONICAL_CHANNEL_PATTERN: RegExp = CANONICAL_CHANNEL_RE;
 /** Accepted request aliases (the protocol's `CHANNEL_ALIASES` keys, P0-04). Never stored. */
 export const CHANNEL_ALIAS_NAMES: readonly string[] =
   Object.keys(CHANNEL_ALIASES);
-/** The two channels every product has without declaring them. */
-export const BUILT_IN_CHANNELS: readonly string[] = ["stable", "beta"];
+/** The channels every product has without declaring them (the include chain dev ⊇ beta ⊇ stable). */
+export const BUILT_IN_CHANNELS: readonly string[] = ["stable", "beta", "dev"];
 /** A canonical, non-alias channel name. */
 export function isCanonicalChannelName(value: unknown): value is string {
   return (

@@ -9,6 +9,9 @@
  *  - `beta`         — the latest tag built from the configured `beta_branch` head via a
  *                     successful run of `channel_workflow`. `staging` is its legacy alias,
  *                     unless the product declares a manual channel of that name.
+ *  - `dev`          — the built-in top track (dev ⊇ beta ⊇ stable). A product's declared `dev`
+ *                     (manual channel) keeps priority. Served by the channel feeds; the legacy
+ *                     GitHub resolver has no rule for it and answers not-found.
  *  - `pr-<n>`       — auto: the latest tag from PR #n's head SHA via `channel_workflow`.
  *  - manual         — manifest-declared `{name, regex}` rules in `manual_channels_json`
  *                     (`release.manualChannels`, persisted by linkRepo/resync); the newest
@@ -27,7 +30,7 @@ import { CHANNEL_ALIASES, CHANNEL_BETA } from "@polaris-key/protocol";
 import { compareSemver, parseSemver } from "../../core/entitlements.js";
 import type { Release } from "./github.js";
 
-export type ChannelKind = "stable" | "beta" | "pr" | "manual";
+export type ChannelKind = "stable" | "beta" | "dev" | "pr" | "manual";
 
 export interface ManualChannel {
   name: string;
@@ -70,6 +73,8 @@ export function classifyChannel(
 
   const manual = manualChannels.find((c) => c.name === selector);
   if (manual) return { kind: "manual", raw: selector, manual };
+
+  if (selector === "dev") return { kind: "dev", raw: "dev" };
 
   if (
     Object.hasOwn(CHANNEL_ALIASES, selector) &&
@@ -308,6 +313,9 @@ export function resolveChannel(
           compare,
         );
       return null;
+    case "dev":
+      // The legacy GitHub resolver has no rule for the built-in dev track.
+      return null;
     case "manual": {
       const re = sel.manual
         ? compileManualChannelRegex(sel.manual.regex)
@@ -341,6 +349,7 @@ export function floorChannelOf(
     case "manual":
       return sel.raw;
     case "pr":
+    case "dev":
       return null;
   }
 }

@@ -118,6 +118,43 @@ export const IMPLICIT_OUTLET_ID = "direct";
 
 // ── Identity fields ─────────────────────────────────────────────────────────────────────────
 
+/**
+ * The channel -> lane maps an outlet uses when its identity declares none for a channel (the
+ * built-in release tracks, `BUILT_IN_CHANNELS`). One table, read through `effectiveTrackMap` by
+ * the Play, TestFlight, Steam, Microsoft Store and Snap connectors and the CLI.
+ *
+ * A lane is the outlet's own word: a Play track, a TestFlight group, a Steam branch, a Microsoft
+ * Store package flight, a snap channel. A channel absent from a kind's map has no lane there
+ * (`stable` on TestFlight; `dev` on the Microsoft Store, whose non-flighted submission is always
+ * `stable`). `play-testing` shares `play`'s lanes. Play `beta` is the open track; a product that
+ * wants the closed one declares `beta: alpha`.
+ */
+export const DEFAULT_OUTLET_TRACKS: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  play: { stable: "production", beta: "beta", dev: "internal" },
+  "play-testing": { stable: "production", beta: "beta", dev: "internal" },
+  testflight: { beta: "external", dev: "internal" },
+  steam: { stable: "default", beta: "beta", dev: "dev" },
+  "ms-store": { beta: "beta" },
+  snap: { stable: "stable", beta: "beta", dev: "edge" },
+};
+
+/**
+ * An outlet's channel -> lane map: the declared entries, and the defaults
+ * (`DEFAULT_OUTLET_TRACKS`) for every channel the declaration does not name. Declared entries win
+ * per channel; the result is read, never written back into the manifest.
+ */
+export function effectiveTrackMap(
+  kind: string,
+  declared?: Readonly<Record<string, string>> | null,
+): Record<string, string> {
+  const defaults = Object.hasOwn(DEFAULT_OUTLET_TRACKS, kind)
+    ? DEFAULT_OUTLET_TRACKS[kind]
+    : undefined;
+  return { ...defaults, ...(declared ?? {}) };
+}
+
 /** A normalised outlet identity. Which fields apply depends on the kind (`OUTLET_IDENTITY_FIELDS`). */
 export interface ManifestOutletIdentity {
   /** `app-store` / `testflight`: the App Store Connect app id (digits). */

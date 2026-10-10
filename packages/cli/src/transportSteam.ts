@@ -20,6 +20,7 @@
  * is Steamworks'.
  */
 
+import { effectiveTrackMap } from "@polaris-key/manifest";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -123,7 +124,14 @@ export async function steamVdf(o: SteamVdfOptions): Promise<SteamVdfResult> {
     );
   let branch = o.branch;
   if (!branch && o.channel)
-    branch = steam.map((x) => x.identity.branches?.[o.channel!]).find(Boolean);
+    branch = steam
+      .map(
+        (x) =>
+          effectiveTrackMap("steam", x.identity.branches)[o.channel!] as
+            | string
+            | undefined,
+      )
+      .find(Boolean);
   if (!branch)
     throw new Error(
       `--branch is required${o.channel ? ` (no steam outlet maps channel ${o.channel} to a branch)` : " (or --channel with the outlet's branches map)"}.`,
