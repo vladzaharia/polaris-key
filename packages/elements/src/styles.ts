@@ -760,7 +760,7 @@ bdi {
 }
 /* A narrow box (or large text) puts a row's actions under its text, never squeezing it. */
 @container pk (max-width: 30rem) {
-  .row {
+  .row:has(> .row-actions) {
     grid-template-columns: auto minmax(0, 1fr);
   }
   .row .row-actions {
