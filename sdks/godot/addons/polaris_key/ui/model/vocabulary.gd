@@ -4,7 +4,7 @@ extends RefCounted
 ## pins them for every language; a screen reads them from here instead of spelling a string.
 
 ## The UI matrix version these models implement (the generated `UI_MATRIX_VERSION`).
-const UI_MATRIX_VERSION := 2
+const UI_MATRIX_VERSION := 3
 
 ## UI-KITS.md §4.1: every component, must and should.
 const COMPONENTS := [
