@@ -57,6 +57,9 @@ var update_events: Object = null
 var packs: Object = null
 ## The last discovery manifest this session, or null.
 var discovery_manifest = null
+## The product's presentation (PolarisKey.presentation_source, which attaches itself): each
+## successful discover() hands it the manifest. Null: none.
+var presentation_source: PKeyPresentationSource = null
 
 var _expected_services = null
 var _discovered_services = null
@@ -246,7 +249,8 @@ func require_service(slug: String, feature: String) -> Variant:
 	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The %s service is not enabled for %s." % [slug, product], PKeyResult.product_detail(feature, slug))
 
 
-## Fetch the discovery document and, when it parses, install its capability map. A coroutine.
+## Fetch the discovery document and, when it parses, install its capability map and hand it to
+## `presentation_source`. A coroutine.
 ## detail: {kind: "ok" | "not-found" | "invalid" | "error", services?, manifest?}.
 func discover() -> PKeyResult:
 	var r := await transport.request("GET", "%s/%s/.well-known/polaris.json" % [base_url, product.uri_encode()])
@@ -265,6 +269,9 @@ func discover() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, d["message"], d)
 	_discovered_services = d["services"]
 	discovery_manifest = d["manifest"]
+	# core.presentation: parsed again from every successful discovery; a failed one keeps it.
+	if presentation_source != null:
+		presentation_source.accept(discovery_manifest)
 	return PKeyResult.success(d)
 
 

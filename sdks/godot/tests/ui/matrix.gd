@@ -76,6 +76,18 @@ const TIGHT_CASES := [
 	["gate", "custom", "pixel-art canvas_items 640x360 keep"],
 	["gate", "native", "pixel-art canvas_items 640x360 keep"],
 	["gate", "native36", "640x360"],
+	["gate.presented", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented", "native36", "640x360"],
+	["gate.presented_monogram", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented_monogram", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented_monogram", "native36", "640x360"],
+	["gate.presented_long", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented_long", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented_long", "native36", "640x360"],
+	["gate.presented_rtl", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented_rtl", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.presented_rtl", "native36", "640x360"],
 	["gate.device_limit_qr", "custom", "pixel-art canvas_items 640x360 keep"],
 	["gate.device_limit_qr", "native", "pixel-art canvas_items 640x360 keep"],
 	["gate.error", "custom", "pixel-art canvas_items 640x360 keep"],
@@ -157,7 +169,17 @@ const SCREENS := [
 	["gate.unavailable", "gate", "not available (version-too-new)", "full"],
 	["settings", "settings", "catalog", "full"],
 	["dev_menu", "dev_menu", "steam build", "full"],
+	# The gate under the product's presentation from discovery (core.presentation): its fetched icon,
+	# its monogram, a long name and a right-to-left one, in the product's own accent.
+	["gate.presented", "gate", "needs-activation, presented: Drift Kart's icon", "full"],
+	["gate.presented_monogram", "gate", "needs-activation, presented without an icon", "full"],
+	["gate.presented_long", "gate", "needs-activation, presented, a long name", "full"],
+	["gate.presented_rtl", "gate", "needs-activation, presented, a right-to-left name", "full"],
 ]
+
+## The screens that show the product's presentation: staged without the stand-in name and icon
+## (`apply_preset` sets them as the integrator would, and they would win over it).
+const PRESENTED := ["gate.presented", "gate.presented_monogram", "gate.presented_long", "gate.presented_rtl"]
 
 ## Screens whose landscape layout is two columns, and the two nodes that must sit side by side
 ## (the first left of the second) in landscape and stack (the first above the second) in portrait.
@@ -166,13 +188,17 @@ const COLUMNS := {
 	"gate.sign_in": ["QrCode", "UserCode"],
 	"gate": ["Aside", "Form"],
 	"gate.error": ["Aside", "Form"],
+	"gate.presented": ["Aside", "Form"],
+	"gate.presented_monogram": ["Aside", "Form"],
+	"gate.presented_long": ["Aside", "Form"],
+	"gate.presented_rtl": ["Aside", "Form"],
 	"activation": ["Intro", "Form"],
 	"offline": ["Request", "Import"],
 	"gate.offline": ["Request", "Import"],
 }
 
 ## The screens that put an identity pane beside a form: two panes only at an aspect of 1.5 or more.
-const WIDE_SCREENS := ["gate", "gate.error", "activation"]
+const WIDE_SCREENS := ["gate", "gate.error", "activation", "gate.presented", "gate.presented_monogram", "gate.presented_long", "gate.presented_rtl"]
 const MOBILE_BODY_DP := 16
 const MOBILE_CONTROL_DP := 48
 
@@ -292,7 +318,12 @@ func stage(tree: SceneTree, entry: Array, physical: Vector2i, scale: float, inse
 	var make := builder(entry)
 	var v: PKeyUiView = await make.call()
 	v.get_parent().remove_child(v)
+	var presented := PKeyUiTheme.presentation
 	apply_preset(preset)
+	if PRESENTED.has(entry[0]):
+		PKeyUiTheme.product_name = ""
+		PKeyUiTheme.product_icon = null
+		PKeyUiTheme.use_presentation(presented)
 	# As the scene file has it: the stock theme, which then follows the options.
 	v.theme = load(PKeyUiTheme.NEUTRAL_PATH)
 	host.add_child(v)
@@ -762,7 +793,11 @@ static func _code_lines(l: Label, view: Control, out: PackedStringArray) -> void
 ## A word never breaks across lines (a label squeezed to a sliver wraps a letter per line).
 static func _word_breaks(l: Label, view: Control, out: PackedStringArray) -> void:
 	if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and l.size.x > 0.0:
-		for word in l.text.split(" ", false):
+		for raw in l.text.split(" ", false):
+			# A product's name is drawn between FSI and PDI (PKeyUiTheme.isolate).
+			var word := raw.trim_prefix(String.chr(0x2068)).trim_suffix(String.chr(0x2069))
+			if word == "":
+				continue
 			# (Unspaced Japanese and Chinese break between any two characters, by design.)
 			if word.unicode_at(word.length() - 1) >= 0x2E80 or word.unicode_at(0) >= 0x2E80:
 				continue

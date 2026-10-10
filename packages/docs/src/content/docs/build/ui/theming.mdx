@@ -100,6 +100,15 @@ point and links to the kit's current docs.
     options in `polaris_key.tres`, or `PKeyUiTheme.build(theme)`. Beyond the theme: documented
     theme type variations (`PKeyTitle`, `PKeyPrimary`, …); a per-node `Theme` wins.
 
+    **Product presentation (shipped).** The kit's name, icon and accent default to the product's
+    presentation from discovery (`PolarisKey.presentation_source`), after `ui_product_name`,
+    `ui_product_icon` and `ui_accent`: `accentDark` in the dark scheme, else `accent`, else one
+    derived from the icon, else ink. The icon is fetched without credentials or redirects,
+    verified by SHA-256, decoded only as PNG, JPEG or WebP (an AVIF or GIF original with no WebP
+    sizes shows the monogram) and cached under `user://polaris_key/presentation/`. On web the
+    browser follows a redirect itself and the hash still gates the bytes. Product names are drawn
+    bidi-isolated.
+
   </TabItem>
   <TabItem label="Qt">
     <KitPending kits={["qt"]} what="this theme API" />

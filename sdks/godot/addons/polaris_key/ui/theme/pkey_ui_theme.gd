@@ -241,8 +241,9 @@ static var scheme := "dark":
 		scheme = value
 		_cache = null
 ## The brand theme's accent; alpha 0 (the default) resolves in this order (UI-KITS.md §1.2, never
-## the platform violet by default): `presentation_accent`, the accent derived from the product's
-## icon, then ink (a text_strong primary with a page-colour label).
+## the platform violet by default): the product's own (`presentation_accent_dark` in the dark
+## scheme when it has one, else `presentation_accent`), the accent derived from the product's icon,
+## then ink (a text_strong primary with a page-colour label). `accent_source()` says which.
 static var accent := Color(0, 0, 0, 0):
 	set(value):
 		accent = value
@@ -254,19 +255,37 @@ static var powered_by := false
 ## The density the scenes use where the screen has room for it (UI-KITS.md §3.1): "spacious" (the
 ## Godot default), "comfortable" or "compact". A screen too small for it steps down on its own.
 static var density := DEFAULT_DENSITY
-## The product the screens name (UI-KITS.md §1.2 ProductIdentity, until the SDK's presentation
-## accessor feeds it): empty / null fall back to the project's application/config/name and icon.
+## The product the screens name (UI-KITS.md §1.2 ProductIdentity), as the integrator sets it
+## (`ui_product_name`, `ui_product_icon`): it wins over the product's presentation. Empty / null
+## fall back to `presentation_name` / `presentation_icon`, then to the project's
+## application/config/name and icon.
 static var product_name := ""
 static var product_icon: Texture2D = null:
 	set(value):
 		product_icon = value
 		_cache = null
-## The product's registered presentation accent ("#rrggbb"), the seam HA-14's SDK accessor feeds;
-## "" until then. Nothing is fetched here.
+## The SDK's presentation source the kit reads (`PolarisKey.presentation_source`; configure()
+## binds it with `use_presentation()`), or null. The values below follow its `changed` signal.
+static var presentation: PKeyPresentationSource = null
+## The product's presented name ("" for none).
+static var presentation_name := ""
+## The product's verified icon from the presentation (null until fetched, or for none).
+static var presentation_icon: Texture2D = null:
+	set(value):
+		presentation_icon = value
+		_cache = null
+## The presented icon's original hash ("" for no icon): what the headers ask the source for.
+static var presentation_icon_sha := ""
+## The product's presentation accents ("#rrggbb", "" for none): `accent` and `accentDark`.
 static var presentation_accent := "":
 	set(value):
 		presentation_accent = value
 		_cache = null
+static var presentation_accent_dark := "":
+	set(value):
+		presentation_accent_dark = value
+		_cache = null
+static var _on_presentation := Callable()
 static var _derived := {}
 
 static var _cache: Theme = null
@@ -310,13 +329,60 @@ static func reset() -> void:
 	density = DEFAULT_DENSITY
 	product_name = ""
 	product_icon = null
-	presentation_accent = ""
+	use_presentation(null)
 
 
-## The product's identity for the kit's headers: {"name": String, "icon": Texture2D or null}, from
-## `product_name` / `product_icon`, else the project's `application/config/name` and
-## `application/config/icon` (UI-KITS.md §1.2: the integrator first, the bundle last; never a
-## Polaris Key mark).
+## Read the product's presentation from `source` (PolarisKey.configure() passes its
+## `presentation_source`) and follow its `changed` signal: every kit view re-renders when the name,
+## accent or icon changes. Null unbinds (no presentation).
+static func use_presentation(source: PKeyPresentationSource) -> void:
+	if presentation != null and _on_presentation.is_valid() and presentation.changed.is_connected(_on_presentation):
+		presentation.changed.disconnect(_on_presentation)
+	presentation = source
+	if source != null:
+		if not _on_presentation.is_valid():
+			_on_presentation = func(_member: Dictionary) -> void: PKeyUiTheme.sync_presentation()
+		source.changed.connect(_on_presentation)
+	sync_presentation(false)
+
+
+## Take the bound source's current member (name, accents, icon hash) and, when it names an icon,
+## fetch one for the identity (`presentation_icon`: the icon-derived accent reads it). `refresh`
+## re-renders every kit view.
+static func sync_presentation(refresh := true) -> void:
+	var p := presentation.current() if presentation != null else {}
+	presentation_name = String(p.get("name", ""))
+	presentation_accent = String(p.get("accent", ""))
+	presentation_accent_dark = String(p.get("accentDark", ""))
+	var sha := String(p["icon"]["sha256"]) if p.get("icon") is Dictionary else ""
+	if sha != presentation_icon_sha:
+		presentation_icon_sha = sha
+		presentation_icon = null
+	if sha != "" and presentation_icon == null:
+		_fetch_presentation_icon(presentation, sha)
+	if refresh:
+		refresh_views()
+
+
+static func _fetch_presentation_icon(source: PKeyPresentationSource, sha: String) -> void:
+	var tex: ImageTexture = await source.icon(float(MEASURES["hero_icon_size"]), 1.0)
+	if tex != null and presentation == source and presentation_icon_sha == sha:
+		presentation_icon = tex
+		refresh_views()
+
+
+## `text` as a bidi-isolated run (FSI … PDI, U+2068 … U+2069), so a product's right-to-left name
+## (or one holding bidi controls) neither reorders the copy around it nor leaks out of it. "" stays
+## "".
+static func isolate(text: String) -> String:
+	return "" if text == "" else "\u2068" + text + "\u2069"
+
+
+## The product's identity for the kit's headers: {"name": String, "icon": Texture2D or null}. The
+## name is `product_name` (ui_product_name), else the presented name, else the project's
+## `application/config/name`; the icon is `product_icon` (ui_product_icon), else the presented
+## icon once verified, else `application/config/icon` (UI-KITS.md §1.2: the integrator first, the
+## bundle last; never a Polaris Key mark). Null for none: the header draws a monogram.
 ## The name of this repository's own Godot project (a fallback no player should read as a product).
 const DEV_PROJECT_NAME := "Polaris Key SDK"
 ## Off in this repository's own tests and screenshots, which render that project's name as a stand-in
@@ -327,11 +393,15 @@ static var hide_dev_project_name := true
 static func product_identity() -> Dictionary:
 	var n := product_name
 	if n == "":
+		n = presentation_name
+	if n == "":
 		n = str(ProjectSettings.get_setting("application/config/name", ""))
 		# The SDK's own development project is no product: its name never heads a screen.
 		if n == DEV_PROJECT_NAME and hide_dev_project_name:
 			n = ""
 	var icon := product_icon
+	if icon == null:
+		icon = presentation_icon
 	if icon == null:
 		var path := str(ProjectSettings.get_setting("application/config/icon", ""))
 		if path != "" and ResourceLoader.exists(path):
@@ -367,16 +437,36 @@ static func current() -> Theme:
 	return _cache
 
 
-## The brand accent as "#rrggbb", or "" for ink: `accent` (ui_accent), else `presentation_accent`,
-## else the accent derived from the product's icon, cached per icon; ink for a missing or
-## greyscale icon.
+## The brand accent as "#rrggbb", or "" for ink: `accent` (ui_accent), else the product's
+## (`presentation_accent_dark` in the dark scheme when it has one, else `presentation_accent`),
+## else the accent derived from the product's icon (`product_identity()`: the integrator's, the
+## presented one, or the project's), cached per icon; ink for a missing or greyscale icon.
+## PKeyAccent.resolve turns it into the contrast-safe solid, on and fg.
 static func accent_hex() -> String:
 	if accent.a > 0.0:
 		return "#" + accent.to_html(false)
-	if presentation_accent != "":
-		var n := PKeyAccent.normalize(presentation_accent)
-		if n != "":
-			return n
+	var product := _product_accent()
+	if product != "":
+		return product
+	return _icon_accent()
+
+
+## Which step `accent_hex()` took (ui-matrix.json's `accentSource`): "integrator", "product",
+## "icon" or "ink".
+static func accent_source() -> String:
+	if accent.a > 0.0:
+		return "integrator"
+	if _product_accent() != "":
+		return "product"
+	return "icon" if _icon_accent() != "" else "ink"
+
+
+static func _product_accent() -> String:
+	var hex := presentation_accent_dark if scheme == "dark" and presentation_accent_dark != "" else presentation_accent
+	return PKeyAccent.normalize(hex) if hex != "" else ""
+
+
+static func _icon_accent() -> String:
 	var icon: Texture2D = product_identity()["icon"]
 	if icon == null:
 		return ""

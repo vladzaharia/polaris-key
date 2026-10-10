@@ -24,6 +24,9 @@ extends RefCounted
 ## names), body: PackedByteArray, url} when a response arrived (any status), or a failure:
 ## `timeout`, `response-too-large`, `too-many-redirects`, `insecure-redirect`, `local-only`,
 ## `network-error`.
+##
+## `follow_redirects = false` follows none: a 3xx comes back as its status (body empty), and no
+## second request is made. The presentation icon fetch runs on such a transport (HA-14).
 
 const MAX_REDIRECTS := 5
 const BODY_LIMIT := 512 * 1024
@@ -46,6 +49,8 @@ var host: Node
 var timeout := 15.0
 var body_limit := BODY_LIMIT
 var local_only := false
+## Follow redirects (by hand, as above). False: a 3xx is the answer.
+var follow_redirects := true
 ## Every request this transport sent, newest last: {method, url, headers} (headers without any
 ## credential value). Tests read it; capped at 64 entries.
 var sent: Array = []
@@ -152,6 +157,9 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 		var r := await _once(m, current, h, b, PKeyClaims.is_true(opts.get("range", false)), deadline, int(opts.get("body_limit", 0)) if PKeyClaims.is_number(opts.get("body_limit")) else 0)
 		if not r.ok or r.detail.get("redirect", "") == "":
 			return r
+		if not follow_redirects:
+			r.detail.erase("redirect")
+			return r
 		var status: int = r.detail["status"]
 		current = resolve(current, r.detail["redirect"])
 		if status == 303 or ((status == 301 or status == 302) and m == "POST"):
@@ -186,6 +194,9 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 		req.queue_free()
 		return PKeyResult.failure(PKeyErrors.NETWORK, "The request could not start (error %d)." % err, {"error": err})
 	var res := await _await_completed(req, deadline)
+	if not is_instance_valid(req):
+		# The host was freed with the request in flight (a scene change, an SDK node freed).
+		return PKeyResult.failure(PKeyErrors.NETWORK, "The transport's host node was freed during the request.")
 	req.queue_free()
 	if res.is_empty():
 		return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": HTTPRequest.RESULT_TIMEOUT})
@@ -208,7 +219,8 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 
 
 ## The request_completed arguments, or [] once the wall-clock `deadline` (computed once in
-## `request()`; 0 means none) has passed (the request is then cancelled). Checked once per frame, as HTTPRequest polls; the
+## `request()`; 0 means none) has passed (the request is then cancelled), or once the request was
+## freed with its host. Checked once per frame, as HTTPRequest polls; the
 ## deadline must be seen on two checks, so HTTPRequest always gets a poll after it passes (one
 ## hitch frame cannot expire a request it never let run).
 func _await_completed(req: HTTPRequest, deadline: int) -> Array:
@@ -218,6 +230,8 @@ func _await_completed(req: HTTPRequest, deadline: int) -> Array:
 	var expired := false
 	var tree := req.get_tree()
 	while box.is_empty():
+		if not is_instance_valid(req):
+			return []
 		if deadline > 0 and Time.get_ticks_msec() >= deadline:
 			if expired:
 				req.cancel_request()

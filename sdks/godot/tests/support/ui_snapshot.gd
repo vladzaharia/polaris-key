@@ -100,8 +100,10 @@ static func _line(root: Control, n: Control, order: Array) -> String:
 	return out
 
 
+## Backslashes, newlines and quotes escaped; the bidi isolates the kit draws around a product's
+## name (FSI, PDI) spelled out, so a fixture shows them.
 static func _esc(s: String) -> String:
-	return s.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"")
+	return s.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"").replace(String.chr(0x2068), "\\u2068").replace(String.chr(0x2069), "\\u2069")
 
 
 ## Every visible, enabled control a player can operate under `view`: buttons (check buttons and

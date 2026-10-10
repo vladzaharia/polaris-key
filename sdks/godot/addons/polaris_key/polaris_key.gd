@@ -27,9 +27,12 @@ extends Node
 ## (PKeyCommerce, P6-01: the purchase binding, claiming a store purchase as a licence flag, and
 ## the App Store 3.1.3(b) outlet rule), `distribution` (PKeyDistribution: the public download
 ## model). `crash_tags()` returns the release/environment/outlet tags for a crash reporter.
-## `config`, `identity`, `update`, `release`, `commerce` and `distribution` exist before
-## `configure()`, so a signal
-## connected early survives it.
+## `presentation()` is the product's presentation from discovery (`core.presentation`: name,
+## developerName, accent, accentDark, icon) as a Dictionary, {} for none; `presentation_icon(px,
+## scale)` its verified icon as a texture; `presentation_source` (PKeyPresentationSource) the seam
+## the UI kit reads, with its `changed` signal.
+## `config`, `identity`, `update`, `release`, `commerce`, `distribution` and `presentation_source`
+## exist before `configure()`, so a signal connected early survives it.
 
 const SDK_VERSION := "0.1.0"
 
@@ -69,6 +72,9 @@ var commerce := PKeyCommerce.new()
 ## Where the product can be got: the public download model (services/distribution.gd, SDK parity
 ## §3.8). Refuses until configure().
 var distribution := PKeyDistribution.new()
+## The product's presentation from discovery (core/presentation.gd): current(), icon(px, scale),
+## `changed`. The UI kit's default name, icon and accent.
+var presentation_source := PKeyPresentationSource.new()
 
 ## The PKeyBoot view `boot()` made (on a CanvasLayer under this node), or null.
 var boot_view: Node = null
@@ -128,6 +134,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	distribution.attach(core)
 	identity.attach(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
+	presentation_source.attach(core, self)
+	PKeyUiTheme.use_presentation(presentation_source)
 	return PKeyResult.success()
 
 
@@ -199,6 +207,8 @@ func start() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	var r := await core.start()
 	if r.ok:
+		# The last presentation, so an offline start still shows the product.
+		presentation_source.load_cached()
 		_start_timer()
 		_emit_state()
 		config.refresh()
@@ -212,6 +222,20 @@ func discover() -> PKeyResult:
 	var r := await core.discover()
 	_emit_state()
 	return r
+
+
+## The product's presentation (`core.presentation`, WIRE-CONTRACT-V4 §5.5) from the last
+## successful discovery, else from the last session's: {name, developerName?, accent?,
+## accentDark?, icon?}, or {} when the product serves none. Unsigned display data: nothing gates on
+## it. Works before configure() ({}).
+func presentation() -> Dictionary:
+	return presentation_source.current()
+
+
+## The product's verified icon for a hero drawn at `px` points on a `scale` screen, or null (no
+## icon, nothing this platform decodes, or a fetch, hash or decode that failed). A coroutine.
+func presentation_icon(px: float, scale := 1.0) -> ImageTexture:
+	return await presentation_source.icon(px, scale)
 
 
 ## slug -> {"enabled": bool}, fail-closed (D-21): discovery this session, else

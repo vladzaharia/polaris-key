@@ -1,12 +1,12 @@
 == starting ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
 Card/Scroll/Stack/Body/Info/Header/Status: Label "Starting sign-in…"
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 1]
 == pending ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
 Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Go to"
 Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "key.plrs.im/device"
@@ -18,7 +18,7 @@ Card/Scroll/Stack/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == pending, link copied ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
 Card/Scroll/Stack/Body/Info/Header/Status: Label "Link copied."
 Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Go to"
@@ -31,7 +31,7 @@ Card/Scroll/Stack/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == confirm, attachable ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Is this you?"
 Card/Scroll/Stack/Body/Info/Steps/Account/Avatar/Initials: Label "A"
 Card/Scroll/Stack/Body/Info/Steps/Account/Who/Name: Label "Ada Lovelace"
@@ -41,20 +41,20 @@ Card/Scroll/Stack/Body/Info/Actions/Continue: Button "Continue" [focus 2]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == ok ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
 Card/Scroll/Stack/Body/Info/Header/Status: Label "Signed in."
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 1]
 == expired ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Glyph: TextureRect
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Code expired"
 Card/Scroll/Stack/Body/Info/Actions/TryAgain: Button "Get a new code" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 2]
 == denied ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
 Card/Scroll/Stack/Body/Info/Header/Status: Label "Sign-in was declined."
 Card/Scroll/Stack/Body/Info/Actions/TryAgain: Button "Try again" [focus 1]

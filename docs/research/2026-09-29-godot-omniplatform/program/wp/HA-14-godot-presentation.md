@@ -129,10 +129,10 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ## Acceptance criteria
 
-- [ ] The Godot runner passes `presentation-matrix.json` with the Godot `decodable` set.
-- [ ] The Godot transcript runner passes, and kit snapshots show the icon.
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/ui/theming` (presentation).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] The Godot runner passes `presentation-matrix.json` with the Godot `decodable` set.
+- [x] The Godot transcript runner passes, and kit snapshots show the icon.
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/ui/theming` (presentation).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 

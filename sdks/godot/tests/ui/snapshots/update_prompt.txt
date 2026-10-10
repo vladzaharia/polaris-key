@@ -17,7 +17,7 @@ Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary, modal ==
 Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Text/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "Version 1.5.0"
 Card/Scroll/Body/Text/Message: Label "You have 0.1.0"
 Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]

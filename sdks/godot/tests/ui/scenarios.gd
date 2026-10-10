@@ -6,6 +6,7 @@ extends RefCounted
 
 const NOW := 1700000000.0
 const CONFIG := preload("res://tests/config/support.gd")
+const PRESENTATION := preload("res://tests/support/presentation_fixtures.gd")
 
 ## A settings catalog with every row kind the panel must handle.
 const SETTINGS_CATALOG := [
@@ -118,7 +119,52 @@ func all() -> Array:
 	out.append(["boot", "consent metered", boot.bind("consent")])
 	out.append(["boot", "blocked content-declined", boot.bind("declined")])
 	out.append(["boot", "background pill", boot.bind("background")])
+	# ── The product's presentation from discovery (core.presentation): the gate's hero header.
+	out.append(["gate", "needs-activation, presented: Drift Kart's icon", gate_presented.bind("icon")])
+	out.append(["gate", "needs-activation, presented without an icon", gate_presented.bind("no-icon")])
+	out.append(["gate", "needs-activation, presented, the integrator's name wins", gate_presented.bind("integrator")])
+	out.append(["gate", "needs-activation, presented, a long name", gate_presented.bind("long")])
+	out.append(["gate", "needs-activation, presented, a right-to-left name", gate_presented.bind("rtl")])
+	out.append(["settings", "catalog, presented by its developer", settings_presented])
+	# Every state starts from no presentation and no integrator name (the kit's identity is global).
+	for c in out:
+		c[2] = _isolated.bind(c[2])
 	return out
+
+
+func _isolated(build: Callable) -> Control:
+	PKeyUiTheme.use_presentation(null)
+	PKeyUiTheme.product_name = ""
+	return await build.call()
+
+
+## The product's presentation bound to the kit (PKeyPresentationFixtures.present), by `kind`.
+static func presented(kind: String) -> PKeyPresentationSource:
+	var fields: Dictionary = PRESENTATION.DRIFT_KART.duplicate()
+	match kind:
+		"long":
+			fields["name"] = PRESENTATION.LONG_NAME
+		"rtl":
+			fields["name"] = PRESENTATION.RTL_NAME
+	return PRESENTATION.present(fields, kind != "no-icon")
+
+
+## The gate asking for a key, under the product's presentation (`kind`: icon, no-icon, integrator,
+## long, rtl).
+func gate_presented(kind: String) -> Control:
+	presented(kind)
+	if kind == "integrator":
+		PKeyUiTheme.product_name = "Tidewater"
+	return gate("needs-activation", true, "")
+
+
+## The settings catalog of a product whose presentation names its developer ("Set by …").
+func settings_presented() -> Control:
+	var p: PKeySettingsPanel = await settings(false, {})
+	p.sdk.presentation_source.cache_dir = PRESENTATION.UI_CACHE
+	p.sdk.presentation_source.accept(PRESENTATION.manifest(PRESENTATION.member(PRESENTATION.DRIFT_KART)))
+	p.refresh_view()
+	return p
 
 
 func _on(b: bool) -> String:
