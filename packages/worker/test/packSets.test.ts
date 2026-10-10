@@ -521,8 +521,9 @@ describe("resolution on publish (P4-12)", () => {
     });
     expect(dry.status, JSON.stringify(dry.body)).toBe(200);
     expect(dry.body.dryRun).toBe(true);
-    // The axis-free row (foes' group) on stable and on beta (which includes stable).
-    expect(dry.body.packSets.changed.length).toBe(2);
+    // The axis-free row (foes' group) on stable, on beta (which includes stable) and on dev
+    // (which includes beta).
+    expect(dry.body.packSets.changed.length).toBe(3);
     expect(
       dry.body.packSets.sets.some((s: any) =>
         s.packs.some((p: any) => p.pack === FOES && p.version === "1.1.0"),

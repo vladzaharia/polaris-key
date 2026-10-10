@@ -15,6 +15,7 @@
  * Snap Store dashboard.
  */
 
+import { effectiveTrackMap } from "@polaris-key/manifest";
 import { readFile, writeFile } from "node:fs/promises";
 import { parseDocument } from "yaml";
 import { ciClient, type Out, type Sleep } from "../ci.js";
@@ -37,11 +38,13 @@ export function snapReleaseChannels(
   outlet: StepOutlet,
   channels: readonly string[],
 ): string[] {
-  const map = outlet.identity.channels;
-  if (!map || typeof map !== "object" || Array.isArray(map))
-    throw new Error(
-      `outlet ${outlet.id} declares no channels: set .pkey/distribution outlets.${outlet.id}.channels (declared channel → snap channel, such as { stable: "stable", beta: "beta" }).`,
-    );
+  const declared = outlet.identity.channels;
+  const map = effectiveTrackMap(
+    "snap",
+    declared && typeof declared === "object" && !Array.isArray(declared)
+      ? (declared as Record<string, string>)
+      : undefined,
+  );
   if (channels.length === 0)
     throw new Error(
       "--channel is required: the release channel(s) to release to.",

@@ -86,6 +86,7 @@ export async function latestReleaseHasDmg(
 
 import {
   APP_DELIVERABLE_ID,
+  BUILT_IN_CHANNELS,
   platformFromFileName,
   type ManifestAppDeliverable,
 } from "@polaris-key/manifest";
@@ -1258,8 +1259,10 @@ function artifactRow(
   };
 }
 
-/** The channels a product declares: the two built-ins plus its manual rules. */
+/** The channels a product declares: the built-ins plus its manual rules. */
 export function channelNames(cfg: ReleaseConfigRow): string[] {
   const manual: ManualChannel[] = parseManualChannels(cfg.manual_channels_json);
-  return ["stable", "beta", ...manual.map((c) => c.name)];
+  return [
+    ...new Set<string>([...BUILT_IN_CHANNELS, ...manual.map((c) => c.name)]),
+  ];
 }

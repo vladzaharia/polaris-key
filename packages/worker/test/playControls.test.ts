@@ -491,9 +491,10 @@ describe("settings and status", () => {
         "settings",
       ],
     });
-    expect((play.setup as { missingTracks: string[] }).missingTracks).toEqual(
-      [],
-    );
+    // The default dev lane (`internal`) is mapped without a declaration; this fake lists none.
+    expect((play.setup as { missingTracks: string[] }).missingTracks).toEqual([
+      "internal",
+    ]);
     expect((play.tracks as unknown[]).length).toBe(4);
   });
 });

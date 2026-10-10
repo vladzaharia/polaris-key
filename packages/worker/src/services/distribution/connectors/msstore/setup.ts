@@ -24,6 +24,7 @@
  * metadata is read here — listing never selects the sealed column — so resolving opens nothing.
  */
 
+import { effectiveTrackMap } from "@polaris-key/manifest";
 import {
   parseJsonColumn,
   type Db,
@@ -175,7 +176,7 @@ export async function resolveMsStoreSetup(
           STORE_ID.test(identity.productId)
             ? identity.productId
             : null,
-        flights: flightsOf(identity.flights),
+        flights: effectiveTrackMap("ms-store", flightsOf(identity.flights)),
       };
     })
     .filter((o) => o.productId !== null);

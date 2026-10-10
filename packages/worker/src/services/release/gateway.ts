@@ -383,6 +383,7 @@ export function policyChannelOf(sel: ChannelSelector): string | null {
       return isMovingSelector(sel) ? "stable" : null;
     case "beta":
       return "beta";
+    case "dev":
     case "pr":
     case "manual":
       return sel.raw;

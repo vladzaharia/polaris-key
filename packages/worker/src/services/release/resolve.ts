@@ -208,8 +208,12 @@ export interface Resolved {
   via: "newest" | "pinned" | "version";
 }
 
-/** The default `includes`: beta ⊇ stable (README §3.4); every other channel includes nothing. */
-function defaultIncludes(channel: string): string[] {
+/**
+ * The default `includes`: dev ⊇ beta ⊇ stable (README §3.4); every other channel includes
+ * nothing. A declared `includes` (even `[]`) wins over this.
+ */
+export function defaultIncludes(channel: string): string[] {
+  if (channel === "dev") return ["beta"];
   return channel === "beta" ? ["stable"] : [];
 }
 

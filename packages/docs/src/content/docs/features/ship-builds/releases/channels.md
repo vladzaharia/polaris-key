@@ -20,8 +20,12 @@ The rules apply to every deliverable, the product's `app` and each pack alike.
    was published to (the release descriptor's `channel`). A release with no recorded channel
    is derived from GitHub: a prerelease belongs to `beta`, anything else to `stable`, and a
    tag matching a manual channel's regex belongs to that channel as well.
-2. **Includes.** `beta` includes `stable` unless its policy says otherwise, so the beta
-   channel serves the newest of either. Includes are followed transitively.
+2. **Includes.** `dev` includes `beta` and `beta` includes `stable` unless the channel's policy
+   says otherwise, so the `dev` channel serves the newest build of any of the three. Includes
+   are followed transitively. `stable`, `beta` and `dev` exist for every product without a
+   declaration. A product that already published to `dev` without declaring it now gets
+   `beta` and `stable` builds on it too; declare `includes: []` on `dev` to keep it to its own
+   builds. A `dev` the product declares itself (its own rule or its own `includes`) keeps priority over the built-in one.
 3. **Yanks.** A yanked release is removed from the candidates. Only an explicit pin can serve
    it, and so can a version selector such as `1.2.3`, which names one release explicitly.
 4. **Order.** The newest candidate is the highest version in the deliverable's version scheme

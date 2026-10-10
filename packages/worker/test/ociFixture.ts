@@ -201,7 +201,8 @@ export function ociFixturePackage(owner: string): RegistryPackage {
       metadata: metadata(v),
       publishedAt: 1_700_000_000 + i,
     })),
-    tags: { latest: "1.0.0", beta: "1.1.0-beta.1" },
+    // `dev` is built in: it serves the newest build its include chain (dev, beta, stable) reaches.
+    tags: { latest: "1.0.0", beta: "1.1.0-beta.1", dev: "1.1.0-beta.1" },
   };
 }
 

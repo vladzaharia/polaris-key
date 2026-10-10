@@ -832,9 +832,10 @@ describe("the releaseCatalog package readers (F-03)", () => {
       metadata: { name: "@acme/sdk", version: "1.4.0" },
     });
     expect(versions[0]!.files[0]!.sha512).toMatch(/^[0-9a-f]{128}$/);
-    // beta includes stable (the built-in rule), so both channels head at 1.4.0.
+    // beta includes stable and dev includes beta (the built-in rule), so all three head at 1.4.0.
     expect(await catalog.packageChannelHeads("npm.sdk")).toEqual([
       { channel: "beta", releaseId: "npm.sdk@1.4.0", version: "1.4.0" },
+      { channel: "dev", releaseId: "npm.sdk@1.4.0", version: "1.4.0" },
       { channel: "stable", releaseId: "npm.sdk@1.4.0", version: "1.4.0" },
     ]);
     expect(await catalog.packageChannelHeads("app")).toEqual([]);

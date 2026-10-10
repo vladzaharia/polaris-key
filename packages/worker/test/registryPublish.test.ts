@@ -520,7 +520,11 @@ describe("npm publish (PUT /npm/<owner>/<name>)", () => {
         headers: { accept: "application/json" },
       })
     ).json()) as Record<string, any>;
-    expect(doc["dist-tags"]).toEqual({ beta: "2.0.0-beta.1" });
+    // `dev` is built in and serves the newest build its include chain reaches.
+    expect(doc["dist-tags"]).toEqual({
+      beta: "2.0.0-beta.1",
+      dev: "2.0.0-beta.1",
+    });
   });
 
   it("refuses a tarball that does not match dist.integrity, and a republish with other bytes", async () => {

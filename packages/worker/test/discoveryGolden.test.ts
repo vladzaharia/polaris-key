@@ -21,7 +21,8 @@
  * P4-22's `chunks: true` between those two (plans/P4-10.md §6: the CLI publishes no `chunks`
  * without it), and P4-19's `delegations: true` last (plans/P4-19.md §6.3: `pkey release
  * delegate` requires it).
- * P3-03 added Update's `endpoints.feed`, and P3-09 the four app-updater feed templates after it
+ * P2-08 made `dev` a built-in channel, so Update's `channels` list gained `dev` (a value in the
+ * same list, no new key). P3-03 added Update's `endpoints.feed`, and P3-09 the four app-updater feed templates after it
  * (`winsparkle`, `velopack`, `appInstaller`, `zsync`): additive keys a client ignores.
  * I-01 removed Identity's `endpoints.authPoll` (S-16 §5.3: discovery response only, no SDK reads
  * it, owner decision D10); only its advertisement went then. The `/identity/auth/poll` route

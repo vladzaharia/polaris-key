@@ -43,6 +43,7 @@
  * never selects the sealed column — so resolving the setup opens nothing.
  */
 
+import { effectiveTrackMap } from "@polaris-key/manifest";
 import {
   parseJsonColumn,
   type Db,
@@ -199,7 +200,7 @@ export async function resolvePlaySetup(
         outletId: o.outlet_id,
         kind: o.kind,
         packageName,
-        tracks: tracksOf(identity.tracks),
+        tracks: effectiveTrackMap(o.kind, tracksOf(identity.tracks)),
       };
     })
     .filter((o) => o.packageName !== null);

@@ -25,12 +25,15 @@ import {
   upsertTier,
   WriteChecks,
 } from "../../../core/adminApi.js";
+import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value, or null. */
 function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
-  return JSON.stringify(raw.filter((c) => typeof c === "string") as string[]);
+  return JSON.stringify(
+    withIncludedChannels(raw.filter((c) => typeof c === "string") as string[]),
+  );
 }
 
 /**

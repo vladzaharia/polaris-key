@@ -519,7 +519,8 @@ describe("Google Play connector on workerd (P5-03)", () => {
     );
     expect(objects).toEqual([
       { object_id: "alpha", outlet_id: null },
-      { object_id: "beta", outlet_id: null },
+      // `beta` is mapped by the default Play lanes, not by the outlet's own declaration.
+      { object_id: "beta", outlet_id: "play" },
       { object_id: "production", outlet_id: "play" },
       { object_id: "qa", outlet_id: null },
     ]);

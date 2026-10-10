@@ -263,7 +263,7 @@ describe("worker surfaces", () => {
     expect(body.services.update).toEqual({
       enabled: true,
       configured: true,
-      channels: ["stable", "beta", "nightly"],
+      channels: ["stable", "beta", "dev", "nightly"],
       sparkleEd25519PublicKey: "SPARKLEPUB",
       endpoints: {
         version: "https://key.plrs.im/djdl/update/version",

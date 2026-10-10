@@ -14,6 +14,7 @@
  * Without all of that the adapter is inert and says why, in the connectors' vocabulary.
  */
 
+import { effectiveTrackMap } from "@polaris-key/manifest";
 import {
   parseJsonColumn,
   type Db,
@@ -109,7 +110,7 @@ export async function resolveSteamSetup(
         outletId: o.outlet_id,
         appId:
           typeof raw === "string" && STEAM_NUMERIC_ID.test(raw) ? raw : null,
-        branches: branchesOf(identity.branches),
+        branches: effectiveTrackMap("steam", branchesOf(identity.branches)),
       };
     })
     .filter((o) => o.appId !== null);

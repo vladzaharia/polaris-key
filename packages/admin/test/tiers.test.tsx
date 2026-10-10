@@ -356,11 +356,13 @@ describe("tier channel picker", () => {
       .at(-1)!;
   }
 
-  it("offers neither dev nor staging on create for a product with no manual channels", async () => {
+  it("offers dev with its hint, and not staging, on create for a product with no manual channels", async () => {
     const group = await openCreate();
-    for (const name of ["stable", "beta", "pr"])
+    for (const name of ["stable", "beta", "dev", "pr"])
       expect(within(group).getByLabelText(name)).toBeTruthy();
-    expect(within(group).queryByLabelText("dev")).toBeNull();
+    expect(
+      within(group).getByText("Skips the version window and channel checks"),
+    ).toBeTruthy();
     expect(within(group).queryByLabelText("staging")).toBeNull();
   });
 
@@ -378,7 +380,8 @@ describe("tier channel picker", () => {
     await waitFor(() =>
       expect(within(group).getAllByLabelText("staging")).toHaveLength(1),
     );
-    expect(within(group).queryByLabelText("dev")).toBeNull();
+    // The reserved `dev` row is the built-in option, once, never a second manual one.
+    expect(within(group).getAllByLabelText("dev")).toHaveLength(1);
     expect(within(group).queryByLabelText("Nightly")).toBeNull();
     expect(within(group).getByText("Every PR build")).toBeTruthy();
   });

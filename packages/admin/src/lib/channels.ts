@@ -33,12 +33,12 @@ export const HINT_NOT_OFFERED = "Not offered";
 /**
  * The picker's options, each name once, in order:
  *
- * 1. the canonical `stable`, `beta` and `pr`;
+ * 1. the canonical `stable`, `beta`, `dev` and `pr` (`dev` is a built-in track; choosing it stores
+ *    `beta` with it, applied by the Worker on write);
  * 2. the product's manual names, minus any that is non-canonical or that a built-in takes over
  *    (`isReservedChannelName`); a declared manual `staging` is listed here;
  * 3. `staging`, only when `held` has it and no manual `staging` is declared;
- * 4. `dev`, only when `held` has it — the console never offers `dev` as a new grant;
- * 5. any other value in `held`, a dropped manual name included.
+ * 4. any other value in `held`, a dropped manual name included.
  *
  * `held` is the value the licence or tier had when the dialog opened, so an option the operator
  * unticks stays on screen; a create dialog passes none.
@@ -57,13 +57,13 @@ export function channelOptions(
 
   push(CHANNEL_STABLE);
   push(CHANNEL_BETA);
+  push(CHANNEL_DEV, HINT_DEV);
   push(CHANNEL_PR, HINT_PR);
   for (const name of manual) {
     if (!CANONICAL.test(name) || isReservedChannelName(name)) continue;
     push(name, name === LEGACY_BETA ? HINT_MANUAL_STAGING : undefined);
   }
   if (held.includes(LEGACY_BETA)) push(LEGACY_BETA, HINT_LEGACY_STAGING);
-  if (held.includes(CHANNEL_DEV)) push(CHANNEL_DEV, HINT_DEV);
   for (const name of held) push(name, HINT_NOT_OFFERED);
   return out;
 }

@@ -26,7 +26,7 @@ import type {
 } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
 import { getReleaseConfig } from "../release/config.js";
-import { parseManualChannels } from "../release/channels.js";
+import { knownChannels } from "../release/resolve.js";
 import { handleUpdateRoutes } from "./routes.js";
 import { handleUpdateAdmin } from "./admin.js";
 import { UPDATE_SETTINGS_SLICE } from "./settings.js";
@@ -54,11 +54,9 @@ export const updateService: ServiceDescriptor = {
       enabled: true,
       configured: Boolean(cfg),
       channels: cfg
-        ? [
-            "stable",
-            "beta",
-            ...parseManualChannels(cfg.manual_channels_json).map((c) => c.name),
-          ]
+        ? (await knownChannels(db, product.slug, cfg)).filter(
+            (c) => !/^pr-\d+$/.test(c),
+          )
         : [],
       sparkleEd25519PublicKey: cfg?.sparkle_ed25519_pub ?? null,
       endpoints: {

@@ -227,7 +227,7 @@ export function checkPackRequires(
   )
     return refuse(
       "pack-channel",
-      `the record is on channel ${channel}; ${record.deliverable} publishes to stable, beta${pack.channels.length > 0 ? ` and ${pack.channels.join(", ")}` : ""} (declare more in the pack's channels).`,
+      `the record is on channel ${channel}; ${record.deliverable} publishes to ${BUILT_IN_CHANNELS.join(", ")}${pack.channels.length > 0 ? ` and ${pack.channels.join(", ")}` : ""} (declare more in the pack's channels).`,
     );
   for (const [i, v] of record.variants.entries()) {
     const at = `variants[${i}]`;
