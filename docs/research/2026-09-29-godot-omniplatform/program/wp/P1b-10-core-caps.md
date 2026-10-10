@@ -121,7 +121,7 @@ mise exec node@22 -- pnpm parity:check
   `{feature, reason, detail}`.
 - **The capability table is generated, not hand-written.** `tools/capabilities.ts` builds one
   table per SDK from its `parity.json` (status, owning service, every declared runtime/reason
-  N/A, traits expanded). `pnpm gen:constants` writes it into each constants module as
+  N/A, traits expanded). `pnpm gen constants` writes it into each constants module as
   `CAPABILITIES` plus a `CAPABILITY_DIGEST`. `parity:check` gains rule 7: a module whose digest
   is not its manifest's fails. To support this, the registry's `sdks[]` gains a required
   `constants` path.
@@ -144,7 +144,7 @@ mise exec node@22 -- pnpm parity:check
 - **`caps` rides every report, not only on change.** `/devices/report` overwrites the stored
   report, so a list sent only when it changed would vanish at the next report. The Worker keeps
   at most 128 strings shaped like a feature id, each at most 64 characters, and drops
-  duplicates. The OpenAPI text and the transcripts' report allowlist (`pnpm gen:transcripts`)
+  duplicates. The OpenAPI text and the transcripts' report allowlist (`pnpm gen transcripts`)
   follow. Privacy impact: `caps` adds one bit, whether an optional dependency such as an OS
   keyring is present. Everything else in it follows from facts already reported (SDK, version,
   runtime, services, outlet). `docs/PRIVACY.md` says so.

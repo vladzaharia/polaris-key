@@ -189,7 +189,7 @@ describe("renderers", () => {
   });
 });
 
-describe("gen:services --check", () => {
+describe("gen services --check", () => {
   it("the committed files are up to date", async () => {
     expect(await run({ check: true })).toEqual([]);
   });

@@ -47,7 +47,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen:brand, gen:constants, gen:corpus, gen:mirrors, gen:platform-inventory, gen:services, gen:settings, gen:storefront-ci, gen:transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).
+- tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen brand, gen constants, gen corpus, gen mirrors, gen platform-inventory, gen services, gen settings, gen storefront-ci, gen transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).
 
 **Out** (and where it belongs instead):
 
@@ -63,12 +63,19 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections found while building (code is the fact)
+
+- The registry declares 19 entries, not 13: the runnable families (corpus, services, transcripts, constants, platform-inventory, storefront-ci, settings, brand, action-bundle, docs-reference, registry-docs, parity, graph-index), ui-matrix as an alias of corpus, and named-run-only entries so every GENERATED banner has an owner (mirrors, sdk-samples, docs-csp, design-mockups, ux-coverage).
+- `parity:check` stays a script: it is not a `gen:` name and many briefs cite it; the registry runs it as a check-only family.
+- The reference page and the AGENTS.md table come from `tools/gen-generators-doc.ts`, because the docs emitter is plain `.mjs` and cannot import the TypeScript registry.
+- The command named in generated banners changed (`pnpm gen:x` became `pnpm gen x`), so generated outputs differ from before in that line only; no other byte moved.
+
 ## Acceptance criteria
 
-- [ ] One pnpm gen --check replaces per-family checks in CI and gate.sh
-- [ ] Every GENERATED banner maps to a registry entry (test)
-- [ ] No removed gen:\* script name remains in the repo (git grep)
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] One pnpm gen --check replaces per-family checks in CI and gate.sh (CI and the hook are done here; the lead's gate.sh is outside the repo)
+- [x] Every GENERATED banner maps to a registry entry (test)
+- [x] No removed gen:\* script name remains in the repo (git grep)
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

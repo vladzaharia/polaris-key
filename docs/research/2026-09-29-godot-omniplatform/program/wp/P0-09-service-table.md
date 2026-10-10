@@ -1,16 +1,16 @@
 # P0-09 Make the service list data-driven, with a drift gate
 
-| Field       | Value                                                                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality                                                                                                           |
-| Size        | 1–1.5 engineer-weeks                                                                                                                               |
-| Depends on  | [P0-08](P0-08-unknown-slug-tolerance.md), [P0-07](P0-07-cli-init-validate.md)                                                                      |
-| Unblocks    | [P1b-02](P1b-02-sdk-constants.md), [P2b-01](P2b-01-distribution-service.md)                                                                        |
-| Role        | `pkey-implementer`                                                                                                                                 |
-| Plan mode   | no (no wire shape changes; stop and escalate if one appears)                                                                                       |
-| Gates       | new drift gate `pnpm gen:services -- --check` (joins the green gate, CI and pre-commit); rule 3 banner family; all SDKs; rule 9 parity stays green |
-| Human input | confirmation that P0-08 is in production before this merges (record the deploy in the PR)                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                          |
+| Field       | Value                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality                                                                                                        |
+| Size        | 1–1.5 engineer-weeks                                                                                                                            |
+| Depends on  | [P0-08](P0-08-unknown-slug-tolerance.md), [P0-07](P0-07-cli-init-validate.md)                                                                   |
+| Unblocks    | [P1b-02](P1b-02-sdk-constants.md), [P2b-01](P2b-01-distribution-service.md)                                                                     |
+| Role        | `pkey-implementer`                                                                                                                              |
+| Plan mode   | no (no wire shape changes; stop and escalate if one appears)                                                                                    |
+| Gates       | new drift gate `pnpm gen services --check` (joins the green gate, CI and pre-commit); rule 3 banner family; all SDKs; rule 9 parity stays green |
+| Human input | confirmation that P0-08 is in production before this merges (record the deploy in the PR)                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                       |
 
 ## Goal
 
@@ -39,7 +39,7 @@ are planned (`distribution`, and any later one), so the table pays for itself tw
 - [notes/A3 §5.3](../../notes/A3-admin-dx.md#53-blast-radius-of-a-sixth-service-content) (the
   blast-radius list) and [PARITY §4.4](../../PARITY.md#44-generated-constants) (the later
   `tools/gen-sdk-constants.ts`, which consumes this table).
-- The pattern to copy: `tools/gen-mirrors.ts` (`--check`), `pnpm gen:corpus -- --check` in
+- The pattern to copy: `tools/gen-mirrors.ts` (`--check`), `pnpm gen corpus --check` in
   `package.json:16`, `.github/workflows/ci.yml:33` and `.husky/pre-commit`.
 
 ## Scope
@@ -97,8 +97,8 @@ need no change. `products/gen-seed.ts` already iterates `SERVICE_SLUGS`.
   `console.icon` (a lucide name), `docs` (`/docs/services/<slug>/`).
 - **The generator** `tools/gen-services.ts` writes the files marked "generated" above, each with a
   GENERATED banner, and supports `--check` (regenerate in memory, fail on any difference). Add
-  `"gen:services"` to the root `package.json`; add `pnpm gen:services -- --check` to the green gate
-  in `AGENTS.md`, to `.github/workflows/ci.yml` next to `gen:corpus`, and to `.husky/pre-commit`.
+  `"gen services"` to the root `package.json`; add `pnpm gen services --check` to the green gate
+  in `AGENTS.md`, to `.github/workflows/ci.yml` next to `gen corpus`, and to `.husky/pre-commit`.
   Add the family to rule 3's table in `AGENTS.md`.
 - **Why not one import everywhere.** The Worker and CLI already depend on `@polaris-key/manifest`,
   so they import it. The console and the SDKs do not, and must not grow a dependency on a
@@ -126,15 +126,15 @@ need no change. `products/gen-seed.ts` already iterates `SERVICE_SLUGS`.
 4. Add the assertion tests listed in the table (Worker, manifest, console, docs).
 5. Wire the gate into `AGENTS.md`, CI and the pre-commit hook.
 6. Write the "Adding a service" checklist in `packages/docs/src/content/docs/contribute/layout.md`
-   (table row → `gen:services` → directory and descriptor → `mount.ts` → migrations and
+   (table row → `gen services` → directory and descriptor → `mount.ts` → migrations and
    `TABLE_OWNERS` → OpenAPI and `routeCoverage` → console views, accent CSS, icons → docs pages and
    sidebar → skills and `AGENTS.md`), fix `architecture.md:37-38` and the `mount.ts` comment.
 7. Changesets for every published package touched.
 
 ## Acceptance criteria
 
-- [ ] `pnpm gen:services -- --check` passes, and fails after a hand edit to any generated file.
-- [ ] A scratch branch that adds a sixth row to `tools/services.json` and runs `gen:services`
+- [ ] `pnpm gen services --check` passes, and fails after a hand edit to any generated file.
+- [ ] A scratch branch that adds a sixth row to `tools/services.json` and runs `gen services`
       fails the assertion tests with messages naming the missing directory, descriptor, `mount.ts`
       entry, console section, accent CSS, docs sidebar entry and schema property. Record the output
       in the PR.
@@ -148,7 +148,7 @@ need no change. `products/gen-seed.ts` already iterates `SERVICE_SLUGS`.
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:services -- --check
+mise exec node@22 -- pnpm gen services --check
 mise exec node@22 -- pnpm test
 mise exec node@22 -- pnpm typecheck
 mise exec node@22 -- pnpm --filter @polaris-key/admin build

@@ -1,16 +1,16 @@
 # SP-08 Canonical platform values `tvos`, `visionos` and `watchos` (wire item W8): `shared-protocol` platform enum, `headers.json` corpus rows, Worker acceptance, Swift sends them, Godot and React follow the enum
 
-| Field       | Value                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (wire items)                                                                                                 |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                      |
-| Depends on  | [P1b-04](P1b-04-headers-config-corpora.md)                                                                                                                  |
-| Unblocks    | [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [MO-06](MO-06-portal-device-activation-motion.md)                    |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                       |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-08.md` first; no code before a human approves it                                                                  |
-| Gates       | plan mode; corpus (`headers.json`, Swift and Godot mirrors, `gen:corpus -- --check`); all SDKs (`parity:check`, `gen:constants -- --check`); `test:workerd` |
-| Human input | none                                                                                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                   |
+| Field       | Value                                                                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (wire items)                                                                                           |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                |
+| Depends on  | [P1b-04](P1b-04-headers-config-corpora.md)                                                                                                            |
+| Unblocks    | [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [MO-06](MO-06-portal-device-activation-motion.md)              |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                 |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-08.md` first; no code before a human approves it                                                            |
+| Gates       | plan mode; corpus (`headers.json`, Swift and Godot mirrors, `gen corpus --check`); all SDKs (`parity:check`, `gen constants --check`); `test:workerd` |
+| Human input | none                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                             |
 
 ## Goal
 
@@ -63,13 +63,13 @@ enums, and the compatibility story for old Workers (an unknown value today) and 
 
 ## Acceptance criteria
 
-- [x] `gen:corpus -- --check` and `parity:check` pass; the Worker accepts the three values.
+- [x] `gen corpus --check` and `parity:check` pass; the Worker accepts the three values.
 - [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

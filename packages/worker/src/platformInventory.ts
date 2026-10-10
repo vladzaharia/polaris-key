@@ -1,7 +1,7 @@
 /**
  * The platform inventory (ST-02, notes/S-18 §2.4, §4.13): every member of `Env` (`env.ts`), as
  * data. The list itself is GENERATED from the `@inventory` / `@editable` JSDoc tags in `env.ts`
- * into `platformInventory.generated.ts` by `pnpm gen:platform-inventory`; this module holds its
+ * into `platformInventory.generated.ts` by `pnpm gen platform-inventory`; this module holds its
  * types (it imports nothing, so the generator can run before the generated file exists).
  *
  * Readers: `GET /manage/api/platform/settings` (`admin/handlers/platformSettings.ts`) builds its

@@ -196,7 +196,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/client-core test
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test
 mise exec node@22 -- pnpm --filter @polaris-key/react test
 mise exec node@22 -- pnpm build && mise exec node@22 -- pnpm typecheck
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

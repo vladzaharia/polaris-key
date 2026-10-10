@@ -1,16 +1,16 @@
 # I-24a Named-user seats, server half: `profile.user` and the `license.maxUsers` / `license.devicesPerUser` policy keys in the contract, `licenseDocCases` rows and `licenseUserCases`, client-core readers, seat-holder and invite tables, `device_limit` with `scope: "user"`, console and portal seat panels
 
-| Field       | Value                                                                                                                                                                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (later)                                                                                                                                                                                                                |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                                      |
-| Depends on  | [I-24](I-24-named-user-seats.md), [I-05](I-05-accounts-core.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                                        |
-| Unblocks    | [I-24b](I-24b-named-user-seats-sdks.md), [LX-24](LX-24-per-seat-features.md)                                                                                                                                                                                                              |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                     |
-| Plan mode   | yes: executes the approved [`plans/I-24.md`](../plans/I-24.md) §2, §3, §4, §6 and the client-core part of §5                                                                                                                                                                              |
-| Gates       | plan mode; corpus (`licenseDocCases`, new `licenseUserCases`, Swift and Godot mirrors, `gen:corpus -- --check`); `errors.json` (rule 3) and transcripts (rule 1); migration and `TABLE_OWNERS`; rule 10 (OpenAPI and `routeCoverage`); generated docs pages; THREAT-MODEL; `test:workerd` |
-| Human input | none (the plan was approved on 2026-10-05)                                                                                                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (later)                                                                                                                                                                                                             |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                                   |
+| Depends on  | [I-24](I-24-named-user-seats.md), [I-05](I-05-accounts-core.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                                     |
+| Unblocks    | [I-24b](I-24b-named-user-seats-sdks.md), [LX-24](LX-24-per-seat-features.md)                                                                                                                                                                                                           |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                  |
+| Plan mode   | yes: executes the approved [`plans/I-24.md`](../plans/I-24.md) §2, §3, §4, §6 and the client-core part of §5                                                                                                                                                                           |
+| Gates       | plan mode; corpus (`licenseDocCases`, new `licenseUserCases`, Swift and Godot mirrors, `gen corpus --check`); `errors.json` (rule 3) and transcripts (rule 1); migration and `TABLE_OWNERS`; rule 10 (OpenAPI and `routeCoverage`); generated docs pages; THREAT-MODEL; `test:workerd` |
+| Human input | none (the plan was approved on 2026-10-05)                                                                                                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                              |
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
@@ -94,8 +94,8 @@ the split into I-24a (this package) and I-24b (the SDKs) (Q8).
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen corpus --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 ```
 

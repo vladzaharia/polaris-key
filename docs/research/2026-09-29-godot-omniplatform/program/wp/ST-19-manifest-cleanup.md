@@ -8,7 +8,7 @@
 | Unblocks    | [ST-18](ST-18-promote-export.md), [ST-19b](ST-19b-manifest-settings.md)                                               |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                 |
 | Plan mode   | yes: executes the approved [`plans/ST-19.md`](../plans/ST-19.md) (2026-10-06); nothing beyond it                      |
-| Gates       | plan mode; rule 9 (validator rule, mutation table, JSON schema); CLI bundle; `gen:settings --check`; docs `gen:check` |
+| Gates       | plan mode; rule 9 (validator rule, mutation table, JSON schema); CLI bundle; `gen settings --check`; docs `gen:check` |
 | Human input | none (plan approved 2026-10-06)                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                             |
 
@@ -99,7 +99,7 @@ Where the build refined the plan, the code is the fact:
 mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 mise exec node@22 -- pnpm --filter @polaris-key/cli test
 mise exec node@22 -- pnpm --filter @polaris-key/worker test settings
-mise exec node@22 -- pnpm gen:settings -- --check
+mise exec node@22 -- pnpm gen settings --check
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 ```
 

@@ -10,7 +10,7 @@
 // bundled with any software, whatever its own licence, provided they are not sold by themselves and
 // the copyright notice and licence travel with them. :ui ships the kit's TTFs unchanged in
 // res/font (polaris_rubik_variable.ttf, which the kit reads, and the static regular and bold that
-// `pnpm gen:brand` still writes and `pnpm gen:brand -- --check` compares byte for byte with
+// `pnpm gen brand` still writes and `pnpm gen brand --check` compares byte for byte with
 // packages/brand/kit) and the kit's OFL.txt and FONT-NOTICE.txt in assets/polaris-key/fonts/, so
 // the licence is inside every APK that carries the fonts. A neutral kit reads Rubik only for the
 // monogram tile it draws when the host passes no product icon.

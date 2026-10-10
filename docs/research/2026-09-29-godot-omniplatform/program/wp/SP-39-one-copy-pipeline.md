@@ -20,7 +20,7 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 These approved plans change this package. Where they differ from the text below, they win.
 
-- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: after a copy edit, regenerate `ui-matrix.json` with `pnpm gen:corpus` without holding the corpus lane (D13).
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: after a copy edit, regenerate `ui-matrix.json` with `pnpm gen corpus` without holding the corpus lane (D13).
 
 ## SDK usability review (2026-10-08)
 
@@ -47,7 +47,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- gen:constants stops emitting copy.generated._; each SDK's core.copy reads the core._ keys from its kit copy table; React and Node share one runtime from client-core; Node's kit table split per locale or loaded lazily.
+- gen constants stops emitting copy.generated._; each SDK's core.copy reads the core._ keys from its kit copy table; React and Node share one runtime from client-core; Node's kit table split per locale or loaded lazily.
 
 **Out** (and where it belongs instead):
 

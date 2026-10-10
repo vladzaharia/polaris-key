@@ -3,8 +3,8 @@
 // answers today.
 //
 //   pnpm --filter @polaris-key/worker test            # CHECK: fails when a file is stale
-//   pnpm gen:transcripts                              # WRITE: regenerates every location
-//   pnpm gen:transcripts -- --check                   # CHECK, on its own
+//   pnpm gen transcripts                              # WRITE: regenerates every location
+//   pnpm gen transcripts --check                   # CHECK, on its own
 //
 // A Worker change that alters a recorded response fails this file until the transcripts are
 // regenerated in the same change; the SDK replayers then show which SDKs must follow.
@@ -58,7 +58,7 @@ describe("HTTP transcripts", () => {
           rendered.set(scenario.id, await serialize(await scenario.record()));
       expect(rendered.size).toBe(SCENARIOS.length);
       const drift = reconcile(rendered, write);
-      const hint = "run `pnpm gen:transcripts` and commit the result";
+      const hint = "run `pnpm gen transcripts` and commit the result";
       expect(
         drift.map((d) => `${d.problem}: ${d.file}`),
         hint,

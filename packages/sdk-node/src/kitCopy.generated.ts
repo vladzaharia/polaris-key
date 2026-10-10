@@ -2,7 +2,7 @@
 //
 // Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
 // packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
-// conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+// conformance/parity/copy.<locale>.json. `pnpm gen brand --check` fails the green gate on any
 // difference. To change a string, edit its source and regenerate.
 /**
  * The Polaris Key kit copy for the terminal kit (plans/UK-02.md §3.3): the same tables as

@@ -145,7 +145,7 @@ Config SDK and, with the `sync` (Cloud Sync) service on and the person signed in
 - [ ] Nothing is pushed. A running client sees the change on its next `sync()`; ETag/`304` means
       an unchanged catalog costs nothing.
 - [ ] For a product that wants compile-time config types, regenerate its typed mirrors:
-      `pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (add `--check` in that
+      `pnpm gen mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (add `--check` in that
       product's CI).
 
 ## Verification

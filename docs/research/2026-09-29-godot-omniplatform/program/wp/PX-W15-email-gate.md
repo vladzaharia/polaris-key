@@ -66,7 +66,7 @@ The first provider sign-in must not ship without the gate ([PORTAL.md §11.4](..
 
 - [x] Tests: Google unverified → code; Apple relay → no code; Steam → empty field; no token before pass. Google rule (lead, 2026-10-06): Gmail verified → no code; Workspace with a matching `hd` → no code; non-Gmail without `hd` → code; `hd` mismatch → code.
 - [x] The migration and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

@@ -49,8 +49,8 @@
 // the pre-R3-01 dev-build bypass, was retired by P0-04 through `RETIRED_CARRIED_ROWS`, with a
 // named successor.
 //
-//   pnpm gen:corpus            # write the corpus
-//   pnpm gen:corpus -- --check # CI drift guard (exit 1 if any file is stale)
+//   pnpm gen corpus            # write the corpus
+//   pnpm gen corpus --check # CI drift guard (exit 1 if any file is stale)
 
 import {
   existsSync,
@@ -142,7 +142,7 @@ function reconcile(path: string, content: string, check: boolean): boolean {
     return false;
   }
   if (check) {
-    console.error(`stale: ${path} — run \`pnpm gen:corpus\``);
+    console.error(`stale: ${path} — run \`pnpm gen corpus\``);
     return true;
   }
   mkdirSync(dirname(path), { recursive: true });
@@ -154,7 +154,7 @@ function reconcile(path: string, content: string, check: boolean): boolean {
 async function main(): Promise<void> {
   const check = process.argv.includes("--check");
   // plans/P4-01.md §4.2: the explicit blob rebuild, never in the gate. It writes only
-  // `content/blobs/` (refs.json included); run `pnpm gen:corpus` afterwards. `--blobs <dir>`
+  // `content/blobs/` (refs.json included); run `pnpm gen corpus` afterwards. `--blobs <dir>`
   // points it at another blob directory (gen-content-corpus.test.ts passes a temporary copy).
   if (process.argv.includes("--rebuild-content-blobs")) {
     const flag = (name: string): string | undefined => {

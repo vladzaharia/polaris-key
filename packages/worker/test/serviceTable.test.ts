@@ -1,7 +1,7 @@
 /**
  * The worker's half of the service-table drift gate (P0-09).
  *
- * The opt-in services are declared once, in `tools/services.json`; `pnpm gen:services` writes the
+ * The opt-in services are declared once, in `tools/services.json`; `pnpm gen services` writes the
  * slug constants into `@polaris-key/manifest`, which the worker imports. What CANNOT be generated
  * — a service's directory, its descriptor, its `mount.ts` entry, its OpenAPI discovery key and the
  * literal coherence codes — is asserted here instead, one message per missing piece, so adding a

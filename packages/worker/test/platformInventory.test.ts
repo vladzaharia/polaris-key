@@ -1,6 +1,6 @@
 /**
  * ST-02 (notes/S-18 §4.13 item 1): the platform inventory is generated from `Env`'s JSDoc tags,
- * and `pnpm gen:platform-inventory -- --check` fails when `Env`, the inventory and the wrangler
+ * and `pnpm gen platform-inventory --check` fails when `Env`, the inventory and the wrangler
  * configs disagree. This suite runs the same checks, so `pnpm test` fails on drift too, and pins
  * that each kind of drift is caught.
  */
@@ -33,10 +33,10 @@ describe("the platform inventory (ST-02)", () => {
     expect(inventoryErrors(inputs).errors).toEqual([]);
   });
 
-  it("is up to date (pnpm gen:platform-inventory)", async () => {
+  it("is up to date (pnpm gen platform-inventory)", async () => {
     const committed = readFileSync(join(ROOT, GENERATED_PATH), "utf8");
     const { entries } = parseEnvInventory(inputs.env);
-    expect(committed, "run pnpm gen:platform-inventory").toBe(
+    expect(committed, "run pnpm gen platform-inventory").toBe(
       await renderInventory(entries),
     );
   });

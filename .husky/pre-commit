@@ -3,12 +3,12 @@
 # most common "broke the contract" mistakes locally before a commit lands. The full
 # six-language matrix (Python/Swift/Godot suites, admin build, format) runs in CI, not here.
 #
-#   1. conformance drift — the signed corpus must regenerate in place (no wire drift).
-#   2. service drift     — every language's service constants match tools/services.json.
-#   3. typecheck         — every TS package still type-checks.
+#   1. cheap generators — `pnpm gen --fast --check` runs the registry families marked `fast` in
+#      tools/generators.ts: the signed corpus must regenerate in place (no wire drift), every
+#      language's service constants match tools/services.json, and the generators page is current.
+#   2. typecheck         — every TS package still type-checks.
 #
 # Escape hatch: `git commit --no-verify` skips this for trivial/docs-only commits.
 
-pnpm gen:corpus -- --check
-pnpm gen:services -- --check
+pnpm gen --fast --check
 pnpm typecheck

@@ -2,7 +2,7 @@
 // `na` or `planned`, and the declaration has to be true.
 //
 //   pnpm parity:check            # read-only; one line per violation, exit 1 on any
-//   pnpm parity:check -- --check # the same (accepted for symmetry with gen:corpus --check)
+//   pnpm parity:check -- --check # the same (accepted for symmetry with gen corpus --check)
 //
 // Inputs, all hand-written:
 //
@@ -11,7 +11,7 @@
 //   `@pkey-feature <id> [<id>…]` comments    in the tests under each manifest's testRoots
 //   docs/research/…/program/workpackages.json   which work packages exist and are open
 //
-// and one GENERATED input: `conformance/transcripts/*.json` (P1b-03, `pnpm gen:transcripts`).
+// and one GENERATED input: `conformance/transcripts/*.json` (P1b-03, `pnpm gen transcripts`).
 //
 // It fails when:
 //
@@ -36,7 +36,7 @@
 //   7. an SDK's generated constants module (the registry's `constants` path) does not carry the
 //      capability table its manifest implies: the module's `CAPABILITY_DIGEST` must equal the
 //      digest tools/capabilities.ts computes from the registry and the manifest (P1b-10). The
-//      table is what `supports()` reads, so a manifest edited without `pnpm gen:constants` would
+//      table is what `supports()` reads, so a manifest edited without `pnpm gen constants` would
 //      otherwise ship an SDK whose answers disagree with its parity row.
 //
 // A `transcript` proof no transcript lists yet is not enforced; it is listed (with its owner,
@@ -551,11 +551,11 @@ export function checkParity(options: ParityOptions): ParityResult {
       const digest = capabilityDigest(capabilityTable(registry, manifest));
       if (constants === null)
         violations.push(
-          `[rule 7] ${where}: ${sdk.constants} does not exist (run \`pnpm gen:constants\`)`,
+          `[rule 7] ${where}: ${sdk.constants} does not exist (run \`pnpm gen constants\`)`,
         );
       else if (!constants.includes(digest))
         violations.push(
-          `[rule 7] ${where}: the capability table in ${sdk.constants} is not ${sdk.manifest}'s (CAPABILITY_DIGEST ${digest}); run \`pnpm gen:constants\``,
+          `[rule 7] ${where}: the capability table in ${sdk.constants} is not ${sdk.manifest}'s (CAPABILITY_DIGEST ${digest}); run \`pnpm gen constants\``,
         );
     }
     if (manifest.sdk !== sdk.id)

@@ -6,7 +6,7 @@
 // `treeDigest`, the window check before every prefix decode, `packSetId`, variant selection and
 // target mapping.
 //
-// `tools/sign-corpus.ts` calls it, so `pnpm gen:corpus` and `pnpm gen:corpus -- --check` cover
+// `tools/sign-corpus.ts` calls it, so `pnpm gen corpus` and `pnpm gen corpus --check` cover
 // both corpora. Two modes:
 //
 //   normal and `--check`  never compress. They read `content/blobs/` (the committed INPUTS,

@@ -46,7 +46,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 ## Acceptance criteria
 
 - [ ] WIRE-CONTRACT-V4 §13 is written and the verdict order, problem body and client rule are marked [C].
-- [ ] `gen:corpus`, `gen:constants -- --check` and `parity:check` pass with the new file and codes.
+- [ ] `gen corpus`, `gen constants --check` and `parity:check` pass with the new file and codes.
 - [ ] `PROTOCOL_VERSION` 4, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3 are unchanged.
 - [ ] The `backend` kind is exempt from the generator's Worker-emits-it check (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.

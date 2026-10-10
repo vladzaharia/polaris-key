@@ -8,7 +8,7 @@
 | Unblocks    | none                                                                                                                                                               |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                              |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/PX-W18.md` first; nothing is built before a human approves it                                                               |
-| Gates       | plan mode; rule 10 (OpenAPI + `routeCoverage`); transcripts (`gen:transcripts`, Swift and Godot mirrors); `features.json` + `gen:constants`; THREAT-MODEL; workerd |
+| Gates       | plan mode; rule 10 (OpenAPI + `routeCoverage`); transcripts (`gen transcripts`, Swift and Godot mirrors); `features.json` + `gen constants`; THREAT-MODEL; workerd |
 | Human input | approval of `plans/PX-W18.md`                                                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                          |
 
@@ -59,7 +59,7 @@ it is plan mode (CLAUDE.md), even though it touches no signed document and no co
   attach copy (SIGN-IN.md §5.2 `signin.attach.*`). No rule, binding or verification changes.
 - Invalid hints are ignored silently (never an error to the app).
 - Transcripts `identity-request-hints.json` (recorded through the Worker router) with the Swift and
-  Godot mirrors; `features.json` row `identity.signin.hints`; `gen:constants`; OpenAPI and
+  Godot mirrors; `features.json` row `identity.signin.hints`; `gen constants`; OpenAPI and
   `routeCoverage`.
 - THREAT-MODEL T-H5: a hint never verifies an address; a hint for another person's email only
   sends that person a code they did not ask for, under I-07's per-recipient limits.
@@ -88,14 +88,14 @@ it is plan mode (CLAUDE.md), even though it touches no signed document and no co
 - [ ] A hinted request opens CodeStep for that email; the account is created or signed in only after
       the code (test); a new account's name is prefilled from `nameHint` (test).
 - [ ] Invalid hints are ignored (test).
-- [ ] Transcripts and mirrors regenerate cleanly (`gen:transcripts -- --check`); `parity:check` and
-      `gen:constants -- --check` pass.
+- [ ] Transcripts and mirrors regenerate cleanly (`gen transcripts --check`); `parity:check` and
+      `gen constants --check` pass.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity request routeCoverage
 ```
 

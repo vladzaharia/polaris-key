@@ -1,21 +1,21 @@
 # P4-04 Content corpus v1: index parsing, full/file/delta apply, path rules, `plan-matrix.json`
 
-| Field       | Value                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P4: Packs (v1)                                                                                                                                                            |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                      |
-| Depends on  | [P4-01](P4-01-packs-plan.md), [P3-02](P3-02-wire-v4-contract-corpus.md), [P4-21](P4-21-packs-wire-core.md)                                                                |
-| Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-10](P4-10-chunk-indexes.md)                                 |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                     |
-| Plan mode   | yes: `pkey-wire-planner` writes a short execution plan, `program/plans/P4-04.md`, against the approved P4-01 plan; a human approves it before code                        |
-| Gates       | corpus (`pnpm gen:corpus -- --check`, Swift and Godot mirrors); all SDKs (pack-kind record cases); `corpus.mdx` (`docs gen:check`); one corpus-touching package in flight |
-| Human input | approval of `program/plans/P4-04.md`                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P4: Packs (v1)                                                                                                                                                         |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                   |
+| Depends on  | [P4-01](P4-01-packs-plan.md), [P3-02](P3-02-wire-v4-contract-corpus.md), [P4-21](P4-21-packs-wire-core.md)                                                             |
+| Unblocks    | [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [P4-10](P4-10-chunk-indexes.md)                              |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                  |
+| Plan mode   | yes: `pkey-wire-planner` writes a short execution plan, `program/plans/P4-04.md`, against the approved P4-01 plan; a human approves it before code                     |
+| Gates       | corpus (`pnpm gen corpus --check`, Swift and Godot mirrors); all SDKs (pack-kind record cases); `corpus.mdx` (`docs gen:check`); one corpus-touching package in flight |
+| Human input | approval of `program/plans/P4-04.md`                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                              |
 
 ## Goal
 
 The content corpus exists in the repo and is drift-gated like the JWS corpus. A TypeScript port of
-notes/A7's generator writes it; `pnpm gen:corpus -- --check` regenerates it in memory and fails on
+notes/A7's generator writes it; `pnpm gen corpus --check` regenerates it in memory and fails on
 any difference, mirrors included; the source set stays under 5 MB. It pins files-index parsing and
 path rules, full, file and delta apply with negatives, `packSetId`, and the install planner as
 `plan-matrix.json`. The JWS corpus gains pack-kind `releaseRecordCases` and `markerCases` that pin
@@ -65,7 +65,7 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
   the blob list with sizes, case ids, generator module layout, mirror paths, and any detail P4-01
   left to this package.
 - **Generator.** Port A7's generator to TypeScript under `tools/` (proposed
-  `tools/gen-content-corpus.ts`), called from `tools/sign-corpus.ts` `main` so `pnpm gen:corpus`
+  `tools/gen-content-corpus.ts`), called from `tools/sign-corpus.ts` `main` so `pnpm gen corpus`
   and `--check` cover both corpora. Committed blobs are inputs verified by SHA-256; `--check`
   rebuilds `cases.json` and `plan-matrix.json` from them; an explicit blob-rebuild mode requires
   the pinned zstd CLI version.
@@ -144,14 +144,14 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
 1. Confirm `plans/P4-04.md` is approved (merged) and P4-01 is `done`; otherwise stop.
 2. Port the generator and reference planner; reproduce A7's v1 set first, then apply P4-01's
    format changes.
-3. Wire it into `pnpm gen:corpus` with `--check` and the mirrors; add the ignore and attribute
+3. Wire it into `pnpm gen corpus` with `--check` and the mirrors; add the ignore and attribute
    rules.
 4. Add the pack-kind record and marker cases; update each SDK's record verifier and runner.
 5. Docs generator, registry entries, constants; run the oracle; format.
 
 ## Acceptance criteria
 
-- [x] `pnpm gen:corpus -- --check` passes, and fails after a one-byte edit to any committed
+- [x] `pnpm gen corpus --check` passes, and fails after a one-byte edit to any committed
       content file or mirror (checked on a blob, `refs.json`, `content/cases.json`,
       `plan-matrix.json`, a Godot mirror, and a stray file in `content/`).
 - [x] Every blob matches the `blobs` table's size and SHA-256; the source set is under 5 MB
@@ -177,7 +177,7 @@ SDKs is the repo's order (`AGENTS.md` rule 2), so this lands before any SDK appl
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test
 ( cd sdks/python && .venv/bin/python -m pytest -q tests/test_conformance.py )
 ( cd sdks/swift && swift test --filter ConformanceTests )

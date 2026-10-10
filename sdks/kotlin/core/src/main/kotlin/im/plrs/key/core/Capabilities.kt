@@ -1,6 +1,6 @@
 // Typed "unsupported here" (PARITY §2.2, P1b-10): `supports(feature)` and the capability list.
 // The table is GENERATED from `sdks/kotlin/parity.json` into `Constants.generated.kt`
-// (`CAPABILITIES`, `pnpm gen:constants`), so what this SDK answers is what its parity row says.
+// (`CAPABILITIES`, `pnpm gen constants`), so what this SDK answers is what its parity row says.
 //
 // The order every SDK applies:
 //   1. an unknown feature id                     → `version` (a newer feature)

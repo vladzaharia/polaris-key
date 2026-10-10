@@ -52,13 +52,13 @@ change and the React verifier; the compatibility story for deployed React apps.
 
 ## Acceptance criteria
 
-- [ ] `gen:corpus -- --check` passes with the new section and mirrors.
+- [ ] `gen corpus --check` passes with the new section and mirrors.
 - [ ] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

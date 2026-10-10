@@ -1,6 +1,6 @@
 // The monorepo's schema-mirror generator. The renderers live in @polaris-key/cli
 // (packages/cli/src/mirrors.ts) so `pkey mirror` gives adopters the same output outside the
-// monorepo; this front end keeps the committed samples and `pnpm gen:mirrors`.
+// monorepo; this front end keeps the committed samples and `pnpm gen mirrors`.
 //
 //   tsx tools/gen-mirrors.ts --catalog <path> --out-dir <dir> --lang ts,python,swift,gdscript,kotlin
 //                            [--kotlin-package com.example.catalog]
@@ -59,7 +59,7 @@ function writeIfNeeded(path: string, content: string, check: boolean): boolean {
   }
   if (current === content) return false;
   if (check) {
-    console.error(`stale: ${path} — run \`pnpm gen:mirrors\``);
+    console.error(`stale: ${path} — run \`pnpm gen mirrors\``);
     return true;
   }
   mkdirSync(dirname(path), { recursive: true });

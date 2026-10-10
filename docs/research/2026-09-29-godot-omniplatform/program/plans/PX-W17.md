@@ -132,12 +132,12 @@ remains `services:` in `.pkey/product`, persisted to `core.services` (S-18).
 
 ## 4. Corpus, transcripts and parity
 
-- **Signed corpus:** none. `pnpm gen:corpus -- --check` stays green with no change to any
+- **Signed corpus:** none. `pnpm gen corpus --check` stays green with no change to any
   generator, constant or mirror. Subjects are never signed (I-04 §6.2, S-16 D9 read as a content
   rule).
 - **Transcript `identity-disabled.json`** (PX-W17, scenario in
   `packages/worker/test/transcripts/scenarios/identity.ts`). The Swift and Godot mirrors are
-  written by `pnpm gen:transcripts`. Steps:
+  written by `pnpm gen transcripts`. Steps:
   1. Discovery returns `identity: {enabled:false}`.
   2. `POST auth/device/start` returns `404 not_found`.
   3. `GET identity/subject` with a bearer token returns `404 not_found`.
@@ -158,7 +158,7 @@ remains `services:` in `.pkey/product`, persisted to `core.services` (S-18).
 Each SDK must do four things:
 
 1. Replay `identity-disabled.json`.
-2. Pass `parity:check` and `gen:constants -- --check` (`identity_disabled` lands in every
+2. Pass `parity:check` and `gen constants --check` (`identity_disabled` lands in every
    `constants.generated` file).
 3. When discovery says Identity is off, fail every identity entry point (`signIn`, device code,
    `attach`, `subject`, `signOut`, `openAccount`, redirect) fast, with no network call. The error
@@ -217,7 +217,7 @@ No typed N/A applies: every runtime can observe a disabled service.
     columns, Connected products) exists only while Identity is on. I-12 builds the Users page on
     these members.
 - **Tables:** no migration and no `TABLE_OWNERS` change. The generated docs pages `docs gen:check`
-  and `gen:services -- --check` stay unchanged. U-04 owns `sync` `requires`.
+  and `gen services --check` stay unchanged. U-04 owns `sync` `requires`.
 - **Tests (`test/identityPerProduct.test.ts`):**
   - Two products and one account produce two distinct `ps_` subjects, and neither equals the
     account id.
@@ -298,10 +298,10 @@ the shared file" (`protocol/identity`, §12).
 ```sh
 N="mise exec node@22 --"
 $N pnpm build && $N pnpm typecheck
-$N pnpm gen:corpus -- --check          # unchanged: no corpus impact
-$N pnpm gen:transcripts -- --check     # identity-disabled.json + Swift/Godot mirrors
-$N pnpm gen:constants -- --check       # identity_disabled in every SDK
-$N pnpm gen:services -- --check
+$N pnpm gen corpus --check          # unchanged: no corpus impact
+$N pnpm gen transcripts --check     # identity-disabled.json + Swift/Godot mirrors
+$N pnpm gen constants --check       # identity_disabled in every SDK
+$N pnpm gen services --check
 $N pnpm parity:check                   # identity.toggle, six parity.json
 $N pnpm --filter @polaris-key/shared-protocol test   # exports layout
 $N pnpm --filter @polaris-key/worker test -- identity accountIdBoundary routeCoverage boundaries

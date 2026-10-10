@@ -1,6 +1,6 @@
 {
   "$schema": "./errors.schema.json",
-  "$comment": "The error-code registry: every code the Worker answers with or an SDK raises. A new code needs an entry here FIRST. `pnpm gen:constants` generates every SDK's ErrorCode constants from this file (tools/gen-sdk-constants.ts) and fails when the Worker's source emits a wire code missing here, or when a `wire` entry is no longer emitted. Each SDK's registry test fails when that SDK raises a code missing here. Codes are recorded as they are: wire codes are snake_case, client codes mostly kebab-case, and hosts match on the exact string, so renaming one is a behaviour change.",
+  "$comment": "The error-code registry: every code the Worker answers with or an SDK raises. A new code needs an entry here FIRST. `pnpm gen constants` generates every SDK's ErrorCode constants from this file (tools/gen-sdk-constants.ts) and fails when the Worker's source emits a wire code missing here, or when a `wire` entry is no longer emitted. Each SDK's registry test fails when that SDK raises a code missing here. Codes are recorded as they are: wire codes are snake_case, client codes mostly kebab-case, and hosts match on the exact string, so renaming one is a behaviour change.",
   "registryVersion": 1,
   "codes": [
     {

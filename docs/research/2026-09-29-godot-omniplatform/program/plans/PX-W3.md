@@ -141,8 +141,8 @@ secret, not on the product (rule 5).
 
 None.
 
-- `pnpm gen:corpus -- --check` stays green, with no generator, constant or mirror change.
-- `pnpm gen:transcripts -- --check` stays green. The portal routes and `/download/<token>` are
+- `pnpm gen corpus --check` stays green, with no generator, constant or mirror change.
+- `pnpm gen transcripts --check` stays green. The portal routes and `/download/<token>` are
   narrative-only and are not recorded, and the `files` route's answers without a ticket do not
   change. No Swift or Godot mirror moves.
 
@@ -160,7 +160,7 @@ and a browser on the portal.
 | Kotlin (`sdks/kotlin`) with the activation component      | no       | Same                                                                                                                                              |
 | Godot (`sdks/godot`) with `addons/polaris_key/ui`         | no       | Same                                                                                                                                              |
 
-`gen:constants -- --check` and `parity:check` stay green with no change.
+`gen constants --check` and `parity:check` stay green with no change.
 
 ## 6. Worker
 
@@ -374,8 +374,8 @@ Existing and runtime coverage:
 N="mise exec node@22 --"
 $N pnpm --filter @polaris-key/worker test -- portalLicensedDownloads portalDownloads bytesHost routeCoverage boundaries
 $N pnpm --filter @polaris-key/worker typecheck:workerd && $N pnpm --filter @polaris-key/worker test:workerd
-$N pnpm gen:corpus -- --check && $N pnpm gen:transcripts -- --check   # unchanged
-$N pnpm gen:constants -- --check && $N pnpm parity:check              # unchanged
+$N pnpm gen corpus --check && $N pnpm gen transcripts --check   # unchanged
+$N pnpm gen constants --check && $N pnpm parity:check              # unchanged
 $N pnpm --filter @polaris-key/docs gen:check && $N pnpm --filter @polaris-key/docs check:links
 node docs/research/2026-09-29-godot-omniplatform/program/check.mjs
 ```

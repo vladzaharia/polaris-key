@@ -63,7 +63,7 @@ Keygen `maxUsers` and Cryptlex named-user licences are table stakes for teams ([
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm parity:check
 ```
 

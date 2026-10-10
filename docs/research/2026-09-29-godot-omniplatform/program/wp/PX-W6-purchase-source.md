@@ -59,7 +59,7 @@ Today the portal can only say "Bought from <developer>" ([PORTAL.md §10.2](../.
 
 - [x] Identity imports no License internals (boundary test).
 - [x] Fixtures for each purchase source render the right source (tests).
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

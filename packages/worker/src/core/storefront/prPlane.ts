@@ -24,7 +24,7 @@
  * report. The files a step writes are path templates over the same parameters (`paths`,
  * `prPathAllowed`): the CLI refuses to write any other path, and the Worker refuses a report
  * naming one, so a ledger row never records a write outside them. The CLI's copy is generated
- * (`packages/cli/src/storefronts/ciPlane.generated.ts`, `pnpm gen:storefront-ci`).
+ * (`packages/cli/src/storefronts/ciPlane.generated.ts`, `pnpm gen storefront-ci`).
  *
  * TOKENS (decision 7): a fine-grained GitHub token with `contents:write` and `pull_requests:write`
  * on the own tap and bucket only; for winget, a classic `public_repo` token only if A-18k shows a

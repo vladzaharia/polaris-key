@@ -656,8 +656,8 @@ subscriptions). The first release stays free; it leaves these seams for S-22 to 
 - **No plan-mode package.** The `direct` rename keeps every identifier (D9). If the owner ever
   wants the id itself renamed, that is a plan-mode package of its own: wire contract §8 →
   `OUTLET_KINDS` (`SP/distribution.ts`) → `conformance/parity/enums.json` →
-  `tools/sign-corpus.ts` and `pnpm gen:corpus` (cases, update and outlet matrices, mirrors) →
-  `pnpm gen:transcripts` → `pnpm gen:constants` → detection in client-core, Node, React, Python,
+  `tools/sign-corpus.ts` and `pnpm gen corpus` (cases, update and outlet matrices, mirrors) →
+  `pnpm gen transcripts` → `pnpm gen constants` → detection in client-core, Node, React, Python,
   Swift, Kotlin (and the Android flavour) and Godot (and the export plugin), with a dual-kind
   period in feeds.
 - **Rule 10:** the portal and admin routes in §6.7.

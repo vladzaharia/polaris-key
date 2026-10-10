@@ -92,7 +92,7 @@ entries rather than random bytes:
 
 The **v2 full blob is not shipped**: only its size (1,246,961 B) is needed, by the planner. v1's own bundles are
 not shipped either, because a seed needs only chunk ids and lengths. **Regenerating the whole set reproduced every
-blob and every expected verdict byte for byte** [M], so a `gen:corpus -- --check` style drift gate works for it.
+blob and every expected verdict byte for byte** [M], so a `gen corpus --check` style drift gate works for it.
 
 A **large companion set** is built from the full A6 packs by the same generator. It has a 37.7 MB payload, 1,531
 records, 64 KiB chunks and 4 MiB bundles, 32 MB in total. It is used only for throughput and was **not** meant to

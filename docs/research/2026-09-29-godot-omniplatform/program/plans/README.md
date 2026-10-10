@@ -14,7 +14,7 @@ human's approval, and the implementer then executes exactly what the plan says.
 3. **Catalog and manifests**: `packages/shared-catalog` and `packages/shared-manifest` changes,
    each with its validator rule, mutation-table entry and JSON-schema change (`AGENTS.md` rule 9).
 4. **Corpus**: the new or changed sections and files, the generator changes in `tools/`, the
-   version constants, every mirror (Swift, Godot) and the drift gate (`pnpm gen:corpus -- --check`).
+   version constants, every mirror (Swift, Godot) and the drift gate (`pnpm gen corpus --check`).
 5. **SDKs, in order**: each SDK that must follow, what it must pass, and which work package does
    it. Name the typed N/As, if any, from the parity registry.
 6. **Worker**: routes (rule 10), migrations, tables (`TABLE_OWNERS`) and generated docs pages.

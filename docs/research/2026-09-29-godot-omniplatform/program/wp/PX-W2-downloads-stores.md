@@ -59,7 +59,7 @@ The portal API returns store links per product and platform (`stores[]` `{kind, 
 - [ ] Identity imports no Distribution module (the import-boundary test stays green).
 - [ ] OpenAPI and `routeCoverage` cover the downloads route.
 - [ ] Platform grouping unit tests over fixtures with several platforms and channels.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

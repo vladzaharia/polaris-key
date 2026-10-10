@@ -1,7 +1,7 @@
 // Typed "unsupported here" (PARITY §2.2, P1b-10): `supports(feature)` and the capability list.
 //
 // The capability table is GENERATED from `sdks/swift/parity.json` into
-// `Constants.generated.swift` (`CAPABILITIES`, `pnpm gen:constants`), so what this SDK answers
+// `Constants.generated.swift` (`CAPABILITIES`, `pnpm gen constants`), so what this SDK answers
 // is what its parity row says. The table is data; this file is the one engine that reads it.
 //
 // The order every SDK applies:

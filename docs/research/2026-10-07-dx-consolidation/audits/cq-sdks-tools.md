@@ -165,11 +165,11 @@ and React have none. Only Node (`sdk-node/test/examples.test.ts`) and Python
 
 | Family              | Entry point                                                                                                                           | Outputs                                                                            | Freshness check                                        | In CI       | In `gate.sh` | Pre-commit |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------- | ------------ | ---------- |
-| corpus              | `tools/sign-corpus.ts` (+ `gen-content-corpus.ts`, `sync-scenarios.ts`, `gen-content-chunks.ts`; HA-12 adds `presentation-matrix.ts`) | `conformance/corpus/v2/*` + Swift and Godot mirrors                                | `gen:corpus -- --check`                                | yes         | yes          | yes        |
+| corpus              | `tools/sign-corpus.ts` (+ `gen-content-corpus.ts`, `sync-scenarios.ts`, `gen-content-chunks.ts`; HA-12 adds `presentation-matrix.ts`) | `conformance/corpus/v2/*` + Swift and Godot mirrors                                | `gen corpus --check`                                   | yes         | yes          | yes        |
 | transcripts         | `tools/gen-transcripts.mjs` (drives Worker scenario tests)                                                                            | `conformance/transcripts/*` + Swift and Godot mirrors                              | `-- --check` **and** inside the worker suite           | yes (twice) | yes          | no         |
 | services            | `tools/gen-services.ts`                                                                                                               | slug constants in 6 languages + `shared-manifest`                                  | `-- --check`                                           | yes         | yes          | yes        |
 | constants + copy    | `tools/gen-sdk-constants.ts`                                                                                                          | 7 constants modules + 7 copy modules                                               | `-- --check`                                           | yes         | yes          | no         |
-| brand + kit copy    | `packages/brand/scripts/gen.ts`, `gen-kit.ts`, `kit-copy.ts`                                                                          | CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin tokens; kit copy tables in 6 SDKs | `gen:brand -- --check`                                 | yes         | yes          | no         |
+| brand + kit copy    | `packages/brand/scripts/gen.ts`, `gen-kit.ts`, `kit-copy.ts`                                                                          | CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin tokens; kit copy tables in 6 SDKs | `gen brand --check`                                    | yes         | yes          | no         |
 | settings            | `packages/worker/scripts/gen-settings.ts`                                                                                             | `reference/settings.mdx`, `admin/src/console/settings.generated.ts`                | `-- --check` and a worker test                         | yes         | **no**       | no         |
 | platform inventory  | `packages/worker/scripts/gen-platform-inventory.ts`                                                                                   | `worker/src/platformInventory.generated.ts`                                        | `-- --check` and a worker test                         | yes         | yes          | no         |
 | storefront CI plane | `packages/worker/scripts/gen-storefront-ci.ts`                                                                                        | `cli/src/storefronts/ciPlane.generated.ts`                                         | `-- --check` and a worker test                         | test only   | yes          | no         |
@@ -180,10 +180,10 @@ and React have none. Only Node (`sdk-node/test/examples.test.ts`) and Python
 | mirrors             | `tools/gen-mirrors.ts` (front end over `cli/src/mirrors.ts`)                                                                          | Kotlin test fixture only                                                           | none: the root script needs arguments (`ci.yml:71-81`) | no          | no           | no         |
 
 Four lists name the gates (AGENTS.md "The green gate", `.github/workflows/ci.yml:28-90`,
-`/Users/vlad/Repos/pk-wt/_lead/gate.sh`, `.husky/pre-commit`) and they disagree: `gen:settings` is
-not in `gate.sh`, `gen:storefront-ci` is not a CI step, the pre-commit hook runs three. Core copy is
-emitted twice into every SDK: as `copy.generated.*` by `gen:constants` and as `core.*` keys inside
-the kit copy tables by `gen:brand` (3,204 `core.*` lines in both `kitCopy.generated.ts` and
+`/Users/vlad/Repos/pk-wt/_lead/gate.sh`, `.husky/pre-commit`) and they disagree: `gen settings` is
+not in `gate.sh`, `gen storefront-ci` is not a CI step, the pre-commit hook runs three. Core copy is
+emitted twice into every SDK: as `copy.generated.*` by `gen constants` and as `core.*` keys inside
+the kit copy tables by `gen brand` (3,204 `core.*` lines in both `kitCopy.generated.ts` and
 `kit_copy_generated.py`).
 
 ### Monolith files (non-generated)
@@ -280,7 +280,7 @@ prune` exists but no workflow runs it, so `-main.N` builds accumulate on the fee
    (`renderCiWorkflow`) exist only in EXPERIENCE.md's package table, not in `workpackages.json`.
 6. **Medium. The generator zoo.** Thirteen families, five styles (`-- --check`, `gen:check`, a
    vitest freshness test, an environment variable, none), four disagreeing lists, two generators
-   writing the same core copy into every SDK, a root `gen:mirrors` script that cannot run without
+   writing the same core copy into every SDK, a root `gen mirrors` script that cannot run without
    arguments, and drift checks that run twice in CI.
 7. **Medium. Monolith files.** `sign-corpus.ts` at 20,470 lines is the main merge-conflict magnet
    for every corpus package (HA-12, LX-18, I-24a, CM-14); `shared-manifest/src/index.ts` at 5,896
@@ -422,7 +422,7 @@ the merge base (the lead gate and pre-commit use it); `pnpm gen <id>…` runs so
 pre-commit hook and the AGENTS.md rule-3 table all read the registry (the table is generated into
 `reference/generators.mdx`). One freshness mechanism per family: the registry's `--check`; vitest
 keeps only semantic checks (the platform inventory's Env ↔ `wrangler.toml` agreement, for example).
-`gen:mirrors` goes (`pkey mirror` stays). Core copy is generated once, into the kit copy tables.
+`gen mirrors` goes (`pkey mirror` stays). Core copy is generated once, into the kit copy tables.
 
 ### 7. The corpus generator as family modules
 
@@ -430,7 +430,7 @@ keeps only semantic checks (the platform inventory's Env ↔ `wrangler.toml` agr
 device-label, config, versions, feed, record, update, outlet, packs, content, delegation, revocation,
 feed-url, sync, presentation), each exporting `build()` and `selfCheck()`, with the independent
 reference implementations in `tools/corpus/reference/`. `sign-corpus.ts` becomes the driver.
-Output byte-identical, enforced by `gen:corpus -- --check` against `main`. The Swift tests read the
+Output byte-identical, enforced by `gen corpus --check` against `main`. The Swift tests read the
 checkout through one `CorpusLocator` (`#filePath`), and the Swift corpus and transcript mirrors go;
 the Godot mirror stays (exported-template runs read `res://`).
 
@@ -614,7 +614,7 @@ blocks new debt only.
 
 | Id     | Title                                                     | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                             | Deps                   | Plan mode | Size    |
 | ------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | --------- | ------- |
-| CQS-01 | Generator registry and `pnpm gen`                         | `tools/generators.ts` declaring the 13 families (inputs, outputs, order, check); `pnpm gen`, `--check`, `--changed`, named runs; CI, `gate.sh` and pre-commit read it; generated `reference/generators.mdx` and AGENTS.md rule-3 table; a test that every `GENERATED` banner maps to a registered output; drop root `gen:mirrors`; old scripts as aliases.                                                                                        | none                   | no        | 1–1.5 w |
+| CQS-01 | Generator registry and `pnpm gen`                         | `tools/generators.ts` declaring the 13 families (inputs, outputs, order, check); `pnpm gen`, `--check`, `--changed`, named runs; CI, `gate.sh` and pre-commit read it; generated `reference/generators.mdx` and AGENTS.md rule-3 table; a test that every `GENERATED` banner maps to a registered output; drop root `gen mirrors`; old scripts as aliases.                                                                                        | none                   | no        | 1–1.5 w |
 | CQS-02 | CI consolidation                                          | Composite `setup-js` action; `tools/ci-scope.json` shared with `gate.sh`; `changes` job and `ci-ok` aggregator; PR versus `main` matrices; merge `swift` and `apple`; one `pnpm gen --check` step; remove duplicated named test steps.                                                                                                                                                                                                            | CQS-01                 | no        | 1–1.5 w |
 | CQS-03 | Corpus generator as family modules; drop the Swift mirror | Split `tools/sign-corpus.ts` into `tools/corpus/<family>.ts` plus `reference/`, byte-identical output; Swift `CorpusLocator` over `#filePath`; remove `Resources/v2` and `Resources/transcripts` and their generator targets; AGENTS.md rule 1 updated.                                                                                                                                                                                           | HA-12 merged           | no        | 1.5–2 w |
 | CQS-04 | `client-core` takes the neutral TypeScript helpers        | Constants and copy emitted once into `client-core`; copy runtime; discovery parser and service map; activation outcome (one kind spelling); wire error reader; boot loop over a `BootDriver`; QR encoder (Worker, Node, React); release-fetch range logic. Node and React re-export for one minor. Proof: all transcripts and corpus replayed unchanged. Policy edit narrowing plan mode to the wire modules.                                     | none                   | yes       | 1.5–2 w |
@@ -625,7 +625,7 @@ blocks new debt only.
 | CQS-09 | `pkey` command registry, context and doctor               | Typed command registry grown from UK-14's `help.ts` driving parse, help, completion, `reference/cli.mdx` and Action mapping; `--product`/`--base-url` from `.pkey/product` and `PKEY_BASE_URL`; `pkey doctor` as the integration verifier; `pkey validate --fix`.                                                                                                                                                                                 | UK-14                  | no        | 1.5–2 w |
 | CQS-10 | Thin Action inputs                                        | `command`, `args`, secret inputs, `base-url`, `working-directory`, `dry-run`; product from `.pkey/`; old inputs accepted for one minor with a deprecation annotation; `publish-package.yml` and UX-62's workflow template moved over.                                                                                                                                                                                                             | CQS-09                 | no        | 0.5 w   |
 | CQS-11 | `pkey login` and personal access tokens for the CLI       | Device-code sign-in against the console identity; scoped personal token in the OS keyring; replaces `PKEY_ADMIN_COOKIE` for `pkey bundle` and `pkey listing import`; feeds the developer feed token for `pkey sdk`; serves ST-18.                                                                                                                                                                                                                 | identity access tokens | yes       | 1 w     |
-| CQS-12 | One copy pipeline                                         | `gen:constants` stops emitting `copy.generated.*`; each SDK's `core.copy` reads the `core.*` keys from its kit copy table; React and Node share one runtime from `client-core`; Node's kit table split per locale or loaded lazily.                                                                                                                                                                                                               | CQS-04, CQS-01         | no        | 1 w     |
+| CQS-12 | One copy pipeline                                         | `gen constants` stops emitting `copy.generated.*`; each SDK's `core.copy` reads the `core.*` keys from its kit copy table; React and Node share one runtime from `client-core`; Node's kit table split per locale or loaded lazily.                                                                                                                                                                                                               | CQS-04, CQS-01         | no        | 1 w     |
 | CQS-13 | Lint baselines with debt ledgers                          | knip and jscpd (TS), ruff and mypy (Python), ktlint and detekt (Kotlin), swift-format lint (Swift), gdlint (Godot); committed ledgers; report-only first, then blocking on new code.                                                                                                                                                                                                                                                              | CQS-02                 | no        | 1–1.5 w |
 
 Order: CQS-01 and CQS-04 first (independent), then CQS-05, CQS-03 (right after HA-12), CQS-02,
@@ -639,9 +639,9 @@ deferred from the SDK lanes and a smaller cost for every future six-SDK feature.
 
 1. Delete the legacy `pkey sdk` mode without `--lang` (`packages/cli/src/index.ts:846-858`), which
    prints a Node snippet against `https://key.example.com`; until CQS-07, make it print usage.
-2. Add `pnpm gen:settings -- --check` to `gate.sh` and `pnpm gen:storefront-ci -- --check` to
+2. Add `pnpm gen settings --check` to `gate.sh` and `pnpm gen storefront-ci --check` to
    `ci.yml`, so the lists agree until CQS-01 replaces them.
-3. Remove the root `gen:mirrors` script and the commented-out block at `ci.yml:71-81`; `pkey mirror`
+3. Remove the root `gen mirrors` script and the commented-out block at `ci.yml:71-81`; `pkey mirror`
    is the supported tool.
 4. One `resolveProductContext(parsed, cwd)` in the CLI: `--product` and `--base-url` default from
    `.pkey/product` for every command.

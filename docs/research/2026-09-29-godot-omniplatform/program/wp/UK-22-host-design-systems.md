@@ -1,16 +1,16 @@
 # UK-22 Host design systems: Tailwind v4 preset, shadcn/ui registry at `key.plrs.im/r/<name>.json` over the React hooks, MUI/Mantine/Chakra theme objects, "go native" recipes
 
-| Field       | Value                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                    |
-| Size        | 1.5–2 engineer-weeks                                                                              |
-| Depends on  | none                                                                                              |
-| Unblocks    | none                                                                                              |
-| Role        | `pkey-implementer`                                                                                |
-| Plan mode   | no                                                                                                |
-| Gates       | `gen:brand -- --check` for the generated presets; rule 10 for the registry route; docs link check |
-| Human input | none                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                         |
+| Field       | Value                                                                                          |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                 |
+| Size        | 1.5–2 engineer-weeks                                                                           |
+| Depends on  | none                                                                                           |
+| Unblocks    | none                                                                                           |
+| Role        | `pkey-implementer`                                                                             |
+| Plan mode   | no                                                                                             |
+| Gates       | `gen brand --check` for the generated presets; rule 10 for the registry route; docs link check |
+| Human input | none                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                      |
 
 ## Consolidation 2026-10-07
 
@@ -61,14 +61,14 @@ A team on Tailwind, shadcn/ui, MUI, Mantine or Chakra gets Polaris Key screens i
 ## Acceptance criteria
 
 - [ ] `npx shadcn add https://key.plrs.im/r/activate.json` installs a working Activate component in a fresh Next.js app (recorded in the PR).
-- [ ] The generated presets are covered by `gen:brand -- --check`.
+- [ ] The generated presets are covered by `gen brand --check`.
 - [ ] The §7.3 lint passes on the registry components' default render.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:brand -- --check
+mise exec node@22 -- pnpm gen brand --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 ```
 

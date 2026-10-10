@@ -3,7 +3,7 @@
  * value devices see in the discovery document (`wire: ["discovery", …]`), a write through
  * `writeSetting()` is published by `/.well-known/polaris.json`, answered by the resolver and read
  * by the enforcement path as the same value, at once. The discovery document's SHAPE does not
- * change (no wire effect: `gen:transcripts --check` stays green).
+ * change (no wire effect: `gen transcripts --check` stays green).
  *
  * `PROBES` must name every such entry: a new discovery-carried setting fails here until it says
  * how discovery publishes it and which reader enforces it. A manifest-only entry has no console

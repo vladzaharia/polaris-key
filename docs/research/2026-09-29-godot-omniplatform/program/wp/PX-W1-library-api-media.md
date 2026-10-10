@@ -67,7 +67,7 @@ The front end groups licenses client-side and cannot show art, seats or support 
 - [ ] A THREAT-MODEL row covers the media proxy's SSRF surface, with tests for redirect-to-private and oversize responses.
 - [ ] A CSP browser test loads real proxied art with zero violations.
 - [ ] If `supportUrl`/`supportEmail` are manifest fields, rule 9's validator rule, mutation-table entry and JSON schema land together.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

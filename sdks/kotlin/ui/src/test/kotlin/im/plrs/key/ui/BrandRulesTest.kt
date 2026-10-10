@@ -1,7 +1,7 @@
 // The brand rules the kit must keep, as tests:
 //   - neutral means inherited: no colour literal, font or corner shape in :ui outside the generated
 //     token file and the theme (a lint-style scan of the sources);
-//   - the generated token file and fonts are the brand generator's (pnpm gen:brand -- --check owns
+//   - the generated token file and fonts are the brand generator's (pnpm gen brand --check owns
 //     their content; here: the banner, and the OFL travelling with the fonts);
 //   - the branded palette's text and indicator pairs meet WCAG contrast in both themes.
 
@@ -46,7 +46,7 @@ class BrandRulesTest {
     fun theGeneratedFilesAreTheGenerators() {
         val tokens = module.resolve("src/main/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt").readText()
         assertTrue(tokens.startsWith("// GENERATED FILE — do not edit by hand."))
-        assertTrue(tokens.contains("pnpm gen:brand -- --check"))
+        assertTrue(tokens.contains("pnpm gen brand --check"))
         for (font in listOf("polaris_rubik_regular.ttf", "polaris_rubik_bold.ttf")) {
             assertTrue(font, module.resolve("src/main/res/font/$font").length() > 10_000)
         }

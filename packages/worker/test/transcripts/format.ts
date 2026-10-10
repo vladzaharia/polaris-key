@@ -6,7 +6,7 @@
 // against a fake server that serves the canned responses and asserts each request.
 //
 // The files are GENERATED — `conformance/transcripts/<id>.json`, mirrored into the Swift test
-// bundle — and drift-checked by `pnpm gen:transcripts -- --check` and by the Worker suite. Never
+// bundle — and drift-checked by `pnpm gen transcripts --check` and by the Worker suite. Never
 // hand-edit one: change the scenario and regenerate.
 //
 // ── WHICH SDK REPLAYS WHICH TRANSCRIPT ──────────────────────────────────────────────────────

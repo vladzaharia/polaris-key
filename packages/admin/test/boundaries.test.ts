@@ -36,7 +36,7 @@ const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
 
 /** Root modules `ui/` may import: app-neutral, owned by neither app. */
 const UI_MAY_IMPORT = new Set([
-  // Generated from tools/services.json (pnpm gen:services): data, not app code.
+  // Generated from tools/services.json (pnpm gen services): data, not app code.
   "services.generated.ts",
   // The light/dark/system theme both apps mount.
   "components/theme.tsx",

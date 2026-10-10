@@ -1,16 +1,16 @@
 # P1b-03 Capture HTTP transcripts from Worker tests and replay them in every SDK
 
-| Field       | Value                                                                                                                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                                                                                         |
-| Size        | 2–3 engineer-weeks                                                                                                                                                                                      |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                                                                                                     |
-| Unblocks    | [P1b-06](P1b-06-reregister-401.md), [P1b-07](P1b-07-license-config-release-gaps.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md), [P6-06](P6-06-kotlin-core-runner.md), [X-01](X-01-dotnet-sdk.md)    |
-| Role        | `pkey-implementer`                                                                                                                                                                                      |
-| Plan mode   | no (transcripts are not the signed corpus; nothing here changes the wire)                                                                                                                               |
-| Gates       | a new drift gate (`pnpm gen:transcripts -- --check` plus a Worker freshness test); all SDKs replay; a generator-owned Swift mirror; the `parity:check` extension. No new route, so rule 10 is untouched |
-| Human input | none                                                                                                                                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                                                                                      |
+| Size        | 2–3 engineer-weeks                                                                                                                                                                                   |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                                                                                                  |
+| Unblocks    | [P1b-06](P1b-06-reregister-401.md), [P1b-07](P1b-07-license-config-release-gaps.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md), [P6-06](P6-06-kotlin-core-runner.md), [X-01](X-01-dotnet-sdk.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                   |
+| Plan mode   | no (transcripts are not the signed corpus; nothing here changes the wire)                                                                                                                            |
+| Gates       | a new drift gate (`pnpm gen transcripts --check` plus a Worker freshness test); all SDKs replay; a generator-owned Swift mirror; the `parity:check` extension. No new route, so rule 10 is untouched |
+| Human input | none                                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                            |
 
 ## Goal
 
@@ -19,7 +19,7 @@ recorded through the real Worker router by scenario tests. Their ids, clock and 
 deterministic, and the documents in them are signed with the corpus test key. The Node, React,
 Python and Swift suites replay every transcript whose features their `parity.json` marks
 `implemented`. Each replay asserts the method, path, required headers and body shape of every
-request, rejects unexpected calls, and checks the client outcome. `pnpm gen:transcripts -- --check`
+request, rejects unexpected calls, and checks the client outcome. `pnpm gen transcripts --check`
 and a Worker test fail when a Worker change alters a recorded response. `pnpm parity:check` enforces
 `transcript` proofs.
 
@@ -71,7 +71,7 @@ as re-register-on-401 went unnoticed (README §9.1 #14). P1b-06, P1b-07 and P1b-
   recording with `conformance/transcripts/<id>.json`, failing when stale. With
   `PKEY_WRITE_TRANSCRIPTS=1` it writes the files and the Swift mirror
   (`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/`, added to `Package.swift` resources
-  beside `Resources/v2`). Root script `"gen:transcripts"`, a small Node wrapper that runs that test
+  beside `Resources/v2`). Root script `"gen transcripts"`, a small Node wrapper that runs that test
   file with or without the write flag, and supports `--check`.
 - **Replayers:**
   - Node: `conformance/runners/node/transcripts.test.ts`, driving `PolarisKeyClient`;
@@ -85,7 +85,7 @@ as re-register-on-401 went unnoticed (README §9.1 #14). P1b-06, P1b-07 and P1b-
 
 - **The checker.** Extend `tools/parity-check.ts`: an `implemented` feature with a `transcript` proof
   needs at least one transcript that lists it and a tagged replayer in that SDK.
-- CI step, `AGENTS.md` green gate and `waves.md` row for `pnpm gen:transcripts -- --check`. Add a
+- CI step, `AGENTS.md` green gate and `waves.md` row for `pnpm gen transcripts --check`. Add a
   "Transcripts" section to `contribute/corpus.md`.
 - **Wave-1 sync:** **Tighten parity rule 2 for corpus proofs (from P1b-01).** The check accepts a whole-word mention of the file's basename, so a tagged file that merely says "edge cases" satisfies `cases.json`, `fingerprint.json` and `content/`. Require the runner's actual load call instead (for example `forResource: "cases"` or `v2("cases.json")`, and for the Godot suites the `res://tests/corpus/v2/<file>` path), in `tools/parity-check.ts` with its tests.
 
@@ -226,9 +226,9 @@ replays `discovery-*` here and gains more when it implements more (P1b-07). Whet
 
 - [x] `conformance/transcripts/` holds the eight transcripts listed under Scope, and the Swift mirror
       matches byte for byte.
-- [x] `mise exec node@22 -- pnpm gen:transcripts -- --check` exits 0; changing one Worker response
+- [x] `mise exec node@22 -- pnpm gen transcripts --check` exits 0; changing one Worker response
       body makes it and `pnpm --filter @polaris-key/worker test` fail (shown in the PR).
-- [x] Two consecutive `pnpm gen:transcripts` runs produce identical files.
+- [x] Two consecutive `pnpm gen transcripts` runs produce identical files.
 - [x] Node, Python and Swift replay every transcript except `register-reregister-401`, which their
       manifests keep `planned` for P1b-06 (and Swift `telemetry-report`, `devices.report` being
       `planned` for P1b-07); React replays `discovery-*`.
@@ -242,7 +242,7 @@ replays `discovery-*` here and gains more when it implements more (P1b-07). Whet
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm --filter @polaris-key/worker typecheck:workerd
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
@@ -257,7 +257,7 @@ mise exec node@22 -- pnpm parity:check
 
 - **Interfaces:** `dispatchWith(req, env, db, now)`; the scenario and recorder helpers under
   `packages/worker/test/transcripts/`; the transcript format; `conformance/transcripts/` and its
-  Swift mirror; one replayer per SDK that filters by `parity.json`; `pnpm gen:transcripts`.
+  Swift mirror; one replayer per SDK that filters by `parity.json`; `pnpm gen transcripts`.
 - [P1b-06](P1b-06-reregister-401.md) makes `register-reregister-401` pass;
   [P1b-07](P1b-07-license-config-release-gaps.md) and [P1b-08](P1b-08-devicecode-edgemint-ports.md)
   add scenarios with the same harness. Godot's P1 packages can replay the same files.

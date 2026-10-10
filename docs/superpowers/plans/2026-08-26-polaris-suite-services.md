@@ -32,7 +32,7 @@
 - **Green gate (run at every phase boundary, and per-task where stated):**
   1. `mise exec node@22 -- pnpm -r build`
   2. `mise exec node@22 -- pnpm -r test`
-  3. `mise exec node@22 -- pnpm gen:corpus -- --check` (drift gate)
+  3. `mise exec node@22 -- pnpm gen corpus --check` (drift gate)
   4. `cd sdks/python && .venv/bin/python -m pytest -q`
   5. `swift test --package-path sdks/swift`
 - **Commits:** one commit per task minimum, message style matches repo history (imperative, no prefixes). Never delete a behavior-pin test to go green — re-baseline intentionally with the wire change that justifies it.
@@ -284,7 +284,7 @@ POST /manage/api/products/<slug>/bundles   {deviceId, graceDays≤365, includeCo
 **Files:** Modify `tools/sign-corpus.ts`; Create `conformance/corpus/v2/{cases.json,gate-matrix.json,fingerprint.json}` (generated); Modify `.github/workflows/ci.yml` (drift gate covers v2); Test: `conformance/runners/node/corpusV2.test.ts` (new, drives v2 through `@plrs/client-core`).
 
 - [ ] Extend the generator per R5 (new typs signed with the committed test keys; license/config doc cases mirror v1's docCases split per document; bundleCases as listed; multi-doc clockFloorCases incl. `floor-config-doc-alone-does-not-stop-rollback` carried and a new `floor-max-over-three-artifacts`). Emit v2 alongside v1; `--check` reconciles both.
-- [ ] `corpusV2.test.ts` runs every v2 section through client-core (`verifyJws`/`verifyDoc` per typ/`verifyTrustManifest`/gate). Run → PASS. `pnpm gen:corpus -- --check` → clean. Commit: `Generate conformance corpus v2 for wire contract v3`.
+- [ ] `corpusV2.test.ts` runs every v2 section through client-core (`verifyJws`/`verifyDoc` per typ/`verifyTrustManifest`/gate). Run → PASS. `pnpm gen corpus --check` → clean. Commit: `Generate conformance corpus v2 for wire contract v3`.
 
 ### Task 0.7: Service enablement authority
 
@@ -529,7 +529,7 @@ export function dispatchService(
 
 ### Task 8.2: Exit gates
 
-- [ ] Full green gate; `gen:corpus -- --check`; grep-gates: zero `@polaris-key/`, zero `X-PKey-`, zero `pkeyt_`, zero `key.plrs.im` as ISSUER (host references in wrangler/docs stay), zero imports of deleted legacy modules; risk-register closeout appended to the spec; memory + the 2026-08-26 security audit residual-risk note updated (clock-floor text was already stale — correct it).
+- [ ] Full green gate; `gen corpus --check`; grep-gates: zero `@polaris-key/`, zero `X-PKey-`, zero `pkeyt_`, zero `key.plrs.im` as ISSUER (host references in wrangler/docs stay), zero imports of deleted legacy modules; risk-register closeout appended to the spec; memory + the 2026-08-26 security audit residual-risk note updated (clock-floor text was already stale — correct it).
 - [ ] Final commit: `Complete the Polaris suite re-organization`.
 
 ---

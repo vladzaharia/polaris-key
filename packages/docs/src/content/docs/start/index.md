@@ -105,7 +105,7 @@ UI kit) — each composing Core with one
 sub-client per service (`client.license`, `client.config`, `client.release`, `client.update`,
 `client.devices`). They do not agree on the wire by code review: the worker and all six SDKs
 drive the **same conformance corpus** (`conformance/corpus/v2/`), vector for vector, and
-`pnpm gen:corpus -- --check` is a CI drift gate. That is how the encoding stays byte-identical
+`pnpm gen corpus --check` is a CI drift gate. That is how the encoding stays byte-identical
 across TypeScript, Python, Swift, GDScript and Kotlin through a wire change — the A1 identifier flip re-signed every
 vector and the gate stayed green.
 

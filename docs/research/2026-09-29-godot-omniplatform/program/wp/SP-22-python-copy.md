@@ -1,16 +1,16 @@
 # SP-22 Python copy over the generated catalog (`core.copy`): `polaris_key.copy` serves `copy_generated.py` with React's code-versus-activation table rule and `COPY_FALLBACK`, keeping host English overrides
 
-| Field       | Value                                                                         |
-| ----------- | ----------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                     |
-| Size        | 0.2–0.4 engineer-weeks                                                        |
-| Depends on  | none                                                                          |
-| Unblocks    | none                                                                          |
-| Role        | `pkey-sdk-porter`                                                             |
-| Plan mode   | no                                                                            |
-| Gates       | pytest; `gen:constants -- --check`; `parity:check`; the generated parity page |
-| Human input | none                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                     |
+| Field       | Value                                                                      |
+| ----------- | -------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                  |
+| Size        | 0.2–0.4 engineer-weeks                                                     |
+| Depends on  | none                                                                       |
+| Unblocks    | none                                                                       |
+| Role        | `pkey-sdk-porter`                                                          |
+| Plan mode   | no                                                                         |
+| Gates       | pytest; `gen constants --check`; `parity:check`; the generated parity page |
+| Human input | none                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                  |
 
 ## Consolidation 2026-10-07
 

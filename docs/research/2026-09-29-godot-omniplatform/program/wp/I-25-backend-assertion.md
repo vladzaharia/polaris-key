@@ -1,16 +1,16 @@
 # I-25 RFC 7523 product-backend assertion (console platforms) with `jti` replay cache and console key management
 
-| Field       | Value                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (later)                                                             |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                 |
-| Depends on  | [I-13](I-13-exchange-endpoint.md)                                                                                                      |
-| Unblocks    | none                                                                                                                                   |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                  |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-25.md` first; it needs human approval before code                                             |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL |
-| Human input | none                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                              |
+| Field       | Value                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (later)                                                          |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                              |
+| Depends on  | [I-13](I-13-exchange-endpoint.md)                                                                                                   |
+| Unblocks    | none                                                                                                                                |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                               |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-25.md` first; it needs human approval before code                                          |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL |
+| Human input | none                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                           |
 
 ## Consolidation 2026-10-07
 

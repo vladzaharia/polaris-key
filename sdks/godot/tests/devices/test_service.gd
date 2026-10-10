@@ -65,7 +65,7 @@ static func _body(req: Dictionary) -> String:
 
 
 ## The allowedKeys the telemetry-report transcript holds every report to (the Worker's
-## REPORT_KEYS, recorded by `pnpm gen:transcripts`).
+## REPORT_KEYS, recorded by `pnpm gen transcripts`).
 static func _allowlist() -> Array:
 	var tr = PKeyTestFixtures.transcript("telemetry-report")
 	if not (tr is Dictionary):

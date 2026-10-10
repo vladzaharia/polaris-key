@@ -1,16 +1,16 @@
 # PX-W9b Key-entry outcome in client-core and the six SDKs (G21): `readKeyEntries`, `keyEntries` on success, the `key-entry-limit` result with `manageUrl`, and the four UI kits' entries line and refusal screen (Add it in Polaris Key, QR without the key)
 
-| Field       | Value                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                               |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                |
-| Depends on  | none                                                                                                                                                                                  |
-| Unblocks    | none                                                                                                                                                                                  |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                  |
-| Plan mode   | yes: executes §5 of the approved [`plans/PX-W9.md`](../plans/PX-W9.md) (revision 2, approved by the lead under the owner's delegation, 2026-10-06; Q1, Q6)                            |
-| Gates       | plan mode; all six SDKs (`parity:check`); `gen:constants -- --check`; `gen:brand -- --check`; transcripts (rule 1); UI kit snapshots, `ui:lint`, `ui:report`; CI on macOS and Android |
-| Human input | none                                                                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
+| Field       | Value                                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                         |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                          |
+| Depends on  | none                                                                                                                                                                            |
+| Unblocks    | none                                                                                                                                                                            |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                            |
+| Plan mode   | yes: executes §5 of the approved [`plans/PX-W9.md`](../plans/PX-W9.md) (revision 2, approved by the lead under the owner's delegation, 2026-10-06; Q1, Q6)                      |
+| Gates       | plan mode; all six SDKs (`parity:check`); `gen constants --check`; `gen brand --check`; transcripts (rule 1); UI kit snapshots, `ui:lint`, `ui:report`; CI on macOS and Android |
+| Human input | none                                                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                       |
 
 ## Consolidation 2026-10-07
 
@@ -97,7 +97,7 @@ and I-10b later add the screen's **Sign in** action, which needs I-08.
 
 - **Kit copy.** `keyEntryLimit.manage` ("Add it in Polaris Key") and `keyEntryLimit.scan` ("Scan
   to add it in Polaris Key") go into `packages/brand/kit-copy/en.json` and its eight locale packs
-  (`de`, `es`, `fr`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`). Then run `pnpm gen:brand`.
+  (`de`, `es`, `fr`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`). Then run `pnpm gen brand`.
 - **Typed N/A.** Node and Python keep `ui.kit.keyentry` as N/A: `headless` (reason `runtime`).
   Hosts read `manageUrl` and `keyEntries` from the result.
 - **Docs.** Each SDK's licensing guide gains a section, "When a key has no entries left". It
@@ -127,7 +127,7 @@ and I-10b later add the screen's **Sign in** action, which needs I-08.
 
 1. client-core `keyEntries.ts` and its table.
 2. The headless outcome in each SDK, with the table repeated and the three transcripts replayed.
-3. Kit copy and `gen:brand`, then the four kits and their snapshots.
+3. Kit copy and `gen brand`, then the four kits and their snapshots.
 4. Flip both parity rows in each `parity.json`, add `@pkey-feature identity.keyentry` to each
    replayer, and write the docs and release notes.
 
@@ -145,8 +145,8 @@ and I-10b later add the screen's **Sign in** action, which needs I-08.
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/client-core test
-mise exec node@22 -- pnpm parity:check && mise exec node@22 -- pnpm gen:constants -- --check
-mise exec node@22 -- pnpm gen:brand -- --check && mise exec node@22 -- pnpm ui:lint && mise exec node@22 -- pnpm ui:report
+mise exec node@22 -- pnpm parity:check && mise exec node@22 -- pnpm gen constants --check
+mise exec node@22 -- pnpm gen brand --check && mise exec node@22 -- pnpm ui:lint && mise exec node@22 -- pnpm ui:report
 mise exec node@22 -- pnpm --filter @polaris-key/node test && mise exec node@22 -- pnpm --filter @polaris-key/react test
 ( cd sdks/python && .venv/bin/python -m pytest -q ); ( cd sdks/swift && swift test ); sdks/godot/tools/run_tests.sh
 ( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :sdk:test :conformance:test )

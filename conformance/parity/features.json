@@ -242,7 +242,7 @@
       "proof": [
         {
           "kind": "generated",
-          "command": "pnpm gen:constants -- --check",
+          "command": "pnpm gen constants --check",
           "wp": "P1b-02"
         }
       ],
@@ -307,14 +307,14 @@
       "proof": [
         {
           "kind": "generated",
-          "command": "pnpm gen:constants -- --check"
+          "command": "pnpm gen constants --check"
         },
         {
           "kind": "unit"
         }
       ],
       "allowedNa": [],
-      "note": "The English base is conformance/parity/copy.en.json (copy.schema.json); gen:constants emits one generated copy module per SDK and refuses a key set that does not cover every errors.json code, every licenseStatus and every activationResult. The unit proof is each SDK's fallback and placeholder table (SDK-PARITY-PASS §3.2)."
+      "note": "The English base is conformance/parity/copy.en.json (copy.schema.json); gen constants emits one generated copy module per SDK and refuses a key set that does not cover every errors.json code, every licenseStatus and every activationResult. The unit proof is each SDK's fallback and placeholder table (SDK-PARITY-PASS §3.2)."
     },
     {
       "id": "license.gate",
@@ -2015,7 +2015,7 @@
       "proof": [
         { "kind": "corpus", "file": "ui-matrix.json", "family": "i18n" },
         { "kind": "snapshot" },
-        { "kind": "generated", "command": "pnpm gen:brand -- --check" }
+        { "kind": "generated", "command": "pnpm gen brand --check" }
       ],
       "allowedNa": [],
       "note": "Kit copy and core copy per locale, per-key fallback, plural categories and the formFactor select."

@@ -32,7 +32,7 @@ sha256}, now)` as planned; the host is compared normalized (case, trailing dot).
   the plan's acceptance list are both `disabled`. The revocation test covers disabled, expired and
   detached licences.
 - **Inventory.** ST-02 landed on main while this package was in review: `SECRET_NAMES` is now
-  generated from the `@inventory secret` tags in `env.ts` (`pnpm gen:platform-inventory`), so the
+  generated from the `@inventory secret` tags in `env.ts` (`pnpm gen platform-inventory`), so the
   two secrets carry `@inventory secret keyring` there and the hand-added `SECRET_NAMES` entries
   were dropped at the merge. They keep their notes on the console's Platform → Secrets list
   (`packages/admin/src/console/pages/platformSettings.tsx`).
@@ -112,7 +112,7 @@ Today the portal can only hand out tokens for artifacts reachable elsewhere ([PO
 - [x] `plans/PX-W3.md` is approved and merged before implementation.
 - [x] THREAT-MODEL rows for the chosen design, with tests for expiry and revoked licences.
 - [x] OpenAPI and `routeCoverage` cover any new route.
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

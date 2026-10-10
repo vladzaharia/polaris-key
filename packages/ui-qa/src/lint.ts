@@ -184,7 +184,7 @@ export async function runLint(
 }
 
 export const DEBT_COMMENT =
-  "Copy debt on the mockup boards (UI-KITS.md §4.7, §7.3): visible strings that are neither a catalog message, a documented platform variant nor an allowed fixture string (strings.allow.json), recorded when the string lint landed (UK-15). The lint fails on any NEW string not listed here, and on an entry that no longer appears (so the list only shrinks). Clear an entry by fixing the board's copy to the catalog, or by adding the key to packages/brand/kit-copy/en.json (pnpm gen:brand). Re-record only to remove entries: pnpm ui:lint -- --record-string-debt.";
+  "Copy debt on the mockup boards (UI-KITS.md §4.7, §7.3): visible strings that are neither a catalog message, a documented platform variant nor an allowed fixture string (strings.allow.json), recorded when the string lint landed (UK-15). The lint fails on any NEW string not listed here, and on an entry that no longer appears (so the list only shrinks). Clear an entry by fixing the board's copy to the catalog, or by adding the key to packages/brand/kit-copy/en.json (pnpm gen brand). Re-record only to remove entries: pnpm ui:lint -- --record-string-debt.";
 
 export function format(run: LintRun): string {
   const lines: string[] = [];

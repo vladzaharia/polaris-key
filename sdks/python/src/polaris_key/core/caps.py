@@ -16,7 +16,7 @@ service is off, :meth:`CoreContext.require_service`) raises the same :class:`Uns
 fields with the older code ``service-unavailable``, which existing callers match on.
 
 THE TABLE IS DATA. ``CAPABILITIES`` is generated from ``sdks/python/parity.json`` into
-:mod:`polaris_key.constants_generated` by ``pnpm gen:constants``; ``pnpm parity:check`` fails
+:mod:`polaris_key.constants_generated` by ``pnpm gen constants``; ``pnpm parity:check`` fails
 when the two disagree. A ``runtime`` N/A holds wherever the runtime is; any other declared
 reason names a DETECTOR the client runs, and :func:`validate_detectors` refuses a client whose
 detectors and table differ.

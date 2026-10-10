@@ -1,8 +1,8 @@
 // The checkout's conformance data, found from this source file through `#filePath` (P0-44).
 //
 // The Swift tests read `conformance/` in place, as the Node, Python and Kotlin runners do: the
-// corpus in `conformance/corpus/v2/` (written by `pnpm gen:corpus`), its `content/` directory and
-// the HTTP transcripts in `conformance/transcripts/` (written by `pnpm gen:transcripts`). Nothing
+// corpus in `conformance/corpus/v2/` (written by `pnpm gen corpus`), its `content/` directory and
+// the HTTP transcripts in `conformance/transcripts/` (written by `pnpm gen transcripts`). Nothing
 // is copied into the test bundle. `#filePath` is this file's absolute path at compile time, so
 // `swift test` finds the files from any working directory (CI runs it from the repository root
 // with `--package-path sdks/swift`), as long as the package sits in a monorepo checkout.

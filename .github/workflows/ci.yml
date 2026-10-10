@@ -34,50 +34,15 @@ jobs:
       # adapter is legible at a glance and the check is part of this required job.
       - name: Adapter conformance and spec classification
         run: pnpm --filter @polaris-key/worker exec vitest run test/storefront/ test/ascWriteGate.test.ts test/feedAdapters.test.ts
-      # Parity gate: every SDK's parity.json lists every feature in
-      # conformance/parity/features.json, each implemented entry has a test tagged
-      # `@pkey-feature <id>`, each N/A is one the registry allows, and each planned entry names an
-      # open work package (PARITY §3.2). Read-only; the matrix page is written by the docs generator.
-      - run: pnpm parity:check
       - run: pnpm lint
-      # Drift gate: the cross-language conformance corpus must be regenerable in place.
-      - run: pnpm gen:corpus -- --check
-      # Drift gate: the HTTP transcripts (conformance/transcripts/ + the Godot mirror) must
-      # re-record identically through the Worker router. `pnpm test` runs the same check inside
-      # the worker suite; this step names it, so a stale transcript is legible at a glance.
-      - run: pnpm gen:transcripts -- --check
-      # Service-table drift: every language's generated service constants must match
-      # tools/services.json (tools/gen-services.ts regenerates in memory; exit 1 on any difference).
-      - run: pnpm gen:services -- --check
-      # SDK-constants drift: every SDK's generated constants module (error codes, header names,
-      # enums, feature ids, versions) must match its sources, and conformance/parity/errors.json
-      # must list every wire code the Worker's source emits (tools/gen-sdk-constants.ts).
-      - run: pnpm gen:constants -- --check
-      # Platform-inventory drift (ST-02): every Env member in packages/worker/src/env.ts carries an
-      # @inventory tag, src/platformInventory.generated.ts matches them, wrangler.toml names every
-      # var and secret (secrets in its required-secrets comment) and declares nothing Env lacks.
-      - run: pnpm gen:platform-inventory -- --check
-      # Settings drift (ST-06): the settings reference page and the console's settings search index
-      # are generated from the settings registry; the worker suite's settings-coverage test is the
-      # other half (every *_source column, settings table, Env member and manifest field has a home).
-      - run: pnpm gen:settings -- --check
-      # Brand-token drift: @polaris-key/brand's generated outputs (tokens.css, the Tailwind v4 theme,
-      # tokens.json, the TS constants and kit templates, the Godot and Swift token files) must match
-      # packages/brand/src/tokens/ and the launch-kit copy (packages/brand/scripts/gen.ts).
-      - run: pnpm gen:brand -- --check
-      # Action-bundle drift (P2-06): actions/publish/dist/index.js is the committed esbuild bundle
-      # of @polaris-key/cli that the polaris-key/publish Action runs (and the pkey image ships as
-      # pkey.mjs). Rebuilt in memory from the built workspace; exit 1 on any difference.
-      - run: pnpm --filter @polaris-key/cli bundle:action -- --check
-      # Mirror drift: a `pnpm gen:mirrors -- --check` gate is intentionally omitted.
-      # tools/gen-mirrors.ts supports --check, but it REQUIRES --catalog <path> and
-      # --out-dir <dir> (no defaults) and no product currently emits typed mirrors
-      # (djdl is purely data-driven, reading the catalog at runtime). The root
-      # `gen:mirrors` script has no catalog/out-dir wired in, so a bare invocation
-      # would exit 2 (usage error), not perform a real drift check. Re-enable this
-      # gate once a product opts into generated mirrors and wires up the paths, e.g.:
-      #   pnpm gen:mirrors -- --catalog products/<slug>/catalog.json \
-      #     --out-dir <mirror-dir> --lang ts,python,swift --check
+      # Every drift gate, from the generator registry (tools/generators.ts): the signed conformance
+      # corpus, the HTTP transcripts, the service table, the SDK constants, the platform inventory,
+      # the storefront CI plane, the settings reference, the brand tokens, the publish Action's bundle
+      # (rebuilt in memory from the built workspace), the docs reference pages, the parity gate (every
+      # SDK's parity.json against conformance/parity/features.json), the program INDEX and the
+      # generators page. Each is regenerated in memory; exit 1 on any difference. A new generator is
+      # one registry entry and needs no change here.
+      - run: pnpm gen --check
       - run: pnpm --filter @polaris-key/admin build
       # The docs site is built by `pnpm build` (turbo); assembling proves the worker's
       # single [assets] root composes from both frontends before any deploy does it.

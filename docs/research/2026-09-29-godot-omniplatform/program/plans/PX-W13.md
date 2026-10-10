@@ -120,7 +120,7 @@ first creates it.
   (equal to `FLOW_TTL_SECONDS`, `oidc.ts:93`).
 - Types: `ClientKind = "web" | "native" | "device"`, `ClientRecord`, `SignInRequestView`,
   `AppConsentView`, `ConsentItem`, and `DeviceStartResponse` (with `deviceName`).
-- `gen:constants` carries the constants into every SDK.
+- `gen constants` carries the constants into every SDK.
 
 **`client-core`** gains `normalizeDeviceLabel(raw): string | null` (`src/deviceLabel.ts`, exported
 from the index). It is the reference implementation of §2.1. **`shared-jws` does not change.**
@@ -260,7 +260,7 @@ The file is append-only with `deviceLabelVersion: 1`, and a changed rule bumps t
 asserts `normalizeDeviceLabel` against every row: `conformance/runners/node`, Python, Swift, Godot
 and Kotlin `gradle test`. The Worker test reads the same file.
 
-**Transcripts** (`packages/worker/test/transcripts/scenarios/identity.ts`, `pnpm gen:transcripts`,
+**Transcripts** (`packages/worker/test/transcripts/scenarios/identity.ts`, `pnpm gen transcripts`,
 which also writes the Swift and Godot mirrors):
 
 | File                      | Change                                                                                                                                                  |
@@ -285,7 +285,7 @@ feeds it to the SDK's default-label hook. If §8 Q2 is yes, `activate-enroll-dea
 ## 5. SDKs and UI kits, in order
 
 Each SDK passes the corpus rows, replays §4's transcripts, and passes `parity:check` and
-`gen:constants -- --check`.
+`gen constants --check`.
 
 1. **Node** (`packages/sdk-node`, over `client-core`): this is the reference.
    - `configure({deviceName})` and the §2.1 default;
@@ -403,9 +403,9 @@ rule existed. No feature flag is needed: everything is additive or unused until 
 ```sh
 N="mise exec node@22 --"
 $N pnpm build && $N pnpm typecheck
-$N pnpm gen:corpus -- --check          # device-label.json and its Swift and Godot mirrors
-$N pnpm gen:transcripts -- --check     # §4 files and mirrors
-$N pnpm gen:constants -- --check       # label and handle constants in every SDK
+$N pnpm gen corpus --check          # device-label.json and its Swift and Godot mirrors
+$N pnpm gen transcripts --check     # §4 files and mirrors
+$N pnpm gen constants --check       # label and handle constants in every SDK
 $N pnpm parity:check                   # identity.devicelabel in six parity.json
 $N pnpm --filter @polaris-key/shared-manifest test   # rule 9 rows for both codes
 $N pnpm --filter @polaris-key/shared-protocol test   # exports layout

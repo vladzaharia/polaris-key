@@ -68,7 +68,7 @@ The product page's Cloud Sync section needs these ([PORTAL.md §10.2](../../../.
 - [ ] S-17's gates hold; delete requires a fresh step-up (test).
 - [ ] A THREAT-MODEL row covers export.
 - [ ] OpenAPI and `routeCoverage` cover every new route.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

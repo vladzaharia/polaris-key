@@ -8,7 +8,7 @@
 | Unblocks    | none                                                                                                                                                                             |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                             |
 | Plan mode   | yes: executes the approved [`plans/I-24.md`](../plans/I-24.md) §5 (SDKs and UI kits)                                                                                             |
-| Gates       | plan mode; all six SDKs (`parity:check`, `gen:constants -- --check`); transcripts replayed; UI-kit snapshots; macOS and Android CI                                               |
+| Gates       | plan mode; all six SDKs (`parity:check`, `gen constants --check`); transcripts replayed; UI-kit snapshots; macOS and Android CI                                                  |
 | Human input | none                                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                        |
 
@@ -93,7 +93,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ```sh
 mise exec node@22 -- pnpm parity:check
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen constants --check
 ```
 
 ## Hand-off

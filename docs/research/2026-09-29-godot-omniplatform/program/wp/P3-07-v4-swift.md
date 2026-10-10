@@ -182,7 +182,7 @@ parts iOS needs must live in `PolarisKeyCore`.
 ```sh
 ( cd sdks/swift && swift build && swift test )
 ( cd sdks/swift && swift test --filter UpdateMatrixTests )
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

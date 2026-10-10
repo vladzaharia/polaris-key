@@ -1821,7 +1821,7 @@ question:
 **Conformance:** the `LicenseChoice` rows of `ui-matrix.json`'s `signIn` family (UK-02b: loading,
 many, one, current, keep, new, create, all-full, sign-in, mixed, replace-open, raced, none-keys,
 none-no-keys, none-replaceable, grant-expired), and I-04 §C's transcripts plus §F.6's `devicecode-sign-in.json`, with
-their Swift and Godot mirrors (`gen:transcripts`).
+their Swift and Godot mirrors (`gen transcripts`).
 
 ### 6.3 Changes to planned contracts
 

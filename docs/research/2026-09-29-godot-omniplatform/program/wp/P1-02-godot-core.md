@@ -203,7 +203,7 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
   A cleared store means a new device id.
 - **Transcripts:** write the fake server so it can serve P1b-03's `conformance/transcripts/*.json`
   format. If P1b-03 has landed when this package starts, add a Godot mirror to
-  `pnpm gen:transcripts` (beside Swift's) and a replayer that filters by `sdks/godot/parity.json`,
+  `pnpm gen transcripts` (beside Swift's) and a replayer that filters by `sdks/godot/parity.json`,
   replaying the `discovery-*` and sync transcripts; otherwise the first Godot package that starts
   after P1b-03 does it.
 - Keep 4.4 syntax (P1-01). Use `@warning_ignore` sparingly; never silence parse errors.
@@ -251,7 +251,7 @@ notes/A5 §2 and §4). The feature ids this work package turns on are `core.veri
 ```sh
 GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_tests.sh
 godot --headless --path sdks/godot -- --pkey-test core,conformance
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

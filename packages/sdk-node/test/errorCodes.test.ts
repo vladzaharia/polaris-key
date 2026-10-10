@@ -1,6 +1,6 @@
 // @pkey-feature core.errors
 // Every error code this SDK raises is in the shared registry (conformance/parity/errors.json,
-// generated into `src/constants.generated.ts` by `pnpm gen:constants`).
+// generated into `src/constants.generated.ts` by `pnpm gen constants`).
 //
 // The scan reads `src/**` for the literals a host can match on: `PolarisError("<code>", …)` (and
 // a `?? "<code>"` fallback inside one), and `readonly code = "<code>"` on the SDK's own error

@@ -3,7 +3,7 @@
 // A port of `conformance/runners/node/transcriptReplay.ts` — the same rules, so every SDK is held
 // to one recording in one way. The format is documented once, in
 // `packages/worker/test/transcripts/format.ts`; the files are read from the checkout's
-// `conformance/transcripts/` through `CorpusLocator` (written by `pnpm gen:transcripts`, never by
+// `conformance/transcripts/` through `CorpusLocator` (written by `pnpm gen transcripts`, never by
 // hand).
 //
 // The server never throws out of the transport: an SDK is entitled to swallow a transport error

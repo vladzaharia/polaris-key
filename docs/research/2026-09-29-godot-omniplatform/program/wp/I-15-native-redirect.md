@@ -1,16 +1,16 @@
 # I-15 Native redirect sign-in: loopback, claimed-HTTPS and registered-scheme redirects on I-08's token route, retire `/auth/poll`, `signIn({redirect})` in all six SDKs (system browser only)
 
-| Field       | Value                                                                                                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)                                                                                |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                |
-| Depends on  | [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md)                                  |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14](PX-14-passthrough-header.md)                                                                                          |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                  |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-15.md` first; it needs human approval before code                                                                            |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL |
-| Human input | none                                                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                             |
+| Field       | Value                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)                                                                             |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                             |
+| Depends on  | [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md)                               |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14](PX-14-passthrough-header.md)                                                                                       |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                               |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-15.md` first; it needs human approval before code                                                                         |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL |
+| Human input | none                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                          |
 
 ## Amendments from approved plans (2026-10-05)
 

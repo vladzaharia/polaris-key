@@ -1702,7 +1702,7 @@ U-18 before any SDK work [I]:
     sent (their body shapes), the events emitted with `origin`, and `status()`.
 - **Generation.** A reference client state machine and an in-memory reference server, both in
   `client-core`, generate the expected outputs with a `gen:sync-scenarios` script and a
-  `--check` drift gate, as `gen:transcripts` does. The scenario files are data, so each SDK needs
+  `--check` drift gate, as `gen transcripts` does. The scenario files are data, so each SDK needs
   only a runner.
 - **Runners.** Each SDK's test suite replays every scenario through a fake clock and a fake
   transport that serves the scripted responses and records requests. Each SDK adds a parity id,

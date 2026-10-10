@@ -1,6 +1,6 @@
 /**
  * ST-06 (notes/S-18 §4.13 item 3): the settings reference page and the console's settings
- * search index are generated from the registry, and `pnpm gen:settings -- --check` fails when
+ * search index are generated from the registry, and `pnpm gen settings --check` fails when
  * either is stale. This suite byte-compares both, so `pnpm test` fails on a stale page too, and
  * pins that the outputs follow the registry.
  */
@@ -22,7 +22,7 @@ import { SETTINGS } from "../src/mount.js";
 import { NOT_A_SETTING } from "../scripts/settings-coverage.js";
 
 describe("the generated settings outputs (ST-06)", () => {
-  it("are up to date (pnpm gen:settings)", async () => {
+  it("are up to date (pnpm gen settings)", async () => {
     const rendered = await renderAll();
     expect(Object.keys(rendered).sort()).toEqual(
       [INDEX_PATH, DOCS_PATH].sort(),
@@ -30,7 +30,7 @@ describe("the generated settings outputs (ST-06)", () => {
     for (const [path, content] of Object.entries(rendered))
       expect(
         readFileSync(join(ROOT, path), "utf8"),
-        `${path} is stale: run pnpm gen:settings`,
+        `${path} is stale: run pnpm gen settings`,
       ).toBe(content);
   });
 

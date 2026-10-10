@@ -4525,7 +4525,7 @@
     {
       "id": "B2.1",
       "kind": "decision",
-      "title": "New token role action-neutral generated via pnpm gen:brand",
+      "title": "New token role action-neutral generated via pnpm gen brand",
       "source": "_brand/DECISIONS.md B2",
       "area": "decisions",
       "owners": ["UK-58"],
@@ -6578,7 +6578,7 @@
       "owners": ["UK-01", "UK-29"],
       "built": "partial",
       "evidence": "packages/brand/scripts/gen.ts targets; sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd, sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift, sdks/python/src/polaris_key/ui/_tokens.py, packages/sdk-node/src/cli/tokens.generated.ts",
-      "note": "Swift/Godot/Kotlin/Python/Node generated and drift-gated (gen:brand). C# PKeyBrand.generated.cs is UK-29 (todo)."
+      "note": "Swift/Godot/Kotlin/Python/Node generated and drift-gated (gen brand). C# PKeyBrand.generated.cs is UK-29 (todo)."
     },
     {
       "id": "doc:BRAND#12.1-sdk-ui",
@@ -6811,12 +6811,12 @@
     {
       "id": "doc:UI-KITS#2.2-the-drift-gate",
       "kind": "doc-section",
-      "title": "Drift gate: gen:brand --check over all outputs",
+      "title": "Drift gate: gen brand --check over all outputs",
       "source": "docs/design/UI-KITS.md §2.2",
       "area": "UI-KITS",
       "owners": ["UK-01"],
       "built": "built",
-      "evidence": "package.json gen:brand, packages/brand/test/generated.test.ts, packages/brand/scripts/gen.ts (--check)"
+      "evidence": "package.json gen brand, packages/brand/test/generated.test.ts, packages/brand/scripts/gen.ts (--check)"
     },
     {
       "id": "doc:UI-KITS#3-one-theme-api",

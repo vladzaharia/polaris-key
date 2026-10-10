@@ -102,7 +102,7 @@ canonical order, carrying the label, the console summary, `defaultEnabled`, the 
 `requires` edges, the legacy `.pkey/product` module names that enable it, the console accent
 token and icon, and the docs path. Core is not a service and has no row.
 
-`pnpm gen:services` (`tools/gen-services.ts`) writes every language's constants from it, each
+`pnpm gen services` (`tools/gen-services.ts`) writes every language's constants from it, each
 file carrying a GENERATED banner:
 
 | Generated file                                                               | Read by                           |
@@ -116,7 +116,7 @@ file carrying a GENERATED banner:
 | `sdks/godot/addons/polaris_key/core/services_generated.gd`                   | the Godot SDK                     |
 | `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt` | the Kotlin SDK                    |
 
-`pnpm gen:services -- --check` regenerates in memory and fails on any difference; it runs in the
+`pnpm gen services --check` regenerates in memory and fails on any difference; it runs in the
 green gate, in CI and in the pre-commit hook. The console and the SDKs get their own generated
 files rather than importing the manifest package because they must not depend on a manifest
 parser.
@@ -134,7 +134,7 @@ work down the list until it passes.
 1. **Confirm the production Worker tolerates unknown slugs.** A newer build writes the new slug
    into `products.services_json`; an older build must carry it through rather than reset the
    record (P0-08). Confirm the production deploy includes that before the first slug ships.
-2. **Add the row** to `tools/services.json` and run `pnpm gen:services`. Commit the generated
+2. **Add the row** to `tools/services.json` and run `pnpm gen services`. Commit the generated
    files with it.
 3. **Directory and descriptor.** Create `packages/worker/src/services/<slug>/` with an
    `index.ts` exporting its `ServiceDescriptor` (`slug: "<slug>"`). `boundaries.test.ts` scans
@@ -159,7 +159,7 @@ work down the list until it passes.
    slug) and its pages (each with a path, an icon and a docs link), a page module in
    `packages/admin/src/console/pages/`, a section accent in
    `@polaris-key/brand` (`packages/brand/src/tokens/services.ts`; its `services.test.ts` fails
-   until there is one, and `gen:brand` emits the `[data-service="<slug>"]` rule), and the row's
+   until there is one, and `gen brand` emits the `[data-service="<slug>"]` rule), and the row's
    icon in `ServicesCard`'s `SERVICE_ICONS` (a type error until it is there).
 10. **Docs.** A `packages/docs/src/content/docs/services/<slug>/` section with an `index` page,
     and its entry under "Services" in `packages/docs/astro.config.mjs`, in table order.

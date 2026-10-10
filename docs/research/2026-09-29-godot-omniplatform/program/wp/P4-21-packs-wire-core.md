@@ -8,7 +8,7 @@
 | Unblocks    | [P4-02](P4-02-pack-deliverables.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-04](P4-04-content-corpus-v1.md)                                             |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                      |
 | Plan mode   | yes: execute the approved `plans/P4-01.md` (its P4-21 parts); the plan's approval is this package's plan-mode gate, as for P3-12                           |
-| Gates       | plan mode; corpus (the corpus lane, one corpus package at a time); drift gates; Action rebundle; threat model; generated docs; constants (`gen:constants`) |
+| Gates       | plan mode; corpus (the corpus lane, one corpus package at a time); drift gates; Action rebundle; threat model; generated docs; constants (`gen constants`) |
 | Human input | none                                                                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
 
@@ -49,12 +49,12 @@ rather than keeping its own copy (decision 33), so these pieces must land first.
   hand-assembled window test.
 - §4.6 whole: `packRecordCases`, `markerCases` and the two rewritten P3-02 cases, signed over
   §4.2's fixed object-ref table, with the 80-check registry, both self-checks and the Node
-  runner's claims and pointer-set sections. Regenerate with `pnpm gen:corpus`; never hand-edit
+  runner's claims and pointer-set sections. Regenerate with `pnpm gen corpus`; never hand-edit
   generated files.
 - `packs.record` in `features.json`.
 - The "Packs on the wire" threat-model section, except its decode sentences.
 - The `errors.json` codes its functions return and the `enums.json` entries its types use
-  (`filesLayout`, `contentCodec`, `packType`, …), via `gen:constants` (§4.8).
+  (`filesLayout`, `contentCodec`, `packType`, …), via `gen constants` (§4.8).
 - The docs gen and the Action rebundle (`bundle:action -- --check`).
 
 **Out:** the content set, `content/cases.json`, `plan-matrix.json`, `content/blobs/refs.json`,
@@ -71,8 +71,8 @@ validator and ingest (P4-02); the CLI (P4-03).
 
 ## Acceptance
 
-- [x] Every case in §4.6 passes in the Node runner; both self-checks pass in `gen:corpus`.
-- [x] `gen:corpus -- --check`, `gen:constants -- --check`, `parity:check`, docs `gen:check` and
+- [x] Every case in §4.6 passes in the Node runner; both self-checks pass in `gen corpus`.
+- [x] `gen corpus --check`, `gen constants --check`, `parity:check`, docs `gen:check` and
       `bundle:action -- --check` are current.
 - [x] `@polaris-key/zstd-wasm` decodes the hand-assembled window test and refuses a window above
       the limit before decoding.

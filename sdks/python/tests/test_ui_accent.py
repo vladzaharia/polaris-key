@@ -1,5 +1,5 @@
 """The Python port of the accent resolver (UI-KITS.md §3.3) against the shared vectors
-(tests/fixtures/accent-vectors.json, written by `pnpm gen:brand` from
+(tests/fixtures/accent-vectors.json, written by `pnpm gen brand` from
 packages/brand/fixtures/accent-vectors.json)."""
 
 from __future__ import annotations

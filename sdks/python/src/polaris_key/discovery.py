@@ -62,7 +62,7 @@ __all__ = [
 
 # SERVICE_SLUGS (the opt-in services, in canonical order) and DEFAULT_ENABLED_SERVICES are
 # GENERATED from the service table (tools/services.json) into ``_services.py`` by
-# ``pnpm gen:services``. Core is not a service — it is always on.
+# ``pnpm gen services``. Core is not a service — it is always on.
 
 #: ``polaris.json`` lives beside the JWKS and the trust manifest under ``.well-known``.
 DISCOVERY_PATH = ".well-known/polaris.json"

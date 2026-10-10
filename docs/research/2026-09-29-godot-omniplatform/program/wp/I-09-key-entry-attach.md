@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md), [I-24a](I-24a-named-user-seats-server.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md), [LX-10](LX-10-anchor-choice.md), [LX-39](LX-39-licences-in-account-need-sign-in-product.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                         |
 | Plan mode   | yes: executes the approved [`plans/I-09.md`](../plans/I-09.md), as [`plans/I-27.md`](../plans/I-27.md) (2026-10-08) §3 and §7.2 amend it, refining [`plans/I-04.md`](../plans/I-04.md)                                                                                                                                                                                                                        |
-| Gates       | plan mode; `errors.json` (rule 3); transcripts (rule 1); `gen:constants -- --check`; rule 9 (validator rules, mutation table, schema) and `bundle:action -- --check`; rule 10 (OpenAPI + `routeCoverage`); D1 migration; `TABLE_OWNERS`; THREAT-MODEL                                                                                                                                                         |
+| Gates       | plan mode; `errors.json` (rule 3); transcripts (rule 1); `gen constants --check`; rule 9 (validator rules, mutation table, schema) and `bundle:action -- --check`; rule 10 (OpenAPI + `routeCoverage`); D1 migration; `TABLE_OWNERS`; THREAT-MODEL                                                                                                                                                            |
 | Human input | none                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                     |
 
@@ -117,7 +117,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- license activation identity attach enroll
 mise exec node@22 -- pnpm --filter @polaris-key/shared-manifest test
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 ## Hand-off

@@ -62,7 +62,7 @@ delegated to the lead).
   row under the registry key itself (scalar storage, no A-13 alias): no row or a tombstone is the
   default `on`, `"off"` is off, and any other value or an unreadable store is off (fail-safe, as an
   A-13 kill switch). It is not an A-13 key, so ST-05's generic API is its writer. The entry is no
-  longer pending; `pnpm gen:settings` regenerated the reference page and the console index (the
+  longer pending; `pnpm gen settings` regenerated the reference page and the console index (the
   index has no console consumer yet).
 - **At most one identity path per product.** `identityTier` returns one grant (the first mapped
   group, else the `oidcDefault` rule), and the claim mints exactly that. A group member of a product
@@ -123,7 +123,7 @@ delegated to the lead).
 - [x] `boundaries.test.ts` passes.
 - [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header
       (`/Users/vlad/Repos/pk-wt/_lead/gate.sh`, GATE GREEN, scope changed; workerd typecheck and
-      smoke included; `pnpm gen:settings -- --check` up to date).
+      smoke included; `pnpm gen settings --check` up to date).
 
 ## Verify
 

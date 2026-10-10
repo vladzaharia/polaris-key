@@ -1,16 +1,16 @@
 # SP-23 Godot copy API (`core.copy`): `copy.message(code)` and `copy.title(code)` over `PKeyCoreCopy` with fallback and placeholder fill; the kit's `PKeyUiCopy` reads it
 
-| Field       | Value                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                               |
-| Size        | 0.3–0.5 engineer-weeks                                                                  |
-| Depends on  | none                                                                                    |
-| Unblocks    | none                                                                                    |
-| Role        | `pkey-godot-engineer`                                                                   |
-| Plan mode   | no                                                                                      |
-| Gates       | the Godot runner; `gen:constants -- --check`; `parity:check`; the generated parity page |
-| Human input | none                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                               |
+| Field       | Value                                                                                |
+| ----------- | ------------------------------------------------------------------------------------ |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                            |
+| Size        | 0.3–0.5 engineer-weeks                                                               |
+| Depends on  | none                                                                                 |
+| Unblocks    | none                                                                                 |
+| Role        | `pkey-godot-engineer`                                                                |
+| Plan mode   | no                                                                                   |
+| Gates       | the Godot runner; `gen constants --check`; `parity:check`; the generated parity page |
+| Human input | none                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                            |
 
 ## Consolidation 2026-10-07
 

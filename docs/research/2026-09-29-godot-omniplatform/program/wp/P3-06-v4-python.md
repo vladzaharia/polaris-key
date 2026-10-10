@@ -166,7 +166,7 @@ in [README §8](../../README.md#8-carrying-the-concepts-to-the-other-sdks-and-pr
 ```sh
 ( cd sdks/python && .venv/bin/python -m pytest -q )
 ( cd sdks/python && .venv/bin/python -m pytest -q tests/test_conformance.py tests/test_update_matrix.py )
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

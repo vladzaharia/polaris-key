@@ -1,4 +1,4 @@
-// The accent resolver's shared vectors: INPUTS ONLY. `pnpm gen:brand` runs src/accent.ts over
+// The accent resolver's shared vectors: INPUTS ONLY. `pnpm gen brand` runs src/accent.ts over
 // them and writes fixtures/accent-vectors.json plus a copy (or native literals) into every SDK's
 // tests, so the Swift, Kotlin, GDScript and Python ports are held to the TypeScript answer and a
 // change to the algorithm cannot land without every port following (UI-KITS.md §3.3).

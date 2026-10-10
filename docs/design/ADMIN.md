@@ -165,7 +165,7 @@ alias layer in admin absorbs the difference:
 
 `tools/services.json`'s `console.accent` values (`key`, `id`, …) become the brand `ServiceId`s
 (`license`, `identity`, …). This is a service-table change, so it must be regenerated with
-`pnpm gen:services` and pass `pnpm gen:services -- --check`. Alternatively, `console.accent` is
+`pnpm gen services` and pass `pnpm gen services --check`. Alternatively, `console.accent` is
 dropped in favor of the brand's `SERVICE_FAMILY`; that is the brand lead's call, and either works.
 
 ### 0.4 Stack decisions
@@ -2235,7 +2235,7 @@ in parallel on disjoint files. Chunk 12 (portal) can start after chunk 3.
   the last old view (chunk 11).
   Superseded (2026-10-09, B7): the variable Rubik gives 400/500/600 in UI and 700 only in the
   wordmark; ST-50 sweeps the console's `font-bold` uses to 500/600.
-- `data-service` values to brand `ServiceId`s, with `tools/services.json` and `gen:services`
+- `data-service` values to brand `ServiceId`s, with `tools/services.json` and `gen services`
   (§0.3).
 - Favicons and manifest from the kit's `04-web/key`.
 
@@ -2775,13 +2775,13 @@ does not apply. Each addition still needs:
   - `mise exec node@22 -- pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`,
     `pnpm --filter @polaris-key/admin build`, `pnpm --filter @polaris-key/worker assemble`,
     `pnpm --filter @polaris-key/docs check:links`.
-  - The pre-commit hook (`gen:corpus --check`, `gen:services --check`, typecheck).
-- **Chunk 1:** `pnpm gen:services -- --check` after the `tools/services.json` accent change.
+  - The pre-commit hook (`gen corpus --check`, `gen services --check`, typecheck).
+- **Chunk 1:** `pnpm gen services --check` after the `tools/services.json` accent change.
 - **Chunk 2 and any chunk touching docs links:** `packages/worker/test/docsLinks.test.ts` (help-link
   drift gate) and `check:links`.
 - **Chunks with worker additions (A-\*):** `pnpm --filter @polaris-key/worker typecheck:workerd` and
   `test:workerd`.
-- **`gen:transcripts`:** no wire changes are planned, so `gen:transcripts -- --check` must stay
+- **`gen transcripts`:** no wire changes are planned, so `gen transcripts --check` must stay
   green. If it does not, the chunk changed a public route by mistake.
 
 ---

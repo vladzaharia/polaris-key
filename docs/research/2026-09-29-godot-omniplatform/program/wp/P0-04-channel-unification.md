@@ -1,16 +1,16 @@
 # P0-04 Unify the licence-gate and Release channel vocabularies
 
-| Field       | Value                                                                                                                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P0: Hygiene, unblockers and code quality                                                                                 |
-| Size        | 1–1.25 engineer-weeks                                                                                                    |
-| Depends on  | none                                                                                                                     |
-| Unblocks    | [P1-03](P1-03-godot-license.md), [P1b-05](P1b-05-runners.md)                                                             |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                     |
-| Plan mode   | **yes**: `program/plans/P0-04.md` must be approved (merged) before any code                                              |
-| Gates       | plan mode; corpus `gate-matrix.json` + the mirrors (Swift, Godot) (`pnpm gen:corpus -- --check`); all SDKs; catalog data |
-| Human input | approval of the plan and its open questions; djdl's own `.pkey/schema` edit (follow-up, not blocking)                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                |
+| Field       | Value                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality                                                                              |
+| Size        | 1–1.25 engineer-weeks                                                                                                 |
+| Depends on  | none                                                                                                                  |
+| Unblocks    | [P1-03](P1-03-godot-license.md), [P1b-05](P1b-05-runners.md)                                                          |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                  |
+| Plan mode   | **yes**: `program/plans/P0-04.md` must be approved (merged) before any code                                           |
+| Gates       | plan mode; corpus `gate-matrix.json` + the mirrors (Swift, Godot) (`pnpm gen corpus --check`); all SDKs; catalog data |
+| Human input | approval of the plan and its open questions; djdl's own `.pkey/schema` edit (follow-up, not blocking)                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                             |
 
 ## Goal
 
@@ -94,7 +94,7 @@ order is contract → catalog → corpus → every SDK:
    aliases. `shared-protocol` gains the shared constants if the plan wants them (plan mode covers it).
 2. **Catalog.** `products/djdl/catalog.json` `channels` enum (use the `adding-a-catalog-entry`
    skill; the schema version rule applies).
-3. **Corpus.** Append rows in `buildGateMatrixV2`; run `pnpm gen:corpus`; commit
+3. **Corpus.** Append rows in `buildGateMatrixV2`; run `pnpm gen corpus`; commit
    `conformance/corpus/v2/gate-matrix.json` and the mirrors (Swift, Godot)
    `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` together. Never edit carried rows (rule 1).
 4. **SDKs.** Node (`sdk-node`, via `client-core`), React (`client-core`; the browser adapter sends
@@ -149,7 +149,7 @@ entitlement`.
 2. After approval: server gate, shared predicate, Release alias, tests (`test/gate.test.ts`,
    `test/attack/R3-licensing.test.ts`, `test/licensing.test.ts`, `test/release.test.ts`).
 3. Catalog fixture and console picker.
-4. Corpus rows, `pnpm gen:corpus`, mirror, then the Node, Python and Swift runner ports.
+4. Corpus rows, `pnpm gen corpus`, mirror, then the Node, Python and Swift runner ports.
 5. SDKs: `client-core`, Python, Swift; SDK unit tests for `channelForVersion`.
 6. Docs; changeset entries for every published package touched.
 
@@ -162,7 +162,7 @@ entitlement`.
 - [x] Worker test: `/update/staging/appcast.xml` resolves like `beta` unless a manual channel
       `staging` exists.
 - [x] Every new `gate-matrix.json` row passes in the Node runner, `sdks/python` and `sdks/swift`;
-      `pnpm gen:corpus -- --check` is clean, mirror included.
+      `pnpm gen corpus --check` is clean, mirror included.
 - [x] `channelForVersion("0.0.0-beta.3")` is `beta` in `client-core`, Python and Swift.
 - [x] The green gate passes (`AGENTS.md`), including Python and Swift.
 - [x] `parity.json` manifests are updated for every SDK this changes (once P1b-01 has landed).
@@ -170,7 +170,7 @@ entitlement`.
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- gate licensing R3-licensing release
 mise exec node@22 -- pnpm test          # includes client-core, sdk-node, sdk-react, conformance
 ( cd sdks/python && .venv/bin/python -m pytest -q tests/test_gate_matrix.py tests/test_gate.py )

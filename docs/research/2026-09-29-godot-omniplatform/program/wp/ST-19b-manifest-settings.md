@@ -8,7 +8,7 @@
 | Unblocks    | [ST-25](ST-25-legacy-retirement.md)                                                         |
 | Role        | `pkey-implementer`                                                                          |
 | Plan mode   | no                                                                                          |
-| Gates       | rule 6 (boundaries); `gen:settings --check` (drift gate); generated docs reference (rule 3) |
+| Gates       | rule 6 (boundaries); `gen settings --check` (drift gate); generated docs reference (rule 3) |
 | Human input | none                                                                                        |
 | Repo        | `vladzaharia/polaris-key`                                                                   |
 
@@ -144,7 +144,7 @@ the same count (21 in total).
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test settings
-mise exec node@22 -- pnpm gen:settings -- --check
+mise exec node@22 -- pnpm gen settings --check
 mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 ```
 

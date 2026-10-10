@@ -255,7 +255,7 @@ Per-app integration mode with **no network code paths active**: Swift by not lin
 
 | Risk                                                  | Mitigation                                                                                                 |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 4-language corpus lockstep during a wire break        | Corpus-first (P0); `gen:corpus --check` remains the CI drift gate; per-language suites all green per phase |
+| 4-language corpus lockstep during a wire break        | Corpus-first (P0); `gen corpus --check` remains the CI drift gate; per-language suites all green per phase |
 | Clock-floor regression while re-orchestrating refresh | Core-owned trust schedule (§3.3); dedicated multi-doc `clockFloorCases` in corpus v2                       |
 | Bundle import as new attack surface                   | Pins-only bundle verification, verify-everything-before-write, no partial imports, corpus bundle vectors   |
 | Truth-store arming of R6-12                           | Fix is a blocking requirement of P2, not a follow-up                                                       |
@@ -308,7 +308,7 @@ corpus/v2 is the
 | Risk                                | Outcome                             |
 | ----------------------------------- | ----------------------------------- |
 | 4-language corpus lockstep during   | **Held.** One generator, one        |
-| a wire break                        | corpus, four runners; gen:corpus -- |
+| a wire break                        | corpus, four runners; gen corpus -- |
 | --check is the drift gate and       |
 | stayed green through the A1         |
 | identifier flip, which re-signed    |

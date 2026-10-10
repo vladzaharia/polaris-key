@@ -263,7 +263,7 @@ The spike note [`notes/S-08-cloudflare-async-compute.md`](../../notes/S-08-cloud
 - **The report test lives in `test/register.test.ts`.** The brief's pointer is right. The comment
   in `core/devices.ts` still names `licensingEdge.test.ts`.
 - **HTTP transcripts were regenerated.** The report allowlist the transcripts record (`allowedKeys`)
-  gained `packInstalls`. The regeneration ran through `pnpm gen:transcripts`, with the Swift and
+  gained `packInstalls`. The regeneration ran through `pnpm gen transcripts`, with the Swift and
   Godot mirrors.
 - **The `dev` queues do not exist yet.** `wrangler.toml` and `wrangler.deltas.toml` bind
   `pkey-deltas-dev` and `pkey-deltas-dlq-dev` for the `dev` environment, as for the others. They

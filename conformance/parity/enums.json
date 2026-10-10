@@ -1,6 +1,6 @@
 {
   "$schema": "./enums.schema.json",
-  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen:constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values. Pack types (P4-21), patch strategies and transports (P4-04) come from plans/P4-01.md; bindings are added when their owner defines them. The outlet and update vocabularies are plans/P3-01.md §2.8's tables, in their order, and equal the constants in `@polaris-key/protocol/distribution` and `/update` (a reserved value such as `packs` joins an enum only with its own plan-mode package). The version schemes are not an enum: `semver+build` and `4part` are not identifiers.",
+  "$comment": "Closed vocabularies every SDK spells identically. `pnpm gen constants` generates one constant group per enum in every SDK (tools/gen-sdk-constants.ts). These are the CANONICAL values. Pack types (P4-21), patch strategies and transports (P4-04) come from plans/P4-01.md; bindings are added when their owner defines them. The outlet and update vocabularies are plans/P3-01.md §2.8's tables, in their order, and equal the constants in `@polaris-key/protocol/distribution` and `/update` (a reserved value such as `packs` joins an enum only with its own plan-mode package). The version schemes are not an enum: `semver+build` and `4part` are not identifiers.",
   "enums": [
     {
       "name": "platform",

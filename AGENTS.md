@@ -78,7 +78,7 @@ browser conformance runners. Python, Swift, Godot and Kotlin are standalone tool
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
 opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`, `sync`). The services
 are declared
-once, as rows of `tools/services.json`; `pnpm gen:services` generates every language's slug
+once, as rows of `tools/services.json`; `pnpm gen services` generates every language's slug
 constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
 `SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`. Release, Distribution and Update form a
 chain (release ← distribution ← update, coherence codes `distribution_requires_release` and
@@ -106,17 +106,12 @@ already covers the source files.
 
 ```sh
 pnpm build                       # build all JS packages (turbo)
-pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in place)
-pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
-pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
-pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
-pnpm gen:platform-inventory -- --check  # platform-inventory drift gate (Env ↔ inventory ↔ wrangler.toml)
-pnpm gen:settings -- --check     # settings drift gate (registry → settings reference page + console search index)
-pnpm gen:brand -- --check        # brand-token drift gate (packages/brand → CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin)
-pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
+pnpm gen --check                 # every generator's drift gate, from the registry (tools/generators.ts):
+                                 # corpus, transcripts, services, constants, platform inventory, storefront CI,
+                                 # settings, brand, Action bundle (after pnpm build), docs reference,
+                                 # parity, program INDEX, registry docs
 pnpm ui:lint                     # UI-kit modernity + string + kit-source lint (needs Chromium; CI job ui-kits)
 pnpm ui:report                   # UI kits side by side per state; fails only on a React/elements pixel drift
-pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
                                  # except the browser runner below
@@ -159,8 +154,8 @@ see `sdks/kotlin/README.md`). Note that
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 
-The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corpus -- --check`,
-`pnpm gen:services -- --check` and `pnpm typecheck`). A green hook is not a green gate.
+The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen --fast --check`, the cheap
+families, and `pnpm typecheck`). A green hook is not a green gate.
 
 ## Hard rules
 
@@ -174,8 +169,8 @@ pack reads only `res://`; `content/` is not mirrored). Every other runner, Swift
 no Swift copy (P0-44 retired `sdks/swift/Tests/PolarisKeyTests/Resources/`). The generator is
 `tools/sign-corpus.ts`, a driver over one module per family in `tools/corpus/` and the
 independent reference implementations in `tools/corpus/reference/`.
-Regenerate with `pnpm gen:corpus` and commit the result in the same change.
-`pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, the mirror included,
+Regenerate with `pnpm gen corpus` and commit the result in the same change.
+`pnpm gen corpus --check` regenerates in memory and fails on any difference, the mirror included,
 on a stray JSON file in either directory, and on the retired Swift mirror's directory. `conformance/corpus/v2/content/blobs/` is the opposite:
 generator **inputs** (the zstd blobs, the `pkey-chunks/1` indexes and bundles, and `refs.json`),
 hash-checked against `content/cases.json`'s `blobs` table and never rewritten by a normal or
@@ -184,7 +179,7 @@ and it may only **add** blobs and `refs.json` entries: it throws, writing nothin
 one would change (plans/P4-10.md decision 15). Changing an existing blob is a PR of its own. Never weaken a runner to make a change "pass". The same
 holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Godot mirror at
 `sdks/godot/tests/transcripts/` are recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through
-`pnpm gen:transcripts`; a Worker change that alters a recorded response regenerates them in the
+`pnpm gen transcripts`; a Worker change that alters a recorded response regenerates them in the
 same change, and the SDK replayers then show which SDKs must follow.
 
 **2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The constant lives in
@@ -199,26 +194,43 @@ a deliberate, all-languages event: contract → catalog → corpus → SDKs, in 
 feature is not done until every implementation passes (client-core, Node, React, Python, Swift,
 Godot, and Kotlin for the features its parity manifest has implemented).
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Ten families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** `tools/generators.ts` declares every family once; `pnpm gen` regenerates them and `pnpm gen --check` is the one drift gate:
 
-| File(s)                                                                                                                                                                                                                                                                                                                                                                                                                  | Written by                                                                                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`                                                                                                                                                                                                                                                                                                                                                                               | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                                                                                                                      |
-| `packages/docs/src/content/docs/reference/*.mdx`                                                                                                                                                                                                                                                                                                                                                                         | `pnpm --filter @polaris-key/docs gen`                                                                                                                                                                                  |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`, `ServiceSlug.generated.kt`                                                                                                                                                                                                                                                                                             | `pnpm gen:services` from `tools/services.json`                                                                                                                                                                         |
-| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`, `Constants.generated.kt`; the core copy modules `copy.generated.ts`, `copy_generated.py`, `Copy.generated.swift`, `copy_generated.gd`, `Copy.generated.kt`                                                                                                                                                    | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features, `copy.en.json`), the service table and `@polaris-key/protocol/core`                                                                          |
-| `actions/publish/dist/index.js`                                                                                                                                                                                                                                                                                                                                                                                          | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports                                                                                           |
-| `packages/cli/src/storefronts/ciPlane.generated.ts`                                                                                                                                                                                                                                                                                                                                                                      | `pnpm gen:storefront-ci` from the Worker's CI plane (`packages/worker/src/core/storefront/ciPlane.ts`), its CI-plane storefront adapters (A-18h) and the PR plane (`prPlane.ts`, A-18i)                                |
-| `packages/worker/src/platformInventory.generated.ts`                                                                                                                                                                                                                                                                                                                                                                     | `pnpm gen:platform-inventory` from the `@inventory` / `@editable` tags on `Env` in `packages/worker/src/env.ts` (ST-02)                                                                                                |
-| `packages/docs/src/content/docs/reference/settings.mdx`, `packages/admin/src/console/settings.generated.ts`                                                                                                                                                                                                                                                                                                              | `pnpm gen:settings` from the settings registry (`packages/worker/src/core/settings/` and each service's `settings.ts`) and `NOT_A_SETTING` (ST-06)                                                                     |
-| `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*`; the kit copy tables `packages/brand/src/generated/kit-copy/*`, `kitCopy.generated.ts`, `Localizable.xcstrings`, `composeResources/values*/strings.xml`, `ui/locale/*.po(t)` (Godot and Python), `polaris_key/ui/kit_copy_generated.py` | `pnpm gen:brand` from `packages/brand/src/tokens/`, the launch-kit copy in `packages/brand/kit/`, and the kit copy catalog in `packages/brand/kit-copy/` with `conformance/parity/copy.<locale>.json` (plans/UK-02.md) |
-| `pkey sdk` samples: `conformance/runners/node/sdkConfigSample.ts`, `packages/sdk-react/test/sdkConfigSample.ts`, `sdks/python/tests/sdk_config_sample.py`, `sdks/swift/Tests/PolarisKeyTests/SdkConfigSample.swift`, `sdks/kotlin/sdk/src/test/kotlin/polaris/generated/PolarisConfig.kt`, `sdks/godot/tests/sdk_config/polaris_key_config.gd`                                                                           | `PKEY_UPDATE_SAMPLES=1 pnpm --filter @polaris-key/cli test sdkConfig` from `packages/cli/src/sdkConfig.ts` and the fixture discovery document                                                                          |
+<!-- generators:start (generated by `pnpm gen registry-docs`; do not edit) -->
+
+| Family               | Regenerate                    | Writes                                                                            |
+| -------------------- | ----------------------------- | --------------------------------------------------------------------------------- |
+| `corpus`             | `pnpm gen corpus`             | Signed conformance corpus (v2) and its one Godot mirror                           |
+| `ui-matrix`          | `pnpm gen ui-matrix`          | UI-kit state matrix (the corpus's ui-matrix.json)                                 |
+| `services`           | `pnpm gen services`           | Service table in every language                                                   |
+| `transcripts`        | `pnpm gen transcripts`        | HTTP transcripts recorded through the Worker router, and their Godot mirror       |
+| `constants`          | `pnpm gen constants`          | SDK constants: error codes, headers, enums, feature ids, core copy                |
+| `platform-inventory` | `pnpm gen platform-inventory` | Platform inventory from the tagged Env members                                    |
+| `storefront-ci`      | `pnpm gen storefront-ci`      | CLI copy of the Worker's storefront CI plane                                      |
+| `settings`           | `pnpm gen settings`           | Settings reference page and console search index                                  |
+| `brand`              | `pnpm gen brand`              | Brand tokens, launch kit, kit copy and per-SDK theme files                        |
+| `action-bundle`      | `pnpm gen action-bundle`      | The publish Action's committed esbuild bundle of the CLI                          |
+| `docs-reference`     | `pnpm gen docs-reference`     | Docs reference pages generated from the validators, routes, migrations and corpus |
+| `registry-docs`      | `pnpm gen registry-docs`      | This registry as a docs page and the AGENTS.md generated-files table              |
+| `parity`             | `pnpm gen parity`             | Parity gate: every SDK's parity.json against the feature registry                 |
+| `graph-index`        | `pnpm gen graph-index`        | Omniplatform program INDEX.md from workpackages.json                              |
+| `mirrors`            | `pnpm gen mirrors`            | Typed config mirrors for a product catalog, in five languages                     |
+| `sdk-samples`        | `pnpm gen sdk-samples`        | `pkey sdk` configuration samples, one per SDK                                     |
+| `docs-csp`           | `pnpm gen docs-csp`           | Docs-site CSP hashes                                                              |
+| `design-mockups`     | `pnpm gen design-mockups`     | Static design mockups built from their \_src directories                          |
+| `ux-coverage`        | `pnpm gen ux-coverage`        | UX coverage and wave pages from ux-coverage.json                                  |
+
+Inputs and outputs per family: `packages/docs/src/content/docs/reference/generators.mdx`.
+
+<!-- generators:end -->
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
-generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
-table, `pnpm gen:constants -- --check` for the SDK constants, `pnpm gen:brand -- --check` for the
-brand tokens, `pnpm --filter @polaris-key/cli bundle:action -- --check` for the Action bundle,
-`pnpm gen:storefront-ci -- --check` and the worker suite's `ciPlaneGenerated` test for the CI plane, `pnpm gen:platform-inventory -- --check` and the worker suite's `platformInventory` test for the platform inventory, which also fails when `Env`, `wrangler.toml` and the names `src/` reads disagree, `pnpm gen:settings -- --check` and the worker suite's `settings-generated` test for the settings reference and search index, `packages/cli/test/sdkConfig.test.ts` for the `pkey sdk` samples), so a hand edit fails CI rather than shipping. The
+generators) and all have a freshness check, `pnpm gen --check`, so a hand edit fails CI rather than
+shipping. The worker suite's `ciPlaneGenerated`, `platformInventory` (which also fails when `Env`,
+`wrangler.toml` and the names `src/` reads disagree) and `settings-generated` tests, and
+`packages/cli/test/sdkConfig.test.ts` for the `pkey sdk` samples, are the other half. A new
+generator is one entry in `tools/generators.ts`; a test fails when a GENERATED banner has no
+entry. The
 Action bundle inlines `@polaris-key/manifest`, `@polaris-key/catalog` and `@polaris-key/protocol`
 from their built `dist/`, so a change to any of them, or to the CLI, rebundles after `pnpm build`. A new error code needs an entry in `conformance/parity/errors.json` first: the
 constants generator refuses a Worker code it lacks (and a boot-stage code pinned in

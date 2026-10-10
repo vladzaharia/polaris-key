@@ -8,7 +8,7 @@ extends RefCounted
 # @pkey-feature license.manage
 # @pkey-feature release.fetch
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
-# generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
+# generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
 # res://parity.json (sdks/godot/parity.json) makes applicable, against PKeyFakeServer serving the
 # Worker's recorded answers and asserting every request (PKeyTranscriptReplay).

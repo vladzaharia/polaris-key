@@ -24,7 +24,7 @@ import type { PolarisError } from "./types.js";
 
 /**
  * The opt-in services and their canonical order are GENERATED from the service table
- * (`tools/services.json`, via `pnpm gen:services`) into `./services.generated.ts`. Core is not a
+ * (`tools/services.json`, via `pnpm gen services`) into `./services.generated.ts`. Core is not a
  * service — it is always on. Iterate `SERVICE_SLUGS` rather than `Object.keys` so output is
  * stable.
  */

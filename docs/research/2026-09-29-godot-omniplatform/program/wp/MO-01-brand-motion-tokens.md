@@ -1,20 +1,20 @@
-# MO-01 Motion tokens in `@polaris-key/brand`: `micro`, `moderate`, `deliberate`, `shimmer` durations, `emphasized` and `spring` easings, distances, scales, stagger and delays through `gen:brand` to CSS, Tailwind, TS, JSON and the kit languages; BRAND §7.5 and UI-KITS §4.8 updated
+# MO-01 Motion tokens in `@polaris-key/brand`: `micro`, `moderate`, `deliberate`, `shimmer` durations, `emphasized` and `spring` easings, distances, scales, stagger and delays through `gen brand` to CSS, Tailwind, TS, JSON and the kit languages; BRAND §7.5 and UI-KITS §4.8 updated
 
-| Field       | Value                                                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | MO: Motion system (notes/S-23) (wave 1: foundation)                                                                                                 |
-| Size        | 0.3–0.5 engineer-weeks                                                                                                                              |
-| Depends on  | none                                                                                                                                                |
-| Unblocks    | [MO-02](MO-02-motion-layer.md)                                                                                                                      |
-| Role        | `pkey-implementer`                                                                                                                                  |
-| Plan mode   | no                                                                                                                                                  |
-| Gates       | `pnpm gen:brand -- --check` (brand-token drift gate); the brand package tests; `pnpm --filter @polaris-key/docs check:links` if a docs page changes |
-| Human input | none                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                           |
+| Field       | Value                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | MO: Motion system (notes/S-23) (wave 1: foundation)                                                                                              |
+| Size        | 0.3–0.5 engineer-weeks                                                                                                                           |
+| Depends on  | none                                                                                                                                             |
+| Unblocks    | [MO-02](MO-02-motion-layer.md)                                                                                                                   |
+| Role        | `pkey-implementer`                                                                                                                               |
+| Plan mode   | no                                                                                                                                               |
+| Gates       | `pnpm gen brand --check` (brand-token drift gate); the brand package tests; `pnpm --filter @polaris-key/docs check:links` if a docs page changes |
+| Human input | none                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                        |
 
 ## Goal
 
-`packages/brand` owns the whole motion token set of notes/S-23 §5: `gen:brand` emits the new durations, easings, distances, scales, stagger and delays into `css/tokens.css` (`--pk-*`, collapsing to 0 under `prefers-reduced-motion: reduce` **and** `:root[data-motion="reduce"]`), `css/theme.css` (Tailwind `--ease-*`), `tokens.json`, `src/generated/tokens.ts` and the Swift, Kotlin and GDScript constants; BRAND.md §7.5 and UI-KITS.md §4.8 describe the one system.
+`packages/brand` owns the whole motion token set of notes/S-23 §5: `gen brand` emits the new durations, easings, distances, scales, stagger and delays into `css/tokens.css` (`--pk-*`, collapsing to 0 under `prefers-reduced-motion: reduce` **and** `:root[data-motion="reduce"]`), `css/theme.css` (Tailwind `--ease-*`), `tokens.json`, `src/generated/tokens.ts` and the Swift, Kotlin and GDScript constants; BRAND.md §7.5 and UI-KITS.md §4.8 describe the one system.
 
 ## Why
 
@@ -79,13 +79,13 @@ Every later MO package, the UI kits and the sign-in card (SIGN-IN.md §3.18, whi
 ## Steps
 
 1. Extend `MOTION` and the kit motion tables.
-2. Teach `gen.ts` and `gen-kit.ts` the new groups and both reduced-motion selectors; regenerate (`pnpm gen:brand`).
+2. Teach `gen.ts` and `gen-kit.ts` the new groups and both reduced-motion selectors; regenerate (`pnpm gen brand`).
 3. Add brand tests: every duration collapses under both selectors; delays do not; `spring` has its fallback.
 4. Edit BRAND.md and UI-KITS.md.
 
 ## Acceptance criteria
 
-- [ ] `pnpm gen:brand -- --check` is clean and the generated CSS contains every token of notes/S-23 §5 with the listed values.
+- [ ] `pnpm gen brand --check` is clean and the generated CSS contains every token of notes/S-23 §5 with the listed values.
 - [ ] Under `prefers-reduced-motion: reduce` and under `:root[data-motion="reduce"]` every `--pk-duration-*` and `--pk-stagger-step` is `0ms`; `--pk-delay-*` are unchanged (a brand test asserts it).
 - [ ] The Swift, Kotlin and GDScript generated constants include `micro`, `moderate` and `deliberate` and the kits still build (`swift build`, the Kotlin `:ui` compile, the Godot runner).
 - [ ] BRAND.md §7.5 and UI-KITS.md §4.8 read as notes/S-23 §9 proposes.
@@ -93,7 +93,7 @@ Every later MO package, the UI kits and the sign-in card (SIGN-IN.md §3.18, whi
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:brand -- --check
+mise exec node@22 -- pnpm gen brand --check
 mise exec node@22 -- pnpm --filter @polaris-key/brand test
 mise exec node@22 -- pnpm build && mise exec node@22 -- pnpm typecheck
 ```

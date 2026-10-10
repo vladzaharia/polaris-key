@@ -1,16 +1,16 @@
 # UK-44 SDK sign-in hints: `signIn.start({loginHint, nameHint, purpose})` in Node, React (over `client-core`), Python, Swift, Kotlin and Godot, replaying PX-W18's transcripts, with `identity.signin.hints` in every `parity.json`
 
-| Field       | Value                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                       |
-| Size        | 0.5–0.8 engineer-weeks                                                                                             |
-| Depends on  | none                                                                                                               |
-| Unblocks    | none                                                                                                               |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                               |
-| Plan mode   | yes: executes the approved `plans/PX-W18.md` (written in PX-W18)                                                   |
-| Gates       | plan mode (executes `plans/PX-W18.md`); transcript replay in every SDK; `parity:check`; `gen:constants -- --check` |
-| Human input | none beyond PX-W18's plan approval                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                          |
+| Field       | Value                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                    |
+| Size        | 0.5–0.8 engineer-weeks                                                                                          |
+| Depends on  | none                                                                                                            |
+| Unblocks    | none                                                                                                            |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                            |
+| Plan mode   | yes: executes the approved `plans/PX-W18.md` (written in PX-W18)                                                |
+| Gates       | plan mode (executes `plans/PX-W18.md`); transcript replay in every SDK; `parity:check`; `gen constants --check` |
+| Human input | none beyond PX-W18's plan approval                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                       |
 
 ## Consolidation 2026-10-07
 
@@ -61,7 +61,7 @@ row at `implemented`.
 ## Acceptance criteria
 
 - [ ] All six SDKs send the members exactly as the transcripts record (replay tests).
-- [ ] `pnpm parity:check` and `gen:constants -- --check` pass.
+- [ ] `pnpm parity:check` and `gen constants --check` pass.
 - [ ] The green gate passes (AGENTS.md), including every SDK suite.
 
 ## Verify

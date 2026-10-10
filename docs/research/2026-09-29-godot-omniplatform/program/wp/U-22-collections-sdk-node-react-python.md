@@ -1,16 +1,16 @@
 # U-22 Saves SDK on the records store: Node, React, Python (absorbs U-13)
 
-| Field       | Value                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                              |
-| Size        | 1–1.4 engineer-weeks                                                                                               |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-09](U-09-collections-backend.md), [U-08](U-08-merge-prompt.md)                 |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                             |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                               |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                  |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`) |
-| Human input | none                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                          |
+| Field       | Value                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                           |
+| Size        | 1–1.4 engineer-weeks                                                                                            |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-09](U-09-collections-backend.md), [U-08](U-08-merge-prompt.md)              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                          |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                            |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                               |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`) |
+| Human input | none                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                       |
 
 ## Consolidation 2026-10-07
 

@@ -1,16 +1,16 @@
 # PX-W17 Identity as a per-product service (G34): `services.identity` toggle, refusal on every app-sign-in entry when off, pairwise subjects for product users, developer surfaces on pairwise ids
 
-| Field       | Value                                                                                                                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                                            |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                                             |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md)                                                                                                                                               |
-| Unblocks    | none                                                                                                                                                                                                               |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                              |
-| Plan mode   | yes: executes the approved [`plans/PX-W17.md`](../plans/PX-W17.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                        |
-| Gates       | the PORTAL.md §11 green gate; plan mode; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); `typecheck:workerd` and `test:workerd` |
-| Human input | none                                                                                                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                          |
+| Field       | Value                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                                      |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                                       |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md)                                                                                                                                         |
+| Unblocks    | none                                                                                                                                                                                                         |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                        |
+| Plan mode   | yes: executes the approved [`plans/PX-W17.md`](../plans/PX-W17.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                  |
+| Gates       | the PORTAL.md §11 green gate; plan mode; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; corpus and transcripts (`gen corpus --check`, `gen transcripts --check`); `typecheck:workerd` and `test:workerd` |
+| Human input | none                                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                    |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -103,7 +103,7 @@ Owner decision: one account, Identity per product ([PORTAL.md §3.1](../../../..
 - [x] Test: two products see two different ids for one account.
 - [x] Every app-sign-in entry refuses a product with Identity off (tests).
 - [x] Corpus and transcripts are regenerated if the token shape changes.
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

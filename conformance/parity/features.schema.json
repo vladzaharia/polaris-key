@@ -64,7 +64,7 @@
             "pattern": "^[A-Za-z0-9._/-]+/parity\\.json$"
           },
           "constants": {
-            "description": "The SDK's generated constants module (`pnpm gen:constants`). It carries the capability table `supports()` reads, generated from the manifest, and its `CAPABILITY_DIGEST`; the checker fails when that digest is not the manifest's (P1b-10).",
+            "description": "The SDK's generated constants module (`pnpm gen constants`). It carries the capability table `supports()` reads, generated from the manifest, and its `CAPABILITY_DIGEST`; the checker fails when that digest is not the manifest's (P1b-10).",
             "type": "string",
             "pattern": "^[A-Za-z0-9._/-]+$"
           }

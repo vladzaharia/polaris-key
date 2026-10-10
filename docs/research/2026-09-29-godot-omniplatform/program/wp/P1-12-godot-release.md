@@ -196,7 +196,7 @@ GODOT_BIN=godot-4.7.2 GODOT_TEMPLATE=linux_release.x86_64 sdks/godot/tools/run_t
   pitfalls) moved to `sdks/godot/CONTRIBUTING.md`, with a new "Releasing" section, and the code
   comments that cited them were re-pointed. `addons/polaris_key/README.md` is a short readme for
   the plugin folder (the Asset Store rule), not a copy.
-- **Brand assets are generated and never imported.** `pnpm gen:brand` now also writes
+- **Brand assets are generated and never imported.** `pnpm gen brand` now also writes
   `addons/polaris_key/brand/` (the kit's bit-less 16 px Pinned K glyphs, the `games/` "Powered by"
   credit screens and the compact badges, each SVG verbatim after a GENERATED comment) with a
   `.gdignore`. Measured: an SVG's `.import` file written by 4.7.2 is rewritten by a fresh 4.4.1

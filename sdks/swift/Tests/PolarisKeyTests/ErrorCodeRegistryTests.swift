@@ -1,6 +1,6 @@
 // @pkey-feature core.errors
 // Every error code this SDK raises is in the shared registry (conformance/parity/errors.json,
-// generated into `Constants.generated.swift` by `pnpm gen:constants`).
+// generated into `Constants.generated.swift` by `pnpm gen constants`).
 //
 // The code constants are checked directly (`PolarisError`'s client-side codes and every
 // `BundleRefusalReason`), and `Sources/` is scanned for `PolarisError(code: "<code>", …)`

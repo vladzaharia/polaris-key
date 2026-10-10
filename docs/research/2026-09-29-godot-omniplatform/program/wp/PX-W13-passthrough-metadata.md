@@ -1,16 +1,16 @@
 # PX-W13 Passthrough request metadata (G28): client records with presentation and the reserved-name check (warn first, then enforced), the request handle, `deviceName` label from the SDKs, consent data
 
-| Field       | Value                                                                                                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                             |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                              |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [LX-05](LX-05-reserved-names-warn.md)                                                                                                                        |
-| Unblocks    | [I-08](I-08-app-passthrough.md), [PX-W13b](PX-W13b-display-name-settings.md), [PX-14](PX-14-passthrough-header.md), [SP-11](SP-11-presentation-accent.md)                                           |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                               |
-| Plan mode   | yes: executes the approved [`plans/PX-W13.md`](../plans/PX-W13.md) (approved 2026-10-05), which fills the G28 gap in [`plans/I-04.md`](../plans/I-04.md)                                            |
-| Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); THREAT-MODEL; every SDK's replayer; `typecheck:workerd` and `test:workerd` |
-| Human input | none                                                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                           |
+| Field       | Value                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                       |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                        |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [LX-05](LX-05-reserved-names-warn.md)                                                                                                                  |
+| Unblocks    | [I-08](I-08-app-passthrough.md), [PX-W13b](PX-W13b-display-name-settings.md), [PX-14](PX-14-passthrough-header.md), [SP-11](SP-11-presentation-accent.md)                                     |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                         |
+| Plan mode   | yes: executes the approved [`plans/PX-W13.md`](../plans/PX-W13.md) (approved 2026-10-05), which fills the G28 gap in [`plans/I-04.md`](../plans/I-04.md)                                      |
+| Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen corpus --check`, `gen transcripts --check`); THREAT-MODEL; every SDK's replayer; `typecheck:workerd` and `test:workerd` |
+| Human input | none                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
 
 ## S-24 amendment (2026-10-06)
 
@@ -139,13 +139,13 @@ The "<App> wants you to sign in" header must be trustworthy ([PORTAL.md §4.7](.
 - [x] The card reads presentation only through the `request` handle (test: display query parameters are ignored): `packages/worker/test/passthrough.test.ts` "ignores every display query parameter".
 - [x] A reserved-name test refuses a spoofed app name: `packages/shared-manifest/src/displayName.test.ts` ("refuses a spoofed app name when the platform enforces it") and `packages/worker/test/linkRepo.test.ts`.
 - [x] Corpus and transcripts are regenerated and every SDK sends `deviceLabel` (parity): `device-label.json`, `devicecode-label`, `devicecode-default` and the re-recorded device-code, activation and registration transcripts; `identity.devicelabel` implemented in Node, Python, Swift, Godot and Kotlin, and React except `web`.
-- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green (the gate).
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green (the gate).
 - [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header (the gate, with the Kotlin JVM and UI suites run separately).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check && mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen corpus --check && mise exec node@22 -- pnpm gen transcripts --check
 ```
 
 ## Hand-off

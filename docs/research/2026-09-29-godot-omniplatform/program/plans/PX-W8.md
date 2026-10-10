@@ -126,9 +126,9 @@ No change to `shared-catalog` or `shared-manifest`. The return targets are the p
 
 ## 4. Corpus, transcripts and parity
 
-**Signed corpus:** none. `pnpm gen:corpus -- --check` stays green with no generator, constant or mirror change. That corrects the brief's "corpus".
+**Signed corpus:** none. `pnpm gen corpus --check` stays green with no generator, constant or mirror change. That corrects the brief's "corpus".
 
-**Transcripts:** written by `packages/worker/test/transcripts/scenarios/license.ts`. `pnpm gen:transcripts` also writes the Swift and Godot mirrors. There is no `device_limit` transcript today.
+**Transcripts:** written by `packages/worker/test/transcripts/scenarios/license.ts`. `pnpm gen transcripts` also writes the Swift and Godot mirrors. There is no `device_limit` transcript today.
 
 | File                        | WP                | Steps                                                                                                                                                                                                                                                                                                   |
 | --------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -142,7 +142,7 @@ No change to `shared-catalog` or `shared-manifest`. The return targets are the p
 
 ## 5. SDKs and UI kits, in order (all PX-W8)
 
-Each SDK replays `license-device-limit.json`, passes `parity:check` and `gen:constants -- --check`, and never treats the link as an auth failure.
+Each SDK replays `license-device-limit.json`, passes `parity:check` and `gen constants --check`, and never treats the link as an auth failure.
 
 1. **client-core** (`packages/client-core`): `manage.ts` and its unit table, covering valid, `javascript:`, userinfo, overlong, nested and absent links, and fragment and query return.
 2. **Node** (`packages/sdk-node`): `ActivationResult` `device-limit` gains `manageUrl?`, read with `readManageUrl` (`license/endpoints.ts`). The helpers are re-exported. The CLI prints the link (`cli/commands.ts`).
@@ -216,9 +216,9 @@ The order is the parity order, not a dependency. Godot may go first. The per-lan
 ```sh
 N="mise exec node@22 --"
 $N pnpm build && $N pnpm typecheck
-$N pnpm gen:corpus -- --check          # unchanged: no signed-corpus impact
-$N pnpm gen:transcripts -- --check     # license-device-limit.json + Swift/Godot mirrors
-$N pnpm gen:constants -- --check       # license.manage, ui.kit.manage in every SDK
+$N pnpm gen corpus --check          # unchanged: no signed-corpus impact
+$N pnpm gen transcripts --check     # license-device-limit.json + Swift/Godot mirrors
+$N pnpm gen constants --check       # license.manage, ui.kit.manage in every SDK
 $N pnpm parity:check                   # two rows, six parity.json
 $N pnpm --filter @polaris-key/client-core test
 $N pnpm --filter @polaris-key/shared-protocol test

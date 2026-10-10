@@ -1,16 +1,16 @@
 # UK-02 Plan: UI kit copy catalog beside `core.copy`, conformance UI state fixtures and `ui.*` parity rows
 
-| Field       | Value                                                                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                    |
-| Size        | 0.4–0.6 engineer-weeks                                                                                                                                                          |
-| Depends on  | none                                                                                                                                                                            |
-| Unblocks    | [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                    |
-| Role        | `pkey-wire-planner` (planning only)                                                                                                                                             |
-| Plan mode   | yes: this package writes `plans/UK-02.md`; no code before a human approves it                                                                                                   |
-| Gates       | plan mode (CLAUDE.md): names `gen:constants -- --check`, `gen:corpus -- --check`, `parity:check -- --check` and the generated parity docs page for the packages that execute it |
-| Human input | none                                                                                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                       |
+| Field       | Value                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                              |
+| Size        | 0.4–0.6 engineer-weeks                                                                                                                                                    |
+| Depends on  | none                                                                                                                                                                      |
+| Unblocks    | [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                              |
+| Role        | `pkey-wire-planner` (planning only)                                                                                                                                       |
+| Plan mode   | yes: this package writes `plans/UK-02.md`; no code before a human approves it                                                                                             |
+| Gates       | plan mode (CLAUDE.md): names `gen constants --check`, `gen corpus --check`, `parity:check -- --check` and the generated parity docs page for the packages that execute it |
+| Human input | none                                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                 |
 
 ## Goal
 
@@ -32,7 +32,7 @@ The catalog is generated into every SDK, the fixtures are shared conformance dat
 **In:**
 
 - The catalog: `packages/brand/kit-copy/en.json` (ICU MessageFormat, ~220 keys) and its relationship to `copy.en.json`: kit strings reference `core.copy` keys by name; no key exists in both. Key naming, platform variants (verb and casing only), plural and select rules.
-- The generators and their outputs: JSON (web), `Localizable.xcstrings` (Swift), Compose Resources `strings.xml` (Kotlin), gettext `.po`/`.pot` (Godot, Python), Qt Linguist from the same source, terminal tables; which tool owns them (`gen:brand` or `gen:constants`) and their drift gate.
+- The generators and their outputs: JSON (web), `Localizable.xcstrings` (Swift), Compose Resources `strings.xml` (Kotlin), gettext `.po`/`.pot` (Godot, Python), Qt Linguist from the same source, terminal tables; which tool owns them (`gen brand` or `gen constants`) and their drift gate.
 - Launch locales `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko`, `zh-Hans`, with `reviewed: false` metadata; no RTL locale.
 - The UI fixture format and path (the spec proposes `conformance/corpus/v2/ui/`; the plan confirms or moves it, since these are unsigned fixtures and not corpus cases): inputs (license status, capabilities, decision, device list, error code, presentation present or absent) → component, state, copy keys.
 - Parity rows `ui.gate`, `ui.activate`, `ui.signin`, `ui.deviceLimit`, `ui.devices`, `ui.update`, `ui.settings`, `ui.paywall`, `ui.theme`, `ui.i18n` with allowed N/As, and each SDK's starting manifest state (`planned`, UK item named).

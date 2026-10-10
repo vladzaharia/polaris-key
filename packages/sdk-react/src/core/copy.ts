@@ -10,7 +10,7 @@
 //                                                     `wireCode` (the server's code), then its
 //                                                     own `code`
 //
-// ENGLISH IS GENERATED. `../copy.generated.ts` is written by `pnpm gen:constants` from
+// ENGLISH IS GENERATED. `../copy.generated.ts` is written by `pnpm gen constants` from
 // `conformance/parity/copy.en.json` (checked against errors.json and enums.json), with three
 // tables: COPY_CODES (per error code), COPY_GATE (per licenseStatus) and COPY_ACTIVATION (per
 // activationResult). They are separate on purpose: the error code `unauthorized` reads "Not

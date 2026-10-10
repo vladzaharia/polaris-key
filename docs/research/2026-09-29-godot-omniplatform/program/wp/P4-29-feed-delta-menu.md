@@ -93,8 +93,8 @@ what it produces, then the client falls back") are the design.
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:corpus -- --check
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen corpus --check
+mise exec node@22 -- pnpm gen constants --check
 mise exec node@22 -- pnpm parity:check
 mise exec node@22 -- pnpm --filter @polaris-key/conformance-node test
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- feed blobAccess payload

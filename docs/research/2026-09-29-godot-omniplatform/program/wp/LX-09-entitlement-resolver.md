@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-10](LX-10-anchor-choice.md), [LX-13](LX-13-entitlements-backend.md), [LX-14](LX-14-console-licensing.md), [LX-15](LX-15-portal-licensing.md), [LX-16](LX-16-licensing-contract.md), [LX-18](LX-18-licensing-wire.md), [LX-22](LX-22-licensing-closeout.md), [LX-24](LX-24-per-seat-features.md), [CM-05](CM-05-checkout-fulfilment.md), [LX-40](LX-40-retire-licensing-model-settings-7-1.md) |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Gates       | conformance corpus (`gen:corpus --check`); drift gate (`--check`)                                                                                                                                                                                                                                                                                                                                                                         |
+| Gates       | conformance corpus (`gen corpus --check`); drift gate (`--check`)                                                                                                                                                                                                                                                                                                                                                                         |
 | Human input | none                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
@@ -74,7 +74,7 @@ The core of OC ([S-19 owner decisions](../../notes/S-19-licensing-model.md) item
 
 ## Design notes
 
-- Corpus unchanged (`gen:corpus --check`).
+- Corpus unchanged (`gen corpus --check`).
 - Operators cannot cancel a paid purchase by override in `combined` (decision 6).
 
 ## Steps
@@ -94,14 +94,14 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [ ] `legacy` output is byte-identical to today on a live-shaped snapshot (property test).
 - [ ] The `combined` diff equals the holder report (test).
-- [ ] `gen:corpus --check` is unchanged.
+- [ ] `gen corpus --check` is unchanged.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

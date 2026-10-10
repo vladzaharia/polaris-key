@@ -256,7 +256,7 @@ export {
   type UpdateEndpoints,
 } from "./discovery.js";
 
-// ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──
+// ── Generated constants (`pnpm gen constants`, tools/gen-sdk-constants.ts) ──
 // Error codes, header names, enums, feature ids, versions and the channel vocabulary, spelled
 // identically (up to casing) in every SDK. Re-exported wholesale so a constant the generator gains
 // (a new enum, P0-04's channel constants) reaches the package root without editing this file;

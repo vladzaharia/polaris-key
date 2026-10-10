@@ -1,5 +1,5 @@
 // The launch kit's artwork as Compose: the Pinned K (the branded logo) and the "Powered by Polaris
-// Key" badge. Both draw the kit SVGs, reduced to groups and filled paths by `pnpm gen:brand`
+// Key" badge. Both draw the kit SVGs, reduced to groups and filled paths by `pnpm gen brand`
 // (PolarisBrandMarkData in PolarisBrandTokens.generated.kt), so the marks are never redrawn by
 // hand. "Dark" artwork is FOR dark grounds; each picks its variant from the resolved theme.
 

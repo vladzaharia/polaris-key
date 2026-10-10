@@ -349,7 +349,7 @@ built (PX-W13 §2.5, I-08, I-15):
 
 Under AGENTS.md rule 2 and the SIGN-IN.md §6.5 precedent this is additive and opt-in:
 `PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2, **no corpus change**. It needs new
-recorded transcripts (`gen:transcripts`: `identity-request-hints.json` with its Swift and Godot
+recorded transcripts (`gen transcripts`: `identity-request-hints.json` with its Swift and Godot
 mirrors), parity rows (`identity.signin.hints` in `features.json`), and the SDK headless
 `signIn.start({loginHint, nameHint, purpose})` in **Node, React (over `client-core`), Python,
 Swift, Kotlin and Godot** (UK-44), then the kits (UK-42, UK-43). An old Worker ignores the members,

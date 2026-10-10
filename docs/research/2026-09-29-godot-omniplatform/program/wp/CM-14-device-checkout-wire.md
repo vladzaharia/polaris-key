@@ -53,7 +53,7 @@ Apps need a way into checkout, and the store rules must be enforced on the serve
 
 **In:**
 
-- W1–W4 on the Worker; OpenAPI and `routeCoverage`; `errors.json`, `enums.json`; `pnpm gen:constants`, `pnpm gen:transcripts` (and `gen:corpus` if LX-18's `grants` member has shipped).
+- W1–W4 on the Worker; OpenAPI and `routeCoverage`; `errors.json`, `enums.json`; `pnpm gen constants`, `pnpm gen transcripts` (and `gen corpus` if LX-18's `grants` member has shipped).
 
 **Out** (and where it belongs instead):
 
@@ -73,15 +73,15 @@ Apps need a way into checkout, and the store rules must be enforced on the serve
 ## Acceptance criteria
 
 - [ ] A store-build device gets `store_billing_required` (transcript).
-- [ ] `pnpm gen:transcripts -- --check` and `pnpm gen:constants -- --check` pass.
+- [ ] `pnpm gen transcripts --check` and `pnpm gen constants --check` pass.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:transcripts -- --check
-mise exec node@22 -- pnpm gen:constants -- --check
-mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen transcripts --check
+mise exec node@22 -- pnpm gen constants --check
+mise exec node@22 -- pnpm gen corpus --check
 ```
 
 ## Hand-off

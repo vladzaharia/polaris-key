@@ -1,6 +1,6 @@
 // @pkey-feature core.errors
 // Every error code this SDK raises is in the shared registry (conformance/parity/errors.json,
-// generated into `src/constants.generated.ts` by `pnpm gen:constants`).
+// generated into `src/constants.generated.ts` by `pnpm gen constants`).
 //
 // Two checks, because React's `PolarisError` takes a CLOSED union (`PolarisErrorCode` in
 // `src/core/types.ts`): `pnpm typecheck` fails if that union holds a code the registry lacks,

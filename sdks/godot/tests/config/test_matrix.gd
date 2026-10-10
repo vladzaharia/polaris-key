@@ -2,7 +2,7 @@ extends RefCounted
 # @pkey-feature config.resolve config.list
 # The Godot runner for `conformance/corpus/v2/config-matrix.json` (WIRE-CONTRACT-V3 §2.2.1), read
 # from the generator-owned mirror res://tests/corpus/v2/config-matrix.json (written by
-# `pnpm gen:corpus`; never edit it). Every resolve, environment-value and list case runs through
+# `pnpm gen corpus`; never edit it). Every resolve, environment-value and list case runs through
 # PKeyConfigResolve twice: with the environment layer on, against `expect`, and with a
 # PKeyConfigEnv whose `enabled` is false (as CONFIG_ENV_NEVER and a release web or mobile build
 # leave it), against `expectNoEnv` where present, else `expect`.

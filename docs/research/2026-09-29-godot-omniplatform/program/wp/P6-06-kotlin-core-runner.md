@@ -8,7 +8,7 @@
 | Unblocks    | [P6-05](P6-05-kotlin-sdk.md), [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md), [P6-09](P6-09-kotlin-platform-module.md)                       |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                     |
 | Plan mode   | no (it adds no corpus rows; a missing corpus case goes to `pkey-wire-planner` as its own package)                                                                                     |
-| Gates       | `parity:check` (rules 3 and 4, the `sdks` list), `pnpm gen:constants -- --check`, a registry pass over `features.json`, the language lists, and a new `kotlin` CI job                 |
+| Gates       | `parity:check` (rules 3 and 4, the `sdks` list), `pnpm gen constants --check`, a registry pass over `features.json`, the language lists, and a new `kotlin` CI job                    |
 | Human input | none                                                                                                                                                                                  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
 
@@ -23,7 +23,7 @@ clock floor, discovery, sync, the boot stage machine and the generated constants
 JUnit conformance runner and the HTTP transcript replay harness that every later slice reuses, the
 Kotlin `parity.json` (every row `planned`, each with an owner), its entry in
 `conformance/parity/features.json`, and the `kotlin` CI job. A reviewer can tell it happened when
-`:core:test` passes every corpus case the core owns, `pnpm gen:constants -- --check` and
+`:core:test` passes every corpus case the core owns, `pnpm gen constants --check` and
 `pnpm parity:check` are green with Kotlin registered, and nothing in `:core` imports Android.
 
 ## Why
@@ -73,7 +73,7 @@ Kotlin `parity.json` (every row `planned`, each with an owner), its entry in
   `stage-matrix.json`; fingerprint derivation from supplied inputs (`fingerprint.json`).
 - Constants: a Kotlin emitter in `tools/gen-sdk-constants.ts` writing
   `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt`, hooked into
-  `pnpm gen:constants` so `--check` fails on drift; the `sdks` entry in `features.json` names it.
+  `pnpm gen constants` so `--check` fails on drift; the `sdks` entry in `features.json` names it.
 - The conformance runner in `:conformance`: reads `conformance/corpus/v2/` in place (no mirror),
   runs `cases.json` (verify, bundle, record sections that need only core), `headers.json`,
   `fingerprint.json`, `stage-matrix.json` and `outlet-matrix.json`'s decision rows; and the
@@ -136,7 +136,7 @@ Kotlin `parity.json` (every row `planned`, each with an owner), its entry in
 - [x] `./gradlew :core:test :conformance:test` passes every `cases.json`, `headers.json`,
       `fingerprint.json`, `stage-matrix.json` and `outlet-matrix.json` decision case, and the
       `core.*` transcripts, on both Ed25519 implementations.
-- [x] `pnpm gen:constants -- --check` is green and covers the Kotlin file.
+- [x] `pnpm gen constants --check` is green and covers the Kotlin file.
 - [x] `sdks/kotlin/parity.json` exists, is registered in `features.json`, lists every feature, and
       `parity:check` is green; the core rows this package proves are `implemented`.
 - [x] Every registry addition for `android` and `jvm` is listed in the PR with its `why`.
@@ -149,7 +149,7 @@ Kotlin `parity.json` (every row `planned`, each with an owner), its entry in
 
 ```sh
 ( cd sdks/kotlin && ./gradlew :core:test :conformance:test )
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen constants --check
 mise exec node@22 -- pnpm parity:check -- --check
 ```
 
@@ -222,7 +222,7 @@ disagree.
   `devices.attest` (jvm already allowed; Android attests through Play Integrity).
 - **`enums.json` `sdkId` gains `kotlin`** ("an SDK adds its id when it lands"); `X-PKey-SDK` is
   `SdkId.kotlin`, and every SDK's generated constants change by that one value.
-- **`gen:services` has a Kotlin target too** (`ServiceSlug.generated.kt`, an enum with
+- **`gen services` has a Kotlin target too** (`ServiceSlug.generated.kt`, an enum with
   `isDefaultEnabled`), which the Kotlin constants module leaves out as Swift's does.
 - **`tools/gen-mirrors.ts` is not touched here:** its Kotlin catalog-mirror emitter is P6-07's
   scope (`config.mirror`), named in that brief's gates and acceptance criteria.

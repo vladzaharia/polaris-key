@@ -1,7 +1,7 @@
 // @pkey-feature core.errors
 //
 // Every error code this SDK raises is in the shared registry (conformance/parity/errors.json,
-// generated into Constants.generated.kt by `pnpm gen:constants`). :core names codes through the
+// generated into Constants.generated.kt by `pnpm gen constants`). :core names codes through the
 // generated `ErrorCode` constants, which the compiler checks; this test also scans the sources for
 // a string literal handed to `PolarisException(` and refuses one the registry lacks, so a code
 // cannot bypass the constants.

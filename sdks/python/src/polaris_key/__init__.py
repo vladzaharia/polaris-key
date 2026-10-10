@@ -48,7 +48,7 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-# Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts), imported wholesale through
+# Generated constants (`pnpm gen constants`, tools/gen-sdk-constants.ts), imported wholesale through
 # the generated ``__all__`` so a constant the generator gains reaches the package root unedited.
 # The only eager import: one small module of plain values.
 from . import constants_generated as _constants_generated
@@ -933,6 +933,6 @@ __all__ = [
     "DEFAULT_BASE",
     "DEFAULT_REQUEST_TIMEOUT_SECONDS",
     "normalize_base_url",
-    # generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts)
+    # generated constants (`pnpm gen constants`, tools/gen-sdk-constants.ts)
     *_constants_generated.__all__,
 ]

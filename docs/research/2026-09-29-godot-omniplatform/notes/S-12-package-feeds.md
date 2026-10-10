@@ -382,7 +382,7 @@ Our SDKs belong to no customer product. Two options:
 Core → Services under Distribution. Each ecosystem is then enabled on its own feed page
 (`feed_settings.enabled`). The alternatives are rejected:
 
-- **Not a new service slug.** Services are generated into every SDK's constants (`gen:services`) and
+- **Not a new service slug.** Services are generated into every SDK's constants (`gen services`) and
   advertised in discovery. No SDK consumes package feeds, and feeds are delivery, which is
   Distribution's job ("distribution serves bytes").
 - **Not a manifest field.** Turning on a public registry under our hostname is security-relevant,

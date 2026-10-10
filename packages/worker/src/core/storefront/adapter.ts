@@ -27,7 +27,7 @@
  * dependency-free data (`test/boundaries.test.ts` keeps `core/adapters` and `core/storefront` free
  * of service imports, and the capability, CI and deep-link parts free of any import but each
  * other), so the CLI's copy is GENERATED: `packages/cli/src/storefronts/ciPlane.generated.ts`
- * (A-18h, `pnpm gen:storefront-ci`), a straight serialise of the CI plane and the CI-plane
+ * (A-18h, `pnpm gen storefront-ci`), a straight serialise of the CI plane and the CI-plane
  * adapters. No new package and nothing in `shared-protocol`, which is wire.
  *
  * Runtime behaviour (`connect`, `listApps`, `readListing`, `plan`, `runStep`, `status`) is

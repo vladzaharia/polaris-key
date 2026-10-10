@@ -95,7 +95,7 @@ pnpm build              # build all packages
 pnpm typecheck
 pnpm test               # all JS/TS suites (incl. conformance + worker + SDKs + admin)
 pnpm test:browser       # the corpus in Chromium (needs `playwright install chromium` once)
-pnpm gen:corpus -- --check   # conformance drift gate (CI)
+pnpm gen --check          # every generator's drift gate (CI)
 ( cd sdks/python && .venv/bin/python -m pytest )   # Python SDK
 ( cd sdks/swift && swift test )                    # Swift SDK
 sdks/godot/tools/run_tests.sh                      # Godot SDK (GODOT_BIN, optional GODOT_TEMPLATE)

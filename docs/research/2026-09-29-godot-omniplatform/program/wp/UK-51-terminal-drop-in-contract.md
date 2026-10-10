@@ -69,7 +69,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [ ] The `cli` family pins the verb sets, the collision and help rules, the gate outcomes and exit 4.
 - [ ] A refused gate exits 4 and, with `--json`, prints the `error` code (decision 10).
-- [ ] `parity:check` and `gen:constants -- --check` pass.
+- [ ] `parity:check` and `gen constants --check` pass.
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 

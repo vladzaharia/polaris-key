@@ -14,7 +14,7 @@
  *         `secret`  credential material: reported as present or absent, NEVER a value
  *   area  deployment · identity · delivery · email · keyring · stores · jobs
  *
- * `pnpm gen:platform-inventory` writes `platformInventory.generated.ts` from these tags. Its
+ * `pnpm gen platform-inventory` writes `platformInventory.generated.ts` from these tags. Its
  * `--check` mode (also the worker suite's `platformInventory` test) fails when a member has no
  * valid tag, when the generated file is stale, when a wrangler config names a var or binding this
  * interface lacks, when a var or secret here is named nowhere in `wrangler.toml`, when a secret is

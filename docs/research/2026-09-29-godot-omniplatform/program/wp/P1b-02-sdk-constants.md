@@ -1,16 +1,16 @@
 # P1b-02 Generate SDK constants: error codes, header values, enums, feature ids
 
-| Field       | Value                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P1b: SDK parity                                                                                                                              |
-| Size        | 1 engineer-weeks                                                                                                                             |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P0-09](P0-09-service-table.md)                                                                         |
-| Unblocks    | [P1b-04](P1b-04-headers-config-corpora.md), [P1b-10](P1b-10-core-caps.md), [P6-06](P6-06-kotlin-core-runner.md)                              |
-| Role        | `pkey-implementer`                                                                                                                           |
-| Plan mode   | no (it must not edit `shared-protocol` or `client-core`; see Design notes)                                                                   |
-| Gates       | a new drift gate (`pnpm gen:constants -- --check`, in CI and the green gate); the generated `reference/error-codes.mdx` page (AGENTS rule 3) |
-| Human input | none                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                    |
+| Field       | Value                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P1b: SDK parity                                                                                                                           |
+| Size        | 1 engineer-weeks                                                                                                                          |
+| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P0-09](P0-09-service-table.md)                                                                      |
+| Unblocks    | [P1b-04](P1b-04-headers-config-corpora.md), [P1b-10](P1b-10-core-caps.md), [P6-06](P6-06-kotlin-core-runner.md)                           |
+| Role        | `pkey-implementer`                                                                                                                        |
+| Plan mode   | no (it must not edit `shared-protocol` or `client-core`; see Design notes)                                                                |
+| Gates       | a new drift gate (`pnpm gen constants --check`, in CI and the green gate); the generated `reference/error-codes.mdx` page (AGENTS rule 3) |
+| Human input | none                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                 |
 
 ## Goal
 
@@ -18,7 +18,7 @@
 Python, Swift, and GDScript once `sdks/godot` exists) from one set of sources. Each module holds the
 error-code registry, the `X-PKey-*` header names, the canonical platform and arch values, the service
 slugs, the feature ids with the `supports()` reason enum, and the protocol and corpus versions.
-`pnpm gen:constants -- --check` fails on drift and runs in CI. Each SDK has a test proving that every
+`pnpm gen constants --check` fails on drift and runs in CI. Each SDK has a test proving that every
 error code it raises is in the registry, and `core.errors` is `implemented` in the four manifests.
 
 ## Why
@@ -78,7 +78,7 @@ Today:
     package was in review and all eight are now emitted in every output and re-exported from each
     package root — Node and React `export * from "./constants.generated.js"`, Python
     `from .constants_generated import *` plus the generated `__all__` — so a future addition needs
-    only `pnpm gen:constants`);
+    only `pnpm gen constants`);
     `corpusVersion`, `gateMatrixVersion` and `fingerprintVersion` from the corpus files.
 - **Outputs**, each with a GENERATED banner (TypeScript formatted with prettier, as `sign-corpus.ts`
   does):
@@ -90,7 +90,7 @@ Today:
     (`sdks/godot/addons/polaris_key/core/constants_generated.gd`, `class_name PKeyConstants`),
     written only if `sdks/godot/addons/polaris_key` exists. The GDScript renderer is unit-tested
     either way.
-- Root script `"gen:constants": "tsx tools/gen-sdk-constants.ts"` with `--check`; a CI step; the
+- Root script `"gen constants": "tsx tools/gen-sdk-constants.ts"` with `--check`; a CI step; the
   `AGENTS.md` green gate; a row in the `contribute/waves.md` drift-gate inventory.
 - `tools/gen-sdk-constants.test.ts`: renderers, casing and collision checks, `--check` behaviour, and
   a source test. The source test extracts every wire code from `PolarisErrorCode`, the Worker's
@@ -155,7 +155,7 @@ Today:
 
 ## Acceptance criteria
 
-- [x] `mise exec node@22 -- pnpm gen:constants -- --check` exits 0, and exits 1 after a hand edit
+- [x] `mise exec node@22 -- pnpm gen constants --check` exits 0, and exits 1 after a hand edit
       to any output.
 - [x] The source test fails when a new `errorResponse(…, "new_code")` appears without an
       `errors.json` entry (a fixture shows this).
@@ -165,13 +165,13 @@ Today:
 - [x] `reference/error-codes.mdx` lists the client codes; `pnpm --filter @polaris-key/docs gen:check`
       passes.
 - [x] `core.errors` is `implemented` in the four manifests, and `pnpm parity:check` passes.
-- [x] CI runs `pnpm gen:constants -- --check`; `AGENTS.md` and `waves.md` list it.
+- [x] CI runs `pnpm gen constants --check`; `AGENTS.md` and `waves.md` list it.
 - [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm gen:constants -- --check
+mise exec node@22 -- pnpm gen constants --check
 mise exec node@22 -- pnpm --filter @polaris-key/tools test
 mise exec node@22 -- pnpm typecheck && mise exec node@22 -- pnpm test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
@@ -184,7 +184,7 @@ mise exec node@22 -- pnpm parity:check
 
 - **Interfaces:** the generated names (`ErrorCode`, `Feature`, `UnsupportedReason`, `Platform`,
   `Arch`, `HeaderName`, `ServiceSlug`, `PROTOCOL_VERSION`, corpus versions) and their file paths; the
-  source files `conformance/parity/errors.json` and `enums.json`; the command `pnpm gen:constants`.
+  source files `conformance/parity/errors.json` and `enums.json`; the command `pnpm gen constants`.
 - [P1b-04](P1b-04-headers-config-corpora.md) uses `Platform`, `Arch` and `HeaderName` as the values
   that `headers.json` pins. P1b-06 to P1b-09 raise errors through `ErrorCode`.
 - Godot (P1-02 onwards) consumes the GDScript output. P6-05 and X-01 add their emitters here.

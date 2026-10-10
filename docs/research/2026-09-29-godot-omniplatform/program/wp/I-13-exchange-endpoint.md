@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-14](I-14-game-verifiers.md), [I-25](I-25-backend-assertion.md), [I-32](I-32-product-connections-absorbs-i-22.md)                            |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                  |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/I-13.md` first; it needs human approval before code                                                                                             |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL; `test:workerd`  |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL; `test:workerd`     |
 | Human input | none                                                                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                              |
 

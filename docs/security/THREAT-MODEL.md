@@ -2421,7 +2421,7 @@ P5-03's untyped controls (A-18e's proposed follow-up).
 live in CI (A15), so their adapters (`core/storefront/stores/{itch,snap}.ts`) run on the CI
 plane, and Steam's, Microsoft's and Epic's build tools are constrained the same way.
 `core/storefront/ciPlane.ts` declares one command allow-list per store; the CLI reads a generated
-copy (`pnpm gen:storefront-ci`, freshness-tested in the worker suite) and the publish action runs
+copy (`pnpm gen storefront-ci`, freshness-tested in the worker suite) and the publish action runs
 a tool only through `pkey storefront`:
 
 | Store     | Tool             | Allowed                                                                              | Never (asserted unreachable)                                                      |
@@ -4287,7 +4287,7 @@ is no new privilege level and no outbound call.
   and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. Since
   ST-02 both lists are generated from the `@inventory var|secret` tags on `Env` (`env.ts` →
   `platformInventory.generated.ts`) rather than hand-kept, so a new member cannot be left out,
-  and a member cannot be added untagged (`pnpm gen:platform-inventory -- --check`). The tag is
+  and a member cannot be added untagged (`pnpm gen platform-inventory --check`). The tag is
   now what keeps a value out of the response: `test/platformInventory.test.ts` refuses a
   credential-shaped name (`*_SECRET`, `*_KEY`, `*_KEYS`, `*_PEPPER`, `*PRIVATE_KEY`, the store
   credentials, `PLATFORM_KEK`) tagged anything but `secret`. It warns
@@ -7122,7 +7122,7 @@ to its `locations_json`, so `serveArtifact` serves our bytes first and GitHub st
   locations (`shared-protocol/src/release.ts`), and the feed pins records by hash. Byte URLs on
   `dl` and the console aliases do not change; only the bytes behind them do, and they are
   hash-identical (the R2 answer's `ETag` is the SHA-256 the record pins). `edSignature` and every
-  updater hash stay valid. `gen:corpus` and `gen:transcripts` are unchanged. Filling a synced file's missing `sha256` (from the verified hash) does change unsigned feeds: a release whose file had no recorded hash becomes eligible for the feeds that need one (Scoop, Flathub, winget, AltStore), which then list it.
+  updater hash stay valid. `gen corpus` and `gen transcripts` are unchanged. Filling a synced file's missing `sha256` (from the verified hash) does change unsigned feeds: a release whose file had no recorded hash becomes eligible for the feeds that need one (Scoop, Flathub, winget, AltStore), which then list it.
 - **Verify before promote.** The expected hash is the artifact's recorded `sha256` (the
   descriptor's, or the map's) and GitHub's own `digest` from the asset's metadata; when both exist
   they must agree, or the file is refused `digest-mismatch` before a byte is read. A file with

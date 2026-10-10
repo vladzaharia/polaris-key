@@ -1,16 +1,16 @@
 # SP-21 Kotlin copy API (`core.copy`): `copy.message(code)` and `copy.title(code)` over `Copy.generated.kt` with fallback and placeholder fill; the Android kit's `PolarisCopy` reads it
 
-| Field       | Value                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                                            |
-| Size        | 0.3–0.5 engineer-weeks                                                                               |
-| Depends on  | none                                                                                                 |
-| Unblocks    | none                                                                                                 |
-| Role        | `pkey-sdk-porter`                                                                                    |
-| Plan mode   | no                                                                                                   |
-| Gates       | Kotlin JVM and Android suites; `gen:constants -- --check`; `parity:check`; the generated parity page |
-| Human input | none                                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                            |
+| Field       | Value                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                                         |
+| Size        | 0.3–0.5 engineer-weeks                                                                            |
+| Depends on  | none                                                                                              |
+| Unblocks    | none                                                                                              |
+| Role        | `pkey-sdk-porter`                                                                                 |
+| Plan mode   | no                                                                                                |
+| Gates       | Kotlin JVM and Android suites; `gen constants --check`; `parity:check`; the generated parity page |
+| Human input | none                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                         |
 
 ## Goal
 

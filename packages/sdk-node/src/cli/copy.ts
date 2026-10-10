@@ -1,5 +1,5 @@
 // The terminal kit's copy (docs/design/UI-KITS.md §4.7; plans/UK-02.md §3): every visible string
-// is a key in the generated kit copy tables (`kitCopy.generated.ts`, written by `pnpm gen:brand`
+// is a key in the generated kit copy tables (`kitCopy.generated.ts`, written by `pnpm gen brand`
 // from packages/brand/kit-copy/ and the core copy), looked up in the active locale with a per-key
 // fallback to English, and formatted with the catalog's ICU subset:
 //

@@ -11,7 +11,7 @@ expected verify outcomes — that every independent implementation checks itself
 byte-for-byte. It is how every language agrees on the wire without one interpretation of the
 same prose per language.
 
-One generator, `tools/sign-corpus.ts` (run via `pnpm gen:corpus`), signs every vector from a
+One generator, `tools/sign-corpus.ts` (run via `pnpm gen corpus`), signs every vector from a
 fixed keypair and a fixed case list. It is a driver: each corpus file and each `cases.json`
 section is built by its own family module in `tools/corpus/` (`gate.ts`, `stage.ts`, `jws.ts`,
 `feed.ts`, `update.ts` and so on, over the shared fixtures in `common.ts`, `release-records.ts`,
@@ -157,8 +157,8 @@ only one v1 bundle ships; v2's bundles are laid out shared after v1's.
 The only writer of either is the explicit rebuild mode, never part of the gate:
 
 ```sh
-pnpm gen:corpus -- --rebuild-content-blobs   # needs `zstd -V` to report exactly 1.5.7
-pnpm gen:corpus                              # then rebuild cases.json, plan-matrix.json and the signed records
+pnpm gen corpus -- --rebuild-content-blobs   # needs `zstd -V` to report exactly 1.5.7
+pnpm gen corpus                              # then rebuild cases.json, plan-matrix.json and the signed records
 ```
 
 The rebuild computes every blob in memory and then **adds only**: it throws, writing nothing, when
@@ -176,13 +176,13 @@ over it and needs a PR of its own with the guard deliberately relaxed. `.prettie
 `feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `presentation-matrix.json`,
 `ui-matrix.json`, `content/cases.json`, and the Godot
 mirror are all output.
-`pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
+`pnpm gen corpus --check` regenerates every one of them **in memory** and fails if any
 committed file differs — the mirror included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:
 
 ```sh
-pnpm gen:corpus            # write the corpus (and the Godot mirror)
-pnpm gen:corpus -- --check # the drift guard — exit 1 if anything is stale
+pnpm gen corpus            # write the corpus (and the Godot mirror)
+pnpm gen corpus --check # the drift guard — exit 1 if anything is stale
 ```
 
 Never weaken a runner to make a change "pass." If a runner disagrees with the corpus, either the
@@ -196,12 +196,12 @@ Each case family is an array returned by its own `async function` in its family 
 (`claims.ts`), `buildTrustCasesV2` (`trust.ts`), `buildClockFloorCasesV2` (`clock.ts`),
 `buildBundleCases` (`bundle.ts`), `buildFeedCases` (`feed.ts`), `buildReleaseRecordCases`
 (`record.ts`) and the rest — assembled by `buildV2()` (`cases.ts`) into the object
-`gen:corpus` writes as `cases.json`. To add a case:
+`gen corpus` writes as `cases.json`. To add a case:
 
 1. Add a case object to the relevant array, with a unique `id` and a `description` explaining
    what it proves and why (the existing cases are the style guide — read a few nearby first).
-2. Run `pnpm gen:corpus` to sign it and update every output file, source and mirror alike.
-3. Run `pnpm gen:corpus -- --check` before committing, to confirm nothing else drifted.
+2. Run `pnpm gen corpus` to sign it and update every output file, source and mirror alike.
+3. Run `pnpm gen corpus --check` before committing, to confirm nothing else drifted.
 
 The gate matrix is different: it is hand-authored, and its carried rows — the fifteen inlined
 from corpus v1 when v1 was deleted — are **frozen**. Nothing may be edited there to make a gate
@@ -284,7 +284,7 @@ independent implementations. Its i18n strings are computed from the kit copy by 
 imports nothing it checks. A feature package adds its `components.json` state, its catalog keys
 and its rows in one PR and holds the corpus lane while it regenerates. **A copy-only edit** (a
 reworded or translated key) changes the file only through the computed i18n strings: run
-`pnpm gen:corpus` and commit the result, without the lane (`plans/UK-02b.md` D13).
+`pnpm gen corpus` and commit the result, without the lane (`plans/UK-02b.md` D13).
 
 A variant the matrix cannot pin yet is declared, never left out silently: `GAPS` in
 `tools/ui-matrix.ts` (written to `vocabulary.gaps`) names it, says why and names the work package
@@ -391,7 +391,7 @@ serves the recorded responses and asserts each request.
 | ---------------------- | -------------------------------------------------------------------------------------------------- |
 | Format (documented)    | `packages/worker/test/transcripts/format.ts`                                                       |
 | Recorder and scenarios | `packages/worker/test/transcripts/` (`recorder.ts`, `determinism.ts`, `scenarios/`)                |
-| Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen:transcripts`                      |
+| Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen transcripts`                      |
 | Godot mirror           | `sdks/godot/tests/transcripts/` (generator-owned; an exported pack reads only `res://`)            |
 | Node replayer          | `conformance/runners/node/transcripts.test.ts` over `transcriptReplay.ts`                          |
 | React replayer         | `packages/sdk-react/test/transcripts.test.ts` (the same engine; discovery, update and chunk range) |
@@ -421,15 +421,15 @@ each feature it proves needs a test tagged `@pkey-feature <id>` that replays
 `conformance/transcripts`.
 
 ```sh
-pnpm gen:transcripts            # re-record every scenario, write the files and the Godot mirror
-pnpm gen:transcripts -- --check # the drift guard — exit 1 if anything is stale
+pnpm gen transcripts            # re-record every scenario, write the files and the Godot mirror
+pnpm gen transcripts --check # the drift guard — exit 1 if anything is stale
 ```
 
 Never hand-edit a transcript: change the scenario and re-record. A Worker change that alters a
 recorded response regenerates the transcripts in the same change; if an SDK replayer then
 fails, that SDK has to follow. To add a conversation, add a scenario under
 `packages/worker/test/transcripts/scenarios/`, list it in `scenarios/index.ts`, run
-`pnpm gen:transcripts`, and map any new action in each SDK's replayer.
+`pnpm gen transcripts`, and map any new action in each SDK's replayer.
 
 A replayer decides whether a transcript applies **before** it maps any step's action. A transcript
 whose features an SDK has not implemented can therefore use an action that SDK's replayer does

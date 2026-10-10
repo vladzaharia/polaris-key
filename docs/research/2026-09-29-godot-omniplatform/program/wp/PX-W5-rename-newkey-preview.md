@@ -66,7 +66,7 @@ Rename and new-key are missing ([PORTAL.md §10.2](../../../../design/PORTAL.md#
 - [ ] Each typed refusal has a test; `email_mismatch` returns only a masked address.
 - [ ] Preview and add share one rate bucket per account (test).
 - [ ] The migration and its `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every new route.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen transcripts --check` stays green.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

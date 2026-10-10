@@ -15,7 +15,7 @@
  *   6. PUT /licenses/<id>/overrides refuses config and secrets after the run and accepts
  *      entitlements, on owned and floating licences (decision 20);
  *   7. an account merge copies and reports colliding account overrides (§5.5);
- *   8. the signed corpus is unchanged: asserted by `pnpm gen:corpus -- --check` (the gate), since
+ *   8. the signed corpus is unchanged: asserted by `pnpm gen corpus --check` (the gate), since
  *      no signed shape, claim or fixture changes here; the config document's shape is checked in
  *      test 1.
  *

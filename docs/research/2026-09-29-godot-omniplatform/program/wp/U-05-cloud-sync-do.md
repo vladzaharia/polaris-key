@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-19](U-19-security-review.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md), [U-12](U-12-privacy-settings-portal.md), [U-11a](U-11a-console-data-settings.md), [U-10](U-10-saves-backend.md), [U-09](U-09-collections-backend.md), [U-14](U-14-live-pokes.md), [PX-18](PX-18-cloud-sync-section.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                                                                        |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                                                                                                                                                                                                            |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`; `wrangler.toml`; `TABLE_OWNERS`; D1 migration; merged-account test; load test of one DO at the push limit (rows written and billable duration per op)                                                                                                                                                |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`; `wrangler.toml`; `TABLE_OWNERS`; D1 migration; merged-account test; load test of one DO at the push limit (rows written and billable duration per op)                                                                                                                                                   |
 | Human input | a staging deploy for the one-DO load test at the push limit                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
@@ -16,7 +16,7 @@
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
-- **[`plans/U-01.md`](../plans/U-01.md):** the `protocol/sync` subpath and its `gen:constants` subpath; a sharded limiter (one `RateLimitDO` cannot hold the product push limit); `cloudSync.writesPaused`; no `sync_product_settings` table and no ceiling admin routes; the effective-limit formula. U-05 does not wait for LX-09 (Q9). `byEntitlement` maps limits to developer-declared numeric flags that combine by `max` (Q3).
+- **[`plans/U-01.md`](../plans/U-01.md):** the `protocol/sync` subpath and its `gen constants` subpath; a sharded limiter (one `RateLimitDO` cannot hold the product push limit); `cloudSync.writesPaused`; no `sync_product_settings` table and no ceiling admin routes; the effective-limit formula. U-05 does not wait for LX-09 (Q9). `byEntitlement` maps limits to developer-declared numeric flags that combine by `max` (Q3).
 - **[`plans/LX-01.md`](../plans/LX-01.md):** §7: `byTier` is the tier of the highest-`rank` contributing licence; `byEntitlement` reads `sync.storageBytes` and `sync.slots` from the effective set; `requiresFlag` calls `resolveDeviceEntitlements`, licence-less devices are allowed, and `writes.requireLicense` checks the anchor's usability.
 
 ## Consolidation 2026-10-07
@@ -99,7 +99,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- sync
-mise exec node@22 -- pnpm gen:transcripts -- --check
+mise exec node@22 -- pnpm gen transcripts --check
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 ```
 
