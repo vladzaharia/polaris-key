@@ -28,14 +28,16 @@
 // `sdk-node` or ui-core.
 //
 // The file is ASCII only (sign-corpus writes it through `asciiJson`) and append-only within
-// `uiMatrixVersion` 1: a new row keeps the version; a changed row, input member or rule bumps it
-// (plans/UK-02b.md §4.8).
+// `uiMatrixVersion` 2: a new row keeps the version; a changed row, input member or rule bumps it
+// (plans/UK-02b.md §4.8). Version 2 (UK-03): the `elapsedMs` input member and DL7's
+// delayed-response rows (the `dl7-delayed-response` gap of version 1), and the fixture key's
+// secret corrected to the 22 characters every license key has.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const UI_MATRIX_VERSION = 1;
+export const UI_MATRIX_VERSION = 2;
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -482,15 +484,30 @@ export interface Gap {
 
 /** The declared gaps. The build fails on a gap with no owner or no reason; the package that
  *  appends the rows removes its entry. */
-export const GAPS: readonly Gap[] = [
-  {
-    id: "dl7-delayed-response",
-    what: "The delayed-response variant of UI-KITS §4.1's verification recipe and the brief's brand transition: a response slower than DL7's 250-300 ms threshold, before which a loading state shows nothing and after which it shows the identity, a muted label and the shimmer.",
-    why: "Every row is time-independent. Pinning the delay needs a new input member (the time since the request started), and a new input member bumps uiMatrixVersion (plans/UK-02b.md §4.8).",
-    owner: "UK-03",
-    then: "UK-03 owns the 250-300 ms loading delay as a model timer: it appends the delayed-response rows with that input and bumps uiMatrixVersion. UK-15 renders the variant at the phone-portrait and desktop rows; the reduced-motion render reaches the same state.",
-  },
-];
+export const GAPS: readonly Gap[] = [];
+
+/**
+ * DL7's delayed response (UI-KITS.md, design language v2): a loading state shows nothing for the
+ * first 250-300 ms, then the identity, a muted label and the shimmer. `elapsedMs` (the time since
+ * the request started) pins it: below `min` the state's copy is empty, from `max` it is the
+ * state's usual copy, and no row falls inside the window, so a kit may wait anywhere in it. A
+ * row without `elapsedMs` is past the delay. The states are the loading states of the must
+ * components (and the gate's license check, which never flashes).
+ */
+export const LOADING_DELAY = {
+  min: 250,
+  max: 300,
+  states: [
+    "PolarisKeyGate.booting",
+    "LicenseChoice.loading",
+    "Devices.loading",
+    "ReleaseNotes.loading",
+    "AccountAndLicense.loading",
+    "Settings.loading",
+    "Paywall.loading",
+    "EntitlementGate.loading",
+  ],
+} as const;
 
 /** What a member an input omits stands for. */
 export const DEFAULTS: Obj = {
@@ -533,6 +550,8 @@ const INPUTS: Record<string, string> = {
   gate: "The gate: {status?: licenseStatus, checking?: true (no status yet), cached?: true (a cached license is being re-checked), graceDaysLeft?, allowed?: {min?, max?} (the license's allowed versions)}.",
   pending: "The action in flight, which drives the busy states.",
   loading: "true while the component's data loads.",
+  elapsedMs:
+    "Milliseconds since the request a loading state waits on started (DL7, vocabulary.loadingDelay). Below min the state shows nothing; from max its usual copy. Absent: the delay has passed.",
   keyField:
     "The license key field: {text, submitted?}. A key is `pkey_<slug>_` and a 22-character secret.",
   activation:
@@ -676,7 +695,7 @@ const ANDROID_TV = { os: "android", formFactor: "tv" };
 const LINUX_TV = { os: "linux", formFactor: "tv" };
 const WEB = { os: "web", formFactor: "computer" };
 
-const KEY = "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp"; // a 22-character secret
+const KEY = "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"; // a 22-character secret
 const MANAGE_URL =
   "https://key.plrs.im/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro";
 const DEVICES = [
@@ -3034,6 +3053,23 @@ function absentTwin(d: Draft): Draft {
   };
 }
 
+/** DL7: the delayed-response twins of a loading state's first row: nothing shown before the
+ *  delay, the usual copy past it, and for Devices the last millisecond under the window. */
+function delayTwins(d: Draft): Draft[] {
+  const at = (elapsedMs: number, label: string, copy: string[]): Draft => ({
+    name: `${d.name}: ${label}`,
+    input: { ...d.input, elapsedMs },
+    expect: { ...d.expect, copy },
+  });
+  const out = [
+    at(0, "before the DL7 delay", []),
+    at(LOADING_DELAY.max, "past the DL7 delay", d.expect.copy),
+  ];
+  if (d.expect.component === "Devices")
+    out.splice(1, 0, at(LOADING_DELAY.min - 1, "just under the DL7 delay", []));
+  return out;
+}
+
 /** D4: the sheet twin of an inline sign-in row. */
 function sheetTwin(d: Draft): Draft {
   const signIn = d.input.signIn as Obj;
@@ -3494,6 +3530,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   const offPairs = new Set<string>();
   const endings = new Set<string>();
   const mustNotSeen = new Set<string>();
+  const delayedSeen = new Set<string>();
   const enumHas = (name: string, v: unknown) =>
     (S.enums[name] ?? []).includes(v as string);
 
@@ -3648,6 +3685,50 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
       const edit = input.edit as Obj | undefined;
       if (edit && !(EDITS as readonly string[]).includes(edit.kind as string))
         errors.push(`${where}: edit.kind`);
+      // DL7's delayed response.
+      if (input.elapsedMs !== undefined) {
+        const ms = input.elapsedMs;
+        const delayedState = (
+          LOADING_DELAY.states as readonly string[]
+        ).includes(`${component}.${state}`);
+        if (typeof ms !== "number" || !Number.isInteger(ms) || ms < 0)
+          errors.push(
+            `${where}: elapsedMs is not a whole number of milliseconds`,
+          );
+        else if (!delayedState)
+          errors.push(
+            `${where}: elapsedMs only on a delayed loading state (DL7)`,
+          );
+        else if (ms >= LOADING_DELAY.min && ms < LOADING_DELAY.max)
+          errors.push(
+            `${where}: elapsedMs ${ms} is inside the ${LOADING_DELAY.min}-${LOADING_DELAY.max} ms window`,
+          );
+        else if (ms < LOADING_DELAY.min) {
+          if (copy.length > 0 || actions.length > 0)
+            errors.push(
+              `${where}: a loading state shows nothing before the delay`,
+            );
+          delayedSeen.add(`${component}.${state}:before`);
+        } else {
+          const base = rows.find(
+            (o) =>
+              o !== r &&
+              o.expect.component === component &&
+              o.input.elapsedMs === undefined &&
+              JSON.stringify({ ...o.input }) ===
+                JSON.stringify(
+                  Object.fromEntries(
+                    Object.entries(input).filter(([k]) => k !== "elapsedMs"),
+                  ),
+                ),
+          );
+          if (!base || base.expect.copy.join() !== copy.join())
+            errors.push(
+              `${where}: past the delay a loading state shows its usual copy`,
+            );
+          delayedSeen.add(`${component}.${state}:past`);
+        }
+      }
       const toast = input.toast as Obj | undefined;
       if (
         toast &&
@@ -3898,6 +3979,14 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
     if (MUST_NOT[c] && !mustNotSeen.has(c))
       errors.push(`${c}: no negative row for "${MUST_NOT[c]}"`);
   }
+  for (const where of LOADING_DELAY.states) {
+    const [c, st] = where.split(".");
+    if (!S.components[c!]?.states[st!])
+      errors.push(`LOADING_DELAY ${where}: not a components.json state`);
+    for (const side of ["before", "past"])
+      if (!delayedSeen.has(`${where}:${side}`))
+        errors.push(`${where}: no row ${side} the DL7 delay`);
+  }
   for (const lane of ["inline", "sheet", "browser", "device-code"])
     for (const issued of ["true", "false"])
       if (!endings.has(`${lane}:${issued}`))
@@ -4033,7 +4122,8 @@ const DESCRIPTION = [
   "mustNot marks a negative case (UI-KITS §4.1): the expectation holds and none of its states, copy or actions appear.",
   "Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6).",
   "theme rows pin UI-KITS §1.2 and §3.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter).",
-  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 1: a changed row, input member or rule bumps it.",
+  "vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy.",
+  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 2: a changed row, input member or rule bumps it.",
 ].join(" ");
 
 export function buildUiMatrix(
@@ -4051,8 +4141,21 @@ export function buildUiMatrix(
     paywall: paywallFamily(a),
   };
   const out = {} as Record<ComponentFamily, Row[]>;
+  const delayed = new Set<string>();
   for (const family of COMPONENT_FAMILIES) {
-    const drafts = families[family];
+    const drafts: Draft[] = [];
+    for (const d of families[family]) {
+      drafts.push(d);
+      const key = `${d.expect.component}.${d.expect.state}`;
+      if (
+        (LOADING_DELAY.states as readonly string[]).includes(key) &&
+        !delayed.has(key) &&
+        d.input.services === undefined
+      ) {
+        delayed.add(key);
+        drafts.push(...delayTwins(d));
+      }
+    }
     const withAbsent: Draft[] = [];
     for (const d of drafts) {
       withAbsent.push(d);
@@ -4085,6 +4188,11 @@ export function buildUiMatrix(
       mustNot: MUST_NOT as Obj,
       unreached: UNREACHED as unknown as Obj,
       gaps: GAPS.map((g) => ({ ...g })),
+      loadingDelay: {
+        min: LOADING_DELAY.min,
+        max: LOADING_DELAY.max,
+        states: [...LOADING_DELAY.states],
+      },
       kits: [...KITS],
       platforms: [...MUST_OS],
       formFactors: [...FORM_FACTORS],

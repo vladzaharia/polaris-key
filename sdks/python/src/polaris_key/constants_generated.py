@@ -1496,7 +1496,7 @@ PRESENTATION_MATRIX_VERSION: Final[int] = 1
 
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 1
+UI_MATRIX_VERSION: Final[int] = 2
 
 
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.

@@ -22,7 +22,7 @@ only corpus. `corpusVersion 2`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
 `planMatrixVersion 2`, `deviceLabelVersion 1`,
-`presentationMatrixVersion 1`, `uiMatrixVersion 1`,
+`presentationMatrixVersion 1`, `uiMatrixVersion 2`,
 `contentCorpusVersion 2`, `syncScenariosVersion 1`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
 `releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
@@ -93,26 +93,28 @@ WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label ev
 
 WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed field by field (a malformed field is dropped, never refusing discovery), the icon size a hero of `px` points at `scale` fetches given the types the platform decodes, and the SHA-256 check before any icon byte is shown. A generator-local reference in `tools/presentation-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/presentation` is checked against the file by its own test, like every SDK. Non-ASCII is written escaped.
 
-## UI state matrix (`ui-matrix.json`): 337 component rows, 27 theme rows, 77 i18n rows
+## UI state matrix (`ui-matrix.json`): 356 component rows, 27 theme rows, 77 i18n rows
 
 The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each row drives the headless model of one component with an input (SDK results, `plans/I-04.md`'s license-choice views, kit-side values) and names its state, the copy keys it shows and its actions. `hidden` means the drop-in renders nothing because a service it depends on is off. Inline sign-in rows have a sheet twin, every component has a presentation-absent row, and the negative rows carry UI-KITS §4.1's Must not. The `theme` rows pin the accent, scheme, icon and preset resolution; the `i18n` rows the catalog lookup and the ICU subset, computed from the kit copy by the generator. No reference state machine: ui-core, the Swift presentation core, Kotlin `commonMain`, the Godot controllers and `polaris_key.ui.core` each run every row.
 
 | Family | Components | Rows |
 | --- | --- | --- |
-| `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 56 |
+| `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 58 |
 | `activate` | Welcome, Activate, OfflineActivation | 35 |
-| `signIn` | SignIn, SignInHandoff, LicenseChoice | 143 |
+| `signIn` | SignIn, SignInHandoff, LicenseChoice | 147 |
 | `deviceLimit` | DeviceLimit | 8 |
-| `devices` | Devices | 13 |
-| `update` | UpdatePrompt, UpdateProgress, ReleaseNotes | 42 |
-| `settings` | AccountAndLicense, Settings | 25 |
-| `paywall` | Paywall, EntitlementGate | 15 |
+| `devices` | Devices | 16 |
+| `update` | UpdatePrompt, UpdateProgress, ReleaseNotes | 44 |
+| `settings` | AccountAndLicense, Settings | 29 |
+| `paywall` | Paywall, EntitlementGate | 19 |
 
 ### Declared gaps
 
-Variants the matrix does not pin yet, each with the work package that appends its rows (`vocabulary.gaps`):
+None: every variant of the verification recipe is pinned (`vocabulary.gaps` is empty).
 
-- `dl7-delayed-response` (UK-03): The delayed-response variant of UI-KITS §4.1's verification recipe and the brief's brand transition: a response slower than DL7's 250-300 ms threshold, before which a loading state shows nothing and after which it shows the identity, a muted label and the shimmer. UK-03 owns the 250-300 ms loading delay as a model timer: it appends the delayed-response rows with that input and bumps uiMatrixVersion. UK-15 renders the variant at the phone-portrait and desktop rows; the reduced-motion render reaches the same state.
+### The loading delay
+
+DL7: a loading state shows nothing until 250-300 ms after its request started, then its usual copy. The rows give `elapsedMs` below 250 or from 300, never inside the window, so each kit's model timer may wait anywhere in it. The delayed states: `PolarisKeyGate.booting`, `LicenseChoice.loading`, `Devices.loading`, `ReleaseNotes.loading`, `AccountAndLicense.loading`, `Settings.loading`, `Paywall.loading`, `EntitlementGate.loading`.
 
 ### States to handle
 

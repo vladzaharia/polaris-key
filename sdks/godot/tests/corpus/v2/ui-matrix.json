@@ -1,6 +1,6 @@
 {
-  "uiMatrixVersion": 1,
-  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 1: a changed row, input member or rule bumps it.",
+  "uiMatrixVersion": 2,
+  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy. Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 2: a changed row, input member or rule bumps it.",
   "vocabulary": {
     "actions": {
       "open-card": "Start the sign-in on the hosted card in the browser (Continue in browser, Continue with email).",
@@ -36,6 +36,7 @@
       "gate": "The gate: {status?: licenseStatus, checking?: true (no status yet), cached?: true (a cached license is being re-checked), graceDaysLeft?, allowed?: {min?, max?} (the license's allowed versions)}.",
       "pending": "The action in flight, which drives the busy states.",
       "loading": "true while the component's data loads.",
+      "elapsedMs": "Milliseconds since the request a loading state waits on started (DL7, vocabulary.loadingDelay). Below min the state shows nothing; from max its usual copy. Absent: the delay has passed.",
       "keyField": "The license key field: {text, submitted?}. A key is `pkey_<slug>_` and a 22-character secret.",
       "activation": "An activation result: {result: activationResult, code?, limit?, deviceCount?, manageUrl?}.",
       "offline": "Offline activation: {copied?, file?, submitted?, verified?} (the request code copied, a response loaded, submitted, its signature verified).",
@@ -175,15 +176,21 @@
         "update.reload": "The web outlet's decision is `platform` (update-matrix.json), drawn with update.platform.web."
       }
     },
-    "gaps": [
-      {
-        "id": "dl7-delayed-response",
-        "what": "The delayed-response variant of UI-KITS \u00a74.1's verification recipe and the brief's brand transition: a response slower than DL7's 250-300 ms threshold, before which a loading state shows nothing and after which it shows the identity, a muted label and the shimmer.",
-        "why": "Every row is time-independent. Pinning the delay needs a new input member (the time since the request started), and a new input member bumps uiMatrixVersion (plans/UK-02b.md \u00a74.8).",
-        "owner": "UK-03",
-        "then": "UK-03 owns the 250-300 ms loading delay as a model timer: it appends the delayed-response rows with that input and bumps uiMatrixVersion. UK-15 renders the variant at the phone-portrait and desktop rows; the reduced-motion render reaches the same state."
-      }
-    ],
+    "gaps": [],
+    "loadingDelay": {
+      "min": 250,
+      "max": 300,
+      "states": [
+        "PolarisKeyGate.booting",
+        "LicenseChoice.loading",
+        "Devices.loading",
+        "ReleaseNotes.loading",
+        "AccountAndLicense.loading",
+        "Settings.loading",
+        "Paywall.loading",
+        "EntitlementGate.loading"
+      ]
+    },
     "kits": [
       "elements",
       "react",
@@ -268,6 +275,24 @@
         "presentation": null,
         "bundle": { "slug": "tidewater", "name": "Tidewater Studio" }
       },
+      "expect": {
+        "component": "PolarisKeyGate",
+        "state": "booting",
+        "copy": ["gate.checking"]
+      }
+    },
+    {
+      "name": "PolarisKeyGate/booting: the license check runs: before the DL7 delay",
+      "input": { "gate": { "checking": true }, "elapsedMs": 0 },
+      "expect": {
+        "component": "PolarisKeyGate",
+        "state": "booting",
+        "copy": []
+      }
+    },
+    {
+      "name": "PolarisKeyGate/booting: the license check runs: past the DL7 delay",
+      "input": { "gate": { "checking": true }, "elapsedMs": 300 },
       "expect": {
         "component": "PolarisKeyGate",
         "state": "booting",
@@ -1262,7 +1287,7 @@
     },
     {
       "name": "Activate/typing: a secret not yet complete",
-      "input": { "keyField": { "text": "pkey_tidewater_Q2xvdWRzT3Zlcl" } },
+      "input": { "keyField": { "text": "pkey_tidewater_Q2xvdWRzT3ZlclRo" } },
       "expect": {
         "component": "Activate",
         "state": "typing",
@@ -1272,7 +1297,7 @@
     {
       "name": "Activate/parsed",
       "input": {
-        "keyField": { "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp" }
+        "keyField": { "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG" }
       },
       "expect": {
         "component": "Activate",
@@ -1284,7 +1309,7 @@
       "name": "Activate/cut-short: submitted short",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3Zlcl",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRo",
           "submitted": true
         }
       },
@@ -1298,7 +1323,7 @@
       "name": "Activate/busy",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "pending": "activate"
@@ -1331,7 +1356,7 @@
       "name": "Activate/rejected: the license is disabled",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "activation": { "result": "license-disabled" }
@@ -1349,7 +1374,7 @@
       "name": "Activate/rejected: another account holds the license",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "activation": { "result": "refused", "code": "license_owned" }
@@ -1367,7 +1392,7 @@
       "name": "Activate/rejected: the key-entry limit",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "activation": { "result": "key-entry-limit" }
@@ -1385,7 +1410,7 @@
       "name": "Activate/device-limit: no link to replace a device",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "activation": { "result": "device-limit", "limit": 3, "deviceCount": 3 }
@@ -1406,7 +1431,7 @@
       "name": "Activate/device-limit: a link to replace a device",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "activation": {
@@ -1431,7 +1456,7 @@
       "name": "Activate/done",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "activation": { "result": "ok" }
@@ -1450,7 +1475,7 @@
       "name": "Activate/done: a floating key needs no account",
       "input": {
         "keyField": {
-          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhp",
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
           "submitted": true
         },
         "activation": { "result": "ok" },
@@ -4833,6 +4858,70 @@
       }
     },
     {
+      "name": "LicenseChoice/loading: before the DL7 delay",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose"
+        },
+        "loading": true,
+        "elapsedMs": 0
+      },
+      "expect": { "component": "LicenseChoice", "state": "loading", "copy": [] }
+    },
+    {
+      "name": "LicenseChoice/loading: before the DL7 delay (sheet)",
+      "input": {
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose"
+        },
+        "loading": true,
+        "elapsedMs": 0
+      },
+      "expect": { "component": "LicenseChoice", "state": "loading", "copy": [] }
+    },
+    {
+      "name": "LicenseChoice/loading: past the DL7 delay",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose"
+        },
+        "loading": true,
+        "elapsedMs": 300
+      },
+      "expect": {
+        "component": "LicenseChoice",
+        "state": "loading",
+        "copy": ["common.loading", "signin.choice.title"]
+      }
+    },
+    {
+      "name": "LicenseChoice/loading: past the DL7 delay (sheet)",
+      "input": {
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose"
+        },
+        "loading": true,
+        "elapsedMs": 300
+      },
+      "expect": {
+        "component": "LicenseChoice",
+        "state": "loading",
+        "copy": ["common.loading", "signin.choice.title"]
+      }
+    },
+    {
       "name": "LicenseChoice/many",
       "input": {
         "signIn": {
@@ -8030,6 +8119,25 @@
       }
     },
     {
+      "name": "Devices/loading: before the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 0 },
+      "expect": { "component": "Devices", "state": "loading", "copy": [] }
+    },
+    {
+      "name": "Devices/loading: just under the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 249 },
+      "expect": { "component": "Devices", "state": "loading", "copy": [] }
+    },
+    {
+      "name": "Devices/loading: past the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 300 },
+      "expect": {
+        "component": "Devices",
+        "state": "loading",
+        "copy": ["common.loading", "devices.title"]
+      }
+    },
+    {
       "name": "Devices/renaming",
       "input": {
         "devices": [
@@ -8818,6 +8926,20 @@
       }
     },
     {
+      "name": "ReleaseNotes/loading: before the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 0 },
+      "expect": { "component": "ReleaseNotes", "state": "loading", "copy": [] }
+    },
+    {
+      "name": "ReleaseNotes/loading: past the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 300 },
+      "expect": {
+        "component": "ReleaseNotes",
+        "state": "loading",
+        "copy": ["common.loading", "releaseNotes.title"]
+      }
+    },
+    {
       "name": "ReleaseNotes/empty",
       "input": { "releaseNotes": [] },
       "expect": {
@@ -8945,6 +9067,24 @@
     {
       "name": "AccountAndLicense/loading",
       "input": { "loading": true },
+      "expect": {
+        "component": "AccountAndLicense",
+        "state": "loading",
+        "copy": ["account.title", "common.loading"]
+      }
+    },
+    {
+      "name": "AccountAndLicense/loading: before the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 0 },
+      "expect": {
+        "component": "AccountAndLicense",
+        "state": "loading",
+        "copy": []
+      }
+    },
+    {
+      "name": "AccountAndLicense/loading: past the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 300 },
       "expect": {
         "component": "AccountAndLicense",
         "state": "loading",
@@ -9439,6 +9579,20 @@
       }
     },
     {
+      "name": "Settings/loading: before the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 0 },
+      "expect": { "component": "Settings", "state": "loading", "copy": [] }
+    },
+    {
+      "name": "Settings/loading: past the DL7 delay",
+      "input": { "loading": true, "elapsedMs": 300 },
+      "expect": {
+        "component": "Settings",
+        "state": "loading",
+        "copy": ["common.loading", "settings.title"]
+      }
+    },
+    {
       "name": "Settings/dirty",
       "input": {
         "config": [
@@ -9880,6 +10034,28 @@
       }
     },
     {
+      "name": "Paywall/loading: before the DL7 delay",
+      "input": {
+        "entitlement": { "name": "pro.export", "entitled": false },
+        "loading": true,
+        "elapsedMs": 0
+      },
+      "expect": { "component": "Paywall", "state": "loading", "copy": [] }
+    },
+    {
+      "name": "Paywall/loading: past the DL7 delay",
+      "input": {
+        "entitlement": { "name": "pro.export", "entitled": false },
+        "loading": true,
+        "elapsedMs": 300
+      },
+      "expect": {
+        "component": "Paywall",
+        "state": "loading",
+        "copy": ["common.loading"]
+      }
+    },
+    {
       "name": "Paywall/purchasing",
       "input": {
         "platform": { "os": "ios", "formFactor": "iphone" },
@@ -10008,6 +10184,32 @@
       "input": {
         "entitlement": { "name": "pro.export", "entitled": false },
         "loading": true
+      },
+      "expect": {
+        "component": "EntitlementGate",
+        "state": "loading",
+        "copy": ["common.loading"]
+      }
+    },
+    {
+      "name": "EntitlementGate/loading: before the DL7 delay",
+      "input": {
+        "entitlement": { "name": "pro.export", "entitled": false },
+        "loading": true,
+        "elapsedMs": 0
+      },
+      "expect": {
+        "component": "EntitlementGate",
+        "state": "loading",
+        "copy": []
+      }
+    },
+    {
+      "name": "EntitlementGate/loading: past the DL7 delay",
+      "input": {
+        "entitlement": { "name": "pro.export", "entitled": false },
+        "loading": true,
+        "elapsedMs": 300
       },
       "expect": {
         "component": "EntitlementGate",

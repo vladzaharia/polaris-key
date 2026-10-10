@@ -8,7 +8,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildUiMatrix,
   checkUiMatrix,
+  COMPONENT_FAMILIES,
   FORM_FACTORS,
+  LOADING_DELAY,
   LOCALES,
   loadUiMatrixSources,
   MUST_NOT,
@@ -40,7 +42,7 @@ describe("ui-matrix.json", () => {
     );
     const file = JSON.parse(text) as UiMatrix;
     expect(file.uiMatrixVersion).toBe(UI_MATRIX_VERSION);
-    expect(UI_MATRIX_VERSION).toBe(1);
+    expect(UI_MATRIX_VERSION).toBe(2);
     expect(JSON.parse(JSON.stringify(DOC))).toEqual(file);
     // eslint-disable-next-line no-control-regex
     expect(/[^\x00-\x7f]/.test(text)).toBe(false);
@@ -96,10 +98,8 @@ describe("ui-matrix.json", () => {
       owner: string;
       why: string;
     }[];
-    expect(gaps.map((g) => g.id)).toContain("dl7-delayed-response");
-    expect(gaps.find((g) => g.id === "dl7-delayed-response")?.owner).toBe(
-      "UK-03",
-    );
+    // UK-03 appended DL7's delayed-response rows (version 2) and removed its gap.
+    expect(gaps.map((g) => g.id)).not.toContain("dl7-delayed-response");
     const program = JSON.parse(
       readFileSync(
         join(
@@ -120,6 +120,50 @@ describe("ui-matrix.json", () => {
       expect(wp?.status, g.owner).not.toBe("done");
       expect(g.why.length).toBeGreaterThan(0);
     }
+  });
+
+  it("pins DL7's delayed response on every delayed loading state (version 2)", () => {
+    const delay = DOC.vocabulary.loadingDelay as unknown as {
+      min: number;
+      max: number;
+      states: string[];
+    };
+    expect(delay).toEqual({
+      min: 250,
+      max: 300,
+      states: [...LOADING_DELAY.states],
+    });
+    for (const where of LOADING_DELAY.states) {
+      const [c, st] = where.split(".");
+      const rows = COMPONENT_FAMILIES.flatMap((f) => DOC[f]).filter(
+        (r) => r.expect.component === c && r.expect.state === st,
+      );
+      const before = rows.filter(
+        (r) => typeof r.input.elapsedMs === "number" && r.input.elapsedMs < 250,
+      );
+      const past = rows.filter(
+        (r) =>
+          typeof r.input.elapsedMs === "number" && r.input.elapsedMs >= 300,
+      );
+      expect(before.length, where).toBeGreaterThan(0);
+      expect(past.length, where).toBeGreaterThan(0);
+      for (const r of before) expect(r.expect.copy, r.name).toEqual([]);
+      for (const r of past)
+        expect(r.expect.copy.length, r.name).toBeGreaterThan(0);
+    }
+    expect(
+      row(DOC, "devices", "Devices/loading: just under the DL7 delay").input
+        .elapsedMs,
+    ).toBe(249);
+  });
+
+  it("gives the fixture key the 22-character secret every license key has", () => {
+    const text = (
+      row(DOC, "activate", "Activate/parsed").input.keyField as {
+        text: string;
+      }
+    ).text;
+    expect(/^pkey_[a-z0-9-]+_[A-Za-z0-9_-]{22}$/.test(text)).toBe(true);
   });
 
   it("closes a services list under requires (ST-38)", () => {
@@ -487,10 +531,50 @@ describe("the generator refuses", () => {
     [
       "a declared gap with no work package owner",
       (d) => {
-        (d.vocabulary.gaps as unknown as Record<string, unknown>[])[0]!.owner =
-          "someone";
+        (d.vocabulary.gaps as unknown as Record<string, unknown>[]).push({
+          id: "a-gap",
+          what: "something",
+          why: "a reason",
+          owner: "someone",
+          then: "later",
+        });
       },
       "is not a work package id",
+    ],
+    [
+      "a loading state that shows its copy before the DL7 delay",
+      (d) => {
+        row(d, "devices", "Devices/loading: before the DL7 delay").expect.copy =
+          ["common.loading"];
+      },
+      "shows nothing before the delay",
+    ],
+    [
+      "an elapsedMs inside the DL7 window",
+      (d) => {
+        row(
+          d,
+          "devices",
+          "Devices/loading: just under the DL7 delay",
+        ).input.elapsedMs = 260;
+      },
+      "inside the 250-300 ms window",
+    ],
+    [
+      "an elapsedMs on a state that does not wait",
+      (d) => {
+        row(d, "devices", "Devices/list").input.elapsedMs = 0;
+      },
+      "elapsedMs only on a delayed loading state",
+    ],
+    [
+      "a delayed loading state with no row past the delay",
+      (d) => {
+        d.paywall = d.paywall.filter(
+          (r) => r.name !== "Paywall/loading: past the DL7 delay",
+        );
+      },
+      "Paywall.loading: no row past the DL7 delay",
     ],
     [
       "a components.json state named hidden",

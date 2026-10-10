@@ -854,7 +854,7 @@ const DEVICE_LABEL_VERSION := 1
 const PRESENTATION_MATRIX_VERSION := 1
 
 ## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-const UI_MATRIX_VERSION := 1
+const UI_MATRIX_VERSION := 2
 
 ## `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 const CONTENT_CORPUS_VERSION := 2

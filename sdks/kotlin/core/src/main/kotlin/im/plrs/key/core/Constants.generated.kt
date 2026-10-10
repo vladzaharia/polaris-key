@@ -1262,7 +1262,7 @@ public const val DEVICE_LABEL_VERSION: Int = 1
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-public const val UI_MATRIX_VERSION: Int = 1
+public const val UI_MATRIX_VERSION: Int = 2
 
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2

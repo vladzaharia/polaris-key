@@ -1311,7 +1311,7 @@ export const DEVICE_LABEL_VERSION = 1;
 export const PRESENTATION_MATRIX_VERSION = 1;
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 1;
+export const UI_MATRIX_VERSION = 2;
 
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
