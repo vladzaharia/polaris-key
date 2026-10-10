@@ -50,6 +50,7 @@ import {
   isBrowserDefaultFont,
   SYSTEM_FONT_STACK,
 } from "../components/theme.js";
+import { PolarisContext } from "../react/context.js";
 import { text, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
 import { adoptKitStyles } from "./styles.js";
@@ -67,7 +68,8 @@ export interface KitTheme extends ThemeOptions {
   /** The integrator's icon, as a URL the page may load. */
   iconSrc?: string;
   /** The SDK's presentation seam (HA-12's `PresentationSource`): the product's accent and icon
-   *  with no integrator code. */
+   *  with no integrator code. Inside `<PolarisKeyProvider>` it defaults to the adapter's
+   *  `presentationSource()`; `null` shows none. */
   presentation?: PresentationSource | null;
   /** What the app bundle knows about the product. */
   bundle?: BundleProduct;
@@ -193,9 +195,22 @@ function useKit(
   const [, force] = useReducer((n: number) => n + 1, 0);
 
   // §1.2 through ui-core's one path; the SDK's presentation source is watched, never fetched here.
+  // Inside <PolarisKeyProvider> the source is the adapter's (HA-13) unless the theme names one
+  // (`null`: none), so a product's accent and icon need no integrator code.
+  const adapter = useContext(PolarisContext)?.adapter ?? null;
+  const sdkSource = useMemo(() => {
+    try {
+      return typeof adapter?.presentationSource === "function"
+        ? adapter.presentationSource()
+        : null;
+    } catch {
+      return null;
+    }
+  }, [adapter]);
   const [identity, setIdentity] = useState<ResolvedIdentity | null>(null);
   const [iconUrl, setIconUrl] = useState<string | null>(null);
-  const source = options.presentation ?? null;
+  const source =
+    options.presentation !== undefined ? options.presentation : sdkSource;
   const idKey = identityKey(options);
   useEffect(() => {
     const stop = watchProductIdentity(

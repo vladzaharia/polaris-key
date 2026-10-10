@@ -8,6 +8,11 @@
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { resolveKitColors } from "@polaris-key/ui-core/theme";
+import type {
+  PresentationSource,
+  ProductPresentation,
+} from "@polaris-key/client-core/presentation";
 
 import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { PolarisKeyGate } from "../src/index.js";
@@ -193,6 +198,86 @@ describe("the gate starts itself inside the provider", () => {
     await waitFor(() =>
       expect(container.querySelector("#pk-key")).not.toBeNull(),
     );
+    adapter.dispose();
+  });
+});
+
+describe("the product's identity comes from the SDK", () => {
+  // UI-KITS.md §1.2: integrator → the SDK's presentation source (HA-13) → bundle → ink. Inside the
+  // provider the kit reads the adapter's source; the integrator writes nothing.
+  function sourceOf(): PresentationSource & {
+    iconUrl(): Promise<string | null>;
+  } {
+    const p = {
+      name: "Driftkart",
+      accent: "#ff6a3d",
+      accentDark: "#ff8a5c",
+      icon: { sha256: "a".repeat(64), url: "https://cdn.example/i.png" },
+    } as unknown as ProductPresentation;
+    return {
+      current: () => p,
+      icon: async () => new Uint8Array([137, 80, 78, 71]),
+      iconUrl: async () => null,
+      subscribe: () => () => {},
+    };
+  }
+
+  it("draws the adapter's accent, name and icon with zero integrator code", async () => {
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(emptyBridgeState()),
+      now: () => NOW_SEC,
+    });
+    const source = sourceOf();
+    adapter.presentationSource = () =>
+      source as ReturnType<typeof adapter.presentationSource>;
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <PolarisKeyGate>
+          <div data-testid="app">APP</div>
+        </PolarisKeyGate>
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(root(container)?.dataset.state).toBe("needs-activation"),
+    );
+    const want = resolveKitColors("#ff8a5c", "dark");
+    await waitFor(() =>
+      expect(root(container)!.style.getPropertyValue("--pk-accent")).toBe(
+        want.primary,
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector<HTMLImageElement>('img[data-part="icon"]')?.src,
+      ).toMatch(/^blob:/),
+    );
+    expect(container.querySelector("h1")?.textContent).toContain("Driftkart");
+    adapter.dispose();
+  });
+
+  it("a theme's own source wins: null draws no presentation accent or icon", async () => {
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(emptyBridgeState()),
+      now: () => NOW_SEC,
+    });
+    const source = sourceOf();
+    adapter.presentationSource = () =>
+      source as ReturnType<typeof adapter.presentationSource>;
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <PolarisKeyGate theme={{ presentation: null }}>
+          <div data-testid="app">APP</div>
+        </PolarisKeyGate>
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(root(container)?.dataset.state).toBe("needs-activation"),
+    );
+    const ink = resolveKitColors(null, "dark");
+    expect(root(container)!.style.getPropertyValue("--pk-accent")).toBe(
+      ink.primary,
+    );
+    expect(container.querySelector('img[data-part="icon"]')).toBeNull();
     adapter.dispose();
   });
 });
