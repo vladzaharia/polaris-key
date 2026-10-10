@@ -814,11 +814,13 @@ jobs:
   # editor and the build_stamp suite asserts the stamp and the pkey_* feature tags on the release
   # template. No path filter: a required check behind a filter never reports. Only first-party
   # actions; every engine download is checked against the upstream SHA-512 in
-  # sdks/godot/tools/godot.sha512, which also keys the cache.
+  # sdks/godot/tools/godot.sha512, which also keys the cache. The `ci` selection's editor step takes
+  # 4-5 minutes on a hosted runner and the UI resolution matrix step 6-10, past run_tests.sh's
+  # default 300 s per step: PKEY_TEST_TIMEOUT gives each step 900 s, as the local gate does.
   godot:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 40
     defaults:
       run:
         shell: bash
@@ -880,6 +882,7 @@ jobs:
       - run: |
           D="$HOME/.cache/pkey-godot/${{ matrix.godot }}"
           export GODOT_BIN="$D/godot"
+          export PKEY_TEST_TIMEOUT=900
           if [ -n "${{ matrix.template }}" ]; then export GODOT_TEMPLATE="$D/linux_release.x86_64"; fi
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
           sdks/godot/tools/run_tests.sh
