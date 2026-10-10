@@ -83,11 +83,14 @@ point and links to the kit's current docs.
   <TabItem label="SwiftUI">
     <KitStatus kit="swiftui" />
 
-    <KitPending kits={["swiftui"]} what="this theme API" />
-
-    **Planned:** the `.polarisKeyTheme(PolarisKeyTheme(…))` environment modifier. Beyond the
-    theme: a style protocol per component (`.activateStyle(.myStyle)`), in the manner of
-    `ButtonStyle`, and `@ViewBuilder` slots.
+    `.polarisKeyTheme(PolarisKeyTheme(…))` on any view above the kit: `preset` (`.polarisKey` or
+    `.native`), `colorScheme`, `accent` (`.product`, `.core`, `.color("#…")`), `serviceCues`,
+    `colors` (per role, per scheme), `radius`, `typography`, `density`, `motion`, `ambient`,
+    `product`, `copy`, `locale` and `poweredBy`. iOS controls stay capsules at every radius.
+    Beyond the theme: `PolarisKeyStyle`, one style per component in the manner of `ButtonStyle`
+    (`.welcomeStyle(_:)`, `.activateStyle(_:)`, `.signInStyle(_:)`, or
+    `.polarisKeyStyle(_:for:)`), whose configuration carries the state, its copy lines and its
+    actions, and the kit's own body to wrap. See [SwiftUI](/docs/build/ui/frameworks/swiftui/).
 
   </TabItem>
   <TabItem label="UIKit, AppKit">

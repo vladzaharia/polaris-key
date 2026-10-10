@@ -26,7 +26,7 @@ const MODES := ["auto", "on", "off"]
 const STORE_KINDS := ["app-store", "testflight"]
 const SIDELOAD_KINDS := ["altstore", "altstore-pal", "direct"]
 ## PolarisKeyPlatform's iOS floor, and the xcframework's (sdks/godot/native/ios/build.sh).
-const MIN_IOS := "17.0"
+const MIN_IOS := "18.0"
 const XCFRAMEWORK := "res://addons/polaris_key/native/ios/pkey_apple.xcframework"
 
 

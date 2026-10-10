@@ -11,7 +11,7 @@
 #   ios-arm64                 device
 #   ios-arm64_x86_64-simulator  Apple Silicon and Intel simulators
 #
-#   MIN_IOS         the deployment target (default 17.0, the package floor; never lower). Build it
+#   MIN_IOS         the deployment target (default 18.0, the package floor; never lower). Build it
 #                   at the APP's floor, not at 26.4: every newer API is behind #available, and a
 #                   framework newer than the app fails to load on older devices. The iOS preset's
 #                   application/min_ios_version must be at least this (the export plugin warns).
@@ -31,14 +31,14 @@ REPO="$(cd "$HERE/../../../.." && pwd)"
 SRC="$REPO/sdks/swift/Sources/PolarisKeyPlatform"
 CSRC="$REPO/sdks/swift/Sources/PolarisKeyPlatformC"
 OUT="${OUT:-$REPO/sdks/godot/addons/polaris_key/native/ios/pkey_apple.xcframework}"
-MIN_IOS="${MIN_IOS:-17.0}"
+MIN_IOS="${MIN_IOS:-18.0}"
 BUNDLE_ID="dev.polariskey.godot.pkey-apple"
 VERSION="$(sed -n 's/^config\/version="\(.*\)"$/\1/p' "$REPO/sdks/godot/project.godot")"
 
-# The package floor is iOS 17: refuse anything lower rather than build a binary that would need
-# availability guards the sources do not have.
-if [ "$(printf '%s\n17.0\n' "$MIN_IOS" | sort -V | head -n1)" != "17.0" ]; then
-  echo "build.sh: MIN_IOS=$MIN_IOS is below PolarisKeyPlatform's iOS 17.0 floor" >&2
+# The package floor is iOS 18 (UK-07): refuse anything lower rather than build a binary that would
+# need availability guards the sources do not have.
+if [ "$(printf '%s\n18.0\n' "$MIN_IOS" | sort -V | head -n1)" != "18.0" ]; then
+  echo "build.sh: MIN_IOS=$MIN_IOS is below PolarisKeyPlatform's iOS 18.0 floor" >&2
   exit 2
 fi
 

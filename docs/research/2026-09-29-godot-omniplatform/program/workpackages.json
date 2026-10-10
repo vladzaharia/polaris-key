@@ -1125,7 +1125,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-42-generator-registry-pnpm-gen.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-43",
@@ -2250,7 +2250,7 @@
         "plans/P2-08.md (approved 2026-10-09)"
       ],
       "brief": "wp/P2-08-built-in-dev-release-track-default-store.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P2-09",
@@ -4132,7 +4132,7 @@
         "plans/SP-54.md (approved 2026-10-09): identity-attach.json records profile.user from the start"
       ],
       "brief": "wp/I-09-key-entry-attach.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-10",
@@ -4793,7 +4793,7 @@
         "docs/design/SIGN-IN.md"
       ],
       "brief": "wp/I-27a-sign-in-md-one-text.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-28",
@@ -5014,7 +5014,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/backlog-sweep.md"
       ],
       "brief": "wp/I-33-profile-v2-screen-name-birth-date.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-34",
@@ -5960,7 +5960,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-01b-cloud-sync-plan-amendment-two-stores-one.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "U-27",
@@ -7760,7 +7760,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-30-generated-sha256sums.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-31",
@@ -10076,7 +10076,7 @@
         "section change brand-18"
       ],
       "brief": "wp/ST-50-font-weight-sweep.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-51",
@@ -10441,7 +10441,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/LX-12-licence-lifecycle.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-13",
@@ -11745,7 +11745,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-45a-developer-docs-two-lanes-per-sdk-on-today-s.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-45b",
@@ -11808,7 +11808,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-47-react-bundle-diet-and-size-budget.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-48",
@@ -12478,7 +12478,7 @@
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/HA-09-portal-mirrored-downloads.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "HA-10",
@@ -12592,7 +12592,7 @@
         "plans/HA-14.md (approved 2026-10-09)"
       ],
       "brief": "wp/HA-14-godot-presentation.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "HA-11"
     },
     {
@@ -12760,7 +12760,7 @@
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-02b-ui-fixtures-parity.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-03",
@@ -12781,7 +12781,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-03-ui-core.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-04",
@@ -12894,7 +12894,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-07-swiftui-ios.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "UK-08",
@@ -15154,7 +15154,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-03a-skeleton-and-contracts.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-03b",
@@ -15890,7 +15890,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/licensing-core.md"
       ],
       "brief": "wp/LX-32-one-resolver-licence-limits-duration.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-33",
@@ -16365,7 +16365,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-45-node-terminal-kit-0-8-x-fixes.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-46",
@@ -16407,7 +16407,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-47-react-kit-and-gate-fixes-before-uk-05.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-48",
@@ -16449,7 +16449,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-49-swiftui-kit-and-swift-sdk-0-8-x-correctness.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-50",
@@ -16470,7 +16470,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-50-godot-drop-in-fixes-ahead-of-uk-11.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-51",
@@ -16595,7 +16595,7 @@
         "docs/design/ui-kits/REVIEW.md"
       ],
       "brief": "wp/UK-56-kit-mockups-refresh.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-57",
@@ -16615,7 +16615,7 @@
         "section changes brand-08, brand-09..13, brand-24 (A1-A18)"
       ],
       "brief": "wp/UK-57-brand-assets.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-58",
@@ -16635,7 +16635,7 @@
         "section changes brand-02, brand-14, brand-15, brand-17, brand-23"
       ],
       "brief": "wp/UK-58-brand-expression-tokens.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-59",
@@ -16808,7 +16808,7 @@
         "design/PORTAL §8"
       ],
       "brief": "wp/PX-26-wide-zoomed-layouts.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-27",
@@ -16888,7 +16888,7 @@
         "section change portal-02"
       ],
       "brief": "wp/PX-30-art-hero-rendering.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-31",

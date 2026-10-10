@@ -3,10 +3,10 @@
 //   signal                    read from
 //   ────────────────────────  ──────────────────────────────────────────────────────────────────
 //   ios.appDistributor        MarketplaceKit `AppDistributor.current` (PolarisKeyPlatform's
-//                             `SystemDistributor`), behind #available(iOS 17.4)
-//                             (the package floor is iOS 17), raced against a deadline: it never
+//                             `SystemDistributor`; the iOS 18 floor has it), raced against a
+//                             deadline: it never
 //                             returned on the simulator (S-06 §1), so a timeout records `timeout`,
-//                             which is no evidence. Its `web` case exists from iOS 17.5 only.
+//                             which is no evidence.
 //   ios.bundleIdRewrite       Info.plist's `ALTBundleIdentifier` (AltStore's rewrite)
 //   ios.provisioningProfile   an `embedded.mobileprovision` in the bundle
 //   macos.masReceipt          <bundle>/Contents/_MASReceipt/receipt exists
@@ -114,7 +114,7 @@ public final class OutletReaderEnvironment: Sendable, Equatable {
     }
 }
 
-/// `AppDistributor.current` mapped to its signal value, where MarketplaceKit exists (iOS 17.4+).
+/// `AppDistributor.current` mapped to its signal value, where MarketplaceKit exists (iOS).
 /// The call itself is PolarisKeyPlatform's (`SystemDistributor`, P5-05), so the package holds one
 /// AppDistributor call; an error reads `other` (no evidence), as before.
 private func platformAppDistributor() -> (@Sendable () async -> String?)? {

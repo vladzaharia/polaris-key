@@ -53,4 +53,14 @@ License key entry with a live verdict: the field names the product and tier as s
     `--json` contract and the fallbacks.
 
   </TabItem>
+  <TabItem label="SwiftUI">
+    **Drop-in.** "Use a license key" in `.polarisKeyGate`: the visible, private key field (no autocorrect, Paste inside, Return submits) with the live verdict; a device limit is a neutral callout whose fix, Replace a device, is the only primary.
+
+    **Styled part.** `ActivateView(screen:text:onSubmit:onReplaceDevice:onCancel:)`, `KeyField(text:screen:onSubmit:)`, `SeatMeter`; `.activateStyle(_:)`.
+
+    **Headless.** `KitStates.activate(_:)` and `KeyVerdict` (the Worker's key shape: `pkey_<slug>_` and 22 characters); `PolarisKeyGateModel.submitKey()`.
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
 </Tabs>

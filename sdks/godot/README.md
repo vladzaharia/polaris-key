@@ -1461,7 +1461,7 @@ The iOS preset option `polaris_key/apple_background_assets` (`auto`, `on`, `off`
 `PKEY_APPLE_BACKGROUND_ASSETS`) marks the exported Info.plist; `auto` is on for `app-store` and
 `testflight` and off for sideload outlets, whose IPAs ship no extension. `patch_export.sh` runs
 S-01's `patch_ba.rb` unchanged (Ruby `xcodeproj` 1.27). The preset's
-`application/min_ios_version` must be at least 17.0. `native/ios/export_check.sh` checks a store
+`application/min_ios_version` must be at least 18.0. `native/ios/export_check.sh` checks a store
 and a sideload export end to end; `native/ios/sim_check.sh` runs the binding in Godot on the iOS
 simulator (it needs an arm64 simulator `libgodot.a`: the official 4.7.2 template's simulator
 slice is x86_64 only). Archiving and signing need the owner's Apple account and are not

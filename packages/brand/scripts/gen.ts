@@ -53,6 +53,7 @@
 //   the kit copy tables (scripts/kit-copy.ts, plans/UK-02.md §3.3) from kit-copy/ and the core
 //   copy in conformance/parity/copy.<locale>.json: src/generated/kit-copy/<locale>.json + index.ts,
 //   packages/sdk-node/src/kitCopy.generated.ts, PolarisKeyUI/Resources/Localizable.xcstrings,
+//   PolarisKeyUICore/Resources/kit-copy.json (the Swift presentation core's ICU tables),
 //   sdks/kotlin/ui/src/commonMain/composeResources/values*/strings.xml, the Godot kit's
 //   ui/locale/*.po(t), and polaris_key/ui/kit_copy_generated.py + ui/locale/*.pot
 //

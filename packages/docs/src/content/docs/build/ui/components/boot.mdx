@@ -50,4 +50,14 @@ The first-paint screen while the boot stages run: the product hero, a neutral in
     `--json` contract and the fallbacks.
 
   </TabItem>
+  <TabItem label="SwiftUI">
+    **Drop-in.** Inside `.polarisKeyGate`: the product icon and, after the 250 ms grace, the stage's label with the system indicator; never a part-filled bar.
+
+    **Styled part.** `BootView(boot:)` and `.bootStyle(_:)`.
+
+    **Headless.** `KitStates.boot(_:)` maps the stage machine's stage, outcome and emit to the Boot state.
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
 </Tabs>

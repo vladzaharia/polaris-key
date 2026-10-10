@@ -10,7 +10,7 @@
 # Output in --out (default native/macos/dist): libpkey_apple.dylib and pkey_apple_macos.gdextension.
 # --install PROJECT copies both into PROJECT/addons/polaris_key/native/bin/.
 #
-#   MIN_MACOS           the deployment target (default 14.0, the Swift package floor; never lower)
+#   MIN_MACOS           the deployment target (default 15.0, the Swift package floor; never lower)
 #   GODOT_BIN           the editor whose `--dump-gdextension-interface` provides
 #                       gdextension_interface.h (default: godot on PATH; 4.7+), or
 #   GDEXTENSION_HEADER  an existing gdextension_interface.h to use instead
@@ -27,7 +27,7 @@ CSRC="$REPO/sdks/swift/Sources/PolarisKeyPlatformC"
 GLUE="$REPO/sdks/godot/native/ios/pkey_apple.m"
 OUT="$HERE/dist"
 INSTALL=""
-MIN_MACOS="${MIN_MACOS:-14.0}"
+MIN_MACOS="${MIN_MACOS:-15.0}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -41,8 +41,8 @@ if [ "$(uname -s)" != Darwin ]; then
   echo "build_apple.sh: the macOS binding builds on macOS only" >&2
   exit 2
 fi
-if [ "$(printf '%s\n14.0\n' "$MIN_MACOS" | sort -V | head -n1)" != "14.0" ]; then
-  echo "build_apple.sh: MIN_MACOS=$MIN_MACOS is below PolarisKeyPlatform's macOS 14.0 floor" >&2
+if [ "$(printf '%s\n15.0\n' "$MIN_MACOS" | sort -V | head -n1)" != "15.0" ]; then
+  echo "build_apple.sh: MIN_MACOS=$MIN_MACOS is below PolarisKeyPlatform's macOS 15.0 floor" >&2
   exit 2
 fi
 
