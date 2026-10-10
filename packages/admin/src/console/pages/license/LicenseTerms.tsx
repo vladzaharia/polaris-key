@@ -30,6 +30,7 @@ import {
   MAX_OFFLINE_DAYS,
   MIN_OFFLINE_DAYS,
   effectivePolicy,
+  resolvedDeviceLimit,
   tierSummary,
   useManualChannels,
   useProfiles,
@@ -181,13 +182,19 @@ export function LicenseTerms({
     license.inheritedDeviceLimitSource === "entitlement"
       ? (license.inheritedDeviceLimit ?? null)
       : null;
-  const nextLimit =
-    license.deviceLimit ??
-    nextTier?.policyDeviceLimit ??
-    entitlementDeviceLimit ??
-    (product?.defaultDeviceLimit && product.defaultDeviceLimit > 0
-      ? product.defaultDeviceLimit
-      : null);
+  const nextLimit = resolvedDeviceLimit(
+    {
+      tier: draft.tier ?? null,
+      deviceLimit: license.deviceLimit ?? null,
+      entitlementDeviceLimit,
+      maxOfflineDays: null,
+      channels: [],
+      minVersion: null,
+      maxVersion: null,
+    },
+    tiers,
+    product,
+  );
   const overLimit =
     tierChanged &&
     license.deviceLimit == null &&

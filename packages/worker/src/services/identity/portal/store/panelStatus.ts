@@ -19,7 +19,7 @@ import type { Db, Env } from "../../../../core/platform.js";
 import type { ProductPublic } from "../../../../core/products.js";
 import type { Delivery } from "../../../../core/hooks.js";
 import { getTier } from "../../../../core/data.js";
-import { tierDeviceLimit } from "../../../../core/entitlements.js";
+import { licenseTermsOf } from "../../../../core/entitlements.js";
 import { polarisKeyStorefrontEnabled } from "../../../../core/storefrontSwitch.js";
 import type { FitStatus } from "../../../../core/storefront/projection.js";
 import {
@@ -230,7 +230,7 @@ async function issuedTier(
     exists: row !== null,
     // The tier's own limit, else the product default a licence on it inherits.
     deviceLimit: row
-      ? (tierDeviceLimit(row) ?? product.defaultDeviceLimit)
+      ? licenseTermsOf(null, row, product).deviceLimit.value
       : null,
   };
 }

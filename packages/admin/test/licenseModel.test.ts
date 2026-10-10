@@ -244,3 +244,29 @@ describe("fingerprint mode", () => {
     });
   });
 });
+
+describe("effectivePolicy uses the Worker's resolver", () => {
+  const product = { defaultDeviceLimit: 3, defaultMaxOfflineDays: 30 };
+  const input = {
+    tier: "pro",
+    deviceLimit: 2,
+    maxOfflineDays: null,
+    channels: [],
+    minVersion: null,
+    maxVersion: null,
+  };
+  it("a limit on the license beats the tier's", () => {
+    const l = effectivePolicy(input, [PRO], product).find(
+      (x) => x.label === "Device limit",
+    )!;
+    expect(l).toMatchObject({ value: "2", source: "license" });
+  });
+  it("negative control: without the license limit the tier's applies", () => {
+    const l = effectivePolicy(
+      { ...input, deviceLimit: null },
+      [PRO],
+      product,
+    ).find((x) => x.label === "Device limit")!;
+    expect(l).toMatchObject({ value: "5", source: "tier" });
+  });
+});

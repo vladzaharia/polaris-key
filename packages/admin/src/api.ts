@@ -45,6 +45,7 @@ export type {
 } from "@polaris-key/catalog";
 import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
 import type { ArtifactRole } from "@polaris-key/manifest";
+import type { LicenseTerms } from "../../worker/src/core/licensing/terms.js";
 import type { ServiceSlug } from "./services.generated.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./lib/releasePolicyMessages.js";
 
@@ -3380,6 +3381,8 @@ export interface LicenseSummary {
   /** What "Use inherited limit" falls back to: the tier's, an entitlement's or the product's. */
   inheritedDeviceLimit?: number;
   inheritedDeviceLimitSource?: Exclude<DeviceLimitSource, "license">;
+  /** LX-32: every limit with the layer it came from (the Worker's one resolver). */
+  terms?: LicenseTerms;
   /**
    * LX-26 (S-24 D1): floating or assigned, derived by the Worker from the licence's account and
    * its own email. Absent from an older Worker: the console then derives it from `email`.

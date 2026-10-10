@@ -57,10 +57,21 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - **Builds or backs 3 mockup item(s):** `licenses.change-tier`, `licenses.detail`, `entitlements.license-subscription`.
 
+## Corrections found in the code (2026-10-09)
+
+- The resolver lives at `packages/worker/src/core/licensing/terms.ts` (pure, no imports; the
+  Worker adapter is `licenseTermsOf` in `core/entitlements.ts`, the async read is `licenseTerms`
+  in `core/authz.ts`). The console imports the same file for its live read-out of unsaved forms.
+- Today's rules are kept: offline days are licence else product (the tier's grace is stored for
+  LX-09 and not read), channels are the union of tier and licence, versions the tighter bound.
+  LX-33 changes the rules, not the resolver's shape.
+- `graceClampFor` computes the same offline default in SQL (`COALESCE`); it is left for LX-33.
+- Licence reads (admin summary and detail) now carry `terms`.
+
 ## Acceptance criteria
 
-- [ ] Signed documents byte-identical (tests)
-- [ ] One terms implementation (grep test)
+- [x] Signed documents byte-identical (tests)
+- [x] One terms implementation (grep test)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

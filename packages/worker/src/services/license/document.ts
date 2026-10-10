@@ -53,6 +53,7 @@ export {
 } from "../../core/documents.js";
 import { buildLicenseDoc } from "../../core/documents.js";
 import { graceClampFor } from "../../core/graceClamp.js";
+import { licenseOfflineDays } from "../../core/entitlements.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 
 /**
@@ -154,8 +155,7 @@ export async function handleLicenseDocument(
   });
   if (!gate.ok) return blockedResponse(gate);
 
-  const maxOfflineDays =
-    valid.license.max_offline_days ?? product.defaultMaxOfflineDays;
+  const maxOfflineDays = licenseOfflineDays(valid.license, product);
   const doc = buildLicenseDoc({
     aud: product.slug,
     deviceId: valid.device.device_id,
