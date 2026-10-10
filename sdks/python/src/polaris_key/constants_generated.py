@@ -1838,7 +1838,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.cache": CapabilityRow("implemented", "core", ()),
         "core.bundle": CapabilityRow("implemented", "core", ()),
         "core.discover": CapabilityRow("implemented", "core", ()),
-        "core.presentation": CapabilityRow("planned", "core", ()),
+        "core.presentation": CapabilityRow("implemented", "core", ()),
         "core.sync": CapabilityRow("implemented", "core", ()),
         "core.local": CapabilityRow("implemented", "core", ()),
         "core.headers": CapabilityRow("implemented", "core", ()),
@@ -1947,4 +1947,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "c00eee481737af0b49d831c99a5ca4826c33f7fa313243498aa7f7a349846e84"
+CAPABILITY_DIGEST: Final[str] = "5e4a47fec6808b6287e6c894104030e05b6462fdb7db0926b4ef53d414b65ab5"

@@ -83,3 +83,10 @@ Fail-closed, leak and error-model fixes (SP-48). Each **breaking** line names wh
   installed version is read on first use, and the CLI front ends import the client only when a
   verb runs: mounting the verbs on a host CLI no longer loads httpx, cryptography or any
   service.
+
+Product presentation.
+
+- **`core.presentation`.** `client.presentation()`, `client.presentation_icon(px, scale=1.0)` and
+  `client.presentation_source` (sync and async): the product's name, developer, accents and
+  SHA-256-verified icon from discovery, cached by hash. The terminal kit reads it with no
+  integrator code.

@@ -4,15 +4,15 @@ Every kit resolves one :class:`ResolvedIdentity` in the same order:
 
 1. the integrator's :class:`ProductIdentity` (the theme's ``product``),
 2. the product's registered presentation, read through the SDK's presentation source
-   (HA-13: ``client.presentation()``; the seam is any object with ``current()``),
+   (``client.presentation_source``, a ``polaris_key.presentation.PresentationSource``),
 3. the bundle (what the host knows about itself: the product slug, its name),
 4. the accent derived from the icon's pixels when no colour is given (§3.3),
 5. ink: no accent at all, never Polaris violet.
 
-The kit never fetches discovery or an icon itself; with no presentation source it falls through
-to the bundle, so it does not wait for HA-13. A test feeds a fake source (``current()`` returning
-``{"name", "developerName", "accent", "accentDark"}``) and the kit renders that product's accent
-and name with no integrator code.
+The kit never fetches discovery or an icon itself: the client parses ``core.presentation`` after
+each discovery and verifies and caches the icon (HA-13). With no presentation source it falls
+through to the bundle. A test may feed any object with ``current()`` returning
+``{"name", "developerName", "accent", "accentDark"}``.
 """
 
 from __future__ import annotations
@@ -85,9 +85,10 @@ class _CallableSource:
 
 
 def presentation_source(client: Any) -> Optional[Any]:
-    """The SDK's presentation source for ``client``, when it has one (HA-13 adds
-    ``client.presentation()``; a source object with ``current()`` is used as is). ``None`` until
-    then, and the kit falls through to the bundle."""
+    """The SDK's presentation source for ``client``: ``client.presentation_source`` (the
+    ``PresentationSource`` seam), else a client whose ``presentation()`` returns the member (a thin
+    adapter, plans/HA-13.md D1, until UK-12's kit core imports the seam). ``None`` when the client
+    has neither, and the kit falls through to the bundle."""
     if client is None:
         return None
     src = getattr(client, "presentation_source", None)
