@@ -181,7 +181,7 @@
       "update": {
         "enabled": true,
         "configured": true,
-        "channels": ["stable", "beta"],
+        "channels": ["stable", "beta", "dev"],
         "sparkleEd25519PublicKey": "SPARKLEPUB",
         "endpoints": {
           "version": "https://key.plrs.im/full/update/version",

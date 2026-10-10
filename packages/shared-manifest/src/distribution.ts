@@ -755,7 +755,7 @@ function reportListing(
 export interface DistributionContext {
   /** The release document's artifact-map ids (`deliverables.app.artifacts[].id`). */
   artifactIds: ReadonlySet<string>;
-  /** Every declared channel: stable, beta, the manual channels and the app's own channels. */
+  /** Every declared channel: stable, beta, dev, the manual channels and the app's own channels. */
   channels: ReadonlySet<string>;
   /** Every declared deliverable and its kind; `app` is always present (implicit or declared). */
   deliverables: ReadonlyMap<string, string>;
@@ -969,7 +969,7 @@ function validateOutlet(
             "distribution",
             `/outlets/${id}/${field}/${channel}`,
             "unknown_channel_ref",
-            `outlets.${id}.${field} keys must be declared channels (stable, beta, a manual channel or one of deliverables.app.channels).`,
+            `outlets.${id}.${field} keys must be declared channels (stable, beta, dev, a manual channel or one of deliverables.app.channels).`,
           );
         }
       }

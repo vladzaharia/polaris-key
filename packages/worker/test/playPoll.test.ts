@@ -263,18 +263,23 @@ describe("the poll", () => {
       ],
     });
     await poll(w2);
+    // The outlet also takes the default lanes for the channels it does not declare (production,
+    // beta, internal), and one row per build and outlet is kept, so the qa track's build is among
+    // the rows rather than all of them.
     const internal = (await availability(w2.db)).filter(
       (r) => r.outlet_id === "play-internal",
     );
-    expect(internal.map((r) => [r.release_id, r.build_id, r.state])).toEqual([
-      ["v1.1.0", "android-arm64", "live"],
-    ]);
+    expect(
+      internal.map((r) => [r.release_id, r.build_id, r.state]),
+    ).toContainEqual(["v1.1.0", "android-arm64", "live"]);
     // 1.2.0-rc.1 (version code 120) is a draft no build claims: shown, unresolved.
     const qa2 = (await trackObjects(w2.db)).find((t) => t.object_id === "qa")!;
     expect(qa2.outlet_id).toBe("play-internal");
     expect(
-      (await rollouts(w2.db)).find((r) => r.outlet_id === "play-internal"),
-    ).toMatchObject({ channel: "internal", state: "complete" });
+      (await rollouts(w2.db)).filter((r) => r.outlet_id === "play-internal"),
+    ).toContainEqual(
+      expect.objectContaining({ channel: "internal", state: "complete" }),
+    );
   });
 
   it("an edit invalidated mid-poll writes nothing; the next tick retries and writes", async () => {

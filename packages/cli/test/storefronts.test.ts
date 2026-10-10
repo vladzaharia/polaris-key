@@ -262,13 +262,29 @@ describe("the itch.io and Snap command plans", () => {
     expect(() =>
       snapUploadStep({ outlet: SNAP, snap: "d.snap", channels: ["nightly"] }),
     ).toThrow(/maps no snap channel for nightly/);
-    expect(() =>
+    // No channels declared: the built-in lanes apply (stable, beta, dev -> edge) and nothing else.
+    const bare = { ...SNAP, identity: { name: "dice" } };
+    expect(
       snapUploadStep({
-        outlet: { ...SNAP, identity: { name: "dice" } },
+        outlet: bare,
         snap: "d.snap",
-        channels: ["stable"],
-      }),
-    ).toThrow(/declares no channels/);
+        channels: ["stable", "dev"],
+      }).argv,
+    ).toEqual(["upload", "d.snap", "--release=stable,edge"]);
+    expect(() =>
+      snapUploadStep({ outlet: bare, snap: "d.snap", channels: ["nightly"] }),
+    ).toThrow(/maps no snap channel for nightly/);
+    // A declared entry wins over the default for its channel.
+    expect(
+      snapUploadStep({
+        outlet: {
+          ...SNAP,
+          identity: { name: "dice", channels: { dev: "beta" } },
+        },
+        snap: "d.snap",
+        channels: ["dev"],
+      }).argv,
+    ).toEqual(["upload", "d.snap", "--release=beta"]);
     // A hand-built step to an unmapped channel is refused by the allow-list itself.
     expect(() =>
       checkStep({ ...step, argv: ["upload", "d.snap", "--release=edge"] }),

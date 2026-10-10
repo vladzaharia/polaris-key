@@ -282,6 +282,8 @@ describe("resync populates the release truth store", () => {
     ).toEqual({
       stable: "v1.2.3",
       beta: "v2.0.0-beta.1",
+      // `dev` is built in; nothing is published to it here.
+      dev: null,
       // The manual rule matches no tag in this list, which is a real answer, not a failure.
       nightly: null,
     });
@@ -301,6 +303,7 @@ describe("resync populates the release truth store", () => {
         .map((h) => [h.subject_id, h.status]),
     ).toEqual([
       ["beta", "healthy"],
+      ["dev", "unknown"],
       ["nightly", "unknown"],
       ["stable", "healthy"],
     ]);

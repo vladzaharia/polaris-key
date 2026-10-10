@@ -67,12 +67,16 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - **Builds or backs 7 mockup item(s):** `distribution.channel-app-store`, `distribution.publish-result`, `distribution.publish`, `packages.promote`, `packages.release-tracks-stale`, `packages.release-tracks`, `packages.updates`.
 
+## Code check (2026-10-09)
+
+The brief and plan were checked against the code while building. Corrections: `BUILT_IN_CHANNELS` is at `shared-manifest/src/index.ts:1155`, not 1149. The Steam/Snap storefront steps in the CLI read the outlet identity twice (the step builder and the allow-list through `loadStepProduct`), so the default lanes are applied in both. The channels table of `release/store.ts` (`channelNames`) now yields a `dev` row for every product, so a `dev` channel row and health entry (status `unknown`) exist with nothing published. Choosing `dev` stores `beta` with it in the tier, licence and licence-batch write paths. The copy-debt entries and the Release tracks page itself belong to the packages that rebuild that page (P2-09, P2-11); only the tier and licence pickers changed here.
+
 ## Acceptance criteria
 
-- [ ] No corpus change; signed documents byte-identical
-- [ ] stable, beta and dev exist for every product with no declaration
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] No corpus change; signed documents byte-identical
+- [x] stable, beta and dev exist for every product with no declaration
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

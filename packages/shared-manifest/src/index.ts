@@ -4063,7 +4063,7 @@ function validateAppDeliverable(
               "release",
               `/release/deliverables/app/content/packChannels/${key}`,
               "unknown_pack_channels_target",
-              `content.packChannels ${key} must match a declared pack, and every pack it matches must publish to ${String(channel)} (stable, beta or one of the pack's channels).`,
+              `content.packChannels ${key} must match a declared pack, and every pack it matches must publish to ${String(channel)} (stable, beta, dev or one of the pack's channels).`,
             );
         }
     }
@@ -4230,7 +4230,7 @@ function validateAppDeliverable(
               "release",
               `/release/deliverables/app/channels/${name}/includes/${i}`,
               "invalid_channel_includes",
-              "includes may only name stable, beta, a manual channel or another declared channel.",
+              "includes may only name stable, beta, dev, a manual channel or another declared channel.",
             );
           } else if (!isCanonicalChannelName(inc)) {
             // Stored as written (release_channel_policy.includes_json), so only canonical names:

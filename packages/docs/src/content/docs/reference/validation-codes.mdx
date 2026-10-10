@@ -56,7 +56,7 @@ the offending value, or the allowed set.
 | `invalid_build_embeds` | error | release | `/release/deliverables/app/artifacts/${i}/embeds/${j}` | $\{e\} is not a pack deliverable this release document declares. |
 | `invalid_build_embeds` | error | release | `/release/deliverables/app/artifacts/${i}/embeds` | artifacts[].embeds must be at most $\{MAX_BUILD_EMBEDS\} distinct pack ids (deliverable ids other than app). |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${cycle}` | channel $\{cycle\} includes itself through its includes chain. |
-| `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes/${i}` | includes may only name stable, beta, a manual channel or another declared channel. |
+| `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes/${i}` | includes may only name stable, beta, dev, a manual channel or another declared channel. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes/${i}` | includes names must be canonical ($\{CANONICAL_CHANNEL_PATTERN.source\}, and not an alias such as $\{CHANNEL_ALIAS_NAMES.join(" or ")\}). |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes` | includes must be an array of channel names. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}` | each channel must be an object such as \{ includes: [stable] \}. |
@@ -236,14 +236,14 @@ the offending value, or the allowed set.
 | `transport_not_allowed` | error | distribution | `${path}/${outletId}` | transport $\{transport\} cannot carry a deliverable on a $\{kind\} outlet. |
 | `unknown_artifact_ref` | error | distribution | `/outlets/${id}/artifact` | outlets.$\{id\}.artifact must name an id in .pkey/release deliverables.app.artifacts. |
 | `unknown_auto_issue_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId references unknown tier $\{autoIssue.tierId\}. |
-| `unknown_channel_ref` | error | distribution | `/outlets/${id}/${field}/${channel}` | outlets.$\{id\}.$\{field\} keys must be declared channels (stable, beta, a manual channel or one of deliverables.app.channels). |
+| `unknown_channel_ref` | error | distribution | `/outlets/${id}/${field}/${channel}` | outlets.$\{id\}.$\{field\} keys must be declared channels (stable, beta, dev, a manual channel or one of deliverables.app.channels). |
 | `unknown_content_api_app` | error | release | `${at}/requires/contentApi/${key}` | requires.contentApi is keyed by app deliverable; $\{key\} is not one (the product's app deliverable is $\{APP_DELIVERABLE_ID\}). |
 | `unknown_deliverable_ref` | error | distribution | `/transports/deliverables/${deliverableId}` | transports.deliverables keys must name a deliverable declared in .pkey/release (app is always declared). |
 | `unknown_entitlement_ref` | error | release | `${at}/entitlement` | entitlement must be a licence flag key matching $\{ENTITLEMENT_PATTERN.source\}. |
 | `unknown_entitlement_ref` | error | release | `${at}/entitlement` | entitlement $\{entitlement\} is not a flag entry of the product's .pkey/schema. It only asserts the pack's delivery gate, which an operator sets under Distribution → Access. |
 | `unknown_outlet_kind` | error | distribution | `/outlets/${id}/kind` | outlet $\{id\} needs a kind from $\{OUTLET_KINDS.join(", ")\} (an outlet id that is itself a kind may omit it). |
 | `unknown_outlet_ref` | error | distribution | `${path}/${outletId}` | transport maps may only name outlets declared under outlets. |
-| `unknown_pack_channels_target` | error | release | `/release/deliverables/app/content/packChannels/${key}` | content.packChannels $\{key\} must match a declared pack, and every pack it matches must publish to $\{String(channel)\} (stable, beta or one of the pack's channels). |
+| `unknown_pack_channels_target` | error | release | `/release/deliverables/app/content/packChannels/${key}` | content.packChannels $\{key\} must match a declared pack, and every pack it matches must publish to $\{String(channel)\} (stable, beta, dev or one of the pack's channels). |
 | `unknown_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier references unknown profile $\{profile\}. |
 | `unsupported_release_provider` | error | release | `/release/provider/type` | Only github is implemented. |
 | `update_requires_distribution` | error | product | `/modules/update` | The update service serves a feed over distribution's delivery state, so distribution must be enabled too. |

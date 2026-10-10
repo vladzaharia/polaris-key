@@ -629,8 +629,11 @@ describe("the Steam storefront admin surface", () => {
     const b = await (await admin("GET", "/storefronts/steam/builds")).json();
     expect(b.branches.map((x: Loose) => x.name)).toEqual(["public", "beta"]);
     expect(b.builds.map((x: Loose) => x.buildId)).toEqual(["101", "100"]);
+    // `beta` is declared; `stable` and `dev` come from the default Steam lanes.
     expect(b.declared).toEqual([
+      { channel: "stable", branch: "default", buildId: null },
       { channel: "beta", branch: "beta", buildId: "100" },
+      { channel: "dev", branch: "dev", buildId: null },
     ]);
     expect(b.public).toEqual({
       buildId: "100",

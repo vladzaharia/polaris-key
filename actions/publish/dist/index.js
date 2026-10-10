@@ -15724,6 +15724,18 @@ var TRANSPORT_OUTLET_KINDS = {
   web: ["web"]
 };
 var IMPLICIT_OUTLET_ID = "direct";
+var DEFAULT_OUTLET_TRACKS = {
+  play: { stable: "production", beta: "beta", dev: "internal" },
+  "play-testing": { stable: "production", beta: "beta", dev: "internal" },
+  testflight: { beta: "external", dev: "internal" },
+  steam: { stable: "default", beta: "beta", dev: "dev" },
+  "ms-store": { beta: "beta" },
+  snap: { stable: "stable", beta: "beta", dev: "edge" }
+};
+function effectiveTrackMap(kind, declared) {
+  const defaults = Object.hasOwn(DEFAULT_OUTLET_TRACKS, kind) ? DEFAULT_OUTLET_TRACKS[kind] : void 0;
+  return { ...defaults, ...declared ?? {} };
+}
 var OUTLET_IDENTITY_FIELDS = {
   direct: [
     "platforms",
@@ -18620,7 +18632,7 @@ var VERSION_SCHEMES = ["semver", "semver+build", "4part"];
 var BUILD_NUMBER_SOURCES = ["descriptor", "none"];
 var CANONICAL_CHANNEL_PATTERN = CANONICAL_CHANNEL_RE;
 var CHANNEL_ALIAS_NAMES = Object.keys(CHANNEL_ALIASES);
-var BUILT_IN_CHANNELS = ["stable", "beta"];
+var BUILT_IN_CHANNELS = ["stable", "beta", "dev"];
 function isCanonicalChannelName(value) {
   return typeof value === "string" && CANONICAL_CHANNEL_PATTERN.test(value) && !CHANNEL_ALIAS_NAMES.includes(value);
 }
@@ -36600,7 +36612,9 @@ async function steamVdf(o) {
     );
   let branch = o.branch;
   if (!branch && o.channel)
-    branch = steam.map((x) => x.identity.branches?.[o.channel]).find(Boolean);
+    branch = steam.map(
+      (x) => effectiveTrackMap("steam", x.identity.branches)[o.channel]
+    ).find(Boolean);
   if (!branch)
     throw new Error(
       `--branch is required${o.channel ? ` (no steam outlet maps channel ${o.channel} to a branch)` : " (or --channel with the outlet's branches map)"}.`
@@ -39378,8 +39392,22 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     outlets: (m.distribution?.outlets ?? []).map((o) => ({
       id: o.id,
       kind: o.kind,
-      identity: { ...o.identity }
+      identity: withDefaultLanes(o.kind, {
+        ...o.identity
+      })
     }))
+  };
+}
+function withDefaultLanes(kind, identity) {
+  const field = kind === "snap" ? "channels" : kind === "steam" ? "branches" : null;
+  if (field === null) return identity;
+  const declared = identity[field];
+  return {
+    ...identity,
+    [field]: effectiveTrackMap(
+      kind,
+      declared && typeof declared === "object" && !Array.isArray(declared) ? declared : void 0
+    )
   };
 }
 function pickOutlet(p, kinds, outletId, label) {
@@ -39407,11 +39435,11 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 var import_yaml5 = __toESM(require_dist(), 1);
 import { readFile as readFile18, writeFile as writeFile16 } from "node:fs/promises";
 function snapReleaseChannels(outlet, channels2) {
-  const map = outlet.identity.channels;
-  if (!map || typeof map !== "object" || Array.isArray(map))
-    throw new Error(
-      `outlet ${outlet.id} declares no channels: set .pkey/distribution outlets.${outlet.id}.channels (declared channel → snap channel, such as { stable: "stable", beta: "beta" }).`
-    );
+  const declared = outlet.identity.channels;
+  const map = effectiveTrackMap(
+    "snap",
+    declared && typeof declared === "object" && !Array.isArray(declared) ? declared : void 0
+  );
   if (channels2.length === 0)
     throw new Error(
       "--channel is required: the release channel(s) to release to."

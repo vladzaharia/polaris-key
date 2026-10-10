@@ -4,7 +4,7 @@
  * `productId`).
  */
 
-import { parseManifest } from "@polaris-key/manifest";
+import { effectiveTrackMap, parseManifest } from "@polaris-key/manifest";
 import { loadManifest, validateLoadedManifest } from "../manifest.js";
 
 export interface StepOutlet {
@@ -52,8 +52,34 @@ export async function loadStepProduct(
     outlets: (m.distribution?.outlets ?? []).map((o) => ({
       id: o.id,
       kind: o.kind,
-      identity: { ...(o.identity as Record<string, unknown>) },
+      identity: withDefaultLanes(o.kind, {
+        ...(o.identity as Record<string, unknown>),
+      }),
     })),
+  };
+}
+
+/**
+ * The identity as a step reads it: a snap's `channels` and a Steam outlet's `branches` carry the
+ * built-in lanes (`effectiveTrackMap`) for every channel the manifest does not map. Read-only:
+ * nothing is written back to `.pkey/`.
+ */
+function withDefaultLanes(
+  kind: string,
+  identity: Record<string, unknown>,
+): Record<string, unknown> {
+  const field =
+    kind === "snap" ? "channels" : kind === "steam" ? "branches" : null;
+  if (field === null) return identity;
+  const declared = identity[field];
+  return {
+    ...identity,
+    [field]: effectiveTrackMap(
+      kind,
+      declared && typeof declared === "object" && !Array.isArray(declared)
+        ? (declared as Record<string, string>)
+        : undefined,
+    ),
   };
 }
 

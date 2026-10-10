@@ -93,6 +93,7 @@ async function seedRelease(
 const channelsOf = (manualJson: string | null | undefined) => [
   "stable",
   "beta",
+  "dev",
   ...parseManualChannels(manualJson).map((c) => c.name),
 ];
 
@@ -157,7 +158,7 @@ const PROBES: Readonly<Record<string, Probe>> = {
       (await getReleaseConfig(db, p.slug))?.binary_name ?? p.slug,
   },
   "release.manualChannels": {
-    value: ["stable", "beta", "nightly"],
+    value: ["stable", "beta", "dev", "nightly"],
     seed: (db, slug) =>
       seedRelease(db, slug, {
         manual: JSON.stringify([{ name: "nightly", regex: "^v.*-nightly$" }]),
