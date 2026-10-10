@@ -49,13 +49,25 @@ public final class PolarisKeyModel {
     /// "Continue free" is shown only when the host says the product offers a free tier, and
     /// hidden for good once the server answers `enroll_disabled`.
     public var offersFreeTier: Bool
+    /// Where the portal sends the person back after "Replace a device" (`GateOptions.returnURL`).
+    public var returnURL: String?
+    /// False until the first `reload()` has read the client. The gate draws nothing but its ground
+    /// until then, so a licensed cold launch never flashes the activation card.
+    public private(set) var hasLoaded = false
+    /// Raised once per activation or enrolment result, so a repeated identical refusal is still a
+    /// change the gate announces.
+    public private(set) var resultSerial = 0
 
     private var observation: Task<Void, Never>?
 
-    public init(client: PolarisKeyClient, copy: PolarisCopy = PolarisCopy(), offersFreeTier: Bool = false) {
+    public init(
+        client: PolarisKeyClient, copy: PolarisCopy = PolarisCopy(), offersFreeTier: Bool = false,
+        returnURL: String? = nil
+    ) {
         self.client = client
         self.copy = copy
         self.offersFreeTier = offersFreeTier
+        self.returnURL = returnURL
     }
 
     /// Begin observing `client.events` and take the first snapshot. Idempotent.
@@ -88,6 +100,7 @@ public final class PolarisKeyModel {
         activation = await client.license.activation()
         identityEnabled = await client.core.enabled(.identity)
         licenseEnabled = await client.core.licenseGateEnabled()
+        hasLoaded = true
     }
 
     /// A sync, then a fresh snapshot.
@@ -120,6 +133,7 @@ public final class PolarisKeyModel {
         if case .deviceLimit = result { lastKey = trimmed } else { lastKey = nil }
         lastActivation = result
         lastError = copy.activationMessage(result)
+        resultSerial += 1
         await reload()
     }
 
@@ -132,6 +146,7 @@ public final class PolarisKeyModel {
         lastActivation = result
         if case .enrollDisabled = result { offersFreeTier = false }
         lastError = copy.activationMessage(result)
+        resultSerial += 1
         await reload()
     }
 
@@ -161,7 +176,7 @@ public final class PolarisKeyModel {
             return nil
         }
         return PolarisGateModel.offeredManageURL(
-            served, key: key, returnURL: nil, presentation: PolarisManagePresentation.current)
+            served, key: key, returnURL: returnURL, presentation: PolarisManagePresentation.current)
     }
 
     /// Shown in place of the key field on store outlets that forbid key entry (App Store 3.1.1).
@@ -178,38 +193,49 @@ extension View {
     /// let client = try await PolarisKeyClient.fromBundle()
     /// WindowGroup { ContentView().polarisKey(client) }
     /// ```
+    ///
+    /// `options` carries what the host decides about the gate (`GateOptions`): key entry, offline
+    /// activation (off on iOS), the free tier, the return URL for "Replace a device", a renewal
+    /// page and a slot for the host's own action on a blocking state. `offersFreeTier` is kept
+    /// for source compatibility and is the same switch as `options.offersFreeTier`.
     public func polarisKey(
         _ client: PolarisKeyClient, theme: PolarisTheme = PolarisTheme(), gate: Bool = true,
-        offersFreeTier: Bool = false
+        offersFreeTier: Bool = false, options: GateOptions = GateOptions()
     ) -> some View {
-        modifier(
-            PolarisKeyModifier(
-                client: client, theme: theme, gate: gate, offersFreeTier: offersFreeTier))
+        var options = options
+        if offersFreeTier { options.offersFreeTier = true }
+        return modifier(
+            PolarisKeyModifier(client: client, theme: theme, gate: gate, options: options))
     }
 
     /// The same, with a model the host already holds.
     public func polarisKey(
-        model: PolarisKeyModel, theme: PolarisTheme = PolarisTheme(), gate: Bool = true
+        model: PolarisKeyModel, theme: PolarisTheme = PolarisTheme(), gate: Bool = true,
+        options: GateOptions = GateOptions()
     ) -> some View {
-        modifier(PolarisKeyModelModifier(model: model, theme: theme, gate: gate))
+        modifier(PolarisKeyModelModifier(model: model, theme: theme, gate: gate, options: options))
     }
 }
 
 struct PolarisKeyModifier: ViewModifier {
     let theme: PolarisTheme
     let gate: Bool
+    let options: GateOptions
     @State private var model: PolarisKeyModel
 
-    init(client: PolarisKeyClient, theme: PolarisTheme, gate: Bool, offersFreeTier: Bool) {
+    init(client: PolarisKeyClient, theme: PolarisTheme, gate: Bool, options: GateOptions) {
         self.theme = theme
         self.gate = gate
+        self.options = options
         _model = State(
             initialValue: PolarisKeyModel(
-                client: client, copy: theme.copy, offersFreeTier: offersFreeTier))
+                client: client, copy: theme.copy, offersFreeTier: options.offersFreeTier,
+                returnURL: options.returnURL))
     }
 
     func body(content: Content) -> some View {
-        content.modifier(PolarisKeyModelModifier(model: model, theme: theme, gate: gate))
+        content.modifier(
+            PolarisKeyModelModifier(model: model, theme: theme, gate: gate, options: options))
     }
 }
 
@@ -217,12 +243,13 @@ struct PolarisKeyModelModifier: ViewModifier {
     let model: PolarisKeyModel
     let theme: PolarisTheme
     let gate: Bool
+    var options = GateOptions()
     @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
         Group {
             if gate {
-                PolarisGate(model: model, theme: theme) { content }
+                PolarisGate(model: model, theme: theme, options: options) { content }
             } else {
                 content
             }
@@ -230,6 +257,9 @@ struct PolarisKeyModelModifier: ViewModifier {
         .environment(model)
         .environment(\.polarisTheme, theme)
         .task {
+            // A model the host holds takes the options that belong to it.
+            if let returnURL = options.returnURL { model.returnURL = returnURL }
+            if options.offersFreeTier { model.offersFreeTier = true }
             model.start()
             await model.refreshIfStale(minimumInterval: 0)
         }

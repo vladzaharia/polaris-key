@@ -261,13 +261,17 @@ public actor PolarisKeyClient {
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
         // take long before it wants documents (an installer that registers at setup and syncs on
         // first launch), so the SDK does not decide that for the host.
-        self.license = LicenseClient(core: core, options: options.license) { _ in
-            // A `nonisolated` closure so `LicenseClient` can raise it without knowing about this
-            // actor; the hop back in is what makes `sync()` the facade's decision.
-            await PolarisKeyClient.syncAfterAcquisition(
-                core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
-        }
+        self.license = LicenseClient(
+            core: core, options: options.license,
+            onAcquired: { _ in
+                // A `nonisolated` closure so `LicenseClient` can raise it without knowing about this
+                // actor; the hop back in is what makes `sync()` the facade's decision.
+                await PolarisKeyClient.syncAfterAcquisition(
+                    core: core, probes: options.probes, engine: engine,
+                    fingerprintEnabled: options.license.fingerprint, publisher: publisher)
+            },
+            // `client.license.deactivate()` reaches the same event as `client.deactivate()`.
+            onReleased: { await publisher.publish() })
         let license = self.license
         licenseBox.set(license)
         let devices = DevicesClient(

@@ -114,7 +114,7 @@ export function Funnel({
       )}
       {failures.length ? (
         <div className="mt-3 space-y-1 border-t border-border pt-3">
-          <p className="text-xs font-bold text-fg-muted">Failures</p>
+          <p className="text-xs font-medium text-fg-muted">Failures</p>
           <ul className="space-y-1">
             {failures.map((f) => (
               <li key={f.label}>

@@ -407,7 +407,7 @@ function StoreTiles({
                 : "border-border hover:border-border-strong hover:bg-hover",
             )}
           >
-            <span className="text-sm font-bold text-fg-strong">
+            <span className="text-sm font-medium text-fg-strong">
               {s?.label ?? STORE_NAMES[store]}
             </span>
             {loading ? (
@@ -648,7 +648,7 @@ function CredentialRow({
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-fg-strong">
+        <h3 className="text-sm font-semibold text-fg-strong">
           {c.label}
           {primary ? (
             <span className="ml-2 font-normal text-fg-muted">
@@ -776,7 +776,7 @@ function AddCredential({
       />
       {primary ? <ConnectForm store={s.store} credential={primary} /> : null}
       <div className="space-y-3 border-t border-border pt-4">
-        <h4 className="text-sm font-bold text-fg-strong">
+        <h4 className="text-sm font-semibold text-fg-strong">
           Or set it as a Worker secret
         </h4>
         <p className="text-sm text-fg-muted">
@@ -1048,7 +1048,7 @@ export function ConnectForm({
       }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-sm font-bold text-fg-strong">
+        <h4 className="text-sm font-semibold text-fg-strong">
           {c.configured ? `Replace the ${c.label}` : `Connect the ${c.label}`}
         </h4>
         {shape.file ? (
@@ -1286,7 +1286,7 @@ function AppsTable({
         meta: { priority: 1, primary: true },
         cell: ({ row }) => (
           <div className="min-w-0">
-            <div className="font-bold text-fg-strong">
+            <div className="font-medium text-fg-strong">
               {row.original.name ?? "Unnamed app"}
             </div>
             <div className="break-all font-mono text-xs text-fg-muted">

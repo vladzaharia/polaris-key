@@ -38,7 +38,7 @@ export function SectionCard({
           <h2
             id={`section-${id}-h`}
             tabIndex={-1}
-            className="text-lg font-bold text-fg-strong outline-none"
+            className="text-lg font-semibold text-fg-strong outline-none"
           >
             {title}
           </h2>

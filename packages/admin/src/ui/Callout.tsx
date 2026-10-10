@@ -78,7 +78,9 @@ export function Callout({
           )}
         </span>
         <div className="min-w-0 space-y-1">
-          {title ? <p className={cn("font-bold", t.title)}>{title}</p> : null}
+          {title ? (
+            <p className={cn("font-semibold", t.title)}>{title}</p>
+          ) : null}
           {children ? <div className="text-fg">{children}</div> : null}
         </div>
       </div>

@@ -145,7 +145,7 @@ export function MethodRow({
           {icon}
         </span>
         <div className="min-w-0 flex-1 basis-48">
-          <p className="flex flex-wrap items-center gap-x-2 font-bold text-fg-strong">
+          <p className="flex flex-wrap items-center gap-x-2 font-medium text-fg-strong">
             <span className="min-w-0 break-words">{title}</span>
             {badge}
           </p>
@@ -158,7 +158,7 @@ export function MethodRow({
           <Button
             ref={buttonRef}
             variant="ghost"
-            className="ml-auto h-10 font-bold"
+            className="ml-auto h-10 font-medium"
             aria-disabled={guarded || undefined}
             aria-describedby={guarded ? reasonId : undefined}
             aria-expanded={guarded ? undefined : false}
@@ -203,7 +203,7 @@ export function MethodRow({
             <h4
               ref={headingRef}
               tabIndex={-1}
-              className="font-bold text-fg-strong outline-none"
+              className="font-medium text-fg-strong outline-none"
             >
               {verb} {name}?
             </h4>

@@ -307,7 +307,7 @@ export function FirstReleasePanel({
         <div className="space-y-2">
           <h2
             id="first-release-title"
-            className="text-xl font-bold text-fg-strong"
+            className="text-xl font-semibold text-fg-strong"
           >
             Ship your first release
           </h2>

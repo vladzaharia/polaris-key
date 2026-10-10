@@ -63,10 +63,10 @@ export function SectionNav({
                     : "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm",
                   variant === "toc"
                     ? on
-                      ? "border-accent font-bold text-fg-strong"
+                      ? "border-accent font-medium text-fg-strong"
                       : "border-transparent text-fg-muted hover:text-fg-strong"
                     : on
-                      ? "border-fg-strong bg-fg-strong font-bold text-surface-page"
+                      ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
                       : "border-border-strong text-fg-strong",
                 )}
               >

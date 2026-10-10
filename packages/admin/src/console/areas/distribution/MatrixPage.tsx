@@ -251,7 +251,7 @@ function ReleaseHeader({
 function OutletHeader({ outlet }: { outlet: Outlet }): React.ReactElement {
   return (
     <span className="flex min-w-[8.5rem] flex-col gap-0.5 text-left">
-      <span className="text-sm font-bold text-fg-strong">
+      <span className="text-sm font-medium text-fg-strong">
         {outlet.outletId}
       </span>
       <span className="text-xs font-normal text-fg-muted">
@@ -487,7 +487,7 @@ export function MatrixBoard({
         className="flex flex-wrap items-end justify-between gap-3"
       >
         <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
+          <label className="flex flex-col gap-1 text-xs font-medium text-fg-muted">
             Deliverable
             <Select
               aria-label="Deliverable"
@@ -503,7 +503,7 @@ export function MatrixBoard({
               }
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
+          <label className="flex flex-col gap-1 text-xs font-medium text-fg-muted">
             Channel
             <Select
               aria-label="Channel"
@@ -519,7 +519,7 @@ export function MatrixBoard({
             />
           </label>
         </div>
-        <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
+        <label className="flex flex-col gap-1 text-xs font-medium text-fg-muted">
           Rows
           <Select
             aria-label="Rows"
@@ -703,7 +703,7 @@ function ReleaseCards({
                     className="flex items-center justify-between gap-3 px-4 py-2"
                   >
                     <span className="min-w-0">
-                      <span className="block text-sm font-bold text-fg-strong">
+                      <span className="block text-sm font-medium text-fg-strong">
                         {o.outletId}
                       </span>
                       <CellSummary s={s} />

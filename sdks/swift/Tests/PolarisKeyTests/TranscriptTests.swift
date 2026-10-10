@@ -544,7 +544,7 @@ final class TranscriptTests: XCTestCase {
             t.steps[1].exchanges.items[i].response.headers["content-range"] = "bytes 17-40/64"
         }
         await assertReplayFails(
-            t, matching: "step 1 (chunkRange): bytes: expected string(\"ghijklmnopqrstuvwxyzABCD\"), got nil")
+            t, matching: "step 1 (chunkRange): bytes: expected \"ghijklmnopqrstuvwxyzABCD\", got nil")
     }
 
     // ── release.fetch (SP-19): the cases the recording does not hold ──────────────────
