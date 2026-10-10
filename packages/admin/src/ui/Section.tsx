@@ -71,7 +71,7 @@ export function Section({
               <Heading
                 id={headingId}
                 className={cn(
-                  "text-base font-bold",
+                  "text-base font-semibold",
                   danger ? "text-danger" : "text-fg-strong",
                 )}
               >
@@ -101,7 +101,7 @@ export function Section({
               <Heading
                 id={headingId}
                 className={cn(
-                  "text-base font-bold",
+                  "text-base font-semibold",
                   danger ? "text-danger" : "text-fg-strong",
                 )}
               >

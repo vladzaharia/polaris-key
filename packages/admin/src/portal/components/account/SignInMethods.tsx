@@ -134,13 +134,13 @@ function SignInEmailOnly({
 }): React.ReactElement {
   return (
     <>
-      <h3 className="mb-2 text-xs font-bold text-fg-muted">Email</h3>
+      <h3 className="mb-2 text-xs font-semibold text-fg-muted">Email</h3>
       <ul className="divide-y divide-border border-y border-border">
         <li className="flex items-center gap-3 py-3">
           <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
             <Mail aria-hidden className="size-5" />
           </span>
-          <p className="min-w-0 flex-1 truncate font-bold text-fg-strong">
+          <p className="min-w-0 flex-1 truncate font-medium text-fg-strong">
             {account.email}
           </p>
         </li>
@@ -196,7 +196,7 @@ function callbackNotice(
 // and the section pills) plus this margin; 0.75rem under whatever sticks on a short screen
 // (product/Card.tsx).
 const GROUP_HEADING =
-  "text-xs font-bold text-fg-muted outline-none scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))] short:scroll-mt-3";
+  "text-xs font-medium text-fg-muted outline-none scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))] short:scroll-mt-3";
 
 function MethodGroups({
   account,
@@ -311,7 +311,7 @@ function MethodGroups({
         guardName={shape.guardName}
         badge={
           m.reason === "last_link" ? (
-            <span className="rounded-full bg-accent-subtle px-2 py-0.5 text-xs font-bold text-accent-fg">
+            <span className="rounded-full bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent-fg">
               Only method
             </span>
           ) : undefined
@@ -351,7 +351,7 @@ function MethodGroups({
             <Button
               variant="outline"
               size="sm"
-              className="font-bold"
+              className="font-medium"
               onClick={() => setAddEmailAsked((n) => n + 1)}
             >
               Add your real email
@@ -644,14 +644,14 @@ function ConnectRow({
           )}
         </span>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="font-bold text-fg-strong">{name}</p>
+          <p className="font-medium text-fg-strong">{name}</p>
           <p className="text-sm text-fg-muted">Not connected</p>
         </div>
         {stepUp ? null : (
           <Button
             ref={buttonRef}
             variant="outline"
-            className="ml-auto h-10 font-bold"
+            className="ml-auto h-10 font-medium"
             loading={busy}
             aria-label={`Connect ${name}`}
             onClick={() => void connect()}
@@ -848,7 +848,7 @@ function AddEmail({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-bold sm:ml-13"
+          className="h-11 font-medium sm:ml-13"
           iconStart={<Plus aria-hidden />}
           aria-expanded={false}
           onClick={() => setStep({ kind: "enter" })}
@@ -867,7 +867,7 @@ function AddEmail({
         }
       >
         <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ml-13">
-          <h4 className="font-bold text-fg-strong">Add an email</h4>
+          <h4 className="font-semibold text-fg-strong">Add an email</h4>
           {step.kind === "stepUp" ? (
             <StepUp
               verb="add it"
@@ -895,12 +895,12 @@ function AddEmail({
             >
               <p role="status" className="text-sm text-fg">
                 We sent a 6-digit code to{" "}
-                <span className="font-bold text-fg-strong">{step.email}</span>.
-                It works for 10 minutes.
+                <span className="font-medium text-fg-strong">{step.email}</span>
+                . It works for 10 minutes.
               </p>
               <label
                 htmlFor={codeId}
-                className="text-sm font-bold text-fg-strong"
+                className="text-sm font-medium text-fg-strong"
               >
                 Code
               </label>
@@ -935,7 +935,7 @@ function AddEmail({
                 </Button>
                 <Button
                   variant="link"
-                  className="text-sm font-bold"
+                  className="text-sm font-medium"
                   onClick={() => void send()}
                 >
                   Send a new code
@@ -953,7 +953,7 @@ function AddEmail({
             >
               <label
                 htmlFor={fieldId}
-                className="text-sm font-bold text-fg-strong"
+                className="text-sm font-medium text-fg-strong"
               >
                 Email address
               </label>
@@ -1081,7 +1081,7 @@ function AddPasskey({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-bold sm:ml-13"
+          className="h-11 font-medium sm:ml-13"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
           aria-disabled={reason ? true : undefined}

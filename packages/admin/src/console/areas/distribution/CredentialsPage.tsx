@@ -484,7 +484,7 @@ export function CredentialsPage({
         <div className="space-y-1">
           <h2
             id="connectors-title"
-            className="text-lg font-bold text-fg-strong"
+            className="text-lg font-semibold text-fg-strong"
           >
             Store connectors
           </h2>

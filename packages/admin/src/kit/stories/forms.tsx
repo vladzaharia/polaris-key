@@ -190,7 +190,10 @@ function SettingsScopes(): React.ReactElement {
         aria-labelledby="kit-general"
         className="rounded-lg border border-border p-4"
       >
-        <h4 id="kit-general" className="mb-3 text-sm font-bold text-fg-strong">
+        <h4
+          id="kit-general"
+          className="mb-3 text-sm font-semibold text-fg-strong"
+        >
           General
         </h4>
         <Form form={general} aria-label="General" className="space-y-3">
@@ -211,7 +214,10 @@ function SettingsScopes(): React.ReactElement {
         aria-labelledby="kit-defaults"
         className="rounded-lg border border-border p-4"
       >
-        <h4 id="kit-defaults" className="mb-3 text-sm font-bold text-fg-strong">
+        <h4
+          id="kit-defaults"
+          className="mb-3 text-sm font-semibold text-fg-strong"
+        >
           License defaults
         </h4>
         <Form

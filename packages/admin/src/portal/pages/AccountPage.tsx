@@ -92,7 +92,7 @@ export function AccountPage({
           {/* Focus lands here after a navigation (the router, MO-05): no ring on a heading. */}
           <h1
             tabIndex={-1}
-            className="text-3xl font-bold leading-tight text-fg-strong outline-none desk:text-display"
+            className="text-3xl font-semibold leading-tight text-fg-strong outline-none desk:text-display"
           >
             Account
           </h1>
@@ -189,10 +189,10 @@ function SectionLink({
           : "block rounded-md px-3 py-2 text-sm",
         pill
           ? on
-            ? "border-fg-strong bg-fg-strong font-bold text-surface-page"
+            ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
             : "border-border-strong text-fg-strong"
           : on
-            ? "bg-accent-subtle font-bold text-fg-strong"
+            ? "bg-accent-subtle font-medium text-fg-strong"
             : "text-fg-muted hover:bg-hover hover:text-fg-strong",
       )}
     >
@@ -237,7 +237,7 @@ function Appearance(): React.ReactElement {
         <div className="flex flex-col gap-2">
           <h3
             id="appearance-theme-label"
-            className="text-sm font-bold text-fg-strong"
+            className="text-sm font-medium text-fg-strong"
           >
             Theme
           </h3>
@@ -256,7 +256,7 @@ function Appearance(): React.ReactElement {
         <div className="flex flex-col gap-2">
           <h3
             id="appearance-motion-label"
-            className="text-sm font-bold text-fg-strong"
+            className="text-sm font-medium text-fg-strong"
           >
             Motion
           </h3>
@@ -321,7 +321,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
           <h3
             ref={headingRef}
             tabIndex={-1}
-            className="font-bold text-fg-strong outline-none"
+            className="font-medium text-fg-strong outline-none"
           >
             Delete your Polaris Key account?
           </h3>
@@ -341,7 +341,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
           <div className="space-y-1.5">
             <label
               htmlFor={inputId}
-              className="text-sm font-bold text-fg-strong"
+              className="text-sm font-medium text-fg-strong"
             >
               Type {target} to confirm
             </label>

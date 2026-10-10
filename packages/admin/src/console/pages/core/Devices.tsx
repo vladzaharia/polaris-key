@@ -347,11 +347,11 @@ function FacetTile({
           : "border-border hover:border-border-strong",
       )}
     >
-      <span className="text-xs font-bold text-fg-muted">
+      <span className="text-xs font-medium text-fg-muted">
         {label}
         {hint ? <span className="font-normal"> · {hint}</span> : null}
       </span>
-      <span className="text-2xl font-bold tabular-nums text-fg-strong">
+      <span className="text-2xl font-semibold tabular-nums text-fg-strong">
         {formatCount(value)}
       </span>
       {pressed ? (

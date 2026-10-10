@@ -54,13 +54,13 @@ export const buttonVariants = cva(
          * `border-border-strong` outline, a `text-fg-strong` label, the icon in `text-accent-fg`.
          */
         quiet:
-          "border border-border-strong bg-transparent font-bold text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
+          "border border-border-strong bg-transparent font-medium text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
         /**
          * The portal header's Activate license (PORTAL.md §5.2): `bg-surface-raised`, a
          * `border-border-strong` outline, the key glyph in `text-accent-fg`.
          */
         action:
-          "border border-border-strong bg-surface-raised font-bold text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
+          "border border-border-strong bg-surface-raised font-medium text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
       },
       size: {
         xs: "h-7 min-w-7 px-2 text-xs [&_svg]:size-3.5",

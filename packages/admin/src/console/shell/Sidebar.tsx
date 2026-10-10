@@ -324,7 +324,7 @@ function SidebarGroup({
           data-section-header={groupKey}
           title={active ? "Contains the current page" : undefined}
           className={cn(
-            "group flex w-full items-center gap-2 rounded-md py-1 pl-2 pr-2 text-left text-xs font-bold uppercase tracking-wider",
+            "group flex w-full items-center gap-2 rounded-md py-1 pl-2 pr-2 text-left text-xs font-medium uppercase tracking-wider",
             "text-accent-fg hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
             active && "cursor-default hover:bg-transparent",
           )}
@@ -390,7 +390,7 @@ export function SidebarItem({
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
         rail && "justify-center px-0",
         active
-          ? "bg-accent-subtle font-bold text-fg-strong before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-accent"
+          ? "bg-accent-subtle font-medium text-fg-strong before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-accent"
           : "text-fg-muted hover:bg-hover hover:text-fg-strong",
       )}
     >

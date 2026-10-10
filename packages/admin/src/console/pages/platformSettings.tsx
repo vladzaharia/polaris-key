@@ -2058,7 +2058,7 @@ function HistorySection({
                         : "changed"
                     }
                     target={
-                      <span className="font-bold text-fg-strong">
+                      <span className="font-medium text-fg-strong">
                         {s?.label ?? a.target?.id ?? "a setting"}
                         {change ? (
                           <span className="ml-1 font-normal text-fg-muted">

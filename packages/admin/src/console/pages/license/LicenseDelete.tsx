@@ -240,7 +240,7 @@ export function BulkDeleteDialog({
           <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border bg-surface-sunken p-2 text-xs">
             {refused.map((l) => (
               <li key={l.id}>
-                <span className="font-bold text-fg-strong">
+                <span className="font-medium text-fg-strong">
                   {l.name || l.id}
                 </span>{" "}
                 <span className="text-fg-muted">
@@ -365,7 +365,7 @@ function CandidateList({
               Duplicate
             </StatusPill>
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate font-bold text-fg-strong">
+              <span className="truncate font-medium text-fg-strong">
                 {c.name || c.email || c.id}{" "}
                 <span className="font-mono font-normal text-fg-muted">
                   {c.id}

@@ -23,7 +23,7 @@ export class PageErrorBoundary extends React.Component<
       <section className="space-y-6">
         <h1
           tabIndex={-1}
-          className="text-2xl font-bold tracking-tight text-fg-strong outline-hidden"
+          className="text-2xl font-semibold tracking-tight text-fg-strong outline-hidden"
         >
           This page failed to load
         </h1>

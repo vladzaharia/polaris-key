@@ -150,7 +150,9 @@ function StoreTile({
     >
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-base font-bold text-fg-strong">{store.label}</h2>
+          <h2 className="text-base font-semibold text-fg-strong">
+            {store.label}
+          </h2>
           <p className="truncate text-sm text-fg-muted">
             {store.app
               ? (store.app.name ?? store.app.id)
@@ -212,7 +214,9 @@ function BuiltInTile({
     >
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-base font-bold text-fg-strong">{store.label}</h2>
+          <h2 className="text-base font-semibold text-fg-strong">
+            {store.label}
+          </h2>
           <p className="truncate text-sm text-fg-muted">
             Built in: always connected
           </p>
@@ -425,7 +429,7 @@ function AddFlow({
             : null}
         </div>
         <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg">
-          <h2 className="text-sm font-bold text-fg-strong">
+          <h2 className="text-sm font-semibold text-fg-strong">
             What happens here
           </h2>
           <p>{ASIDE[current]}</p>
@@ -564,7 +568,7 @@ function Prerequisites({
               className="flex min-h-12 items-center justify-between gap-3 py-2"
             >
               <div className="min-w-0">
-                <p className="text-sm font-bold text-fg-strong">{p.label}</p>
+                <p className="text-sm font-medium text-fg-strong">{p.label}</p>
                 <p className="text-sm text-fg-muted">{p.detail}</p>
               </div>
               <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -626,7 +630,9 @@ function PlanReview({ store }: { store: StorefrontDto }): React.ReactElement {
           </li>
         ))}
       </ol>
-      <h3 className="mt-4 text-sm font-bold text-fg-strong">External writes</h3>
+      <h3 className="mt-4 text-sm font-semibold text-fg-strong">
+        External writes
+      </h3>
       {writes.length === 0 ? (
         <p className="text-sm text-fg-muted">
           None from Polaris Key: every step is done in {store.label}'s own

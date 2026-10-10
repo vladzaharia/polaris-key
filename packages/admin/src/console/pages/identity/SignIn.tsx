@@ -300,13 +300,13 @@ function SignInBody({
                 <caption className="sr-only">Groups and tiers</caption>
                 <thead className="text-xs text-fg-muted">
                   <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       Group
                     </th>
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       Role
                     </th>
-                    <th scope="col" className="py-2 font-bold">
+                    <th scope="col" className="py-2 font-medium">
                       Tier
                     </th>
                   </tr>

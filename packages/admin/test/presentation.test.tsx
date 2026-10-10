@@ -182,7 +182,7 @@ const mount = () =>
 /** The settings row whose label is `label`. */
 async function row(label: string): Promise<HTMLElement> {
   const el = await screen.findByText(label, {
-    selector: "span.font-bold, label.font-bold",
+    selector: "span.font-medium, label.font-medium",
   });
   return el.closest("[data-align]") as HTMLElement;
 }

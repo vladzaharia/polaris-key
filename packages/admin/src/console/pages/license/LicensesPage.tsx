@@ -456,7 +456,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           Showing the licenses of batch{" "}
           <Link
             to={r.licenseBatch(slug, oneBatch)}
-            className="font-bold text-accent-fg underline-offset-2 hover:underline"
+            className="font-medium text-accent-fg underline-offset-2 hover:underline"
           >
             {batchLabel(oneBatch)}
           </Link>
@@ -606,7 +606,7 @@ function FacetTile({
       )}
     >
       <span className="text-xs text-fg-muted">{label}</span>
-      <span className="text-xl font-bold tabular-nums text-fg-strong">
+      <span className="text-xl font-semibold tabular-nums text-fg-strong">
         {count.toLocaleString()}
       </span>
     </button>

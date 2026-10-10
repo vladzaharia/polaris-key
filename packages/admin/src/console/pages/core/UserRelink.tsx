@@ -68,7 +68,7 @@ export function StepUpCallout({
       action={
         <a
           href={stepUpHref(hash)}
-          className="whitespace-nowrap font-bold text-accent-fg underline underline-offset-2"
+          className="whitespace-nowrap font-medium text-accent-fg underline underline-offset-2"
         >
           Sign in again
         </a>
@@ -106,7 +106,7 @@ export function ReasonField({
 }): React.ReactElement {
   return (
     <div className="space-y-1">
-      <label htmlFor={id} className="text-sm font-bold text-fg-strong">
+      <label htmlFor={id} className="text-sm font-medium text-fg-strong">
         Reason
       </label>
       <Textarea
@@ -188,7 +188,7 @@ export function RelinkDialog({
         <div className="space-y-1">
           <label
             htmlFor="relink-target"
-            className="text-sm font-bold text-fg-strong"
+            className="text-sm font-medium text-fg-strong"
           >
             Move to user
           </label>
