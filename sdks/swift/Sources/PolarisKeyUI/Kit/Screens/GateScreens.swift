@@ -36,25 +36,30 @@ public struct BootView: View {
 /// The gate's first screen (UI-KITS §4.3): the product as the hero, "Welcome to <Product>", "by
 /// <Developer>", one lede, Sign in (primary) and Use a license key (secondary), and the extras as
 /// one quiet row. When only one path exists, the lede says so and `content` carries that path.
-public struct WelcomeView<Inline: View>: View {
+public struct WelcomeView<Inline: View, InlineActions: View>: View {
     let screen: KitScreen<WelcomeState>
     var onSignIn: () -> Void
     var onUseKey: () -> Void
     var onExtra: (String) -> Void
     @ViewBuilder var inline: () -> Inline
+    @ViewBuilder var inlineActions: () -> InlineActions
 
     @AccessibilityFocusState private var titleFocused: Bool
 
+    /// `inline` and `inlineActions` carry the one path of a one-path product (the key field and
+    /// Activate for a key-only product), under the lede and in the act's place.
     public init(
         screen: KitScreen<WelcomeState>, onSignIn: @escaping () -> Void,
         onUseKey: @escaping () -> Void, onExtra: @escaping (String) -> Void = { _ in },
-        @ViewBuilder inline: @escaping () -> Inline = { EmptyView() }
+        @ViewBuilder inline: @escaping () -> Inline,
+        @ViewBuilder inlineActions: @escaping () -> InlineActions
     ) {
         self.screen = screen
         self.onSignIn = onSignIn
         self.onUseKey = onUseKey
         self.onExtra = onExtra
         self.inline = inline
+        self.inlineActions = inlineActions
     }
 
     private static var extras: [String] {
@@ -78,7 +83,9 @@ public struct WelcomeView<Inline: View>: View {
                 {
                     KitText(lede, .body, color: .default, alignment: .center)
                 }
-                if screen.state == .capabilityLimited { inline() }
+                if screen.state == .capabilityLimited, screen.shows("welcome.ledeKeyOnly") {
+                    inline()
+                }
             }
         } actions: {
             if screen.state == .busy {
@@ -92,6 +99,8 @@ public struct WelcomeView<Inline: View>: View {
             } else if screen.state == .capabilityLimited, screen.shows("welcome.ledeSignInOnly") {
                 KitButton(line: CopyLine("welcome.signIn"), kind: .primary, action: onSignIn)
                     .keyboardShortcut(.defaultAction)
+            } else if screen.state == .capabilityLimited {
+                inlineActions()
             }
         } footer: {
             let extras = Self.extras.compactMap { screen.line($0) }
@@ -110,6 +119,18 @@ public struct WelcomeView<Inline: View>: View {
                 }
             }
         }
+    }
+}
+
+extension WelcomeView where Inline == EmptyView, InlineActions == EmptyView {
+    /// Welcome with no inline path (a product with both sign-in and keys).
+    public init(
+        screen: KitScreen<WelcomeState>, onSignIn: @escaping () -> Void,
+        onUseKey: @escaping () -> Void, onExtra: @escaping (String) -> Void = { _ in }
+    ) {
+        self.init(
+            screen: screen, onSignIn: onSignIn, onUseKey: onUseKey, onExtra: onExtra,
+            inline: { EmptyView() }, inlineActions: { EmptyView() })
     }
 }
 

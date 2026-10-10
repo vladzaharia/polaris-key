@@ -32,7 +32,8 @@ public struct PolarisKeyPreview: View {
         _model = State(
             initialValue: PolarisKeyGateModel(
                 preview: state.inputs, route: route, request: request,
-                presentationIcon: iconData))
+                // The icon only where the inputs say verified bytes arrived; else the monogram.
+                presentationIcon: state.inputs.presentation?.icon == true ? iconData : nil))
     }
 
     public var body: some View {
@@ -49,7 +50,17 @@ public struct PolarisKeyPreview: View {
         case .boot:
             BootView(boot: model.boot)
         case .welcome:
-            WelcomeView(screen: model.welcome, onSignIn: {}, onUseKey: {})
+            WelcomeView(
+                screen: model.welcome, onSignIn: {}, onUseKey: {},
+                inline: {
+                    ActivateBody(
+                        screen: model.activate, text: $model.keyText, onSubmit: {},
+                        onReplaceDevice: nil)
+                },
+                inlineActions: {
+                    ActivateActions(
+                        screen: model.activate, onSubmit: {}, onReplaceDevice: nil, onCancel: nil)
+                })
         case .signIn, .signInHandoff, .licenseChoice:
             SignInView(model: model)
         case .activate:

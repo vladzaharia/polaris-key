@@ -253,7 +253,7 @@ public struct DeviceLimitView: View {
                                     meta: strings.string(
                                         "signin.replace.meta",
                                         [
-                                            "platform": .text(device.platform),
+                                            "platform": .text(KitFormat.platformName(device.platform)),
                                             "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
                                         ]),
                                     leastRecent: device.name == leastRecent,

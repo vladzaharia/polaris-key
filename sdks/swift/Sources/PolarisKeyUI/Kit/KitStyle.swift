@@ -53,10 +53,12 @@ public struct KitResolvedStyle: Sendable, Equatable {
     public var ambient: Bool
     public var poweredBy: PolarisKeyTheme.PoweredBy?
     public var platform: KitPlatform
+    /// Draw the iOS 18 material fallback even where Liquid Glass exists (review and baselines).
+    public var forcesMaterial = false
 
     /// Liquid Glass is available (iOS 26) and transparency is not reduced.
     public var usesGlass: Bool {
-        guard !reduceTransparency else { return false }
+        guard !reduceTransparency, !forcesMaterial else { return false }
         if #available(iOS 26.0, macOS 26.0, *) { return true }
         return false
     }
@@ -356,6 +358,7 @@ struct PolarisKeyStyleScope: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.locale) private var locale
+    @Environment(\.polarisKeyMaterialFallback) private var forcesMaterial
 
     func body(content: Content) -> some View {
         let style = resolved()
@@ -402,7 +405,20 @@ struct PolarisKeyStyleScope: ViewModifier {
             density: theme.density, reduceMotion: motionReduced,
             reduceTransparency: reduceTransparency, increaseContrast: contrast == .increased,
             ambient: theme.ambient ?? (theme.preset != .native), poweredBy: theme.poweredBy,
-            platform: inputs.platform)
+            platform: inputs.platform, forcesMaterial: forcesMaterial)
+    }
+}
+
+private struct PolarisKeyMaterialFallbackKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Draw the designed iOS 18 fallback (system materials, solid capsules) on iOS 26 as well: the
+    /// sample's `-pkeyMaterial` uses it to render the fallback where no iOS 18 runtime is installed.
+    public var polarisKeyMaterialFallback: Bool {
+        get { self[PolarisKeyMaterialFallbackKey.self] }
+        set { self[PolarisKeyMaterialFallbackKey.self] = newValue }
     }
 }
 

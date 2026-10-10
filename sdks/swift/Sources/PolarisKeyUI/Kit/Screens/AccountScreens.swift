@@ -8,6 +8,34 @@
 import PolarisKeyUICore
 import SwiftUI
 
+/// A pane's text: the host's font (panes join the host, UI-KITS §2.1 `typography.family: "inherit"`),
+/// in the kit's roles only for the colour.
+struct PaneText: View {
+    let line: CopyLine
+    let role: KitTextRole
+    let color: KitTextColor
+    @Environment(\.polarisKeyStrings) private var strings
+
+    init(_ line: CopyLine, _ role: KitTextRole = .body, color: KitTextColor = .default) {
+        self.line = line
+        self.role = role
+        self.color = color
+    }
+
+    init(_ key: String, _ args: [String: CopyArgument] = [:], _ role: KitTextRole = .body,
+         color: KitTextColor = .default) {
+        self.init(CopyLine(key, args), role, color: color)
+    }
+
+    var body: some View {
+        kitStyle { style in
+            Text(strings.string(line))
+                .font(role == .footnote || role == .meta ? .footnote : nil)
+                .foregroundStyle(color == .default ? AnyShapeStyle(.primary) : AnyShapeStyle(color.resolve(style.palette)))
+        }
+    }
+}
+
 /// The settings pane's account and license, as sections.
 public struct AccountAndLicenseSection: View {
     let screen: KitScreen<AccountState>
@@ -47,15 +75,15 @@ public struct AccountAndLicenseSection: View {
                     ProductIcon(size: 56)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(style.identity.name)
-                            .font(style.font(.label))
-                            .foregroundStyle(style.palette.textStrong)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.primary)
                         if screen.shows("account.tier") {
-                            KitText(CopyLine("account.tier", ["tier": .text(tier ?? "")]), .meta, color: .muted)
+                            PaneText(CopyLine("account.tier", ["tier": .text(tier ?? "")]), .meta, color: .muted)
                         }
                         if screen.shows("account.holder"), let holder {
-                            KitText(CopyLine("account.holder", ["name": .text(holder)]), .meta, color: .muted)
+                            PaneText(CopyLine("account.holder", ["name": .text(holder)]), .meta, color: .muted)
                         } else if screen.shows("account.keyOnly") {
-                            KitText(CopyLine("account.keyOnly"), .meta, color: .muted)
+                            PaneText(CopyLine("account.keyOnly"), .meta, color: .muted)
                         } else if screen.shows("account.offline") {
                             StatusPill(CopyLine("part.status.grace"), tone: .warning)
                         }
@@ -66,7 +94,7 @@ public struct AccountAndLicenseSection: View {
                 if screen.shows("common.manage") {
                     Button(action: onManage) {
                         HStack {
-                            KitText(CopyLine("common.manage"), .body, color: .default)
+                            PaneText(CopyLine("common.manage"), .body, color: .default)
                             Spacer()
                             Image(systemName: "arrow.up.right")
                                 .foregroundStyle(style.palette.textMuted)
@@ -78,35 +106,31 @@ public struct AccountAndLicenseSection: View {
                     LabeledContent {
                         Text(devices ?? "")
                     } label: {
-                        KitText(CopyLine("account.devices"), .body, color: .default)
+                        PaneText(CopyLine("account.devices"), .body, color: .default)
                     }
                 }
                 if screen.shows("account.cloudSync") {
-                    KitText(CopyLine("account.cloudSync"), .body, color: .default)
+                    PaneText(CopyLine("account.cloudSync"), .body, color: .default)
                 }
             }
             if screen.shows("account.updates") {
                 Section {
                     if screen.shows("account.autoUpdate") {
                         Toggle(isOn: $autoUpdate) {
-                            KitText(CopyLine("account.autoUpdate"), .body, color: .default)
+                            PaneText(CopyLine("account.autoUpdate"), .body, color: .default)
                         }
                         .tint(style.palette.accentSolid)
                     }
                     if let version, screen.shows("account.version") {
-                        LabeledContent {
-                            Text(version)
-                        } label: {
-                            KitText(CopyLine("account.version", ["version": .text(version)]), .body, color: .default)
-                        }
+                        PaneText(CopyLine("account.version", ["version": .text(version)]), .body, color: .default)
                     }
                     if screen.shows("update.checkNow") {
                         Button(action: onCheckNow) {
-                            KitText(CopyLine("update.checkNow"), .body, color: .accent)
+                            PaneText(CopyLine("update.checkNow"), .body, color: .accent)
                         }
                     }
                 } header: {
-                    KitText(CopyLine("account.updates"), .footnote, color: .muted)
+                    PaneText(CopyLine("account.updates"), .footnote, color: .muted)
                 }
             }
             if screen.shows("common.signOut") {
@@ -114,7 +138,7 @@ public struct AccountAndLicenseSection: View {
                     Button(role: .destructive) {
                         confirmingSignOut = true
                     } label: {
-                        KitText(CopyLine("common.signOut"), .body, color: .danger)
+                        PaneText(CopyLine("common.signOut"), .body, color: .danger)
                     }
                     .confirmationDialog(
                         strings.string("common.signOut"), isPresented: $confirmingSignOut,
@@ -156,27 +180,27 @@ public struct DevicesSection: View {
                 LoadingIndicator(CopyLine("common.loading"))
             case .error:
                 if let line = screen.copy.first(where: { $0.key != "common.tryAgain" }) {
-                    KitText(line, .body, color: .default)
+                    PaneText(line, .body, color: .default)
                 }
                 Button(strings.string("common.tryAgain"), action: onRetry)
             case .empty:
-                KitText(CopyLine("devices.empty"), .body, color: .default)
+                PaneText(CopyLine("devices.empty"), .body, color: .default)
             case .browserMode:
-                KitText(CopyLine("devices.browser"), .body, color: .default)
+                PaneText(CopyLine("devices.browser"), .body, color: .default)
             default:
                 ForEach(Array(devices.enumerated()), id: \.offset) { _, device in
                     DeviceRow(
                         name: device.name, formFactor: device.formFactor.rawValue,
                         meta: strings.string(
                             "devices.meta",
-                            ["platform": .text(device.platform), "when": .text(KitFormat.daysAgo(device.lastSeenDays))]))
+                            ["platform": .text(KitFormat.platformName(device.platform)), "when": .text(KitFormat.daysAgo(device.lastSeenDays))]))
                     .swipeActions {
                         Button(strings.string("devices.remove"), role: .destructive) { onRemove(device) }
                     }
                 }
             }
         } header: {
-            KitText(CopyLine("devices.title"), .footnote, color: .muted)
+            PaneText(CopyLine("devices.title"), .footnote, color: .muted)
         }
     }
 }
@@ -209,9 +233,9 @@ public struct SettingsSection: View {
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(row.key).font(style.font(.body))
+                            Text(row.label ?? Self.humanize(row.key))
                             if row.locked {
-                                KitText(
+                                PaneText(
                                     row.org.map { CopyLine("settings.setBy", ["org": .text($0)]) }
                                         ?? CopyLine("settings.setByGuardian"), .footnote, color: .muted)
                             }
@@ -219,9 +243,18 @@ public struct SettingsSection: View {
                     }
                 }
             } header: {
-                KitText(CopyLine("settings.title"), .footnote, color: .muted)
+                PaneText(CopyLine("settings.title"), .footnote, color: .muted)
             }
         }
+    }
+
+    /// A catalog row with no label: its last segment in words, never the raw dotted key (§4.3).
+    static func humanize(_ key: String) -> String {
+        let last = key.split(separator: ".").last.map(String.init) ?? key
+        let words = last.replacingOccurrences(
+            of: "([a-z0-9])([A-Z])", with: "$1 $2", options: .regularExpression
+        ).replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "-", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
 
     private func value(_ row: KitConfigRow) -> String {

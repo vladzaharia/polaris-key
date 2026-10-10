@@ -408,13 +408,18 @@ public struct KitSignIn: Sendable, Codable, Equatable, Hashable {
     public var issuedNow: Bool?
     public var raced: Bool?
     public var grantExpired: Bool?
+    /// The method the person picked ("Apple", "Email", "Passkey"), named in a failure's sentence.
+    /// A kit-side value; the matrix never sets it.
+    public var method: String?
 
     public init(
         presentation: KitSignInPresentation = .inline, replace: KitReplaceMode = .inline,
         channel: KitSignInChannel = .browser, outcome: KitSignInOutcome? = nil,
         browserOpened: Bool? = nil, redeeming: Bool? = nil, event: KitSignInEvent? = nil,
-        issuedNow: Bool? = nil, raced: Bool? = nil, grantExpired: Bool? = nil
+        issuedNow: Bool? = nil, raced: Bool? = nil, grantExpired: Bool? = nil,
+        method: String? = nil
     ) {
+        self.method = method
         self.presentation = presentation
         self.replace = replace
         self.channel = channel
@@ -705,6 +710,8 @@ public struct KitReleaseNote: Sendable, Codable, Equatable, Hashable {
 /// One `config.list` row.
 public struct KitConfigRow: Sendable, Codable, Equatable, Hashable {
     public var key: String
+    /// The catalog's label for the row (kit-side; the matrix never sets it).
+    public var label: String?
     /// `boolean`, `number`, `select` or `string`.
     public var type: String
     /// `default`, `local`, `env` or `enforced`.
@@ -718,9 +725,11 @@ public struct KitConfigRow: Sendable, Codable, Equatable, Hashable {
 
     public init(
         key: String, type: String, source: String, locked: Bool = false, org: String? = nil,
-        value: KitConfigValue? = nil, min: Double? = nil, max: Double? = nil, advanced: Bool? = nil
+        value: KitConfigValue? = nil, min: Double? = nil, max: Double? = nil, advanced: Bool? = nil,
+        label: String? = nil
     ) {
         self.key = key
+        self.label = label
         self.type = type
         self.source = source
         self.locked = locked

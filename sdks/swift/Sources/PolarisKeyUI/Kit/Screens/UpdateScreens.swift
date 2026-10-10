@@ -106,6 +106,7 @@ public struct UpdateProgressView: View {
                     KitButton(line: CopyLine("common.tryAgain"), kind: .secondary, fullWidth: false, action: onRetry)
                 }
             }
+            .accessibilityElement(children: .combine)
         }
     }
 }

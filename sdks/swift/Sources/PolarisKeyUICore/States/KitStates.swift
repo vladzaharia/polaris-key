@@ -102,6 +102,23 @@ public enum KitFormat {
             date: .abbreviated, time: .omitted)
     }
 
+    /// A platform id as people read it (DL8: never a raw id): `macos` is macOS.
+    public static func platformName(_ id: String) -> String {
+        switch id.lowercased() {
+        case "macos": return "macOS"
+        case "ios": return "iOS"
+        case "ipados": return "iPadOS"
+        case "android": return "Android"
+        case "windows": return "Windows"
+        case "linux": return "Linux"
+        case "web": return "Web"
+        case "tvos": return "tvOS"
+        case "visionos": return "visionOS"
+        case "watchos": return "watchOS"
+        default: return id
+        }
+    }
+
     /// "today", "3 days ago": the relative time a device was last seen.
     public static func daysAgo(_ days: Int, from now: Date = Date()) -> String {
         let formatter = RelativeDateTimeFormatter()

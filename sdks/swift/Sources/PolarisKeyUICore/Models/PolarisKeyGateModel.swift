@@ -338,14 +338,16 @@ public final class PolarisKeyGateModel {
 
     // MARK: Sign-in
 
-    /// Start the sign-in: one request, opened in the system browser sheet (the hand-off step).
-    public func beginSignIn() {
+    /// Start the sign-in: one request, opened in the system browser sheet (the hand-off step), or,
+    /// with `code`, shown as the code view without a browser ("Sign in with a code"). `method`
+    /// names what the person picked, for a failure's sentence.
+    public func beginSignIn(method: String? = nil, code: Bool = false) {
         guard let client else { return }
         route = .signIn
         signInError = nil
         signIn = KitSignIn(
             presentation: options.signInPresentation, replace: options.replace,
-            channel: .browser)
+            channel: .browser, method: method)
         pending = .signIn
         rebuild()
         signInTask?.cancel()
@@ -361,8 +363,13 @@ public final class PolarisKeyGateModel {
                     expiresAt: prompt.expiresAt)
                 self.pending = nil
                 self.signIn?.outcome = .pending
-                let opened = await self.openBrowser(prompt.verificationUriComplete)
-                self.signIn?.browserOpened = opened
+                if code {
+                    self.signIn?.channel = .deviceCode
+                    self.deviceCode = KitDeviceCode(phase: .waiting, secondsLeft: self.secondsLeft)
+                } else {
+                    let opened = await self.openBrowser(prompt.verificationUriComplete)
+                    self.signIn?.browserOpened = opened
+                }
                 self.rebuild()
                 self.announce(self.signInScreen.copy.first)
                 await self.waitForSignIn(prompt)

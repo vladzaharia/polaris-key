@@ -3,7 +3,8 @@
 //   no arguments          the gallery of every preview state, on the fixture product (no Worker)
 //   -pkeyState <id>       one state full-screen (the render tests use it), e.g. Welcome.default
 //   -pkeyScheme dark|light, -pkeyPreset native, -pkeyAccent #rrggbb, -pkeyAmbient off,
-//   -pkeyFreezeTime (countdowns stop, for baselines), -pkeyLocale de
+//   -pkeyFreezeTime (countdowns stop, for baselines), -pkeyLocale de, -pkeyMaterial (the iOS 18
+//   material fallback on 26)
 //   --live                the real gate: `.polarisKeyGate(client)` against PKEY_BASE_URL
 //                         (default key.plrs.im) for PKEY_PRODUCT with the pins in PKEY_PINS
 //
@@ -60,6 +61,7 @@ struct Root: View {
             }
         }
         .polarisKeyTheme(theme)
+        .environment(\.polarisKeyMaterialFallback, args.contains("-pkeyMaterial"))
     }
 }
 

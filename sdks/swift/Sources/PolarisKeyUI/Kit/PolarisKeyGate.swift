@@ -104,6 +104,11 @@ public struct PolarisKeyGate<Content: View>: View {
                             onSubmit: { Task { await model.submitKey() } },
                             onReplaceDevice: replaceDevice)
                     }
+                },
+                inlineActions: {
+                    ActivateActions(
+                        screen: model.activate, onSubmit: { Task { await model.submitKey() } },
+                        onReplaceDevice: replaceDevice, onCancel: nil)
                 })
         case .activate:
             ActivateView(
@@ -160,14 +165,17 @@ public struct PolarisKeyScope<Content: View>: View {
 
     public var body: some View {
         let icon = KitIconSource.image(theme: theme, presentation: model.presentationIcon)
+        let strings = KitStrings(
+            catalog: model.copy.overriding(theme.copy), locale: theme.locale ?? locale.identifier)
         content()
             .modifier(PolarisKeyStyleScope(inputs: model.inputs, icon: icon))
-            .environment(
-                \.polarisKeyStrings,
-                KitStrings(
-                    catalog: model.copy.overriding(theme.copy),
-                    locale: theme.locale ?? locale.identifier))
+            .environment(\.polarisKeyStrings, strings)
             .environment(model)
+            // One polite announcement per change (DL7, DL9): a refusal, a step, a result.
+            .onChange(of: model.announcement) { _, line in
+                guard let line else { return }
+                AccessibilityNotification.Announcement(strings.string(line)).post()
+            }
     }
 }
 

@@ -28,6 +28,7 @@ public struct SignInView: View {
 
     @State private var confirmingReplace = false
     @AccessibilityFocusState private var headingFocused: Bool
+    @Environment(\.openURL) private var openURL
 
     public init(
         model: PolarisKeyGateModel, providers: [KitProvider] = [.apple],
@@ -60,36 +61,61 @@ public struct SignInView: View {
         }
     }
 
-    @ViewBuilder private func heading(_ screen: KitScreen<SignInState>) -> some View {
+    /// The product's name, for lines that name it outside the state's own copy.
+    private var productArg: [String: CopyArgument] { ["product": .text(model.identity.name)] }
+
+    /// The title names the state (DL8): the step, or the refusal it ended in.
+    private func title(_ screen: KitScreen<SignInState>) -> CopyLine {
+        let handoff = model.handoff
         switch screen.state {
         case .methods, .error, .none:
-            KitText(screen.lineOrKey("signIn.title"), .title, color: .strong)
+            return screen.line("signIn.title") ?? CopyLine("signIn.title", productArg)
         case .handoff:
-            KitText(handoffTitle, .title, color: .strong)
+            return handoff.state == .noBrowser || handoff.state == .linkCopied
+                ? CopyLine("signin.handoff.noBrowser") : CopyLine("signin.handoff.title")
         case .code:
-            KitText(CopyLine("signin.handoff.codeTitle"), .title, color: .strong)
+            if let refusal = handoff.copy.first(where: { $0.key.hasSuffix(".title") }) {
+                return refusal
+            }
+            return CopyLine("signin.handoff.codeTitle")
         case .finishing:
-            KitText(CopyLine("signin.handoff.finishing"), .title, color: .strong)
+            return model.inputs.signIn?.channel == .deviceCode
+                ? CopyLine("signin.handoff.codeTitle") : CopyLine("signin.handoff.title")
         case .choose:
-            KitText(CopyLine("signin.choice.title"), .title, color: .strong)
+            return CopyLine("signin.choice.title")
         case .replace:
-            KitText(CopyLine("signin.replace.open"), .title, color: .strong)
+            return CopyLine("signin.replace.open")
         case .key:
-            KitText(screen.lineOrKey("signin.key.addTitle"), .title, color: .strong)
+            return screen.lineOrKey("signin.key.addTitle")
         case .done:
-            KitText(
-                CopyLine("signin.return.signedInShort"), .title, color: .strong)
+            return CopyLine("signin.return.signedInShort")
         case .expired:
-            KitText(
-                screen.line("core.codes.sign-in-expired.title")
-                    ?? CopyLine("signin.handoff.tooLong"), .title, color: .strong)
+            return screen.line("core.codes.sign-in-expired.title") ?? CopyLine("signin.handoff.tooLong")
         }
     }
 
-    private var handoffTitle: CopyLine {
-        switch model.handoff.state {
-        case .noBrowser: return CopyLine("signin.handoff.noBrowser")
-        default: return CopyLine("signin.handoff.title")
+    @ViewBuilder private func heading(_ screen: KitScreen<SignInState>) -> some View {
+        kitStyle { style in
+            HStack(alignment: .center, spacing: style.space(.xs)) {
+                if screen.state == .done {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(style.font(.title))
+                        .foregroundStyle(style.palette.success)
+                        .symbolEffect(.bounce, options: .nonRepeating, isActive: !style.reduceMotion)
+                        .accessibilityHidden(true)
+                }
+                KitText(title(screen), .title, color: .strong)
+            }
+        }
+    }
+
+    /// The method a provider or row names in a failure's sentence.
+    private static func methodName(_ key: String) -> String? {
+        switch key {
+        case "apple": return "Apple"
+        case "signin.email.continue", "signin.desktop.continue": return "Email"
+        case "signin.passkey": return "Passkey"
+        default: return nil
         }
     }
 
@@ -98,21 +124,40 @@ public struct SignInView: View {
     {
         switch screen.state {
         case .methods, .error, .none:
+            // A failed method keeps every method in place, with the failure above them (DL7).
             SignInMethodsView(
-                screen: screen, providers: providers, onMethod: { _ in model.beginSignIn() },
-                onCode: { model.beginSignIn() })
+                screen: screen.state == .error ? methodsScreen : screen, providers: providers,
+                error: screen.state == .error ? screen.copy.first : nil,
+                onMethod: { key in model.beginSignIn(method: Self.methodName(key)) },
+                onCode: { model.beginSignIn(code: true) })
         case .handoff, .code:
-            SignInHandoffView(
-                screen: model.handoff, request: model.request,
-                onCopyLink: { model.linkCopied() })
+            VStack(alignment: .leading, spacing: style.space(.md)) {
+                if let body = screen.line("signin.handoff.browserBody"),
+                    model.handoff.state == .waiting
+                {
+                    KitText(body, .body, color: .default)
+                }
+                SignInHandoffView(
+                    screen: model.handoff, request: model.request,
+                    onCopyLink: { model.linkCopied() })
+            }
         case .finishing:
-            LoadingIndicator(CopyLine("signin.handoff.finishing"))
+            HStack(spacing: style.space(.xs)) {
+                ProgressView().controlSize(.small).accessibilityHidden(true)
+                KitText(CopyLine("signin.handoff.finishing"), .meta, color: .muted)
+            }
+            .accessibilityElement(children: .combine)
         case .choose:
             LicenseChoiceView(screen: model.licenseChoice, choices: model.inputs.choices)
         case .replace:
-            ReplaceDeviceView(
-                screen: model.licenseChoice, view: model.inputs.replaceView,
-                confirmInSystem: true, onReplace: { confirmingReplace = true })
+            VStack(alignment: .leading, spacing: style.space(.md)) {
+                if let lede = screen.line("signin.replace.lede") {
+                    KitText(lede, .body, color: .default)
+                }
+                ReplaceDeviceView(
+                    screen: model.licenseChoice, view: model.inputs.replaceView,
+                    confirmInSystem: true, onReplace: { confirmingReplace = true })
+            }
         case .key:
             ActivateBody(
                 screen: model.activate, text: $model.keyText,
@@ -123,18 +168,28 @@ public struct SignInView: View {
                     CopyLine(
                         "signin.desktop.toast",
                         ["name": .text(model.signedInName ?? ""), "tier": ""]), .body,
-                    color: .muted)
+                    color: .default)
             }
         case .expired:
-            KitText(CopyLine("signin.handoff.tooLong"), .body, color: .default)
+            // The title already says the sign-in took too long; only a code's sentence follows.
+            if let message = screen.line("core.codes.sign-in-expired.message") {
+                KitText(message, .body, color: .default)
+            }
         }
+    }
+
+    /// The methods, for a failed method's screen.
+    private var methodsScreen: KitScreen<SignInState> {
+        var inputs = model.inputs
+        inputs.error = nil
+        return KitStates.signIn(inputs)
     }
 
     @ViewBuilder private func actions(_ screen: KitScreen<SignInState>) -> some View {
         KitActionStack {
             switch screen.state {
             case .methods, .error, .none:
-                if screen.shows("signin.choice.keyInstead") {
+                if screen.shows("signin.choice.keyInstead") || methodsScreen.shows("signin.choice.keyInstead") {
                     KitButton(line: CopyLine("signin.choice.keyInstead"), kind: .quiet) {
                         model.useLicenseKey()
                     }
@@ -154,8 +209,9 @@ public struct SignInView: View {
                     || model.handoff.state == .cancelled
                 {
                     KitButton(line: CopyLine("signInHandoff.newCode"), kind: .primary) {
-                        model.beginSignIn()
+                        model.beginSignIn(code: true)
                     }
+                    .keyboardShortcut(.defaultAction)
                 }
                 cancelButton
             case .finishing:
@@ -171,7 +227,37 @@ public struct SignInView: View {
                 KitButton(line: CopyLine("signin.again"), kind: .primary) { model.beginSignIn() }
                     .keyboardShortcut(.defaultAction)
                 cancelButton
-            case .choose, .key, .replace:
+            case .choose:
+                // Every license full: Replace a device on the card, which comes back to this form
+                // (SIGN-IN.md §3.7), until the in-app device list arrives with I-04's choice API.
+                if model.licenseChoice.state == .allFull,
+                    let link = model.inputs.choices?.choices.lazy
+                        .compactMap({ KitLinks.valid($0.freeDeviceUrl) }).first
+                {
+                    KitButton(
+                        line: CopyLine("signin.replace.open"), kind: .primary,
+                        glyph: "arrow.up.right"
+                    ) { openURL(link) }
+                    .keyboardShortcut(.defaultAction)
+                }
+                if model.licenseChoice.shows("signin.choice.continue") {
+                    KitButton(line: CopyLine("signin.choice.continue"), kind: .primary) {}
+                        .keyboardShortcut(.defaultAction)
+                }
+                if model.licenseChoice.shows("signin.choice.keyInstead") {
+                    KitButton(line: CopyLine("signin.choice.keyInstead"), kind: .quiet) {
+                        model.useLicenseKey()
+                    }
+                }
+                cancelButton
+            case .key:
+                KitButton(
+                    line: CopyLine("signin.key.addAndUse"), kind: .primary,
+                    busy: model.activate.state == .busy
+                ) { Task { await model.submitKey() } }
+                .keyboardShortcut(.defaultAction)
+                cancelButton
+            case .replace:
                 cancelButton
             }
         }
@@ -212,16 +298,20 @@ public struct SignInView: View {
 public struct SignInMethodsView: View {
     let screen: KitScreen<SignInState>
     var providers: [KitProvider]
+    /// A failed method's sentence, shown above the methods it leaves in place.
+    var error: CopyLine?
     var onMethod: (String) -> Void
     var onCode: () -> Void
     @Environment(\.polarisKeyStrings) private var strings
+    @AccessibilityFocusState private var errorFocused: Bool
 
     public init(
-        screen: KitScreen<SignInState>, providers: [KitProvider], onMethod: @escaping (String) -> Void,
-        onCode: @escaping () -> Void
+        screen: KitScreen<SignInState>, providers: [KitProvider], error: CopyLine? = nil,
+        onMethod: @escaping (String) -> Void, onCode: @escaping () -> Void
     ) {
         self.screen = screen
         self.providers = providers
+        self.error = error
         self.onMethod = onMethod
         self.onCode = onCode
     }
@@ -232,8 +322,16 @@ public struct SignInMethodsView: View {
                 if let lede = screen.line("signin.methods.ledeApp") {
                     KitText(lede, .body, color: .default)
                 }
-                if let error = screen.line("signIn.methodError") ?? screen.line("signIn.noMethods") {
-                    KitText(error, .meta, color: .danger)
+                if let error {
+                    Label {
+                        KitText(error, .meta, color: .default)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(style.palette.warning)
+                            .accessibilityHidden(true)
+                    }
+                    .accessibilityFocused($errorFocused)
+                    .onAppear { errorFocused = true }
                 }
                 KitActionStack {
                     if let email = screen.line("signin.email.continue") ?? screen.line("signin.desktop.continue") {
@@ -318,6 +416,8 @@ public struct SignInHandoffView: View {
                                 .foregroundStyle(style.palette.textDefault)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
+                                .accessibilityLabel(
+                                    KitLinks.display(request?.verificationUri ?? url))
                             Spacer()
                             Button(strings.string(
                                 screen.state == .linkCopied ? "signInHandoff.linkCopied" : "signin.handoff.copyLink")
@@ -472,7 +572,9 @@ public struct LicenseChoiceView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(choice.isFull)
+        // A full license is a row without a radio, never dimmed below its contrast (§1.5 rule 9).
+        .allowsHitTesting(!choice.isFull)
+        .accessibilityRemoveTraits(choice.isFull ? .isButton : [])
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
@@ -510,7 +612,7 @@ public struct ReplaceDeviceView: View {
                                     name: device.label, formFactor: device.deviceType,
                                     meta: strings.string(
                                         "signin.replace.meta",
-                                        ["platform": .text(device.platform),
+                                        ["platform": .text(KitFormat.platformName(device.platform)),
                                          "when": .text(KitFormat.date(device.lastSeen))]),
                                     leastRecent: device.leastRecent,
                                     selected: device.id == (selection ?? devices.first(where: \.leastRecent)?.id))

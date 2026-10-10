@@ -313,6 +313,7 @@ public struct SeatMeter: View {
                     .meta, color: .muted)
             }
             .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isImage)
             .accessibilityLabel(
                 strings.string("a11y.seatMeter", ["used": .number(used), "limit": .number(limit)]))
         }
@@ -364,6 +365,8 @@ public struct DeviceRow: View {
                         Text(name ?? strings.string("devices.unnamed"))
                             .font(style.font(.body))
                             .foregroundStyle(style.palette.textStrong)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(1)
                         if leastRecent {
                             KitText("signin.replace.leastRecent", [:], .footnote, color: .strong)
                                 .padding(.horizontal, 8)
@@ -442,6 +445,7 @@ public struct ProgressBar: View {
         kitStyle { style in
             ProgressView(value: max(0, min(1, fraction)))
                 .tint(style.palette.accentSolid)
+                .accessibilityLabel(KitFormat.percent(fraction))
         }
     }
 }

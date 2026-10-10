@@ -75,7 +75,8 @@ extension PolarisKeyPreviewState {
     public static let fullChoices: [KitLicenseChoice] = [
         KitLicenseChoice(
             id: "lic_pro", tierName: "Pro", origin: "purchase", seats: KitSeats(used: 3, limit: 3),
-            state: "full", replace: KitReplaceAllowance(allowed: true)),
+            state: "full", replace: KitReplaceAllowance(allowed: true),
+            freeDeviceUrl: "https://key.plrs.im/#/p/tidewater/free-device?license=lic_pro"),
         KitLicenseChoice(
             id: "lic_edu", tierName: "Edu", name: "Fennick Studio Edu", origin: "developer",
             seats: KitSeats(used: 3, limit: 3), expiresAt: 1_798_761_600, state: "full",
@@ -98,12 +99,18 @@ extension PolarisKeyPreviewState {
         replace: KitReplaceAllowance(allowed: true))
 
     public static let config: [KitConfigRow] = [
-        KitConfigRow(key: "render.quality", type: "select", source: "default"),
+        KitConfigRow(
+            key: "render.quality", type: "select", source: "default", value: .string("High"),
+            label: "Render quality"),
         KitConfigRow(
             key: "audio.volume", type: "number", source: "local", value: .number(80), min: 0,
-            max: 100),
-        KitConfigRow(key: "ui.compact", type: "boolean", source: "default", value: .bool(true)),
-        KitConfigRow(key: "ui.sounds", type: "boolean", source: "default", value: .bool(false)),
+            max: 100, label: "Volume"),
+        KitConfigRow(
+            key: "ui.compact", type: "boolean", source: "default", value: .bool(true),
+            label: "Compact layout"),
+        KitConfigRow(
+            key: "ui.sounds", type: "boolean", source: "default", value: .bool(false),
+            label: "Interface sounds"),
     ]
 
     /// The default inputs: Tidewater on an iPhone, every service on.
@@ -423,7 +430,7 @@ extension PolarisKeyPreviewState {
                     config + [
                         KitConfigRow(
                             key: "net.lockdown", type: "boolean", source: "enforced", locked: true,
-                            org: "Fennick Studio", value: .bool(true))
+                            org: "Fennick Studio", value: .bool(true), label: "Share crash reports")
                     ]
             }),
         .init(

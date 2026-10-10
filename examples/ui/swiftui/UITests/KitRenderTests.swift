@@ -100,6 +100,9 @@ final class KitRenderTests: XCTestCase {
             renders.append(try render(state, scheme: "light", orientation: .landscapeLeft))
             renders.append(try render(state, scheme: "dark", preset: "native"))
             renders.append(try render(state, scheme: "light", preset: "native"))
+            // The designed iOS 18 fallback, drawn on 26 (no iOS 18 runtime is installed here).
+            renders.append(try render(state, scheme: "dark", preset: "material"))
+            renders.append(try render(state, scheme: "light", preset: "material"))
         }
         let env = ProcessInfo.processInfo.environment
         if (env["PKEY_KIT_QUICK"] ?? env["TEST_RUNNER_PKEY_KIT_QUICK"]) != "1" {
@@ -115,9 +118,10 @@ final class KitRenderTests: XCTestCase {
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
             try data.write(to: out.appendingPathComponent("renders-\(device).json"))
         }
-        // "Nearly passed" is the audit's warning, recorded in the JSON but not a failure.
+        // "Nearly passed" is the audit's warning, and a measured pass overrules the audit's
+        // contrast heuristic; both stay in the JSON, neither fails the run.
         let kitIssues = renders.flatMap { r in
-            r.audit.filter { !$0.contains("nearly passed") }
+            r.audit.filter { !$0.contains("nearly passed") && !$0.hasPrefix("measured ") }
                 .map { "\(r.state) \(r.scheme) \(r.type) \(r.orientation) \(r.preset): \($0)" }
         }
         XCTAssertEqual(kitIssues, [], "accessibility audit issues")
@@ -134,6 +138,7 @@ final class KitRenderTests: XCTestCase {
         let app = XCUIApplication()
         var args = ["-pkeyState", state, "-pkeyScheme", scheme, "-pkeyFreezeTime"]
         if preset == "native" { args += ["-pkeyPreset", "native"] }
+        if preset == "material" { args += ["-pkeyMaterial"] }
         if let locale { args += ["-pkeyLocale", locale] }
         let category: String
         switch type {
@@ -170,13 +175,28 @@ final class KitRenderTests: XCTestCase {
             isDefault: locale == nil && isDefaultRow(type, orientation, preset))
 
         var issues: [String] = []
+        let pixels = shot.image.cgImage
+        let scale = shot.image.scale
         try app.performAccessibilityAudit(for: .all) { issue in
             let label = issue.element.map { "'\($0.label)'" } ?? "-"
             let exempt = Self.exempt.contains {
                 issue.compactDescription.contains($0.audit) && $0.element == label
             }
+            let type = issue.element.map { Self.typeName($0.elementType) } ?? "-"
+            // The audit's contrast check misreads wrapped text (it flags 12:1 body copy); measure
+            // the render itself, and keep the finding only when the pixels fail too (BRAND §9:
+            // contrast is measured on the render).
+            if issue.compactDescription.contains("Contrast"), let element = issue.element,
+                let pixels, let ratio = Self.measuredContrast(pixels, in: element.frame, scale: scale)
+            {
+                let floor = element.elementType == .staticText ? 4.5 : 3.0
+                if ratio >= floor {
+                    issues.append(
+                        "measured \(String(format: "%.1f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]")
+                    return true
+                }
+            }
             if !exempt {
-                let type = issue.element.map { Self.typeName($0.elementType) } ?? "-"
                 issues.append("\(issue.compactDescription) [\(type) \(label)]")
             }
             return true
@@ -246,6 +266,51 @@ final class KitRenderTests: XCTestCase {
         if let (message, _) = diffing.diff(reference, small) {
             baselineFailures.append("\(base)/\(name): \(message)")
         }
+    }
+
+    /// The contrast of a text run against its ground, from the render's pixels inside `frame`:
+    /// the ground is the most common colour, the text the colour farthest from it in luminance
+    /// among those covering at least 2 % of the non-ground pixels (antialiasing is ignored).
+    static func measuredContrast(_ image: CGImage, in frame: CGRect, scale: CGFloat) -> Double? {
+        let rect = CGRect(
+            x: frame.minX * scale, y: frame.minY * scale, width: frame.width * scale,
+            height: frame.height * scale
+        ).integral.intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        guard rect.width > 2, rect.height > 2, let crop = image.cropping(to: rect) else { return nil }
+        let w = crop.width, h = crop.height
+        var bytes = [UInt8](repeating: 0, count: w * h * 4)
+        guard
+            let ctx = CGContext(
+                data: &bytes, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var counts: [UInt32: Int] = [:]
+        for i in stride(from: 0, to: bytes.count, by: 4) {
+            // Quantise to 4 bits per channel so antialiasing and gradients pool together.
+            let key = UInt32(bytes[i] >> 4) << 8 | UInt32(bytes[i + 1] >> 4) << 4 | UInt32(bytes[i + 2] >> 4)
+            counts[key, default: 0] += 1
+        }
+        guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return nil }
+        func luminance(_ key: UInt32) -> Double {
+            func channel(_ v: UInt32) -> Double {
+                let c = (Double(v) * 17 + 8) / 255
+                return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * channel(key >> 8 & 0xF) + 0.7152 * channel(key >> 4 & 0xF)
+                + 0.0722 * channel(key & 0xF)
+        }
+        let rest = counts.filter { $0.key != ground }
+        let total = rest.values.reduce(0, +)
+        guard total > 0 else { return nil }
+        let lg = luminance(ground)
+        let candidates = rest.filter { Double($0.value) >= Double(total) * 0.02 }.map(\.key)
+        guard
+            let ink = candidates.max(by: { abs(luminance($0) - lg) < abs(luminance($1) - lg) })
+        else { return nil }
+        let li = luminance(ink)
+        return (max(lg, li) + 0.05) / (min(lg, li) + 0.05)
     }
 
     static func typeName(_ t: XCUIElement.ElementType) -> String {
