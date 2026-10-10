@@ -31,6 +31,7 @@ import {
 } from "../../model/packageAccess.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
+import { t } from "../../../lib/copy.js";
 
 /**
  * Package access (PORTAL.md §4.20, §4.21; PX-11) for the selected licence, on F-21's portal API:
@@ -552,7 +553,7 @@ function CreateTokenDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-            Cancel
+            {t("signin.cancel")}
           </Button>
           <Button
             type="submit"

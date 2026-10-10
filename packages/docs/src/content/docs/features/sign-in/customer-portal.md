@@ -373,7 +373,7 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   "Key ending …"), `store-key` (a key with an active store purchase, "Steam key ending …"),
   `store` (a store purchase and no key, "From Steam"), `developer` (a license the developer
   assigned to an email, even though it has a key, "From Little Fern"), or `signin` (granted
-  automatically through OIDC at sign-in, by auto-issue or a group grant, "Automatic Grant").
+  automatically through OIDC at sign-in, by auto-issue or a group grant, "Automatic grant").
   `originStore` names the store for the two store origins.
   `removable` says whether **Remove from my library** is offered: only for a license its key can
   bring back (an active license key, on a product that lets a key add a license here).

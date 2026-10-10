@@ -15,6 +15,7 @@ import {
 } from "../../ui/DropdownMenu.js";
 import { toast } from "../../ui/toast.js";
 import { href } from "../router.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * A product's overflow menu ("More for Nightfall", §9.2) on tiles and the product header. On the
@@ -49,7 +50,7 @@ export function ProductMenu({
   const copyLink = (): void => {
     const url = `${window.location.origin}/${href.product(slug)}`;
     void navigator.clipboard?.writeText(url).then(
-      () => toast.success("Link copied"),
+      () => toast.success(t("signInHandoff.linkCopied")),
       () => toast.error("Couldn't copy the link"),
     );
   };
@@ -91,13 +92,13 @@ export function ProductMenu({
           <DropdownMenuItem asChild>
             <a href={href.product(slug, "devices")}>
               <MonitorSmartphone aria-hidden />
-              Manage devices
+              {t("devices.manage")}
             </a>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem onSelect={copyLink}>
           <Link2 aria-hidden />
-          Copy link
+          {t("signin.handoff.copyLink")}
         </DropdownMenuItem>
         {onRemove ? (
           <>

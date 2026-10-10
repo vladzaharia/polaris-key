@@ -20,6 +20,7 @@ import {
 } from "../model/library.js";
 import { settleAction } from "../model/product.js";
 import { useRoute } from "../router.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The one next action for a product (§5.4) as a button. Outlined (`quiet`) on tiles and rows;
@@ -61,7 +62,7 @@ export function QuickActionButton({
         { product: product.slug, platform: action.platform },
         {
           onSuccess: () =>
-            toast.success("Check your email", {
+            toast.success(t("signin.code.title"), {
               description: `We sent you the link to download ${product.name} for ${osName(action.platform)}.`,
             }),
           onError: (err) =>
@@ -165,7 +166,9 @@ function Label({
     return <span className="font-medium">{label}</span>;
   return (
     <>
-      <span className="font-medium @[15rem]:hidden">Download</span>
+      <span className="font-medium @[15rem]:hidden">
+        {t("boot.consent.download")}
+      </span>
       <span className="hidden font-medium @[15rem]:inline">{label}</span>
     </>
   );

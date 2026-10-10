@@ -10,6 +10,7 @@ import { requestHeadingFocus } from "../focus.js";
 import { matches } from "../model/libraryView.js";
 import { focusPageHeading, href, navigate, resolveHash } from "../router.js";
 import { ProductIcon } from "./ProductIcon.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * Jump to a product (§4.27), from 8 products: ⌘K / Ctrl K, the header trigger or the phone
@@ -163,7 +164,7 @@ export function JumpPalette({
                 className="h-14 w-full bg-transparent text-base outline-hidden placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <DialogPrimitive.Close className="shrink-0 rounded-md px-2 py-1 text-sm text-fg-muted hover:text-fg-strong desk:hidden">
-                Cancel
+                {t("signin.cancel")}
               </DialogPrimitive.Close>
             </div>
             <Command.List

@@ -14,6 +14,7 @@ import {
   tierLabel,
 } from "./library.js";
 import { discoverCountFrom } from "./owned.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * Discover's words and shapes (PORTAL.md §4.16), kept in one module: what an offer gives
@@ -88,7 +89,11 @@ export function pathCopy(path: PortalObtainPath): ReasonCopy {
     }
     case "group": {
       const label = path.label?.trim();
-      if (label) return { kind: "group", text: `Included with ${label}` };
+      if (label)
+        return {
+          kind: "group",
+          text: t("signin.choice.origin.org", { org: label }),
+        };
       if (detail) return { kind: "group", text: `For members of ${detail}` };
       return reasonCopy(path.reason);
     }
@@ -130,7 +135,9 @@ export function moreWaysText(offer: PortalDiscoverOffer): string | null {
 
 /** What a path gives, for the product page: its licence terms, or what an open product means. */
 export function pathTermsLine(path: PortalObtainPath): string {
-  return path.terms ? termsLine(path.terms) : "No license needed";
+  return path.terms
+    ? termsLine(path.terms)
+    : t("core.gate.not-applicable.title");
 }
 
 /** "Get it on Steam", "Get it on the App Store": a link-only offer's action for one store page. */
@@ -150,8 +157,9 @@ export function termsLine(terms: PortalDiscoverTerms): string {
       `${terms.expiryDays} ${terms.expiryDays === 1 ? "day" : "days"}`,
     );
   else if (terms.expiresAt !== null)
-    parts.push(`Until ${formatDay(terms.expiresAt)}`);
-  else if (!tier || tier.toLowerCase() !== "lifetime") parts.push("Lifetime");
+    parts.push(t("signin.term.until", { date: formatDay(terms.expiresAt) }));
+  else if (!tier || tier.toLowerCase() !== "lifetime")
+    parts.push(t("signin.term.lifetime"));
   if (terms.deviceLimit > 0)
     parts.push(
       `${terms.deviceLimit} ${terms.deviceLimit === 1 ? "device" : "devices"}`,

@@ -12,6 +12,7 @@ import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
 import { href } from "../router.js";
 import { Avatar } from "./Avatar.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The account menu (PORTAL.md §3.2): the avatar chip ("Account: <name or email>"), then Account,
@@ -120,7 +121,7 @@ export function AccountMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => formRef.current?.requestSubmit()}>
             <LogOut aria-hidden />
-            Sign out
+            {t("common.signOut")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

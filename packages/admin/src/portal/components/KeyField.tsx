@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { keyParts, normaliseKey } from "../model/key.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The license-key field (PORTAL.md §4.17): monospace and paste-first (a Paste button while
@@ -86,7 +87,7 @@ export function KeyField({
   return (
     <div className="space-y-2">
       <label htmlFor={id} className="text-sm font-medium text-fg-strong">
-        License key
+        {t("part.keyField.label")}
       </label>
       <div
         className={cn(
@@ -155,7 +156,7 @@ export function KeyField({
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong bg-surface-raised px-2.5 text-sm font-medium text-fg-strong hover:bg-hover"
             >
               <ClipboardPaste aria-hidden className="size-4 text-accent-fg" />
-              Paste
+              {t("common.paste")}
             </button>
           ) : valid ? (
             <Check aria-hidden className="mr-2 size-5 text-success" />

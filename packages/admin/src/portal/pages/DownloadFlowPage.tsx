@@ -22,6 +22,7 @@ import { allowedReturn } from "../model/returnUrl.js";
 import { href, useDocumentTitle } from "../router.js";
 import { flowBack } from "./FreeDevicePage.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
+import { t } from "../../lib/copy.js";
 
 /** `?platform=` when it names a platform, else the device in hand, else the Worker's guess. */
 export function flowPlatform(
@@ -63,7 +64,11 @@ export function DownloadFlowPage({
   const downloads = useProductDownloads(slug, product.isSuccess);
   const p = product.data;
   useDocumentTitle(
-    p ? `Download ${p.name}` : product.isPending ? null : "Download",
+    p
+      ? `Download ${p.name}`
+      : product.isPending
+        ? null
+        : t("boot.consent.download"),
   );
   const returnUrl = p ? allowedReturn(params.get("return"), p.returnTo) : null;
   const back = flowBack(slug, p?.name ?? "the product", returnUrl);

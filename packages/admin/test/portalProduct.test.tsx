@@ -749,8 +749,8 @@ describe("product page on today's data (PX-04)", () => {
     const card = await screen.findByRole("region", { name: "Quill license" });
     await within(card).findByText("Activated");
     expect(within(card).getByText("Standard")).toBeTruthy();
-    // Granted through OIDC at sign-in: "Automatic Grant" (owner polish 2026-10-07).
-    expect(licenseSource(card)).toBe("Automatic Grant");
+    // Granted through OIDC at sign-in: "Automatic grant" (owner polish 2026-10-07).
+    expect(licenseSource(card)).toBe("Automatic grant");
     // The count is the Devices card's alone.
     expect(within(card).queryByText(/of 5 devices/)).toBeNull();
     // Owner decision (2026-10-05): no licence type label; every licence is account-bound.
@@ -786,7 +786,7 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     const card = await screen.findByRole("region", { name: "Quill license" });
     await within(card).findByText("Activated");
-    expect(licenseSource(card)).toBe("Automatic Grant");
+    expect(licenseSource(card)).toBe("Automatic grant");
     expect(within(card).queryByText(/of \d+ devices?/)).toBeNull();
     expect(within(card).queryByText(/Account-wide/)).toBeNull();
   });

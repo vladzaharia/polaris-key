@@ -6,6 +6,7 @@ import { toast } from "../../../ui/toast.js";
 import type { PortalArtifact, PortalRelease } from "../../api.js";
 import { useStartDownload } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
+import { t } from "../../../lib/copy.js";
 
 /** Download one file through a fresh link. `lead` for the recommended build. */
 export function DownloadButton({
@@ -15,7 +16,7 @@ export function DownloadButton({
   artifact,
   describe,
   lead = false,
-  label = "Download",
+  label = t("boot.consent.download"),
 }: {
   product: string;
   productName: string;

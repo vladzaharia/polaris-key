@@ -6,6 +6,7 @@ import {
   type FeedSnippet,
 } from "@polaris-key/manifest";
 import type { PortalPackageFeed } from "../api.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * Package access (PORTAL.md §4.20, §4.21; PX-11) over F-21's portal token API. The snippets are
@@ -70,7 +71,7 @@ export function tokenExpiry(
   now: number,
 ): { soon: boolean; text: string } {
   const days = Math.ceil((expiresAt - now) / DAY);
-  if (expiresAt <= now) return { soon: true, text: "Expired" };
+  if (expiresAt <= now) return { soon: true, text: t("part.status.expired") };
   if (days <= TOKEN_EXPIRES_SOON_DAYS)
     return {
       soon: true,
