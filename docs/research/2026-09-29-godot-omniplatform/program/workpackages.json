@@ -1125,7 +1125,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-42-generator-registry-pnpm-gen.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-43",
