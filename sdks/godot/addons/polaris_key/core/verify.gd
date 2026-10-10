@@ -11,7 +11,8 @@ extends RefCounted
 ##   expected_aud            the product slug
 ##   expected_iss            defaults to PKeyClaims.ISSUER
 ##   device_id               the LOCAL device id
-##   last_accepted_issued_at per-type anti-replay floor (null: none)
+##   last_accepted_issued_at REQUIRED: the per-type anti-replay floor, or an explicit null for
+##                           "no floor". A missing key fails closed (the document is refused)
 ##   now                     epoch seconds (null: the system clock)
 ##   check_freshness         true on the network path (default); false on reload and import
 ##   offload                 run the signature off the calling thread (PKeyJws.verify_async)
@@ -62,7 +63,13 @@ static func check_envelope(doc: Dictionary, opts: Dictionary, now: float, non_wi
 	var nw := non_wire_integers
 	if not (PKeyClaims.is_wire_integer(issued, "/issuedAt", 0, nw) and PKeyClaims.is_wire_integer(expires, "/expiresAt", 0, nw) and PKeyClaims.is_wire_integer(grace, "/graceUntil", 0, nw)):
 		return false
+	# The floor is a required option: omitting it is a caller bug and fails closed, never a
+	# silent "no floor". An explicit null is "no floor".
+	if not opts.has("last_accepted_issued_at"):
+		return false
 	var floor_at = opts.get("last_accepted_issued_at")
+	if floor_at != null and not PKeyClaims.is_number(floor_at):
+		return false
 	if floor_at != null and issued <= floor_at:
 		return false
 	if grace < expires:

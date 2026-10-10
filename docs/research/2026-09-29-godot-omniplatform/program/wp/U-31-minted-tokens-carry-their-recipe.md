@@ -47,6 +47,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Security review and THREAT-MODEL rows before merge (`sec`).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- [ ] When the recipe changes on the server while the approve drawer is open, the drawer stays open, shows the info callout 'The recipe changed while you were reviewing' with the new commit, swaps the comparison, and nothing is approved. The callout is not a toast and never auto-dismisses; a cancelled or failed passkey shows a danger strip above the foot and keeps the comparison; a changed field's comparison expands in place. (admin-2-16)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

@@ -129,9 +129,27 @@ export function versionWindow(
   return range;
 }
 
-/** Is `version` inside `range`? An unparseable version compares equal to everything
- *  (`compareSemver`'s documented behaviour), so it is never blocked on shape alone. */
+/** Does the window actually restrict? A max always does; a min only when it is above the
+ *  `0.0.0` floor every product defaults to (`compat_min NOT NULL DEFAULT '0.0.0'`), so the
+ *  default window is open. */
+export function windowBounded(range: AllowedRange): boolean {
+  if (range.max) return true;
+  if (!range.min) return false;
+  const p = parseSemver(range.min);
+  return !(
+    p &&
+    p.major === 0 &&
+    p.minor === 0 &&
+    p.patch === 0 &&
+    p.prerelease.length === 0
+  );
+}
+
+/** Is `version` inside `range`? `compareSemver` calls an unparseable version equal to every
+ *  bound, so a truly bounded window refuses a version it cannot order; an open
+ *  window (no max, min absent or 0.0.0) admits anything, as before. */
 export function versionInWindow(version: string, range: AllowedRange): boolean {
+  if (windowBounded(range) && !parseSemver(version)) return false;
   if (range.min && compareSemver(version, range.min) < 0) return false;
   if (range.max && compareSemver(version, range.max) > 0) return false;
   return true;

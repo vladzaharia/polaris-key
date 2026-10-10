@@ -28,11 +28,16 @@
  * gates the per-product key/secret/release operations.
  */
 
+import {
+  keyTransitionAllowed,
+  stmtRetireOrRevokeKey,
+  stmtsActivateKey,
+} from "../../keyTransitions.js";
 import { Catalog } from "@polaris-key/catalog";
 import { PRODUCT_SLUG_RE, isReservedProductSlug } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
-import type { Db } from "../../db/types.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
   getProduct,
@@ -42,8 +47,6 @@ import {
   listProducts,
   stmtInsertProduct,
   stmtInsertProductKey,
-  stmtRetireProductKeys,
-  stmtSetProductKeyStatus,
   stmtInsertSchema,
   upsertProductSecret,
 } from "../../repo.js";
@@ -81,6 +84,7 @@ import {
 } from "../../fingerprint.js";
 import { audit, platformAudit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
+import { requireStepUp } from "../stepUp.js";
 import type { AdminSession } from "../session.js";
 import {
   adminJson,
@@ -156,6 +160,9 @@ export async function handleProducts(
   // Product wizard (F16), and whether a slug is taken is already public (`/<slug>/.well-known/
   // polaris.json` answers for every product).
   if (segments.length === 1 && segments[0] === "slug-check") {
+    // The CURRENT platform group, not whatever the cookie was minted with.
+    if (!isPlatformAdmin(env, session))
+      return forbidden("platform admin required");
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     const slug = (new URL(req.url).searchParams.get("slug") ?? "").trim();
@@ -482,6 +489,8 @@ export async function handleProducts(
         "the system product cannot be deleted",
         { reason: "system_product" },
       );
+    const gate = requireStepUp(session, now);
+    if (gate) return gate;
     const body = await readBody(req);
     if (body.confirmSlug !== slug) {
       return err(422, ErrorCode.BadRequest, "confirmSlug must match product", {
@@ -1129,6 +1138,10 @@ async function handleKekKeyring(
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (req.method === "POST") {
+    const gate = requireStepUp(session, now);
+    if (gate) return gate;
+  }
 
   let active: string;
   let kids: string[];
@@ -1610,6 +1623,10 @@ async function handleKeys(
 
   if (action === "activate") {
     const breakGlass = body.breakGlass === true;
+    if (breakGlass) {
+      const gate = requireStepUp(session, now);
+      if (gate) return gate;
+    }
     if (row.status !== "staged") {
       return err(
         409,
@@ -1627,10 +1644,8 @@ async function handleKeys(
         },
       );
     }
-    await db.batch([
-      stmtRetireProductKeys(slug, now),
-      stmtSetProductKeyStatus(slug, kid, "active", now),
-    ]);
+    const changes = await runKeyBatch(db, stmtsActivateKey(slug, kid, now));
+    if (changes[changes.length - 1] !== 1) return keyStateConflict(kid);
     await audit(
       db,
       slug,
@@ -1659,16 +1674,15 @@ async function handleKeys(
       );
     }
     const status = action === "retire" ? "retired" : "revoked";
+    // Revoked is terminal and retire only leaves staged; the UPDATE is conditional
+    // on the transition table, so a lost race (or a revoked kid) changes 0 rows -> 409.
+    if (!keyTransitionAllowed(action, row.status)) return keyStateConflict(kid);
     // `revoked_at` opens the §2.3 explicit-revocation window: the trust manifest keeps
     // listing the key with status "revoked" for 2× cacheSeconds from this moment.
-    await db.run(
-      "UPDATE product_keys SET status = ?, rotated_at = ?, revoked_at = ? WHERE product = ? AND kid = ?",
-      status,
-      now,
-      status === "revoked" ? now : null,
-      slug,
-      kid,
-    );
+    const changes = await runKeyBatch(db, [
+      stmtRetireOrRevokeKey(action, slug, kid, now),
+    ]);
+    if (changes[0] !== 1) return keyStateConflict(kid);
     await audit(
       db,
       slug,
@@ -1682,4 +1696,20 @@ async function handleKeys(
   }
 
   return notFound();
+}
+
+async function runKeyBatch(db: Db, stmts: DbStatement[]): Promise<number[]> {
+  if (db.batchChanges) return db.batchChanges(stmts);
+  const out: number[] = [];
+  for (const st of stmts) out.push(await db.runChanges(st.sql, ...st.params));
+  return out;
+}
+
+function keyStateConflict(kid: string): Response {
+  return err(
+    409,
+    ErrorCode.BadRequest,
+    "key state changed or transition not allowed (revoked keys are terminal)",
+    { kid },
+  );
 }

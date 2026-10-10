@@ -1,0 +1,19 @@
+{
+  "id": "commerce.purchase-renewal",
+  "title": "Purchase: a subscription that lapsed",
+  "area": "commerce",
+  "surface": "dialog",
+  "packages": ["CM-23", "LX-23", "LX-41"],
+  "uxRows": [],
+  "summary": "The purchase drawer for Jonas's Diceroll Plus subscription on the App Store, from a free trial through renewals and Apple's billing retry to the lapse, with what each step did to his license: Plus added at the trial, kept through renewals and the retry, removed at the lapse.",
+  "compare": [
+    "The timeline is the subscription's life in the store's words (trial, renewed, billing retry, lapsed), each license effect on its own line (added, kept, removed) (admin-3-21, guide p324).",
+    "Lapsed is a neutral pill with a minus glyph: the end of a subscription is a fact, not an error; a refund keeps the danger tone (commerce.purchase).",
+    "No invented rules: the add-on is kept during billing retry and removed at the lapse as LX-23/LX-41 define; nothing celebrates (MO).",
+    "One leading glyph in the head (the store's mark), the Commerce green rule; Re-verify is the one action, outlined; the store link leaves the app (↗).",
+    "Phone: a bottom sheet, the timeline scrolling, the actions pinned.",
+    "Round 2 (UX review): Timeline dots are ink; the billing retry is warning; nothing in the ledger is drawn in the Commerce green (B2)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -1,0 +1,186 @@
+{
+  "transcriptVersion": 1,
+  "id": "trust-signer-retry",
+  "description": "Rotation does not blind a pin-only app (WIRE-CONTRACT-V4 §2.3). The app pins only the product's retired key. The served trust manifest is signed by the active key, which it cannot verify, so it asks for the same manifest signed by its pin (`?signer=<kid>`), learns the active key from it, and the documents the active key signed verify.",
+  "features": ["core.sync"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": { "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U" },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_olwz5qiO9saKNGF4o_YbCIz1bx4XRb4NA5AEklYCnN8",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "sync",
+      "note": "The default manifest's signer is not pinned: one ?signer= retry with the pin, then both documents.",
+      "args": { "force": false },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris-trust.jws",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/jose"
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoicmV0aXJlZCJ9XX0.atVJ0U89NvnJwUlgNmnHHcW0tzTJMb6gKNVdza5K54ZfVqhr1tvZ7-s4pny4AulbrNb47zYu-5wMqLF4M-hNAg"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris-trust.jws?signer=djdl-test-2026",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/jose"
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoicmV0aXJlZCJ9XX0.H7979AfFDMzw18Kqmj-rBjk-FJW80d8k8BQiytCoV2xLiU4yMInilxG8j7NJOBB7Rb8MkePDlRn4arTcL7QcCg"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/license/document",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/jwt",
+                "etag": "\"gfSC92lGm84iu7-bJm0XC6nAfTZZWMlF3gKQw8oZcY8\""
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwibGljZW5zZUlkIjoibGljX2RqZGxfMSIsInByb2ZpbGUiOnsibmFtZSI6IkFkYSBMb3ZlbGFjZSIsImZpcnN0TmFtZSI6IkFkYSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE3MDAwMDAwMDB9LCJlbnRpdGxlbWVudHMiOnsicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTcwMDAwMDAwMH19fQ.wv_gKm381K1SZICitI1lU4fQYwYGBKpu19BUfFN0Ybn1yLfCnlmZqtnZbYN_HqCywnACkgW-nr2Fa1dPTe5PAA"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/document",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/jwt",
+                "etag": "\"w1iiChFizJmiS7cXfrlMUV8E_yjklnxADr_X0WIYKAc\""
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktY29uZmlnK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMDAwMzYwMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwMCwic2NoZW1hVmVyc2lvbiI6MSwiY29uZmlnIjp7InVpLnRoZW1lIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6ImRhcmsiLCJ1cGRhdGVkQXQiOjE3MDAwMDAwMDB9fSwic2VjcmV0cyI6e319.DRJ34O7OfzKkBbqIF30al5Ejb8xWAn8Do7e9DEexI-Dp9uXPd45hEsWqrHGqtO510zGT2NuDIGNAAfu4Ip9YDw"
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/report",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "config": {}, "entitlements": {} },
+                "match": "shape",
+                "allowedKeys": [
+                  "os",
+                  "hardware",
+                  "runtime",
+                  "locale",
+                  "timezone",
+                  "probes",
+                  "sdk",
+                  "sdkVersion",
+                  "appVersion",
+                  "platform",
+                  "arch",
+                  "gate",
+                  "config",
+                  "entitlements",
+                  "timestamp",
+                  "engine",
+                  "outlet",
+                  "content",
+                  "updates",
+                  "caps",
+                  "packInstalls"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ok": true }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "applied": true,
+        "unauthorized": false,
+        "blocked": false,
+        "documents": { "license": "applied", "config": "applied" },
+        "licenseStatus": "ok",
+        "tokenHeld": true
+      }
+    }
+  ]
+}

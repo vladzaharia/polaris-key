@@ -250,7 +250,7 @@ func adapter() -> PKeyOutletAdapter:
 
 
 ## The native updater for this platform: Sparkle on macOS; Velopack on a Velopack install (or
-## with its plugin), else WinSparkle, on Windows; AppImageUpdate in an AppImage, else Velopack, on
+## with its plugin), else WinSparkle, on Windows; the verified AppImage installer in an AppImage, else Velopack, on
 ## Linux; "" elsewhere.
 func native_bridge_name() -> String:
 	match env.platform():
@@ -375,6 +375,27 @@ func stage_sidecar(check: PKeyUpdateCheck) -> PKeyApplyResult:
 		slots.save_state(st)
 		update_staged.emit(r.version)
 	return r
+
+
+## AppImage binary {native}: keep the verified check through the installation boundary.
+func install_appimage(check: PKeyUpdateCheck) -> PKeyApplyResult:
+	if not active():
+		return PKeyApplyResult.refused("inert")
+	if check == null or not check.ok:
+		return PKeyApplyResult.failed(PKeyErrors.INVALID_OPTIONS, "Installing an AppImage needs a successful PKeyUpdateCheck.")
+	var d := check.decision
+	var release = d.get("release")
+	var version := String(release.get("version", "")) if release is Dictionary else ""
+	var b := bridge("appimage") as PKeyAppImageBridge
+	return await b.install_verified(check, {
+		"transport": transport(),
+		"url": build_url(version, String(d.get("build", ""))),
+		"headers": download_headers(),
+		"timeout": download_timeout,
+		"progress": func(got: int, total: int) -> void: download_progress.emit(got, total),
+		"with_attestation": with_attestation,
+		"rename": rename_hook,
+	})
 
 
 ## binary {method: native} on an Android direct build (P5-06): download the record's APK into

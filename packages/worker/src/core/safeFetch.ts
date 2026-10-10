@@ -40,6 +40,8 @@
  * `status:<n>`, `too-large`, `timeout`, `network`.
  */
 
+import { normalizeHost } from "./outboundGuard.js";
+
 /** Redirect hops followed, each re-guarded. */
 export const SAFE_FETCH_MAX_REDIRECTS = 3;
 /** The budget for the whole fetch: every hop, the headers and the body. */
@@ -57,12 +59,17 @@ export const SAFE_FETCH_MAX_URL = 2048;
 /** Our own zone and the names that only resolve privately. */
 const DENY_SUFFIXES = [
   ".plrs.im",
+  ".workers.dev",
   ".local",
   ".internal",
   ".localhost",
   ".home.arpa",
 ];
-const DENY_EXACT: ReadonlySet<string> = new Set(["plrs.im", "localhost"]);
+const DENY_EXACT: ReadonlySet<string> = new Set([
+  "plrs.im",
+  "localhost",
+  "workers.dev",
+]);
 
 export type GuardReason =
   | "unparseable"
@@ -99,7 +106,9 @@ export function guardUrl(raw: string): GuardReason | null {
   if (u.protocol !== "https:") return "scheme";
   if (u.username || u.password) return "credentials";
   if (u.port && u.port !== "443") return "port";
-  const host = u.hostname.toLowerCase().replace(/\.$/, "");
+  // Every trailing dot goes, and an empty label (`a..b`) is refused.
+  const host = normalizeHost(u.hostname);
+  if (host === null) return "unparseable";
   // The URL parser has already normalised every IPv4 spelling (hex, octal, short forms) to a
   // dotted quad, and an IPv6 literal keeps its brackets.
   if (/^\d+\.\d+\.\d+\.\d+$/.test(host) || host.startsWith("["))
@@ -270,7 +279,13 @@ export async function safeFetch(
       const why = check(current, opts.allowHost);
       if (why) return { ok: false, reason: `guard:${why}`, hops };
       const headers = new Headers(opts.headers ?? {});
-      if (hop > 0) headers.delete("authorization");
+      // A redirect hop carries none of the caller's credentials.
+      if (hop > 0) {
+        for (const h of ["authorization", "cookie", "proxy-authorization"])
+          headers.delete(h);
+        for (const h of [...headers.keys()])
+          if (/^x-.*(key|token|auth|secret)/i.test(h)) headers.delete(h);
+      }
       if (opts.etag) headers.set("if-none-match", opts.etag);
       const res = await fetchImpl(current, {
         method: "GET",

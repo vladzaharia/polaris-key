@@ -1514,7 +1514,8 @@
   --lh-mono: 20px;
 }
 
-/* Commerce is a service (owner, 2026-10-07) drawn in the distribution green. */
+/* Commerce is a service (owner, 2026-10-07) drawn in the Distribution green family (lead B1,
+   2026-10-09: no ninth family); its glyph is the shopping bag. */
 [data-service="commerce"] {
   --pk-accent: var(--pk-service-distribution);
   --pk-accent-fg: var(--pk-service-distribution-fg);
@@ -1588,7 +1589,7 @@ hr {
 }
 strong,
 b {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 code,
@@ -1768,21 +1769,21 @@ kbd,
 .type-page {
   font-size: var(--fs-page);
   line-height: var(--lh-page);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
 .type-section {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
 .type-card {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .type-body {
@@ -1914,7 +1915,7 @@ kbd,
   color: var(--pk-danger);
 }
 .bold {
-  font-weight: 700;
+  font-weight: 600;
 }
 .small {
   font-size: var(--fs-small);
@@ -2049,7 +2050,7 @@ kbd,
   --svc-glyph: var(--ic-cloud);
 }
 [data-service="commerce"] {
-  --svc-glyph: var(--ic-store);
+  --svc-glyph: var(--ic-shopping-bag);
 }
 
 /* A row of service glyphs (a product card) and its phone form, one dot per service. */
@@ -2130,7 +2131,7 @@ kbd,
   background: var(--pk-surface-sunken) center / cover no-repeat;
   box-shadow: inset 0 0 0 1px var(--mk-line);
   color: var(--pk-text-muted);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 17px;
   line-height: 1;
   text-transform: uppercase;
@@ -2224,7 +2225,7 @@ kbd,
   border-radius: 50%;
   background: var(--mk-avatar-bg);
   color: var(--mk-avatar-fg);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 12px;
   letter-spacing: 0.02em;
 }
@@ -2278,7 +2279,7 @@ kbd,
   align-items: center;
   gap: var(--sp-3);
   min-width: 0;
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--fs-card);
   color: var(--pk-text-strong);
   white-space: nowrap;
@@ -2296,7 +2297,7 @@ kbd,
   background: var(--pk-warning-subtle);
   color: var(--pk-warning);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 500;
 }
 .env.dev {
   border-color: var(--pk-info-border);
@@ -2382,7 +2383,7 @@ kbd,
   flex: 1;
 }
 .ctx-name {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2423,12 +2424,12 @@ kbd,
 .nav-item.active {
   background: var(--mk-fill);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
   box-shadow: inset 2px 0 0 var(--pk-accent);
 }
 .nav-item.active > .ic,
 .nav-item.active > .svc {
-  color: var(--pk-accent);
+  color: var(--pk-accent-fg);
 }
 .nav-item .count,
 .nav-item .pill {
@@ -2459,7 +2460,7 @@ kbd,
   border: 0;
   border-radius: var(--pk-radius-md);
   background: none;
-  font: 700 var(--fs-small) / var(--lh-small) var(--pk-font-sans);
+  font: 500 var(--fs-small) / var(--lh-small) var(--pk-font-sans);
   text-align: left;
   color: var(--pk-text-muted);
   cursor: pointer;
@@ -2639,7 +2640,7 @@ kbd,
 .page-head h1 {
   font-size: var(--fs-page);
   line-height: var(--lh-page);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -2696,7 +2697,7 @@ kbd,
 .section-head h2 {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -2783,7 +2784,7 @@ kbd,
 .card-head h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 /* Peers share a step: a card straight on the page (or in its aside) titles at the block step,
@@ -2908,7 +2909,7 @@ kbd,
   margin-top: var(--sp-1);
   font-size: var(--fs-stat);
   line-height: var(--lh-stat);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -3061,7 +3062,7 @@ kbd,
 .product-card h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3173,7 +3174,7 @@ kbd,
   border-color: var(--pk-border-strong);
   background: var(--pk-surface-raised);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .btn.action > .ic {
   color: var(--pk-accent-fg);
@@ -3266,7 +3267,7 @@ kbd,
 .segmented > .on {
   background: var(--pk-surface-raised);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
   box-shadow: 0 0 0 1px var(--mk-line), var(--pk-elevation-1);
 }
 .segmented.sm {
@@ -3508,7 +3509,7 @@ kbd,
   padding: 0 var(--sp-4);
   text-align: left;
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
   white-space: nowrap;
   background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
@@ -3618,7 +3619,7 @@ kbd,
   background: color-mix(in oklab, var(--mk-fill) 60%, transparent);
 }
 .cell-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -3702,6 +3703,14 @@ kbd,
 .toolbar .search-field {
   height: 32px;
 }
+/* The placeholder never spills out of the field: one line, cut with an ellipsis. */
+.search-field > span:not(.ic) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .filter {
   display: inline-flex;
   align-items: center;
@@ -3748,7 +3757,7 @@ kbd,
   gap: var(--sp-2);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .field-label .optional {
@@ -3939,7 +3948,7 @@ kbd,
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .setting-desc {
@@ -3971,7 +3980,7 @@ kbd,
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .choice-desc {
@@ -4070,7 +4079,7 @@ kbd,
 .tab.active {
   border-bottom-color: var(--pk-accent);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .tab .count {
   height: 18px;
@@ -4143,14 +4152,14 @@ kbd,
   border: 1px solid var(--pk-border-strong);
   color: var(--pk-text-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .step-mark::after {
   content: counter(step);
 }
 .step.current {
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .step.current .step-mark {
   border: 2px solid var(--pk-accent);
@@ -4229,7 +4238,7 @@ kbd,
 .wizard-body h2 {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   letter-spacing: -0.01em;
 }
@@ -4311,7 +4320,7 @@ kbd,
   mask: var(--ic-x) center / contain no-repeat;
 }
 .task-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .task.done .task-title {
@@ -4532,7 +4541,7 @@ kbd,
   color: var(--pk-text-muted);
 }
 .callout-title {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .callout-text {
@@ -4627,7 +4636,7 @@ kbd,
   align-items: center;
   gap: var(--sp-2);
   min-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -4668,7 +4677,7 @@ kbd,
 .empty h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .empty p {
@@ -4678,6 +4687,28 @@ kbd,
 .empty .btn-row {
   justify-content: center;
   margin-top: var(--sp-2);
+}
+/* An empty collection (the page head, then one card that is only an empty state): the state sits
+   in the middle of the canvas, across and down, not in its top-left corner (owner note,
+   commerce.offers-empty). */
+.main:has(> .page > .page-head + .card:last-child > .empty:only-child) {
+  display: flex;
+  flex-direction: column;
+}
+.main > .page:has(> .page-head + .card:last-child > .empty:only-child) {
+  flex: 1 0 auto;
+  width: 100%;
+}
+.page > .page-head + .card:last-child:has(> .empty:only-child) {
+  align-self: center;
+  width: 100%;
+  margin-block: auto;
+}
+/* An empty portal page: the empty state takes the room, so what follows it (Missing a license?)
+   sits at the page's foot (owner note, portal.library-empty). */
+.portal-page > .empty:not(:last-child) {
+  flex: 1 0 auto;
+  justify-content: center;
 }
 
 /*
@@ -4929,7 +4960,7 @@ kbd,
   flex: 1;
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   letter-spacing: -0.01em;
 }
@@ -4996,7 +5027,7 @@ kbd,
   flex: 1;
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .drawer-body {
@@ -5052,7 +5083,7 @@ kbd,
   color: var(--pk-info);
 }
 .toast-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .toast-text {
@@ -5119,7 +5150,7 @@ kbd,
 .code-tabs > .active {
   border-bottom-color: var(--pk-accent);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 /* A tab's qualifier, e.g. the platform an SDK fits: <span>Swift<small>macOS</small></span>. */
 .code-tabs small {
@@ -5317,7 +5348,7 @@ pre.code-plain {
   color: var(--mk-term-dim);
 }
 .c-b {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .c-u {
@@ -5375,7 +5406,7 @@ pre.code-plain {
   align-items: center;
   gap: var(--sp-3);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -5395,7 +5426,7 @@ pre.code-plain {
 .portal-nav > a.active {
   border-bottom-color: var(--pk-accent);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .portal-actions {
   display: flex;
@@ -5431,7 +5462,7 @@ pre.code-plain {
 .portal-page h1 {
   font-size: 40px;
   line-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -5481,7 +5512,7 @@ pre.code-plain {
 }
 .ptile-name {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .ptile-body {
@@ -5500,6 +5531,22 @@ pre.code-plain {
 }
 .ptile-foot > .btn:first-child {
   flex: 1;
+}
+/* Quick actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone,
+   so a tile's foot holds one of the two and never spills ("Email me the download", owner note). */
+.ua-phone {
+  display: none !important;
+}
+@container screen (max-width: 639px) {
+  .ua-desk {
+    display: none !important;
+  }
+  .btn.ua-phone {
+    display: inline-flex !important;
+  }
+  span.ua-phone {
+    display: inline !important;
+  }
 }
 .platforms {
   display: inline-flex;
@@ -5525,7 +5572,7 @@ pre.code-plain {
 }
 .license-card h2 {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .key-field {
@@ -5584,7 +5631,7 @@ pre.code-plain {
 .board-title h1 {
   font-size: 24px;
   line-height: 32px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .board-title p {
@@ -5709,7 +5756,7 @@ pre.code-plain {
   height: 54px;
   padding: var(--sp-2) var(--sp-8) 0 var(--sp-10);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .device-status > .row .ic {
@@ -5744,7 +5791,7 @@ pre.code-plain {
   border-bottom: 1px solid var(--mk-line);
   background: var(--pk-surface-raised);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
 }
 .window-bar > .term-dots {
@@ -5828,7 +5875,7 @@ pre.code-plain {
   border-radius: 50%;
   background: var(--pk-brand-gold);
   color: #060912;
-  font: 700 12px/1 var(--pk-font-sans);
+  font: 500 12px/1 var(--pk-font-sans);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-brand-gold) 30%, transparent);
 }
 .anno.at {
@@ -5895,7 +5942,7 @@ pre.code-plain {
   margin-bottom: var(--sp-2);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -5960,7 +6007,7 @@ pre.code-plain {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -5997,7 +6044,7 @@ pre.code-plain {
 .feature-fold h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .feature-fold.add {
@@ -6559,7 +6606,7 @@ pre.code-plain {
   .portal-tabbar > a.active {
     background: var(--mk-fill);
     color: var(--pk-text-strong);
-    font-weight: 700;
+    font-weight: 500;
   }
   /* Activate is the outlined pill in the middle of the bar, not a tab (PORTAL.md §3.2). */
   .portal-tabbar > a.act {
@@ -6889,7 +6936,7 @@ pre.code-plain {
   padding: var(--sp-3) var(--sp-2) var(--sp-1);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -7035,7 +7082,7 @@ pre.code-plain {
 .diff-old::before,
 .diff-new::before {
   font-family: var(--pk-font-mono);
-  font-weight: 700;
+  font-weight: 500;
 }
 .diff-old {
   background: var(--pk-danger-subtle);
@@ -7051,7 +7098,7 @@ pre.code-plain {
 .diff-new {
   background: var(--pk-success-subtle);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .diff-new::before {
   content: "+";
@@ -7215,7 +7262,7 @@ pre.code-plain {
   min-width: 0;
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .feature-card-head h3 > a {
@@ -7425,7 +7472,7 @@ pre.code-plain {
   border-radius: var(--pk-radius-xs);
   background: var(--pk-accent);
   color: var(--pk-accent-on);
-  font: 700 11px/16px var(--pk-font-sans);
+  font: 500 11px/16px var(--pk-font-sans);
 }
 .domain.wait {
   border-color: transparent;
@@ -7641,7 +7688,7 @@ pre.code-plain {
 .toc-nav > a.on {
   background: var(--mk-fill);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 @container screen (max-width: 1279px) {
   .with-toc {
@@ -7693,7 +7740,7 @@ pre.code-plain {
   height: 32px;
   font-size: 18px;
   line-height: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-muted);
 }
 .hosted-card {
@@ -7748,7 +7795,7 @@ pre.code-plain {
 .hosted-body h1 {
   font-size: var(--fs-stat);
   line-height: var(--lh-stat);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.015em;
   color: var(--pk-text-strong);
 }
@@ -7766,7 +7813,7 @@ pre.code-plain {
   font-size: 15px;
 }
 .hosted-card .btn.primary.block {
-  font-weight: 700;
+  font-weight: 500;
 }
 /* An organization as the step's title: its tile, then the name at the h1 step. */
 .hosted-org {
@@ -7941,7 +7988,7 @@ pre.code-plain {
   border: 1px solid var(--pk-border-strong);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface-sunken);
-  font: 700 20px/1 var(--pk-font-mono);
+  font: 500 20px/1 var(--pk-font-mono);
   color: var(--pk-text-strong);
 }
 .code-cells > span.on {
@@ -8299,7 +8346,7 @@ pre.code-plain {
 /* A section with unsaved changes: a dot at the end of its nav entry. */
 .toc-nav > a > .dot {
   margin-left: auto;
-  color: var(--pk-accent);
+  color: var(--pk-accent-fg);
 }
 /* Cards on a .with-toc page are page-level blocks: they title at the block step. */
 :is(.toc-body, .toc-aside) > .card > .card-head :is(h2, h3) {
@@ -8406,7 +8453,7 @@ pre.code-plain {
   border-radius: var(--pk-radius-md);
   background: var(--pk-accent-subtle);
   color: var(--pk-accent-fg);
-  font: 700 var(--fs-mono) / 1 var(--pk-font-mono);
+  font: 500 var(--fs-mono) / 1 var(--pk-font-mono);
   font-variant-ligatures: none;
   white-space: nowrap;
 }
@@ -8431,11 +8478,11 @@ pre.code-plain {
   color: var(--pk-success);
 }
 
-/* The stat step for a value outside a stat tile (a track's current version): 24/32 700. */
+/* The stat step for a value outside a stat tile (a track's current version): 24/32 600. */
 .type-stat {
   font-size: var(--fs-stat);
   line-height: var(--lh-stat);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
   font-variant-numeric: tabular-nums;
@@ -8704,7 +8751,7 @@ pre.code-plain {
   font-variant-numeric: tabular-nums;
 }
 .timeline-what {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .timeline-desc {
@@ -8975,7 +9022,7 @@ pre.code-plain {
 }
 .check-name {
   margin-top: calc((var(--card-media) - var(--lh-body)) / 2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .check-sub {
@@ -9419,7 +9466,7 @@ pre.code-plain {
 .guide-title :is(h3, h4) {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .guide-title button {
@@ -9773,7 +9820,7 @@ pre.code-plain {
   padding-bottom: var(--sp-2);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -10279,7 +10326,7 @@ a.card:focus-visible {
   color: var(--pk-text-muted);
 }
 .match-code > strong {
-  font: 700 20px/28px var(--pk-font-mono);
+  font: 500 20px/28px var(--pk-font-mono);
   letter-spacing: 0.08em;
   color: var(--pk-text-strong);
   white-space: nowrap;
@@ -10472,7 +10519,7 @@ a.card:focus-visible {
   flex: none;
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -10559,7 +10606,7 @@ a.card:focus-visible {
 .ptile.end-tile > :is(h2, h3) {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -10637,7 +10684,7 @@ a.card:focus-visible {
 }
 .product-hero-title a {
   color: var(--pk-accent-fg);
-  font-weight: 700;
+  font-weight: 600;
 }
 .product-hero-actions {
   display: flex;
@@ -10773,7 +10820,7 @@ a.card:focus-visible {
   border-color: var(--pk-accent);
   background: var(--pk-accent-subtle);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 @container screen (max-width: 639px) {
   .jump-nav {
@@ -10807,7 +10854,7 @@ a.card:focus-visible {
 .md h3 {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .md ul {
@@ -10869,7 +10916,7 @@ a.card:focus-visible {
   position: absolute;
   left: var(--term-today);
   transform: translateX(calc(-1 * var(--term-anchor, 0%)));
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -10989,7 +11036,7 @@ a.card:focus-visible {
     box-shadow: inset 2px 0 0 var(--pk-accent);
   }
   .console > .sidebar .nav-item:has(+ .nav-sub .nav-item.active) > .ic {
-    color: var(--pk-accent);
+    color: var(--pk-accent-fg);
   }
 }
 
@@ -11206,7 +11253,7 @@ a.card:focus-visible {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .item-title > small {
@@ -11298,7 +11345,7 @@ a.card:focus-visible {
   border-radius: 50%;
   background: var(--mk-fill);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-muted);
 }
 .num-list > li > * {
@@ -11615,7 +11662,7 @@ a.card:focus-visible {
   background: var(--mk-fill);
   color: var(--pk-text-muted);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .rank.on,
@@ -11736,7 +11783,7 @@ a.card:focus-visible {
 .form-section-label h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .form-section-label p {
@@ -12258,7 +12305,7 @@ a.card:focus-visible {
 .board-head h1 {
   font-size: var(--fs-page);
   line-height: var(--lh-page);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -12439,7 +12486,7 @@ a.card:focus-visible {
   color: var(--pk-text-muted);
 }
 .symbol-key-sym {
-  font: 700 15px/20px var(--pk-font-mono);
+  font: 600 15px/20px var(--pk-font-mono);
   text-align: center;
   color: var(--pk-text-strong);
 }
@@ -12554,7 +12601,7 @@ a.card:focus-visible {
 .ide-tabs > .on {
   background: var(--mk-term-bar);
   color: var(--mk-term-fg);
-  font-weight: 700;
+  font-weight: 500;
 }
 .ide-tabs > .end {
   margin-left: auto;
@@ -12604,7 +12651,7 @@ a.card:focus-visible {
   width: calc(var(--docs-side-w) - var(--sp-6) - var(--sp-5));
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-tag {
@@ -12615,7 +12662,7 @@ a.card:focus-visible {
   border-radius: var(--pk-radius-full);
   background: var(--mk-fill);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
 }
 .docs-search {
@@ -12668,7 +12715,7 @@ a.card:focus-visible {
   margin-bottom: var(--sp-2);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -12696,7 +12743,7 @@ a.card:focus-visible {
 .docs-item.on {
   background: var(--pk-accent-subtle);
   color: var(--pk-accent-fg);
-  font-weight: 700;
+  font-weight: 500;
 }
 .docs-content {
   display: grid;
@@ -12725,7 +12772,7 @@ a.card:focus-visible {
   gap: var(--sp-3);
 }
 .docs-crumb {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-accent-fg);
 }
 .docs-crumb + h1 {
@@ -12734,7 +12781,7 @@ a.card:focus-visible {
 .docs-header h1 {
   font-size: 36px;
   line-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -12791,7 +12838,7 @@ a.card:focus-visible {
   background: var(--pk-accent-subtle);
   color: var(--pk-accent-fg);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .docs-step-body,
 .docs-section {
@@ -12803,7 +12850,7 @@ a.card:focus-visible {
 :is(.docs-step-body, .docs-section) > h2 {
   font-size: 22px;
   line-height: 32px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -12860,7 +12907,7 @@ a.card:focus-visible {
   gap: var(--sp-2);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-card-title > .ic-arrow-right {
@@ -12884,7 +12931,7 @@ a.card:focus-visible {
 .docs-dl > dt {
   font-size: 15px;
   line-height: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-foot {
@@ -12946,7 +12993,7 @@ a.card:focus-visible {
 .docs-toc > a.on {
   border-left-color: var(--pk-accent);
   color: var(--pk-accent-fg);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /*
@@ -12989,7 +13036,7 @@ a.card:focus-visible {
   gap: var(--sp-3);
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-main .lane-desc,
@@ -13240,7 +13287,7 @@ a.card:focus-visible {
   align-items: flex-start;
   gap: var(--sp-2);
   font: var(--pk-kit-type-label-weight) var(--pk-kit-type-label-size) / var(--pk-kit-type-label-line-height) var(--pk-kit-type-label-family);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .kit-title {
@@ -14001,7 +14048,7 @@ a.card:focus-visible {
   gap: var(--sp-2);
   padding: 0 var(--sp-1);
   margin-bottom: var(--sp-3);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .host-nav {
@@ -14015,7 +14062,7 @@ a.card:focus-visible {
 .host-nav.on {
   background: var(--mk-fill);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 /* The kit's account part, at the foot of the host's sidebar. */
 .host-account {
@@ -14048,7 +14095,7 @@ a.card:focus-visible {
 .host-head > h3 {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .host-head > span {
@@ -14075,7 +14122,7 @@ a.card:focus-visible {
   color: var(--pk-text-muted);
 }
 .host-rows > .th {
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -14120,7 +14167,7 @@ a.card:focus-visible {
   margin-top: var(--sp-16);
   font-size: 52px;
   line-height: 56px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--kit-accent, var(--pk-accent));
   text-shadow: 0 3px 0 color-mix(in oklab, var(--kit-accent, var(--pk-accent)) 35%, transparent);
@@ -14142,7 +14189,7 @@ a.card:focus-visible {
   background: var(--kit-accent, var(--pk-accent));
   box-shadow: 0 5px 0 color-mix(in oklab, var(--kit-accent, var(--pk-accent)) 60%, var(--pk-text-strong));
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--kit-accent-on, var(--pk-accent-on));
 }
 .host-game-btn.alt {
@@ -14375,7 +14422,7 @@ a.card:focus-visible {
   grid-column: 2 / -1;
 }
 .change-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .change-to {
@@ -14590,7 +14637,7 @@ a.card:focus-visible {
 .feature-rows > * + * {
   border-top: 1px solid var(--mk-line);
 }
-/* The column names over the rows, drawn like a table header (40 high, 13/20 700, the tinted
+/* The column names over the rows, drawn like a table header (40 high, 13/20 500, the tinted
    band): "Feature" over the glyph and the text, "Status" over the status column. Hidden on a
    narrow card, where the status drops under the text.
      <div class="feature-rows-head" aria-hidden="true"><span>Feature</span><span>Status</span></div> */
@@ -14605,7 +14652,7 @@ a.card:focus-visible {
   background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
   font-size: var(--fs-small);
   line-height: var(--lh-small);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
   white-space: nowrap;
 }
@@ -14650,7 +14697,7 @@ a.card:focus-visible {
 .feature-row-name {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .feature-row.off .feature-row-name {
@@ -14756,7 +14803,7 @@ a.card:focus-visible {
 }
 .reqs > .req.unmet {
   color: var(--pk-text-default);
-  font-weight: 700;
+  font-weight: 500;
 }
 .reqs > .req.unmet::before {
   background: var(--pk-text-default);
@@ -14821,7 +14868,7 @@ a.card:focus-visible {
   margin-bottom: var(--sp-3);
 }
 .choice-foot > b {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-default);
 }
 
@@ -15319,7 +15366,7 @@ a.card:focus-visible {
   min-width: 0;
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .ov-feature-main > h3 > a {
@@ -16234,7 +16281,7 @@ a.card:focus-visible {
   --mk-warning-tint: var(--pk-warning-subtle);
 }
 [data-theme="light"] {
-  --mk-warning-tint: color-mix(in oklab, var(--pk-signed) 14%, var(--pk-surface-raised));
+  --mk-warning-tint: color-mix(in oklab, var(--pk-warning) 12%, var(--pk-surface-raised));
 }
 
 /* ── New primitives ── */
@@ -16278,7 +16325,7 @@ a.card:focus-visible {
 .legend-name {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .legend-rule {
@@ -16683,7 +16730,7 @@ a.card:focus-visible {
   .kit-next .save-bar > .save-bar-msg {
     flex: 1 1 0;
     align-items: center;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--pk-text-strong);
   }
   .kit-next .save-bar > .save-bar-msg > .ic {
@@ -16909,6 +16956,12 @@ a.card:focus-visible {
 /* Form hint slot: one reserved hint line under every field of a two-column grid, so rows align. */
 .hint-slot {
   min-height: 20px;
+}
+/* One column: an empty slot has no row partner to line up with. */
+@container screen (max-width: 639px) {
+  .hint-slot:empty {
+    display: none;
+  }
 }
 
 /* Table rows at 48px, blank cells as an em dash (span.dash: div.dash is overview-a's dashboard). */
@@ -17155,12 +17208,13 @@ span.dash::before {
   min-height: var(--card-head-h);
   padding-block: var(--sp-2);
 }
-.card-head.h56.sub {
+/* The 72px head only while the subtitle is there: a head that lost its sub-line is the 56px one. */
+.card-head.h56.sub:has(> .title > p) {
   min-height: var(--card-head-h-sub);
   align-items: flex-start;
   padding-block: var(--sp-4);
 }
-.card-head.h56.sub > .btn {
+.card-head.h56.sub:has(> .title > p) > .btn {
   margin-block: calc(-1 * var(--sp-0-5)) 0;
 }
 
@@ -17252,7 +17306,7 @@ span.dash::before {
   .table.stack-phone.two-line tbody tr > td:nth-child(2) {
     grid-area: value;
     text-align: right;
-    font-weight: 700;
+    font-weight: 500;
   }
   .table.stack-phone.two-line tbody tr > td:nth-child(3) {
     grid-area: source;
@@ -18730,7 +18784,7 @@ span.dash::before {
   height: 28px;
   padding: 0 var(--sp-3);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
 }
 [data-theme="dark"] .portal .pill.warning {
   color: color-mix(in oklab, var(--pk-warning) 70%, white);
@@ -18806,7 +18860,7 @@ span.dash::before {
   padding-bottom: var(--sp-3);
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .help-row {
@@ -18823,7 +18877,7 @@ span.dash::before {
 }
 .help-row > .help-q {
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .help-row.between {
   display: flex;
@@ -18913,7 +18967,7 @@ span.dash::before {
   padding: 0 var(--card-px);
   border-top: 1px solid var(--mk-line);
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   list-style: none;
   cursor: pointer;
@@ -19032,7 +19086,7 @@ span.dash::before {
 .entry-text > :is(h2, h3) {
   font-size: 20px;
   line-height: 24px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -19165,12 +19219,12 @@ span.dash::before {
   height: 16px;
 }
 .device-name {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 /* "This device" ends the meta line, in the accent, so the row keeps two lines in a 384px column. */
 .device-meta > .this {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-accent-fg);
 }
 .device-meta {
@@ -19517,7 +19571,7 @@ span.dash::before {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
   letter-spacing: -0.01em;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .int-summary-plats {
@@ -19716,7 +19770,7 @@ span.dash::before {
   display: none;
 }
 .np-sum-bar > summary > .strong {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .np-sum-bar > summary > .ic {
@@ -19767,7 +19821,7 @@ span.dash::before {
   }
   .stepper-progress > .strong {
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 500;
     color: var(--pk-text-strong);
   }
   .stepper-progress > .segs {
@@ -20447,7 +20501,7 @@ span.dash::before {
   margin-bottom: var(--sp-3);
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -20753,10 +20807,11 @@ span.dash::before {
 .cm2 .dialog-head {
   align-items: flex-start;
 }
+/* A block, not a flex row: a flex title drops the spaces around an inline mono value
+   ("Add holiday_bundle to an offer"). One line still centres on the 32px close button. */
 .cm2 .dialog-head > h2 {
-  display: flex;
-  align-items: center;
-  min-height: 32px;
+  display: block;
+  padding-block: max(0px, calc((32px - var(--lh-section)) / 2));
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -21290,7 +21345,7 @@ span.dash::before {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .role-tile > .rt-name > .ic {
@@ -21453,7 +21508,7 @@ span.dash::before {
 .root-rule h2 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .root-rule .rr-sub {
@@ -21590,7 +21645,7 @@ span.dash::before {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  font-weight: 700;
+  font-weight: 500;
 }
 .chg > .ic {
   width: 14px;
@@ -21687,7 +21742,7 @@ span.dash::before {
 [data-screen^="admin."] .drawer .field-label {
   font-size: 12px;
   line-height: 16px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
 }
 @container screen (max-width: 639px) {
@@ -21781,7 +21836,7 @@ span.dash::before {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .related > .related-head > .ic {
@@ -21883,8 +21938,10 @@ span.dash::before {
   display: flex;
   align-items: stretch;
 }
+/* The rail's link tile is as tall as its content: stretched to the main card, a tile that is an
+   icon and a title is mostly empty. */
 .mk-with-rail.g84 > .mk-rail > .card {
-  flex: 1 1 auto;
+  flex: none;
 }
 .acct-line {
   display: flex;
@@ -21916,6 +21973,8 @@ span.dash::before {
 }
 .mk-with-rail.g-stretch > .mk-rail {
   display: flex;
+  /* Not the phone rail grid's start: as a column flex, start shrank the card to 2px. */
+  align-items: stretch;
 }
 /* END admin-multi-review */
 
@@ -22070,3 +22129,1922 @@ span.dash::before {
   }
 }
 /* END identity-multi-review (part 11) */
+
+/* ══ Brand v2: the lead's decisions B1–B8 (2026-10-09) ═════════════════════════════════════════
+ *
+ * Appended last, so it wins over every earlier layer at equal specificity. It re-skins the kit
+ * once and every screen inherits it: the neutral ink primary (B2), the selected nav (B3), the
+ * console shell v2 (B4: inset canvas, condensed masthead, head bands, underline tabs, workbench,
+ * dialog heads), Ship builds as one identity (B5), nothing glows (B6), weights 400/500/600 (B7)
+ * and the hosted card's neutral surfaces (B8). kit/README.md "Brand v2" documents each class.
+ */
+
+/* ── Tokens ───────────────────────────────────────────────────────────────────────────────── */
+
+/* --mk-action is the neutral ink action (B2): the one filled primary in the console, the portal
+   and the hosted card. It mirrors the action-neutral role UK-58 adds to packages/brand; when that
+   role is generated, these two lines point at it. --mk-band is the one raised step a card head, a
+   workbench toolbar or a dialog head sits on (B4). */
+:root,
+[data-theme="dark"] {
+  --mk-action: #f6f8ff;
+  --mk-action-on: #060912;
+  --mk-band: var(--pk-surface-overlay);
+}
+[data-theme="light"] {
+  --mk-action: #060912;
+  --mk-action-on: #ffffff;
+  --mk-band: color-mix(in oklab, var(--pk-surface-sunken) 55%, var(--pk-surface-raised));
+}
+/* The masthead's h1: 36/44 on a collection, 32/40 on a record (.page-head.is-record), 24/32 on a
+   phone. Never a display size in the console (B4, B6). */
+:root {
+  --fs-page: 36px;
+  --lh-page: 44px;
+}
+
+/* ── Weights (B7): 400 body, 500 labels, buttons, tabs and nav, 600 headings; 700 never ─────── */
+
+.btn {
+  font-weight: 500;
+}
+.btn.link {
+  font-weight: 400;
+}
+
+/* ── The primary is ink (B2); danger stays red; the accent marks context only ─────────────── */
+
+.btn.primary {
+  border-color: transparent;
+  background: var(--mk-action);
+  color: var(--mk-action-on);
+  box-shadow: none;
+}
+.btn.primary > .ic {
+  color: inherit;
+}
+.btn.danger {
+  box-shadow: none;
+}
+/* A disabled primary is a quiet sunken fill with a 3:1 edge, never a dimmed ink. */
+.btn.primary:is([disabled], .disabled, .is-disabled) {
+  opacity: 1;
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-muted);
+}
+
+/* Selection is neutral too: a switch, a check, a radio, a chosen card or chip is drawn in ink, so
+   a coloured fill never reads as success (Commerce green, Cloud Sync teal) or as the section. */
+.switch.on {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+}
+.switch.on::after {
+  background: var(--mk-action-on);
+}
+.check.on > .box,
+.check.mixed > .box {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+}
+.check.on > .box::after,
+.check.mixed > .box::after {
+  background: var(--mk-action-on);
+}
+.radio.on > .box {
+  border-color: var(--mk-action);
+  background: var(--mk-action-on);
+}
+.choice.on {
+  border-color: var(--mk-action);
+  background: var(--mk-fill);
+  box-shadow: inset 0 0 0 1px var(--mk-action);
+}
+.choice.on::after {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+}
+.choice.on::before {
+  background: var(--mk-action-on);
+}
+/* A feature choice (data-service on the .choice) is edged in its feature's accent, the owner's
+   2026-10-09 note: the colour names the feature (context); the ink check, the 2px edge and the
+   fill say it is chosen (state), so the accent never carries the state alone. */
+.choice[data-service] {
+  border-color: color-mix(in oklab, var(--pk-accent) 50%, var(--mk-line));
+}
+.choice[data-service].on {
+  border-color: var(--pk-accent);
+  box-shadow: inset 0 0 0 1px var(--pk-accent);
+}
+.chip.on,
+.filter.on {
+  border-style: solid;
+  border-color: var(--mk-action);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.chip.on::before {
+  background: var(--pk-text-strong);
+}
+.filter.on > .ic {
+  color: var(--pk-text-strong);
+}
+.step.done .step-mark {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+  color: var(--mk-action-on);
+}
+.card.selected {
+  border-color: var(--mk-action);
+  box-shadow: 0 0 0 1px var(--mk-action);
+}
+
+/* ── Nothing glows (B6): no wash, glow or gradient in product chrome ───────────────────────── */
+
+.hero.attention > .hero-main,
+.ov-hero.attention > .ov-hero-main {
+  background: none;
+}
+.entry-art {
+  background: var(--pk-surface-sunken);
+}
+.entry-mark {
+  box-shadow: inset 0 0 0 1px var(--mk-line);
+}
+.card.tint {
+  border-color: var(--mk-line);
+}
+
+/* ── Console shell v2 (B4): borderless frame, inset canvas ─────────────────────────────────── */
+
+/* The top bar and the sidebar sit on the page, with no rule between them and the work. */
+.topbar {
+  border-bottom: 0;
+}
+.sidebar {
+  border-right: 0;
+}
+/* The canvas: the work on a raised surface with a 3px rule in the context's accent along its top
+   edge (the console's data-service: core, a feature, Ship builds' Release cyan). From 1024px it is
+   inset 16px from the window's end and bottom, rounded 18px, with a hairline; below 1024 it runs
+   edge to edge with the rule kept. Flat: no glow, no wash. */
+.console > .main {
+  --mk-tabs-bg: var(--pk-surface-raised);
+  min-width: 0;
+  border-top: 3px solid var(--pk-accent);
+  background: var(--pk-surface-raised);
+}
+@container screen (min-width: 1024px) {
+  .console > .main {
+    margin: 0 var(--sp-4) var(--sp-4) 0;
+    border: 1px solid var(--mk-line);
+    border-top: 3px solid var(--pk-accent);
+    border-radius: var(--pk-radius-xl);
+  }
+}
+/* A table header and a sticky bar inside the canvas take the canvas's surfaces. */
+.console > .main .card .tabs {
+  --mk-tabs-bg: var(--pk-surface-raised);
+}
+
+/* ── Sidebar (B3): selected = subtle accent fill + a 3px marker; neutral group labels ──────── */
+
+.nav-item.active {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+  font-weight: 500;
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+.nav-item.active > :is(.ic, .svc) {
+  color: var(--pk-accent-fg);
+}
+/* A count keeps its own status colour inside the selected item (badges mean attention only). */
+.nav-item.active > .count:not(.danger, .warning) {
+  background: color-mix(in oklab, var(--pk-surface-page) 55%, transparent);
+}
+.nav-label {
+  font-weight: 500;
+  color: var(--pk-text-muted);
+}
+.nav-label::before {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+}
+@container screen (min-width: 1024px) and (max-width: 1279px) {
+  .console > .sidebar .nav-item:has(+ .nav-sub .nav-item.active) {
+    background: var(--pk-accent-subtle);
+    box-shadow: inset 3px 0 0 var(--pk-accent);
+  }
+}
+
+/* ── Masthead (B4): one orientation line, a capped h1, a 48px context tile on landing pages ── */
+
+/*
+ * <header class="page-head">
+ *   <nav class="crumbs" aria-label="Breadcrumb">
+ *     <span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span>
+ *     <a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a>
+ *   </nav>
+ *   <div class="page-heading"><h1>Licenses</h1></div> …
+ * The chip names the context once: a feature's glyph on its accent, the product's icon on its own
+ * pages (.crumb-chip.product), the Pinned K on Platform pages (.crumb-chip.platform). The crumbs
+ * are the ancestors; the h1 is the page. Never 'Platform' on a product page, never an eyebrow
+ * that repeats the path, never 'Workspace'.
+ */
+.page-head > .crumbs {
+  min-height: 20px;
+  margin-bottom: var(--sp-3);
+  color: var(--pk-text-muted);
+}
+.page-head > .crumbs a {
+  color: var(--pk-text-muted);
+}
+.crumb-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--pk-accent);
+}
+.crumb-chip > .svc {
+  width: 14px;
+  height: 14px;
+  vertical-align: 0;
+  background-color: var(--pk-accent-on);
+}
+.crumb-chip.product {
+  background: none;
+}
+.crumb-chip.product > .logo.xs {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+.crumb-chip.platform {
+  background: var(--pk-service-core-subtle);
+  color: var(--pk-service-core-fg);
+}
+.crumb-chip.platform > .ic {
+  width: 14px;
+  height: 14px;
+}
+/* Long names wrap to two lines, then end in an ellipsis (the full name is the document title). */
+.page-head h1 {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.page-head.is-record {
+  --fs-page: 32px;
+  --lh-page: 40px;
+}
+/* The 48px masthead tile: a feature's glyph, flat on its accent, on a feature's landing page; the
+   product's icon on the product's own pages. Never on a dense data page, never with a glow. From
+   1024px only; below that the orientation chip carries the context. With the tile shown, the
+   chip hides, so the header carries one mark. */
+.mast-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--pk-accent);
+}
+.mast-tile > .svc,
+.mast-tile > .ic {
+  width: 24px;
+  height: 24px;
+  vertical-align: 0;
+  background-color: var(--pk-accent-on);
+}
+.mast-tile > .ic {
+  background-color: transparent;
+  color: var(--pk-accent-on);
+}
+.page-icon.mast > .logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+.page-head:has(> .page-icon.mast) {
+  column-gap: var(--sp-4);
+}
+@container screen (min-width: 1024px) {
+  .page-head:has(> .page-icon.mast) > .crumbs > .crumb-chip {
+    display: none;
+  }
+}
+@container screen (max-width: 1023px) {
+  .page-head > .page-icon.mast {
+    display: none;
+  }
+  .page-head:has(> .page-icon.mast) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "crumbs crumbs"
+      "heading actions"
+      "sub sub";
+    column-gap: var(--sp-6);
+  }
+}
+@container screen (max-width: 639px) {
+  .page-head,
+  .page-head.is-record {
+    --fs-page: 24px;
+    --lh-page: 32px;
+  }
+  .page-head:has(> .page-icon.mast) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "crumbs crumbs"
+      "heading icon-action"
+      "fresh fresh"
+      "sub sub";
+    column-gap: var(--sp-3);
+  }
+}
+
+/* ── Head bands (B4): a card's head is a band on the raised step, a hairline under it ──────── */
+
+/* Titles keep the kit's steps (18/24 for a page-level card, 16/24 nested). No numerals: a number
+   only marks a real order (wizard and setup steps). */
+.card > .card-head:not(.plain) {
+  min-height: 56px;
+  background: var(--mk-band);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.card > .card-head:not(.plain):last-child {
+  border-bottom: 0;
+  border-radius: inherit;
+}
+.card.flat > .card-head:not(.plain),
+.card.sunken > .card-head:not(.plain) {
+  background: none;
+}
+
+/* ── Route tabs (B4): an underline tablist with a 3px indicator; the fade only while it scrolls ── */
+
+.tab {
+  border-bottom-width: 3px;
+}
+.tab.active {
+  font-weight: 500;
+}
+
+/* ── The workbench (B4): one bordered band holds the filters and the table ─────────────────── */
+
+/*
+ * <div class="workbench">
+ *   <div class="toolbar">search · facet chips · <span class="end">Columns · Export</span></div>
+ *   <div class="table-card" role="region" aria-label="Licenses table" tabindex="0">…</div>
+ * </div>
+ * The toolbar is the table's head band (the --mk-band step, a hairline under it); facets are
+ * solid-outline chips with their counts; rows stay 56px; headers stay sentence case. From 640 to
+ * 1279px a wide table scrolls inside its region with the first column pinned.
+ */
+.workbench {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--mk-line);
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-surface-raised);
+  box-shadow: var(--mk-card-shadow);
+}
+.workbench > .toolbar {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--mk-line);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background: var(--mk-band);
+}
+.workbench > .table-card,
+.workbench > .card {
+  border: 0;
+  border-radius: 0 0 calc(var(--pk-radius-xl) - 1px) calc(var(--pk-radius-xl) - 1px);
+  box-shadow: none;
+}
+.workbench > .table-card:first-child {
+  border-radius: inherit;
+}
+.filter {
+  border-style: solid;
+}
+.filter > .count {
+  height: 18px;
+  min-width: 18px;
+  margin-left: var(--sp-1);
+}
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  .workbench > .table-card .table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  .workbench > .table-card .table td:first-child {
+    background: var(--pk-surface-raised);
+    box-shadow: 1px 0 0 var(--mk-line);
+  }
+}
+
+/* ── Fields (B4): recessed, a 3:1 edge; an invalid field keeps its danger edge under the ring ── */
+
+.input,
+.select,
+.textarea,
+.search-field {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-sunken);
+}
+:is(.input, .select, .textarea).invalid.focus,
+.field.invalid :is(.input, .select, .textarea).focus {
+  border-color: var(--pk-danger);
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+/* An inline error is one wrapped sentence beside its icon, never columns: a suggestion in mono
+   stays inline (admin-1-27). */
+.error-text {
+  display: block;
+  position: relative;
+  padding-left: calc(16px + var(--sp-2));
+}
+.error-text > .ic:first-child {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  margin-top: 0;
+}
+
+/* ── Dialogs and drawers (B4): a 3px rule in the origin's accent, a head band, one glyph ───── */
+
+/* Confirmations that are destructive or cautious have no rule (.danger, .caution): the severity
+   glyph leads. A record dialog or drawer leads with its subject's mark, never a service tile.
+   Titles stay at or under 20/28. The backdrop is blurred; with reduced transparency it is flat. */
+.dialog,
+.drawer {
+  border-top: 3px solid var(--pk-accent);
+}
+.dialog:is(.danger, .caution),
+.drawer:is(.danger, .caution) {
+  border-top: 1px solid var(--mk-line);
+}
+.dialog-head {
+  padding: var(--sp-5) var(--sp-4) var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--mk-line);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background: var(--mk-band);
+}
+.dialog-body {
+  padding-top: var(--sp-5);
+}
+.drawer-head {
+  background: var(--mk-band);
+}
+.drawer-head h2 {
+  font-size: var(--fs-section);
+  line-height: var(--lh-section);
+}
+.dialog.danger .dialog-head > .ic:first-child {
+  color: var(--pk-danger);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .overlay,
+  .overlay.sheet::before {
+    backdrop-filter: none;
+  }
+}
+@container screen (max-width: 639px) {
+  .dialog-head {
+    padding: var(--sp-4) var(--sp-3) var(--sp-3) var(--sp-5);
+  }
+  .dialog-body {
+    padding-top: var(--sp-4);
+  }
+  /* A sheet's grab handle sits on its head band. */
+  .overlay.sheet > :is(.dialog, .drawer)::before {
+    position: absolute;
+    z-index: 1;
+    top: var(--sp-2);
+    left: calc(50% - 18px);
+    margin: 0;
+  }
+  .overlay.sheet > :is(.dialog, .drawer) {
+    border-top-width: 3px;
+  }
+  .overlay.sheet .dialog-head {
+    padding: var(--sp-5) var(--sp-3) var(--sp-3) var(--sp-5);
+  }
+  .overlay.sheet .drawer-head {
+    padding-top: var(--sp-5);
+  }
+  .overlay.sheet .dialog-body {
+    padding-top: var(--sp-4);
+  }
+}
+
+/* ── Labels in sentence case (B4, B6): no uppercase transform on a label, an id or a name ──── */
+
+.eyebrow,
+.list-nav-label {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--pk-text-muted);
+}
+
+/* ── Home (B4): Needs attention 2/3 beside Platform ready 1/3 from 1280px only ─────────────── */
+
+/* <div class="page columns split">: below 1280 one column in source order; from 1280 the aside
+   takes a third, top-aligned, never stretched. Product cards carry a 72px cover banner in the
+   Cards view only (.product-card > .art.banner): hosted art, else the stored flat tint. */
+@container screen (min-width: 1280px) {
+  .page.columns.split {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    grid-auto-flow: row dense;
+    align-items: start;
+    gap: var(--section-gap);
+  }
+  .page.columns.split > * {
+    grid-column: 1 / -1;
+  }
+  .page.columns.split > .page-head {
+    grid-column: 1 / -1;
+  }
+  .page.columns.split > .split-main {
+    grid-column: 1;
+  }
+  .page.columns.split > .aside {
+    grid-column: 2;
+    grid-row: span 1;
+  }
+}
+.product-card > .art.banner {
+  height: 72px;
+  aspect-ratio: auto;
+  border-radius: 13px 13px 0 0;
+}
+.product-card > .art.banner + .product-card-head {
+  padding-top: var(--sp-4);
+}
+.product-card > .art.banner.flat {
+  background: var(--tint, var(--pk-surface-sunken));
+}
+
+/* ── Customer portal (B12): display h1, docked header, outlined tile actions ───────────────── */
+
+.portal .portal-page h1,
+.portal-page h1 {
+  font-size: 48px;
+  line-height: 52px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+@container screen (max-width: 639px) {
+  .portal .portal-page h1,
+  .portal-page h1 {
+    font-size: 32px;
+    line-height: 36px;
+  }
+}
+.portal-nav > a.active,
+.portal-tabbar > a.active {
+  font-weight: 500;
+}
+
+/* A one-page feature is one sidebar row (B5: Cloud Sync): the group label is the link, no
+   chevron; selected, it takes the subtle fill and its bar is the marker.
+   <div class="nav-group closed single" data-service="sync"><a class="nav-label active" href="#" aria-current="page">Cloud Sync</a></div> */
+.nav-group.single > .nav-label.active {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+}
+
+/* A dialog or drawer is the overlay surface, so its head band steps up from it. */
+:root,
+[data-theme="dark"] {
+  --mk-band-overlay: color-mix(in oklab, var(--pk-surface-overlay) 45%, var(--mk-fill-strong));
+}
+[data-theme="light"] {
+  --mk-band-overlay: color-mix(in oklab, var(--pk-surface-sunken) 55%, var(--pk-surface-overlay));
+}
+.dialog-head,
+.drawer-head {
+  background: var(--mk-band-overlay);
+}
+
+/* A scrolling table holds its visually hidden labels: they never widen the page. */
+.table-card {
+  position: relative;
+}
+
+/* ── Screen layouts moved out of the screens (the kit rule: a screen sets no spacing) ──────────
+   Each rule keeps its screen scope and is on the spacing scale. A later pass may turn a repeated one
+   into a named primitive. */
+/* admin.cli-login */
+[data-screen="admin.cli-login"] .states-grid3 {
+  gap: var(--sp-6);
+}
+/* admin.invite */
+[data-screen="admin.invite"] .board.below {
+  margin-top: var(--sp-8);
+}
+/* config.approve-recipe-approved */
+[data-screen="config.approve-recipe-approved"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.approve-recipe-open-access */
+[data-screen="config.approve-recipe-open-access"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.approve-recipe-passkey-failed */
+[data-screen="config.approve-recipe-passkey-failed"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.approve-recipe-stale */
+[data-screen="config.approve-recipe-stale"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+[data-screen="config.approve-recipe-stale"] .diff ins + del {
+  margin-top: var(--sp-1);
+}
+/* config.approve-recipe */
+[data-screen="config.approve-recipe"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.catalog-empty */
+[data-screen="config.catalog-empty"] .adds-group > summary {
+  gap: var(--sp-2);
+  padding: 0 var(--card-px);
+}
+[data-screen="config.catalog-empty"] .adds-toggle {
+  gap: var(--sp-1);
+}
+[data-screen="config.catalog-empty"] .choice-title .pill {
+  margin-left: var(--sp-2);
+}
+/* config.cloud-sync-paused */
+[data-screen="config.cloud-sync-paused"] .icon-line {
+  gap: var(--sp-3);
+}
+[data-screen="config.cloud-sync-paused"] .icon-line > .ic {
+  margin-top: var(--sp-0-5);
+}
+/* config.cloud-sync-product-role */
+[data-screen="config.cloud-sync-product-role"] .icon-line {
+  gap: var(--sp-3);
+}
+[data-screen="config.cloud-sync-product-role"] .icon-line > .ic {
+  margin-top: var(--sp-0-5);
+}
+/* config.cloud-sync-usage */
+[data-screen="config.cloud-sync-usage"] .stack-bar > i + i {
+  margin-left: var(--sp-0-5);
+}
+/* config.cloud-sync */
+[data-screen="config.cloud-sync"] .icon-line {
+  gap: var(--sp-3);
+}
+[data-screen="config.cloud-sync"] .icon-line > .ic {
+  margin-top: var(--sp-0-5);
+}
+/* config.effective */
+[data-screen="config.effective"] .page {
+  margin-inline: 0;
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(1) {
+    padding-bottom: 0;
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(2) {
+    padding-block: var(--sp-1) 0;
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(4) {
+    padding-top: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(3) {
+    padding-top: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .trail td {
+    padding-block: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff .trail tr > td:nth-child(1) {
+    padding-block: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff .trail tr > td:nth-child(2) {
+    padding-block: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff .trail tr > td:nth-child(4) {
+    padding-top: 0;
+    padding-left: calc(var(--card-media) + var(--sp-2));
+  }
+}
+/* distribution.channel-app-store */
+@container screen (max-width: 639px) {
+  [data-screen="distribution.channel-app-store"] .lane-tbl td > div:has(> .cell-title + .cell-sub) {
+    column-gap: var(--sp-2);
+  }
+}
+/* distribution.channel-setup */
+[data-screen="distribution.channel-setup"] .status-pill {
+  margin-left: var(--sp-1);
+}
+/* distribution.download-page */
+@container screen (min-width: 640px) {
+  [data-screen="distribution.download-page"] .portal-page {
+    padding-inline: var(--sp-8);
+  }
+}
+@container screen (min-width: 640px) {
+  [data-screen="distribution.download-page"] :is(.portal-top, .portal-foot) {
+    padding-inline: max(var(--sp-8), calc((100% - var(--portal-max)) / 2));
+  }
+}
+[data-screen="distribution.download-page"] .portal-hero-body > .logo {
+  margin-top: calc(-1 * var(--sp-10));
+}
+[data-screen="distribution.download-page"] .item-row > .icon-tile {
+  margin-top: var(--sp-0-5);
+}
+[data-screen="distribution.download-page"] .item-end > .qr.xs {
+  margin-block: calc(-1 * var(--sp-2));
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.download-page"] .portal-hero-body:has(> .hero-action-phone) > .hero-action-phone {
+    gap: var(--sp-3);
+  }
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.download-page"] .portal-hero-body > .logo.xl {
+    margin-top: calc(-1 * var(--sp-8));
+  }
+}
+/* distribution.publish-result */
+[data-screen="distribution.publish-result"] .item-row.fail-row {
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-3);
+  margin-inline: calc(-1 * var(--sp-3));
+}
+@container (max-width: 559px) {
+  [data-screen="distribution.publish-result"] .item-title {
+    gap: var(--sp-3);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="distribution.publish-result"] .dialog .callout > .grow ~ * {
+    margin-left: auto;
+  }
+}
+@container screen (min-width: 640px) {
+  [data-screen="distribution.publish-result"] .overlay.sheet {
+    padding-block: var(--sp-8) var(--sp-12);
+  }
+}
+/* distribution.publish */
+[data-screen="distribution.publish"] .dialog-body {
+  gap: var(--sp-4);
+}
+[data-screen="distribution.publish"] .dialog .field {
+  gap: var(--sp-3);
+}
+[data-screen="distribution.publish"] .dialog .callout > .grow {
+  gap: var(--sp-1);
+}
+[data-screen="distribution.publish"] .dialog .callout > .btn {
+  margin-right: calc(-1 * var(--sp-2));
+}
+[data-screen="distribution.publish"] .dialog .item-row.lead > .item-label > .check {
+  margin-top: calc((var(--lh-body) - 24px) / 2);
+}
+@container screen (min-width: 640px) {
+  [data-screen="distribution.publish"] .overlay.sheet {
+    padding-block: var(--sp-8) var(--sp-12);
+  }
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.publish"] .dialog .item-row {
+    padding-block: var(--sp-2);
+  }
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.publish"] .dialog .callout > .grow ~ * {
+    margin-left: 0;
+  }
+}
+/* products.sidebar-contexts */
+[data-screen="products.sidebar-contexts"] .menu-item .count-text {
+  margin-left: var(--sp-2);
+}
+/* sdk.swiftui-sign-in */
+[data-screen="sdk.swiftui-sign-in"] .kit-devices.dense .kit-device {
+  padding-block: var(--sp-2);
+}
+
+/* ── Brand v2: contrast fixes (axe, both themes) ───────────────────────────────────────────── */
+/* The destructive red takes its own dark label in dark (white on the light red is 3.5:1). */
+:root:not([data-theme="light"]) .dialog .btn.danger,
+:root:not([data-theme="light"]) .btn.danger {
+  color: var(--pk-danger-on);
+}
+/* Light terminals and code: dim text, the cyan accent and comments at 4.5:1 on their surfaces. */
+[data-theme="light"] {
+  --mk-term-dim: #5d6579;
+  --mk-term-cyan: #006e80;
+  --mk-syn-com: #5d6679;
+}
+/* A Review row's action is its own description cell (a dl row holds dt and dd only). */
+.kv-rows dd.kv-action {
+  display: block;
+}
+
+/* ── Brand v2: Home product cards (admin-1-13) ────────────────────────────────────────────── */
+/* Each feature glyph on a card is a 32px bordered tile (it is a link), and the cover banner shows
+   in the Cards view only: a phone keeps the one-line card with its pips. */
+.product-card-svcs .svcs > a {
+  border: 1px solid var(--mk-line);
+  background: var(--pk-surface-raised);
+}
+.product-card-svcs > .svcs {
+  gap: var(--sp-2);
+  margin-left: 0;
+}
+.product-card > .art.banner.flat {
+  background: var(--pk-service-core-subtle);
+}
+@container screen (max-width: 639px) {
+  .product-card > .art.banner {
+    display: none;
+  }
+}
+
+/* A disabled primary reads as off beside Cancel: a quiet edge and subtle words (WCAG exempts
+   disabled controls; the hint beside it says why). */
+.btn.primary:is([disabled], .disabled, .is-disabled) {
+  border-color: var(--mk-line);
+  color: var(--pk-text-subtle);
+}
+/* Wizard progress is neutral like the marks it joins; the current step keeps the context accent. */
+.step.done + .step::before,
+.stepper.vertical .step.done:not(:last-child)::after,
+.stepper-progress > .segs > i.on {
+  background: var(--mk-action);
+}
+
+/* ── Brand v2: no text under 12px, no accent fill as state (B6) ──────────────────────────── */
+.kbd,
+kbd {
+  font-size: 12px;
+}
+@container screen (max-width: 639px) {
+  .portal-tabbar > a {
+    font-size: 12px;
+  }
+}
+.kit-cfg .pill,
+.kit-cfg .pill.sm {
+  font-size: 12px;
+}
+.kit-prod .eyebrow {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* An SSO-required domain is a neutral badge with a lock and the words (admin-3-20): the accent
+   never encodes a state, and violet is also the info tone. */
+.domain.req {
+  border-color: var(--pk-border-strong);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.domain.req > .ic {
+  color: var(--pk-text-strong);
+}
+.domain-tag {
+  height: 16px;
+  padding: 0 0 0 var(--sp-1);
+  border-left: 1px solid var(--mk-line);
+  border-radius: 0;
+  background: none;
+  color: var(--pk-text-muted);
+  font: 500 12px/16px var(--pk-font-sans);
+}
+
+/* Provider buttons take only the providers' allowed fills (auth-15/16): in light, white with a
+   3:1 edge, never the lavender secondary tint; in dark, unchanged. Never the host or section tint. */
+[data-theme="light"] .provider {
+  border-color: var(--pk-border-strong);
+  background: #ffffff;
+}
+
+/* A full license is a limit, not an error (DL6, sdk-c-25): its seats and its 'No free devices'
+   words are neutral, never amber; the fix (Replace a device) is the row's action. */
+.kit-seats.full > i {
+  background: var(--pk-text-strong);
+}
+.kit-line .warn {
+  color: var(--pk-text-strong);
+  font-weight: 500;
+}
+
+/* The docs site's doors (sdk-c-21): Help · Developers · Operate in the top bar, the open door
+   underlined; below 1024 they move into the menu, and the changelog link (also in the nav) hides. */
+.docs-doors {
+  display: flex;
+  align-self: stretch;
+  gap: var(--sp-6);
+}
+.docs-doors > a {
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 3px solid transparent;
+  color: var(--pk-text-muted);
+  font-size: var(--fs-small);
+}
+.docs-doors > a.on {
+  border-bottom-color: var(--pk-accent);
+  color: var(--pk-text-strong);
+  font-weight: 500;
+}
+@container screen (max-width: 1023px) {
+  .docs-doors,
+  .docs-links > a:first-child {
+    display: none;
+  }
+}
+
+/* ── Brand v2: the hosted card (B8) ────────────────────────────────────────────────────────────
+ *
+ * The app header is a neutral strip (no host or section tint), and in a landscape window at least
+ * 960px wide it becomes the passport: a sunken identity pane beside the unchanged 456px form pane,
+ * top-aligned, the product's hosted art (an <img> in the Worker; same-origin) over its icon, the
+ * request, then the developer and the device on their own lines; no eyebrow. Portrait (a tablet
+ * held upright, 834) and phone keep the strip. The trust receipt spans the whole card; Help,
+ * Privacy and Terms align to its end edge.
+ *   <main class="hosted-card passport">
+ *     <header class="hosted-head"><div class="art hosted-art" data-product="djdl"></div>
+ *       <span class="logo lg" data-product="djdl"></span><div class="grow">…title, sub…</div></header>
+ *     <div class="hosted-body">…</div><footer class="hosted-foot">…</footer></main>
+ * The key on-ramp's header has no request verb: '<Product> · <Developer>' (.hosted-head.plain-id).
+ */
+.hosted-head {
+  background: var(--pk-surface-sunken);
+}
+.hosted-art {
+  display: none;
+}
+.hosted-sub > .by-dev,
+.hosted-sub > .on-device {
+  white-space: nowrap;
+}
+@media (min-width: 960px) and (orientation: landscape) {
+  .hosted-card.passport {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 456px);
+    grid-template-areas:
+      "pass body"
+      "foot foot";
+    width: 736px;
+  }
+  .hosted-card.passport > .hosted-head {
+    grid-area: pass;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: var(--sp-4);
+    padding: 0 var(--sp-6) var(--sp-6);
+    border-bottom: 0;
+    border-right: 1px solid var(--mk-line);
+  }
+  .hosted-card.passport > .hosted-head > .hosted-art {
+    display: block;
+    align-self: stretch;
+    height: 158px;
+    margin: 0 calc(-1 * var(--sp-6));
+    border-radius: 0;
+    aspect-ratio: auto;
+  }
+  .hosted-card.passport > .hosted-head > .logo {
+    position: relative;
+    z-index: 1;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    margin-top: calc(-1 * var(--sp-10));
+    box-shadow: 0 0 0 3px var(--pk-surface-sunken);
+  }
+  .hosted-card.passport > .hosted-head:not(:has(> .hosted-art)) > .logo {
+    margin-top: var(--sp-6);
+  }
+  .hosted-card.passport .hosted-title {
+    font-size: var(--fs-section);
+    line-height: var(--lh-section);
+  }
+  .hosted-card.passport .hosted-sub {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-1);
+    margin-top: var(--sp-2);
+  }
+  .hosted-card.passport .hosted-sub > [aria-hidden="true"] {
+    display: none;
+  }
+  .hosted-card.passport > .hosted-body {
+    grid-area: body;
+  }
+  .hosted-card.passport > .hosted-foot {
+    grid-area: foot;
+  }
+  .hosted:has(> .hosted-card.passport) > .hosted-legal {
+    width: 736px;
+    justify-content: flex-end;
+  }
+}
+/* The person being signed in is readable on a phone: under 400px the way out drops under the name
+   and the email wraps at any character, never truncated (auth-05). */
+.person-row-text > span {
+  overflow-wrap: anywhere;
+}
+@container (max-width: 399px) {
+  .person-row {
+    flex-wrap: wrap;
+  }
+  .person-row > .link {
+    flex-basis: 100%;
+    padding-left: calc(40px + var(--sp-3));
+  }
+}
+/* Allow and Deny are the same size (B8): two block buttons, Deny outlined so its edge reads. */
+.hosted-actions.equal > .btn {
+  width: 100%;
+}
+/* A refusal on the card is a neutral callout (DL6): what happened in one line, the fix as the one
+   primary under it; never amber, never a disabled primary. */
+.hosted-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--mk-line);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-default);
+}
+.hosted-callout > .ic {
+  flex: none;
+  margin-top: var(--sp-0-5);
+  color: var(--pk-text-strong);
+}
+.hosted-callout strong {
+  display: block;
+  color: var(--pk-text-strong);
+}
+.hosted-callout span {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-muted);
+}
+/* One fact per line: each sentence of a hosted callout is its own span, on its own line. */
+.hosted-callout > div > span {
+  display: block;
+}
+/* The device code: big mono groups, entered or echoed, never wrapping inside a group. */
+.code-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  height: 64px;
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-sunken);
+  font: 500 28px/36px var(--pk-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--pk-text-strong);
+  white-space: nowrap;
+}
+.code-entry[aria-invalid="true"] {
+  border-color: var(--pk-danger);
+}
+.code-entry.focus {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.code-entry > .sep {
+  color: var(--pk-text-subtle);
+}
+.code-entry > .ph {
+  color: var(--pk-text-subtle);
+}
+@media (min-width: 960px) and (orientation: landscape) {
+  .hosted-card.passport .hosted-title {
+    text-wrap: balance;
+  }
+}
+
+/* The sidebar is one viewport tall from 1024px: the context header at its top, Settings and Collapse
+   pinned at its foot, and a long feature list scrolls between them (admin-1-15), never under the
+   foot. A hairline sets the foot apart. */
+@container screen (min-width: 1024px) {
+  .console > .sidebar {
+    position: sticky;
+    top: 64px;
+    align-self: start;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .console > .sidebar > .sidebar-foot {
+    border-top: 1px solid var(--mk-line);
+  }
+}
+@container screen (min-width: 1024px) {
+  .console > .sidebar > * {
+    flex-shrink: 0;
+  }
+}
+
+/* Cards in a grid keep their own height when their contents differ (no dead space under a short
+   card, admin-1-28): <div class="mk-grid-2 top">. */
+:is(.mk-grid-2, .mk-grid-3).top {
+  align-items: start;
+}
+/* A phone sheet keeps the dialog's 3px rule (none on a destructive or cautious one). */
+@container screen (max-width: 639px) {
+  .overlay.sheet > :is(.dialog, .drawer):not(.danger, .caution) {
+    border-top: 3px solid var(--pk-accent);
+  }
+}
+
+/* Annotation pins on boards are neutral ink: gold means signing only, and nothing glows (B6). */
+.anno {
+  background: var(--mk-action);
+  color: var(--mk-action-on);
+  box-shadow: none;
+}
+
+/* ── Brand v2: the portal's focused task frame (PX-29, B12) ───────────────────────────────────
+ *   <main class="portal-page task"><nav class="crumbs">Library › DJDL</nav>
+ *     <div class="task-frame"><aside class="task-aside"><div class="identity-row">…</div>…</aside>
+ *       <section class="task-main"><h1>…</h1>…<div class="task-actions">…</div></section></div></main>
+ * One centred 640px column; on a short desktop (≥1024 wide, ≤820 tall) the identity and the
+ * consequences sit in a 320px column beside the task so its buttons stay in the first viewport.
+ * The identity row replaces a cropped art band: icon, name, the license in one line.
+ */
+.portal-page.task {
+  gap: var(--sp-5);
+}
+.portal-page.task h1 {
+  font-size: var(--fs-page);
+  line-height: var(--lh-page);
+}
+.task-frame {
+  display: grid;
+  gap: var(--sp-6);
+  width: 100%;
+  max-width: 640px;
+}
+.task-aside,
+.task-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.identity-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--mk-line);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-raised);
+}
+.identity-row > .grow {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.identity-row strong {
+  color: var(--pk-text-strong);
+}
+.identity-row .meta {
+  color: var(--pk-text-muted);
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .task-frame {
+    max-width: 1040px;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+@container screen (max-width: 639px) {
+  .task-actions > .btn {
+    flex: 1 1 100%;
+  }
+}
+/* A hash with its copy control, one line, middle-truncated at rest. */
+.hash-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  font: 400 var(--fs-mono) / var(--lh-mono) var(--pk-font-mono);
+  color: var(--pk-text-default);
+}
+.hash-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The task column is centred, never pinned left at a wide window (portal-30, PX-26); the
+   breadcrumb shares its edge. */
+.portal-page.task {
+  align-items: center;
+}
+.portal-page.task > .crumbs {
+  width: 100%;
+  max-width: 640px;
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .portal-page.task > .crumbs {
+    max-width: 1040px;
+  }
+}
+/* A store rating's star is neutral: gold means signing only (B6). */
+.rating > .ic-star {
+  color: var(--pk-text-strong);
+}
+/* No uppercase transform on a table head, a group row or a docs label: ids and names keep their
+   case (admin-3-11, B6; 'com.example.diceroll.*' must never read 'COM.EXAMPLE…'). */
+.table tr.group-row td,
+.docs-label,
+.table.sdk-reads th,
+.table.sdk-checks th {
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* A repeated trust footer is quieter by colour, not opacity, so it keeps 4.5:1. */
+.hosted-foot.echo {
+  opacity: 1;
+  color: var(--pk-text-subtle);
+}
+/* 24px targets for the guided setup's step buttons and inline links (WCAG 2.5.8). */
+.guide-title :is(h3, h4) > button,
+.guide-sub > .link {
+  min-height: 24px;
+}
+.guide-sub > .link {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Brand v2: no sideways scroll from 320 to 2560 ────────────────────────────────────────────
+ * A table straight in a card that can be wider than its card sits in a labelled, focusable
+ * scroll region (B4: tablet = contained scroll, the first column pinned); under 560px of card it
+ * still stacks (.stack-phone).
+ *   <div class="table-scroll" role="region" aria-label="Email domains, scrolls sideways" tabindex="0"><table class="table stack-phone">…</table></div>
+ */
+.table-scroll {
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+}
+.card > :not(.card-head, .show-narrow) + .table-scroll .table thead th {
+  border-top: 1px solid var(--mk-line);
+}
+.card > .table-scroll + :is(.card-rows, .card-body, .card-row, .card-foot) {
+  border-top: 1px solid var(--mk-line);
+}
+@container screen (min-width: 640px) and (max-width: 1023px) {
+  .table-scroll .table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  .table-scroll .table td:first-child {
+    background: var(--pk-surface-raised);
+    box-shadow: 1px 0 0 var(--mk-line);
+  }
+}
+/* Long single values wrap rather than widen a phone page: a URL in a fact, an id chip, a status
+   or a no-wrap line inside a stacked row, a closing button's label. */
+p.mono,
+p.type-meta.mono,
+dd .mono {
+  overflow-wrap: anywhere;
+}
+.segmented {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+@container (max-width: 559px) {
+  .table.stack-phone :is(.status, .nowrap, .meta.nowrap) {
+    white-space: normal;
+  }
+  .table.stack-phone :is(td, .cell-title, .cell-sub) {
+    overflow-wrap: break-word;
+  }
+}
+@container screen (max-width: 639px) {
+  .id {
+    max-width: 100%;
+    height: auto;
+    min-height: 24px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .actions-under > .btn {
+    white-space: normal;
+    text-align: center;
+    height: auto;
+  }
+  .save-bar {
+    flex-wrap: wrap;
+  }
+  .table.ledger .cell-sub {
+    white-space: normal;
+  }
+}
+@container screen (max-width: 379px) {
+  .table :is(th, td) {
+    padding-inline: var(--sp-2);
+  }
+  .table :is(th, td):first-child {
+    padding-left: var(--card-px);
+  }
+}
+/* The portal's header at 640–899: the account chip is its avatar, so the bar never overflows. */
+@container screen (max-width: 899px) {
+  .portal-top {
+    gap: var(--sp-4);
+  }
+  .portal-top .account > :not(.avatar) {
+    display: none;
+  }
+  .portal-top .account {
+    padding: 0;
+    border: 0;
+  }
+}
+@container screen (max-width: 639px) {
+  .save-bar-msg {
+    flex-basis: 100%;
+  }
+  .info-tip::after {
+    max-width: calc(100vw - 2 * var(--sp-6));
+  }
+}
+/* An open facet at a tablet width opens toward the start from its chip's end, so it never
+   passes the window's edge. */
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  .filter-anchor > .facet-menu {
+    left: auto;
+    right: 0;
+  }
+}
+/* Device frames are fixed-size pictures of hardware: a row of them that is wider than the window
+   scrolls inside its own block (320 phones, an 834 portrait tablet with a landscape frame). */
+.frame-grid.devices {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* Art without hosted art is the stored flat tint, never a generated gradient (B4, B6):
+   <div class="art" style="--tint: var(--pk-service-sync-subtle)"></div>. */
+.art:not([data-product]) {
+  background: var(--tint, var(--pk-surface-sunken));
+}
+/* The 12-product Library (portal-17): compact tiles four up at desktop, two on a tablet, one on a
+   phone; the art keeps 16:9; one outlined quick action. The attention shelf is one card, its most
+   urgent item the only solid action. */
+.portal-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.ptile.compact .art {
+  aspect-ratio: 16 / 9;
+}
+.ptile.compact .ptile-head .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+/* A compact tile's 40px icon overlaps the art by 12px, so the name always starts below the art:
+   nothing is drawn over developer art. */
+.ptile.compact .ptile-head {
+  margin-top: calc(-1 * var(--sp-3));
+}
+/* A segmented switch keeps its width in a toolbar; it scrolls only when its own row is narrower. */
+.segmented {
+  flex-shrink: 0;
+}
+/* At tablet widths a table never squeezes its cells into each other: it keeps its content width
+   and scrolls inside its region, the first column pinned (B4). */
+/* B1 (round 2): a table at tablet widths keeps a sensible minimum (--table-min, 860px: it fits a
+   1024px tablet's canvas, and scrolls in its region below that), never its max-content width. */
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  :is(.workbench > .table-card, .table-scroll) > .table {
+    min-width: var(--table-min, 860px);
+  }
+}
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  .workbench .table.members.rows-56 {
+    table-layout: auto;
+  }
+}
+
+/* ══ Brand v2, round 2 (UX review FIX-FIRST, 2026-10-09) ═══════════════════════════════════════ */
+
+/* The ink action is the brand's action-neutral role once UK-58 generates it; until then the same
+   values. Hover, pressed and disabled steps; a disabled label keeps 3:1 in both themes. */
+:root,
+[data-theme="dark"] {
+  --mk-action: var(--pk-action-neutral, #f6f8ff);
+  --mk-action-on: var(--pk-action-neutral-on, #060912);
+  --mk-action-hover: var(--pk-action-neutral-hover, #dbe2f4);
+  --mk-action-pressed: var(--pk-action-neutral-pressed, #c3cbe0);
+  --mk-action-disabled-on: #8e97ad;
+  --mk-ink-wash: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+}
+[data-theme="light"] {
+  --mk-action: var(--pk-action-neutral, #060912);
+  --mk-action-on: var(--pk-action-neutral-on, #ffffff);
+  --mk-action-hover: var(--pk-action-neutral-hover, #262d40);
+  --mk-action-pressed: var(--pk-action-neutral-pressed, #3c4458);
+  --mk-action-disabled-on: #5d667b;
+  --mk-ink-wash: color-mix(in oklab, var(--pk-text-strong) 5%, transparent);
+}
+.btn.primary:hover {
+  background: var(--mk-action-hover);
+}
+.btn.primary:active {
+  background: var(--mk-action-pressed);
+}
+.btn.primary:is([disabled], .disabled, .is-disabled) {
+  color: var(--mk-action-disabled-on);
+}
+/* A disabled destructive button keeps a readable label in dark (m2). */
+.btn.danger:is([disabled], .disabled, .is-disabled) {
+  opacity: 1;
+  border-color: var(--pk-danger-border);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-danger);
+}
+
+/* Keyboard focus draws the one violet ring on every control, like the drawn .focus state. */
+:is(.btn, a, button, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="checkbox"], [tabindex], .input, .select, .textarea, .search-field):focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* ── B2: the accent never encodes a state ───────────────────────────────────────────────────────
+ * States read through words, glyphs, shape and the status tones (success, warning, danger); a
+ * change, an override, a selection or a "new" mark is ink: a 2px ink bar, a strong edge, a label.
+ * The accent stays on context (rule, chip, tile, nav marker, links, current wizard step).
+ */
+.pill.accent,
+.pill.info,
+.card-row .pill.this-device {
+  border-color: var(--pk-border-strong);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.count.accent,
+.count.info {
+  background: var(--mk-fill-strong);
+  color: var(--pk-text-strong);
+}
+.status.accent,
+.status.info,
+.status.ready {
+  color: var(--pk-text-default);
+}
+.status.ready > .ic,
+.status.info > .ic,
+.status.accent > .ic {
+  color: var(--pk-text-strong);
+}
+.callout.accent,
+.callout.info {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-sunken);
+}
+.callout.accent > .ic,
+.callout.info > .ic,
+.toast.info > .ic {
+  color: var(--pk-text-strong);
+}
+.icon-line.accent,
+.icon-line.accent > .ic:first-child,
+.icon-list > li.accent,
+.device-meta > .this,
+.source.own,
+.role-tag.super > .ic,
+.toc-nav > a > .dot,
+.changed-note,
+.was {
+  color: var(--pk-text-strong);
+}
+.source.own,
+.changed-note {
+  font-weight: 500;
+}
+.val-on::before,
+.timeline-item::before,
+.meter > i.on,
+.date-span-track::after,
+.rank.on,
+.marked > .rank,
+.spinner {
+  background: var(--pk-text-strong);
+}
+.rank.on,
+.marked > .rank {
+  color: var(--pk-surface-raised);
+}
+.spinner {
+  background: none;
+  border-top-color: var(--pk-text-strong);
+}
+.task.running .task-mark {
+  border-top-color: var(--pk-text-strong);
+}
+.progress::after {
+  background: var(--pk-text-muted);
+}
+.meter > i.cur {
+  box-shadow: inset 0 0 0 1.5px var(--pk-text-strong);
+}
+.timeline-item.warning::before {
+  background: var(--pk-warning);
+}
+.timeline-item.danger::before {
+  background: var(--pk-danger);
+}
+/* Changed, overridden, marked or "next" rows: an ink bar and a quiet ink wash. */
+.setting-row.changed,
+.setting-row.changed + .card-note,
+.item-row.marked,
+.table tr.marked > td,
+.table.stack-phone tr.marked,
+.table.stack-phone.two-line tr.marked,
+.check-row.next,
+.card-body.editing {
+  background: var(--mk-ink-wash);
+}
+.setting-row.changed,
+.setting-row.changed + .card-note,
+.item-row.marked,
+.table tr.marked > td:first-child,
+.table.stack-phone tr.marked,
+.table.stack-phone.two-line tr.marked {
+  box-shadow: inset 2px 0 0 var(--pk-text-strong);
+}
+.check-row.next {
+  box-shadow: inset 3px 0 0 var(--pk-text-strong);
+}
+.ov-feature.current {
+  border-color: var(--pk-border-strong);
+}
+.ov-feature.current::before {
+  box-shadow: inset 3px 0 0 var(--pk-text-strong);
+}
+.ov-feature.current > .ov-feature-state {
+  background: var(--mk-ink-wash);
+}
+:is(.input, .select, .textarea).changed,
+.field.changed :is(.input, .select, .textarea) {
+  border-color: var(--pk-text-strong);
+  box-shadow: 0 0 0 1px var(--pk-text-strong);
+}
+.card.editor-card {
+  border-color: var(--pk-border-strong);
+}
+.save-bar {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-overlay);
+}
+.save-bar-msg > .ic {
+  color: var(--pk-text-strong);
+}
+/* Selections and recommendations are ink too (lead answer 2). */
+.table tr.selected td,
+.table tr.recommended td,
+.item-row.recommended,
+.card.tint {
+  background: var(--mk-ink-wash);
+}
+.table tr.selected td:first-child,
+.table tr.recommended td:first-child,
+.item-row.recommended {
+  box-shadow: inset 2px 0 0 var(--pk-text-strong);
+}
+.pick-tile.on,
+.role-tile.on,
+.filter.solid.on,
+.jump-nav > a.on {
+  border-color: var(--mk-action);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.role-tile.on > .rt-name > .ic {
+  color: var(--pk-text-strong);
+}
+.segmented.matrix.fit > .on {
+  background: var(--mk-fill);
+  box-shadow: inset 0 0 0 1px var(--mk-action);
+}
+.token-field.focus {
+  border-color: var(--pk-border-strong);
+  box-shadow: none;
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+/* A value field and an id tag are values, not context. */
+.key-field {
+  background: var(--pk-surface-sunken);
+}
+.tag {
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+
+/* A button never shrinks below its label (round 2: squeezed labels touched their edges). */
+.btn:not(.icon) {
+  min-width: min-content;
+}
+/* The sidebar keeps the open page in view (lead answer 4): its scroll comes to rest on the active
+   item, the context header pinned at the top and the foot at the bottom, as the console scrolls it
+   into view on load. */
+@container screen (min-width: 1024px) {
+  .console > .sidebar {
+    scroll-snap-type: y mandatory;
+    scroll-padding-block: 72px 112px;
+  }
+  .console > .sidebar :is(.nav-item.active, .nav-label.active) {
+    scroll-snap-align: center;
+  }
+  .console > .sidebar > .ctx {
+    position: sticky;
+    top: calc(-1 * var(--sp-3));
+    z-index: 2;
+    box-shadow: 0 0 0 var(--sp-3) var(--pk-surface-page);
+  }
+}
+@container screen (min-width: 1024px) and (max-width: 1279px) {
+  .console > .sidebar > .ctx {
+    top: calc(-1 * var(--sp-2));
+    box-shadow: 0 0 0 var(--sp-2) var(--pk-surface-page);
+  }
+}
+
+/* No text under 12px (m5): avatar initials and inline code in meta lines. The :is() list only
+   raises specificity over the screen and pass layers that set smaller sizes. */
+.avatar:is(.avatar, .sm, .md, .violet, .x-pad-specificity) {
+  font-size: 12px;
+}
+:not(pre) > code {
+  font-size: max(12px, 0.9em);
+}
+/* An empty state's heading at h2 takes the same step as its h3 (m6: never the UA's bold). */
+.empty h2 {
+  font-size: var(--fs-card);
+  line-height: var(--lh-card);
+  font-weight: 600;
+  color: var(--pk-text-strong);
+}
+/* Tables in a board's frames take their frame's width; a scrolling table on a phone stays within
+   twice its region (round 2 check), and a stacked one keeps none. */
+:is(.board-frame, .board-item) {
+  --table-min: 0px;
+}
+@container screen (max-width: 639px) {
+  .table.scroll {
+    min-width: min(var(--table-min, 880px), 640px);
+  }
+  .table.scroll.stack-phone {
+    min-width: 0;
+  }
+  /* A phone button's long label wraps rather than widening the page. */
+  :is(.dialog-foot, .drawer-foot, .page-actions, .task-actions, .hosted-actions, .btn-row) > .btn:not(.icon),
+  .btn.primary:not(.icon) {
+    height: auto;
+    min-height: 36px;
+    padding-block: var(--sp-1);
+    white-space: normal;
+    text-align: center;
+  }
+}
+/* A wide table that scrolls sideways at tablet widths pins its first column (M7). */
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  :is(.table-card, .table-scroll) > .table.scroll :is(th, td):first-child,
+  .table-scroll .table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  :is(.table-card, .table-scroll) > .table.scroll td:first-child,
+  .table-scroll .table td:first-child {
+    background: var(--pk-surface-raised);
+    box-shadow: 1px 0 0 var(--mk-line);
+  }
+}
+@container screen (max-width: 639px) {
+  .action-pair > .btn {
+    padding-inline: var(--sp-3);
+  }
+}
+/* The pinned foot sits on the sidebar's last line, so the last item scrolls clear of it. */
+@container screen (min-width: 1024px) {
+  .console > .sidebar {
+    padding-bottom: 0;
+  }
+  .console > .sidebar > .sidebar-foot {
+    margin-bottom: 0;
+  }
+}
+
+/* products.settings-presentation: the preview's sign-in card parts. */
+[data-screen="products.settings-presentation"] .pv-signin-head {
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+[data-screen="products.settings-presentation"] .pv-signin-body {
+  padding: var(--sp-3);
+}
+
+/* M4: the passport is art-led and never ends in a void: the art grows to fill the pane, the
+   icon, the request and who and where sit at its foot, so the pane is as tall as the form with
+   nothing empty under the identity. */
+@media (min-width: 960px) and (orientation: landscape) {
+  .hosted-card.passport > .hosted-head {
+    justify-content: flex-end;
+  }
+  .hosted-card.passport > .hosted-head > .hosted-art {
+    flex: 1 1 auto;
+    min-height: 158px;
+    height: auto;
+  }
+  .hosted-card.passport > .hosted-head > .grow {
+    flex: none;
+  }
+}
+
+/* M5: the portal's phone bar. The selected tab is a neutral fill with a 3:1 edge in both themes;
+   Activate is a tab like its siblings (no ring that reads as selected or as focus); the
+   something-to-add dot is ink. */
+@container screen (max-width: 639px) {
+  .portal-tabbar > a.active {
+    background: var(--mk-fill-strong);
+    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
+    color: var(--pk-text-strong);
+  }
+  .portal-tabbar > a.act {
+    border-color: transparent;
+    color: var(--pk-text-muted);
+  }
+  .portal-tabbar > a > .dot {
+    background: var(--pk-text-strong);
+  }
+}
+[data-theme="light"] .portal-tabbar > a.active {
+  background: var(--pk-surface-sunken);
+}
+/* The focused task's title spans the frame; the consequence sits beside the action. */
+.portal-page.task > .task-title {
+  width: 100%;
+  max-width: 640px;
+}
+.task-actions > .task-note {
+  flex: 1 1 200px;
+  align-self: center;
+}
+@media (min-width: 1024px) and (max-height: 900px) {
+  .task-frame {
+    max-width: 1040px;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+  }
+  .portal-page.task > :is(.crumbs, .task-title) {
+    max-width: 1040px;
+  }
+}
+.task-main > .btn { align-self: flex-start; }
+/* An identity row whose media is a 40px picture (Account → Profile). */
+.item-row.profile {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+@container (max-width: 559px) {
+  .item-row.profile {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+}
+.check-row.next { background: none; }
+/* M9: a product with no hosted art shows its icon large and centred on its stored tint, so a
+   shelf of new products never reads as a wall of empty colour; its name then starts the body. */
+.art.noart {
+  display: grid;
+  place-items: center;
+}
+.art.noart > .logo.xl {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  font-size: 26px;
+  background-color: var(--pk-surface-raised);
+}
+.ptile-head.plain {
+  margin-top: 0;
+  padding-top: var(--sp-4);
+}
+.portal-grid .ptile-head.plain { margin-top: 0; }
+/* A selectable hosted row (a license to choose): radio, text, tag; the chosen row is ink-edged. */
+.hosted-list > .hosted-row.choice-row:is(.choice-row, .choice-row) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.hosted-row.choice-row.on {
+  box-shadow: inset 2px 0 0 var(--pk-text-strong);
+  background: var(--mk-ink-wash);
+}
+/* A row's leading glyph in the hosted card is a subject mark, not context: neutral. */
+.hosted-row > .ic:first-child {
+  color: var(--pk-text-muted);
+}
+/* A toolbar button's word shows from 1600px; below, the button is its icon (its aria-label names
+   it), so a workbench band stays on one line at desktop (m7). */
+@container screen (max-width: 1599px) {
+  .label-wide {
+    display: none;
+  }
+  .toolbar .btn:has(> .label-wide) {
+    width: 32px;
+    padding: 0;
+  }
+}
+.workbench > .toolbar > .search-field {
+  flex: 1 1 160px;
+  max-width: 320px;
+}
+/* Skeleton rows read at a glance in dark (they sat at the card's own tone). */
+:root:not([data-theme="light"]) .skeleton {
+  background: color-mix(in oklab, var(--pk-text-subtle) 22%, var(--pk-surface-raised));
+}
+/* The star field never sits under the lines of text around the card. */
+.hosted-legal,
+.hosted-brand {
+  background: var(--pk-surface-page);
+}
+/* A drawer's title wraps to a second line rather than losing its end (m10). */
+.cm2 .drawer-head h2 {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+/* A task's choices are one column: each card a row with room for its tag and its mark. */
+.task-main > .choices,
+.choices.one-col {
+  grid-template-columns: minmax(0, 1fr);
+}
+.choice > .choice-title > .pill {
+  margin-right: var(--sp-6);
+}

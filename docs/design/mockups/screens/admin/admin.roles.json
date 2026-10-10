@@ -9,14 +9,15 @@
   "summary": "Members → Roles: the four built-in roles as cards (what each covers, who can give it, how many people hold it) and the read-only role × area matrix generated from the route table, product areas first with their stable ids, then the platform pages.",
   "compare": [
     "Exactly four role cards in this order: Superadmin, Platform admin, Product admin, Console access. No Product editor, Product viewer or custom role, and no 'Create role' button.",
-    "Each card says what the role covers in one or two sentences, then a footer: who can give it and, on its own line, how many people hold it now. The footers' dividers and their first lines line up across the four cards.",
+    "Each card says what the role covers, one short line per fact and nothing the matrix already says, then a footer: who can give it and, on its own line, how many people hold it now. The footers' dividers and their first lines line up across the four cards.",
     "The matrix is read-only and says it is generated from the route table; the built page must be produced by the same generator the docs' roles page uses, with a drift gate.",
     "Product rows list the ten areas in order with the service glyph for the six features (no ids shown); Core, Keys, Settings and Members carry a one-line list of what they cover.",
     "Platform admin sees other products by name and status on Home only; every other product cell for Platform admin is a dash.",
     "Members (product) for Product admin reads 'Invite', and its footnote says it gives Product admin of its product, up to its own areas (no escalation).",
     "Platform rows: Members and SSO rules, Connections, Platform settings, Packages and Status, New products (a Platform admin who creates one becomes its admin), Docs (every member; operator pages for Superadmin and Platform admin only).",
     "A healthy cell is a green tick alone (Manage, named in the legend); exceptions are words (Create, Invite, Name only, Most) explained in one footnote list; none is a subtle dash for a granted right; no pills in the matrix.",
-    "Phone: the four roles are a 2x2 grid of tiles (full names, people count); the picked tile switches the matrix column and shows its words under the tiles. The matrix shows the Area column plus that role's column only."
+    "Phone: the four roles are a 2x2 grid of tiles (full names, people count); the picked tile switches the matrix column and shows its words under the tiles. The matrix shows the Area column plus that role's column only.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

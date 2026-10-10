@@ -97,7 +97,7 @@ def _io(commands=None, files=None) -> FingerprintIO:
 
 def test_device_id_macos_branch() -> None:
     fake_out = '    "IOPlatformUUID" = "ABCDEF01-2345-6789-ABCD-EF0123456789"\n'
-    io = _io(commands={"ioreg": fake_out})
+    io = _io(commands={"/usr/sbin/ioreg": fake_out})
     assert raw_os_device_id("darwin", io) == "ABCDEF01-2345-6789-ABCD-EF0123456789"
     a = derive_device_id(PRODUCT, "fixed")
     b = derive_device_id(PRODUCT, "fixed")
@@ -118,7 +118,7 @@ def test_device_id_windows_branch_via_reg_fallback(monkeypatch) -> None:
     monkeypatch.setattr(builtins, "__import__", _no_winreg)
     io = _io(
         commands={
-            "reg": (
+            r"C:\Windows\System32\reg.exe": (
                 "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\n"
                 "    MachineGuid    REG_SZ    11111111-2222-3333-4444-555555555555\n"
             )

@@ -11,11 +11,13 @@
     "Storage by tier shows each tier's limit in words, players with data, storage used, the median per player and who's over 80%, as warning text only where it needs attention, with the players whose saves wait for room linked from the foot.",
     "What's stored is one stacked bar over a table of the three kinds with their size; older versions say they count toward each player's storage. The card doesn't repeat the 18.4 GiB total from the Storage used tile.",
     "Where players sync from is a table of each platform the product builds for, with players this week and the last sync; itch.io shows None yet and the foot links to Integration (the header already says it isn't seen).",
-    "A player's own data is on Users → the player → Data, and the card foot says so; this tab has no per-player table.",
+    "This tab has no per-player table (a player's own data is on Users → the player → Data; the tab doesn't point there).",
     "Words: \"player\" for a game (Diceroll), \"person\" or \"account\" for an app (DJDL); storage in MiB and GiB, never MB; numbers and units never break across lines. products.integration's Cloud Sync card must say \"Storage per person: 256 MiB by default (Standard uses the default)\" to match this page.",
     "Phone: the stats stack two by two, each tier row becomes a block (tier and storage used, then the rest), and the two cards stack.",
     "Wide (1600px and up): the four stat tiles span the page; Storage by tier and What's stored take the main column and Where players sync from is the 400px aside. Below 1600 What's stored and Where players sync from sit side by side about 2:1 and stack on phone.",
-    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page."
   ],
   "status": "mockup",
   "designReview": {

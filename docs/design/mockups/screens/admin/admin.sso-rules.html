@@ -53,6 +53,7 @@
     <!-- One order at every width: manifest offer, Rules, the editor, then the root rule (a rail from 1280px, a strip below). -->
     <div class="page cap-table gap-6 rail" style="--rail-rows: 2">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a></nav>
         <div class="page-heading"><h1>Members</h1></div>
         <div class="page-actions">
           <!-- Hidden while the editor is open; the idle page shows it as the one primary action. -->
@@ -117,7 +118,7 @@
             <p class="eyebrow r">They get</p>
             <div class="field-row l"><span class="field-row-label">Signs in with</span><div class="select"><i class="ic ic-link"></i><span class="grow">Studio Okta</span><i class="ic ic-chevrons-up-down"></i></div></div>
             <div class="field-row r"><span class="field-row-label">Role</span><div class="select"><i class="ic ic-boxes"></i><span class="grow">Product admin</span><i class="ic ic-chevrons-up-down"></i></div></div>
-            <div class="field-row l"><span class="field-row-label">And has</span><div class="segmented sm match-input" role="tablist" aria-label="Match on"><span><i class="ic ic-users"></i>A group</span><span><i class="ic ic-at-sign"></i>A verified email domain</span><span class="on"><i class="ic ic-id-card"></i>A claim</span></div></div>
+            <div class="field-row l"><span class="field-row-label">And has</span><div class="segmented sm match-input" role="group" aria-label="Match on"><span><i class="ic ic-users"></i>A group</span><span><i class="ic ic-at-sign"></i>A verified email domain</span><span class="on"><i class="ic ic-id-card"></i>A claim</span></div></div>
             <div class="field-row r"><span class="field-row-label">Product</span><div class="select"><span class="logo xs" data-product="djdl"></span><span class="grow">DJDL</span><i class="ic ic-chevrons-up-down"></i></div></div>
             <div class="field-row l top"><span class="field-row-label">Claim</span>
               <div class="mk-cluster no-wrap"><div class="select"><span class="grow mono">department</span><i class="ic ic-chevrons-up-down"></i></div><span class="type-small muted">is</span><div class="input mono focus"><span class="grow">djdl-qa</span></div></div>
@@ -177,7 +178,7 @@
         <div class="rr-head">
           <div><h2 id="root-title">Root rule</h2><div class="rr-sub">Set at deploy time by <code>PLATFORM_ADMIN_GROUP</code></div></div>
         </div>
-        <div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>polaris-admins</code><i class="ic ic-lock" aria-label="Locked: set at deploy time"></i></div><div class="cell-sub">From Pocket ID</div></div></div>
+        <div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>polaris-admins</code><i role="img" class="ic ic-lock" aria-label="Locked: set at deploy time"></i></div><div class="cell-sub">From Pocket ID</div></div></div>
         <div><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></div>
         <div><span class="mk-cluster no-wrap type-small"><span class="faces"><span class="avatar sm violet">AL</span><span class="avatar sm">JW</span></span>2 people</span></div>
       </section>
@@ -214,7 +215,7 @@
         </tbody>
       </table>
     </section>
-    <figcaption><strong>A rule that gives Superadmin.</strong>The preview warns before saving.</figcaption>
+    <figcaption><strong>A rule that gives Superadmin.</strong></figcaption>
   </figure>
 
   <figure class="board-item">
@@ -242,17 +243,16 @@
       <div class="card-body">
         <div class="mk-stack-1">
           <p class="strong">Nobody matches yet</p>
-          <p class="type-small muted">It applies at their next sign-in.</p>
         </div>
       </div>
     </section>
-    <figcaption><strong>A rule that matches nobody.</strong>Replaces the list.</figcaption>
+    <figcaption><strong>A rule that matches nobody.</strong></figcaption>
   </figure>
 
   <figure class="board-item">
     <section class="card" aria-label="Rules, read-only">
       <div class="card-head">
-        <div class="title"><h3>Rules</h3><p>Only Superadmins change rules: Ada Lindqvist and Jonas Weber.</p></div>
+        <div class="title"><h3>Rules</h3><p>Ask Ada Lindqvist or Jonas Weber to change a rule.</p></div>
       </div>
       <table class="table stack-phone" aria-label="Rules">
         <tbody>
@@ -271,6 +271,6 @@
         </tbody>
       </table>
     </section>
-    <figcaption><strong>A Platform admin opens SSO rules.</strong>Read-only: no Add rule, menus or editor.</figcaption>
+    <figcaption><strong>A Platform admin opens SSO rules.</strong></figcaption>
   </figure>
 </section>

@@ -313,8 +313,14 @@ export {
 } from "./verify.js";
 
 export {
+  compareKidBytes,
+  jwsHeaderKid,
+  loadPinRevocations,
   mergeTrust,
+  trustSignerOrder,
+  usablePins,
   verifyTrustManifest,
+  type PinRevocations,
   type TrustManifestOptions,
   type TrustManifestResult,
 } from "./trust.js";

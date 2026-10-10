@@ -1,0 +1,18 @@
+{
+  "id": "config.catalog-invalid",
+  "title": "Catalog after an invalid resync",
+  "area": "config",
+  "surface": "console",
+  "packages": ["U-29", "U-31", "C-24"],
+  "uxRows": [],
+  "summary": "DJDL's Catalog after a resync from commit 7c41d0e whose .pkey/schema fails validation: one danger callout names the commit and each error at its entry and line, says devices still get v9, and points at the repository; the two entries with errors are marked in the list and the open one shows its error at the field.",
+  "compare": [
+    "The last published version keeps serving: the page title reads 'Catalog v9' and the callout says 'Devices still get v9' (admin-2-20, guide state 'invalid catalogs').",
+    "One danger callout above the editor, role=alert: the commit, the error count, what still serves, the fix (repository, then push or resync), each error with its entry and line. No toast.",
+    "Each entry with an error carries a danger glyph in the list (shape, not only colour); the open entry shows the error under the field it concerns, with the danger edge and the reason in words.",
+    "No Review or Publish: there is no draft; Resync is the only action, outlined.",
+    "Managed config yellow marks context only (rule, chip, nav); danger is red; nothing in the section accent reads as a warning."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

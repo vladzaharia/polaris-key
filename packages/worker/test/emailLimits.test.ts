@@ -110,19 +110,23 @@ describe("verify side", () => {
   it("a right code verifies once and returns the payload", async () => {
     const e = env();
     const { code } = await issueEmailCode(e, addr, '{"flow":1}');
-    expect(await verifyEmailCode(e, { ...addr, code })).toEqual({
+    expect(
+      await verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }),
+    ).toEqual({
       ok: true,
       payload: '{"flow":1}',
     });
-    expect(await verifyEmailCode(e, { ...addr, code })).toEqual({ ok: false });
+    expect(
+      await verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }),
+    ).toEqual({ ok: false });
   });
 
   it("two concurrent verifies of one right code: exactly one succeeds", async () => {
     const e = env();
     const { code } = await issueEmailCode(e, addr, "p");
     const results = await Promise.all([
-      verifyEmailCode(e, { ...addr, code }),
-      verifyEmailCode(e, { ...addr, code }),
+      verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }),
+      verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }),
     ]);
     expect(results.filter((r) => r.ok)).toHaveLength(1);
   });
@@ -131,7 +135,15 @@ describe("verify side", () => {
     const e = env();
     const { code } = await issueEmailCode(e, addr, "p");
     const typed = `${code.slice(0, 3)} ${code.slice(3)}`;
-    expect((await verifyEmailCode(e, { ...addr, code: typed })).ok).toBe(true);
+    expect(
+      (
+        await verifyEmailCode(e, {
+          ...addr,
+          req: reqFrom("192.0.2.10"),
+          code: typed,
+        })
+      ).ok,
+    ).toBe(true);
   });
 
   it(`dies after ${EMAIL_CODE_MAX_ATTEMPTS} wrong attempts`, async () => {
@@ -139,10 +151,18 @@ describe("verify side", () => {
     const { code } = await issueEmailCode(e, addr, "p");
     const wrong = code === "000000" ? "000001" : "000000";
     for (let i = 0; i < EMAIL_CODE_MAX_ATTEMPTS; i++)
-      expect(await verifyEmailCode(e, { ...addr, code: wrong })).toEqual({
+      expect(
+        await verifyEmailCode(e, {
+          ...addr,
+          req: reqFrom("192.0.2.10"),
+          code: wrong,
+        }),
+      ).toEqual({
         ok: false,
       });
-    expect(await verifyEmailCode(e, { ...addr, code })).toEqual({ ok: false });
+    expect(
+      await verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }),
+    ).toEqual({ ok: false });
   });
 
   it("survives fewer than the cap", async () => {
@@ -150,8 +170,15 @@ describe("verify side", () => {
     const { code } = await issueEmailCode(e, addr, "p");
     const wrong = code === "000000" ? "000001" : "000000";
     for (let i = 0; i < EMAIL_CODE_MAX_ATTEMPTS - 1; i++)
-      await verifyEmailCode(e, { ...addr, code: wrong });
-    expect((await verifyEmailCode(e, { ...addr, code })).ok).toBe(true);
+      await verifyEmailCode(e, {
+        ...addr,
+        req: reqFrom("192.0.2.10"),
+        code: wrong,
+      });
+    expect(
+      (await verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }))
+        .ok,
+    ).toBe(true);
   });
 
   it(`expires after ${EMAIL_CODE_TTL_SECONDS} seconds`, async () => {
@@ -159,7 +186,10 @@ describe("verify side", () => {
     const e = env();
     const { code } = await issueEmailCode(e, addr, "p");
     vi.setSystemTime((T + EMAIL_CODE_TTL_SECONDS) * 1000);
-    expect((await verifyEmailCode(e, { ...addr, code })).ok).toBe(false);
+    expect(
+      (await verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }))
+        .ok,
+    ).toBe(false);
   });
 
   it("a new code for the same recipient and flow invalidates the old one", async () => {
@@ -168,10 +198,22 @@ describe("verify side", () => {
     let second = await issueEmailCode(e, addr, "p2");
     while (second.code === first.code)
       second = await issueEmailCode(e, addr, "p2");
-    expect((await verifyEmailCode(e, { ...addr, code: first.code })).ok).toBe(
-      false,
-    );
-    expect(await verifyEmailCode(e, { ...addr, code: second.code })).toEqual({
+    expect(
+      (
+        await verifyEmailCode(e, {
+          ...addr,
+          req: reqFrom("192.0.2.10"),
+          code: first.code,
+        })
+      ).ok,
+    ).toBe(false);
+    expect(
+      await verifyEmailCode(e, {
+        ...addr,
+        req: reqFrom("192.0.2.10"),
+        code: second.code,
+      }),
+    ).toEqual({
       ok: true,
       payload: "p2",
     });
@@ -185,8 +227,19 @@ describe("verify side", () => {
       { ...addr, recipient: "other@example.com" },
       { ...addr, flowId: "flow-2" },
     ])
-      expect((await verifyEmailCode(e, { ...other, code })).ok).toBe(false);
-    expect((await verifyEmailCode(e, { ...addr, code })).ok).toBe(true);
+      expect(
+        (
+          await verifyEmailCode(e, {
+            ...other,
+            req: reqFrom("192.0.2.10"),
+            code,
+          })
+        ).ok,
+      ).toBe(false);
+    expect(
+      (await verifyEmailCode(e, { ...addr, req: reqFrom("192.0.2.10"), code }))
+        .ok,
+    ).toBe(true);
   });
 
   it(`locks the recipient out of new codes for ${EMAIL_LOCKOUT_SECONDS}s after ${EMAIL_LOCKOUT_THRESHOLD} wrong attempts across codes in an hour`, async () => {
@@ -199,13 +252,29 @@ describe("verify side", () => {
       const { code } = await issueEmailCode(e, flowAddr, "p");
       const wrong = code === "000000" ? "000001" : "000000";
       for (let i = 0; i < EMAIL_LOCKOUT_THRESHOLD / 2; i++) {
-        expect(await emailRecipientLocked(e, "djdl", addr.recipient)).toBe(
-          false,
-        );
-        await verifyEmailCode(e, { ...flowAddr, code: wrong });
+        expect(
+          await emailRecipientLocked(
+            e,
+            "djdl",
+            addr.recipient,
+            reqFrom("192.0.2.10"),
+          ),
+        ).toBe(false);
+        await verifyEmailCode(e, {
+          ...flowAddr,
+          req: reqFrom("192.0.2.10"),
+          code: wrong,
+        });
       }
     }
-    expect(await emailRecipientLocked(e, "djdl", addr.recipient)).toBe(true);
+    expect(
+      await emailRecipientLocked(
+        e,
+        "djdl",
+        addr.recipient,
+        reqFrom("192.0.2.10"),
+      ),
+    ).toBe(true);
     expect(
       await checkEmailSend(
         e,
@@ -214,9 +283,23 @@ describe("verify side", () => {
       ),
     ).toEqual({ send: false });
     // Another product is unaffected (tenant isolation).
-    expect(await emailRecipientLocked(e, "acme", addr.recipient)).toBe(false);
+    expect(
+      await emailRecipientLocked(
+        e,
+        "acme",
+        addr.recipient,
+        reqFrom("192.0.2.10"),
+      ),
+    ).toBe(false);
     vi.setSystemTime((T + EMAIL_LOCKOUT_SECONDS) * 1000);
-    expect(await emailRecipientLocked(e, "djdl", addr.recipient)).toBe(false);
+    expect(
+      await emailRecipientLocked(
+        e,
+        "djdl",
+        addr.recipient,
+        reqFrom("192.0.2.10"),
+      ),
+    ).toBe(false);
     expect(
       await checkEmailSend(
         e,
@@ -233,9 +316,21 @@ describe("verify side", () => {
     const wrong = code === "000000" ? "000001" : "000000";
     for (let i = 0; i < EMAIL_LOCKOUT_THRESHOLD; i++) {
       vi.setSystemTime((T + i * (EMAIL_LOCKOUT_WINDOW_SECONDS / 9 + 1)) * 1000);
-      await verifyEmailCode(e, { ...addr, flowId: `f${i}`, code: wrong });
+      await verifyEmailCode(e, {
+        ...addr,
+        req: reqFrom("192.0.2.10"),
+        flowId: `f${i}`,
+        code: wrong,
+      });
     }
-    expect(await emailRecipientLocked(e, "djdl", addr.recipient)).toBe(false);
+    expect(
+      await emailRecipientLocked(
+        e,
+        "djdl",
+        addr.recipient,
+        reqFrom("192.0.2.10"),
+      ),
+    ).toBe(false);
   });
 
   it("every refusal has the same shape (no reason leaks)", async () => {
@@ -243,9 +338,22 @@ describe("verify side", () => {
     const { code } = await issueEmailCode(e, addr, "p");
     const wrong = code === "000000" ? "000001" : "000000";
     const refusals = [
-      await verifyEmailCode(e, { ...addr, code: wrong }),
-      await verifyEmailCode(e, { ...addr, code: "nonsense" }),
-      await verifyEmailCode(e, { ...addr, flowId: "missing", code }),
+      await verifyEmailCode(e, {
+        ...addr,
+        req: reqFrom("192.0.2.10"),
+        code: wrong,
+      }),
+      await verifyEmailCode(e, {
+        ...addr,
+        req: reqFrom("192.0.2.10"),
+        code: "nonsense",
+      }),
+      await verifyEmailCode(e, {
+        ...addr,
+        req: reqFrom("192.0.2.10"),
+        flowId: "missing",
+        code,
+      }),
     ];
     for (const r of refusals) expect(r).toEqual({ ok: false });
   });
@@ -392,5 +500,82 @@ describe("send side", () => {
     expect(
       await checkEmailSend(e, { ...base, req: reqFrom("10.6.0.1") }, T),
     ).toEqual({ send: false });
+  });
+});
+
+describe("lockout keys", () => {
+  const addr = { product: "djdl", recipient: "v@example.com", flowId: "f" };
+  const attacker = reqFrom("198.51.100.7");
+  const victim = reqFrom("203.0.113.9");
+
+  it("an attacker's strikes do not lock the victim's network out", async () => {
+    vi.useFakeTimers({ now: T * 1000 });
+    const e = env();
+    for (let i = 0; i < EMAIL_LOCKOUT_THRESHOLD; i++) {
+      const { code } = await issueEmailCode(
+        e,
+        { ...addr, flowId: `a${i}` },
+        "p",
+      );
+      const wrong = code === "000000" ? "000001" : "000000";
+      await verifyEmailCode(e, {
+        ...addr,
+        flowId: `a${i}`,
+        code: wrong,
+        req: attacker,
+      });
+    }
+    expect(
+      await emailRecipientLocked(e, "djdl", addr.recipient, attacker),
+    ).toBe(true);
+    expect(await emailRecipientLocked(e, "djdl", addr.recipient, victim)).toBe(
+      false,
+    );
+    expect(
+      (
+        await checkEmailSend(
+          e,
+          { product: "djdl", recipient: addr.recipient, req: victim },
+          T,
+        )
+      ).send,
+    ).toBe(true);
+  });
+
+  it("guesses with no live code do not strike or extend a lock", async () => {
+    vi.useFakeTimers({ now: T * 1000 });
+    const e = env();
+    for (let i = 0; i < EMAIL_LOCKOUT_THRESHOLD * 2; i++)
+      await verifyEmailCode(e, { ...addr, code: "123456", req: attacker });
+    expect(
+      await emailRecipientLocked(e, "djdl", addr.recipient, attacker),
+    ).toBe(false);
+    // Lock, then keep guessing: the lock must not be extended.
+    for (let i = 0; i < EMAIL_LOCKOUT_THRESHOLD; i++) {
+      const { code } = await issueEmailCode(
+        e,
+        { ...addr, flowId: `b${i}` },
+        "p",
+      );
+      const wrong = code === "000000" ? "000001" : "000000";
+      await verifyEmailCode(e, {
+        ...addr,
+        flowId: `b${i}`,
+        code: wrong,
+        req: attacker,
+      });
+    }
+    vi.setSystemTime((T + EMAIL_LOCKOUT_SECONDS - 1) * 1000);
+    const { code } = await issueEmailCode(e, { ...addr, flowId: "c" }, "p");
+    await verifyEmailCode(e, {
+      ...addr,
+      flowId: "c",
+      code: code === "000000" ? "000001" : "000000",
+      req: attacker,
+    });
+    vi.setSystemTime((T + EMAIL_LOCKOUT_SECONDS + 1) * 1000);
+    expect(
+      await emailRecipientLocked(e, "djdl", addr.recipient, attacker),
+    ).toBe(false);
   });
 });

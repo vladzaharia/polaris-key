@@ -25,7 +25,8 @@ host's load procedure).
   "trustJws": "<pkey-trust+jws>", // the manifest, verbatim
   "docs": { "license": "<jws>", "config": "<jws>" }, // per-service slices
   "etags": { "license": "…", "config": "…" }, // conditional-request validators
-  "importedBundle": { "bundleId": "…", "importedAt": 1756252800 },
+  "bundle": "<pkey-bundle+jws>", // an offline activation, verbatim
+  "pinRevocations": { "<revoked pinned kid>": "<pkey-trust+jws>" }, // the evidence
   "lastSyncUnauthorized": false,
   "blocked": {
     "reason": "version-too-old",
@@ -34,17 +35,19 @@ host's load procedure).
 }
 ```
 
-| Field                          | Signed? | Notes                                                                                                          |
-| ------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------- |
-| `trustJws`                     | Yes     | The compact JWS, verbatim. Never a decoded `kid → key` map                                                     |
-| `docs.license` / `docs.config` | Yes     | Per-service slices. An absent slice means the service is unused or not yet fetched — never that it failed open |
-| `etags.*`                      | No      | Non-security. The worst a forged ETag achieves is an unnecessary `200`                                         |
-| `importedBundle`               | No      | The audit anchor of an offline activation. Meaningful only alongside a document that verified                  |
-| `lastSyncUnauthorized`         | No      | A recorded hard `401`                                                                                          |
-| `blocked`                      | No      | The last `403` version/channel block                                                                           |
+| Field                          | Signed? | Notes                                                                                                                                                                                            |
+| ------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `trustJws`                     | Yes     | The compact JWS, verbatim. Never a decoded `kid → key` map                                                                                                                                       |
+| `docs.license` / `docs.config` | Yes     | Per-service slices. An absent slice means the service is unused or not yet fetched — never that it failed open                                                                                   |
+| `etags.*`                      | No      | Non-security. The worst a forged ETag achieves is an unnecessary `200`                                                                                                                           |
+| `bundle`                       | Yes     | The imported bundle, verbatim. Re-verified at every load without its import window; `activation: "bundle"` only when its licence document is the cached one, byte for byte, and no token is held |
+| `pinRevocations`               | Yes     | Each tombstoned pin's evidence: the manifest another pin signed. Re-verified at every load in issue order; kept through deactivation and a bundle import                                         |
+| `lastSyncUnauthorized`         | No      | A recorded hard `401`                                                                                                                                                                            |
+| `blocked`                      | No      | The last `403` version/channel block                                                                                                                                                             |
 
-The unsigned fields are unsigned **deliberately**: they can only ever make the gate _stricter_.
-Clearing them gains an attacker nothing that deleting the whole file would not.
+The two hints are for display: no verdict depends on them. A hard `401` removes the document it
+answered for, and a `403` build block removes the licence document, in the same write that sets
+the hint. Clearing a hint therefore yields `needs-activation`, never a usable document.
 
 What is emphatically **not** in the record: decoded documents, bare keys, and plaintext
 counters. Version 1 of this file persisted the decoded doc, a bare `trustedKeys` map, and three
@@ -60,14 +63,18 @@ Every load re-verifies everything, in this order:
    before any other field is read, so a v1/v2 record's `trustedKeys` and unsigned counters are
    never even looked at. One network round trip is the right price for not carrying poisoned
    state forward; an air-gapped install re-imports its bundle.
-2. **Trust against pins.** `trustJws` is verified against the **pinned keys only**, with
-   `checkFreshness: false`, producing the effective set. On failure, discard it and fall back
-   to pins alone — never to whatever the file claimed.
-3. **Each document against the effective set**, with `checkFreshness: false` and the full
+2. **Pin evidence.** Each `pinRevocations` entry is re-verified, in ascending manifest
+   `issuedAt`, against the pins minus the tombstones before it; what survives gives the usable
+   pins ([Trust](/docs/build/wire/trust/)). An entry that fails is dropped.
+3. **Trust against the usable pins.** `trustJws` is verified against the **usable pinned keys
+   only**, with `checkFreshness: false`, producing the effective set. On failure, discard it and
+   fall back to the usable pins alone — never to whatever the file claimed.
+4. **Each document against the effective set**, with `checkFreshness: false` and the full
    claim validation from [The envelope](/docs/build/wire/envelope/) — including `aud` and
    `deviceId`, so a cache file copied from another machine or another product verifies as
    nothing.
-4. **Derive every counter** from what verified: the per-type anti-replay floors, the
+5. **The bundle** on the bundle reload profile ([Offline bundles](/docs/build/wire/bundles/)).
+6. **Derive every counter** from what verified: the per-type anti-replay floors, the
    monotonic clock floor, and `lastVerifiedAt`.
 
 Any artifact that fails is treated as **absent** and dropped from the in-memory record. A
@@ -175,6 +182,7 @@ transition below is rollback-resistant without a trusted local clock:
 
 ```
 licenseServiceEnabled: false   →  not-applicable   (isUsable)
+                                  (on when the build declares `license` OR discovery says so)
 activation: null               →  needs-activation
 blocked hint present           →  the block reason
 lastSyncUnauthorized           →  revoked
@@ -187,12 +195,25 @@ otherwise                      →  ok               (isUsable)
 ## Revocation while offline
 
 A recorded hard `401` — set after exactly one token re-acquire attempt has also failed — yields
-`revoked` offline. A device that never reconnects learns nothing new and runs out at
-`graceUntil`.
+`revoked` offline. The same write removes the slice that answered `401` (`docs.<slice>` and its
+ETag), and a `403` `version_blocked` or `channel_not_allowed` removes `docs.license`. The token
+is kept, so the gate still reports `revoked` or the block. A device that never reconnects learns
+nothing new and runs out at `graceUntil`. Restoring a full pre-revocation snapshot of the state
+directory and the token store works until `graceUntil`.
 
 For bundle-activated installs, the grace bound **is** the revocation lever. There is no
 credential to revoke and no connection on which to learn about it. The contract states this
 rather than pretending otherwise (spec §4.3).
+
+## Device binding on desktop
+
+A desktop file store does not trust its stored device id. At every start the SDK re-derives the
+id from the platform anchor (`ioreg`, the registry's `MachineGuid`, `/etc/machine-id`) with
+`deviceIdFromRaw(product, raw)`. A stored id that disagrees is discarded with the token and the
+grant slices of the cache (`trustJws`, `docs`, `etags`, the bundle marker and both hints); the
+update slices stay. The device re-activates once. A stored id is used only when no anchor is
+readable. The probes run by absolute path (`/usr/sbin/ioreg`, `%SystemRoot%\System32\reg.exe`),
+never through `PATH`. Keychain and Keystore stores keep their stored id.
 
 ## The six inherited offline invariants
 

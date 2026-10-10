@@ -87,7 +87,7 @@ public final class PolarisKeyModel {
         profile = await client.license.profile()
         activation = await client.license.activation()
         identityEnabled = await client.core.enabled(.identity)
-        licenseEnabled = await client.core.enabled(.license)
+        licenseEnabled = await client.core.licenseGateEnabled()
     }
 
     /// A sync, then a fresh snapshot.

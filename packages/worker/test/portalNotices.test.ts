@@ -387,6 +387,26 @@ describe("security notices reach every verified address", () => {
       expect(m.from).toEqual({ name: "Polaris Key", email: "noreply@plrs.im" });
   });
 
+  it("an account with no deliverable address leaves an audit row, no address", async () => {
+    const db = makeTestDb();
+    const { env } = portalEnv();
+    const n = await sendSecurityNotice(
+      env,
+      db,
+      "acct_emailless",
+      null,
+      signInMethodRemovedNotice({ method: "Steam", origin: ORIGIN }),
+      NOW,
+    );
+    expect(n).toBe(0);
+    const rows = await db.all<{ action: string; summary: string }>(
+      "SELECT action, summary FROM portal_audit WHERE account_id = ?",
+      "acct_emailless",
+    );
+    expect(rows.map((r) => r.action)).toContain("security.notice.undelivered");
+    expect(JSON.stringify(rows)).not.toContain("@");
+  });
+
   it("device removal: label and product name, to every verified address", async () => {
     const db = makeTestDb();
     const { env, sent } = portalEnv();

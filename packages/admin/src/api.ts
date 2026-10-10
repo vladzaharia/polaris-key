@@ -4139,6 +4139,21 @@ export function setCsrf(token: string): void {
   csrf = token;
 }
 
+/** A gated action refused for a stale step-up goes to the step-up sign-in and back. */
+let redirectToStepUp = (): void => {
+  const back = `/manage/${window.location.hash}`;
+  window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
+};
+/** Override the step-up redirect (tests pass a spy; call with no arg to restore the default). */
+export function setStepUpRedirectForTests(fn?: () => void): void {
+  redirectToStepUp =
+    fn ??
+    (() => {
+      const back = `/manage/${window.location.hash}`;
+      window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
+    });
+}
+
 let redirectToLogin = (): void => {
   window.location.href = "/manage/login";
 };
@@ -4174,8 +4189,12 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await send(path, init);
+async function call<T>(
+  path: string,
+  init: RequestInit = {},
+  opts: { stepUpRedirect?: boolean } = {},
+): Promise<T> {
+  const res = await send(path, init, opts);
   // 204/empty bodies are tolerated (returns undefined cast to T).
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
@@ -4187,7 +4206,11 @@ async function callText(path: string): Promise<string> {
 }
 
 /** One request: the CSRF header on a write, the sign-in redirect on 401, an `ApiError` on a refusal. */
-async function send(path: string, init: RequestInit = {}): Promise<Response> {
+async function send(
+  path: string,
+  init: RequestInit = {},
+  opts: { stepUpRedirect?: boolean } = {},
+): Promise<Response> {
   const headers = new Headers(init.headers);
   const mutating = init.method != null && init.method !== "GET";
   if (mutating) {
@@ -4246,6 +4269,12 @@ async function send(path: string, init: RequestInit = {}): Promise<Response> {
     }
     const error = new ApiError(res.status, fields, code, errors, reason);
     if (message) error.message = message;
+    if (
+      res.status === 403 &&
+      code === "step_up_required" &&
+      opts.stepUpRedirect
+    )
+      redirectToStepUp();
     throw error;
   }
   return res;
@@ -4496,10 +4525,14 @@ const rawApi = {
    * (fixes PRD-4: an auto-filled guard guards nothing).
    */
   deleteProduct: (slug: string, confirmSlug: string) =>
-    call<{ ok: true; slug: string }>(p(slug), {
-      method: "DELETE",
-      body: JSON.stringify({ confirmSlug }),
-    }),
+    call<{ ok: true; slug: string }>(
+      p(slug),
+      {
+        method: "DELETE",
+        body: JSON.stringify({ confirmSlug }),
+      },
+      { stepUpRedirect: true },
+    ),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   /** The resync's dry run: reads the manifest and plans. Writes nothing. */
@@ -4666,6 +4699,7 @@ const rawApi = {
         method: "POST",
         body: JSON.stringify(breakGlass ? { kid, breakGlass } : { kid }),
       },
+      { stepUpRedirect: true },
     ),
   retireProductKey: (slug: string, kid: string) =>
     call<{ ok: true; kid: string; status: "retired" }>(
@@ -5347,7 +5381,11 @@ const rawApi = {
     call<ProductUserResponse>(`${p(slug)}/users/${enc(subject)}`),
   /** The subject's product data as one JSON document (audited server-side). */
   productUserExport: (slug: string, subject: string) =>
-    call<Record<string, unknown>>(`${p(slug)}/users/${enc(subject)}/export`),
+    call<Record<string, unknown>>(
+      `${p(slug)}/users/${enc(subject)}/export`,
+      {},
+      { stepUpRedirect: true },
+    ),
   /** The subject's account overrides (U-03): config and secrets, secrets by name only. */
   productUserOverrides: (slug: string, subject: string) =>
     call<AccountOverridesView>(`${p(slug)}/users/${enc(subject)}/overrides`),
@@ -5369,6 +5407,7 @@ const rawApi = {
     call<{ ok: true; stores: string[] }>(
       `${p(slug)}/users/${enc(subject)}/data/delete`,
       { method: "POST" },
+      { stepUpRedirect: true },
     ),
   detachProductUserLicense: (
     slug: string,
@@ -5378,6 +5417,7 @@ const rawApi = {
     call<{ ok: true }>(
       `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/detach`,
       { method: "POST" },
+      { stepUpRedirect: true },
     ),
   /** Needs a step-up (403 `step_up_required` otherwise). */
   relinkProductUserLicense: (

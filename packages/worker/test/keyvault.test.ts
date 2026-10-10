@@ -554,6 +554,9 @@ async function kek(
       sub: "admin-1",
       email: "admin@example.com",
       groups: opts.groups ?? [PLATFORM_GROUP],
+      // POST /kek is in the step-up table; the operator here has just stepped up.
+      authTime: NOW,
+      stepUp: true,
     },
     NOW,
   );

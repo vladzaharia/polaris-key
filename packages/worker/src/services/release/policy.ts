@@ -73,6 +73,7 @@ import {
 } from "./model.js";
 import {
   canonicalChannel,
+  compareVersions,
   knownChannels,
   parsesInScheme,
   versionSchemeOf,
@@ -455,6 +456,32 @@ export async function applyPointerOp(
     const r = await releaseOf(db, product, deliverable, input.releaseId);
     if (!r.ok) return r;
     const releaseId = r.release.release_id;
+    // CI moves a channel forward only. A token never promotes or pins a release
+    // older than the one the channel already points at (a silent downgrade of stable for every
+    // client); an operator in the console can, deliberately.
+    if (actor.kind === "ci") {
+      const current = (await getChannelPolicy(db, key))?.pointer_release_id;
+      const cur = current
+        ? await db.first<{ version: string }>(
+            "SELECT version FROM release_metadata WHERE product = ? AND release_id = ?",
+            product,
+            current,
+          )
+        : null;
+      const scheme = versionSchemeOf(d.deliverable);
+      if (
+        cur &&
+        parsesInScheme(scheme, cur.version) &&
+        parsesInScheme(scheme, r.release.version) &&
+        compareVersions(scheme, r.release.version, cur.version) < 0
+      )
+        return refuse(
+          409,
+          "downgrade_refused",
+          `${r.release.version} is older than ${cur.version}, which ${ch.channel} already points at; a CI token only moves a channel forward`,
+          ["releaseId"],
+        );
+    }
     if (op === "promote" && (await isYanked(db, product, releaseId)))
       return refuse(
         409,

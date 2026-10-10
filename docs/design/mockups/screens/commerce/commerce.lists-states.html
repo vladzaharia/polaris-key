@@ -1,0 +1,63 @@
+<div class="board" data-service="commerce">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>Commerce lists: loading and a failed load</h1>
+    </header>
+    <div class="frame-grid fixed-cards">
+      <figure class="board-item">
+        <figcaption><strong>Storefronts: loading</strong></figcaption>
+        <div class="board-frame">
+          <div class="workbench">
+            <div class="toolbar"><div class="search-field"><i class="ic ic-search"></i><span>Search storefronts</span></div></div>
+            <div class="table-card" role="region" aria-label="Storefronts table" tabindex="0">
+              <table class="table"><thead><tr><th>Storefront</th><th>State</th><th>Offers</th></tr></thead><tbody><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr></tbody></table>
+              <span class="sr-only" role="status">Loading storefronts</span>
+            </div>
+          </div>
+        </div>
+      </figure>
+      <figure class="board-item">
+        <figcaption><strong>Offers: loading</strong></figcaption>
+        <div class="board-frame">
+          <div class="workbench">
+            <div class="toolbar"><div class="search-field"><i class="ic ic-search"></i><span>Search offers</span></div></div>
+            <div class="table-card" role="region" aria-label="Offers table" tabindex="0">
+              <table class="table"><thead><tr><th>Offer</th><th>Storefronts</th><th>Price</th></tr></thead><tbody><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td></tr></tbody></table>
+              <span class="sr-only" role="status">Loading offers</span>
+            </div>
+          </div>
+        </div>
+      </figure>
+      <figure class="board-item">
+        <figcaption><strong>Purchases: loading</strong></figcaption>
+        <div class="board-frame">
+          <div class="workbench">
+            <div class="toolbar"><div class="search-field"><i class="ic ic-search"></i><span>Search purchases</span></div></div>
+            <div class="table-card" role="region" aria-label="Purchases table" tabindex="0">
+              <table class="table"><thead><tr><th>Offer</th><th>Account</th><th>State</th><th>Bought</th></tr></thead><tbody><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td><td><span class="skeleton" style="width: 81%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td><td><span class="skeleton" style="width: 81%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td><td><span class="skeleton" style="width: 81%"></span></td></tr><tr><td><span class="skeleton" style="width: 60%"></span></td><td><span class="skeleton" style="width: 67%"></span></td><td><span class="skeleton" style="width: 74%"></span></td><td><span class="skeleton" style="width: 81%"></span></td></tr></tbody></table>
+              <span class="sr-only" role="status">Loading purchases</span>
+            </div>
+          </div>
+        </div>
+      </figure>
+      <figure class="board-item">
+        <figcaption><strong>Purchases: didn’t load</strong></figcaption>
+        <div class="board-frame">
+          <div class="workbench">
+            <div class="toolbar"><div class="search-field"><i class="ic ic-search"></i><span>Search purchases</span></div><span class="filter on"><i class="ic ic-check"></i>Last 28 days</span></div>
+            <div class="table-card" role="region" aria-label="Purchases table" tabindex="0">
+              <table class="table"><thead><tr><th>Offer</th><th>Account</th><th>State</th><th>Bought</th></tr></thead><tbody><tr><td colspan="4">
+                <div class="empty" role="alert">
+                  <span class="empty-icon danger"><i class="ic ic-circle-x"></i></span>
+                  <h3>Purchases didn’t load</h3>
+                  <p>Polaris Key didn’t answer in time (504).</p>
+                  <div class="btn-row"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Retry</button></div>
+                </div>
+              </td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </div>
+  </div>
+</div>

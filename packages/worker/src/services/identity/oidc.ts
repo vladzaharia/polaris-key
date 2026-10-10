@@ -20,9 +20,11 @@
 // carried over: a compatibility alias for a path nobody can still be calling is a second code
 // path for free.
 
+import { constantTimeEqual } from "../../core/platform.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { outboundFetch } from "../../core/outboundGuard.js";
 import {
   ALLOWED_ID_TOKEN_ALGS,
   ID_TOKEN_CLOCK_TOLERANCE,
@@ -66,7 +68,6 @@ import { renderBrandPage } from "../../core/brandHtml.js";
 import { accountDisabledPage } from "./card/http.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
-  clientIp,
   clientNetwork,
   rateLimitOk,
   type RateLimit,
@@ -145,6 +146,7 @@ import {
   updateArtefact,
   type ArtefactRef,
 } from "../../core/singleUse.js";
+import { readBodyJson, readBodyText } from "../../core/cappedBody.js";
 
 const FLOW_TTL_SECONDS = 600;
 /** The poll cadence advertised by `/identity/auth/device/start`, enforced server-side (R8-02). */
@@ -279,22 +281,24 @@ async function getOidcConfig(
  * at the character level, and that host still receives a POST containing the product's OIDC
  * `client_secret`. Only an operator-curated host list distinguishes them.
  *
- * **Unset means not enforced.** That is a deliberate, documented fail-open: enforcing an empty
- * allowlist would take every already-configured custom-OIDC product offline on the deploy that
- * ships this code, with no operator action and no warning. The follow-up that makes it fail
- * closed *for new configs only* has to live at the ingest paths (`release/linkRepo.ts`,
- * `release/resync.ts`), which can tell a first write from a re-sync; see
- * the R9 audit findings. The platform issuer is exempt: it is a Worker
- * secret, not a repo-supplied value.
+ * **Unset fails closed in production.** On the `prod` environment an unset or empty list refuses
+ * every custom issuer, so a public https host can never receive the client secret by default;
+ * operators list their custom issuers' hosts before deploying. Outside `prod` (staging, dev,
+ * local and test Workers) an unset list is not enforced. The ingest check (`release/linkRepo.ts`)
+ * fails closed everywhere for a new issuer. The platform issuer is exempt: it is a Worker secret,
+ * not a repo-supplied value.
  */
 function issuerHostAllowed(env: Env, issuer: string): boolean {
   const raw = secret(env, "OIDC_ISSUER_ALLOWLIST");
-  if (!raw) return true;
+  // In production an unset allowlist refuses every custom issuer rather than
+  // letting any public https host receive the client secret.
+  const prod = env.PKEY_ENVIRONMENT?.trim().toLowerCase() === "prod";
+  if (!raw) return !prod;
   const hosts = raw
     .split(/[\s,]+/)
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean);
-  if (!hosts.length) return true;
+  if (!hosts.length) return !prod;
   try {
     return hosts.includes(new URL(issuer).host.toLowerCase());
   } catch {
@@ -527,12 +531,12 @@ async function deleteUserCodeIndex(
 
 /**
  * Whether the computed `redirectUri` is permitted by the product's `redirect_uris_json`
- * allowlist. When the column is unset we cannot enforce, so we allow (the IdP still
- * enforces its own registered-redirect check); when it IS set, the computed URI MUST be a
- * member — otherwise an attacker-chosen host/path could exfiltrate the authorization code.
+ * allowlist. The computed URI MUST be a member — otherwise an attacker-chosen host/path could
+ * exfiltrate the authorization code. An unset column fails closed (R8-07):
+ * no shipped writer leaves it NULL, so a NULL is a damaged row, not a policy of "allow all".
  */
 function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
-  if (!oidc.redirect_uris_json) return true;
+  if (!oidc.redirect_uris_json) return false;
   let allowed: unknown;
   try {
     allowed = JSON.parse(oidc.redirect_uris_json);
@@ -1121,6 +1125,7 @@ async function updateLicenseOnSignIn(
       signIn.provisioned.secrets,
       declared.secrets,
       now,
+      identity.sub,
     );
   const tier = await upgradedTier(db, product, existing, identityTierId);
   let current = existing.overrides_json;
@@ -1507,13 +1512,14 @@ async function beginAuthFlow(
   // I-26: only a `provider: platform` product can reach the licence chooser, so only its flows
   // carry a binder; a custom-IdP product's sign-in is byte-identical to before.
   let binderCookie: string | undefined;
-  if ((oidc.row.provider ?? "platform") === "platform") {
+  if ((oidc.row.provider ?? "platform") === "platform")
     flow.binderEligible = true;
-    if (opts.browser) {
-      const binder = randomToken(32);
-      flow.binder = await hashKey(binder, env.KEY_HASH_PEPPER);
-      binderCookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
-    }
+  // Every browser flow, whatever the issuer, is bound to the browser that started it;
+  // the callback refuses any other browser (login CSRF / session fixation).
+  if (opts.browser) {
+    const binder = randomToken(32);
+    flow.binder = await hashKey(binder, env.KEY_HASH_PEPPER);
+    binderCookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
   }
   await putArtefact(
     env,
@@ -1551,7 +1557,7 @@ export async function handleAuthStart(
     env,
     product,
     Math.floor(Date.now() / 1000),
-    { bucket: "authStart", id: clientIp(req), limit: 60, windowSec: 60 },
+    { bucket: "authStart", id: clientNetwork(req), limit: 60, windowSec: 60 },
   );
   if (limited) return limited;
   const rawReturnTo = new URL(req.url).searchParams.get("return_to");
@@ -1586,12 +1592,17 @@ export async function handleAuthDeviceStart(
     env,
     product,
     Math.floor(Date.now() / 1000),
-    { bucket: "authDeviceStart", id: clientIp(req), limit: 60, windowSec: 60 },
+    {
+      bucket: "authDeviceStart",
+      id: clientNetwork(req),
+      limit: 60,
+      windowSec: 60,
+    },
   );
   if (limited) return limited;
   let body: Record<string, unknown> = {};
   try {
-    const text = await req.text();
+    const text = await readBodyText(req);
     body = text ? (JSON.parse(text) as Record<string, unknown>) : {};
   } catch {
     return errorResponse(400, "bad_request", "invalid json");
@@ -1668,7 +1679,7 @@ export async function handleAuthDeviceStart(
 
 /** The CSRF token the confirmation form posts back, from either an HTML form body or JSON. */
 async function readConfirmToken(req: Request): Promise<string | null> {
-  const text = await req.text().catch(() => "");
+  const text = await readBodyText(req).catch(() => "");
   if (!text) return null;
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
     const body = tryParseJson(text) as Record<string, unknown> | undefined;
@@ -1692,7 +1703,7 @@ async function confirmDeviceFlow(
 ): Promise<Response> {
   if (!sameOriginPost(req))
     return errorResponse(403, "forbidden", "confirmation failed");
-  if (!record.csrf || !token || token !== record.csrf)
+  if (!record.csrf || !token || !constantTimeEqual(token, record.csrf))
     return errorResponse(403, "forbidden", "confirmation failed");
 
   // The confirmation is an authorization input for the poll, so it is recorded on
@@ -1715,8 +1726,9 @@ async function confirmDeviceFlow(
   // I-26: the confirming browser is the one the licence chooser will answer (delegated decision
   // 13). Minted here, never at `/device/start`: that request comes from the device, not from
   // the browser that signs in.
-  let binder: string | null = null;
-  if (flowRecord.binderEligible) binder = randomToken(32);
+  // Every device-code flow is bound to its confirming browser, so the IdP leg can
+  // only finish where the human confirmed, not in a victim's browser the starter phished.
+  const binder = randomToken(32);
   const stamped = await updateArtefact(env, stateKey, {
     set: {
       confirmedAt: now,
@@ -1892,7 +1904,7 @@ function renderDeviceEntry(
 async function readEntryForm(
   req: Request,
 ): Promise<{ userCode: string | null; csrf: string | undefined }> {
-  const text = await req.text().catch(() => "");
+  const text = await readBodyText(req).catch(() => "");
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
     // Only a JSON object is a form: `1`, `"x"`, `true` or `null` would make the `in` below throw
     // (an uncaught 500 on an unauthenticated route), so any other shape reads as an empty form.
@@ -2021,7 +2033,7 @@ export async function handleAuthDeviceVerify(
   const now = Math.floor(Date.now() / 1000);
   const limited = await rateLimited(env, product, now, {
     bucket: "authDeviceVerify",
-    id: clientIp(req),
+    id: clientNetwork(req),
     limit: 60,
     windowSec: 60,
   });
@@ -2107,11 +2119,27 @@ export async function handleAuthCallback(
     env,
     product,
     now,
-    { bucket: "authCallback", id: clientIp(req), limit: 60, windowSec: 60 },
+    {
+      bucket: "authCallback",
+      id: clientNetwork(req),
+      limit: 60,
+      windowSec: 60,
+    },
     { bucket: "authCallbackState", id: state, limit: 5, windowSec: 60 },
   );
   if (limited) return limited;
   const stateKey = await flowKey(env, product.slug, state);
+  // The browser binder is checked BEFORE the single-use claim, so a
+  // callback from another browser neither finishes the flow nor burns it.
+  const pending = await getArtefact(env, stateKey);
+  const pendingFlow = pending ? parseFlowRecord<FlowRecord>(pending) : null;
+  const callbackBinder = readBinder(req);
+  if (
+    !pendingFlow?.binder ||
+    !callbackBinder ||
+    (await hashKey(callbackBinder, env.KEY_HASH_PEPPER)) !== pendingFlow.binder
+  )
+    return errorResponse(400, "bad_request", "unknown state");
   // Single-use state (R8-04). Claim the flow before any outbound call so a second callback
   // can never overwrite the license a poller is already waiting on; a replay gets exactly the
   // same generic answer as an unknown state. The claim is one atomic compare-and-set in the
@@ -2146,21 +2174,32 @@ export async function handleAuthCallback(
     return platformSignInEndedPage();
   }
 
-  const tokenRes = await fetch(
-    `${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: flow.redirectUri,
-        client_id: oidc.clientId,
-        code_verifier: flow.verifier,
-        ...(oidc.clientSecret ? { client_secret: oidc.clientSecret } : {}),
-      }),
-    },
-  );
+  // The issuer is repo-written and this POST carries the client secret, so it goes
+  // through the shared outbound guard (no redirects with the body, timeout, size cap).
+  let tokenRes: { ok: boolean; body: string };
+  try {
+    const r = await outboundFetch(
+      `${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`,
+      {
+        init: {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: flow.redirectUri,
+            client_id: oidc.clientId,
+            code_verifier: flow.verifier,
+            ...(oidc.clientSecret ? { client_secret: oidc.clientSecret } : {}),
+          }),
+        },
+      },
+    );
+    tokenRes = { ok: r.status >= 200 && r.status < 300, body: r.body };
+  } catch {
+    await deleteArtefact(env, stateKey);
+    return errorResponse(502, "oidc_error", "token exchange failed");
+  }
   if (!tokenRes.ok) {
     // Delete the flow rather than recording a reason — pollers must not be able to
     // enumerate IdP failure modes (D8). The poll surface returns a generic error.
@@ -2169,7 +2208,7 @@ export async function handleAuthCallback(
   }
   let tokens: { id_token?: string };
   try {
-    tokens = (await tokenRes.json()) as { id_token?: string };
+    tokens = JSON.parse(tokenRes.body) as { id_token?: string };
   } catch {
     await deleteArtefact(env, stateKey);
     return errorResponse(502, "oidc_error", "token response invalid");
@@ -2179,6 +2218,8 @@ export async function handleAuthCallback(
     return errorResponse(502, "oidc_error", "no id_token");
   }
 
+  // The JWKS GET carries no secret; jose 5's remote set takes no custom fetch, so it keeps
+  // jose's own fetch (deferred: the guard covers the secret-bearing token POST).
   const jwks = createRemoteJWKSet(
     new URL(`${oidc.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
   );
@@ -2751,7 +2792,7 @@ export async function handleAuthChoose(
   if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
   const limited = await rateLimited(env, product, now, {
     bucket: "authChoose",
-    id: clientIp(req),
+    id: clientNetwork(req),
     limit: 60,
     windowSec: 60,
   });
@@ -2792,7 +2833,7 @@ export async function handleAuthChoose(
   if (req.method === "GET")
     return renderChooser(req, env, db, product, c, now, hooks);
 
-  const form = new URLSearchParams(await req.text().catch(() => ""));
+  const form = new URLSearchParams(await readBodyText(req).catch(() => ""));
   const token = form.get("choice") ?? "";
   // Spend the page's token (single-use): a second submit of the same page, or a page rendered
   // before another tab's, goes back to a fresh render and changes nothing.
@@ -3364,7 +3405,7 @@ export async function handleAuthDevicePoll(
   if (req.method !== "POST") return methodNotAllowed();
   let body: Record<string, unknown>;
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    body = (await readBodyJson(req)) as Record<string, unknown>;
   } catch {
     return errorResponse(400, "bad_request", "invalid json");
   }
@@ -3381,7 +3422,12 @@ export async function handleAuthDevicePoll(
     env,
     product,
     now,
-    { bucket: "authDevicePoll", id: clientIp(req), limit: 120, windowSec: 60 },
+    {
+      bucket: "authDevicePoll",
+      id: clientNetwork(req),
+      limit: 120,
+      windowSec: 60,
+    },
     { bucket: "authDevicePollCode", id: state, limit: 40, windowSec: 60 },
   );
   if (limited) return limited;

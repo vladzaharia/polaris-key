@@ -5,16 +5,19 @@
 // `status()` is a pure call into `@polaris-key/client-core`'s `licenseState`; everything interesting
 // is in assembling its inputs, and each one comes from exactly one owner:
 //
-//   licenseServiceEnabled  Core's resolved capabilities (discovery → expectedServices →
-//                          default). FALSE short-circuits the machine to `not-applicable` with
-//                          `isUsable: true`, which is how a config-only product boots usable
-//                          instead of sitting on `needs-activation` forever (D-08).
+//   licenseServiceEnabled  `ctx.licenseGateEnabled()`: the build's `expectedServices` (default
+//                          licence + config) OR a discovery loaded this session. Unsigned
+//                          discovery can switch the gate on, never off. FALSE
+//                          short-circuits the machine to `not-applicable` with `isUsable:
+//                          true`, which is how a config-only product (one that names
+//                          `expectedServices` without `license`) boots usable (D-08).
 //   activation             `"token"` if a `pkeyt_` credential is held, else `"bundle"` if a
 //                          verified offline import left a license document, else null. A token
 //                          SUPERSEDES a bundle (§7): once the device is online-activated the
 //                          bundle is history.
 //   doc / highWaterMark    the re-verified cache and the monotonic floor, both Core's.
-//   blocked / lastSync…    unsigned hints that can only ever make the gate STRICTER (§4.1).
+//   blocked / lastSync…    unsigned hints, for display: the document they answered for was
+//                          deleted when they were set, so no verdict depends on them (§4.1).
 //
 // Activation itself does not call `sync()` directly. It stores the token and RAISES AN EVENT;
 // the facade wires that to `core.sync()`. The pre-suite client called refresh inline, which
@@ -92,16 +95,17 @@ export class LicenseClient {
   /** How this install became activated, or null. §7: a token supersedes a bundle. */
   activation(): ActivationSource | null {
     if (this.tokens.current !== null) return "token";
-    // A bundle activates ONLY if its licence document actually verified — a config-only
-    // bundle imports settings and grants nothing.
-    if (this.cache.state.importedBundle && this.cache.state.license)
+    // A bundle activates ONLY when the cached bundle re-verified on the reload profile and its
+    // licence document is the cached one, byte for byte (WIRE-CONTRACT-V4 §4.1, §7) — a
+    // config-only bundle imports settings and grants nothing.
+    if (this.cache.state.bundle?.activates && this.cache.state.license)
       return "bundle";
     return null;
   }
 
   status(now = nowSec()): LicenseState {
     return licenseState({
-      licenseServiceEnabled: this.ctx.enabled("license"),
+      licenseServiceEnabled: this.ctx.licenseGateEnabled(),
       activation: this.activation(),
       doc: this.cache.state.license?.doc ?? null,
       now,

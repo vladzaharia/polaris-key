@@ -1,0 +1,18 @@
+{
+  "id": "admin.platform-activity-event",
+  "title": "Platform: Activity, one event",
+  "area": "admin",
+  "surface": "dialog",
+  "packages": ["ST-45", "ST-09"],
+  "uxRows": [],
+  "summary": "The Platform → Activity page with one event open in the detail drawer: Session length changed from 30 days to 14 days, with before and after, who, when to the second, where it lives, when it applies and one way to the setting.",
+  "compare": [
+    "The drawer opens from the row (the row stays selected under the scrim): title says what changed, then Before, After (the new value in strong), Who, When with the zone, Where.",
+    "One consequence row, Applies: at each person's next sign-in; one action, Open the setting, outlined; no destructive action from Activity.",
+    "Drawer head: a 3px Platform violet rule and the head band, no glyph (B4); phone: a bottom sheet with the action pinned.",
+    "Before/after renders values the way their setting does (durations, roles, ids in mono).",
+    "Round 2 (UX review): The selected row under the drawer is an ink bar and wash, never the accent (lead answer 2)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -918,7 +918,7 @@ async function seedOidc(db: Db): Promise<void> {
     "https://idp.example",
     "client-id",
     null,
-    null,
+    JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
     "{}",
   );
 }
@@ -980,33 +980,17 @@ describe("R10-05 /<p>/auth/* is unauthenticated, unrate-limited and writes durab
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () => {
-  it("a multi-megabyte unsigned body is fully read + HMAC'd before the 401", async () => {
+  it("an oversize unsigned body is refused at the cap (413), before any HMAC", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), []);
     env.GITHUB_WEBHOOK_SECRET = "s3cret";
-
-    const MB = 4;
-    const body = "A".repeat(MB * 1024 * 1024);
-    let consumed = 0;
     const req = new Request("https://k/webhooks/github", {
       method: "POST",
-      body,
+      body: "A".repeat(6 * 1024 * 1024),
       headers: { "x-github-event": "push" },
     }) as unknown as Request;
-    // Wrap arrayBuffer so we can observe the full read the handler performs.
-    const orig = req.arrayBuffer.bind(req);
-    (
-      req as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
-    ).arrayBuffer = async () => {
-      const buf = await orig();
-      consumed = buf.byteLength;
-      return buf;
-    };
-
     const res = await handleGithubWebhook(req, env, db, NOW);
-    expect(res.status).toBe(401);
-    // The whole body was resident in isolate memory before any auth decision.
-    expect(consumed).toBe(MB * 1024 * 1024);
+    expect(res.status).toBe(413);
   });
 
   it("there is no Content-Length precheck on the webhook (unlike /devices/report)", async () => {
@@ -1104,13 +1088,16 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     const token = await activate(env, db, product, key, "dev-1");
 
     const big = "U".repeat(16 * 1024);
+    // Still 16 KiB, but a parseable version: the Worker refuses an unparseable version under the
+    // product's bounded compat window, and this case is about what reaches the write.
+    const bigVersion = `1.0.0+${big}`.slice(0, 16 * 1024);
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "user-agent": big,
         "x-pkey-platform": big,
         "x-pkey-arch": big,
-        "x-pkey-version": big,
+        "x-pkey-version": bigVersion,
         "x-pkey-sdk": big,
         "x-pkey-sdk-version": big,
       }),
@@ -1122,13 +1109,13 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     expect(res.status).toBe(200);
 
     const row = await getDevice(db, "djdl", "dev-1");
-    // Six columns × 16 KiB, versus the 128-char cap the /devices/report path applies.
-    expect(row?.ua?.length).toBe(16 * 1024);
-    expect(row?.platform?.length).toBe(16 * 1024);
-    expect(row?.arch?.length).toBe(16 * 1024);
-    expect(row?.app_version?.length).toBe(16 * 1024);
-    expect(row?.sdk_name?.length).toBe(16 * 1024);
-    expect(row?.sdk_version?.length).toBe(16 * 1024);
+    // Every client-supplied column is now capped at 128 characters.
+    expect(row?.ua?.length).toBeLessThanOrEqual(128);
+    expect(row?.platform?.length).toBeLessThanOrEqual(128);
+    expect(row?.arch?.length).toBeLessThanOrEqual(128);
+    expect(row?.app_version?.length).toBeLessThanOrEqual(128);
+    expect(row?.sdk_name?.length).toBeLessThanOrEqual(128);
+    expect(row?.sdk_version?.length).toBeLessThanOrEqual(128);
   });
 
   it("/activate has the same unbounded write, gated only by 30/min/IP", async () => {
@@ -1139,7 +1126,9 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     const { key } = await seedLicenseWithKey(db, "djdl");
     const big = "A".repeat(8 * 1024);
     await activate(env, db, product, key, "dev-big", { "user-agent": big });
-    expect((await getDevice(db, "djdl", "dev-big"))?.ua?.length).toBe(8 * 1024);
+    expect(
+      (await getDevice(db, "djdl", "dev-big"))?.ua?.length,
+    ).toBeLessThanOrEqual(128);
   });
 });
 
@@ -1203,8 +1192,8 @@ describe("R10-10 GET /<p>/{license,config}/document: no rate limit, one D1 write
       );
       expect(res.status).toBe(200);
     }
-    // ≥1 write per poll (upsertDevice) — unmetered, and D1 is shared by ALL products.
-    expect(counted.writes).toBeGreaterThanOrEqual(1);
+    // An unchanged, freshly-stamped device row is no longer rewritten per poll.
+    expect(counted.writes).toBe(0);
     expect(counted.reads).toBeGreaterThanOrEqual(5);
     // Recorded for the finding write-up; not an assertion target.
     console.log(

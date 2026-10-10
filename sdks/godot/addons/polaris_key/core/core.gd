@@ -180,6 +180,7 @@ func start() -> PKeyResult:
 	device_id = store.get_device_id()
 	if device_id == "":
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The store has no device id.", last_store_error)
+	device_id = await PKeyDeviceBinding.bind(store, product, device_id)
 	tokens.load_token()
 	cache = PKeyCache.new(store, trust, clock, product, device_id)
 	cache.platform = update_platform()
@@ -217,6 +218,22 @@ func capability_engine() -> PKeyCaps:
 
 func enabled(slug: String) -> bool:
 	return PKeyClaims.is_true(services().get(slug, {}).get("enabled", false))
+
+
+## Whether the licence GATE runs: the build's own declaration (`expected_services`, default
+## licence and config) OR a discovery document loaded this session that says licence is enabled.
+## Discovery is unsigned, so it may switch the gate on but never off: a forged
+## `services.license.enabled: false` cannot turn a licensed product into `not-applicable`. A
+## product without licensing says so with `expected_services` lacking `license`. Which sub-clients
+## exist still follows discovery (`enabled`).
+func license_gate_enabled() -> bool:
+	var built: bool
+	if _expected_services != null:
+		built = _expected_services.has("license")
+	else:
+		built = PKeyClaims.is_true(PKeyDiscovery.default_services().get("license", {}).get("enabled", false))
+	var discovered: bool = _discovered_services != null and PKeyClaims.is_true(_discovered_services.get("license", {}).get("enabled", false))
+	return built or discovered
 
 
 ## null when `slug` is enabled, else a `service-unavailable` failure for the caller to return.
@@ -362,18 +379,42 @@ func get_document(path: String, token: String, etag: String) -> Dictionary:
 	return {"kind": "error", "status": status, "message": body.get_string_from_utf8().left(200)}
 
 
-## Fetch and accept the signed trust manifest (against the pins only). Returns the compact JWS
-## to persist, or "" when nothing acceptable arrived (the old set stays). A coroutine.
+## Fetch and accept the signed trust manifest (against the usable pins only). Returns the compact
+## JWS to persist, or "" when nothing acceptable arrived (the old set stays). When the default
+## manifest is refused and its signer is not a usable pin (a rotation, or a revoked active key),
+## it asks for the same manifest signed by each pin it holds (`?signer=<kid>`, ascending kid byte
+## order, at most MAX_TRUST_SIGNER_ATTEMPTS requests) and keeps the first it accepts (§2.3). A
+## coroutine.
 func refresh_trust() -> String:
-	var r := await transport.request("GET", url(".well-known/polaris-trust.jws"), {"Accept": "application/jose"})
-	if not r.ok or r.detail["status"] != 200:
+	var first = await _fetch_trust_manifest("")
+	if first == null:
 		return ""
-	var jws: String = (r.detail["body"] as PackedByteArray).get_string_from_utf8().strip_edges()
-	var issued := await trust.accept_network(jws, product, clock.system_now(), true)
+	var jws: String = first
+	var issued := await trust.accept_network(jws, product, clock.now(), true)
+	if issued < 0:
+		for signer in PKeyTrust.signer_order(trust.usable(), PKeyTrust.jws_header_kid(first)):
+			var retry = await _fetch_trust_manifest(signer)
+			if retry == null:
+				continue
+			issued = await trust.accept_network(retry, product, clock.now(), true)
+			if issued >= 0:
+				jws = retry
+				break
 	if issued < 0:
 		return ""
 	clock.raise(issued)
 	return jws
+
+
+## One `GET /<p>/.well-known/polaris-trust.jws[?signer=<kid>]`: the body on a 200, else null.
+func _fetch_trust_manifest(signer: String) -> Variant:
+	var path := ".well-known/polaris-trust.jws"
+	if signer != "":
+		path += "?signer=%s" % signer.uri_encode()
+	var r := await transport.request("GET", url(path), {"Accept": "application/jose"})
+	if not r.ok or r.detail["status"] != 200:
+		return null
+	return (r.detail["body"] as PackedByteArray).get_string_from_utf8().strip_edges()
 
 
 ## The build stamp, or the fallback for a build without one (PKeyBuildStamp.fallback: this
@@ -469,31 +510,42 @@ func import_bundle(text: String, now := -1.0) -> PKeyResult:
 	if not started:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call start() before import_bundle().")
 	var at := now if now >= 0 else clock.system_now()
-	var r := await PKeyBundle.inspect(text.strip_edges(), {
-		"pinned": trust.pinned(), "product": product, "device_id": device_id, "now": at,
+	var jws := text.strip_edges()
+	# A byte-identical re-import of the bundle this install holds (and that re-verified): success,
+	# nothing written.
+	if cache.bundle != null and cache.bundle_jws() == jws:
+		return PKeyResult.success({"bundle_id": cache.bundle["bundleId"], "imported": (cache.bundle["docs"] as Array).duplicate()})
+	var r := await PKeyBundle.inspect(jws, {
+		"pinned": trust.pinned(), "tombstones": trust.revoked_pins(), "product": product,
+		"device_id": device_id, "now": at, "profile": "import",
+		# §7 step 4: each inner document strictly newer than the verified cached one of its type.
+		"floors": {
+			"license": cache.license["doc"]["issuedAt"] if cache.license != null else null,
+			"config": cache.config["doc"]["issuedAt"] if cache.config != null else null,
+		},
 	})
 	if not r["ok"]:
 		return PKeyResult.failure(StringName(r["reason"]), _bundle_message(r["reason"]), {"reason": r["reason"]})
 	var b: Dictionary = r["bundle"]
+	# The inner manifest's tombstones (if any) join the evidence the record is written with.
+	trust.note_revocations(b["trust_jws"], b["revoked_pins"])
 	var docs := {}
 	var imported: Array = []
 	for slice in ["license", "config"]:
 		if b["docs"].has(slice):
 			docs[slice] = b["docs"][slice]["jws"]
 			imported.append(slice)
+	# §7 step 5: keep the held manifest when it is newer than the bundle's: an old bundle cannot
+	# re-teach a key the device has seen revoked. The update slices and the pin evidence are
+	# carried by `cache.replace`. No ETags, no token.
+	var held = trust.manifest()
+	var keep_held: bool = held != null and float(held["issuedAt"]) > float(b["trust_issued_at"]) and cache.trust_jws() != ""
 	var record := {
 		"v": PKeyCache.VERSION,
-		"trustJws": b["trust_jws"],
+		"trustJws": cache.trust_jws() if keep_held else b["trust_jws"],
 		"docs": docs,
-		"importedBundle": {"bundleId": b["bundle_id"], "importedAt": int(at)},
+		"bundle": jws,
 	}
-	# The committed feeds and records are not the bundle's to drop: keeping them keeps each
-	# channel's `seq` floor. The reload below re-verifies them against the bundle's trust set.
-	var held = cache.record()
-	if held is Dictionary:
-		for slice in PKeyCache.UPDATE_SLICES:
-			if held.has(slice):
-				record[slice] = held[slice]
 	if not cache.replace(record):
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The verified bundle could not be written.", last_store_error)
 	# Re-run the normal load over what was written: the import reaches exactly the state a
@@ -513,12 +565,12 @@ static func _bundle_message(reason: String) -> String:
 	return "A document inside the bundle failed verification; nothing was imported."
 
 
-## "token" when a device token is held, else "bundle" when an imported bundle left a verified
-## licence document, else "".
+## "token" when a device token is held, else "bundle" when the cached bundle re-verified on the
+## reload profile and carried the cached licence document byte for byte, else "".
 func activation() -> String:
 	if tokens != null and tokens.has_token():
 		return "token"
-	if cache != null and cache.imported_bundle != null and cache.license != null:
+	if cache != null and cache.bundle != null and cache.bundle["activates"] and cache.license != null:
 		return "bundle"
 	return ""
 
@@ -526,7 +578,7 @@ func activation() -> String:
 ## The licence gate's view now (PKeyGate.license_state).
 func license_state() -> Dictionary:
 	return PKeyGate.license_state({
-		"license_service_enabled": enabled("license"),
+		"license_service_enabled": license_gate_enabled(),
 		"activation": activation(),
 		"doc": cache.license["doc"] if cache != null and cache.license != null else null,
 		"now": clock.system_now(),

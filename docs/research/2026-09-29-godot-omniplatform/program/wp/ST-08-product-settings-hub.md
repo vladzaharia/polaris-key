@@ -24,11 +24,11 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 > The product hub hosts Services (ST-38), Presentation, Keys & secrets and Members (ST-31) so Core nav shrinks; migrates the bespoke manifest-owned forms (FeedPage, Core Settings, EnrollmentPage, Identity Portal, FeedSettings) onto the engine; Distribution -> Access is rebuilt as the product Access page by P2-10, not here; drops the Admin group row.
 
-- Title: was "Console product settings hub (`#/p/<slug>/settings/<area>`): All settings table, web-origins editor, legacy redirects, phone layout".
+- Title: was "Console product settings hub (`#/p/<slug>/settings/<area>`): All settings table, web-origins editor, Page moved entries, phone layout".
 
 ## Goal
 
-Each product has one settings hub at `#/p/<slug>/settings/<area>` with an All settings table, a web-origins editor, redirects from the old pages and a phone layout.
+Each product has one settings hub at `#/p/<slug>/settings/<area>` with an All settings table, a web-origins editor, Page moved entries for the old pages and a phone layout.
 
 ## Why
 
@@ -45,7 +45,7 @@ Product settings are spread over service pages today ([S-18 §2.6](../../notes/S
 
 **In:**
 
-- Hub routes and areas; All settings table; web-origins editor; legacy redirects with a "Moved to Settings" banner for one release.
+- Hub routes and areas; All settings table; web-origins editor; Page moved entries for the old pages from the route ledger (ST-49), no redirects or aliases.
 
 **Out** (and where it belongs instead):
 
@@ -67,16 +67,59 @@ ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.
 
 - U-11a's Cloud Sync section and I-12's sign-in settings land in the hub, so ST-08 precedes them.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Routes: `#/p/<slug>/settings/{features,presentation,keys,members}` (four tabs). The old pages (services, presentation, keys, license/settings, license/enrollment, identity/portal, update/feed settings) get Page moved entries from the route ledger (ST-49), never a redirect or an alias (B16, ADMIN §2.5). This replaces 'legacy redirects with a Moved to Settings banner for one release' everywhere in this brief. (admin-4-10)
+- Keys & secrets tab: signing keys, secrets, CI publishing, content keys read-only ('CI delegates and revokes these'). Outlet credentials leave for Platform → Connections (store team keys) and the channel page's Setup tab. Mockups to build against: products.settings-presentation (with a live light and dark preview) and products.settings-keys (by exposure). (admin-4-10)
+- [ ] Old deep links open a Page moved page naming the new home (e2e), with no redirect. (admin-4-10)
+
 ## Steps
 
-1. Routes and redirects.
+1. Routes and Page moved entries.
 2. Areas and table.
 3. e2e and CSP parity.
 
 ## Acceptance criteria
 
 - [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 5 lower, and `settings-coverage.test.ts` passes.
-- [ ] Old deep links redirect (e2e).
+- [ ] Old deep links open a Page moved page naming the new home, with no redirect (e2e).
 - [ ] Console CSP parity passes.
 - [ ] The hub renders at phone width.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

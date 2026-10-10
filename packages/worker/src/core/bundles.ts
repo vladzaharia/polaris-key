@@ -73,6 +73,7 @@ import { docProfile, resolveEntitlements } from "./authz.js";
 import { loadProduct } from "./products.js";
 import { isStrictJsonError, signDoc } from "./signing.js";
 import { signTrustManifest } from "./trust.js";
+import { loadTrustSigner } from "./trustSigners.js";
 import {
   buildLicenseDoc,
   buildConfigDoc,
@@ -220,7 +221,22 @@ export async function handleBundleMint(
   if (body.licenseId !== undefined && typeof body.licenseId !== "string")
     fields.push("licenseId");
 
+  if (body.signerKid !== undefined && typeof body.signerKid !== "string")
+    fields.push("signerKid");
+
   if (fields.length > 0) return badRequest("invalid bundle request", fields);
+
+  // Sign the whole bundle with another live key, for a device whose app pins only
+  // that one. A revoked or unknown kid is refused, never silently replaced by the active key.
+  let signerKid = product.signingKid;
+  let signerPem = product.signingKeyPem;
+  if (typeof body.signerKid === "string" && body.signerKid !== signerKid) {
+    const signer = await loadTrustSigner(env, db, slug, body.signerKid);
+    if (!signer)
+      return badRequest("no live signing key with that kid", ["signerKid"]);
+    signerKid = signer.kid;
+    signerPem = signer.pem;
+  }
 
   const licenseEnabled = product.services.license.enabled;
   const configEnabled = product.services.config.enabled;
@@ -289,8 +305,9 @@ export async function handleBundleMint(
       );
       // No build gate. `/license/document` gates on the CLIENT's version/channel headers, and
       // there is no client here — the machine this is for has never spoken to us. Minting is an
-      // operator decision; the window still rides along as enforced entitlements, so the gate
-      // that matters (the client's) still applies to whatever build eventually imports this.
+      // operator decision. The window still rides along as enforced entitlements, but no SDK
+      // evaluates it locally yet (the server is the only enforcement point), so an install that
+      // imports this and never goes online is not held to it until client-side evaluation lands.
       const doc = buildLicenseDoc({
         aud: slug,
         deviceId,
@@ -303,8 +320,8 @@ export async function handleBundleMint(
       });
       docs.license = await signDoc(
         doc,
-        product.signingKeyPem,
-        product.signingKid,
+        signerPem,
+        signerKid,
         "pkey-license+jws",
       );
     }
@@ -338,12 +355,7 @@ export async function handleBundleMint(
         schemaVersion: product.schemaVersion,
         payload,
       });
-      docs.config = await signDoc(
-        doc,
-        product.signingKeyPem,
-        product.signingKid,
-        "pkey-config+jws",
-      );
+      docs.config = await signDoc(doc, signerPem, signerKid, "pkey-config+jws");
     }
 
     typ = "pkey-trust+jws";
@@ -356,6 +368,7 @@ export async function handleBundleMint(
       product,
       now,
       new URL(req.url).origin,
+      { kid: signerKid, pem: signerPem },
     );
     typ = "pkey-bundle+jws";
     const bundle: BundleDoc = {
@@ -367,12 +380,7 @@ export async function handleBundleMint(
       docs,
       trust,
     };
-    jws = await signDoc(
-      bundle,
-      product.signingKeyPem,
-      product.signingKid,
-      "pkey-bundle+jws",
-    );
+    jws = await signDoc(bundle, signerPem, signerKid, "pkey-bundle+jws");
   } catch (e) {
     if (!isStrictJsonError(e)) throw e;
     return err(

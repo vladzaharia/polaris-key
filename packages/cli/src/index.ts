@@ -594,7 +594,7 @@ async function runCommand(
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
-        return await cmdSdk(parsed, cwd, stdout, ci.fetchImpl);
+        return await cmdSdk(parsed, cwd, stdout, stderr, ci.fetchImpl);
       case "mirror":
         return await cmdMirror(parsed, cwd, stdout, ci.fetchImpl);
       case "auth":
@@ -1188,6 +1188,7 @@ async function cmdSdk(
   parsed: ParsedArgs,
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
   fetchImpl?: typeof fetch,
 ): Promise<number> {
   const lang = flagString(parsed, "lang");
@@ -1243,6 +1244,11 @@ async function cmdSdk(
       : {}),
     ...(fetchImpl ? { fetchImpl } : {}),
   });
+  // With one pinned key there is no remote recovery from its compromise.
+  if (Object.keys(facts.pinnedKeys).length === 1)
+    stderr.write(
+      "warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.\n",
+    );
   const out = flagString(parsed, "out");
   const pkg = flagString(parsed, "package");
   const content = renderSdkConfig(lang, facts, {

@@ -33,7 +33,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group" data-service="commerce">
       <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
@@ -51,6 +51,8 @@
          the rail holds two cards (Needs attention and the one commerce setting). -->
     <div class="page columns">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="commerce" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Commerce</a></nav>
+<div class="page-icon mast" data-service="commerce" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Storefronts</h1></div>
         <div class="page-actions">
           <span class="freshness">Updated 2 min ago</span>
@@ -96,7 +98,7 @@
           <div class="attn-row">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject"><i class="ic ic-google-play"></i>Google Play</span>
-            <span class="attn-text">The service account key expires Oct 16. Purchase checks stop then.</span>
+            <div class="attn-text">The service account key expires Oct 16.</div>
             <a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a>
           </div>
         </div>
@@ -135,7 +137,7 @@
             </tr>
             <tr>
               <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-steam"></i></span>
-                <div><div class="cell-title"><a href="#">Steam</a></div><div class="cell-sub truncate">Ownership re-checked for 14 days</div>
+                <div><div class="cell-title"><a href="#">Steam</a></div>
                   <div class="meta show-narrow">391 purchases · 6 refunds</div></div></div></td>
               <td><div class="state-line"><span class="status"><i class="ic ic-circle-check"></i>Live</span><span class="meta">3 offers</span></div></td>
               <td class="num hide-narrow">391</td>
@@ -153,7 +155,7 @@
             <tr>
               <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-itch"></i></span>
                 <div><div class="cell-title"><a href="#">itch.io</a></div><div class="cell-sub truncate">Purchases don’t add to licenses yet</div></div></div></td>
-              <td><div class="state-line"><span class="status info"><i class="ic ic-circle-dot"></i>Ready, not checked</span></div></td>
+              <td><div class="state-line"><span class="status info"><i class="ic ic-circle-dot"></i>Ready</span></div></td>
               <td class="num hide-narrow"><span class="na">—</span></td>
               <td class="num hide-narrow"><span class="na">—</span></td>
               <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
@@ -175,7 +177,8 @@
         <div class="setting-row">
           <div>
             <div class="setting-title" id="test-title">Accept test purchases</div>
-            <div class="setting-desc">Sandbox and test-track purchases add to licenses like real ones. Leave it off on a live game.</div>
+            <div class="setting-desc">Sandbox and test-track purchases add to licenses like real ones</div>
+            <div class="setting-desc">Leave it off on a live game</div>
           </div>
           <span class="switch" role="switch" aria-checked="false" aria-labelledby="test-title"></span>
         </div>

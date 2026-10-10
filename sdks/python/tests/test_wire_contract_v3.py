@@ -116,7 +116,7 @@ def _verify_lic(jws: str, trust=None, *, device_id: str = "dev-1", **kw: Any):
         expected_aud=PRODUCT,
         device_id=device_id,
         now=NOW,
-        **kw,
+        **{"last_accepted_issued_at": None, **kw},
     )
 
 
@@ -127,7 +127,7 @@ def _verify_cfg(jws: str, trust=None, *, device_id: str = "dev-1", **kw: Any):
         expected_aud=PRODUCT,
         device_id=device_id,
         now=NOW,
-        **kw,
+        **{"last_accepted_issued_at": None, **kw},
     )
 
 
@@ -148,9 +148,9 @@ def test_r2_05_signature_segment_junk_is_rejected_end_to_end() -> None:
     so a 3- or 4-character injection kept the count consistent. All of them now fail,
     matching Node (``atob`` throws) and Swift (``Data(base64Encoded:)`` returns nil)."""
     jws = sign_jws({"hello": "world"}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(jws, TRUST, typ=TYP_LICENSE, require_typ=True) is not None
+    assert verify_jws(jws, TRUST, typ=TYP_LICENSE) is not None
     for junk in ("!!", "@", "***", "\n \t", "  ", "===="):
-        assert verify_jws(jws + junk, TRUST, typ=TYP_LICENSE, require_typ=True) is None
+        assert verify_jws(jws + junk, TRUST, typ=TYP_LICENSE) is None
 
 
 def test_r2_05_standard_alphabet_and_padding_are_not_accepted() -> None:
@@ -167,7 +167,7 @@ def test_r2_05_standard_alphabet_and_padding_are_not_accepted() -> None:
 def test_r2_05_trust_set_key_with_junk_is_rejected() -> None:
     """``b64url_decode`` also backs trust-set key import, so junk there fails too."""
     jws = sign_jws({"hello": "world"}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(jws, {KID: PUBKEY_RAW + "***"}, require_typ=True) is None
+    assert verify_jws(jws, {KID: PUBKEY_RAW + "***"}, typ=TYP_LICENSE) is None
 
 
 # ════════════════════════════════════════════════════════════════════════════════════
@@ -186,7 +186,7 @@ def test_r2_07_non_ascii_payload_matches_the_node_signer_bytes() -> None:
     enc_payload = jws.split(".")[1]
     assert enc_payload == "eyJuIjoiw4VuZ3N0csO2bSDwn5K7In0"
     assert b64url_decode(enc_payload).decode("utf-8") == '{"n":"Ångström 💻"}'
-    v = verify_jws(jws, TRUST, typ=TYP_LICENSE, require_typ=True)
+    v = verify_jws(jws, TRUST, typ=TYP_LICENSE)
     assert v is not None and v.payload == payload
 
 
@@ -212,7 +212,7 @@ def test_r2_04_oversized_header_never_reaches_the_trust_set() -> None:
     )
     jws = b64url_encode_str(header) + ".e30." + "A" * 86
     trust = _RecordingTrust(TRUST)
-    assert verify_jws(jws, trust, typ=TYP_LICENSE, require_typ=True) is None
+    assert verify_jws(jws, trust, typ=TYP_LICENSE) is None
     assert trust.reads == [], "the kid must never be looked up for an oversized header"
     assert len(jws.split(".")[0]) > MAX_HEADER_B64
 
@@ -230,7 +230,6 @@ def test_r2_04_the_bundle_cap_does_not_widen_the_header_cap() -> None:
             jws,
             trust,
             typ=TYP_BUNDLE,
-            require_typ=True,
             max_payload_bytes=MAX_BUNDLE_BYTES,
         )
         is None
@@ -242,7 +241,7 @@ def test_r2_04_payload_at_cap_accepted_over_cap_rejected() -> None:
     at_cap = {"blob": "x" * (MAX_DOC_BYTES - len('{"blob":""}'))}
     assert len(json.dumps(at_cap, separators=(",", ":"))) == MAX_DOC_BYTES
     assert (
-        verify_jws(sign_jws(at_cap, PRIVATE_PEM, KID, TYP_LICENSE), TRUST, require_typ=True)
+        verify_jws(sign_jws(at_cap, PRIVATE_PEM, KID, TYP_LICENSE), TRUST, typ=TYP_LICENSE)
         is not None
     )
 
@@ -251,12 +250,12 @@ def test_r2_04_payload_at_cap_accepted_over_cap_rejected() -> None:
     just_over = {"blob": "x" * (MAX_DOC_BYTES - len('{"blob":""}') + 1)}
     over_jws = sign_jws(just_over, PRIVATE_PEM, KID, TYP_LICENSE)
     assert len(over_jws.split(".")[1]) <= MAX_PAYLOAD_B64
-    assert verify_jws(over_jws, TRUST, require_typ=True) is None
+    assert verify_jws(over_jws, TRUST, typ=TYP_LICENSE) is None
 
     # And a genuinely huge payload is rejected on the ENCODED length, pre-allocation.
     huge = sign_jws({"blob": "x" * (4 * 1024 * 1024)}, PRIVATE_PEM, KID, TYP_LICENSE)
     trust = _RecordingTrust(TRUST)
-    assert verify_jws(huge, trust, require_typ=True) is None
+    assert verify_jws(huge, trust, typ=TYP_LICENSE) is None
     assert trust.reads == []
 
 
@@ -267,15 +266,15 @@ def test_r2_04_the_raised_bundle_cap_is_raise_only() -> None:
     payload = {"blob": "x" * (MAX_DOC_BYTES + 1024)}
     jws = sign_jws(payload, PRIVATE_PEM, KID, TYP_BUNDLE)
     # Default cap: refused.
-    assert verify_jws(jws, TRUST, require_typ=True) is None
+    assert verify_jws(jws, TRUST, typ=TYP_BUNDLE) is None
     # Raised: accepted.
     assert (
-        verify_jws(jws, TRUST, require_typ=True, max_payload_bytes=MAX_BUNDLE_BYTES)
+        verify_jws(jws, TRUST, max_payload_bytes=MAX_BUNDLE_BYTES, typ=TYP_BUNDLE)
         is not None
     )
     # A downward "cap" is ignored — a small document still verifies.
     small = sign_jws({"a": 1}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(small, TRUST, require_typ=True, max_payload_bytes=8) is not None
+    assert verify_jws(small, TRUST, max_payload_bytes=8, typ=TYP_LICENSE) is not None
 
 
 def test_r2_04_payload_is_not_parsed_before_the_signature_is_verified(monkeypatch) -> None:
@@ -294,12 +293,12 @@ def test_r2_04_payload_is_not_parsed_before_the_signature_is_verified(monkeypatc
     # Flip one signature character so verification fails but everything before it passes.
     tampered = head + "." + payload + "." + ("B" if sig[0] != "B" else "C") + sig[1:]
 
-    assert verify_jws(tampered, TRUST, require_typ=True) is None
+    assert verify_jws(tampered, TRUST, typ=TYP_LICENSE) is None
     assert len(calls) == 1, "only the header may be parsed when the signature is bad"
     assert calls[0] < 200, "the parsed bytes must be the small header, not the payload"
 
     calls.clear()
-    assert verify_jws(jws, TRUST, require_typ=True) is not None
+    assert verify_jws(jws, TRUST, typ=TYP_LICENSE) is not None
     assert len(calls) == 2, "a valid JWS parses header then payload"
 
 
@@ -319,7 +318,7 @@ def test_r2_06_duplicate_header_keys_are_rejected(header_json: str) -> None:
     """TS/Python were last-wins, Swift first-wins — the downgrade guard disagreed."""
     jws = b64url_encode_str(header_json) + ".e30." + "A" * 86
     trust = _RecordingTrust(TRUST)
-    assert verify_jws(jws, trust, require_typ=True) is None
+    assert verify_jws(jws, trust, typ=TYP_LICENSE) is None
     assert trust.reads == [], "a duplicate-key header must fail before key selection"
 
 
@@ -333,7 +332,7 @@ def test_r2_06_duplicate_payload_keys_are_rejected() -> None:
     key = load_pem_private_key(PRIVATE_PEM.encode(), password=None)
     sig = b64url_encode(key.sign((header + "." + payload).encode("ascii")))
     # Correctly signed — the ONLY reason to reject is the duplicate member.
-    assert verify_jws(header + "." + payload + "." + sig, TRUST, require_typ=True) is None
+    assert verify_jws(header + "." + payload + "." + sig, TRUST, typ=TYP_LICENSE) is None
 
 
 # ════════════════════════════════════════════════════════════════════════════════════
@@ -341,8 +340,8 @@ def test_r2_06_duplicate_payload_keys_are_rejected() -> None:
 # ════════════════════════════════════════════════════════════════════════════════════
 def test_r2_10_trust_manifest_cannot_be_replayed_as_a_license_doc() -> None:
     manifest_jws = sign_manifest([])
-    assert verify_jws(manifest_jws, TRUST, typ=TYP_LICENSE, require_typ=True) is None
-    assert verify_jws(manifest_jws, TRUST, typ=TYP_TRUST, require_typ=True) is not None
+    assert verify_jws(manifest_jws, TRUST, typ=TYP_LICENSE) is None
+    assert verify_jws(manifest_jws, TRUST, typ=TYP_TRUST) is not None
 
 
 def test_r2_10_the_two_documents_cannot_be_replayed_as_each_other() -> None:
@@ -365,8 +364,8 @@ def test_r2_10_absent_typ_is_now_rejected_and_a_wrong_one_still_is() -> None:
     guarantee. Its second half — "never accept a MISMATCHED one" — carries over verbatim.
     """
     untyped = sign_jws({"hello": "world"}, PRIVATE_PEM, KID)
-    assert verify_jws(untyped, TRUST, typ=TYP_LICENSE, require_typ=True) is None
-    assert verify_jws(untyped, TRUST, require_typ=True) is None
+    assert verify_jws(untyped, TRUST, typ=TYP_LICENSE) is None
+    assert verify_jws(untyped, TRUST, typ=TYP_TRUST) is None
     # Every shipping verifier in this SDK demands one, so an untyped document is not a
     # document at any of them.
     assert _verify_lic(sign_jws(license_payload("dev-1"), PRIVATE_PEM, KID)) is None
@@ -382,8 +381,8 @@ def test_r2_10_absent_typ_is_now_rejected_and_a_wrong_one_still_is() -> None:
     )
     # A mismatched typ is still refused, as in v2.
     typed = sign_jws({"hello": "world"}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(typed, TRUST, typ=TYP_LICENSE, require_typ=True) is not None
-    assert verify_jws(typed, TRUST, typ=TYP_TRUST, require_typ=True) is None
+    assert verify_jws(typed, TRUST, typ=TYP_LICENSE) is not None
+    assert verify_jws(typed, TRUST, typ=TYP_TRUST) is None
 
 
 def test_r2_10_license_doc_replayed_as_a_manifest_does_not_raise() -> None:
@@ -444,7 +443,7 @@ def test_c3_revoked_key_is_refused_and_pruned() -> None:
     assert c._trust.refresh() is not None
     assert "rot" not in c._trust.effective, "a revoked key must never enter the trust set"
     doc = sign_license("dev-1", pem=ROTATED_PEM, kid="rot")
-    assert verify_jws(doc, c._trust.effective, require_typ=True) is None
+    assert verify_jws(doc, c._trust.effective, typ=TYP_LICENSE) is None
     c.close()
 
 
@@ -457,17 +456,19 @@ def test_c3_usable_statuses_are_installed(status: str) -> None:
     c.close()
 
 
-def test_c3_only_revoked_is_excluded_by_status() -> None:
-    """§1 rule 2: the set is ``pinned ∪ {manifest keys whose status != revoked}``.
+def test_c3_only_live_statuses_are_kept() -> None:
+    """§1/§3.2: the set is ``usable pins ∪ {manifest keys whose status is exactly active,
+    staged or retired}``.
 
-    Exactly ``revoked``, not an allow-list — a future status must not silently drop a key
-    that the server still considers usable. A non-EdDSA/OKP/Ed25519 entry is skipped on
-    its algorithm, independently of status, and must never be FATAL: a future-alg key in
-    the manifest cannot be allowed to brick current verifiers.
+    An allow-list: a status outside it (here ``quarantined``) skips the entry, and is never
+    fatal. A non-EdDSA/OKP/Ed25519 entry is skipped on its algorithm, independently of
+    status, and must never be FATAL: a future-alg key in the manifest cannot be allowed to
+    brick current verifiers.
     """
     m = sign_manifest(
         [
-            key_entry("rot", ROTATED_PUB, "quarantined"),
+            key_entry("rot", ROTATED_PUB, "staged"),
+            key_entry("quar", ROTATED_PUB, "quarantined"),
             key_entry("gone", ATTACKER_PUB, "revoked"),
             {**key_entry("future", ATTACKER_PUB), "alg": "ML-DSA-65"},
         ]
@@ -475,6 +476,7 @@ def test_c3_only_revoked_is_excluded_by_status() -> None:
     c = make_client(routes(trust_jws=m))
     assert c._trust.refresh() is not None
     assert c._trust.effective.get("rot") == ROTATED_PUB
+    assert "quar" not in c._trust.effective, "an unknown status is skipped, not trusted"
     assert "gone" not in c._trust.effective
     assert "future" not in c._trust.effective, "unknown alg is SKIPPED, not fatal"
     assert KID in c._trust.effective, "and the rest of the manifest still installed"
@@ -1578,24 +1580,27 @@ def test_v3_bundle_cap_and_missing_typ_are_step_1_refusals() -> None:
     at step 1 rather than becoming a document that could be replayed elsewhere."""
     untyped = sign_bundle("dev-1", typ=None)
     result = inspect_bundle(
-        untyped, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW
+        untyped, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW,
+        floors={"license": None, "config": None},
     )
     assert result.ok is False and result.reason == BUNDLE_JWS_REJECTED
 
     oversized = sign_bundle("dev-1", padding="x" * (MAX_BUNDLE_BYTES + 1024))
     result = inspect_bundle(
-        oversized, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW
+        oversized, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW,
+        floors={"license": None, "config": None},
     )
     assert result.ok is False and result.reason == BUNDLE_JWS_REJECTED
 
 
 def test_v3_a_vacuous_bundle_is_refused() -> None:
     """§7: a bundle carrying NEITHER document can grant nothing and configure nothing, so
-    importing it would write an ``importedBundle`` marker with no content behind it — an
+    importing it would write a ``bundle`` slice with no content behind it — an
     install that LOOKS provisioned and is not."""
     empty = sign_bundle("dev-1", docs={})
     result = inspect_bundle(
-        empty, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW
+        empty, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW,
+        floors={"license": None, "config": None},
     )
     assert result.ok is False and result.reason == BUNDLE_CLAIMS_REJECTED
 

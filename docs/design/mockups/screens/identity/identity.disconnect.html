@@ -44,17 +44,18 @@
         <!-- Connected apps (I-34): how each app signs in, what it gets, Change (re-runs consent), Disconnect. -->
         <section class="card" aria-labelledby="h-apps">
           <div class="card-head">
-            <div class="title"><h2 id="h-apps">Connected apps</h2><p>Each app gets its own id for you, so developers can’t match you across products.</p></div>
+            <div class="title"><h2 id="h-apps">Connected apps</h2></div>
           </div>
           <div class="card-rows">
             <div class="item-row top">
               <span class="logo sm" data-product="djdl"></span>
               <div class="item-text">
                 <div class="item-title">DJDL <small>Example Audio</small></div>
-                <div class="item-desc">Passkey · last used 2 h ago on Studio Mac mini</div>
+                <div class="item-desc">Passkey</div>
+                <div class="item-desc">Last used 2 h ago on Studio Mac mini</div>
               </div>
               <div class="item-more">
-                <div class="mk-cluster" aria-label="What DJDL gets">
+                <div role="group" class="mk-cluster" aria-label="What DJDL gets">
                   <span class="grant"><i class="ic ic-check"></i>Screen name</span>
                   <span class="grant"><i class="ic ic-check"></i>Picture</span>
                   <span class="grant"><i class="ic ic-check"></i>Email</span>
@@ -70,10 +71,11 @@
               <span class="logo sm" data-product="diceroll"></span>
               <div class="item-text">
                 <div class="item-title">Diceroll <small>Example Games</small></div>
-                <div class="item-desc">Google · last used yesterday on Mara’s Pixel 8, also on Steam Deck</div>
+                <div class="item-desc">Google</div>
+                <div class="item-desc">Last used yesterday on Mara’s Pixel 8</div>
               </div>
               <div class="item-more">
-                <div class="mk-cluster" aria-label="What Diceroll gets">
+                <div role="group" class="mk-cluster" aria-label="What Diceroll gets">
                   <span class="grant"><i class="ic ic-check"></i>Screen name</span>
                   <span class="grant"><i class="ic ic-check"></i>Cloud Sync</span>
                   <span class="grant no"><i class="ic ic-eye-off"></i>Not your picture</span>
@@ -90,7 +92,7 @@
 
         <section class="card" aria-labelledby="h-where">
           <div class="card-head">
-            <div class="title"><h2 id="h-where">Where you’re signed in</h2><p>Browsers signed in to this account.</p></div>
+            <div class="title"><h2 id="h-where">Where you’re signed in</h2></div>
           </div>
           <div class="card-rows">
             <div class="item-row">
@@ -132,14 +134,17 @@
       <div class="dialog-body">
         <p>Diceroll signs out on <strong>Mara’s Pixel 8</strong> and <strong>Steam Deck</strong> the next time it checks in, within an hour.</p>
         <ul class="bullets">
-          <li><strong>The game keeps playing on both</strong>; your license stays.</li>
-          <li><strong>Cloud Sync stops</strong> until you sign in again; saves stay.</li>
-          <li>Example Games keeps your screen name, nothing new.</li>
+          <li><strong>The game keeps playing</strong> on both.</li>
+          <li><strong>Your license</strong> stays.</li>
+          <li><strong>Cloud Sync stops</strong> until you sign in again.</li>
+          <li><strong>Your saves</strong> stay.</li>
+          <li>Example Games keeps your screen name.</li>
+          <li>Example Games gets nothing new.</li>
         </ul>
         <p class="type-small muted">Next time you sign in to Diceroll, it asks what to share again.</p>
       </div>
       <div class="dialog-foot safe-first">
-        <button class="btn outline">Keep Diceroll</button>
+        <button class="btn outline focus">Keep Diceroll</button>
         <button class="btn danger">Disconnect Diceroll</button>
       </div>
     </div>

@@ -34,7 +34,7 @@ import { errorResponse, notFound } from "../../../core/errors.js";
 import { appSecurityHeaders, sha256Hex } from "../../../core/platform.js";
 import { bytesHostname } from "../../../core/bytesHost.js";
 import { readCiJson, requireCiScope } from "../../../core/ciScope.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   renderAltStoreSource,
   renderFlathubChecker,
@@ -164,7 +164,11 @@ export async function handleFeedRoutes(
     !(await rateLimitOk(
       ctx.env,
       ctx.product.slug,
-      { bucket: "distributionFeed", id: clientIp(req), ...FEED_RATE_LIMIT },
+      {
+        bucket: "distributionFeed",
+        id: clientNetwork(req),
+        ...FEED_RATE_LIMIT,
+      },
       ctx.now,
     ))
   )

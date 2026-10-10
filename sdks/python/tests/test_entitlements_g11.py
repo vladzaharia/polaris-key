@@ -44,11 +44,11 @@ def test_revoked_gate_denies_every_flag() -> None:
     state["revoked"] = True
     c.sync(force=True)
     assert c.status().status == "revoked"
-    assert c.license.doc is not None  # the verified document survives…
-    assert c.license.is_entitled("polarisVpn") is False  # …but grants nothing (G11)
+    # The hard 401 removed the document it answered for, so nothing is left to grant.
+    assert c.license.doc is None
+    assert c.license.is_entitled("polarisVpn") is False
     assert c.license.entitlement_value("license.tier") is None
-    info = c.license.license_info()
-    assert info is not None and info.licenseId == "lic_v3"  # the summary still names it
+    assert c.license.license_info() is None
     c.close()
 
 

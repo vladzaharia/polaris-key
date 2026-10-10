@@ -359,7 +359,15 @@ paths:
         every client observes the new set before its cached one lapses. Body is a bare
         compact JWS (`application/jose`), not JSON; the decoded payload is
         `TrustManifestPayload`.
-      parameters: [{ $ref: "#/components/parameters/Product" }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: signer
+          in: query
+          required: false
+          description: >
+            Serve the same manifest signed by this key id instead of the active key. Honoured
+            for an active, staged or retired key; anything else gets the default manifest.
+          schema: { type: string }
       responses:
         "200":
           description: "Compact JWS, `application/jose`. `cache-control: public, max-age=300`."
@@ -7774,8 +7782,8 @@ paths:
         refused, and the attach is never committed for a mint that cannot succeed. A decision sent before the device was shown the
         identity, or an attach with nothing attachable, is answered with `confirm` again and
         changes nothing. A user-code holder cannot reach any of this: it needs the device code.
-        The flow's starter can, which is why the open R1-07 (no browser binding) also covers
-        this decision.
+        The flow's starter can, but the IdP callback is bound to the browser that confirmed
+        the flow, so a phished victim's sign-in never reaches this decision.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization

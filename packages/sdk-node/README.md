@@ -139,6 +139,8 @@ const client = await PolarisKeyClient.create({
   trust: { pinnedKeys },
   store: new SafeStorageStore("djdl", app.getPath("userData"), { safeStorage }),
 });
+// Without `allowSender` the bridge answers the top frame of the app's own origin only
+// (set `appOrigin` when the window loads a remote https page).
 exposePolarisBridge(client, {
   ipcMain,
   allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,

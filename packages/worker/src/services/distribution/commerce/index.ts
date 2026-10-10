@@ -36,7 +36,8 @@ import { bearer, parseJsonObject } from "../../../core/platform.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
 import { trustRefusal } from "../../../core/deviceTrust.js";
 import type { DeviceRow } from "../../../core/data.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { sha256Hex } from "../../../core/platform.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { isStore, type Store } from "../../../core/storeGrants.js";
 import {
@@ -109,6 +110,9 @@ export const HOOK_RATE = { limit: 120, windowSec: 60 } as const;
 /** Deliveries per client IP per minute, per store, BEFORE verification: bounds the CPU an
  *  unauthenticated sender can spend on signature checks without touching the product bucket. */
 export const HOOK_IP_RATE = { limit: 60, windowSec: 60 } as const;
+
+/** An event that ended `failed` or `unresolved` is processed again when redelivered. */
+const REDELIVERABLE = new Set(["failed", "unresolved"]);
 
 export const APP_STORE_EVENTS = "app-store-notifications";
 export const PLAY_EVENTS = "play-rtdn";
@@ -546,7 +550,7 @@ async function handleAppStoreHook(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "appStoreHookIp", id: clientIp(ctx.req), ...HOOK_IP_RATE },
+      { bucket: "appStoreHookIp", id: clientNetwork(ctx.req), ...HOOK_IP_RATE },
       now,
     ))
   )
@@ -562,19 +566,9 @@ async function handleAppStoreHook(
   try {
     n = await verifyAppleNotification(body.signedPayload, now);
   } catch (e) {
-    if (e instanceof AppleRejected)
-      return wireError(401, "unauthorized", { reason: e.reason });
+    if (e instanceof AppleRejected) return wireError(401, "unauthorized");
     throw e;
   }
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { bucket: "appStoreHook", id: "app-store", ...HOOK_RATE },
-      now,
-    ))
-  )
-    return errorResponse(429, "rate_limited", "too many notifications");
   const write = { db, product: product.slug, now };
   const seen = await eventSeen(
     db,
@@ -582,7 +576,7 @@ async function handleAppStoreHook(
     APP_STORE_EVENTS,
     n.notificationUUID,
   );
-  if (seen !== null && seen.outcome !== "failed")
+  if (seen !== null && !REDELIVERABLE.has(seen.outcome))
     return json({ ok: true, duplicate: true });
   const event = (outcome: ConnectorEventOutcome) =>
     recordEvent(write, APP_STORE_EVENTS, {
@@ -618,6 +612,17 @@ async function handleAppStoreHook(
     await event("stored");
     return json({ ok: true });
   }
+  // The product-wide bucket is charged only by a fresh, signed notification for THIS
+  // app that will cost a Server API call — not by another app's, a replayed or an ignored one.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "appStoreHook", id: "app-store", ...HOOK_RATE },
+      now,
+    ))
+  )
+    return errorResponse(429, "rate_limited", "too many notifications");
 
   let outcome: ConnectorEventOutcome;
   try {
@@ -668,7 +673,7 @@ async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "playRtdnHookIp", id: clientIp(ctx.req), ...HOOK_IP_RATE },
+      { bucket: "playRtdnHookIp", id: clientNetwork(ctx.req), ...HOOK_IP_RATE },
       now,
     ))
   )
@@ -680,7 +685,7 @@ async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
     pctx.settings,
     now,
   );
-  if (!auth.ok) return wireError(401, "unauthorized", { reason: auth.reason });
+  if (!auth.ok) return wireError(401, "unauthorized");
   const raw = await readBody(ctx.req, MAX_HOOK_BODY);
   if (raw === null)
     return errorResponse(413, "body_too_large", "push body too large");
@@ -699,12 +704,15 @@ async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
   if (!msg) return json({ ok: true, ignored: "not_rtdn" });
 
   const write = { db, product: product.slug, now };
-  const seen = await eventSeen(db, product.slug, PLAY_EVENTS, msg.messageId);
-  if (seen !== null && seen.outcome !== "failed")
+  // Dedupe on the message id AND its content, so a pre-burned id cannot drop a
+  // different later notification.
+  const eventId = `${msg.messageId}.${(await sha256Hex(msg.raw)).slice(0, 16)}`;
+  const seen = await eventSeen(db, product.slug, PLAY_EVENTS, eventId);
+  if (seen !== null && !REDELIVERABLE.has(seen.outcome))
     return json({ ok: true, duplicate: true });
   const event = (type: string, outcome: ConnectorEventOutcome) =>
     recordEvent(write, PLAY_EVENTS, {
-      id: msg.messageId,
+      id: eventId,
       type,
       instanceType: null,
       instanceId: null,

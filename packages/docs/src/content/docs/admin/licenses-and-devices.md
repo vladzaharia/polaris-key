@@ -226,7 +226,9 @@ for the matching algorithm behind all of this.
 - **Unverified** means the device activated without sending a fingerprint at all, either
   because it predates fingerprinting or the product has it disabled.
 - **Drifted** means the device's last check-in changed some components but stayed within
-  tolerance. This is the _last_ drift only; the full history is in
+  tolerance. Changes are counted against the first fingerprint the device bound, not the last
+  one, and never more than half of its components may differ; a fingerprint without the machine
+  anchor or with fewer than three components counts as no fingerprint. This is the _last_ drift only; the full history is in
   [Activity](/docs/admin/activity/) as `device.fingerprint.drift` entries, one per tolerated
   drift event.
 

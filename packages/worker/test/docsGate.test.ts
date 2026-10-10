@@ -12,6 +12,7 @@
  *    a shared cache must never hold gated bytes.
  */
 
+import { bindAdminFlow } from "./flowBinderHelper.js";
 import { describe, expect, it } from "vitest";
 import type { Env } from "../src/env.js";
 import { KvMock } from "./kvMock.js";
@@ -345,7 +346,10 @@ describe("admin sign-in returnTo round trip", () => {
     const db = makeTestDb();
     const state = await startLogin(env, "/docs/services/license/");
     const res = await handleAdminCallback(
-      get(`/manage/callback?code=abc&state=${encodeURIComponent(state)}`),
+      get(
+        `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+        await bindAdminFlow(env, state),
+      ),
       env,
       db,
       NOW,
@@ -362,7 +366,10 @@ describe("admin sign-in returnTo round trip", () => {
     for (const evil of ["https://evil.example/", "//evil.example", "/api/x"]) {
       const state = await startLogin(env, evil);
       const res = await handleAdminCallback(
-        get(`/manage/callback?code=abc&state=${encodeURIComponent(state)}`),
+        get(
+          `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+          await bindAdminFlow(env, state),
+        ),
         env,
         db,
         NOW,
@@ -378,7 +385,10 @@ describe("admin sign-in returnTo round trip", () => {
     const db = makeTestDb();
     const state = await startLogin(env);
     const res = await handleAdminCallback(
-      get(`/manage/callback?code=abc&state=${encodeURIComponent(state)}`),
+      get(
+        `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+        await bindAdminFlow(env, state),
+      ),
       env,
       db,
       NOW,

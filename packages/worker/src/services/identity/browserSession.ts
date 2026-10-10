@@ -20,6 +20,8 @@
  * exactly the order and with exactly the fail-closed behaviour they had before the move.
  */
 
+import { isSameOriginRequest } from "../../core/browserRequestGuard.js";
+import { constantTimeEqual } from "../../core/platform.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { Catalog } from "@polaris-key/catalog";
 import {
@@ -38,7 +40,7 @@ import {
   json,
   methodNotAllowed,
 } from "../../core/errors.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   getActiveSchema,
   getKey,
@@ -74,6 +76,7 @@ import { graceClampFor } from "../../core/graceClamp.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 import { resolveAccount } from "./accounts/repo.js";
 import { platformSubjectAccountRefused } from "./accounts/platformMigration.js";
+import { readBodyJson } from "../../core/cappedBody.js";
 
 /** The platform-IdP subject a `provider: platform` sign-in verified (the OIDC return path). */
 export interface BrowserSessionSubject {
@@ -116,11 +119,19 @@ function sessionKey(product: string, hash: string): string {
 function readCookie(req: Request, name: string): string | null {
   const raw = req.headers.get("cookie");
   if (!raw) return null;
+  // A duplicate may be a planted copy (cookie tossing), so it fails closed; a
+  // malformed percent-encoding is "no cookie", not a 500.
+  const values = new Set<string>();
   for (const part of raw.split(";")) {
     const [k, ...v] = part.trim().split("=");
-    if (k === name) return decodeURIComponent(v.join("="));
+    if (k === name) values.add(v.join("="));
   }
-  return null;
+  if (values.size !== 1) return null;
+  try {
+    return decodeURIComponent(values.values().next().value ?? "") || null;
+  } catch {
+    return null;
+  }
 }
 
 function setCookieHeader(product: string, token: string): string {
@@ -354,10 +365,18 @@ async function browserDoc(
   const schemaRow = await getActiveSchema(db, product.slug);
   if (schemaRow) {
     try {
-      payload = validatePayload(
-        payload,
-        new Catalog(JSON.parse(schemaRow.catalog_json)),
-      );
+      const catalog = new Catalog(JSON.parse(schemaRow.catalog_json));
+      payload = validatePayload(payload, catalog);
+      // A `kind: "config"` entry flagged `secret: true` is a secret too; page JS
+      // never sees it.
+      payload = {
+        ...payload,
+        config: Object.fromEntries(
+          Object.entries(payload.config).filter(
+            ([k]) => catalog.entryByKey(k)?.secret !== true,
+          ),
+        ),
+      };
     } catch {
       // FAIL CLOSED, matching `/config/document` (500 `catalog_unavailable`).
       // `validatePayload` is what prunes unknown/invalid keys and stale overrides out of the
@@ -467,13 +486,16 @@ export async function handleBrowserSessionLicense(
   settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
+  // A cross-site page must not be able to open a session for a key it holds.
+  if (!isSameOriginRequest(req))
+    return errorResponse(403, "forbidden", "cross-site request refused");
   if (
     !(await rateLimitOk(
       env,
       product.slug,
       {
         bucket: "browserSessionLicense",
-        id: clientIp(req),
+        id: clientNetwork(req),
         limit: 30,
         windowSec: 60,
       },
@@ -484,7 +506,7 @@ export async function handleBrowserSessionLicense(
   }
   let body: { key?: unknown };
   try {
-    body = (await req.json()) as { key?: unknown };
+    body = (await readBodyJson(req)) as { key?: unknown };
   } catch {
     return errorResponse(400, ErrorCode.BadRequest, "invalid body");
   }
@@ -574,7 +596,7 @@ export async function handleBrowserLogout(
   const session = await loadBrowserSession(req, env, db, product, now);
   if (session) {
     const csrf = req.headers.get("x-csrf-token");
-    if (!csrf || csrf !== session.record.csrf)
+    if (!csrf || !constantTimeEqual(csrf, session.record.csrf))
       return errorResponse(403, ErrorCode.Forbidden, "csrf mismatch");
     const deviceTokenHash = await hashKey(
       session.record.token,

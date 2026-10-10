@@ -3,7 +3,7 @@ extends RefCounted
 # The native hooks (PKeySparkleBridge, PKeyVelopackBridge, PKeyWinSparkleBridge,
 # PKeyAppImageBridge): with no plugin every call is the typed unsupported result (`dependency`);
 # with a stand-in singleton the call reaches it with the feed URL from discovery (P3-09's
-# routes); AppImageUpdate runs through OS.execute and relaunches $APPIMAGE. Through a real
+# routes); AppImage installs verify release-record bytes and relaunch $APPIMAGE. Through a real
 # PKeyUpdater: `native` is offered to the decision only with a usable bridge, the platform picks
 # the bridge, and `binary {native}` with no plugin opens the build's download link instead.
 
@@ -30,7 +30,7 @@ class Native extends RefCounted:
 func run(t: PKeyTestContext) -> void:
 	var env := PKeyFakeUpdaterEnv.new()
 	# Each on its own OS (P5-07's facades answer `runtime` anywhere else; tests/native covers that).
-	for pair in [["macos", PKeySparkleBridge.new(env, "https://x/appcast.xml")], ["windows", PKeyVelopackBridge.new(env, "https://x/velopack/")], ["windows", PKeyWinSparkleBridge.new(env, "https://x/winsparkle.xml")], ["linux", PKeyAppImageBridge.new(env)]]:
+	for pair in [["macos", PKeySparkleBridge.new(env, "https://x/appcast.xml")], ["windows", PKeyVelopackBridge.new(env, "https://x/velopack/")], ["windows", PKeyWinSparkleBridge.new(env, "https://x/winsparkle.xml")]]:
 		var b: PKeyNativeBridge = pair[1]
 		env.os = pair[0]
 		var r: PKeyApplyResult = await b.install_and_relaunch()
@@ -59,20 +59,12 @@ func run(t: PKeyTestContext) -> void:
 	native.available = false
 	t.check("bridges: a plugin that says it is unavailable is unavailable", not sparkle.is_available())
 
-	# AppImage: needs $APPIMAGE and appimageupdatetool; runs it with -O, then relaunches $APPIMAGE.
+	# AppImage's generic hook cannot install, including through a custom native object.
 	var ai := PKeyAppImageBridge.new(env)
-	env.vars["APPIMAGE"] = "/home/p/Games/Game-x86_64.AppImage"
-	t.check("bridges: AppImage without appimageupdatetool is unavailable", not ai.is_available())
-	env.programs["appimageupdatetool"] = "/usr/bin/appimageupdatetool"
+	ai.native = Native.new()
 	r = await ai.install_and_relaunch()
-	t.check("bridges: AppImage runs appimageupdatetool -O over $APPIMAGE and relaunches $APPIMAGE (not the mounted executable)", r.ok and r.bridge == "appimage" and env.executed.size() == 1 and env.executed[0][0] == "/usr/bin/appimageupdatetool" and Array(env.executed[0][1]) == ["-O", env.vars["APPIMAGE"]] and env.relaunched == [env.vars["APPIMAGE"]], str(env.executed))
-	env.exec_code = 3
-	env.relaunched.clear()
-	r = await ai.install_and_relaunch()
-	t.check("bridges: a failed AppImageUpdate relaunches nothing", not r.ok and env.relaunched.is_empty())
-	env.exec_code = 1
-	r = await ai.check_now()
-	t.check("bridges: appimageupdatetool -j exit 1 means an update is available", r.ok and r.detail.get("available") == true)
+	t.check("bridges: AppImage rejects the generic hook even with a plugin", not r.ok and r.code == PKeyErrors.INVALID_OPTIONS and ai.native.calls.is_empty() and env.executed.is_empty() and env.relaunched.is_empty())
+	await _appimage(t)
 
 	# Through a real updater: the bridge per platform, methods narrowed, feed URLs from discovery.
 	var sup := S.new()
@@ -126,3 +118,81 @@ func run(t: PKeyTestContext) -> void:
 	sdk.queue_free()
 	sup.free_server()
 	PKeyTestFixtures.remove_tree(inst["dir"])
+
+
+## Loopback downloads through the real updater/adapter, with the current image on disk.
+func _appimage(t: PKeyTestContext) -> void:
+	var sup := S.new()
+	sup.serve()
+	var inst := S.install("appimage", S.bytes(64, 1), "linux", "Game.AppImage")
+	var image: String = ProjectSettings.globalize_path(inst["exe"])
+	var old := S.read(image)
+	var good := S.bytes(128, 2)
+	var bad := S.bytes(128, 3)
+	var sdk: Node = await sup.launch(inst, "1.4.0", func(o): o.update_outlet = "direct")
+	sup.discovered(sdk)
+	var u: PKeyUpdater = sdk.update.updater
+	var e: PKeyFakeUpdaterEnv = inst["env"]
+	e.vars["APPIMAGE"] = image
+	var ai := u.bridge("appimage") as PKeyAppImageBridge
+	t.check("appimage: the verified updater needs no external tool", ai.is_available() and u.methods().has("native") and e.programs.is_empty())
+	var check := S.sidecar_check("1.5.0", good)
+	check.decision["method"] = "native"
+	check.record_doc["builds"][0]["format"] = "appimage"
+	var prefix := "/djdl/distribution/builds/1.5.0/linux-pck"
+	var a := PKeyOutletAdapters.for_kind("direct")
+	var r: PKeyApplyResult = await a.apply(check.decision, u)
+	t.check("appimage: adapter without a verified check refuses before downloading", not r.ok and r.code == PKeyErrors.INVALID_OPTIONS and sup.requests(prefix).is_empty() and S.read(image) == old)
+	r = await ai.install_verified(null, {})
+	t.check("appimage: verified hook cannot run without a check", not r.ok and r.code == PKeyErrors.INVALID_OPTIONS)
+	var no_record := S.check_of(check.decision)
+	r = await sdk.update.apply(no_record)
+	t.check("appimage: a decision without its record cannot install", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
+	var missing := S.check_of(check.decision.duplicate(true))
+	missing.record_doc = check.record_doc.duplicate(true)
+	missing.decision["build"] = "absent"
+	r = await sdk.update.apply(missing)
+	t.check("appimage: the selected build must be in the verified record", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
+	missing.decision["build"] = check.decision["build"]
+	missing.record_doc["version"] = "1.6.0"
+	r = await sdk.update.apply(missing)
+	t.check("appimage: the record must match the decision's release", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
+	missing.record_doc = check.record_doc.duplicate(true)
+	missing.record_doc["builds"][0]["artifacts"].append(missing.record_doc["builds"][0]["artifacts"][0].duplicate())
+	r = await sdk.update.apply(missing)
+	t.check("appimage: ambiguous payloads cannot install", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
+	# A transport-consistent replacement with the exact expected length but a different digest.
+	sup.plan[prefix] = [S.ranged(bad)]
+	r = await sdk.update.apply(check)
+	t.check("appimage: host-controlled bytes absent from the signed record are refused without changing the image", not r.ok and r.code == PKeyErrors.PAYLOAD_MISMATCH and S.read(image) == old and e.relaunched.is_empty() and e.opened.is_empty() and _no_staging(image))
+	sup.plan[prefix] = [S.ranged(S.bytes(129, 4))]
+	r = await sdk.update.apply(check)
+	t.check("appimage: an oversized payload changes nothing", not r.ok and r.code == PKeyErrors.RESPONSE_TOO_LARGE and S.read(image) == old and e.relaunched.is_empty() and _no_staging(image))
+	sup.plan[prefix] = [S.ranged(S.bytes(127, 4))]
+	r = await sdk.update.apply(check)
+	t.check("appimage: a truncated payload changes nothing", not r.ok and S.read(image) == old and e.relaunched.is_empty() and _no_staging(image))
+	sup.plan[prefix] = [S.ranged(good)]
+	u.rename_hook = func(fresh: String, target: String) -> int:
+		t.check("appimage: commit receives verified bytes in a private sibling directory", S.read(fresh) == good and target == image and fresh.get_base_dir().get_base_dir() == image.get_base_dir() and FileAccess.get_unix_permissions(fresh.get_base_dir()) == PKeyAppImageBridge.PRIVATE_MODE and FileAccess.get_unix_permissions(fresh) == PKeyAppImageBridge.PRIVATE_MODE)
+		return ERR_FILE_CANT_WRITE
+	r = await sdk.update.apply(check)
+	t.check("appimage: a failed atomic replacement preserves the original and does not relaunch", not r.ok and r.code == PKeyErrors.SWAP_FAILED and S.read(image) == old and e.relaunched.is_empty() and _no_staging(image))
+	u.rename_hook = Callable()
+	r = await sdk.update.apply(check)
+	t.check("appimage: verified bytes replace and relaunch the image without invoking the zsync updater", r.ok and r.bridge == "appimage" and S.read(image) == good and e.relaunched == [image] and e.executed.is_empty() and e.opened.is_empty() and _no_staging(image), str(r))
+	# The external tool can still provide an informational check, never an install.
+	e.programs["appimageupdatetool"] = "/usr/bin/appimageupdatetool"
+	e.exec_code = 1
+	r = await ai.check_now()
+	t.check("appimage: -j exit 1 is informational only", r.ok and r.detail.get("available") == true and Array(e.executed[0][1]) == ["-j", image] and e.relaunched.size() == 1)
+	sdk.queue_free()
+	sup.free_server()
+	PKeyTestFixtures.remove_tree(inst["dir"])
+
+
+func _no_staging(image: String) -> bool:
+	var dir := DirAccess.open(image.get_base_dir())
+	for name in dir.get_directories():
+		if name.begins_with(".pkey-appimage-"):
+			return false
+	return true

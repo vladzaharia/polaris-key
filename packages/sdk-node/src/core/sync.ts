@@ -118,16 +118,27 @@ export async function sync(
 
   // ── 6. One write ────────────────────────────────────────────────────────────────────────
   const patch: Partial<CacheRecordV3> = {};
-  if (trustJws) patch.trustJws = trustJws;
+  if (trustJws) {
+    patch.trustJws = trustJws;
+    // §4.1: a manifest that tombstoned a pin is that tombstone's evidence, in the same write.
+    const evidence = trust.pinRevocations;
+    if (Object.keys(evidence).length > 0) patch.pinRevocations = evidence;
+  }
 
   const outcomes = [license.outcome, config.outcome];
   const unauthorized = outcomes.some((o) => o.kind === "unauthorized");
   const blockedOutcome = outcomes.find((o) => o.kind === "blocked");
   const capOutcome = outcomes.find((o) => o.kind === "device-cap");
   const applied = outcomes.some((o) => o.kind === "applied");
-  // A successful authenticated exchange — 200 OR 304 — clears both unsigned hints. They can
-  // only ever tighten the gate (§4.1), so clearing them on evidence of a healthy session is
-  // safe; setting them requires the server to have said so.
+  // A successful authenticated exchange — 200 OR 304 — clears both hints. They are DISPLAY
+  // state (§4.1): no verdict depends on them, because the document they answered for is
+  // already gone (below), so clearing them on evidence of a healthy session loosens nothing.
+  // A hard 401 deletes the slice it answered for, and a 403 build block deletes
+  // the licence document, IN THE SAME WRITE that sets the hint. Without that, deleting the
+  // hint from the plain-JSON record would hand back a usable cached document offline.
+  if (license.outcome.kind === "unauthorized" || blockedOutcome)
+    cache.revokeSlice("license");
+  if (config.outcome.kind === "unauthorized") cache.revokeSlice("config");
   const healthy = outcomes.some(
     (o) => o.kind === "applied" || o.kind === "unchanged",
   );
@@ -286,7 +297,9 @@ function syncLicense(deps: SyncDeps, force: boolean): Promise<DocSync> {
         trust: trust.effective,
         expectedAud: ctx.product,
         deviceId: ctx.deviceId,
-        lastAcceptedIssuedAt: cache.state.license?.doc.issuedAt,
+        // The floor is explicit; null = nothing held yet. `now` is the effective clock.
+        lastAcceptedIssuedAt: cache.state.license?.doc.issuedAt ?? null,
+        now: ctx.now(),
       });
       if (!doc) return false;
       cache.applyLicense(jws, doc, etag);
@@ -308,7 +321,8 @@ function syncConfig(deps: SyncDeps, force: boolean): Promise<DocSync> {
         trust: trust.effective,
         expectedAud: ctx.product,
         deviceId: ctx.deviceId,
-        lastAcceptedIssuedAt: cache.state.config?.doc.issuedAt,
+        lastAcceptedIssuedAt: cache.state.config?.doc.issuedAt ?? null,
+        now: ctx.now(),
       });
       if (!doc) return false;
       cache.applyConfig(jws, doc, etag);

@@ -43,6 +43,22 @@ import { fileURLToPath } from "node:url";
 export const RELEASE_TAG =
   /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?$/;
 
+/** The tags a deploy accepts (deploy.yml's "Select target"): prerelease only -alpha|beta|rc|a|b.N. */
+export const STRICT_RELEASE_TAG =
+  /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc|a|b)\.(0|[1-9]\d*))?$/;
+
+/** Semver precedence of two strict release tags (a prerelease sorts below its release). */
+export function compareReleaseTags(x, y) {
+  const p = (t) => {
+    const m = STRICT_RELEASE_TAG.exec(t);
+    return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] ? 0 : 1, m[4] ?? ""];
+  };
+  const a = p(x);
+  const b = p(y);
+  for (let i = 0; i < 4; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return a[4].localeCompare(b[4], "en", { numeric: true });
+}
+
 /** The git glob `git describe` looks for release tags with. */
 export const RELEASE_TAG_GLOB = "v[0-9]*.[0-9]*.[0-9]*";
 
@@ -139,20 +155,19 @@ export function gitDescribe(cwd = process.cwd()) {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();
+  // `git describe` returns the NEAREST glob match, so one malformed tag
+  // (v1.2.3x) made the whole derivation fall back to 0.0.1. Take the highest STRICT release
+  // tag reachable from HEAD instead; a tag that is not a deployable release tag is ignored.
   let latestTag = null;
   try {
-    latestTag = git(
-      "describe",
-      "--tags",
-      "--abbrev=0",
-      "--match",
-      RELEASE_TAG_GLOB,
-      "HEAD",
-    );
+    const tags = git("tag", "--merged", "HEAD", "--list", RELEASE_TAG_GLOB)
+      .split("\n")
+      .filter((t) => STRICT_RELEASE_TAG.test(t));
+    tags.sort(compareReleaseTags);
+    latestTag = tags.length ? tags[tags.length - 1] : null;
   } catch {
     latestTag = null;
   }
-  if (latestTag !== null && !RELEASE_TAG.test(latestTag)) latestTag = null;
   const range = latestTag === null ? "HEAD" : `${latestTag}..HEAD`;
   const distance = Number(git("rev-list", "--count", range));
   return { latestTag, distance };

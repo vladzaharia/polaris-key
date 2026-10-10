@@ -244,17 +244,25 @@ describe("slug check (W24)", () => {
     expect(slugFromName("!!!")).toBe("");
   });
 
-  it("is a GET any signed-in operator may make, and refuses a missing slug", async () => {
+  it("is a GET for the platform group's operators, and refuses a missing slug", async () => {
     const db = makeTestDb();
     const env = envFor();
     await seedProduct(db, "tonebox");
-    const res = await call(
+    // Slug-check reads the CURRENT platform group; a session without it is refused.
+    const outsider = await call(
       env,
       db,
       "GET",
       "/api/products/slug-check?slug=tonebox",
       undefined,
       [],
+    );
+    expect(outsider.status).toBe(403);
+    const res = await call(
+      env,
+      db,
+      "GET",
+      "/api/products/slug-check?slug=tonebox",
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({

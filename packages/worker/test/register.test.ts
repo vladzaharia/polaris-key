@@ -553,7 +553,15 @@ describe("POST /<p>/devices/register — the device id", () => {
     const res = await register(
       w,
       { "x-pkey-device": DEVICE_2 },
-      { fingerprint: { components: { machineUuid: "uuid".padEnd(22, "x") } } },
+      {
+        fingerprint: {
+          components: {
+            machineUuid: "uuid".padEnd(22, "x"),
+            cpuModel: "cpu".padEnd(22, "x"),
+            ramBucket: "ram".padEnd(22, "x"),
+          },
+        },
+      },
     );
     expect(res.status).toBe(200);
     const fp = await w.db.first<{ hwid: string; status: string }>(

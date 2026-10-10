@@ -248,6 +248,8 @@ public object JvmFingerprintSource : FingerprintSource {
     }
 
     /** Run [command] with [stdin], reading stdout on a helper thread so the deadline holds. */
+    internal fun runProbe(command: List<String>, stdin: String?, timeoutMs: Long): String? = run(command, stdin, timeoutMs)
+
     private fun run(command: List<String>, stdin: String?, timeoutMs: Long): String? = try {
         val process = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
         var text: String? = null

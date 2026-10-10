@@ -48,7 +48,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -58,6 +58,7 @@
   <main class="main">
     <div class="page form-page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a></nav>
         <div class="page-heading"><h1>Tiers</h1></div>
         <div class="page-actions">
           <button class="btn primary"><i class="ic ic-plus"></i>New tier</button>
@@ -135,17 +136,16 @@
                     <li class="timeline-item">
                       <span class="timeline-when">Oct 7, 2026</span>
                       <span class="timeline-what">Starts</span>
-                      <span class="timeline-desc">Every release on the stable and beta tracks, with everything Pro includes.</span>
+                      <span class="timeline-desc">Every release on the stable and beta tracks.</span>
                     </li>
                     <li class="timeline-item">
                       <span class="timeline-when">Oct 7, 2027</span>
                       <span class="timeline-what">Renews for another year</span>
-                      <span class="timeline-desc">Nothing changes on the holder’s devices.</span>
                     </li>
                     <li class="timeline-item warning">
                       <span class="timeline-when">If a renewal doesn’t arrive</span>
                       <span class="timeline-what">Past due for 7 days</span>
-                      <span class="timeline-desc">Grace: still works, with every update.</span>
+                      <span class="timeline-desc">Still works, with every update.</span>
                     </li>
                     <li class="timeline-item ended">
                       <span class="timeline-when">7 days later</span>
@@ -155,7 +155,6 @@
                     <li class="timeline-item later">
                       <span class="timeline-when">Any time after</span>
                       <span class="timeline-what">Renewing brings updates back</span>
-                      <span class="timeline-desc">The same license gets every release again.</span>
                     </li>
                 </ol>
               </aside>
@@ -217,7 +216,7 @@
 
           <!-- One record, one save bar (ADMIN.md T4); pinned to the window's bottom while dirty. -->
           <div class="save-bar pinned" role="region" aria-label="Unsaved changes">
-            <p class="save-bar-msg"><i class="ic ic-info"></i><span class="hide-phone">1 change · applies to 71 licenses · <code>.pkey/product</code> stops syncing this tier</span><span class="show-phone">1 change</span></p>
+            <p class="save-bar-msg"><i class="ic ic-info"></i><span class="hide-phone">1 change. Applies to 71 licenses.<br><code>.pkey/product</code> stops syncing this tier.</span><span class="show-phone">1 change</span></p>
             <button class="btn ghost">Discard</button>
             <button class="btn primary"><span class="hide-phone">Save Pro</span><span class="show-phone">Save</span></button>
           </div>

@@ -82,6 +82,7 @@ import {
   type JobName,
   type StepTiming,
 } from "./core/platformOps.js";
+import { purgePrivacyResidue } from "./privacyResidue.js";
 import {
   GC_INDEX_READS_PER_TICK,
   applyProductGc,
@@ -399,6 +400,10 @@ export async function runScheduledMaintenance(
   await step(report, "heartbeats", () =>
     pruneHeartbeats(db, now - JOB_RUN_RETENTION_SECONDS),
   );
+
+  // Relink snapshots past their undo window lose the licence's name and
+  // email; merge tombstones and subject events past the audit retention are deleted.
+  await step(report, "privacyResidue", () => purgePrivacyResidue(db, now));
 
   // F-21: registry tokens 90 days past their expiry or revocation (`core/registryTokens.ts`).
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));

@@ -8,7 +8,8 @@ extends RefCounted
 ##   is_available()           the plugin is installed and usable here
 ##   check_now()              ask the native updater to look for an update (its own UI)
 ##   install_and_relaunch()   hand the update to the native updater, which installs it and
-##                            relaunches the game
+##                            relaunches the game (AppImage refuses this generic hook; it needs
+##                            PKeyUpdater.install_appimage(check) with the verified record)
 ##   feed_url                 the feed the native updater reads, from this session's discovery
 ##                            (P3-09's routes: the appcast, WinSparkle's XML, Velopack's
 ##                            directory, …)

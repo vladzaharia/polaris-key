@@ -9,6 +9,46 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+Local-trust fixes.
+
+- **Pin two keys, and a pinned key can be revoked.** A trust manifest signed by one pinned key that
+  lists another pinned key as `revoked` (with its exact bytes) removes that pin on the install for
+  good; a manifest that revokes its own signer is refused. The revoking manifest is stored in the
+  cache's `pinRevocations` slice, in the same write as the manifest, re-verified at every start,
+  and kept through a bundle import, a deactivation and a device-id re-binding. When the served
+  manifest is signed by a key the app does not pin, `sync()` asks for it again with
+  `?signer=<kid>` for each pinned key (at most four requests).
+- **Only `active`, `staged` and `retired` keys are trusted.** A manifest key with any other
+  `status` (absent, unknown, a different case) is skipped; a `publicKey` that is not canonical
+  base64url is skipped too.
+- **Non-canonical base64url is refused.** A JWS segment or a trust key spelled with unused bits set
+  no longer decodes; `PKeyB64Url.is_canonical()` is the check.
+- **Breaking: an imported bundle is kept as `bundle`, and an install that activated from one
+  imports it again after upgrading.** The `importedBundle` marker is no longer read or written.
+  A bundle activates the install only while the cached bundle re-verifies and carries the cached
+  licence document byte for byte. Importing the same bundle again changes nothing; a bundle whose
+  documents are not newer than the cached ones of their type is refused (`inner-doc-rejected`),
+  and a bundle needs a fresh mint once its 30-day window has passed. `PKeyCache.imported_bundle`
+  is replaced by `PKeyCache.bundle`.
+- **Revocation and a build block end offline use at once.** A hard 401 deletes the document it
+  answered for, and its ETag, in the same cache write that records it; a 403 build block deletes
+  the licence document. The token stays, so the gate reports `revoked` or the block. The
+  `blocked` and `lastSyncUnauthorized` hints are display-only: clearing one gives
+  `needs-activation`, never a usable document.
+- **Discovery can switch the licence gate on, never off.** The gate follows the build's
+  `expected_services` (default: licence and config) or a discovery document loaded this session
+  that enables licensing. A product that does not license must pass `expected_services` without
+  `license` (`PKeyCore.license_gate_enabled()`). Which sub-clients exist still follows discovery.
+- **Breaking: `PKeyVerify.verify_*` requires `last_accepted_issued_at`.** Pass an explicit `null`
+  for "no floor"; a call that omits the key is refused.
+- **A desktop device whose stored id differs from its platform anchor re-activates once.** The
+  file and keyring stores re-derive the id from MachineGuid, IOPlatformUUID or the machine-id at
+  every start; a stored id that disagrees is discarded with the token and the grant cache (the
+  feed and release-record slices stay). `ioreg` and `reg.exe` run by absolute path.
+- Licence, config and trust-manifest verification on the network path use the effective clock.
+- **`PKEY_DESKTOP_KEYRING=0` is honoured only in debug builds**; a shipped build ignores it. On
+  Linux the Secret Service tool is run as `/usr/bin/secret-tool`, never found through `PATH`.
+
 The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 
 - **Desktop keyring store** (SP-27). On macOS, Windows and Linux the token is kept in the OS

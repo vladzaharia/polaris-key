@@ -10,15 +10,18 @@
   "compare": [
     "Header: 'Access' and History; no subtitle.",
     "Wide (.page.columns): Anonymous devices and Discover sit in the 400px aside; below 1600 they are two cards side by side under Automatic licenses; phone one column.",
-    "Automatic licenses: 'Issued at sign-in or from Discover, tied to the account with no key. They only ever move up a tier.'; three choices (Nobody, Everyone who signs in, Rules: chosen).",
-    "Rules table: When · Gets · Label people see · Accounts · ⋯. Group studio-pro (Studio, 38), Group members (Standard, 412), Verified email domain example.edu (Education, 57), Claim vpnAccess is true (Polaris VPN add-on, ⚠ 0) with its readiness error under it ('Pocket ID doesn’t send vpnAccess, so this rule can’t match' / 'Add the claim to Pocket ID’s claim map in Connections.', Open Connections), and the shaded fallback Everyone else who signs in (Trial, 143).",
-    "Foot: Add rule and 'When several match, the higher tier wins; add-ons add to it.'",
-    "Anonymous devices: They get Free, '1 device, 2 decks, no recording. Nothing requires sign-in or a key.'",
-    "Discover: Hidden, People who can get it (chosen), Everyone signed in (typed djdl to confirm), one line each.",
-    "Updates, downloads and packages: a legend band (Public, Signed in, Customers, Holds an entitlement), then rows with the same four-option matrix: Update checks (Customers), App downloads marked with 'was Customers' (Public), Packs (Stem separation models: Holds stems; Controller mappings: Public), Packages (npm @djdl: Public; Signed in and Entitlement don't apply).",
-    "Check a person: email (verified), groups, claims; the result 'Dana gets Education, plus Polaris VPN' and a tick or cross per gate, App downloads 'Public · unsaved'.",
+    "Automatic licenses: the heading alone, no subtitle; three choices (Nobody, Everyone who signs in, Rules: chosen).",
+    "Rules table: When · Gets · Label people see · Accounts · ⋯. Group studio-pro (Studio, 38), Group members (Standard, 412), Verified email domain example.edu (Education, 57), Claim vpnAccess is true (Polaris VPN, 'Add-on', ⚠ 0) with its readiness error under it ('This rule can’t match' / 'Pocket ID doesn’t send vpnAccess. Add it to Pocket ID’s claim map.', Open Connections), and the shaded fallback Everyone else who signs in (Trial, 143).",
+    "Foot: Add rule only.",
+    "Anonymous devices: They get Free, '1 device · 2 decks · no recording'.",
+    "Discover: Hidden, People who can get it (chosen: 'Anyone a rule covers' and 'Adding DJDL issues their license', one line each), Everyone signed in.",
+    "Updates, downloads and packages: a legend band (Public, Signed in 'With or without a license.', Customers, Holds an entitlement), then rows with the same four-option matrix (App downloads' line is key.plrs.im/djdl; Stem separation models' 412 MB · on first use; npm @djdl's djdl-mapping-kit on pkg.plrs.im): Update checks (Customers), App downloads marked with 'was Customers' (Public), Packs (Stem separation models: Holds stems; Controller mappings: Public), Packages (npm @djdl: Public; Signed in and Entitlement don't apply).",
+    "Check a person ('Includes unsaved changes'): email (verified), groups, claims; the result 'Dana gets Education, plus Polaris VPN' from example.edu and claim vpnAccess, and a tick or cross per gate (Stem separation models: 'Education doesn’t include stems'), App downloads 'Public · unsaved'.",
     "Save bar at the page's end (pinned while dirty in the built screen): '1 change: App downloads goes Public, so anyone can download DJDL 4.2.0 without signing in.' with Discard and Save access.",
-    "Phone: rules flow under their title, each matrix goes two by two, Check a person stacks."
+    "Phone: rules flow under their title, each matrix goes two by two, Check a person stacks.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page.",
+    "In a full-page shot the save bar docks after the content, so the catch-all 'Everyone else who signs in → Trial' row is never hidden; DJDL's icon is the masthead tile; no numbers on sections (admin-1-24)."
   ],
   "status": "mockup",
   "designReview": {

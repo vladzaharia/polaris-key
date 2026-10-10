@@ -37,7 +37,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -46,8 +46,8 @@
 
   <main class="main">
     <div class="page cap cap-1400">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Priya Raman</nav>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a><i class="ic ic-chevron-right"></i><a href="#">Licenses</a></nav>
         <div class="page-heading"><h1>Priya Raman</h1><span class="status"><i class="ic ic-circle-check"></i>Active</span></div>
         <div class="page-sub mk-cluster-3">
           <span class="pill sm"><i class="ic ic-user-round"></i>In an account</span>
@@ -94,7 +94,7 @@
                 <tr class="marked">
                   <td><span class="icon-text strong"><i class="ic ic-wifi-off"></i>Offline days</span></td>
                   <td><span class="cell-label">Value</span><strong class="tnum">14 days</strong></td>
-                  <td><span class="cell-label">From</span><div class="cell-stack"><span class="accent">Set on this license</span><span class="cell-sub">Education gives 7</span></div></td>
+                  <td><span class="cell-label">From</span><div class="cell-stack"><span class="strong">Set on this license</span><span class="cell-sub">Education gives 7</span></div></td>
                   <td class="end"><button class="btn text xs">Use Education’s</button></td>
                 </tr>
                 <tr>
@@ -112,7 +112,7 @@
                 <tr>
                   <td><span class="icon-text strong"><i class="ic ic-fingerprint"></i>Fingerprint mode</span></td>
                   <td><span class="cell-label">Value</span><strong>Normal</strong></td>
-                  <td><span class="cell-label">From</span>Education, set on the tier only</td>
+                  <td><span class="cell-label">From</span>Education</td>
                   <td class="end"><a class="link" href="#">Open tier<i class="ic ic-arrow-right"></i></a></td>
                 </tr>
               </tbody>
@@ -191,7 +191,7 @@
             </div>
             <div class="card-body">
               <ul class="icon-list small">
-                <li><i class="ic ic-at-sign"></i><span>Verified email domain <code>example.edu</code> gets <strong>Education</strong></span><button class="btn ghost icon xs" aria-label="How it works" title="A rule with a higher tier moves it up at her next sign-in; nothing moves it down. No key: new devices sign in as priya@example.edu. Add key makes one for an offline machine."><i class="ic ic-info"></i></button></li>
+                <li><i class="ic ic-at-sign"></i><span>Verified email domain <code>example.edu</code> gets <strong>Education</strong></span></li>
               </ul>
             </div>
           </section>

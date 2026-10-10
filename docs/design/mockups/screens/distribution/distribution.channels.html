@@ -5,7 +5,7 @@
     color: var(--pk-text-default);
   }
   [data-screen="distribution.channels"] .status.ready > .ic {
-    color: var(--pk-info);
+    color: var(--pk-text-strong);
   }
   /* Column widths: Delivery and Sales are fixed, so What customers do takes the rest of the width
      (full values at wide; chips of at most 240px, truncated in the middle, below 1600). */
@@ -81,13 +81,13 @@
         <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
         <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
         <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
-        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span role="img" class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
       </div>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -98,11 +98,12 @@
   <main class="main">
     <div class="page cap">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i>Channels</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
+<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Channels</h1></div>
         <!-- The platforms Diceroll builds decide which channels show; the scope is stated once, here. -->
         <div class="page-sub">
-          <div class="mk-cluster" aria-label="Diceroll's platforms">
+          <div role="group" class="mk-cluster" aria-label="Diceroll's platforms">
             <span class="pill"><i class="ic ic-apple"></i>iOS</span>
             <span class="pill"><i class="ic ic-android"></i>Android</span>
             <span class="pill"><i class="ic ic-windows"></i>Windows x64</span>
@@ -121,7 +122,7 @@
         <div class="card-rows">
           <div class="attn-row bare">
             <span class="attn-subject"><i class="ic ic-triangle-alert attn-glyph" aria-hidden="true"></i><i class="ic ic-google-play" aria-hidden="true"></i>Google Play</span>
-            <span class="attn-text">Service account key expires Oct 16; uploads and purchase checks stop then.</span>
+            <span class="attn-text">Service account key expires Oct 16</span>
             <a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a>
           </div>
         </div>
@@ -159,9 +160,9 @@
                 <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-google-play"></i></span><div><a class="cell-title" href="#">Google Play</a><div class="cell-sub"><span class="nowrap">1.8.2 in production</span> · <span class="nowrap">1.9.0 on closed testing</span></div><div class="row-chip"><span class="value-chip" title="play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-external-link"></i><span class="mid"><span>play.google.com/store/apps/details?id=com.</span><span>example.diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
                 <td class="cust hide-narrow"><span class="value-chip" title="play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-external-link"></i><span class="mid"><span>play.google.com/store/apps/details?id=com.</span><span>example.diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-copy"></i></button></span></td>
                 <td class="hide-narrow"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Attention</span></td>
-                <td class="hide-narrow"><span class="meta nowrap-meta">Key expires Oct 16</span></td>
+                <td class="hide-narrow"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Attention</span></td>
                 <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
-                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status warning"><i class="ic ic-triangle-alert"></i>Attention</span><span class="nowrap-meta"><span class="meta">Sales</span> <span class="meta">Key expires Oct 16</span></span></span></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status warning"><i class="ic ic-triangle-alert"></i>Attention</span><span class="subtle" aria-hidden="true">·</span><span class="meta">Sales</span><span class="status warning"><i class="ic ic-triangle-alert"></i>Attention</span></span></td>
               </tr>
               <tr>
                 <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-itch"></i></span><div><a class="cell-title" href="#">itch.io</a><div class="cell-sub"><span class="nowrap">1.8.2 on stable</span> · <span class="nowrap">Windows x64, Linux x86_64</span></div><div class="row-chip"><span class="value-chip" title="twelvepips.itch.io/diceroll"><i class="ic ic-external-link"></i><span class="mid"><span>twelvepips.itch.io/</span><span>diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy twelvepips.itch.io/diceroll"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
@@ -212,7 +213,6 @@
               <div class="title"><h3 id="alt-title">AltStore and SideStore</h3><p>Install source · iOS</p></div>
               <button class="btn ghost icon sm" aria-label="More for AltStore and SideStore: Not using Diceroll on AltStore and SideStore"><i class="ic ic-ellipsis"></i></button>
             </div>
-            <div class="card-body tight grow two-line"><p>iPhone players add Diceroll’s source once, from your download page.</p></div>
             <div class="card-foot fixed between">
               <span class="pill accent sm" title="No steps for you"><i class="ic ic-zap"></i>One click</span>
               <button class="btn outline sm">Turn on</button>
@@ -225,7 +225,6 @@
               <div class="title"><h3 id="steam-title">Steam</h3><p>Store · Windows x64 and Linux x86_64</p></div>
               <button class="btn ghost icon sm" aria-label="More for Steam: Not using Diceroll on Steam"><i class="ic ic-ellipsis"></i></button>
             </div>
-            <div class="card-body tight grow two-line"><p>Sell Diceroll on Steam, Steam Deck included.</p></div>
             <div class="card-foot fixed between">
               <span class="foot-text type-small muted clamp-1" title="Step 2 of 4: create the app in Steamworks">Step 2 of 4: create the app in Steamworks</span>
               <button class="btn outline sm">Continue</button>
@@ -238,10 +237,8 @@
               <div class="title"><h3 id="ms-title">Microsoft Store</h3><p>Store · Windows x64</p></div>
               <button class="btn ghost icon sm" aria-label="More for Microsoft Store: Not using Diceroll on the Microsoft Store"><i class="ic ic-ellipsis"></i></button>
             </div>
-            <div class="card-body tight grow two-line">
-              <p class="icon-line warning"><i class="ic ic-triangle-alert"></i><span>Needs an installer: the Store takes .msix, .msi or .exe; Diceroll ships a .zip.</span></p>
-            </div>
-            <div class="card-foot fixed">
+            <div class="card-foot fixed between">
+              <span class="foot-text icon-line warning type-small"><i class="ic ic-triangle-alert"></i><span>Needs an installer</span></span>
               <button class="btn outline sm"><i class="ic ic-file-code-2"></i>Add an MSIX build</button>
             </div>
           </article>
@@ -252,7 +249,6 @@
               <div class="title"><h3 id="flat-title">Flathub</h3><p>Store · Linux x86_64</p></div>
               <button class="btn ghost icon sm" aria-label="More for Flathub: Not using Diceroll on Flathub"><i class="ic ic-ellipsis"></i></button>
             </div>
-            <div class="card-body tight grow two-line"><p>Players get Diceroll and its updates from Flathub.</p></div>
             <div class="card-foot fixed between">
               <span class="foot-text type-small muted clamp-1" title="2 steps for you: submit, then merge its pull request">2 steps for you: submit, then merge its pull request</span>
               <button class="btn outline sm">Set up</button>

@@ -11,8 +11,52 @@ permissions:
 
 # Only the canonical repo deploys (forks/PRs run CI but never deploy).
 jobs:
+  # Everything that runs repository or dependency code beyond the
+  # deploy itself (dependency install scripts, test, lint, typecheck) runs HERE, on a job with
+  # no environment, no secrets and no id-token, so a compromised dependency or test cannot
+  # reach CLOUDFLARE_API_TOKEN or mint a deploy-audience OIDC token. The tag/ancestry gate is
+  # the first thing it checks, before any install or build.
+  verify:
+    name: Verify (unprivileged)
+    runs-on: ubuntu-latest
+    if: github.repository == 'vladzaharia/polaris-key'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Tag is a release tag on main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          TAG="${REF#refs/tags/}"
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc|a|b)\.(0|[1-9][0-9]*))?$ ]]; then
+            echo "Production deploy tags are vMAJOR.MINOR.PATCH, optionally -alpha.N, -beta.N or -rc.N" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Refusing to deploy: $GITHUB_SHA is not an ancestor of origin/main." >&2
+            exit 1
+          fi
+      # No `version:` here — the action reads `packageManager` from package.json.
+      # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
+      # which is why every CI run in this repo failed at step 2 until 2026-08-26.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm lint
+
   deploy-worker:
     name: Deploy worker
+    needs: verify
     runs-on: ubuntu-latest
     if: github.repository == 'vladzaharia/polaris-key'
     environment: production
@@ -27,20 +71,17 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v7
-      # No `version:` here — the action reads `packageManager` from package.json.
-      # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
-      # which is why every CI run in this repo failed at step 2 until 2026-08-26.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # No dependency lifecycle script runs beside CLOUDFLARE_API_TOKEN and the
+      # id-token (as sync-worker-secrets.yml). The build below is repository code; test, lint
+      # and typecheck already passed in `verify`.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm build
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm lint
       - name: Select target
         id: target
         env:
@@ -97,6 +138,15 @@ jobs:
           npx wrangler queues info "pkey-deltas-dlq-$ENV"
           npx wrangler queues info "pkey-assets-$ENV"
           npx wrangler queues info "pkey-assets-dlq-$ENV"
+      # Required secrets (names only) and the bytes/registry/image origins, before
+      # anything changes.
+      - name: Config preflight
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ENV: ${{ steps.target.outputs.env }}
+        run: |
+          cd packages/worker
+          npx wrangler secret list --env "$ENV" --format json | node scripts/check-config.mjs "$ENV"
       - name: Apply D1 migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

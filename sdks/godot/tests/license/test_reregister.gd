@@ -125,7 +125,7 @@ func _after_restart(t: PKeyTestContext) -> void:
 	h.plan["/license/token"] = [S.json(200, {"token": NEW, "schemaVersion": 1})]
 	var store := PKeyMemoryStore.new(h.F["device_id"], OLD)
 	var sdk = await h.sdk(store)
-	t.check("reregister: after a restart the token's source is unknown", sdk.core.tokens.source() == "" and sdk.core.cache.license == null and sdk.core.cache.imported_bundle == null)
+	t.check("reregister: after a restart the token's source is unknown", sdk.core.tokens.source() == "" and sdk.core.cache.license == null and sdk.core.cache.bundle == null)
 	var r: PKeySyncResult = await sdk.sync()
 	t.check("reregister: after a restart with License on -> one POST /license/token", h.requests("POST", "/license/token").size() == 1 and h.requests("POST", "/devices/register").is_empty())
 	t.check("reregister: after a restart the retry applies", r.documents == {"license": "applied", "config": "applied"}, str(r.documents))

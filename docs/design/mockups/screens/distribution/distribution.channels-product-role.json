@@ -1,0 +1,19 @@
+{
+  "id": "distribution.channels-product-role",
+  "title": "Channels for a role that can’t publish",
+  "area": "distribution",
+  "surface": "console",
+  "packages": ["A-20", "A-24", "ST-28"],
+  "uxRows": [],
+  "summary": "Diceroll's Channels page for a member whose role reads Ship builds but can't publish or set up channels: everything stays in place and readable, the Publish button and every setup action are disabled, and one info callout names who can and how to ask.",
+  "compare": [
+    "Publish 1.9.0 stays where it is, disabled (sunken fill, quiet edge), described by the callout; it is never hidden and never a dead end: the callout names Ana Lima and Jun Park and offers 'Ask for access' (admin-2-23).",
+    "The callout is info (lock glyph), said once at the top; no row repeats it. Setup buttons (Turn on, Continue, Add an MSIX build, Set up) are disabled the same way; Undo is left out: the callout already says setup is for Release managers.",
+    "The attention row keeps its fact (Google Play key expires Oct 16) and says who fixes it instead of a link this role can't use.",
+    "Reading is unchanged: the In use table, its links to each channel, statuses and copy buttons all work.",
+    "Ship builds is one identity: Release cyan rule and chip, crumb 'Diceroll › Ship builds' (B5).",
+    "Phone: the callout wraps under its glyph; disabled buttons keep their 24px targets."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

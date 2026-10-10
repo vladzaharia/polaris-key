@@ -135,6 +135,7 @@ import {
   type ServiceBusyMap,
   type ServiceErrorMap,
   type ServicesMap,
+  licenseGateEnabled,
 } from "../core/services.js";
 import { discoverProduct, type DiscoveryDocument } from "./discovery.js";
 import {
@@ -442,6 +443,8 @@ export class BrowserAdapter implements PolarisAdapter {
   private csrf: string | null = null;
   private hadSession = false;
   private capabilities: ServicesMap;
+  /** The build's own belief (`expectServices`, else the default): the gate's floor. */
+  private readonly expectedServices: ServicesMap;
   /** `supports()`'s inputs: the generated table, runtime `web`, and `capabilities` above. */
   private readonly capabilityCtx: CapabilityContext;
   private readonly pinned: TrustSet | null;
@@ -493,7 +496,10 @@ export class BrowserAdapter implements PolarisAdapter {
     this.localOverrides = { ...hostOverrides, ...localBackend.read() };
     this.version = opts.version;
     // D-21: the pre-discovery belief. Never all-true.
-    this.capabilities = copyServices(opts.expectServices ?? defaultServices());
+    this.expectedServices = copyServices(
+      opts.expectServices ?? defaultServices(),
+    );
+    this.capabilities = copyServices(this.expectedServices);
     this.capabilityCtx = capabilityContext("web", () => this.capabilities);
     this.pinned = opts.trust?.pinnedKeys ?? null;
     this.offline =
@@ -685,7 +691,7 @@ export class BrowserAdapter implements PolarisAdapter {
     if (s.csrfToken) this.csrf = s.csrfToken;
     this.hadSession = s.authenticated;
     // §7: with no session, an imported bundle is the activation. A session supersedes it.
-    if (!s.authenticated && this.offlineState?.importedBundle) {
+    if (!s.authenticated && this.offlineState?.bundle) {
       this.applyOffline(flags);
       return;
     }
@@ -710,6 +716,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ...flags,
           localOverrides: this.localOverrides,
           capabilities: this.capabilities,
+          licenseGate: this.licenseGate(),
         },
       ),
     );
@@ -726,7 +733,8 @@ export class BrowserAdapter implements PolarisAdapter {
         "browser",
         { license: o?.license ?? null, config: o?.config?.config ?? {} },
         {
-          activation: o?.license ? "bundle" : null,
+          // The cached bundle re-verified with its licence document cached (§7).
+          activation: o?.bundle?.activates && o.license ? "bundle" : null,
           now: this.clock(),
           highWaterMark: o?.highWaterMark ?? 0,
           lastSyncUnauthorized: false,
@@ -737,6 +745,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ...flags,
           localOverrides: this.localOverrides,
           capabilities: this.capabilities,
+          licenseGate: this.licenseGate(),
         },
       ),
     );
@@ -783,6 +792,11 @@ export class BrowserAdapter implements PolarisAdapter {
 
   /** Install the product's real capability map from discovery (D-21). A failed or rejected
    *  document leaves the constructor's `expectServices` belief in place. */
+  /** The licence gate's input: build expectation OR a discovery loaded this session. */
+  private licenseGate(): boolean {
+    return licenseGateEnabled(this.expectedServices, this.capabilities);
+  }
+
   private loadCapabilities(): Promise<void> {
     this.discovered = (async () => {
       const result = await discoverProduct({
@@ -826,6 +840,7 @@ export class BrowserAdapter implements PolarisAdapter {
             error: withError(noErrors(), "identity", this.configError!),
             localOverrides: this.localOverrides,
             capabilities: this.capabilities,
+            licenseGate: this.licenseGate(),
           },
         ),
       );
@@ -848,7 +863,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ? e
           : new PolarisError("network", (e as Error).message);
       // Offline is exactly when an imported bundle matters: it still activates the page.
-      if (this.offlineState?.importedBundle) {
+      if (this.offlineState?.bundle) {
         this.applyOffline({ error: withError(noErrors(), "identity", err) });
         return;
       }
@@ -861,6 +876,7 @@ export class BrowserAdapter implements PolarisAdapter {
             error: withError(noErrors(), "identity", err),
             localOverrides: this.localOverrides,
             capabilities: this.capabilities,
+            licenseGate: this.licenseGate(),
           },
         ),
       );
@@ -891,6 +907,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ...flags,
           localOverrides: this.localOverrides,
           capabilities: this.capabilities,
+          licenseGate: this.licenseGate(),
         },
       ),
     );
@@ -980,6 +997,7 @@ export class BrowserAdapter implements PolarisAdapter {
             {
               localOverrides: this.localOverrides,
               capabilities: this.capabilities,
+              licenseGate: this.licenseGate(),
             },
           ),
         );
@@ -1140,7 +1158,7 @@ export class BrowserAdapter implements PolarisAdapter {
       this.hadSession = false;
       // A sign-out wipes local state, the imported bundle included (the device id stays: it is
       // this browser's identity, not a credential).
-      if (this.offlineState?.importedBundle && this.offline) {
+      if (this.offlineState?.bundle && this.offline) {
         // The update slices are signed public documents, not credentials: they stay, so a
         // channel's `seq` floor survives a sign-out.
         const prior = await this.offline.read(this.product);
@@ -1148,6 +1166,10 @@ export class BrowserAdapter implements PolarisAdapter {
           ...(prior?.cache?.feeds ? { feeds: prior.cache.feeds } : {}),
           ...(prior?.cache?.releaseRecords
             ? { releaseRecords: prior.cache.releaseRecords }
+            : {}),
+          // A pinned key's revocation is security state, not a grant: it stays too.
+          ...(Object.keys(this.offlineState.pinRevocations).length > 0
+            ? { pinRevocations: this.offlineState.pinRevocations }
             : {}),
         };
         await this.offline.write(this.product, {
@@ -1166,6 +1188,7 @@ export class BrowserAdapter implements PolarisAdapter {
           {
             localOverrides: this.localOverrides,
             capabilities: this.capabilities,
+            licenseGate: this.licenseGate(),
           },
         ),
       );

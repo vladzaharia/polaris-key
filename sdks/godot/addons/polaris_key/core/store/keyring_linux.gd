@@ -11,14 +11,18 @@ extends PKeyKeyringBackend
 ## raise an unlock prompt, and a call that does not finish is killed and reported, never awaited
 ## for ever on the main thread.
 ##
-## unavailable() says why when `secret-tool` is not on PATH or there is no session bus
+## unavailable() says why when `/usr/bin/secret-tool` is missing or there is no session bus
 ## (DBUS_SESSION_BUS_ADDRESS, or $XDG_RUNTIME_DIR/bus), and on an engine older than Godot 4.5,
 ## whose OS.execute_with_pipe never delivers what is written to the child's stdin (`store` then
 ## fails, and the write can raise SIGPIPE): the store keeps the token in its 0600 file and says so.
 ## A daemon that is not running or a locked collection shows up as a failed call, which the store
 ## surfaces.
 
-## The program to run: `secret-tool` on PATH by default. Tests point it at a stand-in script.
+## The program to run: `/usr/bin/secret-tool` by default, by absolute path and never through PATH
+## (a planted `secret-tool` earlier on PATH would be handed the token). Tests point it at a
+## stand-in script.
+const DEFAULT_TOOL := "/usr/bin/secret-tool"
+
 var tool := ""
 ## The platform this answers for ("" means PKeyHeaders.platform()). Tests set it.
 var platform := ""
@@ -41,7 +45,7 @@ func unavailable() -> String:
 	if not engine_pipes_stdin():
 		return "secret-tool needs Godot 4.5 or later: Godot %s's OS.execute_with_pipe does not deliver stdin, and the secret never goes on a command line" % Engine.get_version_info().get("string", "4.4")
 	if _program() == "":
-		return "secret-tool (libsecret-tools) is not on PATH"
+		return "secret-tool (libsecret-tools) is not installed at %s" % DEFAULT_TOOL
 	if OS.get_environment("DBUS_SESSION_BUS_ADDRESS") == "":
 		var runtime_dir := OS.get_environment("XDG_RUNTIME_DIR")
 		if runtime_dir == "" or not FileAccess.file_exists(runtime_dir.path_join("bus")):
@@ -89,11 +93,7 @@ static func engine_pipes_stdin() -> bool:
 func _program() -> String:
 	if tool != "":
 		return tool if FileAccess.file_exists(tool) else ""
-	for dir in OS.get_environment("PATH").split(":", false):
-		var candidate := dir.path_join("secret-tool")
-		if FileAccess.file_exists(candidate):
-			return candidate
-	return ""
+	return DEFAULT_TOOL if FileAccess.file_exists(DEFAULT_TOOL) else ""
 
 
 static func _why(action: String, r: Dictionary) -> String:

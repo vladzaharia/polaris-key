@@ -45,7 +45,10 @@ import {
 import { ErrorCode, Feature, SdkId } from "../constants.generated.js";
 import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
+import { withRedirectPolicy } from "./redirect.js";
+import { assertProductSlug } from "./slug.js";
 import { resolveAppVersion } from "./appVersion.js";
+import { bindDeviceId } from "./deviceBinding.js";
 import { classifyResponse, transportError } from "./http.js";
 import { defaultDirBases, resolveDirs, type ProductDirs } from "./dirs.js";
 import {
@@ -94,7 +97,8 @@ export function normalizeBaseUrl(raw: string): string {
         "plaintext http:// is only accepted for localhost/127.0.0.1.",
     );
   }
-  return raw.replace(/\/+$/, "");
+  // The origin only: a path, query, fragment or userinfo would ride into every URL.
+  return url.origin;
 }
 
 /** What Core needs. Per-service inputs live in that service's own option bag. */
@@ -201,6 +205,7 @@ export class CoreContext {
   private floor = 0;
 
   constructor(opts: CoreOptions & { localOnly?: boolean }) {
+    assertProductSlug(opts.productSlug);
     this.product = opts.productSlug;
     this.deviceNameOption = opts.deviceName;
     this.baseUrl = normalizeBaseUrl(opts.baseUrl ?? DEFAULT_BASE);
@@ -222,7 +227,11 @@ export class CoreContext {
   }
 
   async init(): Promise<void> {
-    this.deviceIdValue = await this.store.getDeviceId();
+    // The desktop file store's id is re-derived from the hardware anchor at every start;
+    // a stored id that disagrees is discarded with the token and the grant slices.
+    this.deviceIdValue = (
+      await bindDeviceId(this.product, this.store)
+    ).deviceId;
   }
 
   /** The label to send (§12.7.1): `override`, else the `deviceName` option, else the platform
@@ -282,6 +291,24 @@ export class CoreContext {
     this.discovered = services;
   }
 
+  /**
+   * The licence GATE's input — deliberately NOT `enabled("license")`.
+   *
+   * `enabled()` answers "may this product call the licence sub-client", and discovery wins
+   * there. The gate is a security decision, and discovery is an UNSIGNED network read: a
+   * network attacker answering `services.license.enabled: false` must not be able to turn a
+   * licensed build into `not-applicable`. So the gate is ON when the BUILD declares the
+   * licence service (`expectedServices`, default licence + config) OR a discovery loaded this
+   * session says it is on. Unsigned discovery can switch the gate on, never off. A config-only
+   * product names `expectedServices` without `license`.
+   */
+  licenseGateEnabled(): boolean {
+    const declared = this.expectedServices
+      ? this.expectedServices.includes("license")
+      : DEFAULT_SERVICES.license.enabled;
+    return declared || this.discovered?.license.enabled === true;
+  }
+
   enabled(slug: ServiceSlug): boolean {
     return this.services()[slug].enabled;
   }
@@ -321,7 +348,8 @@ export class CoreContext {
         "This client is in local-only mode; network calls are refused.",
       );
     }
-    return this.fetchImpl ?? fetch;
+    // Every product-scoped call follows the §5 redirect rule.
+    return withRedirectPolicy(this.fetchImpl ?? ((...a) => fetch(...a)));
   }
 
   /** A fresh deadline for one request. */
@@ -404,7 +432,7 @@ export class CoreContext {
     } catch (e) {
       return {
         kind: "error",
-        code: ErrorCode.networkError,
+        code: e instanceof PolarisError ? e.code : ErrorCode.networkError,
         status: 0,
         message: transportError(e, path).message,
       };

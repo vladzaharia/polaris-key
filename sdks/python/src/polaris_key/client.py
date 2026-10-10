@@ -637,7 +637,7 @@ class PolarisKeyClient:
     def import_bundle(self, jws: str, now: Optional[int] = None) -> ImportBundleResult:
         """Verify and install an offline activation bundle. All-or-nothing; no token is
         created. Raises :class:`PolarisError` carrying the §7 step that refused."""
-        result = import_bundle(self.core, self._cache, jws, now)
+        result = import_bundle(self.core, self._cache, self._trust, jws, now)
         self._publish()
         return result
 

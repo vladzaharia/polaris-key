@@ -11,7 +11,8 @@ extends RefCounted
 ##   5. each verified against the effective set, with the per-type anti-replay floor taken from
 ##      the document held now (never from disk), on a worker thread (gameplay)
 ##   6. ONE cache write folding every changed slice and both unsigned hints: a hard 401 sets
-##      `lastSyncUnauthorized`, a 403 build block sets `blocked`, a 200 or 304 clears both
+##      `lastSyncUnauthorized` and deletes that slice and its ETag, a 403 build block sets
+##      `blocked` and deletes the licence slice, a 200 or 304 clears both hints
 ##   7. the clock floor rises from whatever verified
 ##   8. the post-sync hooks (telemetry, P1-05), skipped only on a hard 401 with nothing applied
 ##
@@ -69,6 +70,10 @@ static func run(core: PKeyCore, force := false) -> PKeySyncResult:
 	var changes := {}
 	if trust_jws != "":
 		changes["trustJws"] = trust_jws
+		# §4.1: a manifest that tombstoned a pin is that tombstone's evidence, in the same write.
+		var evidence := core.trust.pin_revocations()
+		if not evidence.is_empty():
+			changes["pinRevocations"] = evidence
 	var unauthorized := false
 	var blocked_outcome = null
 	var rate_limited := false
@@ -88,6 +93,14 @@ static func run(core: PKeyCore, force := false) -> PKeySyncResult:
 			"unchanged":
 				unchanged = true
 	var healthy := applied or unchanged
+	# The unsigned hints are for display; no verdict depends on them. What makes a revocation (or a
+	# build block) hold offline is that the document it answered for is REMOVED in the same write
+	# that sets the hint, so clearing a hint yields needs-activation, never a usable document.
+	# The token stays, so the gate still reports revoked / the block.
+	for slice in join.results:
+		var kind: String = join.results[slice]["kind"]
+		if kind == "unauthorized" or (slice == "license" and kind == "blocked"):
+			core.cache.revoke_slice(slice)
 	if unauthorized:
 		changes["lastSyncUnauthorized"] = true
 	elif healthy:
@@ -144,11 +157,11 @@ static func _sync_document(core: PKeyCore, slice: String, force: bool, allow_rea
 				"trust": core.trust.effective(),
 				"expected_aud": core.product,
 				"device_id": core.device_id,
-				"now": core.clock.system_now(),
+				"now": core.clock.now(),
 				"offload": true,
 			}
-			if held != null:
-				opts["last_accepted_issued_at"] = held["doc"]["issuedAt"]
+			# Required by PKeyVerify: the held document's floor, or an explicit null (none held).
+			opts["last_accepted_issued_at"] = held["doc"]["issuedAt"] if held != null else null
 			var doc = await PKeyVerify.verify_doc(res["jws"], PKeyClaims.TYP_LICENSE if slice == "license" else PKeyClaims.TYP_CONFIG, opts)
 			if doc == null:
 				return {"kind": "error", "status": 200, "code": String(PKeyErrors.INVALID_RESPONSE), "message": "the %s document did not verify" % slice}

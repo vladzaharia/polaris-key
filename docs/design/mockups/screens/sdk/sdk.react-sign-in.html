@@ -5,6 +5,10 @@
     --kit-accent-on: var(--pk-text-on-accent);
     --kit-accent-subtle: color-mix(in oklab, var(--kit-accent) 13%, var(--pk-surface-raised));
   }
+  /* Light: the same coral one step deeper, so its label and its links read at 4.5:1 on white. */
+  [data-theme="light"] [data-screen="sdk.react-sign-in"] {
+    --kit-accent: color-mix(in oklab, color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose)) 78%, #060912);
+  }
   /* From 1600: four windows to a row, then the code across the board. */
   @container screen (min-width: 1600px) {
     [data-screen="sdk.react-sign-in"] .frame-grid.windows {
@@ -44,7 +48,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>1 · Sign in.</strong> No provider logos (DJDL has no connections).</figcaption>
+        <figcaption><strong>1 · Sign in.</strong></figcaption>
       </figure>
       <figure class="board-item">
         <div class="window win">
@@ -59,7 +63,7 @@
                   <p class="kit-lede">Use the email you bought DJDL with.</p>
                 </div>
                 <div class="kit-stack">
-                  <div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this computer’s internet connection, then try again.</span></div>
+                  <div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>You’re offline</b>Check this computer’s internet connection, then try again.</span></div>
                   <button class="kit-btn primary block">Try again<i class="ic ic-arrow-up-right"></i></button>
                 </div>
                 <div class="kit-rule"></div>
@@ -68,7 +72,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>1b · Offline.</strong> No browser opens until Polaris Key answers.</figcaption>
+        <figcaption><strong>1b · Offline.</strong> No browser opens until the network is back.</figcaption>
       </figure>
       <figure class="board-item">
         <div class="window win">
@@ -80,7 +84,7 @@
                 <div class="kit-head">
                   <span class="logo lg" data-product="djdl"></span>
                   <h2 class="kit-title">Finish in your browser</h2>
-                  <p class="kit-lede">We opened Polaris Key in your browser. Sign in there and DJDL continues by itself.</p>
+                  <p class="kit-lede">Sign in in the window that opened; DJDL continues by itself.</p>
                 </div>
                 <div class="kit-stack">
                   <div class="kit-waiting" role="status"><span class="kit-breath"></span>Waiting for your browser…</div>
@@ -201,7 +205,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>3b · No license in this account.</strong> Never a dead end.</figcaption>
+        <figcaption><strong>3b · No license in this account.</strong></figcaption>
       </figure>
       <figure class="board-item">
         <div class="window win">
@@ -237,20 +241,18 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>4 · Signed in.</strong> The account row is the kit’s AccountAndLicense part.</figcaption>
+        <figcaption><strong>4 · Signed in.</strong></figcaption>
       </figure>
       <figure class="board-item span-all code-end cap-top">
         <div class="code" data-service="core">
           <div class="code-head">
-            <div class="code-tabs"><span>main.ts</span><span class="active">renderer.tsx</span></div>
+            <div class="code-tabs" tabindex="0"><span>main.ts</span><span class="active">renderer.tsx</span></div>
             <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
           </div>
-<pre><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
+<pre tabindex="0"><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
 <span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> } <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
 <span class="t-k">import</span> <span class="t-s">"@polaris-key/react/styles.css"</span>;
 
-<span class="t-c">// In Electron the provider uses the main process's bridge, which</span>
-<span class="t-c">// runs the browser sign-in and holds the device key.</span>
 <span class="t-f">createRoot</span>(root).<span class="t-f">render</span>(
   &lt;<span class="t-t">PolarisKeyProvider</span> <span class="t-p">config</span>={polarisKey}&gt;
     &lt;<span class="t-t">PolarisKeyGate</span>&gt;
@@ -258,7 +260,7 @@
     &lt;/<span class="t-t">PolarisKeyGate</span>&gt;
   &lt;/<span class="t-t">PolarisKeyProvider</span>&gt;,
 );</pre>
-          <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set: the Polaris look in DJDL’s accent. <code>theme</code> restyles it.</span></div>
+          <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set: the Polaris look in DJDL’s accent</span></div>
         </div>
         <figcaption><strong>What the Electron build writes.</strong></figcaption>
       </figure>

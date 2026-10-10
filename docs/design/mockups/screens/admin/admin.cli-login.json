@@ -11,7 +11,7 @@
     "pkey login prints the console context (Polaris Key console · key.plrs.im), opens the browser, prints the fallback link, and shows the code in reverse video with the keys Enter (open again), c (copy the code) and Esc (cancel); the spinner is the braille one on stderr.",
     "The browser page is the shared sign-in card (AuthCard) in console context: 'Let pkey sign in as you?' with the machine line under it, the code panel 'Check this matches your terminal', the roles the token will be bounded by as role tags, the end date once ('Ends Nov 6') and that it can't install packages.",
     "Approval needs a fresh strong sign-in: the button is 'Approve with your passkey' even when the console is already open (step-up to mint). A session signed in with an email code only gets 'Sign in with your passkey to approve' and no Approve button until then (Other states).",
-    "After approval the terminal prints '✓ Signed in as <name> (<email>)', then Roles, Token (pkeyp_…, admin, end date) and where it is saved (macOS Keychain; Windows Credential Manager or the Secret Service on Linux), then that the token follows the roles and how to end it.",
+    "After approval the terminal prints '✓ Signed in as <name> (<email>)', then Roles, Token (pkeyp_…, admin, end date) and where it is saved (macOS Keychain; Windows Credential Manager or the Secret Service on Linux), then how to end it (pkey logout).",
     "A command outside the roles fails with '✗ You don't have access to <product> → <area>.', the current roles and the people to ask, one per line with email and role (Kenji Mori, then the Superadmins), the same list as the console's no-access page.",
     "Setting PKEY_ADMIN_COOKIE fails with what changed and the fix (run pkey login once); there is no deprecation warning or fallback in 0.9.",
     "pkey feeds setup --write makes its own packages:read token and writes package-manager files; the admin token is never written to a file, and a token is never both admin and packages.",
@@ -19,7 +19,9 @@
     "The other endings are drawn: Approved (the browser says 'Signed in. Go back to your terminal.', beside terminal 3), and under Other states Cancelled, Expired and Email code only.",
     "Over SSH or with no browser, the terminal skips the browser and says to enter the code at key.plrs.im/manage/device on another device; --json prints one object per state and never prompts; CI uses a service token instead.",
     "Every line fits 80 columns; colours are the ANSI roles (pkey has no product accent, so emphasis is bold, not cyan text) and ✓ ✗ fall back to ASCII under TERM=dumb.",
-    "Landscape (tablet and up): two rows of two equal frames in order (terminal 1 and the approval page, terminal 3 and the approved page), then the related commands, then the three notes as a strip, then Other states in equal columns. Phone: one column in that order; terminal lines scroll sideways inside their frames."
+    "Landscape (tablet and up): two rows of two equal frames in order (terminal 1 and the approval page, terminal 3 and the approved page), then the related commands, then Other states in equal columns. Phone: one column in that order; terminal lines scroll sideways inside their frames.",
+    "Hosted card v2 (B8): the one primary is ink; the app header is a neutral strip, and in a landscape window ≥960px the passport (a sunken identity pane: the product's art, icon, the request, developer and device on their own lines, no eyebrow) beside the unchanged 456px form pane; the trust receipt spans the card; refusals are neutral callouts with the fix as the one primary.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13)."
   ],
   "status": "mockup",
   "designReview": {

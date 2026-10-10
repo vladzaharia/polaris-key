@@ -10,11 +10,11 @@
   "compare": [
     "A board of two page slices (.board.cols-1), each the record's header, tabs, holder card and origin card on the same rail layout as licenses.detail.",
     "Waiting: 'Tomás Okafor' with 'Waiting for sign-in' in the info tone; tomas@example.com and the id; Tier: Standard ▾, Resend invitation (primary) and ⋯ (Change email, Change tier, Revoke).",
-    "Invitation card: 'Moves into his account at his first sign-in with this email, verified.' and Change email…; Sent Oct 2 (Not opened yet), Devices none until he signs in; foot: 'Change email sends a new invitation; the old link stops working.'",
-    "By hand origin: Created Oct 2, 2026 by Ada Lovelace, the reason, 'Access rules never change it.', Open Activity.",
+    "Invitation card: the heading alone, no subtitle, with Change email…; Sent Oct 2 (Not opened yet).",
+    "By hand origin: Created Oct 2, 2026 by Ada Lovelace, the reason, Open Activity.",
     "Floating: titled by the masked key in mono with Active; the Floating pill and the license id; Tier: Standard ▾, Assign to a person (primary) and ⋯ (Change tier, Disable key, Revoke). No email anywhere.",
-    "Anyone with the key: Key (only its hash is kept), First used Oct 6, 2026 on Studio-PC · Windows 11 · DJDL 4.2.0, Devices 1 of 5, Library (adding the key moves the license into that account).",
-    "Key batch origin: Controller bundle · Oct 2026, created Oct 6, 2026 by Ada Lovelace, 41 of 200 used, and Disable unused keys turning off the other 159; Open batch."
+    "Anyone with the key: the heading alone, no subtitle; Key (Can’t be shown again), First used Oct 6, 2026, Device Studio-PC (Windows 11 · DJDL 4.2.0).",
+    "Key batch origin: Controller bundle · Oct 2026, created Oct 6, 2026 by Ada Lovelace, 41 of 200 used; Open batch."
   ],
   "status": "mockup",
   "designReview": {

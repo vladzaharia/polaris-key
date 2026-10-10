@@ -16,8 +16,11 @@ import type { TrustManifestDoc } from "@polaris-key/protocol";
 // is the third artifact the client verifies alongside the two signed documents, and all three
 // have to name one `iss` or an SDK that pins it cannot accept all three.
 import { ISSUER } from "@polaris-key/protocol/core";
+import { REVOKED_KEY_LISTING_SECONDS } from "@polaris-key/protocol/trust";
 import { loadPublicSigningKeys } from "./products.js";
 import { isStrictJsonError, signDoc } from "./signing.js";
+import type { Env } from "../env.js";
+import { loadTrustSigner, type TrustSigner } from "./trustSigners.js";
 import { ErrorCode, wireError } from "./errors.js";
 
 const TRUST_CACHE_SECONDS = 300;
@@ -61,15 +64,16 @@ export async function signTrustManifest(
   product: Product,
   now: number,
   origin: string,
+  /** Sign with this key instead of the active one (`?signer=`; see `trustSigners.ts`). */
+  signer?: TrustSigner,
 ): Promise<string> {
-  // §2.3 — keys revoked within 2× the cache window are still LISTED, with status
-  // "revoked": every client that could hold the key cached reads a positive removal
-  // instead of inferring it from absence. Older revocations age out and absence takes
-  // over, exactly as the merge semantics already handle.
+  // §2.3 — revoked keys stay LISTED, with status "revoked", for REVOKED_KEY_LISTING_SECONDS:
+  // every client that could hold the key, or a pin of it, reads a positive removal instead
+  // of inferring it from absence. Older revocations age out and absence takes over.
   const keyRows = await loadPublicSigningKeys(
     db,
     product.slug,
-    now - 2 * TRUST_CACHE_SECONDS,
+    now - REVOKED_KEY_LISTING_SECONDS,
   );
   const doc: TrustManifestDoc = {
     schemaVersion: 1,
@@ -102,22 +106,36 @@ export async function signTrustManifest(
   // check, never a transformation.
   return signDoc(
     doc,
-    product.signingKeyPem,
-    product.signingKid,
+    signer?.pem ?? product.signingKeyPem,
+    signer?.kid ?? product.signingKid,
     "pkey-trust+jws",
   );
 }
 
 export async function handleTrustManifest(
   req: Request,
+  env: Env,
   db: Db,
   product: Product,
   now: number,
 ): Promise<Response> {
   const url = new URL(req.url);
+  // `?signer=<kid>`: the same manifest under another live key. An unknown, revoked
+  // or active kid falls through to the default, so the parameter never turns into an oracle.
+  const want = url.searchParams.get("signer");
+  const signer =
+    want !== null && want !== product.signingKid
+      ? await loadTrustSigner(env, db, product.slug, want)
+      : null;
   let jws: string;
   try {
-    jws = await signTrustManifest(db, product, now, url.origin);
+    jws = await signTrustManifest(
+      db,
+      product,
+      now,
+      url.origin,
+      signer ?? undefined,
+    );
   } catch (e) {
     // A stored kid no v4 verifier would accept (plans/P3-01.md §2.2): refuse, never throw.
     if (!isStrictJsonError(e)) throw e;

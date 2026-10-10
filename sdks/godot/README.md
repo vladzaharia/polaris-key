@@ -740,7 +740,8 @@ fetches the record the target for this platform pins and verifies it hash first,
   `releaseRecords` (keyed by SHA-256), signed artifacts only, written atomically with the rest
   of the record. On load each feed is re-verified (no freshness, its claim equal to its key)
   and each record re-verified and kept only while a surviving feed pins it; the floors are
-  derived from what survived and never stored. A bundle import keeps both slices.
+  derived from what survived and never stored. A bundle import keeps both slices and the
+  `pinRevocations` evidence (the manifests that revoked a pinned key).
 - **Off the first frame.** Every Ed25519 verify in `decide()` and in the cache load runs on a
   `WorkerThreadPool` task where the build has threads and in frame slices where it has none. A
   feed plus a record is about 10 ms on a desktop release template (the conformance suite logs
@@ -864,15 +865,21 @@ is never talked into self-updating code.
   `is_available()`, `check_now()`, `install_and_relaunch()`, with the feed URL from discovery):
   Sparkle on macOS (the appcast), Velopack on a Velopack install or with its plugin, else
   WinSparkle, on Windows (`update.endpoints.velopack` up to `releases.`, `…/winsparkle.xml`), and
-  AppImageUpdate in an AppImage, else Velopack, on Linux. Each bridge calls, in order, a `native`
+  the verified AppImage installer in an AppImage, else Velopack, on Linux. The desktop plugin
+  bridges call, in order, a `native`
   object a test injects, an Engine singleton (`PolarisKeySparkle`, `PolarisKeyVelopack`,
   `PolarisKeyWinSparkle`, `PolarisKeyStoreContext`) a game registers itself, or P5-07's facade
   (see "Native desktop plugins" below). With no plugin every call is the typed unsupported result
   (`unsupported`, `detail.reason` `dependency`, or `runtime` on the wrong OS), `native` is not
   offered to the decision, and an adapter given `native` anyway opens the download link: a missing
-  plugin never breaks boot. AppImage needs no plugin: with `APPIMAGE` set and `appimageupdatetool`
-  on PATH it runs `appimageupdatetool -O $APPIMAGE` on a worker thread and relaunches `$APPIMAGE`
-  (not the mounted executable).
+  plugin never breaks boot. AppImage needs no plugin or external updater: with `APPIMAGE` pointing
+  to an existing Linux image, the adapter passes the verified `PKeyUpdateCheck` through
+  `PKeyUpdater.install_appimage(check)`. It downloads the selected `appimage` build into a private
+  sibling directory, verifies the payload's exact size and SHA-256 against the pinned-key-verified
+  release record, then atomically replaces and relaunches `$APPIMAGE` (not the mounted executable).
+  Verification or replacement failure leaves the original image untouched and reports an error.
+  The generic AppImage `install_and_relaunch()` hook refuses calls, including custom plugins.
+  `appimageupdatetool -j` remains an optional informational check only.
 - **`download`**: the build's URL from discovery's `distribution.endpoints.builds` (else
   `release.endpoints.builds`; never the R2-only `blobs`), `{selector}` = the record's version and
   `{buildId}` = the decision's build, percent-encoded; else `PKeyOptions.update_release_url`.
@@ -1421,7 +1428,7 @@ use. The device id and the verified cache stay in the 0600 files under `user://p
 | ------- | ------------------ | ---------------------------------------------------------------------- |
 | macOS   | the login keychain | `libpkey_apple.dylib` (`sdks/godot/native/macos/build_apple.sh`)       |
 | Windows | Credential Manager | `pkey_win.dll` (`PKeyWinCredentialNative`, `native/windows/build.ps1`) |
-| Linux   | the Secret Service | `secret-tool` on PATH (`libsecret-tools`) and a D-Bus session          |
+| Linux   | the Secret Service | `/usr/bin/secret-tool` (`libsecret-tools`) and a D-Bus session         |
 
 Every token write is verified by reading it back. A write that cannot be verified keeps the token
 in the 0600 token file. That fallback is surfaced: the store emits `failed`, which reaches you as

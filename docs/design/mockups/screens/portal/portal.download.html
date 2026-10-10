@@ -1,0 +1,51 @@
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal">
+      <a class="active" href="#">Library <span class="count">2</span></a>
+      <a href="#">Discover</a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <!-- PX-29 / P2-13: the focused download: the chosen build, how to install it, its SHA-256 and the
+       channel, other platforms folded. A phone sees the desktop builds and can mail itself the link. -->
+  <main class="portal-page task">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Library</a><i class="ic ic-chevron-right"></i><a href="#">DJDL</a></nav>
+    <h1 id="dl-title" class="task-title">Download DJDL 4.2.0</h1>
+    <div class="task-frame">
+      <aside class="task-aside" aria-label="License">
+          <div class="identity-row">
+            <span class="logo" data-product="djdl"></span>
+            <div class="grow"><strong>DJDL Education</strong><span class="meta">From Example Audio · updates until Sep 14, 2027</span></div>
+          </div>
+      </aside>
+      <section class="task-main" aria-labelledby="dl-title">
+        <p class="icon-line type-small show-phone"><i class="ic ic-monitor"></i><span>You’re viewing desktop builds.</span></p>
+        <div class="task-actions">
+          <button class="btn primary hide-phone"><i class="ic ic-download"></i>Download for macOS</button>
+          <button class="btn primary show-phone"><i class="ic ic-mail"></i>Email me the download</button>
+        </div>
+        <section class="card" aria-label="macOS build">
+          <dl class="kv-rows">
+            <div><dt>For</dt><dd><span>macOS, Universal</span><span class="source">.dmg · 84 MB</span></dd></div>
+            <div><dt>Channel</dt><dd>Stable · Sep 22, 2026</dd></div>
+            <div><dt>SHA-256</dt><dd><span class="hash-row"><span>5be0c2a91f4e7d3388c0b1a5e9d2f6047c3b8a1e2d9f5c6b7a8e9d0c1f2a1f9a</span><button class="btn ghost icon xs" aria-label="Copy the SHA-256"><i class="ic ic-copy"></i></button></span></dd></div>
+          </dl>
+          <div class="card-foot start"><span class="type-small muted">Open the .dmg and drag DJDL to Applications.</span></div>
+        </section>
+        <button class="card fold-row" aria-expanded="false"><i class="ic ic-chevron-right"></i><span class="fold-row-text"><strong>Other platforms</strong><span>Windows x64 · .exe · 70 MB</span></span></button>
+      </section>
+    </div>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+  <nav class="portal-tabbar" aria-label="Portal">
+    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+  </nav>
+</div>

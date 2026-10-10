@@ -1150,6 +1150,7 @@ describe("platform store connections: custody", () => {
       json(
         await handleAdmin(
           await (async () => {
+            // A proven step-up: POST /kek is in the step-up table.
             const { token, session } = await issueSession(
               env,
               {
@@ -1157,6 +1158,8 @@ describe("platform store connections: custody", () => {
                 name: "Ada",
                 email: "ada@x.io",
                 groups: ["platform-admins"],
+                authTime: NOW,
+                stepUp: true,
               },
               NOW,
             );

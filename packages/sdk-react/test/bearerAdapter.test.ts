@@ -375,7 +375,7 @@ describe("bearer mode: activate, sync, devices, reload", () => {
     expect(forged.isEntitled("pro")).toBe(false);
   });
 
-  it("a revoked licence keeps its last grants but unlocks nothing (S-19 G11)", async () => {
+  it("a revoked licence drops its cached grants and unlocks nothing (S-19 G11)", async () => {
     const s = await server();
     const adapter = browserAdapter({
       productSlug: "acme",
@@ -391,7 +391,8 @@ describe("bearer mode: activate, sync, devices, reload", () => {
     s.revoke();
     await adapter.refresh();
     expect(adapter.snapshot().status).toBe("revoked");
-    expect(adapter.snapshot().entitlements.pro).toBe(true);
+    // The hard 401 deleted the licence document, so no grant survives to be shown.
+    expect(adapter.snapshot().entitlements.pro).toBeUndefined();
     expect(adapter.isEntitled("pro")).toBe(false);
   });
 

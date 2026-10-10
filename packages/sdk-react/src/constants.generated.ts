@@ -1329,6 +1329,9 @@ export const DATA_ONLY_TAIL_BYTES = 65557;
 /** Wire contract v4 limit `MAX_DELEGATIONS_PER_CHECK` (`@polaris-key/protocol/core`). */
 export const MAX_DELEGATIONS_PER_CHECK = 16;
 
+/** Wire contract v4 limit `MAX_TRUST_SIGNER_ATTEMPTS` (`@polaris-key/protocol/core`). */
+export const MAX_TRUST_SIGNER_ATTEMPTS = 4;
+
 /** Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
 export const MAX_PACK_VARIANTS = 32;
 

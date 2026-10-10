@@ -151,6 +151,7 @@ async function sync(w: World, token: string, now = NOW): Promise<Cache> {
     new Request(
       "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
     ) as unknown as Request,
+    w.env,
     w.db,
     w.product,
     now,
@@ -204,6 +205,7 @@ const verifyOpts = (
   device: string,
   now: number,
 ): Parameters<typeof verifyLicenseDoc>[1] => ({
+  lastAcceptedIssuedAt: null,
   trust: TRUST,
   expectedAud: "djdl",
   deviceId: device,

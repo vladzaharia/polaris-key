@@ -4,7 +4,7 @@ extends PKeyOutletAdapter
 ## only outlet that installs anything itself, and `binary` dispatches on `method`:
 ##
 ##   native       the platform's native updater through its bridge (`ctx.native_bridge`: Sparkle on
-##                macOS, Velopack then WinSparkle on Windows, AppImageUpdate in an AppImage, else
+##                macOS, Velopack then WinSparkle on Windows, the verified AppImage installer, else
 ##                Velopack on Linux). With no plugin installed the bridge answers `unsupported`
 ##                (`dependency`) and the adapter opens the build's download link instead
 ##   download     the build's download URL (discovery's `distribution.endpoints.builds` with

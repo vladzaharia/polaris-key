@@ -35,16 +35,23 @@ import {
   CACHE_VERSION,
   REFRESH_MARGIN_SECONDS,
   channelForVersion,
+  compareKidBytes,
   effectiveNow,
+  jwsHeaderKid,
+  loadPinRevocations,
   mergeTrust,
   normalizeDeviceLabel,
+  trustSignerOrder,
+  usablePins,
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
   type BlockedState,
   type CacheRecordV3,
   type Store,
+  type TrustManifestResult,
 } from "@polaris-key/client-core";
+import { reloadBundle, type CachedBundle } from "../offline.js";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import {
   HEADER_ARCH,
@@ -334,6 +341,11 @@ export class BearerSession {
   private config: Held<ConfigDoc> | null = null;
   private discovered: TrustSet = {};
   private manifestIssuedAt: number | undefined;
+  /** The tombstoned pins and their evidence (WIRE-CONTRACT-V4 §1, §4.1). */
+  private tombstones: string[] = [];
+  private evidence: Record<string, string> = {};
+  /** The cached bundle, when it re-verified on the reload profile (§7). */
+  private bundle: CachedBundle | null = null;
   private floor = 0;
   private lastVerifiedAt: number | null = null;
   /** The §5 single re-acquire's per-pass budget. */
@@ -382,11 +394,10 @@ export class BearerSession {
 
   /** The gate inputs, shaped as the desktop bridge's `BridgeState` (Node's `getSyncState`). */
   syncState(): BridgeState {
-    const bundle = this.record?.importedBundle;
     return {
       activation: this.token
         ? "token"
-        : bundle && this.license
+        : this.bundle?.activates && this.license
           ? "bundle"
           : null,
       doc: this.license?.doc ?? null,
@@ -398,9 +409,29 @@ export class BearerSession {
     };
   }
 
-  /** The effective trust set: manifest keys first, pins spread last (terminal). */
+  /** The effective trust set: manifest keys first, the USABLE pins spread last (terminal). */
   private get trust(): TrustSet {
-    return mergeTrust(this.opts.pinned, this.discovered);
+    return mergeTrust(
+      usablePins(this.opts.pinned, this.tombstones),
+      this.discovered,
+    );
+  }
+
+  /** Record a verified manifest's new tombstones, with the manifest as their evidence. */
+  private noteRevocations(jws: string, revokedPins: readonly string[]): void {
+    if (revokedPins.length === 0) return;
+    for (const kid of revokedPins) this.evidence[kid] = jws;
+    this.tombstones = [...new Set([...this.tombstones, ...revokedPins])].sort(
+      compareKidBytes,
+    );
+  }
+
+  private installManifest(jws: string, m: TrustManifestResult): void {
+    if (!m.doc) return;
+    this.noteRevocations(jws, m.revokedPins);
+    this.discovered = m.discovered;
+    this.manifestIssuedAt = m.doc.issuedAt;
+    this.raiseFloor(m.doc.issuedAt);
   }
 
   private raiseFloor(issuedAt: number): void {
@@ -432,6 +463,7 @@ export class BearerSession {
     this.manifestIssuedAt = undefined;
     this.license = null;
     this.config = null;
+    this.bundle = null;
     this.floor = 0;
     this.lastVerifiedAt = null;
     const rec = await s.readCache();
@@ -441,24 +473,33 @@ export class BearerSession {
       return;
     }
     this.record = { ...rec };
+    // §4.1: the pin evidence first; the manifest, the documents and the bundle verify against
+    // the usable pins. Evidence that no longer verifies is dropped on the next write.
+    const evidence = await loadPinRevocations(rec.pinRevocations, {
+      pinned: this.opts.pinned,
+      expectedAud: this.opts.product,
+    });
+    this.tombstones = evidence.tombstones;
+    this.evidence = evidence.kept;
     if (rec.trustJws) {
       const m = await verifyTrustManifest(rec.trustJws, {
         pinned: this.opts.pinned,
+        tombstones: this.tombstones,
         expectedAud: this.opts.product,
         now: this.opts.now(),
         checkFreshness: false,
       });
-      if (m.doc) {
-        this.discovered = m.discovered;
-        this.manifestIssuedAt = m.doc.issuedAt;
-        this.raiseFloor(m.doc.issuedAt);
-      } else delete this.record.trustJws;
+      if (m.doc) this.installManifest(rec.trustJws, m);
+      else delete this.record.trustJws;
     }
+    this.keepEvidence();
     const reload = {
       trust: this.trust,
       expectedAud: this.opts.product,
       deviceId: this.deviceIdValue,
       now: this.opts.now(),
+      // Reload: no floor (explicit); the floors are derived from what verifies here.
+      lastAcceptedIssuedAt: null,
       checkFreshness: false as const,
     };
     let newest = 0;
@@ -479,6 +520,24 @@ export class BearerSession {
       } else this.dropSlice("config");
     }
     this.lastVerifiedAt = newest > 0 ? newest * 1000 : null;
+    this.bundle = await reloadBundle(this.record, {
+      pinned: this.opts.pinned,
+      tombstones: this.tombstones,
+      product: this.opts.product,
+      deviceId: this.deviceIdValue,
+      now: this.opts.now(),
+      license: this.license?.jws,
+    });
+  }
+
+  /** The in-memory `pinRevocations` slice follows the evidence that re-verified. */
+  private keepEvidence(): void {
+    if (!this.record) return;
+    const next: CacheRecordV3 = { ...this.record };
+    delete next.pinRevocations;
+    if (Object.keys(this.evidence).length > 0)
+      next.pinRevocations = { ...this.evidence };
+    this.record = next;
   }
 
   private dropSlice(slice: "license" | "config"): void {
@@ -703,6 +762,10 @@ export class BearerSession {
     if (this.record?.feeds) carried.feeds = this.record.feeds;
     if (this.record?.releaseRecords)
       carried.releaseRecords = this.record.releaseRecords;
+    // A pinned key's revocation is security state, not a grant (§4.1): it stays.
+    if (Object.keys(this.evidence).length > 0)
+      carried.pinRevocations = { ...this.evidence };
+    this.bundle = null;
     this.license = null;
     this.config = null;
     this.discovered = {};
@@ -826,23 +889,50 @@ export class BearerSession {
     this.passFailure = worst === undefined ? {} : { retryAfter: worst };
   }
 
-  /** Fetch, verify and install the trust manifest. Null when nothing acceptable arrived. */
+  /**
+   * Fetch, verify and install the trust manifest. Null when nothing acceptable arrived. When the
+   * default manifest's signer is not a usable pin, retry with `?signer=<kid>` for each usable pin
+   * (ascending kid bytes, at most `MAX_TRUST_SIGNER_ATTEMPTS`) and keep the first accepted
+   * (WIRE-CONTRACT-V4 §2.3).
+   */
   private async refreshTrust(): Promise<string | null> {
-    const res = await this.send(".well-known/polaris-trust.jws", {
-      headers: { accept: "application/jose" },
-    });
-    if (!res.ok) return null;
-    const jws = await res.text();
-    const m = await verifyTrustManifest(jws, {
-      pinned: this.opts.pinned,
-      expectedAud: this.opts.product,
-      now: this.opts.now(),
-      lastTrustIssuedAt: this.manifestIssuedAt,
-    });
+    const fetchManifest = async (signer: string | null) => {
+      const res = await this.send(
+        signer === null
+          ? ".well-known/polaris-trust.jws"
+          : `.well-known/polaris-trust.jws?signer=${encodeURIComponent(signer)}`,
+        { headers: { accept: "application/jose" } },
+      );
+      return res.ok ? res.text() : null;
+    };
+    const verify = (jws: string) =>
+      verifyTrustManifest(jws, {
+        pinned: this.opts.pinned,
+        tombstones: this.tombstones,
+        expectedAud: this.opts.product,
+        // The effective clock (never behind a held floor), as every network path.
+        now: this.now(),
+        lastTrustIssuedAt: this.manifestIssuedAt,
+      });
+    const first = await fetchManifest(null);
+    if (first === null) return null;
+    let jws = first;
+    let m = await verify(first);
+    if (!m.doc) {
+      const usable = usablePins(this.opts.pinned, this.tombstones);
+      for (const signer of trustSignerOrder(usable, jwsHeaderKid(first))) {
+        const retry = await fetchManifest(signer);
+        if (retry === null) continue;
+        const r = await verify(retry);
+        if (r.doc) {
+          jws = retry;
+          m = r;
+          break;
+        }
+      }
+    }
     if (!m.doc) return null;
-    this.discovered = m.discovered;
-    this.manifestIssuedAt = m.doc.issuedAt;
-    this.raiseFloor(m.doc.issuedAt);
+    this.installManifest(jws, m);
     return jws;
   }
 
@@ -899,12 +989,12 @@ export class BearerSession {
           trust: this.trust,
           expectedAud: this.opts.product,
           deviceId: this.deviceIdValue,
-          now: this.opts.now(),
+          now: this.now(),
         };
         if (slice === "license") {
           const doc = await verifyLicenseDoc(res.jws, {
             ...opts,
-            lastAcceptedIssuedAt: this.license?.doc.issuedAt,
+            lastAcceptedIssuedAt: this.license?.doc.issuedAt ?? null,
           });
           if (!doc) return { kind: "error" };
           this.license = { jws: res.jws, doc };
@@ -912,7 +1002,7 @@ export class BearerSession {
         } else {
           const doc = await verifyConfigDoc(res.jws, {
             ...opts,
-            lastAcceptedIssuedAt: this.config?.doc.issuedAt,
+            lastAcceptedIssuedAt: this.config?.doc.issuedAt ?? null,
           });
           if (!doc) return { kind: "error" };
           this.config = { jws: res.jws, doc };
@@ -990,14 +1080,35 @@ export class BearerSession {
       this.syncNotBefore = 0;
     }
     const patch: Partial<CacheRecordV3> = {};
-    if (trustJws) patch.trustJws = trustJws;
+    if (trustJws) {
+      patch.trustJws = trustJws;
+      // §4.1: a manifest that tombstoned a pin is its evidence, in the same write.
+      if (Object.keys(this.evidence).length > 0)
+        patch.pinRevocations = { ...this.evidence };
+    }
+    // A hard 401 deletes the slice it answered for, and a 403 build block deletes the
+    // licence document, in the SAME write that sets the hint (hints are display-only: clearing
+    // one must not hand back a usable cached document). The token and the floor stay.
+    const revoked: Array<"license" | "config"> = [];
+    if (license.kind === "unauthorized" || blocked) revoked.push("license");
+    if (config.kind === "unauthorized") revoked.push("config");
+    for (const slice of revoked) {
+      this[slice] = null;
+      const { [slice]: _doc, ...docs } = this.record?.docs ?? {};
+      const { [slice]: _etag, ...etags } = this.record?.etags ?? {};
+      patch.docs = docs;
+      patch.etags = etags;
+      this.record = { v: CACHE_VERSION, ...this.record, docs, etags };
+    }
     if (unauthorized) patch.lastSyncUnauthorized = true;
     else if (healthy) patch.lastSyncUnauthorized = false;
     if (blocked?.kind === "blocked") patch.blocked = blocked.blocked;
     else if (healthy) patch.blocked = undefined;
-    // An online document supersedes an imported bundle (§7), as in Node.
-    if (applied && this.record?.importedBundle)
-      patch.importedBundle = undefined;
+    // An online document supersedes an imported bundle (§7).
+    if (applied && this.record?.bundle) {
+      patch.bundle = undefined;
+      this.bundle = null;
+    }
     if (Object.keys(patch).length > 0 || applied || healthy)
       await this.writeRecord(patch).catch(() => undefined);
     const result: SyncResult = {

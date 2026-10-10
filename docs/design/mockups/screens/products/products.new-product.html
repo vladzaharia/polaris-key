@@ -28,8 +28,8 @@
 
   <main class="main">
     <div class="page">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Home</a><i class="ic ic-chevron-right"></i>New product</nav>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a><i class="ic ic-chevron-right"></i><a href="#">Home</a></nav>
         <div class="page-heading"><h1>New product</h1></div>
         <div class="page-actions">
           <button class="btn ghost phone-inline"><i class="ic ic-x"></i>Cancel</button>
@@ -44,7 +44,7 @@
             <ol class="stepper">
               <li class="step done"><span class="step-mark"></span><span class="step-label">Repository or name<small>Diceroll, no repository</small></span></li>
               <li class="step current" aria-current="step"><span class="step-mark"></span><span class="step-label">What it’s for</span></li>
-              <li class="step"><span class="step-mark"></span><span class="step-label">Create<small>Review, then create</small></span></li>
+              <li class="step"><span class="step-mark"></span><span class="step-label">Create</span></li>
             </ol>
             <div class="stepper-progress" aria-hidden="true">
               <span class="strong">Step 2 of 3: What it’s for</span>
@@ -55,42 +55,35 @@
           <div class="wizard-body">
             <div class="mk-stack-1">
               <h2>What is Diceroll for?</h2>
-              <p class="type-small muted">Change these any time in Settings.</p>
             </div>
 
             <div class="choices multi cols-3" role="group" aria-label="Features">
-              <div class="choice on" role="checkbox" aria-checked="true">
+              <div class="choice on" data-service="license" role="checkbox" aria-checked="true">
                 <div class="choice-title"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span>Licensing</div>
-                <div class="choice-desc">Gate Diceroll on a license and sell it as tiers and add-ons.</div>
-                <div class="choice-foot">Tiers, licenses, device limits</div>
+                <div class="choice-desc">Gate Diceroll on a license.</div>
               </div>
-              <div class="choice on" role="checkbox" aria-checked="true">
+              <div class="choice on" data-service="config" role="checkbox" aria-checked="true">
                 <div class="choice-title"><span class="icon-tile sm" data-service="config"><i class="svc"></i></span>Managed config</div>
                 <div class="choice-desc">Change settings and secrets without shipping a build.</div>
-                <div class="choice-foot">Default profile, catalog v1, secrets</div>
               </div>
-              <div class="choice on" role="checkbox" aria-checked="true">
+              <div class="choice on" data-service="release" role="checkbox" aria-checked="true">
                 <div class="choice-title"><span class="icon-tile sm" data-service="release"><i class="svc"></i></span>Ship builds</div>
-                <div class="choice-desc">Publish releases from CI to every store and the download page.</div>
-                <div class="choice-foot">Releases, channels, in-app updates</div>
+                <div class="choice-desc">Publish releases from CI to every store.</div>
               </div>
-              <div class="choice" role="checkbox" aria-checked="false">
+              <div class="choice" data-service="identity" role="checkbox" aria-checked="false">
                 <div class="choice-title"><span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>Sign-in</div>
                 <div class="choice-desc">Let players sign in with a Polaris Key account.</div>
-                <div class="choice-foot">Accounts, customer portal</div>
               </div>
-              <div class="choice locked" role="checkbox" aria-checked="false" aria-disabled="true" aria-describedby="sync-reqs">
+              <div class="choice locked" data-service="sync" role="checkbox" aria-checked="false" aria-disabled="true" aria-describedby="sync-reqs">
                 <div class="choice-title"><span class="icon-tile sm muted" data-service="sync"><i class="svc"></i></span>Cloud Sync</div>
                 <div class="choice-desc">Each player’s saves and settings, the same on every device.</div>
-                <div class="reqs" id="sync-reqs"><span>Needs</span><span class="req met" aria-label="Managed config, chosen">Managed config</span><span class="req unmet" aria-label="Sign-in, not chosen">Sign-in</span></div>
+                <div class="reqs" id="sync-reqs"><span>Needs</span><span role="img" class="req met" aria-label="Managed config, chosen">Managed config</span><span role="img" class="req unmet" aria-label="Sign-in, not chosen">Sign-in</span></div>
                 <p class="choice-hint">Select Sign-in to unlock</p>
-                <div class="choice-foot">Synced settings, storage per account</div>
               </div>
-              <div class="choice on" role="checkbox" aria-checked="true">
+              <div class="choice on" data-service="commerce" role="checkbox" aria-checked="true">
                 <div class="choice-title"><span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>Commerce</div>
                 <div class="choice-desc">Sell packs and tiers on App Store, Google Play, Steam and itch.io.</div>
-                <div class="reqs"><span>Needs</span><span class="req met" aria-label="Licensing, chosen">Licensing</span></div>
-                <div class="choice-foot">Offers, a SKU per store, purchases</div>
+                <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Licensing, chosen">Licensing</span></div>
               </div>
             </div>
 
@@ -99,7 +92,6 @@
             <div class="mk-stack-3">
               <div class="mk-stack-1">
                 <h3 class="type-card">Where will Diceroll run?</h3>
-                <p class="type-small muted">Channels, storefronts and SDK code follow these.</p>
               </div>
               <div class="mk-cluster" role="group" aria-label="Planned platforms">
                 <span class="chip on" role="checkbox" aria-checked="true"><i class="ic ic-apple"></i>iOS</span>
@@ -127,9 +119,10 @@
           <details class="np-sum-bar">
             <summary><span class="strong">Creates</span><span>4 features · 4 platforms · Free tier</span><i class="ic ic-chevron-up"></i></summary>
             <ul class="mk-stack-3">
-              <li class="icon-line"><i class="ic ic-key-round"></i><span>A signing key your app pins</span></li>
+              <li class="icon-line"><i class="ic ic-key-round"></i><span>A signing key</span></li>
               <li class="icon-line"><i class="ic ic-layers"></i><span>4 features</span></li>
-              <li class="icon-line"><i class="ic ic-file-json"></i><span>Default profile and catalog v1</span></li>
+              <li class="icon-line"><i class="ic ic-sliders-horizontal"></i><span>Default profile</span></li>
+              <li class="icon-line"><i class="ic ic-file-json"></i><span>Catalog v1</span></li>
               <li class="icon-line"><i class="ic ic-tag"></i><span>The Free tier</span></li>
             </ul>
           </details>
@@ -147,9 +140,10 @@
           </div>
           <div class="card-body">
             <ul class="mk-stack-3">
-              <li class="icon-line"><i class="ic ic-key-round"></i><span>A signing key your app pins</span></li>
+              <li class="icon-line"><i class="ic ic-key-round"></i><span>A signing key</span></li>
               <li class="icon-line"><i class="ic ic-layers"></i><span>4 features</span></li>
-              <li class="icon-line"><i class="ic ic-file-json"></i><span>Default profile and catalog v1</span></li>
+              <li class="icon-line"><i class="ic ic-sliders-horizontal"></i><span>Default profile</span></li>
+              <li class="icon-line"><i class="ic ic-file-json"></i><span>Catalog v1</span></li>
               <li class="icon-line"><i class="ic ic-tag"></i><span>The Free tier</span></li>
             </ul>
             <article class="product-card" aria-label="Diceroll on Home">

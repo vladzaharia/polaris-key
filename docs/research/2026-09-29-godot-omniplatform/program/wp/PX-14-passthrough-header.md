@@ -1,16 +1,16 @@
 # PX-14 Passthrough card header and scoped consent
 
-| Field       | Value                                                                                                                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                                                                 |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                                                                     |
-| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W13](PX-W13-passthrough-metadata.md), [I-08](I-08-app-passthrough.md), [I-15](I-15-native-redirect.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [UK-02b](UK-02b-ui-fixtures-parity.md)           |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                     |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                         |
-| Plan mode   | no; builds the card for the approved [`plans/I-27.md`](../plans/I-27.md) (2026-10-08) §2.2 and §2.4, [`plans/I-04.md`](../plans/I-04.md) §G, [`plans/PX-W13.md`](../plans/PX-W13.md) and [`plans/UK-02b.md`](../plans/UK-02b.md) §5 item 7 |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components                                                   |
-| Human input | none                                                                                                                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                                                                                                     |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                                                                                                         |
+| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W13](PX-W13-passthrough-metadata.md), [I-08](I-08-app-passthrough.md), [I-15](I-15-native-redirect.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [I-37](I-37-device-code-explicit-confirm.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-33](PX-33-signin-product-cover.md)                                                                                                                                                                                                 |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                             |
+| Plan mode   | no; builds the card for the approved [`plans/I-27.md`](../plans/I-27.md) (2026-10-08) §2.2 and §2.4, [`plans/I-04.md`](../plans/I-04.md) §G, [`plans/PX-W13.md`](../plans/PX-W13.md) and [`plans/UK-02b.md`](../plans/UK-02b.md) §5 item 7                                     |
+| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components                                                                                       |
+| Human input | none                                                                                                                                                                                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                      |
 
 ## Goal
 
@@ -57,6 +57,51 @@ Sources: [PORTAL.md](../../../../design/PORTAL.md) §4.7–§4.9 and §11.3; [SI
 - New copy uses the owner's licence vocabulary: the tier pill and "{used} of {limit} devices" on every row; no "Account-wide" label.
 - Accessibility (SIGN-IN.md §3.14): full and blocked rows are not radios, Replace stays in Tab order, focus moves to each step's h1.
 - **Dependency ids.** PORTAL.md §10.3 and §11 cite the first revision of phase I; the graph maps them onto the re-cut S-16 ids (README §8, phase PX).
+
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- DeviceConfirm (B9, I-37): when neither the license-choice nor the consent step shows, render the code panel, person row with Not you?, h1 'Sign in on <device>?', primary 'Sign in on <device>' (focused, no auto-advance) and secondary Deny. (auth-12, auth-13, auth-17, portal-09)
+- Device-code entry (/tv, /device, Worker brandHtml): the code is the dominant task with one labelled mono field that fits 320 px; show a valid-format sample; trust line 'Only use a code from your own product, not one somebody sent you.'; name the product (icon, name, device label) ONLY after the code resolves or when `verification_uri_complete` prefilled it; specific copy for expired and invalid codes; script-free (form POST with origin and CSRF check, the code escaped on re-render). (auth-12, auth-13, auth-17, portal-09)
+- Consent (B8): scopes listed before both actions, required ones plain and optional ones as toggles (I-34); 'Continue only if you started this connection. <Product> never gets your sign-in credentials.'; Allow (solid) and Deny (outlined) at EQUAL width and height, stacking full-width on phones with Allow last; no decorative panel copy; `frame-ancestors 'none'`. (auth-12, auth-13, auth-17, portal-09)
+- Return rules: 'Return to <App>' and 'Open your library' hrefs are built by the server only (a same-origin path matching `/^\/(?![\/\\])/` or the client's registered scheme), never from a query value echoed into the page; `returnTo` and request handles are never shown as text or put in an editable field; the passport shows only the registered origin (globe and host) for web apps, never the `redirect_uri`; a mismatched redirect renders the error card and never redirects. (auth-12, auth-13, auth-17, portal-09)
+- Passport per B8 (neutral sunken pane, two panes only landscape 960 px and wider, no eyebrow); the Worker twin and CSP image origin are I-38. Any product image on a Worker page is an `<img>` on the same-origin icon path or the image origin allowed through the shared `cspImageOrigin()` guard, with a THREAT-MODEL note. DL6 states; forced-colours render of radios, meters, focus and the passport; 400% reflow; custom product accent on light and dark; 44 px targets. (auth-12, auth-13, auth-17, portal-09)
 
 ## Steps
 

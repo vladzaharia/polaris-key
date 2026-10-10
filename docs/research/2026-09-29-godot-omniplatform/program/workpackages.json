@@ -2301,7 +2301,7 @@
     },
     {
       "id": "P2-11",
-      "title": "Updates page: updaters for shipped platforms with Wired status",
+      "title": "Updates page: updaters for shipped platforms with Verified status",
       "phase": "P2",
       "stage": "DX consolidation I: Packages, updates and packs",
       "lane": "console",
@@ -5080,6 +5080,46 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-36-sign-in-integration-card.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-37",
+      "title": "Device-code explicit confirm: 'Sign in on <device>?'",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.6],
+      "deps": ["I-08"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B9 (program/BRAND-TRANSITION.md)",
+        "section changes auth-12, auth-13"
+      ],
+      "brief": "wp/I-37-device-code-explicit-confirm.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-38",
+      "title": "Hosted passport and Worker CSP image origin",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["P0-38", "I-37"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B8 (program/BRAND-TRANSITION.md)",
+        "section changes auth-01, auth-08, auth-14"
+      ],
+      "brief": "wp/I-38-hosted-passport-worker-csp.md",
       "status": "todo"
     },
     {
@@ -8515,7 +8555,7 @@
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.8],
-      "deps": ["PX-12", "PX-W13", "I-08", "I-15", "P0-38", "UK-02b"],
+      "deps": ["PX-12", "PX-W13", "I-08", "I-15", "P0-38", "UK-02b", "I-37"],
       "planMode": false,
       "gates": ["console-csp-parity", "portal-e2e"],
       "humanInputs": [],
@@ -9925,6 +9965,69 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/ST-47-legacy-setup-retirement.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-48",
+      "title": "Console shell v2: inset canvas, condensed masthead, section bands, route tabs, workbench",
+      "phase": "ST",
+      "stage": "Brand transition (2026-10-09)",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 2.0],
+      "deps": ["ST-45", "ST-29", "UK-58"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B2, B3, B4, B5, B6 (program/BRAND-TRANSITION.md)",
+        "section changes admin-1-01, -02, -05..-09, -10, -11, -19; admin-2-03, -04..-14 (merged)"
+      ],
+      "brief": "wp/ST-48-console-shell-v2.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-49",
+      "title": "Console route ledger and Page moved map",
+      "phase": "ST",
+      "stage": "Brand transition (2026-10-09)",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["ST-29", "ST-45"],
+      "planMode": false,
+      "gates": ["drift-gate", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B16 (program/BRAND-TRANSITION.md)",
+        "section change admin-4-17"
+      ],
+      "brief": "wp/ST-49-console-route-ledger.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-50",
+      "title": "Font-weight sweep: console `font-bold` to 500/600",
+      "phase": "ST",
+      "stage": "Brand transition (2026-10-09)",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["UK-57"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B7 (program/BRAND-TRANSITION.md)",
+        "section change brand-18"
+      ],
+      "brief": "wp/ST-50-font-weight-sweep.md",
       "status": "todo"
     },
     {
@@ -14804,12 +14907,12 @@
     },
     {
       "id": "CM-29b",
-      "title": "Commerce's accent: a ninth, red-orange family",
+      "title": "Commerce's accent: the Distribution green family",
       "phase": "CM",
       "stage": "DX consolidation H: Channels, storefronts and commerce",
       "lane": "ui",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.3, 0.5],
+      "estimateWeeks": [0.2, 0.4],
       "deps": ["CM-29"],
       "planMode": true,
       "gates": ["plan-mode", "drift-gate", "golden-images", "ui-snapshots"],
@@ -14817,9 +14920,10 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
-        "plans/CM-29.md §10 (approved 2026-10-08)",
+        "Brand transition B1 (program/BRAND-TRANSITION.md): supersedes owner decision 2026-10-08 (vermilion)",
+        "plans/CM-29.md §10 (approved 2026-10-08; amended 2026-10-09)",
         "docs/design/BRAND.md §5",
-        "owner decision 2026-10-08: \"Add a red-orange accent\""
+        "section changes brand-01, admin-3-01, site-01, overview-01"
       ],
       "brief": "wp/CM-29b-commerce-accent.md",
       "status": "todo",
@@ -14854,7 +14958,7 @@
       "lane": "ui",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.6],
-      "deps": ["DOC-03a"],
+      "deps": ["DOC-03a", "UK-58", "UK-57"],
       "planMode": false,
       "gates": [
         "human-approval",
@@ -14882,7 +14986,7 @@
       "lane": "ui",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.6],
-      "deps": ["DOC-01", "DOC-02a"],
+      "deps": ["DOC-01", "DOC-02a", "UK-58", "UK-57"],
       "planMode": false,
       "gates": ["docs-generated", "docs-links", "ui-snapshots"],
       "humanInputs": [],
@@ -15440,6 +15544,28 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-12b-reference-and-contribute.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-13",
+      "title": "Site code examples type-checked per SDK in this repo",
+      "phase": "DOC",
+      "lane": "docs",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.0, 2.0],
+      "deps": ["DOC-02a"],
+      "planMode": false,
+      "gates": ["docs-links", "drift-gate"],
+      "humanInputs": [
+        "The website owner switches examples-data.js to the generated file"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B11 (program/BRAND-TRANSITION.md)",
+        "section change site-34"
+      ],
+      "brief": "wp/DOC-13-site-code-examples.md",
       "status": "todo"
     },
     {
@@ -16314,6 +16440,130 @@
       "status": "todo"
     },
     {
+      "id": "UK-57",
+      "title": "Brand assets: service icon set, Delivery-named marks, portrait cards, trimmed lockup, hash manifest",
+      "phase": "UK",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": [],
+      "planMode": false,
+      "gates": ["drift-gate", "golden-images"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B1, B5, B15 (program/BRAND-TRANSITION.md)",
+        "section changes brand-08, brand-09..13, brand-24 (A1-A18)"
+      ],
+      "brief": "wp/UK-57-brand-assets.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-58",
+      "title": "Brand expression tokens: action-neutral role, display scale, weights 400/500/600",
+      "phase": "UK",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 1.0],
+      "deps": [],
+      "planMode": false,
+      "gates": ["drift-gate", "golden-images"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B2, B3, B7, B11 (program/BRAND-TRANSITION.md)",
+        "section changes brand-02, brand-14, brand-15, brand-17, brand-23"
+      ],
+      "brief": "wp/UK-58-brand-expression-tokens.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-59",
+      "title": "Refresh the built kits' boards from the reviewed builds",
+      "phase": "UK",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.5],
+      "deps": ["UK-47", "UK-49", "UK-50", "UK-51", "UK-56"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "modernity-lint"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B10, B14 (program/BRAND-TRANSITION.md)",
+        "section changes sdk-a-05, sdk-b-04, sdk-c-01 (merged)"
+      ],
+      "brief": "wp/UK-59-built-kit-boards-refresh.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-60",
+      "title": "Optional: native Windows kit (WinUI 3 and WPF) over the .NET SDK",
+      "phase": "UK",
+      "lane": "native",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [3, 4],
+      "deps": ["X-01", "UK-02b", "UK-56"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "modernity-lint"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "Brand transition B10 (program/BRAND-TRANSITION.md)",
+        "section change sdk-b-25"
+      ],
+      "brief": "wp/UK-60-windows-native-kit.md",
+      "status": "todo",
+      "deferred": "parked 2026-10-09: native Windows kit; revive when X-01 (the C#/.NET SDK) ships. Windows is otherwise reached through Electron, Tauri, Compose Desktop and Qt."
+    },
+    {
+      "id": "UK-61",
+      "title": "Optional: native GNOME kit (PyGObject over polaris_key.ui.core)",
+      "phase": "UK",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["UK-12", "UK-02b", "UK-56"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "modernity-lint"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "Brand transition B10 (program/BRAND-TRANSITION.md)",
+        "section change sdk-b-26"
+      ],
+      "brief": "wp/UK-61-gnome-native-kit.md",
+      "status": "todo",
+      "deferred": "parked 2026-10-09 beside UK-38: native GNOME kit; ui-core lets a host draw its own."
+    },
+    {
+      "id": "UK-62",
+      "title": "Kit playground: a static React bundle built here",
+      "phase": "UK",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1.2],
+      "deps": ["UK-47"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "modernity-lint"],
+      "humanInputs": [
+        "The website owner swaps the plrs.im iframe src to the published bundle"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B11 (program/BRAND-TRANSITION.md)",
+        "section change site-33"
+      ],
+      "brief": "wp/UK-62-kit-playground.md",
+      "status": "todo"
+    },
+    {
       "id": "PX-24",
       "title": "Library \"Added just now\": for 24 hours a newly added product carries a ring, the quiet text \"Added just now\" and its download as the tile's lead (EXPERIENCE §0.7, frame 7)",
       "phase": "PX",
@@ -16379,6 +16629,147 @@
       ],
       "brief": "wp/PX-26-wide-zoomed-layouts.md",
       "status": "todo"
+    },
+    {
+      "id": "PX-27",
+      "title": "Library and Discover presence",
+      "phase": "PX",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["PX-24", "ST-36"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B12 (program/BRAND-TRANSITION.md)",
+        "section change portal-01"
+      ],
+      "brief": "wp/PX-27-library-discover-presence.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-28",
+      "title": "License page v2",
+      "phase": "PX",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["LX-15", "LX-41", "P2-13"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B12 (program/BRAND-TRANSITION.md)",
+        "section change portal-07"
+      ],
+      "brief": "wp/PX-28-license-page-v2.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-29",
+      "title": "Focused task frame: free-device, download and Activate",
+      "phase": "PX",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["PX-30", "PX-10", "MO-06"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B12 (program/BRAND-TRANSITION.md)",
+        "section change portal-06"
+      ],
+      "brief": "wp/PX-29-focused-task-frame.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-30",
+      "title": "Art and hero rendering",
+      "phase": "PX",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["PX-24", "ST-36"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B4, B12 (program/BRAND-TRANSITION.md)",
+        "section change portal-02"
+      ],
+      "brief": "wp/PX-30-art-hero-rendering.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-31",
+      "title": "Account composition v3",
+      "phase": "PX",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["I-34", "F-33", "PX-W19"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B12 (program/BRAND-TRANSITION.md)",
+        "section change portal-18"
+      ],
+      "brief": "wp/PX-31-account-composition-v3.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-32",
+      "title": "Storefront decision panel",
+      "phase": "PX",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["PS-05b", "PS-12"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B12 (program/BRAND-TRANSITION.md)",
+        "section change portal-19"
+      ],
+      "brief": "wp/PX-32-storefront-decision-panel.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-33",
+      "title": "Optional: requesting product's cover beside the sign-in card",
+      "phase": "PX",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["PX-14"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": ["Owner asks for it (portal Q3 = yes)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "Brand transition B12 (program/BRAND-TRANSITION.md)",
+        "section change portal-22"
+      ],
+      "brief": "wp/PX-33-signin-product-cover.md",
+      "status": "todo",
+      "deferred": "parked 2026-10-09: only if the owner asks for the app-context cover beside the sign-in card (B12)."
     },
     {
       "id": "AX-01",

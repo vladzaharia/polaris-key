@@ -84,9 +84,17 @@ beforeEach(async () => {
   env.PORTAL_EMAIL_FROM = "noreply@key.plrs.im";
   await seedProduct(db, SLUG);
   ctx = { db, env, now: NOW, origin: "https://key.plrs.im" };
+  // A proven step-up: Reassign… is in the step-up table.
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
+    {
+      sub: "u1",
+      name: "Op",
+      email: "op@x.io",
+      groups: [PLATFORM_GROUP],
+      authTime: NOW,
+      stepUp: true,
+    },
     NOW,
   );
   call = (method, path, body) => {
@@ -328,11 +336,13 @@ describe("association at creation (S-24 D3, D4)", () => {
       name: "Ada",
       email: "  Ada@Example.com ",
     });
+    // The create answer never says an account took it.
     expect(created.license.holder).toEqual({
       kind: "assigned",
-      inAccount: true,
+      inAccount: false,
       email: "Ada@Example.com",
     });
+    expect(created.license.ownerSubject).toBeNull();
     expect(await ownerOf(created.licenseId)).toBe(ada.id);
     expect(await portalAudit(ada.id, "account.license.attach")).toEqual([
       {
@@ -343,9 +353,11 @@ describe("association at creation (S-24 D3, D4)", () => {
     ]);
     const audit = await listAudit(db, SLUG);
     const row = audit.find((a) => a.action === "license.create");
-    expect(row?.summary).toContain("(holder: assigned, in an account)");
-    // The create answer carries the pairwise subject, never the account id.
-    expect(created.license.ownerSubject).toBe(ada.subject);
+    // No email, no account oracle in the audit row or the answer.
+    expect(row?.summary).toBe(
+      `Created license ${created.licenseId} (assigned)`,
+    );
+    expect(created.license.ownerSubject).toBeNull();
     expect(JSON.stringify(created)).not.toContain(ada.id);
   });
 
@@ -358,8 +370,8 @@ describe("association at creation (S-24 D3, D4)", () => {
     });
     expect(await ownerOf(created.licenseId)).toBeNull();
     const audit = await listAudit(db, SLUG);
-    expect(audit.find((a) => a.action === "license.create")?.summary).toContain(
-      "(holder: assigned, waiting)",
+    expect(audit.find((a) => a.action === "license.create")?.summary).toBe(
+      `Created license ${created.licenseId} (assigned)`,
     );
 
     // The first sign-in with that address creates the account; the hook brings the licence.
@@ -406,6 +418,16 @@ describe("association at creation (S-24 D3, D4)", () => {
     const known = await create({ name: "A", email: "ada@example.com" });
     const unknown = await create({ name: "B", email: "nobody@example.com" });
     expect(shape(known)).toEqual(shape(unknown));
+    // Values too, not just member names: no inAccount / ownerSubject oracle.
+    const inAcct = (c: typeof known) =>
+      (c.license.holder as { inAccount: boolean }).inAccount;
+    expect(inAcct(known)).toBe(false);
+    expect(inAcct(unknown)).toBe(false);
+    expect(known.license.ownerSubject).toBeNull();
+    // The audit rows carry no buyer email.
+    const rows = await listAudit(db, SLUG);
+    expect(JSON.stringify(rows)).not.toContain("ada@example.com");
+    expect(JSON.stringify(rows)).not.toContain("nobody@example.com");
     expect(Object.keys(known.license.holder as object).sort()).toEqual(
       Object.keys(unknown.license.holder as object).sort(),
     );

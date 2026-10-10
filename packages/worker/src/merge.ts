@@ -13,13 +13,27 @@ function parsePayload(json: string | null | undefined): ManagedPayload {
   try {
     const p = JSON.parse(json) as Partial<ManagedPayload>;
     return {
-      config: p.config ?? {},
-      secrets: p.secrets ?? {},
-      entitlements: p.entitlements ?? {},
+      config: cleanMap(p.config),
+      secrets: cleanMap(p.secrets),
+      entitlements: cleanMap(p.entitlements),
     };
   } catch {
     return emptyPayload();
   }
+}
+
+const STATES = new Set(["default", "enforced", "hidden"]);
+
+/** A stored layer is untrusted JSON; keep only well-formed entries with a known state. */
+function cleanMap(m: unknown): Record<string, ManagedEntry> {
+  const out: Record<string, ManagedEntry> = {};
+  if (m === null || typeof m !== "object" || Array.isArray(m)) return out;
+  for (const [k, e] of Object.entries(m as Record<string, unknown>)) {
+    if (e === null || typeof e !== "object" || Array.isArray(e)) continue;
+    if (!STATES.has((e as { state?: unknown }).state as string)) continue;
+    out[k] = e as ManagedEntry;
+  }
+  return out;
 }
 
 function mergeMap(

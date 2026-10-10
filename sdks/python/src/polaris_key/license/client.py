@@ -103,17 +103,18 @@ class LicenseClient:
         bundle."""
         if self._tokens.current is not None:
             return "token"
-        # A bundle activates ONLY if its licence document actually verified — a
-        # config-only bundle imports settings and grants nothing.
+        # A bundle activates ONLY if the cached bundle re-verified on the reload profile AND
+        # its licence document is the cached one, byte for byte — a config-only bundle imports
+        # settings and grants nothing.
         state = self._cache.state
-        if state.importedBundle is not None and state.license is not None:
+        if state.bundle is not None and state.bundle.activates:
             return "bundle"
         return None
 
     def status(self, now: Optional[int] = None) -> LicenseState:
         state = self._cache.state
         return license_state(
-            license_service_enabled=self._ctx.enabled("license"),
+            license_service_enabled=self._ctx.license_gate_enabled(),
             activation=self.activation(),
             doc=self._cache.license_doc(),
             now=now_sec() if now is None else now,

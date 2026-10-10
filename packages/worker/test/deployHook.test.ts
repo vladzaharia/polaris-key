@@ -71,6 +71,7 @@ const ROOT = join(
 const REPO = "vladzaharia/polaris-key";
 const REPO_ID = 1278490640;
 const OWNER_ID = 79390;
+const BUILT_SHA = "d".repeat(40);
 const HOOK = `${CONSOLE}${DEPLOY_HOOK_PATH}`;
 
 /** The committed root `.pkey/`, as deploy.yml sends it. */
@@ -96,6 +97,7 @@ beforeEach(() => {
   env.PLATFORM_REPOSITORY = REPO;
   env.PLATFORM_REPOSITORY_ID = String(REPO_ID);
   env.PLATFORM_REPOSITORY_OWNER_ID = String(OWNER_ID);
+  env.PKEY_GIT_SHA = BUILT_SHA;
   setDeployHookJwksFetcherForTests(async () => ({ keys: [jwk] }));
 });
 afterEach(() => setDeployHookJwksFetcherForTests(null));
@@ -115,6 +117,7 @@ async function token(over: Record<string, unknown> = {}): Promise<string> {
     runner_environment: "github-hosted",
     event_name: "push",
     run_id: "4242",
+    sha: BUILT_SHA,
     ...over,
   })
     .setProtectedHeader({ alg: "RS256", kid: "gh-deploy" })
@@ -494,6 +497,11 @@ describe("the deploy hook (F-10 automation)", () => {
     ],
     ["a pull request", { event_name: "pull_request" }, "event_name"],
     ["a branch", { ref: "refs/heads/main" }, "ref"],
+    // Push of a semver tag at the built commit only.
+    ["a dispatched run", { event_name: "workflow_dispatch" }, "event_name"],
+    ["a non-semver v* tag", { ref: "refs/tags/vanything" }, "ref"],
+    ["another commit", { sha: "e".repeat(40) }, "sha"],
+    ["a token without a commit", { sha: undefined }, "sha"],
   ])("refuses a token from %s", async (_what, over, claim) => {
     const res = await hook(await token(over));
     expect(res.status).toBe(403);
@@ -502,6 +510,28 @@ describe("the deploy hook (F-10 automation)", () => {
       claim,
     });
     expect(await getProduct(db, SYSTEM_PRODUCT_SLUG)).toBeNull();
+  });
+
+  it("refuses every token when the Worker does not know its own commit", async () => {
+    delete env.PKEY_GIT_SHA;
+    const res = await hook(await token());
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ claim: "sha" });
+  });
+
+  it("refuses a body that repoints the system trusted publisher", async () => {
+    const res = await hook(await token(), {
+      files: {
+        ...FILES,
+        release: FILES.release.replace(
+          "workflow: .github/workflows/publish-package.yml",
+          "workflow: .github/workflows/evil.yml",
+        ),
+      },
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ reason: "wrong_manifest" });
+    expect(await getPublisherPolicy(db, SYSTEM_PRODUCT_SLUG)).toBeNull();
   });
 
   it("refuses no token, a token for another audience, and an unsigned one", async () => {

@@ -15,8 +15,11 @@
     "The only confirm is the passkey (step-up); P0-12 holds: nothing mints until the approval is recorded.",
     "Phone: the drawer fills the screen, the comparison stays a three-column table inside its card with values on one line, and the buttons fill the width.",
     "The opening line names who changed the recipe and where (.pkey/schema), with a neutral link to the commit; the consequence (DJDL can't mint this token) is on the page behind, in the callout.",
-    "Who can get one restates the access policy in words (license tiers, sign-in group). The other states are separate screens: anyone at all (config.approve-recipe-open-access), stale (config.approve-recipe-stale), passkey failed (config.approve-recipe-passkey-failed) and after approval (config.approve-recipe-approved).",
-    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+    "Who can get one lists the access policy, one fact per line: the license tiers, the device limit, the sign-in group. The other states are separate screens: anyone at all (config.approve-recipe-open-access), stale (config.approve-recipe-stale), passkey failed (config.approve-recipe-passkey-failed) and after approval (config.approve-recipe-approved).",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "Masthead mark (lead answer 3): Catalog's read and Edit states carry the Managed config tile from 1024px (the chip hides there); the h1 stays the record step."
   ],
   "status": "mockup",
   "designReview": {

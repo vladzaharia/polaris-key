@@ -17,6 +17,7 @@ import {
   DEFAULT_BASE_URL,
 } from "./bundle.js";
 import { CI_TOKEN_ENV } from "./oidc.js";
+import { LOGO_COLS, LOGO_STAR_GLYPH, logoLines, logoMode } from "./logo.js";
 import type { Term } from "./terminal.js";
 
 export type GroupId =
@@ -895,6 +896,29 @@ function termColumn(
   );
 }
 
+/**
+ * The logo header: the art on the left, the text block to its right, centred on the art's rows;
+ * the block wraps to what the art leaves of the line.
+ */
+function logoHeader(term: Term, art: Line[], block: Line[]): string[] {
+  const gap = 2;
+  const room = Math.max(1, term.caps.columns - LOGO_COLS - gap);
+  const text = block.flatMap((l) => (l.length ? wrapSpans(l, room) : [l]));
+  const top = Math.max(0, Math.floor((art.length - text.length) / 2));
+  const rows = Math.max(art.length, top + text.length);
+  const out: string[] = [];
+  for (let r = 0; r < rows; r++) {
+    const left = art[r] ?? [];
+    const right = text[r - top] ?? [];
+    const pad = LOGO_COLS + gap - cellWidth(left.map((x) => x.text).join(""));
+    const spans: Line = right.length
+      ? [...left, { text: " ".repeat(pad) }, ...right]
+      : left;
+    out.push(term.painter.line(spans));
+  }
+  return out;
+}
+
 /** The grouped overview: `pkey`, `pkey help`, `pkey --help`. */
 export function renderHelp(term: Term): string {
   const { painter, symbols } = term;
@@ -904,23 +928,31 @@ export function renderHelp(term: Term): string {
     ...allRows.map(([t]) => t),
     ...COMMON_OPTIONS.map(([t]) => t),
   ]);
-  const out: string[] = [
-    ...wrapSpans(
-      [
-        { text: "pkey", style: ["strong"] },
-        {
-          text: ` ${symbols.separator} Polaris Key platform CLI`,
-          style: ["muted"],
-        },
-      ],
-      term.caps.columns,
-    ).map(line),
-    "",
-    line([
-      { text: "Usage", style: ["muted"] },
-      { text: "  pkey <command> [options]" },
-    ]),
+  const art = logoLines(term);
+  const mode = logoMode(term);
+  const name: Line = [
+    ...(mode === "star"
+      ? [{ text: `${LOGO_STAR_GLYPH} `, style: ["strong"] }]
+      : []),
+    { text: "pkey", style: ["strong"] },
   ];
+  const tagline: Line = [
+    {
+      text: `${mode === "art" ? "" : ` ${symbols.separator} `}Polaris Key platform CLI`,
+      style: ["muted"],
+    },
+  ];
+  const usage: Line = [
+    { text: "Usage", style: ["muted"] },
+    { text: "  pkey <command> [options]" },
+  ];
+  const out: string[] = art
+    ? logoHeader(term, art, [name, tagline, [], usage])
+    : [
+        ...wrapSpans([...name, ...tagline], term.caps.columns).map(line),
+        "",
+        line(usage),
+      ];
   for (const [group, heading] of GROUPS) {
     const rows = COMMANDS.filter((c) => c.group === group).flatMap(
       (c) => c.rows,

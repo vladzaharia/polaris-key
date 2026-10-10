@@ -94,6 +94,9 @@ export type AppleRejection =
   | "transaction_mismatch"
   | "unknown_transaction";
 
+/** A notification (and the Server API's own copy) is signed within a day of its use. */
+export const APPLE_MAX_SIGNED_AGE_SECONDS = 24 * 60 * 60;
+
 export class AppleRejected extends Error {
   constructor(readonly reason: AppleRejection) {
     super(`app store: ${reason}`);
@@ -112,6 +115,7 @@ const reject = (reason: AppleRejection): never => {
 export async function verifyAppleJws(
   jws: string,
   now: number,
+  opts: { maxAgeSeconds?: number } = {},
 ): Promise<Record<string, unknown>> {
   if (typeof jws !== "string" || jws.length > MAX_APPLE_JWS)
     return reject("invalid_jws");
@@ -142,8 +146,12 @@ export async function verifyAppleJws(
   if (typeof signedMs === "number" && Number.isFinite(signedMs)) {
     const signed = Math.floor(signedMs / 1000);
     if (signed > now + 300) return reject("invalid_jws");
+    // Where the caller wants a live signature (a notification, the
+    // Server API copy), signedDate cannot be backdated to a time an old or leaked leaf was valid.
+    if (opts.maxAgeSeconds !== undefined && signed < now - opts.maxAgeSeconds)
+      return reject("invalid_jws");
     at = signed;
-  }
+  } else if (opts.maxAgeSeconds !== undefined) return reject("invalid_jws");
   let key: CryptoKey;
   try {
     ({ key } = await verifyChain(
@@ -162,12 +170,17 @@ export async function verifyAppleJws(
     if (e instanceof X509Error) return reject("untrusted_chain");
     throw e;
   }
-  const ok = await crypto.subtle.verify(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    sig as BufferSource,
-    new TextEncoder().encode(`${h}.${p}`) as BufferSource,
-  );
+  let ok = false;
+  try {
+    ok = await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      key,
+      sig as BufferSource,
+      new TextEncoder().encode(`${h}.${p}`) as BufferSource,
+    );
+  } catch {
+    return reject("invalid_jws");
+  }
   if (!ok) return reject("invalid_jws");
   return payload;
 }
@@ -358,7 +371,11 @@ export async function fetchTransaction(
   const signed = res.body?.signedTransactionInfo;
   if (typeof signed !== "string")
     throw new StoreUnavailable("app-store transactions.get", 502);
-  const tx = parseTransaction(await verifyAppleJws(signed, ctx.now));
+  const tx = parseTransaction(
+    await verifyAppleJws(signed, ctx.now, {
+      maxAgeSeconds: APPLE_MAX_SIGNED_AGE_SECONDS,
+    }),
+  );
   if (tx.transactionId !== transactionId) reject("transaction_mismatch");
   return tx;
 }
@@ -423,7 +440,9 @@ export async function verifyAppleNotification(
   signedPayload: string,
   now: number,
 ): Promise<AppleNotification> {
-  const p = await verifyAppleJws(signedPayload, now);
+  const p = await verifyAppleJws(signedPayload, now, {
+    maxAgeSeconds: APPLE_MAX_SIGNED_AGE_SECONDS,
+  });
   const data =
     p.data && typeof p.data === "object" && !Array.isArray(p.data)
       ? (p.data as Record<string, unknown>)

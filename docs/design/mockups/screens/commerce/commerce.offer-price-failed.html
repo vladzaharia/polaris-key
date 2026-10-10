@@ -46,7 +46,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group" data-service="commerce">
       <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
@@ -63,8 +63,8 @@
     <!-- From 1200px: what it sells and its prices in the main column, its SKU on each storefront in a
          360px rail. Narrower: one column. -->
     <div class="page rail-md">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Offers</a><i class="ic ic-chevron-right"></i>Dice skins</nav>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="commerce" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Commerce</a><i class="ic ic-chevron-right"></i><a href="#">Offers</a></nav>
         <div class="page-heading"><h1>Dice skins</h1><span class="status"><i class="ic ic-circle-check"></i>On sale</span></div>
         <p class="page-sub">186 purchases in 28 days</p>
         <div class="page-actions">
@@ -82,11 +82,12 @@
             <div class="field">
               <label class="field-label">Name</label>
               <div class="input"><span class="grow">Dice skins</span></div>
-              <span class="hint">Shown to players. Offer id <span class="mono">dice-skins</span>, fixed; SDKs buy with <span class="mono">purchase("dice-skins")</span>.</span>
+              <span class="hint">Shown to players</span>
             </div>
             <div class="field">
-              <span class="field-label">Billing</span>
-              <div class="fixed-value"><span class="mk-cluster-6"><span class="radio on"><span class="box"></span>One-time</span><span class="radio"><span class="box"></span>Subscription</span></span></div>
+              <span class="field-label">Offer id</span>
+              <div class="fixed-value"><i class="ic ic-lock"></i><span class="mono">dice-skins</span></div>
+              <span class="hint">SDKs buy with <span class="mono">purchase("dice-skins")</span></span>
             </div>
             <div class="field">
               <label class="field-label">Sells</label>
@@ -95,7 +96,12 @@
             <div class="field">
               <label class="field-label">Add-on</label>
               <div class="select"><span class="grow">Dice skins</span><i class="ic ic-chevrons-up-down"></i></div>
-              <span class="hint">Adds <span class="mono">extras.diceSkins</span> to the buyer’s license. Defined in <a class="link" href="#">Licensing</a>.</span>
+              <span class="hint">Adds <span class="mono">extras.diceSkins</span> to the buyer’s license</span>
+              <span class="hint">Defined in <a class="link" href="#">Licensing</a></span>
+            </div>
+            <div class="field">
+              <span class="field-label">Billing</span>
+              <div class="fixed-value"><span class="mk-cluster-6"><span class="radio on"><span class="box"></span>One-time</span><span class="radio"><span class="box"></span>Subscription</span></span></div>
             </div>
           </div>
         </div>
@@ -203,7 +209,7 @@
           <div class="card-rows">
             <div class="card-row top">
               <span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span>
-              <div class="grow"><div class="mk-cluster"><span class="cell-title">App Store</span><span class="status"><i class="ic ic-circle-check"></i>Changed</span></div><div class="cell-sub">$3.99 in all 174 territories, from 10:58</div></div>
+              <div class="grow"><div class="mk-cluster"><span class="cell-title">App Store</span><span class="status"><i class="ic ic-circle-check"></i>Changed</span></div><div class="cell-sub">$3.99 in all 174 territories</div><div class="cell-sub">From 10:58</div></div>
             </div>
             <div class="card-row top failed" role="alert">
               <span class="icon-tile sm neutral"><i class="ic ic-google-play"></i></span>

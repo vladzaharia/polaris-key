@@ -1,0 +1,21 @@
+{
+  "id": "identity.device-confirm",
+  "title": "Sign in on a device: confirm",
+  "area": "identity",
+  "surface": "portal",
+  "packages": ["I-37", "PX-14", "P0-38"],
+  "uxRows": [],
+  "summary": "The explicit confirm every device-code sign-in ends with when no license choice or consent step runs (B9): Diceroll on Living room PC is named now that the code resolved, Mara is the account, and 'Sign in on Living room PC?' has equal-size Sign in and Deny. The device waits on 'pending' until she answers.",
+  "compare": [
+    "Always shown on the device-code path when no license choice or consent supplies the explicit step; a scan or a code is never approval (B9, auth-12).",
+    "The title names the device the code came from ('Sign in on Living room PC?') and the lede the code and when it was shown, so a person who didn't start it can tell.",
+    "Allow and Deny are the same size and both block (Deny outlined); Deny leaves nothing signed in and the device shows it was denied.",
+    "The account row is first (who is signing in), with Not you?; on a phone the email wraps, never truncated.",
+    "Passport in a landscape window ≥960px (Diceroll's art, icon, developer and device on their own lines); header strip in portrait and on a phone (B8).",
+    "No wire change: the device keeps polling 'pending' until the confirm; the design rule is the page.",
+    "Round 2 (UX review): Passport as identity.sign-in: the art fills the pane, the identity at its foot (M4).",
+    "Round 2 (UX review): M10 (graph note, not a mockup change): the catalog's signInHandoff.confirm ('Choose Continue to {product} on the sign-in page to finish.') must change with I-37 to name this button ('Sign in on <device>')."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

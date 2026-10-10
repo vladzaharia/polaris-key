@@ -1,4 +1,4 @@
-<div class="console" data-service="core">
+<div class="console" data-service="release">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -29,22 +29,24 @@
       <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
       <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
       <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>
-      <a class="nav-item active" href="#" data-service="distribution"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span><span class="count">3</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span><span class="count">3</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
     </div>
   </nav>
 
-  <main class="main" data-service="distribution">
+  <main class="main">
     <!-- Wide (≥ 1600): the feeds in the main column, where to install from in the aside. -->
     <div class="page columns sticky-rail">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
+<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Packages</h1><span class="count">3 feeds</span></div>
         <div class="page-actions">
           <button class="btn outline"><i class="ic ic-key-round"></i>Service tokens</button>
@@ -56,7 +58,8 @@
         <i class="ic ic-calendar-clock"></i>
         <div class="grow">
           <div class="callout-title">Cleanup starts Oct 14</div>
-          <div class="callout-text">Deletes 41 dev and beta versions (18.6 MB) once the next stable release publishes.</div>
+          <div class="callout-text">Deletes 41 dev and beta versions (18.6 MB).</div>
+          <div class="callout-text">They go with the next stable release.</div>
         </div>
         <button class="btn outline sm"><i class="ic ic-list-checks"></i>See the dry run</button>
       </div>
@@ -128,7 +131,7 @@
           </tbody>
         </table>
         <div class="card-foot start">
-          <span class="icon-line type-small muted"><i class="ic ic-arrow-up-right"></i><span>Also on PyPI.org: stable and beta, approved by Ana Lima on Oct 2</span></span>
+          <span class="icon-line type-small muted"><i class="ic ic-arrow-up-right"></i><span>Also on PyPI.org: stable and beta</span></span>
         </div>
       </section>
 
@@ -157,7 +160,8 @@
             <div class="task waiting">
               <span class="task-mark"></span>
               <div class="task-title">Waiting for the first package</div>
-              <div class="task-desc">The next tag publishes it, once <span class="mono">release.yml</span> has the Swift step.</div>
+              <div class="task-desc">Add the Swift step to <span class="mono">release.yml</span>.</div>
+              <div class="task-desc">The next tag publishes it.</div>
             </div>
           </div>
           </div>
@@ -179,7 +183,7 @@
       <div class="aside span-4 mk-grid-2 top">
         <section class="card" aria-labelledby="mine">
           <div class="card-head">
-            <div class="title"><h2 id="mine">On your machine</h2><p>Signs in and sets up every package manager.</p></div>
+            <div class="title"><h2 id="mine">Install on your machine</h2></div>
           </div>
           <div class="card-body">
             <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
@@ -187,7 +191,7 @@
         </section>
         <section class="card" aria-labelledby="ci">
           <div class="card-head">
-            <div class="title"><h2 id="ci">In CI and on servers</h2><p>Use a service token that can read packages.</p></div>
+            <div class="title"><h2 id="ci">Install in CI and on servers</h2></div>
           </div>
           <div class="card-rows">
             <div class="card-row"><div class="grow"><div class="cell-title">Plugin CI</div><div class="cell-sub mono">pkeyci_…R8VQ</div></div><span class="meta">Used 14 min ago</span></div>
@@ -213,7 +217,7 @@
   </main>
 
   <!-- Opened from the foot row on Packages; the page stays dimmed behind it. -->
-  <div class="overlay sheet" data-service="distribution">
+  <div class="overlay sheet">
     <div class="dialog danger" role="dialog" aria-labelledby="off-title">
       <div class="dialog-head">
         <i class="ic ic-triangle-alert"></i>

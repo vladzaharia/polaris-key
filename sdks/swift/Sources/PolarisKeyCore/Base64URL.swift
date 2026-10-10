@@ -19,8 +19,40 @@ public enum Base64URL {
     /// mangled token decode differently across SDKs (audit finding R2-05). Wire contract v2
     /// §2.3 requires every language to reject rather than tolerate. Returns nil, never throws.
     public static func decodeStrict(_ s: String) -> Data? {
-        for ch in s where !alphabet.contains(ch) { return nil }
+        guard isCanonical(s) else { return nil }
         return decode(s)
+    }
+
+    /// Canonical unpadded base64url (V4 §1): the URL-safe alphabet only, a length that is not
+    /// 1 mod 4, and zero unused low bits in the last character (4 bits when the length is 2
+    /// mod 4, 2 bits when it is 3 mod 4). Equivalent to "re-encoding the decoded bytes gives
+    /// the input".
+    public static func isCanonical(_ s: String) -> Bool {
+        var count = 0
+        var last: Character = "A"
+        for ch in s {
+            guard alphabet.contains(ch) else { return false }
+            count += 1
+            last = ch
+        }
+        let rem = count % 4
+        if rem == 1 { return false }
+        if rem == 0 { return true }
+        guard let value = valueOf(last) else { return false }
+        let unused = rem == 2 ? 0b1111 : 0b11
+        return value & unused == 0
+    }
+
+    private static func valueOf(_ ch: Character) -> Int? {
+        guard let a = ch.asciiValue else { return nil }
+        switch a {
+        case 65...90: return Int(a) - 65
+        case 97...122: return Int(a) - 97 + 26
+        case 48...57: return Int(a) - 48 + 52
+        case 45: return 62
+        case 95: return 63
+        default: return nil
+        }
     }
 
     /// Decode a base64url string (URL-safe alphabet, padding optional). Returns nil on

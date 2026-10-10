@@ -2,6 +2,8 @@
   <header class="docs-top">
     <button class="btn ghost icon docs-menu" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="docs-brand" href="#"><i class="pk-mark"></i>Polaris Key<span class="docs-tag">Docs</span></a>
+    <!-- The docs plan's doors (2026-10-08): Help, Developers (public, D2) and Operate. -->
+    <nav class="docs-doors" aria-label="Docs sections"><a href="#">Help</a><a class="on" href="#" aria-current="true">Developers</a><a href="#">Operate</a></nav>
     <div class="docs-search"><i class="ic ic-search"></i><span>Search the docs</span><kbd>⌘K</kbd></div>
     <nav class="docs-links">
       <a href="#"><i class="ic ic-history"></i>Developer changelog</a>
@@ -15,9 +17,11 @@
     <nav class="docs-side" aria-label="Docs">
       <div class="docs-group">
         <span class="docs-label">Start here</span>
-        <a class="docs-item" href="#">Concepts</a>
+        <a class="docs-item" href="#">Overview</a>
         <a class="docs-item on" href="#">Your first product</a>
+        <a class="docs-item" href="#">Choose your integration</a>
         <a class="docs-item" href="#">How Polaris Key works</a>
+        <a class="docs-item" href="#">Concepts and glossary</a>
       </div>
       <div class="docs-group">
         <span class="docs-label">Build</span>
@@ -56,7 +60,7 @@
         <header class="docs-header">
           <div class="docs-crumb">Start here</div>
           <h1>Your first product</h1>
-          <p class="docs-lede">Create a product, add the SDK, see each feature Verified. Examples use Tidewater Studio.</p>
+          <p class="docs-lede">Examples use Tidewater Studio.</p>
           <div class="docs-meta"><span><i class="ic ic-clock sm"></i>About 15 minutes</span><span><i class="ic ic-calendar sm"></i>Updated Oct 7, 2026</span></div>
         </header>
 
@@ -67,12 +71,11 @@
               <h2>Create the product</h2>
               <p>Choose <strong>New product</strong> in the console. Its Integration page opens.</p>
               <div class="docs-facts">
-                <div><strong>Name and slug</strong><span>Tidewater Studio, <code>tidewater</code>. The slug is in every URL and can’t change later.</span></div>
-                <div><strong>What it’s for</strong><span><strong>Licensing</strong> and <strong>Managed config</strong> to start. Cloud Sync needs Sign-in; Commerce needs Licensing.</span></div>
-                <div><strong>Platforms</strong><span>macOS and Windows. Integration picks the SDK for each.</span></div>
+                <div><strong>Name and slug</strong><span class="mk-stack-1"><span>Tidewater Studio, <code>tidewater</code></span><span class="type-small muted">The slug can’t change later</span></span></div>
+                <div><strong>What it’s for</strong><span class="mk-stack-1"><span><strong>Licensing</strong> and <strong>Managed config</strong> to start</span><span class="type-small muted">Cloud Sync needs Sign-in</span><span class="type-small muted">Commerce needs Licensing</span></span></div>
+                <div><strong>Platforms</strong><span>macOS and Windows</span></div>
               </div>
-              <p>Polaris Key creates the signing key, the package feeds and a test license.</p>
-              <p class="board-note"><i class="ic ic-git-branch"></i><span>Keep the product in your repository? Run <code>pkey init</code>, push, and link the repository on the product’s Settings. The console then reads <code>.pkey/</code> on every push.</span></p>
+              <p class="board-note"><i class="ic ic-git-branch"></i><span>Keep the product in your repository? Run <code>pkey init</code>, push, and link the repository on the product’s Settings.</span></p>
             </div>
           </li>
 
@@ -83,9 +86,9 @@
               <p>In your app’s folder, run the command Integration shows. It adds the SDK, writes <code>polaris-key.json</code> and pins Tidewater’s keys.</p>
               <div class="code wrap-phone">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
                 </div>
-<pre><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> --product tidewater \
+<pre tabindex="0"><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> --product tidewater \
     --expect <span class="ph">&lt;fingerprint from Integration&gt;</span></pre>
               </div>
               <div class="docs-disclose"><i class="ic ic-chevron-right sm"></i>What <code>polaris-key.json</code> holds</div>
@@ -97,20 +100,20 @@
             <span class="docs-num">3</span>
             <div class="docs-step-body">
               <h2>Start the SDK</h2>
-              <p><code>fromConfig()</code> reads <code>polaris-key.json</code>; <code>boot()</code> checks the license, syncs managed config and registers the device.</p>
+              <p><code>fromConfig()</code> reads <code>polaris-key.json</code>.</p>
+              <p><code>boot()</code> checks the license, syncs managed config and registers the device.</p>
               <div class="lanes">
-                <div class="lanes-head"><div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div></div>
+                <div class="lanes-head"><div class="code-tabs" tabindex="0"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div></div>
                 <div class="lane">
                   <div class="lane-title"><span class="icon-tile sm"><i class="ic ic-layout-grid"></i></span>Drop-in UI kit</div>
-                  <p class="lane-desc">Sign-in, activation and device limits as ready screens, in your product’s look.</p>
+                  <p class="lane-desc">Ready screens for sign-in, activation and device limits.</p>
                   <div class="code wrap-phone">
                     <div class="code-head"><span class="code-file">ContentView.swift</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
 <span class="t-k">let</span> pk = <span class="t-k">try await</span>
   <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
 
-<span class="t-c">// boot(), sign-in and activation</span>
 <span class="t-t">ContentView</span>()
   .<span class="t-f">polarisKeyGate</span>(pk)</pre>
                   </div>
@@ -121,7 +124,7 @@
                   <p class="lane-desc">Call the SDK and draw every screen yourself.</p>
                   <div class="code wrap-phone">
                     <div class="code-head"><span class="code-file">App.swift</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
 
 <span class="t-k">let</span> pk = <span class="t-k">try await</span>
   <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
@@ -130,7 +133,7 @@
 <span class="t-k">if await</span> pk.<span class="t-f">isLicensed</span>() {
   <span class="t-f">openProject</span>()
 } <span class="t-k">else</span> {
-  <span class="t-f">showSignIn</span>()  <span class="t-c">// your screen</span>
+  <span class="t-f">showSignIn</span>()
 }</pre>
                   </div>
                   <a class="link" href="#">Swift SDK reference<i class="ic ic-arrow-right"></i></a>
@@ -143,7 +146,6 @@
             <span class="docs-num">4</span>
             <div class="docs-step-body">
               <h2>Use each feature</h2>
-              <p>Each feature’s code, with your product’s entitlements, settings and packs.</p>
               <div class="docs-cards">
                 <a class="docs-card" href="#" data-service="license"><span class="docs-card-title"><i class="svc"></i>Licensing<i class="ic ic-arrow-right sm"></i></span>Gate on a license.</a>
                 <a class="docs-card" href="#" data-service="config"><span class="docs-card-title"><i class="svc"></i>Managed config<i class="ic ic-arrow-right sm"></i></span>Read settings and secrets.</a>
@@ -159,10 +161,11 @@
             <span class="docs-num">5</span>
             <div class="docs-step-body">
               <h2>Check it’s Verified</h2>
-              <p>Run your app. A feature shows <strong>Verified</strong> once the SDK gets an answer on that platform; <code>pkey doctor</code> shows the same.</p>
+              <p>Run your app.</p>
+              <p>A feature shows <strong>Verified</strong> once the SDK gets an answer on that platform.</p>
               <div class="term">
                 <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — tidewater</span></div>
-<pre class="term-body hide-phone"><span class="c-prompt">❯</span> pkey doctor
+<pre tabindex="0" class="term-body hide-phone"><span class="c-prompt">❯</span> pkey doctor
 <span class="c-b">Tidewater Studio</span> <span class="c-dim">(tidewater) · key.plrs.im</span>
 
 <span class="c-b">Integration</span>        <span class="c-b">macOS</span>
@@ -171,7 +174,7 @@
   Windows          <span class="c-dim"><span class="g">○</span> Not seen yet</span>
 
 <span class="c-chip clear">0 to do</span> <span class="c-dim">· run it on Windows next · 0.9 s</span></pre>
-<pre class="term-body show-phone"><span class="c-prompt">❯</span> pkey doctor
+<pre tabindex="0" class="term-body show-phone"><span class="c-prompt">❯</span> pkey doctor
 <span class="c-b">Tidewater Studio</span> <span class="c-dim">(tidewater)
 key.plrs.im</span>
 
@@ -193,7 +196,7 @@ run it on Windows next</span></pre>
           <dl class="docs-dl">
             <dt>Waiting</dt><dd>The console steps are done. Use the feature once in the app: sign in, or check for updates.</dd>
             <dt>A key doesn’t match</dt><dd>Run <code>pkey sdk add</code> again, or download <code>polaris-key.json</code> again from Integration.</dd>
-            <dt>Still stuck</dt><dd>Run a debug build: on the first refusal the SDK prints <code>doctor()</code>, with what’s missing and the console page that fixes it.</dd>
+            <dt>Still stuck</dt><dd>Run a debug build. On the first refusal it prints what’s missing and where to fix it.</dd>
           </dl>
         </section>
 

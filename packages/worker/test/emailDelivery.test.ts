@@ -304,3 +304,30 @@ describe("provider failures and Apple private relay", () => {
     expect(sent[0]!.to).toBe(relay);
   });
 });
+
+describe("only a bare addr-spec is mailed", () => {
+  it("refuses a display-name wrapped recipient before the provider", async () => {
+    const { env, db, sent } = await (async () => {
+      const sent: unknown[] = [];
+      const env = makeEnv(new KvMock(), []);
+      env.KEY_HASH_PEPPER = "p";
+      (env as { EMAIL?: unknown }).EMAIL = {
+        send: async (m: unknown) => void sent.push(m),
+      };
+      return { env, db: await makeTestDb(), sent };
+    })();
+    const r = await deliverEmail(
+      env,
+      db,
+      {
+        to: "Name<victim@example.com>",
+        subject: "s",
+        text: "t",
+        sender: { kind: "platform" },
+      } as OutgoingEmail,
+      NOW,
+    );
+    expect(r).toEqual({ ok: false, reason: "email_unavailable" });
+    expect(sent).toHaveLength(0);
+  });
+});

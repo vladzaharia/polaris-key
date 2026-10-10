@@ -30,6 +30,8 @@ export function preEncoded(res: Response): Response {
   });
 }
 
+import { configProblems } from "./core/configGuard.js";
+
 export default {
   async fetch(
     req: Request,
@@ -45,6 +47,26 @@ export default {
     // their own.
     // `ctx` lets a handler answer first and finish afterwards (P5-02: a store webhook's
     // follow-up API read), through `ServiceContext.waitUntil`.
+    // A missing or weak required secret, or a malformed origin, refuses every request
+    // on a deployed environment. Names are not logged (no console in src).
+    const bad = configProblems(env);
+    if (bad.length > 0) {
+      return secureResponse(
+        new Response(
+          JSON.stringify({
+            error: "server_misconfigured",
+            message: "The deployment is misconfigured.",
+          }),
+          {
+            status: 500,
+            headers: {
+              "content-type": "application/json",
+              "cache-control": "no-store",
+            },
+          },
+        ),
+      );
+    }
     return preEncoded(
       secureResponse(await dispatch(req, env, new D1Db(env.DB), ctx)),
     );

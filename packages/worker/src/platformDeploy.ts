@@ -61,7 +61,7 @@ import type { Env } from "./env.js";
 import { secret } from "./env.js";
 import type { Db } from "./db/types.js";
 import { errorResponse, ErrorCode, json } from "./core/errors.js";
-import { clientIp, rateLimitOk } from "./core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "./core/rateLimit.js";
 import { readCappedText } from "./core/readCapped.js";
 import {
   checkPublisherPolicy,
@@ -92,6 +92,8 @@ import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
 export const DEPLOY_WORKFLOW = ".github/workflows/deploy.yml";
+/** A release tag is `vMAJOR.MINOR.PATCH` with an optional prerelease. */
+const DEPLOY_TAG_RE = /^refs\/tags\/v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 export const DEFAULT_DEPLOY_ENVIRONMENT = "production";
 /** The root `.pkey/` is a few KiB; anything near this is not it. */
 export const MAX_DEPLOY_HOOK_BODY_BYTES = 256 * 1024;
@@ -206,7 +208,7 @@ export async function handleDeployHook(
     !(await rateLimitOk(
       env,
       RL_SCOPE,
-      { bucket: "deployHook", id: clientIp(req), ...DEPLOY_HOOK_RL },
+      { bucket: "deployHook", id: clientNetwork(req), ...DEPLOY_HOOK_RL },
       now,
     ))
   )
@@ -260,6 +262,37 @@ export async function handleDeployHook(
       "policy_mismatch",
       "the deploy hook is called from a release tag (refs/tags/v*) only",
       { claim: "ref" },
+    );
+
+  // The deploy is a `push` of a semver release tag at the commit this
+  // Worker was built from. A dispatched run, a free-form `v*` ref or another commit's token is
+  // refused whatever the workflow file says; `PKEY_GIT_SHA` is set by the same deploy.
+  if (claims.event_name !== "push")
+    return refuse(
+      403,
+      ErrorCode.Forbidden,
+      "policy_mismatch",
+      "the deploy hook is called by a push-triggered run only",
+      { claim: "event_name" },
+    );
+  if (!DEPLOY_TAG_RE.test(claims.ref))
+    return refuse(
+      403,
+      ErrorCode.Forbidden,
+      "policy_mismatch",
+      "the deploy hook is called from a semver release tag (refs/tags/vX.Y.Z) only",
+      { claim: "ref" },
+    );
+  const builtSha = (env.PKEY_GIT_SHA ?? "").trim().toLowerCase();
+  const claimSha =
+    typeof claims.sha === "string" ? claims.sha.toLowerCase() : "";
+  if (!/^[0-9a-f]{40}$/.test(builtSha) || claimSha !== builtSha)
+    return refuse(
+      403,
+      ErrorCode.Forbidden,
+      "policy_mismatch",
+      "the token's commit is not the commit this Worker was built from",
+      { claim: "sha" },
     );
 
   // The body: the root `.pkey/` as text, through the same parser as a repository link.

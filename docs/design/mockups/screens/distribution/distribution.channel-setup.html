@@ -6,7 +6,7 @@
   }
   [data-screen="distribution.channel-setup"] .step.auto .step-mark {
     border: 2px solid var(--pk-border-strong);
-    border-top-color: var(--pk-accent);
+    border-top-color: var(--pk-text-strong);
   }
   [data-screen="distribution.channel-setup"] .step.auto .step-mark::after {
     content: "";
@@ -35,9 +35,6 @@
     }
   }
   /* The Not set up status is a pill beside the title. */
-  [data-screen="distribution.channel-setup"] .status-pill {
-    margin-left: var(--sp-1);
-  }
   /* Back is the secondary outline: its border reaches 3:1 in both themes. */
   [data-screen="distribution.channel-setup"] .wizard-foot .btn.outline {
     border-color: var(--pk-border-strong);
@@ -88,13 +85,13 @@
         <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
         <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
         <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
-        <a class="nav-item active" aria-current="page" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+        <a class="nav-item active" aria-current="page" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span role="img" class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
       </div>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -104,8 +101,8 @@
 
   <main class="main">
     <div class="page columns cap">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Channels</a><i class="ic ic-chevron-right"></i>Steam</nav>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Channels</a></nav>
         <div class="page-icon"><span class="icon-tile xl neutral"><i class="ic ic-steam"></i></span></div>
         <div class="page-heading"><h1>Steam</h1><span class="pill status-pill">Not set up</span></div>
         <p class="page-sub">Store · Windows x64 and Linux x86_64</p>
@@ -154,7 +151,7 @@
                   <div class="copy-field"><span class="copy-label">Publisher</span><span class="copy-value">Twelve Pips Studio</span><button class="btn ghost icon xs" aria-label="Copy the publisher"><i class="ic ic-copy"></i></button></div>
                 </div>
                 <!-- The wait, said once: the verifier's live line. -->
-                <span class="waiting-dot hang" role="status">Moves on when Polaris Key finds Diceroll in Steamworks · checked&nbsp;6&nbsp;s&nbsp;ago</span>
+                <span class="waiting-dot" role="status"><span class="mk-stack-1"><span>Moves on when Polaris Key finds Diceroll in Steamworks</span><span class="meta">Checked 6&nbsp;s ago</span></span></span>
               </div>
             </div>
           </div>
@@ -176,10 +173,11 @@
         <div class="tasks padded">
           <div class="task blocked fail-row" role="alert">
             <span class="task-mark"><span class="sr-only">Failed</span></span><div class="task-title">Key art too small for Steam’s library hero<span class="tag-inline">Hosted assets</span></div>
-            <div class="task-desc">Key art is 1920×620; Steam needs 3840×1240.</div>
+            <div class="task-desc">Steam needs 3840×1240</div>
+            <div class="task-desc">Diceroll’s is 1920×620</div>
             <div class="task-body"><div class="mk-cluster-4"><button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Try again</button><a class="link wrap" href="#">Upload in <span class="nowrap">Presentation<i class="ic ic-arrow-up-right"></i></span></a></div></div>
           </div>
-          <div class="task waiting"><span class="task-mark"><span class="sr-only">Waiting</span></span><div class="task-title">Pin the app id and add Steam to pull request #57<span class="tag-inline">GitHub App</span></div><div class="task-desc">The app id comes from Steamworks, never typed.</div></div>
+          <div class="task waiting"><span class="task-mark"><span class="sr-only">Waiting</span></span><div class="task-title">Pin the app id and add Steam to pull request #57<span class="tag-inline">GitHub App</span></div></div>
         </div>
         <!-- Done rows: one disclosure row at every size (kit "done steps"); expanded, the same rows with their sources. -->
         <div class="done-list">
@@ -187,12 +185,11 @@
         </div>
         <div class="tasks padded" id="auto-done" hidden>
           <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Publisher key works<span class="tag-inline">Steamworks Web API</span></div><div class="task-desc">Twelve Pips Studio’s key, checked at 10:16</div></div>
-          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Builder login stored in GitHub<span class="tag-inline">GitHub App</span></div><div class="task-desc"><span class="mono">STEAM_BUILDER_LOGIN</span> on <span class="mono">example-org/diceroll</span>; Polaris Key never keeps it.</div></div>
-          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Depots for Windows x64 and Linux x86_64<span class="tag-inline">From your builds</span></div><div class="task-desc">No macOS depot: Diceroll has no macOS build.</div></div>
+          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Builder login stored in GitHub<span class="tag-inline">GitHub App</span></div><div class="task-desc"><span class="mono">STEAM_BUILDER_LOGIN</span> on <span class="mono">example-org/diceroll</span></div></div>
+          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Depots for Windows x64 and Linux x86_64<span class="tag-inline">From your builds</span></div></div>
           <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Lane map: beta → Steam’s beta branch, dev → dev<span class="tag-inline">Default</span></div><div class="task-desc"><button class="btn link" aria-expanded="false">Change<i class="ic ic-chevron-down"></i></button></div></div>
           <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Each release uploads to Steam<span class="tag-inline">Release workflow</span></div><div class="task-desc">It already runs <span class="mono">pkey storefronts sync</span></div></div>
         </div>
-        <div class="card-foot start"><p class="icon-line type-small muted"><i class="ic ic-lock"></i><span>Polaris Key never changes prices, discounts or users in Steamworks.</span></p></div>
       </section>
 
       <section class="card aside span-2 sticky" aria-labelledby="sets-title">
@@ -202,16 +199,14 @@
             <div class="mk-stack-2">
               <h3 class="type-body bold strong">Next steps</h3>
               <p class="type-small muted"><strong>Merge:</strong> pull request #57 adds the Steam upload to your release workflow.</p>
-              <p class="type-small muted"><strong>Go live:</strong> a Coming soon page two weeks before release, then Valve’s review, usually 3 to 5 business days.</p>
+              <p class="type-small muted"><strong>Go live:</strong> a Coming soon page, two weeks before release</p>
+              <p class="type-small muted"><strong>Valve’s review:</strong> usually 3 to 5 business days</p>
             </div>
             <div class="mk-stack-4">
               <div class="mk-stack-2">
-                <h3 class="type-body bold strong">Runs again by itself</h3>
-                <p class="type-small muted">A new platform in a build adds its depot. A replaced key is checked before it’s used.</p>
-              </div>
-              <div class="mk-stack-2">
                 <h3 class="type-body bold strong">Used by</h3>
-                <p class="type-small muted">Publish, beta and dev releases, and Sales (Steam keys and ownership checks).</p>
+                <p class="type-small muted">Releases on stable, beta and dev</p>
+                <p class="type-small muted">Sales: Steam keys and ownership checks</p>
               </div>
             </div>
           </div>

@@ -1,19 +1,24 @@
-// Offline bundle import for the browser transport (wire contract v3 §7, P1b-07).
+// Offline bundle import for the browser transport (WIRE-CONTRACT-V4 §7, P1b-07).
 //
 // A browser has no hardware fingerprint and no keyring (PARITY §7), so its device identity is a
 // RANDOM id minted once and kept in IndexedDB, and its offline cache is a small IndexedDB record
-// beside it: the verified bundle's trust manifest and inner documents, plus `importedBundle`.
-// An operator mints a bundle against that id; the page imports it with no network at all.
+// beside it: the verified bundle's trust manifest and inner documents, plus the bundle's own
+// signed JWS (`bundle`) and the evidence for any revoked pin (`pinRevocations`). An operator
+// mints a bundle against that id; the page imports it with no network at all.
 //
 // ── THE SAME RULES AS EVERY OTHER SDK ───────────────────────────────────────────────────────
 //
 //   * Steps 1–4 are `@polaris-key/client-core`'s `inspectBundle`, the verifier the corpus's
 //     `bundleCases` pin byte-for-byte in every SDK. A refusal names the step and writes NOTHING.
 //   * Step 5, the write, REPLACES the record: importing a bundle is a re-provisioning.
+//   * Each inner document must be strictly newer than the verified cached one of its type (the
+//     per-type floors), and a byte-identical re-import is a success with no write.
 //   * What is stored is SIGNED ARTIFACTS ONLY (`CacheRecordV3`), re-verified on every load —
-//     the trust manifest against the PINS, each document against the effective set, bound to
-//     the stored device id, on the reload profile (`checkFreshness: false`; `graceUntil` is the
-//     gate's job, against the monotonic floor). A slice that no longer verifies is dropped.
+//     the pin evidence against the pins, the trust manifest against the USABLE pins, each
+//     document against the effective set, bound to the stored device id, on the reload profile
+//     (`checkFreshness: false`; `graceUntil` is the gate's job, against the monotonic floor), and
+//     the bundle itself on the bundle RELOAD profile (no import window), counting only while its
+//     documents are the cached ones byte for byte. A slice that no longer verifies is dropped.
 //     Nothing decoded is ever trusted from storage, so editing IndexedDB by hand can delete an
 //     activation but never invent one.
 //
@@ -22,9 +27,12 @@
 
 import {
   CACHE_VERSION,
+  compareKidBytes,
   highWaterMark,
   inspectBundle,
+  loadPinRevocations,
   mergeTrust,
+  usablePins,
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
@@ -58,7 +66,16 @@ export interface OfflineState {
   deviceId: string;
   license: LicenseDoc | null;
   config: ConfigDoc | null;
-  importedBundle: { bundleId: string; importedAt: number } | null;
+  /** The cached bundle, when it re-verified on the reload profile. `activates`: it carried a
+   *  licence document byte-identical to the cached one, which is `activation: "bundle"` (no
+   *  session held). */
+  bundle: CachedBundle | null;
+  /** The tombstoned pins, re-derived from `pinRevocations` (§1, §4.1). */
+  tombstones: string[];
+  /** The evidence that re-verified, kid → revoking manifest. */
+  pinRevocations: Record<string, string>;
+  /** The verified trust manifest's `issuedAt`, when one is held. */
+  trustIssuedAt: number | null;
   /** §4.2 — `max(issuedAt)` over the manifest and both documents. */
   highWaterMark: number;
   /** Epoch MILLIseconds of the newest signed `issuedAt`, as the Node cache derives it. */
@@ -178,24 +195,44 @@ export async function loadOffline(
     deviceId: record.deviceId,
     license: null,
     config: null,
-    importedBundle: null,
+    bundle: null,
+    tombstones: [],
+    pinRevocations: {},
+    trustIssuedAt: null,
     highWaterMark: 0,
     lastVerifiedAt: null,
   };
   const rec = record.cache;
   // §4.1 — another cache version is discarded, never migrated.
   if (!rec || rec.v !== CACHE_VERSION) return out;
+  // §4.1 — the pin evidence first: everything below verifies against the usable pins.
+  const evidence = await loadPinRevocations(rec.pinRevocations, {
+    pinned: opts.pinned,
+    expectedAud: opts.product,
+  });
+  out.tombstones = evidence.tombstones;
+  out.pinRevocations = evidence.kept;
   const dated: { issuedAt: number }[] = [];
-  let trust = opts.pinned;
+  let trust = usablePins(opts.pinned, out.tombstones);
   if (rec.trustJws) {
     const manifest = await verifyTrustManifest(rec.trustJws, {
       pinned: opts.pinned,
+      tombstones: out.tombstones,
       expectedAud: opts.product,
       now: opts.now,
       checkFreshness: false,
     });
     if (manifest.doc) {
-      trust = mergeTrust(opts.pinned, manifest.discovered);
+      for (const kid of manifest.revokedPins)
+        out.pinRevocations[kid] = rec.trustJws;
+      out.tombstones = [...out.tombstones, ...manifest.revokedPins].sort(
+        compareKidBytes,
+      );
+      trust = mergeTrust(
+        usablePins(opts.pinned, out.tombstones),
+        manifest.discovered,
+      );
+      out.trustIssuedAt = manifest.doc.issuedAt;
       dated.push(manifest.doc);
     }
   }
@@ -204,6 +241,8 @@ export async function loadOffline(
     expectedAud: opts.product,
     deviceId: record.deviceId,
     now: opts.now,
+    // Reload: no floor (explicit).
+    lastAcceptedIssuedAt: null,
     checkFreshness: false as const,
   };
   let newest = 0;
@@ -221,12 +260,63 @@ export async function loadOffline(
       newest = Math.max(newest, out.config.issuedAt);
     }
   }
-  // The marker means something only with a document behind it that still verifies.
-  if (rec.importedBundle && (out.license || out.config))
-    out.importedBundle = rec.importedBundle;
+  out.bundle = await reloadBundle(rec, {
+    pinned: opts.pinned,
+    tombstones: out.tombstones,
+    product: opts.product,
+    deviceId: record.deviceId,
+    now: opts.now,
+    license: out.license ? rec.docs?.license : undefined,
+  });
   out.highWaterMark = highWaterMark(dated);
   out.lastVerifiedAt = newest > 0 ? newest * 1000 : null;
   return out;
+}
+
+/** A cached bundle that re-verified: what it carried, and whether it activates. */
+export interface CachedBundle {
+  bundleId: string;
+  docs: ("license" | "config")[];
+  activates: boolean;
+}
+
+/**
+ * WIRE-CONTRACT-V4 §4.1, §7: the cached bundle (`rec.bundle`) on the RELOAD profile, against the
+ * usable pins. It activates only while the licence document it carries is the cached one that
+ * verified, byte for byte (`license` is that cached JWS, or undefined when absent or failed): a
+ * stale bundle cannot vouch for a licence it never carried.
+ */
+export async function reloadBundle(
+  rec: CacheRecordV3,
+  opts: {
+    pinned: TrustSet;
+    tombstones: readonly string[];
+    product: string;
+    deviceId: string;
+    now: number;
+    license: string | undefined;
+  },
+): Promise<CachedBundle | null> {
+  if (typeof rec.bundle !== "string") return null;
+  const result = await inspectBundle(rec.bundle, {
+    pinned: opts.pinned,
+    tombstones: opts.tombstones,
+    product: opts.product,
+    deviceId: opts.deviceId,
+    now: opts.now,
+    floors: { license: null, config: null },
+    profile: "reload",
+  });
+  if (!result.ok) return null;
+  const { docs } = result.bundle;
+  return {
+    bundleId: result.bundle.bundleId,
+    docs: [
+      ...(docs.license ? (["license"] as const) : []),
+      ...(docs.config ? (["config"] as const) : []),
+    ],
+    activates: docs.license !== undefined && docs.license.jws === opts.license,
+  };
 }
 
 /** Human-readable causes, as `@polaris-key/node` gives them, so a UI can say WHICH thing is
@@ -245,7 +335,8 @@ const MESSAGES: Record<BundleRefusalReason, string> = {
 /**
  * §7 steps 1–5: verify `jws` for this device and, only if every step passed, replace the stored
  * cache with what it carried. Throws `bundle-rejected` (`wireCode` = the step) and writes nothing
- * on any refusal.
+ * on any refusal. A byte-identical re-import of the bundle this page runs on succeeds without a
+ * write.
  */
 export async function importOfflineBundle(
   store: OfflineStore,
@@ -254,11 +345,25 @@ export async function importOfflineBundle(
   opts: { pinned: TrustSet; now: number },
 ): Promise<ImportBundleResult> {
   const record = await ensureRecord(store, product);
+  // What the device holds now, re-verified: the floors, the tombstones, the held manifest.
+  const held = await loadOffline(record, {
+    pinned: opts.pinned,
+    product,
+    now: opts.now,
+  });
+  if (held.bundle !== null && record.cache?.bundle === jws)
+    return { bundleId: held.bundle.bundleId, imported: [...held.bundle.docs] };
   const result = await inspectBundle(jws, {
     pinned: opts.pinned,
+    tombstones: held.tombstones,
     product,
     deviceId: record.deviceId,
     now: opts.now,
+    floors: {
+      license: held.license?.issuedAt ?? null,
+      config: held.config?.issuedAt ?? null,
+    },
+    profile: "import",
   });
   if (!result.ok)
     throw new PolarisError(
@@ -271,8 +376,15 @@ export async function importOfflineBundle(
   if (bundle.docs.license) imported.push("license");
   if (bundle.docs.config) imported.push("config");
   // The update slices (`feeds`, `releaseRecords`) are not part of the bundle: they carry over,
-  // so re-provisioning never resets a channel's `seq` floor.
+  // so re-provisioning never resets a channel's `seq` floor. So does the pin evidence, joined by
+  // any the bundle's own manifest adds; and the held manifest when it is newer (§7 step 5).
   const prior = record.cache;
+  const evidence = { ...held.pinRevocations };
+  for (const kid of bundle.revokedPins) evidence[kid] = bundle.trustJws;
+  const keepHeld =
+    held.trustIssuedAt !== null &&
+    held.trustIssuedAt > bundle.trustIssuedAt &&
+    typeof prior?.trustJws === "string";
   await store.write(product, {
     deviceId: record.deviceId,
     cache: {
@@ -281,12 +393,13 @@ export async function importOfflineBundle(
       ...(prior?.releaseRecords
         ? { releaseRecords: prior.releaseRecords }
         : {}),
-      trustJws: bundle.trustJws,
+      ...(Object.keys(evidence).length > 0 ? { pinRevocations: evidence } : {}),
+      trustJws: keepHeld ? prior!.trustJws! : bundle.trustJws,
       docs: {
         ...(bundle.docs.license ? { license: bundle.docs.license.jws } : {}),
         ...(bundle.docs.config ? { config: bundle.docs.config.jws } : {}),
       },
-      importedBundle: { bundleId: bundle.bundleId, importedAt: opts.now },
+      bundle: jws,
     },
   });
   return { bundleId: bundle.bundleId, imported };

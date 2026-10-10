@@ -76,6 +76,8 @@ func _capabilities(t: PKeyTestContext) -> void:
 	var answers := [{"status": 200, "body": JSON.stringify(doc)}]
 	var server := PKeyTestFixtures.new_server(func(_r): return answers[0])
 	o = _opts()
+	# A product without licensing says so in its build: discovery alone cannot switch the gate off.
+	o.expected_services = PackedStringArray(["config", "update"])
 	o.base_url = server.base_url()
 	o.pinned_trust_keys = {"my-pin": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"}
 	sdk.configure(o)
@@ -85,7 +87,7 @@ func _capabilities(t: PKeyTestContext) -> void:
 	t.check("autoload: discovery installs the product's map", d.ok and d.detail["kind"] == "ok" and caps["config"]["enabled"] and not caps["license"]["enabled"], str(caps))
 	t.check("autoload: discovery wins over expected_services", not sdk.capabilities()["update"]["enabled"])
 	t.check("autoload: discovery never pins its trust.pinnedKeys", sdk.core.trust.pinned() == {"my-pin": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"})
-	t.check("autoload: a product without the licence service is not-applicable", sdk.status()["status"] == "not-applicable")
+	t.check("autoload: a product without the licence service (by its build) is not-applicable", sdk.status()["status"] == "not-applicable")
 
 	var broken := doc.duplicate(true)
 	broken["services"]["license"] = {"enabled": "true"}

@@ -160,3 +160,13 @@ describe("the sender identities", () => {
     expect(platformSender(e).name).toBe("Polaris Key");
   });
 });
+
+describe("mixed-script names", () => {
+  it("refuses Latin mixed with a look-alike script", () => {
+    expect(checkSenderAppName("Acme Рay")).toEqual({
+      ok: false,
+      reason: "forbidden_character",
+    });
+    expect(checkSenderAppName("Acme Pay").ok).toBe(true);
+  });
+});

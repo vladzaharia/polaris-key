@@ -129,6 +129,7 @@ describe("portal entitlement view agrees with the licence document (LX-04)", () 
     );
     expect(res.status).toBe(200);
     const doc = await verifyLicenseDoc(await res.text(), {
+      lastAcceptedIssuedAt: null,
       trust: { [TEST_KID]: TEST_PUB },
       expectedAud: SLUG,
       deviceId: "d1",

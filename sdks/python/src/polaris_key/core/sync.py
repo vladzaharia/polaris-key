@@ -124,15 +124,26 @@ def sync(deps: SyncDeps, *, force: bool = False) -> SyncResult:
     patch: Dict[str, object] = {}
     if trust_jws:
         patch["trust_jws"] = trust_jws
+        # A manifest that tombstoned a pin also changed the evidence: same write (§4.1).
+        evidence = trust.pin_revocations
+        if evidence:
+            patch["pin_revocations"] = evidence
 
     outcomes = (license_outcome, config_outcome)
+    # The unsigned hints are for display; no verdict depends on them. What makes a
+    # revocation (or a build block) hold offline is that the document it answered for is REMOVED
+    # in the same write, so clearing a hint yields `needs-activation`, not a usable document.
+    # The token is kept, so the gate still reports `revoked` / the block.
+    for name, outcome in (("license", license_outcome), ("config", config_outcome)):
+        if outcome.kind == "unauthorized" or (name == "license" and outcome.kind == "blocked"):
+            cache.revoke_slice(name)
     unauthorized = any(o.kind == "unauthorized" for o in outcomes)
     blocked_outcome = next((o for o in outcomes if o.kind == "blocked"), None)
     cap_outcome = next((o for o in outcomes if o.kind == "device-cap"), None)
     applied = any(o.kind == "applied" for o in outcomes)
-    # A successful authenticated exchange — 200 OR 304 — clears both unsigned hints. They
-    # can only ever tighten the gate (§4.1), so clearing them on evidence of a healthy
-    # session is safe; SETTING them requires the server to have said so.
+    # A successful authenticated exchange — 200 OR 304 — clears both unsigned hints. They are
+    # display-only (§4.1: no verdict depends on them), so clearing them on evidence of a
+    # healthy session is safe; SETTING them requires the server to have said so.
     healthy = any(o.kind in ("applied", "unchanged") for o in outcomes)
     if unauthorized:
         patch["last_sync_unauthorized"] = True
@@ -272,6 +283,8 @@ def _sync_license(deps: SyncDeps, force: bool) -> DocOutcome:
             expected_aud=ctx.product,
             device_id=ctx.device_id,
             last_accepted_issued_at=held.issuedAt if held else None,
+            # The effective clock (never below the signed floor), not the raw wall.
+            now=ctx.now(),
         )
         if doc is None:
             return False
@@ -305,6 +318,8 @@ def _sync_config(deps: SyncDeps, force: bool) -> DocOutcome:
             expected_aud=ctx.product,
             device_id=ctx.device_id,
             last_accepted_issued_at=held.issuedAt if held else None,
+            # The effective clock (never below the signed floor), not the raw wall.
+            now=ctx.now(),
         )
         if doc is None:
             return False

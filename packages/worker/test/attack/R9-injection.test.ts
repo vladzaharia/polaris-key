@@ -7,6 +7,7 @@
  * NOTE: these tests assert the CURRENT (vulnerable) behaviour so they fail loudly when a
  * fix lands. Read them as "this is what an attacker can do today".
  */
+import { bindFlow } from "../flowBinderHelper.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -16,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
+  approveEdgeMintRecipe,
   makeEnv,
   NOW,
   seedLicenseWithKey,
@@ -422,8 +424,6 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       // the operator-set platform issuer runs through the same predicate.
       "http://localhost:8788",
       "http://127.0.0.1:8788",
-      "https://localhost:8443",
-      "https://2130706433/", // 127.0.0.1 as a decimal integer — normalizes to loopback
       "http://[::1]:8788",
     ]) {
       expect(oidcManifest(issuer).ok, issuer).toBe(true);
@@ -637,6 +637,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     const res = await handleAuthCallback(
       req(
         `https://key.plrs.im/${SLUG}/identity/auth/callback?code=ATTACKER_CODE&state=ATTACKER_STATE`,
+        { headers: { cookie: await bindFlow(env, SLUG, "ATTACKER_STATE") } },
       ),
       env,
       db,
@@ -674,7 +675,9 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
 
     const calls = recordGlobalFetch();
     const res = await handleAuthCallback(
-      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S`),
+      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S`, {
+        headers: { cookie: await bindFlow(env, SLUG, "S") },
+      }),
       env,
       db,
       product,
@@ -711,6 +714,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       await handleAuthCallback(
         req(
           `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S3`,
+          { headers: { cookie: await bindFlow(env, SLUG, "S3") } },
         ),
         env,
         db,
@@ -744,7 +748,12 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     );
     const calls = recordGlobalFetch();
     await handleAuthCallback(
-      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S2`),
+      req(
+        `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S2`,
+        {
+          headers: { cookie: await bindFlow(env, SLUG, "S2") },
+        },
+      ),
       env,
       db,
       product,
@@ -1272,7 +1281,7 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
     env.PLATFORM_OIDC_CLIENT_ID = "platform-client";
     await seedProduct(db, SLUG);
     await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
-    await seedCustomOidc(db, "https://id.example", { redirectUris: null });
+    await seedCustomOidc(db, "https://id.example");
     const product = (await loadProduct(env, db, SLUG))!;
 
     const res = await handleAuthStart(
@@ -1618,6 +1627,13 @@ describe("R9-11 edge-mint auth page", () => {
       "<script>alert(document.domain)</script>",
     );
 
+    // An unapproved recipe is a 404.
+    expect((await handleMintAuth(db, makeProduct(), "musickit")).status).toBe(
+      404,
+    );
+    await approveEdgeMintRecipe(db, SLUG, "musickit", {
+      acknowledgeOpenRegistration: true,
+    });
     const res = await handleMintAuth(db, makeProduct(), "musickit");
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("<script>alert(document.domain)</script>");

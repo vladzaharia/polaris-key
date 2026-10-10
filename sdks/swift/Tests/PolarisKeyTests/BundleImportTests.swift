@@ -100,7 +100,7 @@ final class BundleImportTests: XCTestCase {
         XCTAssertNotNil(record.docs[.config])
         XCTAssertTrue(record.etags.isEmpty, "no ETags: these did not come from a conditional GET")
         XCTAssertNil(record.lastSyncUnauthorized, "the previous session's hints go with it")
-        XCTAssertEqual(record.importedBundle?.importedAt, t)
+        XCTAssertEqual(record.bundle, bundle, "the bundle is stored verbatim")
     }
 
     /// §7 — a bundle with no licence document has NO activation effect. It imports settings and

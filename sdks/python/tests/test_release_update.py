@@ -469,7 +469,7 @@ def test_decide_verifies_commits_and_decides() -> None:
     assert set(rec.releaseRecords) == set(worker.records)
     # Signed artifacts only: no floor, no decoded document, is ever stored.
     assert set(rec.to_dict()) <= {
-        "v", "docs", "etags", "lastSyncUnauthorized", "trustJws", "importedBundle",
+        "v", "docs", "etags", "lastSyncUnauthorized", "trustJws", "bundle", "pinRevocations",
         "blocked", "feeds", "releaseRecords",
     }
     # Discovery was loaded first (step 1), then the feed and the record.

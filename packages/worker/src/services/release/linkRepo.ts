@@ -115,7 +115,8 @@ export function parseRepoUrl(
  * Returns `null` when the issuer may be persisted, or the operator-facing refusal otherwise.
  *
  * This is the ingest half of R9-01, and — unlike the copy at the sink
- * (`services/identity/oidc.ts`'s `issuerHostAllowed`, which treats "unset" as "unenforced") —
+ * (`services/identity/oidc.ts`'s `issuerHostAllowed`, which treats "unset" as "unenforced"
+ * outside production) —
  * it **fails closed**: with no allowlist configured, no manifest may introduce a custom issuer
  * at all.
  *

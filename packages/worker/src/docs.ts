@@ -26,6 +26,7 @@
  */
 
 import type { Env } from "./env.js";
+import { isPlatformAdmin } from "./admin/authz.js";
 import { sessionFromRequest } from "./admin/session.js";
 import { isSafeAssetPath } from "./http.js";
 import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
@@ -159,6 +160,12 @@ export async function handleDocs(
 
   const session = await sessionFromRequest(env, req, now);
   if (!session) return loginRedirect(url.pathname);
+  // The current platform group, not the groups the cookie was minted with.
+  if (!isPlatformAdmin(env, session))
+    return new Response(null, {
+      status: 403,
+      headers: { "cache-control": "no-store" },
+    });
 
   if (!env.ASSETS) return docsShell();
 

@@ -1,7 +1,7 @@
 <style>
   /* licenses.bulk-keys: colour and visibility only; spacing comes from the kit. */
   [data-screen="licenses.bulk-keys"] .origin-auto > .ic {
-    color: var(--pk-accent-fg);
+    color: var(--pk-text-strong);
   }
   /* Origin is the first column to go: below 1440px a row keeps License, Holder, Tier, Duration
      and Devices on one line. */
@@ -45,7 +45,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -55,6 +55,7 @@
   <main class="main">
     <div class="page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a></nav>
         <div class="page-heading"><h1>Licenses</h1></div>
         <!-- Live state shown nowhere else on the page: the Automatic grants, equal to Access's rule counts (38 + 412 + 57 + 143). -->
         <p class="page-sub">650 are Automatic grants from your Access rules</p>
@@ -69,133 +70,135 @@
       <!-- Holder states are the first filter (S-24 §8.8, LX-30); facets add Tier, Duration (LX-41), Origin and Batch. -->
       <div class="mk-stack-4">
         <div class="toolbar hide-phone">
-          <div class="segmented" role="tablist" aria-label="Holder">
+          <div class="segmented" role="group" aria-label="Holder">
             <span class="on">All<span class="count">1,284</span></span>
             <span><i class="ic ic-user-round sm"></i>In an account<span class="count">1,071</span></span>
             <span><i class="ic ic-mail sm"></i>Waiting<span class="count">7</span></span>
             <span><i class="ic ic-key-round sm"></i>Floating<span class="count">206</span></span>
           </div>
         </div>
-        <div class="toolbar">
-          <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
-          <span class="filter show-phone"><i class="ic ic-chevron-down"></i>Holder: All</span>
-          <span class="filter"><i class="ic ic-plus"></i>Tier</span>
-          <span class="filter"><i class="ic ic-plus"></i>Duration</span>
-          <span class="filter"><i class="ic ic-plus"></i>Origin</span>
-          <span class="filter"><i class="ic ic-plus"></i>Batch</span>
-          <div class="end">
-            <button class="btn ghost sm hide-phone"><i class="ic ic-columns-3"></i>Columns</button>
-            <button class="btn outline sm"><i class="ic ic-download"></i>Export</button>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field"><i class="ic ic-search"></i><span>Search licenses</span></div>
+            <span class="filter show-phone"><i class="ic ic-chevron-down"></i>Holder: All</span>
+            <span class="filter"><i class="ic ic-plus"></i>Tier</span>
+            <span class="filter"><i class="ic ic-plus"></i>Duration</span>
+            <span class="filter"><i class="ic ic-plus"></i>Origin</span>
+            <span class="filter"><i class="ic ic-plus"></i>Batch</span>
+            <div class="end">
+              <button class="btn ghost sm hide-phone"><i class="ic ic-columns-3"></i>Columns</button>
+              <button class="btn outline sm"><i class="ic ic-download"></i>Export</button>
+            </div>
           </div>
-        </div>
-
-        <div class="table-card">
-          <table class="table stack-phone flow">
-            <thead>
-              <tr>
-                <th>License</th>
-                <th>Holder</th>
-                <th>Tier</th>
-                <th>Duration</th>
-                <th>Devices</th>
-                <th class="c-origin">Origin</th>
-                <th class="row-menu"><span class="sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">MF</span><div><div class="cell-title">Mara Fennick</div><div class="cell-sub">mara@example.com</div></div></div></td>
-                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
-                <td class="flow-end">Lifetime</td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>3 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 30%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>studio-pro</code></span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">PR</span><div><div class="cell-title">Priya Raman</div><div class="cell-sub">priya@example.edu</div></div></div></td>
-                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Education</span></td>
-                <td class="flow-end"><div class="cell-stack"><span>Ends Sep 14, 2027</span><span class="cell-sub">Then keeps the last version</span></div></td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>3 of 4<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 75%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Domain <code>example.edu</code></span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">TO</span><div><div class="cell-title">Tomás Okafor</div><div class="cell-sub">tomas@example.com</div></div></div></td>
-                <td><div class="cell-stack"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span><span class="cell-sub">Invited Oct 2</span></div></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
-                <td class="flow-end">Lifetime</td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md pending"><i class="ic ic-key-round"></i></span><div class="cell-title mono">pkey_djdl_7HJM…Q2KD</div></div></td>
-                <td><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
-                <td class="flow-end">Lifetime</td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>1 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 20%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">AT</span><div><div class="cell-title">Aiko Tanaka</div><div class="cell-sub">aiko@example.com</div></div></div></td>
-                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
-                <td class="flow-end"><div class="cell-stack"><span class="pill sm danger"><i class="ic ic-circle-x"></i>Past due since Oct 3</span><span class="cell-sub">Renews yearly, by hand</span></div></td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>4 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 40%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
-                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Trial</span></td>
-                <td class="flow-end"><div class="cell-stack"><span class="pill sm info"><i class="ic ic-hourglass"></i>Trial ends Oct 12</span><span class="cell-sub">Then Free</span></div></td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>1 of 2<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 50%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Everyone who signs in</span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">KS</span><div><div class="cell-title">Kenji Sato</div><div class="cell-sub">kenji@example.com</div></div></div></td>
-                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
-                <td class="flow-end"><div class="cell-stack"><span>Updates ended at 4.1</span><span class="cell-sub">Keeps working</span></div></td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>2 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 20%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">LO</span><div><div class="cell-title">Lena Ortiz</div><div class="cell-sub">lena@example.com</div></div></div></td>
-                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
-                <td class="flow-end">Lifetime</td>
-                <td><div class="meter-head"><span class="icon-text tnum text-warning"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>5 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow warning" style="--v: 100%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>members</code></span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md">SR</span><div><div class="cell-title">Sam Reyes</div><div class="cell-sub">sam@example.com</div></div></div></td>
-                <td><div class="cell-stack"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span><span class="cell-sub">Invited Sep 28</span></div></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
-                <td class="flow-end">Lifetime</td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Jun Park</span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="avatar md pending"><i class="ic ic-key-round"></i></span><div class="cell-title mono">pkey_djdl_B1cY…4W9P</div></div></td>
-                <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span><span class="cell-sub">Never used</span></div></td>
-                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
-                <td class="flow-end">Lifetime</td>
-                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
-                <td class="c-origin"><div class="cell-stack"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
-                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="table-foot"><span class="tnum">1–10 of 1,284</span><span class="ml-auto mk-cluster-1"><button class="btn ghost icon xs" aria-label="Previous page" disabled><i class="ic ic-chevron-left"></i></button><button class="btn ghost icon xs" aria-label="Next page"><i class="ic ic-chevron-right"></i></button></span></div>
+  
+          <div class="table-card" role="region" aria-label="Licenses table" tabindex="0">
+            <table class="table stack-phone flow">
+              <thead>
+                <tr>
+                  <th>License</th>
+                  <th>Holder</th>
+                  <th>Tier</th>
+                  <th>Duration</th>
+                  <th>Devices</th>
+                  <th class="c-origin">Origin</th>
+                  <th class="row-menu"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">MF</span><div><div class="cell-title">Mara Fennick</div><div class="cell-sub">mara@example.com</div></div></div></td>
+                  <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                  <td class="flow-end">Lifetime</td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>3 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 30%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>studio-pro</code></span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">PR</span><div><div class="cell-title">Priya Raman</div><div class="cell-sub">priya@example.edu</div></div></div></td>
+                  <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Education</span></td>
+                  <td class="flow-end"><div class="cell-stack"><span>Ends Sep 14, 2027</span><span class="cell-sub">Then keeps the last version</span></div></td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>3 of 4<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 75%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Domain <code>example.edu</code></span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">TO</span><div><div class="cell-title">Tomás Okafor</div><div class="cell-sub">tomas@example.com</div></div></div></td>
+                  <td><div class="cell-stack"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span><span class="cell-sub">Invited Oct 2</span></div></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                  <td class="flow-end">Lifetime</td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md pending"><i class="ic ic-key-round"></i></span><div class="cell-title mono">pkey_djdl_7HJM…Q2KD</div></div></td>
+                  <td><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                  <td class="flow-end">Lifetime</td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>1 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 20%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">AT</span><div><div class="cell-title">Aiko Tanaka</div><div class="cell-sub">aiko@example.com</div></div></div></td>
+                  <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                  <td class="flow-end"><div class="cell-stack"><span class="pill sm danger"><i class="ic ic-circle-x"></i>Past due since Oct 3</span><span class="cell-sub">Renews yearly, by hand</span></div></td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>4 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 40%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
+                  <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Trial</span></td>
+                  <td class="flow-end"><div class="cell-stack"><span class="pill sm info"><i class="ic ic-hourglass"></i>Trial ends Oct 12</span><span class="cell-sub">Then Free</span></div></td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>1 of 2<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 50%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Everyone who signs in</span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">KS</span><div><div class="cell-title">Kenji Sato</div><div class="cell-sub">kenji@example.com</div></div></div></td>
+                  <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                  <td class="flow-end"><div class="cell-stack"><span>Updates ended at 4.1</span><span class="cell-sub">Keeps working</span></div></td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>2 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 20%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">LO</span><div><div class="cell-title">Lena Ortiz</div><div class="cell-sub">lena@example.com</div></div></div></td>
+                  <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                  <td class="flow-end">Lifetime</td>
+                  <td><div class="meter-head"><span class="icon-text tnum text-warning"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>5 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow warning" style="--v: 100%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>members</code></span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md">SR</span><div><div class="cell-title">Sam Reyes</div><div class="cell-sub">sam@example.com</div></div></div></td>
+                  <td><div class="cell-stack"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span><span class="cell-sub">Invited Sep 28</span></div></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                  <td class="flow-end">Lifetime</td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Jun Park</span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="avatar md pending"><i class="ic ic-key-round"></i></span><div class="cell-title mono">pkey_djdl_B1cY…4W9P</div></div></td>
+                  <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span><span class="cell-sub">Never used</span></div></td>
+                  <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                  <td class="flow-end">Lifetime</td>
+                  <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
+                  <td class="c-origin"><div class="cell-stack"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
+                  <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="table-foot"><span class="tnum">1–10 of 1,284</span><span class="ml-auto mk-cluster-1"><button class="btn ghost icon xs" aria-label="Previous page" disabled><i class="ic ic-chevron-left"></i></button><button class="btn ghost icon xs" aria-label="Next page"><i class="ic ic-chevron-right"></i></button></span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -220,8 +223,8 @@
       <div class="drawer-body">
         <section class="card" aria-label="Review">
           <dl class="kv-rows">
-            <div><dt>Tier</dt><dd><span class="icon-text"><i class="ic ic-layers accent"></i>Standard</span></dd><button class="btn outline xs kv-action">Change</button></div>
-            <div><dt>Who</dt><dd><span><strong class="tnum">200</strong> floating keys: anyone with one can use it</span><span class="source">Batch “Mixer bundle · Oct 2026”</span></dd><button class="btn outline xs kv-action">Change</button></div>
+            <div><dt>Tier</dt><dd><span class="icon-text"><i class="ic ic-layers accent"></i>Standard</span></dd><dd class="kv-action"><button class="btn outline xs">Change</button></dd></div>
+            <div><dt>Who</dt><dd><span><strong class="tnum">200</strong> floating keys</span><span class="source">Batch “Mixer bundle · Oct 2026”</span></dd><dd class="kv-action"><button class="btn outline xs">Change</button></dd></div>
             <div><dt>Limits</dt><dd>
               <dl class="dl compact">
                 <dt>Devices</dt><dd class="tnum">5</dd>
@@ -230,18 +233,17 @@
                 <dt>Versions</dt><dd>Any<span class="source">Default</span></dd>
                 <dt>Fingerprint</dt><dd>Normal</dd>
               </dl>
-            </dd><button class="btn outline xs kv-action">Change</button></div>
-            <div><dt>Duration</dt><dd>Lifetime</dd><button class="btn outline xs kv-action">Change</button></div>
-            <div><dt>Delivery</dt><dd>Download a CSV<span class="source">key, license id, batch</span></dd><button class="btn outline xs kv-action">Change</button></div>
+            </dd><dd class="kv-action"><button class="btn outline xs">Change</button></dd></div>
+            <div><dt>Duration</dt><dd>Lifetime</dd><dd class="kv-action"><button class="btn outline xs">Change</button></dd></div>
+            <div><dt>Delivery</dt><dd>Download a CSV<span class="source">key, license id, batch</span></dd><dd class="kv-action"><button class="btn outline xs">Change</button></dd></div>
           </dl>
         </section>
 
         <div class="mk-stack-3">
           <p class="eyebrow">What happens</p>
           <ol class="num-list">
-            <li><span>Polaris Key makes 200 Standard licenses with no holder, one key each.</span></li>
-            <li><span>The keys show once, as a CSV you can download until you close this. Only a hash of each is kept.</span></li>
-            <li><span>A key added to someone’s Polaris Key library moves its license into their account.</span></li>
+            <li><span>The keys show once, in a CSV.</span></li>
+            <li><span>Download it before you close this.</span></li>
           </ol>
         </div>
       </div>

@@ -5,12 +5,14 @@
   "surface": "console",
   "packages": ["CM-23", "CM-29"],
   "uxRows": [],
-  "summary": "DJDL's Purchases before the first verified purchase: no tabs, toolbar or empty table, just the kit's first-run empty state saying where purchases come from and how to see one now (a test purchase), linking to Storefronts' test-purchase step.",
+  "summary": "DJDL's Purchases before the first verified purchase: no tabs, toolbar or empty table, just the kit's first-run empty state saying how to see one now (a test purchase), linking to Storefronts' test-purchase step.",
   "compare": [
-    "First-run empty state (EXPERIENCE.md §9): an icon in the Commerce tint, 'No purchases yet', one paragraph and one action; tabs, filters, Export CSV and the table appear with the first purchase.",
+    "First-run empty state (EXPERIENCE.md §9): an icon in the Commerce tint, 'No purchases yet', one sentence ('To see one now, make a test purchase in a TestFlight build.') and one action; tabs, filters, Export CSV and the table appear with the first purchase.",
+    "The empty state's card sits in the middle of the canvas, across and down, like commerce.offers-empty (the kit's empty collection).",
     "The action goes to the test-purchase step on Storefronts (the one Accept test purchases switch), not to a per-store page.",
     "The page sub-line keeps the refund rule, so it reads the same before and after the first purchase.",
-    "Phone: the empty state centres in its card; the button fills the width."
+    "Phone: the empty state centres in its card; the button fills the width.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

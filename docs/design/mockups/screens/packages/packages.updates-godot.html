@@ -1,4 +1,4 @@
-<div class="console" data-service="core">
+<div class="console" data-service="release">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -33,7 +33,7 @@
       <a class="nav-item active" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -41,10 +41,11 @@
     </div>
   </nav>
 
-  <main class="main" data-service="update">
+  <main class="main">
     <!-- Wide (≥ 1600): the updaters in the main column, the update rules in the aside. -->
     <div class="page columns sticky-rail">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
         <div class="page-heading"><h1>Updates</h1></div>
         <!-- A-20: scoped to what Diceroll builds; only those get a card. -->
         <p class="page-sub">Godot 4.4 exports</p>
@@ -67,7 +68,7 @@
           <div class="attn-row">
             <span class="pill warning sm"><i class="ic ic-circle-pause"></i>Rollout halted</span>
             <span class="attn-subject mono">1.8.0</span>
-            <span class="attn-text">Halted at 20% on Oct 7 (1.8.0 demoted).</span>
+            <span class="attn-text">Demoted on Oct 7 at 20%.</span>
             <a class="link" href="#">Promote 1.8.1<i class="ic ic-arrow-right"></i></a>
           </div>
         </div>
@@ -78,7 +79,8 @@
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">Google Play channel</div>
-                <div class="task-desc">Each release’s update priority is set when you publish it; 4 or 5 makes the update immediate.</div>
+                <div class="task-desc">Update priority is set per release, when you publish it.</div>
+                <div class="task-desc">Priority 4 or 5 makes the update immediate.</div>
               </div>
             </div>
           </div>
@@ -86,12 +88,10 @@
             <p class="eyebrow">In your app</p>
             <div class="code fade-x wrap-phone">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">GDScript<small>Godot</small></span><span>Kotlin<small>Android</small></span></div>
+                <div class="code-tabs" tabindex="0"><span class="active">GDScript<small>Godot</small></span><span>Kotlin<small>Android</small></span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
 <pre tabindex="0" role="region" aria-label="Code"><span class="t-k">func</span> <span class="t-f">_on_title_screen_ready</span>() <span class="t-o">-&gt;</span> <span class="t-t">void</span>:
-  <span class="t-c"># Asks Google Play for a newer Diceroll. Play shows</span>
-  <span class="t-c"># its own update sheet; nothing is downloaded by us.</span>
   <span class="t-k">await</span> PolarisKey.updates.<span class="t-f">prompt_play_update</span>()</pre>
               <div class="code-foot"><i class="ic ic-info sm"></i><span>Runs only in the Google Play build.</span></div>
             </div>
@@ -118,12 +118,13 @@
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">PKeyBoot autoload</div>
-                <div class="task-desc">Added by <code>pkey sdk add godot</code>; runs before the main scene.</div>
+                <div class="task-desc">Added by <code>pkey sdk add godot</code></div>
               </div>
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">Signed update feed</div>
-                <div class="task-desc">Ships a .pck patch when one is smaller: 1.7.2 to 1.7.3 was 38 MB instead of the 412 MB game.</div>
+                <div class="task-desc">Ships a .pck patch when it’s smaller.</div>
+                <div class="task-desc">1.7.2 to 1.7.3: 38 MB, not 412 MB.</div>
               </div>
             </div>
           </div>
@@ -131,11 +132,10 @@
             <p class="eyebrow">In your app</p>
             <div class="code fade-x wrap-phone">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">GDScript<small>Godot</small></span></div>
+                <div class="code-tabs" tabindex="0"><span class="active">GDScript<small>Godot</small></span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
-<pre tabindex="0" role="region" aria-label="Code"><span class="t-c"># PKeyBoot checks Diceroll’s signed feed on the license’s</span>
-<span class="t-c"># release track and stages the new .pck for the next start.</span>
+<pre tabindex="0" role="region" aria-label="Code"><span class="t-c"># The new .pck loads at the next start.</span>
 <span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-&gt;</span> <span class="t-t">void</span>:
   <span class="t-k">var</span> update <span class="t-o">:=</span> <span class="t-k">await</span> PolarisKey.updates.<span class="t-f">check</span>()
   <span class="t-k">if</span> update.available:
@@ -153,7 +153,7 @@
       <!-- Stores that update the game themselves: no setup, said once. Steam matches Home: not connected yet. -->
       <section class="card" aria-labelledby="u-stores">
         <div class="card-head">
-          <div class="title"><h2 id="u-stores">Updated by the store</h2><p>Nothing to set up: the store installs each release that reaches it.</p></div>
+          <div class="title"><h2 id="u-stores">Updated by the store</h2></div>
         </div>
         <div class="card-rows">
           <div class="item-row">
@@ -162,13 +162,11 @@
           </div>
           <div class="item-row">
             <span class="icon-tile sm neutral off"><i class="ic ic-steam"></i></span>
-            <div class="item-text"><div class="item-title">Windows, Linux · Steam</div><div class="item-desc">Updates from each player’s branch, once a build reaches Steam.</div></div>
+            <div class="item-text"><div class="item-title">Windows, Linux · Steam</div></div>
             <div class="item-end"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Not connected</span><a class="link" href="#">Connect Steam<i class="ic ic-arrow-right"></i></a></div>
           </div>
         </div>
       </section>
-
-      <p class="icon-line type-small muted"><i class="ic ic-eye-off sm"></i><span>Not shown: Sparkle, WinSparkle, Velopack, App Installer and zsync; the Godot updater covers Diceroll’s desktop builds.</span></p>
 
       <!-- The page's settings rows, also reachable from the settings hub. Access is read-only here (P2-10). At wide, the aside. -->
       <section class="card aside span-4" aria-labelledby="rules">
@@ -177,15 +175,15 @@
         </div>
         <div class="card-rows">
           <div class="setting-row">
-            <div><div class="setting-title">Compatibility window</div><div class="setting-desc">Copies from 1.6.0 update in place. Older copies are told to download 1.7.3.</div></div>
+            <div><div class="setting-title">Compatibility window</div><div class="setting-desc">Copies from 1.6.0 update in place.</div><div class="setting-desc">Older copies are told to download 1.7.3.</div></div>
             <button class="btn outline sm">Change</button>
           </div>
           <div class="setting-row">
-            <div><div class="setting-title">Who can check for updates</div><div class="setting-desc">Public: every copy, free players included.</div></div>
+            <div><div class="setting-title">Who can check for updates</div><div class="setting-desc">Public: every copy.</div></div>
             <a class="link" href="#">Change on Access<i class="ic ic-arrow-right"></i></a>
           </div>
           <div class="setting-row">
-            <div><div class="setting-title">Release track</div><div class="setting-desc">Stable, or beta for 312 licenses (the Supporter tier and 38 more).</div></div>
+            <div><div class="setting-title">Release track</div><div class="setting-desc">Stable, or beta for 312 licenses.</div></div>
             <a class="link" href="#">Release tracks<i class="ic ic-arrow-right"></i></a>
           </div>
         </div>

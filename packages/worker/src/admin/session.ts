@@ -23,6 +23,7 @@ import type { Env } from "../env.js";
 import { importHmacKey } from "../platform/hash.js";
 import { signHmacToken, verifyHmacToken } from "../platform/hmacToken.js";
 import { randomToken } from "../platform/random.js";
+import { isAdminSessionRevoked } from "./sessionRevocation.js";
 
 /**
  * Cookie name for the admin session.
@@ -71,6 +72,12 @@ export interface AdminSession {
    * session minted before this field existed has none, and counts as not stepped up.
    */
   authAt?: number;
+  /**
+   * When the operator re-authenticated through a `prompt=login` step-up flow that the
+   * IdP proved with `auth_time`. An ordinary sign-in never sets it, so only an explicit step-up
+   * satisfies `isSteppedUp`.
+   */
+  stepUpAt?: number;
 }
 
 /** I-12 (S-16 §5.4 item 9): the relink tool needs an operator sign-in no older than this. */
@@ -79,9 +86,9 @@ export const STEP_UP_MAX_AGE_SECONDS = 5 * 60;
 /** True when the session's interactive sign-in is recent enough for a step-up action. */
 export function isSteppedUp(session: AdminSession, now: number): boolean {
   return (
-    typeof session.authAt === "number" &&
-    session.authAt <= now + 60 &&
-    now - session.authAt <= STEP_UP_MAX_AGE_SECONDS
+    typeof session.stepUpAt === "number" &&
+    session.stepUpAt <= now + 60 &&
+    now - session.stepUpAt <= STEP_UP_MAX_AGE_SECONDS
   );
 }
 
@@ -104,10 +111,8 @@ async function sessionKey(env: Env): Promise<CryptoKey> {
 /**
  * Domain-separation tag mixed into the signed message (R1-02).
  *
- * The admin and portal realms can be signed by the SAME raw key — identity's
- * `portal/session.ts` falls
- * back to `ADMIN_SESSION_SECRET` when `PORTAL_SESSION_SECRET` is unset, which `wrangler.toml`
- * documents as a supported deployment. Before this tag, the only thing stopping a portal
+ * The admin and portal realms once shared a raw key (the portal fell back to
+ * `ADMIN_SESSION_SECRET`; that fallback is gone). Before this tag, the only thing stopping a portal
  * cookie (obtainable by anyone with an email address) from being replayed as an admin cookie
  * was that the two JSON bodies happened to carry different field names: add a `sub` and a
  * `groups` array to `PortalSession` — both natural next features — and the realms collapse.
@@ -131,6 +136,8 @@ export interface SessionIdentity {
   groups: string[];
   /** The ID token's `auth_time` (epoch seconds), when the IdP sent one. */
   authTime?: number;
+  /** The callback ran a step-up flow and the IdP proved a fresh `auth_time`. */
+  stepUp?: boolean;
 }
 
 /** Mint a signed session token for a verified admin identity. */
@@ -139,6 +146,10 @@ export async function issueSession(
   identity: SessionIdentity,
   now: number,
 ): Promise<{ token: string; session: AdminSession }> {
+  const authAt =
+    typeof identity.authTime === "number" && identity.authTime <= now
+      ? identity.authTime
+      : now;
   const session: AdminSession = {
     sub: identity.sub,
     name: identity.name ?? identity.email ?? identity.sub,
@@ -147,10 +158,10 @@ export async function issueSession(
     csrf: randomToken(16),
     exp: now + SESSION_TTL_SECONDS,
     // A future auth_time is clock skew or a lie; never let it extend a step-up window.
-    authAt:
-      typeof identity.authTime === "number" && identity.authTime <= now
-        ? identity.authTime
-        : now,
+    authAt,
+    ...(identity.stepUp && typeof identity.authTime === "number"
+      ? { stepUpAt: authAt }
+      : {}),
   };
   const token = await signHmacToken(
     await sessionKey(env),
@@ -223,5 +234,12 @@ export async function sessionFromRequest(
   req: Request,
   now: number,
 ): Promise<AdminSession | null> {
-  return verifySession(env, readSessionCookie(req.headers.get("cookie")), now);
+  const session = await verifySession(
+    env,
+    readSessionCookie(req.headers.get("cookie")),
+    now,
+  );
+  if (!session) return null;
+  // Sign-out is server-side.
+  return (await isAdminSessionRevoked(env, session)) ? null : session;
 }

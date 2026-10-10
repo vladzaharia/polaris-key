@@ -52,15 +52,11 @@ export interface PortalSessionIdentity {
 const PORTAL_SESSION_DOMAIN = "pkey.portal.v1|";
 
 /**
- * The fallback to `ADMIN_SESSION_SECRET` is kept — `wrangler.toml` documents
- * `PORTAL_SESSION_SECRET` as optional, and removing it would silently 500 every portal
- * session on deployments that rely on it. It is now SAFE rather than merely lucky: with
- * distinct domain tags on both sides, a token signed for one realm cannot verify in the
- * other even when the two realms share one raw key and one payload shape. Setting a separate
- * `PORTAL_SESSION_SECRET` is still preferred (it makes rotating one realm independent).
+ * Signs with `PORTAL_SESSION_SECRET` ONLY. The old fallback to `ADMIN_SESSION_SECRET`
+ * is removed: one secret must not key two realms. Absent, it fails closed.
  */
 async function sessionKey(env: Env): Promise<CryptoKey> {
-  const material = env.PORTAL_SESSION_SECRET ?? env.ADMIN_SESSION_SECRET;
+  const material = env.PORTAL_SESSION_SECRET;
   if (!material) throw new Error("PORTAL_SESSION_SECRET is required");
   return importHmacKey(material);
 }

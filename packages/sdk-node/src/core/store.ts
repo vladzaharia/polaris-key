@@ -13,11 +13,17 @@
 
 import { randomUUID } from "node:crypto";
 import {
+  chmodSync,
   closeSync,
   constants as fsc,
+  fchmodSync,
+  fstatSync,
+  fsyncSync,
+  lstatSync,
   mkdirSync,
   openSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeSync,
 } from "node:fs";
@@ -28,8 +34,13 @@ import {
   type Store,
   type StoreStatus,
 } from "@polaris-key/client-core";
-import { deriveDeviceId } from "../devices/deviceId.js";
+import {
+  deriveDeviceId,
+  deviceIdFromRaw,
+  rawDeviceId,
+} from "../devices/deviceId.js";
 import { printAs, REDACTED } from "./redact.js";
+import { assertProductSlug } from "./slug.js";
 
 export { CACHE_VERSION };
 export type { CacheRecordV3, Store, StoreStatus };
@@ -74,26 +85,89 @@ export class InMemoryStore implements Store {
   }
 }
 
+const isWindows = process.platform === "win32";
+const ownUid = (): number | null =>
+  typeof process.getuid === "function" ? process.getuid() : null;
+
+/** Write `data` to `path` atomically: a 0600 temp file in the same directory (created
+ *  exclusively, so a planted file or symlink at its name is refused), flushed, then renamed
+ *  over the target. A crash leaves the old file or the new one, never a torn one, and a
+ *  symlink planted at `path` is replaced, never followed. */
 function writeSecure(path: string, data: string): void {
-  // O_NOFOLLOW refuses to follow a planted symlink at the target.
+  const tmp = `${path}.${randomUUID()}.tmp`;
   const fd = openSync(
-    path,
-    fsc.O_WRONLY | fsc.O_CREAT | fsc.O_TRUNC | fsc.O_NOFOLLOW,
+    tmp,
+    fsc.O_WRONLY | fsc.O_CREAT | fsc.O_EXCL | fsc.O_NOFOLLOW,
     0o600,
   );
   try {
-    writeSync(fd, data);
+    try {
+      if (!isWindows) fchmodSync(fd, 0o600);
+      writeSync(fd, data);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(tmp, path);
+  } catch (e) {
+    rmSync(tmp, { force: true });
+    throw e;
+  }
+}
+
+/** Read a regular file we own without following a symlink at `path`. Anything else
+ *  reads as absent. */
+function readMaybe(path: string): string | null {
+  let fd: number;
+  try {
+    fd = openSync(path, fsc.O_RDONLY | fsc.O_NOFOLLOW);
+  } catch {
+    return null;
+  }
+  try {
+    const st = fstatSync(fd);
+    const uid = ownUid();
+    if (!st.isFile() || (uid !== null && st.uid !== uid)) return null;
+    return readFileSync(fd, "utf8");
+  } catch {
+    return null;
   } finally {
     closeSync(fd);
   }
 }
 
-function readMaybe(path: string): string | null {
-  try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return null;
+/** Create the state directory at 0700 and make an existing one so; refuse a symlink or a
+ *  directory another user owns. Files already in it are brought to 0600. */
+function secureDir(dir: string, files: string[]): void {
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  if (isWindows) return;
+  const st = lstatSync(dir);
+  const uid = ownUid();
+  if (!st.isDirectory() || (uid !== null && st.uid !== uid)) {
+    throw new Error(
+      `The state directory ${dir} is not a directory this user owns.`,
+    );
   }
+  chmodSync(dir, 0o700);
+  for (const f of files) {
+    try {
+      const fst = lstatSync(f);
+      if (fst.isFile() && (uid === null || fst.uid === uid))
+        chmodSync(f, 0o600);
+    } catch {
+      // absent
+    }
+  }
+}
+
+/** What a stored device id may look like: it rides in a header, so no whitespace or controls. */
+const DEVICE_ID_SHAPE = /^[A-Za-z0-9_-]{1,64}$/;
+
+export interface FileStoreOptions {
+  /** Where the hardware anchor comes from. Default: the platform probe (`rawDeviceId`). A
+   *  test seam: a test that plants a fixed device id passes `() => null` ("no anchor is
+   *  readable", so the stored id is used). Hosts never need it. */
+  readAnchor?: () => string | null;
 }
 
 /** 0600 file-backed store under `<configDir>/<product>/`. */
@@ -102,16 +176,20 @@ export class FileStore implements Store {
   private readonly tokenPath: string;
   private readonly cachePath: string;
   private readonly devicePath: string;
+  private readonly anchor: () => string | null;
 
   constructor(
     private readonly productSlug: string,
     configDir: string,
+    options: FileStoreOptions = {},
   ) {
+    this.anchor = options.readAnchor ?? (() => rawDeviceId());
+    assertProductSlug(productSlug);
     this.dir = join(configDir, productSlug);
-    mkdirSync(this.dir, { recursive: true, mode: 0o700 });
     this.tokenPath = join(this.dir, "token");
     this.cachePath = join(this.dir, "managed.json");
     this.devicePath = join(this.dir, "device");
+    secureDir(this.dir, [this.tokenPath, this.cachePath, this.devicePath]);
   }
 
   async getToken() {
@@ -125,10 +203,18 @@ export class FileStore implements Store {
   }
   async getDeviceId() {
     const existing = readMaybe(this.devicePath)?.trim();
-    if (existing) return existing;
-    const id = deriveDeviceId(this.productSlug);
+    if (existing && DEVICE_ID_SHAPE.test(existing)) return existing;
+    const id = deviceIdFromRaw(this.productSlug, this.anchor() ?? randomUUID());
     writeSecure(this.devicePath, id);
     return id;
+  }
+  /** The hardware anchor this store binds its device id to. */
+  readAnchor() {
+    return this.anchor();
+  }
+  /** Rewrite the stored id (device binding). */
+  async setDeviceId(id: string) {
+    writeSecure(this.devicePath, id);
   }
   async readCache(): Promise<CacheRecordV3 | null> {
     const raw = readMaybe(this.cachePath);
@@ -188,6 +274,8 @@ export interface KeyringStoreOptions {
   platform?: NodeJS.Platform;
   /** Default: `node:sea`'s `isSea()`. Only EXPLAINS an unavailable keyring in `detail`. */
   isSea?: () => Promise<boolean> | boolean;
+  /** Test seam for the device-id anchor; see `FileStoreOptions.readAnchor`. */
+  readAnchor?: () => string | null;
 }
 
 /**
@@ -197,8 +285,9 @@ export interface KeyringStoreOptions {
  * THE INVARIANT: the 0600 token file exists only when the last token write fell back, because
  * a VERIFIED keyring write (set, then read back) removes it. So:
  *
- * - reads are file-first: a file token is always the newest copy, and an older keyring token
- *   must never shadow it;
+ * - reads are keyring-first: a token the keyring holds wins over the file, so a plaintext file
+ *   planted or left stale beside a working keyring never shadows it, and the stale
+ *   file is removed. The file is read only when the keyring has no token or cannot be read;
  * - a fallen-back write also deletes the keyring entry, best effort, so no older token stays
  *   there for another reader;
  * - `status()` reports `file` exactly when `getToken` would return the file's token or the
@@ -222,7 +311,9 @@ export class KeyringStore implements Store {
     configDir: string,
     options: KeyringStoreOptions = {},
   ) {
-    this.files = new FileStore(productSlug, configDir);
+    this.files = new FileStore(productSlug, configDir, {
+      readAnchor: options.readAnchor,
+    });
     this.tokenPath = join(configDir, productSlug, "token");
     // Rebranded with the rest of the identifier registry (§8). Pre-launch, so there is no
     // `pkey:` entry to migrate — a host that somehow has one simply re-activates.
@@ -269,15 +360,24 @@ export class KeyringStore implements Store {
   }
 
   async getToken() {
-    const fromFile = await this.files.getToken();
-    if (fromFile) return fromFile;
     const access = await this.access();
-    if (!access.entry) return null;
-    try {
-      return (await access.entry.getPassword()) ?? null;
-    } catch {
-      return null;
+    if (access.entry) {
+      try {
+        const fromKeyring = (await access.entry.getPassword()) || null;
+        if (fromKeyring) {
+          // The keyring verified: a file beside it is stale (or planted).
+          try {
+            rmSync(this.tokenPath, { force: true });
+          } catch {
+            // Reads stay keyring-first either way.
+          }
+          return fromKeyring;
+        }
+      } catch {
+        // Unreadable keyring: the file fallback below.
+      }
     }
+    return await this.files.getToken();
   }
 
   async setToken(token: string) {
@@ -294,8 +394,7 @@ export class KeyringStore implements Store {
         try {
           rmSync(this.tokenPath, { force: true });
         } catch {
-          // A surviving file must never hold an OLDER token than the keyring.
-          await this.files.setToken(token);
+          // Harmless: reads are keyring-first, so a file left beside the keyring never wins.
         }
         return;
       }
@@ -306,7 +405,7 @@ export class KeyringStore implements Store {
       try {
         await access.entry.deleteCredential();
       } catch {
-        // Best effort: the file is now the newer copy, and reads are file-first.
+        // Best effort: the file is now the newer copy.
       }
     }
   }
@@ -331,15 +430,16 @@ export class KeyringStore implements Store {
           backend: "file",
           degraded: { reason: "keyring-unavailable", detail: access.detail },
         };
+      let held: string | undefined | null;
       try {
-        await access.entry.getPassword();
+        held = await access.entry.getPassword();
       } catch (err) {
         return {
           backend: "file",
           degraded: { reason: "keyring-error", detail: messageOf(err) },
         };
       }
-      if (await this.files.getToken())
+      if (!held && (await this.files.getToken()))
         return {
           backend: "file",
           degraded: {
@@ -359,6 +459,14 @@ export class KeyringStore implements Store {
 
   getDeviceId() {
     return this.files.getDeviceId();
+  }
+
+  setDeviceId(id: string) {
+    return this.files.setDeviceId(id);
+  }
+
+  readAnchor() {
+    return this.files.readAnchor();
   }
 
   readCache() {

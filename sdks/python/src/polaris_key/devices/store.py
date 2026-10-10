@@ -161,6 +161,11 @@ class FileStore:
         _write_secure(self._device_path, device_id)
         return device_id
 
+    def set_device_id(self, device_id: str) -> None:
+        """Replace the stored id: device binding rewrites it with the id derived from
+        the platform anchor. Its presence is what opts a store in to that binding."""
+        _write_secure(self._device_path, device_id)
+
     def read_cache(self) -> Optional[CacheRecord]:
         raw = _read_maybe(self._cache_path)
         if not raw:
@@ -328,6 +333,9 @@ class KeyringStore:
 
     def get_device_id(self) -> str:
         return self._files.get_device_id()
+
+    def set_device_id(self, device_id: str) -> None:
+        self._files.set_device_id(device_id)
 
     def read_cache(self) -> Optional[CacheRecord]:
         return self._files.read_cache()

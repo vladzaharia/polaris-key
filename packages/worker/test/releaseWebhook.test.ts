@@ -373,6 +373,42 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     expect(await snapshot(db)).toEqual(before);
   });
 
+  it("a product with no installation binding refuses the delivery", async () => {
+    const { db, env, state, gh } = await linkedWithV1();
+    state.releases = [release("v1.1.0"), release("v1.0.0")];
+    await db.run(
+      "UPDATE release_config SET gh_installation_id = NULL WHERE product = ?",
+      SLUG,
+    );
+    const { body } = await post(
+      env,
+      db,
+      gh.fetchImpl,
+      await delivery(releasePayload("published")),
+    );
+    expect(body.results).toEqual([
+      {
+        product: SLUG,
+        ok: false,
+        statements: 0,
+        error: "installation id does not match the linked repo",
+      },
+    ]);
+    expect(gh.calls).toEqual([]);
+  });
+
+  it("a captured body replayed under a fresh delivery id is a duplicate", async () => {
+    const { db, env, state, gh } = await linkedWithV1();
+    state.releases = [release("v1.1.0"), release("v1.0.0")];
+    const first = await delivery(releasePayload("published"));
+    expect(
+      (await post(env, db, gh.fetchImpl, first)).body.ignored,
+    ).toBeUndefined();
+    const replay = { ...first, deliveryId: crypto.randomUUID() };
+    const { body } = await post(env, db, gh.fetchImpl, replay);
+    expect(body.ignored).toBe("duplicate-delivery");
+  });
+
   it("a delivery whose installation id is not the product's writes nothing for it and reports ok:false", async () => {
     const { db, env, state, gh } = await linkedWithV1();
     state.releases = [release("v1.1.0"), release("v1.0.0")];
@@ -398,6 +434,43 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     // Refused before any GitHub read — no installation token minted, no list fetched.
     expect(gh.calls).toEqual([]);
     expect(await snapshot(db)).toEqual(before);
+  });
+
+  it("a signed body replayed under a fresh delivery id is ignored", async () => {
+    const { db, env, gh } = await linkedWithV1();
+    const first = await delivery(releasePayload("published"));
+    await post(env, db, gh.fetchImpl, first);
+    const replay = { ...first, deliveryId: crypto.randomUUID() };
+    const { body } = await post(env, db, gh.fetchImpl, replay);
+    expect(body).toMatchObject({ ok: true, ignored: "duplicate-delivery" });
+  });
+
+  it("a delivery whose processing throws gives its claims back, so GitHub's redelivery runs", async () => {
+    const { db, env, state, gh } = await linkedWithV1();
+    state.releases = [release("v1.1.0"), release("v1.0.0")];
+    let failing = true;
+    const flaky = new Proxy(db, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver) as unknown;
+        if (typeof value !== "function") return value;
+        return (...args: unknown[]) => {
+          if (failing) throw new Error("D1 unavailable");
+          return (value as (...a: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    });
+    const first = await delivery(releasePayload("published"));
+    await expect(post(env, flaky, gh.fetchImpl, first)).rejects.toThrow(
+      "D1 unavailable",
+    );
+    failing = false;
+    // GitHub's redelivery: the same GUID and the same signed body.
+    const { body } = await post(env, flaky, gh.fetchImpl, first);
+    expect(body.ignored).toBeUndefined();
+    expect(body.results).toEqual([expect.objectContaining({ ok: true })]);
+    // Processed once, it is a duplicate from then on.
+    const again = await post(env, flaky, gh.fetchImpl, first);
+    expect(again.body.ignored).toBe("duplicate-delivery");
   });
 
   it("a deleted delivery keeps the release row and marks its health absentUpstream", async () => {
@@ -449,7 +522,8 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
       env,
       db,
       gh.fetchImpl,
-      await delivery(releasePayload("published")),
+      // A real delivery differs from the first in its timestamps; a byte-identical body is a replay.
+      await delivery({ ...releasePayload("published"), sentAt: NOW + 180 }),
       NOW + 180,
     );
     expect(

@@ -1,7 +1,11 @@
 <style>
   /* licenses.list: colour and visibility only; spacing comes from the kit. */
   [data-screen="licenses.list"] .origin-auto > .ic {
-    color: var(--pk-accent-fg);
+    color: var(--pk-text-strong);
+  }
+  /* A default and a source line stay on one line, so every row keeps the 56px height (B4). */
+  [data-screen="licenses.list"] .table :is(.quiet-cell, .c-origin .cell-sub) {
+    white-space: nowrap;
   }
   /* Origin is the first column to go: below 1440px a row keeps License, Holder, Tier, Duration
      and Devices on one line. */
@@ -45,7 +49,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -55,6 +59,7 @@
   <main class="main">
     <div class="page cap cap-1440">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a></nav>
         <div class="page-heading"><h1>Licenses</h1></div>
         <div class="page-actions">
           <button class="btn ghost hide-phone"><i class="ic ic-archive"></i>Batches</button>
@@ -64,33 +69,25 @@
         </div>
       </header>
 
-      <!-- Holder states are the first filter (S-24 §8.8, LX-30); facets add Tier, Duration (LX-41), Origin and Batch. -->
-      <div class="mk-stack-4">
-        <div class="mk-stack-2">
-          <div class="toolbar hide-phone">
-            <div class="segmented" role="tablist" aria-label="Holder">
-              <span class="on">All<span class="count">1,284</span></span>
-              <span><i class="ic ic-user-round sm"></i>In an account<span class="count">1,071</span></span>
-              <span><i class="ic ic-mail sm"></i>Waiting<span class="count">7</span></span>
-              <span><i class="ic ic-key-round sm"></i>Floating<span class="count">206</span></span>
-            </div>
-            <div class="end">
-              <button class="btn ghost sm"><i class="ic ic-columns-3"></i>Columns</button>
-              <button class="btn outline sm"><i class="ic ic-download"></i>Export</button>
-            </div>
-          </div>
-          <div class="toolbar">
-            <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
-            <span class="filter show-phone"><i class="ic ic-chevron-down"></i>Holder: All</span>
-            <span class="filter"><i class="ic ic-plus"></i>Tier</span>
-            <span class="filter"><i class="ic ic-plus"></i>Duration</span>
-            <span class="filter"><i class="ic ic-plus"></i>Origin</span>
-            <span class="filter"><i class="ic ic-plus"></i>Batch</span>
-            <button class="btn outline sm show-phone"><i class="ic ic-download"></i>Export</button>
+      <!-- One workbench (B4, overview-12): the filters are the table's head band. Holder states are the
+           first facets, as counted chips (S-24 §8.8, LX-30); then Tier, Duration (LX-41), Origin and Batch. -->
+      <div class="workbench">
+        <div class="toolbar">
+          <div class="search-field"><i class="ic ic-search"></i><span>Search licenses</span></div>
+          <span class="filter"><i class="ic ic-user-round"></i>In an account<span class="count">1,071</span></span>
+          <span class="filter"><i class="ic ic-mail"></i>Waiting<span class="count">7</span></span>
+          <span class="filter"><i class="ic ic-key-round"></i>Floating<span class="count">206</span></span>
+          <span class="filter"><i class="ic ic-plus"></i>Tier</span>
+          <span class="filter"><i class="ic ic-plus"></i>Duration</span>
+          <span class="filter"><i class="ic ic-plus"></i>Origin</span>
+          <span class="filter"><i class="ic ic-plus"></i>Batch</span>
+          <div class="end">
+            <button class="btn ghost sm hide-phone" aria-label="Columns"><i class="ic ic-columns-3"></i><span class="label-wide">Columns</span></button>
+            <button class="btn outline sm" aria-label="Export"><i class="ic ic-download"></i><span class="label-wide">Export</span></button>
           </div>
         </div>
 
-        <div class="table-card">
+        <div class="table-card" role="region" aria-label="Licenses table" tabindex="0">
           <table class="table stack-phone cards-phone">
             <thead>
               <tr>

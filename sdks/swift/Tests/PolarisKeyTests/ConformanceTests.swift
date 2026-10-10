@@ -97,6 +97,8 @@ struct CorpusTrustCase: Decodable {
     let description: String
     let pinned: TrustSet
     let before: TrustSet
+    /// The cache's evidence slice held before the manifest: pinned kid → the revoking manifest.
+    let pinRevocations: [String: String]?
     let manifestJws: String
     let now: Int
     let checkFreshness: Bool?
@@ -108,6 +110,8 @@ struct TrustExpect: Decodable {
     let trust: TrustSet
     /// The accepted manifest's `issuedAt` — the value §4.2 folds into the clock floor.
     let issuedAt: Int?
+    /// Every tombstoned pin after the case, ascending UTF-8 byte order. Absent = none.
+    let revokedPins: [String]?
 }
 
 /// §4.2 — the cache-RELOAD path replayed as pure data, ending at a gate decision.
@@ -139,8 +143,19 @@ struct CorpusBundleCase: Decodable {
     let deviceId: String
     let now: Int
     let maxPayloadBytes: Int
+    /// The cache's evidence slice: pinned kid → the revoking manifest. Absent = none.
+    let pinRevocations: [String: String]?
+    /// The `issuedAt` of the verified cached document of each type. Absent = both nil.
+    let floors: BundleFloorsJSON?
+    /// `import` (absent) or `reload`.
+    let profile: String?
     let bundleJws: String
     let expect: BundleExpect
+}
+
+struct BundleFloorsJSON: Decodable {
+    let license: Int?
+    let config: Int?
 }
 
 struct BundleExpect: Decodable {
@@ -244,16 +259,23 @@ final class ConformanceTests: XCTestCase {
     /// the discovered set. A refused manifest leaves the previous set untouched.
     func testAllTrustCases() throws {
         for c in try loadCorpus().trustCases {
+            // The evidence held before the manifest is re-derived first (B3.4), and the manifest
+            // verifies against the usable pins.
+            let held = loadPinRevocations(
+                c.pinRevocations ?? [:], pinned: c.pinned, expectedAud: "djdl")
             let result = verifyTrustManifest(
                 c.manifestJws,
                 options: VerifyTrustManifestOptions(
-                    pinned: c.pinned, expectedAud: "djdl", now: c.now,
-                    checkFreshness: c.checkFreshness ?? true))
+                    pinned: c.pinned, tombstones: held.tombstones, expectedAud: "djdl",
+                    now: c.now, checkFreshness: c.checkFreshness ?? true))
             XCTAssertEqual(
                 result.doc != nil, c.expect.accepted, "\(c.id) acceptance — \(c.description)")
             let discovered = result.doc != nil ? result.discovered : c.before
+            let tombstoned = (held.tombstones + result.revokedPins).sorted(by: kidBytesLess)
             XCTAssertEqual(
-                mergeTrust(c.pinned, discovered), c.expect.trust, "\(c.id) resulting trust set")
+                mergeTrust(usablePins(c.pinned, tombstoned), discovered), c.expect.trust,
+                "\(c.id) resulting trust set")
+            XCTAssertEqual(tombstoned, c.expect.revokedPins ?? [], "\(c.id) revokedPins")
             if let issuedAt = c.expect.issuedAt {
                 XCTAssertEqual(result.doc?.issuedAt, issuedAt, "\(c.id) issuedAt")
             }
@@ -289,7 +311,7 @@ final class ConformanceTests: XCTestCase {
             let reload = { (t: TrustSet) in
                 VerifyOptions(
                     trust: t, expectedAud: c.expectedAud, deviceId: c.deviceId,
-                    now: c.systemClock, checkFreshness: false)
+                    lastAcceptedIssuedAt: nil, now: c.systemClock, checkFreshness: false)
             }
             var license: LicenseDoc?
             if let jws = c.licenseJws, let doc = verifyLicenseDoc(jws, options: reload(trust)) {
@@ -324,8 +346,13 @@ final class ConformanceTests: XCTestCase {
             // asserts the two agree rather than passing the value in.
             XCTAssertEqual(
                 c.maxPayloadBytes, MAX_BUNDLE_BYTES, "\(c.id): bundle cap must be the constant")
+            let held = loadPinRevocations(
+                c.pinRevocations ?? [:], pinned: c.pinned, expectedAud: c.expectedAud)
             let options = BundleOptions(
-                pinned: c.pinned, product: c.expectedAud, deviceId: c.deviceId, now: c.now)
+                pinned: c.pinned, tombstones: held.tombstones, product: c.expectedAud,
+                deviceId: c.deviceId, now: c.now,
+                floors: BundleFloors(license: c.floors?.license, config: c.floors?.config),
+                profile: c.profile == "reload" ? .reload : .import)
             let inspection = inspectBundle(c.bundleJws, options: options)
 
             if c.expect.imports {

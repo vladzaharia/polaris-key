@@ -1391,6 +1391,56 @@
       },
       "typ": "pkey-feed+jws",
       "expect": { "verify": "fail" }
+    },
+    {
+      "id": "sig-noncanonical-trailing-bits",
+      "description": "V4 §1 canonical base64url: a genuine licence document whose 86-character signature has one of its last character's four unused bits set. A lenient decoder reads the same 64 bytes and the signature verifies; the canonical rule refuses the segment.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfc2lnX25vbmNhbm9uaWNhbF90cmFpbGluZ19iaXRzIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.WnC263zPPWkZCgGKr-jZQzxCuxuIN8f8omLRqxzmJNBfvISFlwmJ5xHf5efbpdZZwfwYY3s414XFDiAnFb8uAx",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expect": { "verify": "fail" }
+    },
+    {
+      "id": "pubkey-noncanonical-trailing-bits",
+      "description": "V4 §1: a genuine document, verified against a trust set whose key for its `kid` is the right 32 bytes spelled non-canonically (an unused bit of the 43rd character set). Every trust-set key must be canonical; the key is refused, so the document does not verify.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfcHVia2V5X25vbmNhbm9uaWNhbF90cmFpbGluZ19iaXRzIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.KoGGAUyHK8KUG3Ry0mX1LYTNZREF6NpNZTYP0XBkx1G-02vE1qBPnqxlqkNWJpDqhgcEGiLhwd3k12W35vfFAA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkJ"
+      },
+      "typ": "pkey-license+jws",
+      "expect": { "verify": "fail" }
+    },
+    {
+      "id": "header-noncanonical-trailing-bits",
+      "description": "V4 §1: the protected header's last character has an unused bit set, and the signature is computed over that exact spelling, so it verifies as written. The canonical rule refuses the header segment before the signature is checked.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In1.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfaGVhZGVyX25vbmNhbm9uaWNhbF90cmFpbGluZ19iaXRzIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.O-8K6ecioGWMKFGuqrtzFlp01ouczakLodY6qE4mIeYpEPnQRvQGRFiLkmAyKEObx8usjm4-JVGufeTw0l46Bg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expect": { "verify": "fail" }
+    },
+    {
+      "id": "payload-noncanonical-trailing-bits",
+      "description": "V4 §1: the payload segment's last character has an unused bit set, and the signature covers that exact spelling. A lenient decoder reads the same document; the canonical rule refuses the payload segment.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfcGF5bG9hZF9ub25jYW5vbmljYWxfdHJhaWxpbmdfYml0cyIsInByb2ZpbGUiOnsibmFtZSI6IkdyYWNlIEhvcHBlciIsImZpcnN0TmFtZSI6IkdyYWNlIiwiZW1haWwiOiJncmFjZUBleGFtcGxlLmNvbSIsImFjdGl2YXRlZEF0IjoxNjkwMDAwMDAwfSwiZW50aXRsZW1lbnRzIjp7ImxpY2Vuc2UudGllciI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiJwcm8iLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJjaGFubmVscyI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOlsic3RhYmxlIiwic3RhZ2luZyJdLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9LCJhcHAubWluVmVyc2lvbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOiIxLjAuMCIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sInBvbGFyaXNWcG4iOnsic3RhdGUiOiJlbmZvcmNlZCIsInZhbHVlIjp0cnVlLCJ1cGRhdGVkQXQiOjE2OTk5OTAwMDB9fX1.rrFAR2vitLbLyjNb-uC32QZmQ393CRJaLVHEnABZlJcO57xjUVDO0m1nvo11__YpvZihHTud96t-Nm_9D8VACQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expect": { "verify": "fail" }
+    },
+    {
+      "id": "segment-trailing-newline",
+      "description": "V4 §1: a genuine JWS with a newline after the signature. A newline is outside the alphabet; a validator whose pattern's `$` matches before a final newline accepted it.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6ImRldl83YzFlMmQiLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAzNjAwLCJncmFjZVVudGlsIjoxNzAyNTkyMDAwLCJsaWNlbnNlSWQiOiJsaWNfc2VnbWVudF90cmFpbGluZ19uZXdsaW5lIiwicHJvZmlsZSI6eyJuYW1lIjoiR3JhY2UgSG9wcGVyIiwiZmlyc3ROYW1lIjoiR3JhY2UiLCJlbWFpbCI6ImdyYWNlQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE2OTAwMDAwMDB9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImNoYW5uZWxzIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6WyJzdGFibGUiLCJzdGFnaW5nIl0sInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH0sImFwcC5taW5WZXJzaW9uIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6IjEuMC4wIiwidXBkYXRlZEF0IjoxNjk5OTkwMDAwfSwicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTY5OTk5MDAwMH19fQ.H4YZw7yrOqxli4hynOJtJhV8bcgu1nR9sGEBDsJbAIV1Pz71en3YKsuZplXMrfCK7d0k6ZZde8AAc7B3Akz-CQ\n",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "typ": "pkey-license+jws",
+      "expect": { "verify": "fail" }
     }
   ],
   "licenseDocCases": [
@@ -2366,7 +2416,7 @@
     },
     {
       "id": "trust-member-shapes-ignored",
-      "description": "V4 §3 'Members outside the claims': no `jwksUrl` and no `cacheSeconds`, a key with no `status`, and a key whose `alg` is `1` (skipped). Swift's synthesized decoders refused the manifest.",
+      "description": "V4 §3 'Members outside the claims': no `jwksUrl` and no `cacheSeconds`, a key with no `status`, and a key whose `alg` is `1`. The manifest is accepted (Swift's synthesized decoders refused it); both odd keys are skipped, the status-less one by V4 §1's status allow-list (it used to be trusted).",
       "pinned": {
         "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
       },
@@ -2376,8 +2426,7 @@
       "expect": {
         "accepted": true,
         "trust": {
-          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
-          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
         },
         "issuedAt": 1700000000
       }
@@ -2412,6 +2461,206 @@
         "accepted": false,
         "trust": {
           "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+        }
+      }
+    },
+    {
+      "id": "key-status-unknown-skipped",
+      "description": "V4 §1 status allow-list: only `active`, `staged` and `retired` keep a key. `suspended`, the number 1 and `null` are skipped, never fatal; the manifest is accepted with the pin alone. A verifier that dropped only `\"revoked\"` trusted all three.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "before": {},
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoic3VzcGVuZGVkIn0seyJraWQiOiJrLXN0YXR1cy1udW1iZXIiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJEUlFiSWlrd056NUZURk5hWVdodmRuMkVpNUtab0tldXRiekR5dEhZMy1ZIiwic3RhdHVzIjoxfSx7ImtpZCI6Imstc3RhdHVzLW51bGwiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJEUlFiSWlrd056NUZURk5hWVdodmRuMkVpNUtab0tldXRiekR5dEhZMy1ZIiwic3RhdHVzIjpudWxsfV19.mRWq-N4PzZfCUZPIrvp6p2mOw1K8iSPlJvwL0FZBg25Om0RzUC-7ekIfHiWrOw7FpSGojeW3RiWVHVvEpF-aBA",
+      "now": 1700000100,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+        },
+        "issuedAt": 1700000000
+      }
+    },
+    {
+      "id": "key-status-case-variant-skipped",
+      "description": "V4 §1: statuses are exact, case-sensitive strings. `Staged` and `REVOKED` are unknown statuses, so both keys are skipped (a `REVOKED` key does not revoke, and is not trusted either).",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "before": {},
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoiU3RhZ2VkIn0seyJraWQiOiJrLXN0YXR1cy11cHBlciIsImFsZyI6IkVkRFNBIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsInB1YmxpY0tleSI6IkRSUWJJaWt3Tno1RlRGTmFZV2h2ZG4yRWk1S1pvS2V1dGJ6RHl0SFkzLVkiLCJzdGF0dXMiOiJSRVZPS0VEIn1dfQ.UFJunjEISRW6VCjIkTBVvRykL8EUBtX22TYbUIF03_GIypVfyziJwWcPuBQgGFKYCEvNxaTVYLtwQnnX0uA0Dg",
+      "now": 1700000100,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+        },
+        "issuedAt": 1700000000
+      }
+    },
+    {
+      "id": "trust-pubkey-noncanonical-skipped",
+      "description": "V4 §1 canonical base64url: a published (unpinned) key whose last character has an unused bit set. A lenient decoder reads the same 32 bytes; the entry is skipped, not fatal, and the manifest is accepted.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "before": {},
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhWIiwic3RhdHVzIjoic3RhZ2VkIn1dfQ.1BXuxJj3kf8FUHs1knzT-RauSdBG1bFTrKWmjgLRansyt_mjISdMvOtFtuubxoie_UNsU5Y1sFQ7ZhFfaeyrAw",
+      "now": 1700000100,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+        },
+        "issuedAt": 1700000000
+      }
+    },
+    {
+      "id": "pin-revoked-by-other-pin",
+      "description": "V4 §1 tombstone rule 1: a manifest signed by the usable pin ALT lists the other pin with its exact pinned bytes as `revoked`. The pin is tombstoned: it leaves the effective set, and this manifest is its evidence (`pinRevocations`). A verifier with terminal pins kept it.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "before": {},
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6InJldm9rZWQifSx7ImtpZCI6ImRqZGwtdGVzdC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiSDN1c1NZVWRJUVhyckpOVTBOLUhoUjdYU1NYcjRuMGNsNEpmRl9YNWc4VSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.NiBHyGQXHK3alX7LiN1YGJ_Fr5rQB09WGjMJtyvaqeVTjI9gVItsRMCapKGrPqE2snzoPiJiDnlRAAHF2yrDCA",
+      "now": 1700000100,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+        },
+        "issuedAt": 1700000000,
+        "revokedPins": ["pkey-test-prod-2026"]
+      }
+    },
+    {
+      "id": "pin-self-revocation-refused",
+      "description": "V4 §1 tombstone rule 2: a manifest that lists its own signer as `revoked` is refused in full, and the previous trust is kept. A key cannot revoke itself, so the usable pins are never empty.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "before": {},
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6InJldm9rZWQifSx7ImtpZCI6ImRqZGwtdGVzdC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiSDN1c1NZVWRJUVhyckpOVTBOLUhoUjdYU1NYcjRuMGNsNEpmRl9YNWc4VSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.2DHAlemshmhWyYHumVcuWdUvNM5yTvd_6B7_GD0AEzjcxL6E16AfR1o2Y3CDbSE9mE0m-7VDiBI6pJHOopnzDw",
+      "now": 1700000100,
+      "expect": {
+        "accepted": false,
+        "trust": {
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+        }
+      }
+    },
+    {
+      "id": "pin-revocation-sticky",
+      "description": "V4 §1 tombstone rule 3: the pin was tombstoned earlier (the evidence in `pinRevocations`), and a newer manifest from the other pin lists it as `active` with its exact bytes. A tombstone is permanent: the kid stays out of every set.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "before": {
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "pinRevocations": {
+        "pkey-test-prod-2026": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5OTAwMCwiZXhwaXJlc0F0IjoxNjk5OTk5MzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6InJldm9rZWQifSx7ImtpZCI6ImRqZGwtdGVzdC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiSDN1c1NZVWRJUVhyckpOVTBOLUhoUjdYU1NYcjRuMGNsNEpmRl9YNWc4VSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.IG5H-m7l8nHDA-hDRx9R2fUVm0o3TV1LFzCr79GU8NYCnSJ_-Ku57NFkSS7JWzTZziZlTT1_XQMXXTkDqpFsAw"
+      },
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoiYWN0aXZlIn1dfQ.7WT9UqF9Eci9SUBYOj8hWLfIodyqZXvz10NGs_56604AZRaRW_eoUVEoNdo7IkEzxY8Z4kzHSAvb7fgNqnh-Dg",
+      "now": 1700000100,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+        },
+        "issuedAt": 1700000000,
+        "revokedPins": ["pkey-test-prod-2026"]
+      }
+    },
+    {
+      "id": "pin-revocation-evidence-order",
+      "description": "V4 §4.1: the evidence is re-verified in ascending manifest `issuedAt`, each entry against the pins minus the tombstones before it. ALT revoked PIN first (issuedAt − 1000), so PIN's later revocation of ALT (− 500) has a tombstoned signer and is dropped. The map lists ALT's entry first, so a verifier that walks it in member or kid order tombstones ALT instead and refuses this manifest.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "before": {
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "pinRevocations": {
+        "djdl-test-2026": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5OTUwMCwiZXhwaXJlc0F0IjoxNjk5OTk5ODAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoicmV2b2tlZCJ9XX0.99CHD66zUMcmH0MuCj_JWAmqJ85IDF8RJpsPbDH7U1BI314aFU9YbkxLK0tohToDL_lcY4f1k_yK0bLM9nCRAQ",
+        "pkey-test-prod-2026": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5OTAwMCwiZXhwaXJlc0F0IjoxNjk5OTk5MzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6InJldm9rZWQifSx7ImtpZCI6ImRqZGwtdGVzdC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiSDN1c1NZVWRJUVhyckpOVTBOLUhoUjdYU1NYcjRuMGNsNEpmRl9YNWc4VSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.IG5H-m7l8nHDA-hDRx9R2fUVm0o3TV1LFzCr79GU8NYCnSJ_-Ku57NFkSS7JWzTZziZlTT1_XQMXXTkDqpFsAw"
+      },
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJkamRsLXRlc3QtMjAyNiIsImFsZyI6IkVkRFNBIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsInB1YmxpY0tleSI6IkgzdXNTWVVkSVFYcnJKTlUwTi1IaFI3WFNTWHI0bjBjbDRKZkZfWDVnOFUiLCJzdGF0dXMiOiJhY3RpdmUifV19.DXt2jah9j0NZ5D1cfP1L_TfxaUT6Eg_d7HKc7ZC5Ez4mAgXX2s39AGpSdFhV2VBOmL4DwV88GeSYPg4fDB0gCg",
+      "now": 1700000100,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+        },
+        "issuedAt": 1700000000,
+        "revokedPins": ["pkey-test-prod-2026"]
+      }
+    },
+    {
+      "id": "pin-revocation-evidence-mismatch-dropped",
+      "description": "V4 §4.1: an evidence entry counts only when its manifest verifies and revokes the kid it is filed under. Filed under PIN, this one (signed by ALT) does not list PIN at all, so it is dropped and PIN signs the new manifest as usual.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "before": {},
+      "pinRevocations": {
+        "pkey-test-prod-2026": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5OTAwMCwiZXhwaXJlc0F0IjoxNjk5OTk5MzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJkamRsLXRlc3QtMjAyNiIsImFsZyI6IkVkRFNBIiwia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsInB1YmxpY0tleSI6IkgzdXNTWVVkSVFYcnJKTlUwTi1IaFI3WFNTWHI0bjBjbDRKZkZfWDVnOFUiLCJzdGF0dXMiOiJhY3RpdmUifV19.iaYYR15Q59M6C7hl-rm3F_SdvkwGf2i2EVIcUyksbqkDUMAEiNQ7AZFdX2PTRtORiAwgVURp1UmCbk34vtW5Dw"
+      },
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoic3RhZ2VkIn1dfQ.yaZgKbqBVV_vDMEPpy-7jfDP_EMPD-bnGwv_1EidmDvmthNFGLjbxxi1TiaXKM8a2GspkQlrzH9mCkWgkgFoCQ",
+      "now": 1700000100,
+      "expect": {
+        "accepted": true,
+        "trust": {
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+        },
+        "issuedAt": 1700000000
+      }
+    },
+    {
+      "id": "manifest-signed-by-tombstoned-pin-refused",
+      "description": "V4 §1 tombstone rule 3: a tombstoned pin leaves the usable pins for every purpose. A well-formed manifest it signed is refused, and the previous trust (the other pin) is kept.",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "before": {
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "pinRevocations": {
+        "pkey-test-prod-2026": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5OTAwMCwiZXhwaXJlc0F0IjoxNjk5OTk5MzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6InJldm9rZWQifSx7ImtpZCI6ImRqZGwtdGVzdC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiSDN1c1NZVWRJUVhyckpOVTBOLUhoUjdYU1NYcjRuMGNsNEpmRl9YNWc4VSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.IG5H-m7l8nHDA-hDRx9R2fUVm0o3TV1LFzCr79GU8NYCnSJ_-Ku57NFkSS7JWzTZziZlTT1_XQMXXTkDqpFsAw"
+      },
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9LHsia2lkIjoiZGpkbC10ZXN0LTIwMjYiLCJhbGciOiJFZERTQSIsImt0eSI6Ik9LUCIsImNydiI6IkVkMjU1MTkiLCJwdWJsaWNLZXkiOiJIM3VzU1lVZElRWHJySk5VME4tSGhSN1hTU1hyNG4wY2w0SmZGX1g1ZzhVIiwic3RhdHVzIjoic3RhZ2VkIn1dfQ.yaZgKbqBVV_vDMEPpy-7jfDP_EMPD-bnGwv_1EidmDvmthNFGLjbxxi1TiaXKM8a2GspkQlrzH9mCkWgkgFoCQ",
+      "now": 1700000100,
+      "expect": {
+        "accepted": false,
+        "trust": {
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+        },
+        "revokedPins": ["pkey-test-prod-2026"]
+      }
+    },
+    {
+      "id": "pin-revoked-with-other-bytes-is-substitution",
+      "description": "V4 §1 tombstone rule 5: listing a pinned kid with other bytes stays a substitution, even with `status: revoked`. The whole manifest is refused (the control: this verdict predates tombstones).",
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "before": {},
+      "manifestJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwMDAwMzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiRFJRYklpa3dOejVGVEZOYVlXaHZkbjJFaTVLWm9LZXV0YnpEeXRIWTMtWSIsInN0YXR1cyI6InJldm9rZWQifSx7ImtpZCI6ImRqZGwtdGVzdC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiSDN1c1NZVWRJUVhyckpOVTBOLUhoUjdYU1NYcjRuMGNsNEpmRl9YNWc4VSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.kYpt8fV3oJCot_U9fUZYdX3c-_E5BawDFfJhrvvgmSjruJiqlXSbHtrtPgZinmPHx-nM3FEjLvREBQVZxiK7BQ",
+      "now": 1700000100,
+      "expect": {
+        "accepted": false,
+        "trust": {
+          "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+          "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
         }
       }
     }
@@ -2749,6 +2998,107 @@
       "description": "V4 §3 minimums: the bundle's `issuedAt` −1.",
       "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOi0xLCJleHBpcmVzQXQiOjE3MDI1OTIwMDAsImRvY3MiOnsibGljZW5zZSI6ImV5SmhiR2NpT2lKRlpFUlRRU0lzSW5SNWNDSTZJbkJyWlhrdGJHbGpaVzV6WlN0cWQzTWlMQ0pyYVdRaU9pSndhMlY1TFhSbGMzUXRjSEp2WkMweU1ESTJJbjAuZXlKcGMzTWlPaUpyWlhrdWNHeHljeTVwYlNJc0ltRjFaQ0k2SW1ScVpHd2lMQ0prWlhacFkyVkpaQ0k2SW1SbGRsODNZekZsTW1RaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF6TmpBd0xDSm5jbUZqWlZWdWRHbHNJam94TnpBeU5Ua3lNREF3TENKc2FXTmxibk5sU1dRaU9pSnNhV05mTTJZNFlUbGlJaXdpY0hKdlptbHNaU0k2ZXlKdVlXMWxJam9pUjNKaFkyVWdTRzl3Y0dWeUlpd2labWx5YzNST1lXMWxJam9pUjNKaFkyVWlMQ0psYldGcGJDSTZJbWR5WVdObFFHVjRZVzF3YkdVdVkyOXRJaXdpWVdOMGFYWmhkR1ZrUVhRaU9qRTJPVEF3TURBd01EQjlMQ0psYm5ScGRHeGxiV1Z1ZEhNaU9uc2liR2xqWlc1elpTNTBhV1Z5SWpwN0luTjBZWFJsSWpvaVpXNW1iM0pqWldRaUxDSjJZV3gxWlNJNkluQnlieUlzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbU5vWVc1dVpXeHpJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2V3lKemRHRmliR1VpTENKemRHRm5hVzVuSWwwc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDBzSW1Gd2NDNXRhVzVXWlhKemFXOXVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SWpFdU1DNHdJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt3TURBd2ZTd2ljRzlzWVhKcGMxWndiaUk2ZXlKemRHRjBaU0k2SW1WdVptOXlZMlZrSWl3aWRtRnNkV1VpT25SeWRXVXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgxOWZRLjlXOTBra1g0QTNVbkxyVEV5NGdjMkdEQ0xvTTVidFVNWHE1OVRyU2lfOERIM29vc2RSRFhXTE5hekltTmU3eGRjdFV1ZUhFa1JaYk9wQUo5NFZjMkJ3IiwiY29uZmlnIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0WTI5dVptbG5LMnAzY3lJc0ltdHBaQ0k2SW1ScVpHd3RkR1Z6ZEMweU1ESTJJbjAuZXlKcGMzTWlPaUpyWlhrdWNHeHljeTVwYlNJc0ltRjFaQ0k2SW1ScVpHd2lMQ0prWlhacFkyVkpaQ0k2SW1SbGRsODNZekZsTW1RaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF6TmpBd0xDSm5jbUZqWlZWdWRHbHNJam94TnpBeU5Ua3lNREF3TENKelkyaGxiV0ZXWlhKemFXOXVJam8wTENKamIyNW1hV2NpT25zaWNuVnVMbU52Ym1OMWNuSmxibU41SWpwN0luTjBZWFJsSWpvaVpXNW1iM0pqWldRaUxDSjJZV3gxWlNJNk5Dd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWRXa3VkR2hsYldVaU9uc2ljM1JoZEdVaU9pSmtaV1poZFd4MElpd2lkbUZzZFdVaU9pSmtZWEpySWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1RreU1qSXlmWDBzSW5ObFkzSmxkSE1pT25zaWNISnZlSGt1YzNWaWMyTnlhWEIwYVc5dVZYSnNJanA3SW5OMFlYUmxJam9pYUdsa1pHVnVJaXdpZG1Gc2RXVWlPaUpvZEhSd2N6b3ZMM1p3Ymk1bGVHRnRjR3hsTG1OdmJTOXpkV0l2WVdKaklpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3pNek16ZlgxOS5nb3otWHkyX0hkUGRZYWhwem4tdTIzNUlxUlB6NTNUcV9KM2toalpGTjM5OHZneUNwdkZHNk5GWFBWTGNabnRjdXpNcWhfdEtaTHloOWkxQTVFbFdBUSJ9LCJ0cnVzdCI6ImV5SmhiR2NpT2lKRlpFUlRRU0lzSW5SNWNDSTZJbkJyWlhrdGRISjFjM1FyYW5keklpd2lhMmxrSWpvaWNHdGxlUzEwWlhOMExYQnliMlF0TWpBeU5pSjkuZXlKelkyaGxiV0ZXWlhKemFXOXVJam94TENKaGRXUWlPaUprYW1Sc0lpd2lhWE56SWpvaWEyVjVMbkJzY25NdWFXMGlMQ0pwYzNOMVpXUkJkQ0k2TVRjd01EQXdNREF3TUN3aVpYaHdhWEpsYzBGMElqb3hOekF3TURBd016QXdMQ0pxZDJ0elZYSnNJam9pYUhSMGNITTZMeTlyWlhrdWNHeHljeTVwYlM5a2FtUnNMeTUzWld4c0xXdHViM2R1TDJwM2EzTXVhbk52YmlJc0ltTmhZMmhsVTJWamIyNWtjeUk2TXpBd0xDSnJaWGx6SWpwYmV5SnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMklpd2lZV3huSWpvaVJXUkVVMEVpTENKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWNIVmliR2xqUzJWNUlqb2lhMFJLUmpaRVpYVmxlRzg1TVdoR1dqbFVRVkJ5TWxOdGFsVkZkVlJZWkdsaE5qZFZiMmRVUlhCclNTSXNJbk4wWVhSMWN5STZJbUZqZEdsMlpTSjlMSHNpYTJsa0lqb2laR3BrYkMxMFpYTjBMVEl3TWpZaUxDSmhiR2NpT2lKRlpFUlRRU0lzSW10MGVTSTZJazlMVUNJc0ltTnlkaUk2SWtWa01qVTFNVGtpTENKd2RXSnNhV05MWlhraU9pSklNM1Z6VTFsVlpFbFJXSEp5U2s1Vk1FNHRTR2hTTjFoVFUxaHlORzR3WTJ3MFNtWkdYMWcxWnpoVklpd2ljM1JoZEhWeklqb2ljM1JoWjJWa0luMWRmUS55YVpnS2JxQlZWX3ZETUVQcHktN2pmRFBfRU1QRC1ibkd3dl8xRWlkbUR2bXRoTkZHTGpieHhpMVRpYVhLTThhMkdzcGtRbHJ6SDltQ2tXZ2tnRm9DUSJ9.tbY_GXiazo4etW4gtLTEeEH4-rguyK2xDkxLauMRsdZ1Iojqa9bR9uTWFxfcEiyEZF4f01Mii9PsMggVSUCICQ",
       "expect": { "imports": false, "reason": "bundle-claims-rejected" }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "maxPayloadBytes": 262144,
+      "id": "bundle-floor-license-not-newer",
+      "description": "V4 §7 step 4: the device already holds a verified licence document issued at the same second as the bundle's. Each inner document must be STRICTLY newer than the cached one of its type, so the import is `inner-doc-rejected` and nothing lands: an old bundle cannot roll a device back.",
+      "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMjU5MjAwMCwiZG9jcyI6eyJsaWNlbnNlIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0YkdsalpXNXpaU3RxZDNNaUxDSnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0pzYVdObGJuTmxTV1FpT2lKc2FXTmZNMlk0WVRsaUlpd2ljSEp2Wm1sc1pTSTZleUp1WVcxbElqb2lSM0poWTJVZ1NHOXdjR1Z5SWl3aVptbHljM1JPWVcxbElqb2lSM0poWTJVaUxDSmxiV0ZwYkNJNkltZHlZV05sUUdWNFlXMXdiR1V1WTI5dElpd2lZV04wYVhaaGRHVmtRWFFpT2pFMk9UQXdNREF3TURCOUxDSmxiblJwZEd4bGJXVnVkSE1pT25zaWJHbGpaVzV6WlM1MGFXVnlJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SW5CeWJ5SXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgwc0ltTm9ZVzV1Wld4eklqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZXeUp6ZEdGaWJHVWlMQ0p6ZEdGbmFXNW5JbDBzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbUZ3Y0M1dGFXNVdaWEp6YVc5dUlqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZJakV1TUM0d0lpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWNHOXNZWEpwYzFad2JpSTZleUp6ZEdGMFpTSTZJbVZ1Wm05eVkyVmtJaXdpZG1Gc2RXVWlPblJ5ZFdVc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDE5ZlEuOVc5MGtrWDRBM1VuTHJURXk0Z2MyR0RDTG9NNWJ0VU1YcTU5VHJTaV84REgzb29zZFJEWFdMTmF6SW1OZTd4ZGN0VXVlSEVrUlpiT3BBSjk0VmMyQnciLCJjb25maWciOiJleUpoYkdjaU9pSkZaRVJUUVNJc0luUjVjQ0k2SW5CclpYa3RZMjl1Wm1sbksycDNjeUlzSW10cFpDSTZJbVJxWkd3dGRHVnpkQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0p6WTJobGJXRldaWEp6YVc5dUlqbzBMQ0pqYjI1bWFXY2lPbnNpY25WdUxtTnZibU4xY25KbGJtTjVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2TkN3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrd01EQXdmU3dpZFdrdWRHaGxiV1VpT25zaWMzUmhkR1VpT2lKa1pXWmhkV3gwSWl3aWRtRnNkV1VpT2lKa1lYSnJJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt5TWpJeWZYMHNJbk5sWTNKbGRITWlPbnNpY0hKdmVIa3VjM1ZpYzJOeWFYQjBhVzl1VlhKc0lqcDdJbk4wWVhSbElqb2lhR2xrWkdWdUlpd2lkbUZzZFdVaU9pSm9kSFJ3Y3pvdkwzWndiaTVsZUdGdGNHeGxMbU52YlM5emRXSXZZV0pqSWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrek16TXpmWDE5Lmdvei1YeTJfSGRQZFlhaHB6bi11MjM1SXFSUHo1M1RxX0oza2hqWkZOMzk4dmd5Q3B2Rkc2TkZYUFZMY1pudGN1ek1xaF90S1pMeWg5aTFBNUVsV0FRIn0sInRydXN0IjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0ZEhKMWMzUXJhbmR6SWl3aWEybGtJam9pY0d0bGVTMTBaWE4wTFhCeWIyUXRNakF5TmlKOS5leUp6WTJobGJXRldaWEp6YVc5dUlqb3hMQ0poZFdRaU9pSmthbVJzSWl3aWFYTnpJam9pYTJWNUxuQnNjbk11YVcwaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF3TXpBd0xDSnFkMnR6VlhKc0lqb2lhSFIwY0hNNkx5OXJaWGt1Y0d4eWN5NXBiUzlrYW1Sc0x5NTNaV3hzTFd0dWIzZHVMMnAzYTNNdWFuTnZiaUlzSW1OaFkyaGxVMlZqYjI1a2N5STZNekF3TENKclpYbHpJanBiZXlKcmFXUWlPaUp3YTJWNUxYUmxjM1F0Y0hKdlpDMHlNREkySWl3aVlXeG5Jam9pUldSRVUwRWlMQ0pyZEhraU9pSlBTMUFpTENKamNuWWlPaUpGWkRJMU5URTVJaXdpY0hWaWJHbGpTMlY1SWpvaWEwUktSalpFWlhWbGVHODVNV2hHV2psVVFWQnlNbE50YWxWRmRWUllaR2xoTmpkVmIyZFVSWEJyU1NJc0luTjBZWFIxY3lJNkltRmpkR2wyWlNKOUxIc2lhMmxrSWpvaVpHcGtiQzEwWlhOMExUSXdNallpTENKaGJHY2lPaUpGWkVSVFFTSXNJbXQwZVNJNklrOUxVQ0lzSW1OeWRpSTZJa1ZrTWpVMU1Ua2lMQ0p3ZFdKc2FXTkxaWGtpT2lKSU0zVnpVMWxWWkVsUldISnlTazVWTUU0dFNHaFNOMWhUVTFoeU5HNHdZMncwU21aR1gxZzFaemhWSWl3aWMzUmhkSFZ6SWpvaWMzUmhaMlZrSW4xZGZRLnlhWmdLYnFCVlZfdkRNRVBweS03amZEUF9FTVBELWJuR3d2XzFFaWRtRHZtdGhORkdMamJ4eGkxVGlhWEtNOGEyR3Nwa1FscnpIOW1Da1dna2dGb0NRIn0.UcODBGEt6PqriTGD3iaJiMlbzMCTW7BiG7BE7_kU68Mu7gQ6yjaDCoD26qPnl7Kv69wYYL4d90luCTGM7XMrBw",
+      "floors": { "license": 1700000000, "config": null },
+      "expect": { "imports": false, "reason": "inner-doc-rejected" }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "maxPayloadBytes": 262144,
+      "id": "bundle-floor-config-not-newer",
+      "description": "V4 §7 step 4: the config floor alone. The licence document is newer than nothing; the config document is not newer than the cached one, so the whole import is refused.",
+      "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMjU5MjAwMCwiZG9jcyI6eyJsaWNlbnNlIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0YkdsalpXNXpaU3RxZDNNaUxDSnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0pzYVdObGJuTmxTV1FpT2lKc2FXTmZNMlk0WVRsaUlpd2ljSEp2Wm1sc1pTSTZleUp1WVcxbElqb2lSM0poWTJVZ1NHOXdjR1Z5SWl3aVptbHljM1JPWVcxbElqb2lSM0poWTJVaUxDSmxiV0ZwYkNJNkltZHlZV05sUUdWNFlXMXdiR1V1WTI5dElpd2lZV04wYVhaaGRHVmtRWFFpT2pFMk9UQXdNREF3TURCOUxDSmxiblJwZEd4bGJXVnVkSE1pT25zaWJHbGpaVzV6WlM1MGFXVnlJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SW5CeWJ5SXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgwc0ltTm9ZVzV1Wld4eklqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZXeUp6ZEdGaWJHVWlMQ0p6ZEdGbmFXNW5JbDBzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbUZ3Y0M1dGFXNVdaWEp6YVc5dUlqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZJakV1TUM0d0lpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWNHOXNZWEpwYzFad2JpSTZleUp6ZEdGMFpTSTZJbVZ1Wm05eVkyVmtJaXdpZG1Gc2RXVWlPblJ5ZFdVc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDE5ZlEuOVc5MGtrWDRBM1VuTHJURXk0Z2MyR0RDTG9NNWJ0VU1YcTU5VHJTaV84REgzb29zZFJEWFdMTmF6SW1OZTd4ZGN0VXVlSEVrUlpiT3BBSjk0VmMyQnciLCJjb25maWciOiJleUpoYkdjaU9pSkZaRVJUUVNJc0luUjVjQ0k2SW5CclpYa3RZMjl1Wm1sbksycDNjeUlzSW10cFpDSTZJbVJxWkd3dGRHVnpkQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0p6WTJobGJXRldaWEp6YVc5dUlqbzBMQ0pqYjI1bWFXY2lPbnNpY25WdUxtTnZibU4xY25KbGJtTjVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2TkN3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrd01EQXdmU3dpZFdrdWRHaGxiV1VpT25zaWMzUmhkR1VpT2lKa1pXWmhkV3gwSWl3aWRtRnNkV1VpT2lKa1lYSnJJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt5TWpJeWZYMHNJbk5sWTNKbGRITWlPbnNpY0hKdmVIa3VjM1ZpYzJOeWFYQjBhVzl1VlhKc0lqcDdJbk4wWVhSbElqb2lhR2xrWkdWdUlpd2lkbUZzZFdVaU9pSm9kSFJ3Y3pvdkwzWndiaTVsZUdGdGNHeGxMbU52YlM5emRXSXZZV0pqSWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrek16TXpmWDE5Lmdvei1YeTJfSGRQZFlhaHB6bi11MjM1SXFSUHo1M1RxX0oza2hqWkZOMzk4dmd5Q3B2Rkc2TkZYUFZMY1pudGN1ek1xaF90S1pMeWg5aTFBNUVsV0FRIn0sInRydXN0IjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0ZEhKMWMzUXJhbmR6SWl3aWEybGtJam9pY0d0bGVTMTBaWE4wTFhCeWIyUXRNakF5TmlKOS5leUp6WTJobGJXRldaWEp6YVc5dUlqb3hMQ0poZFdRaU9pSmthbVJzSWl3aWFYTnpJam9pYTJWNUxuQnNjbk11YVcwaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF3TXpBd0xDSnFkMnR6VlhKc0lqb2lhSFIwY0hNNkx5OXJaWGt1Y0d4eWN5NXBiUzlrYW1Sc0x5NTNaV3hzTFd0dWIzZHVMMnAzYTNNdWFuTnZiaUlzSW1OaFkyaGxVMlZqYjI1a2N5STZNekF3TENKclpYbHpJanBiZXlKcmFXUWlPaUp3YTJWNUxYUmxjM1F0Y0hKdlpDMHlNREkySWl3aVlXeG5Jam9pUldSRVUwRWlMQ0pyZEhraU9pSlBTMUFpTENKamNuWWlPaUpGWkRJMU5URTVJaXdpY0hWaWJHbGpTMlY1SWpvaWEwUktSalpFWlhWbGVHODVNV2hHV2psVVFWQnlNbE50YWxWRmRWUllaR2xoTmpkVmIyZFVSWEJyU1NJc0luTjBZWFIxY3lJNkltRmpkR2wyWlNKOUxIc2lhMmxrSWpvaVpHcGtiQzEwWlhOMExUSXdNallpTENKaGJHY2lPaUpGWkVSVFFTSXNJbXQwZVNJNklrOUxVQ0lzSW1OeWRpSTZJa1ZrTWpVMU1Ua2lMQ0p3ZFdKc2FXTkxaWGtpT2lKSU0zVnpVMWxWWkVsUldISnlTazVWTUU0dFNHaFNOMWhUVTFoeU5HNHdZMncwU21aR1gxZzFaemhWSWl3aWMzUmhkSFZ6SWpvaWMzUmhaMlZrSW4xZGZRLnlhWmdLYnFCVlZfdkRNRVBweS03amZEUF9FTVBELWJuR3d2XzFFaWRtRHZtdGhORkdMamJ4eGkxVGlhWEtNOGEyR3Nwa1FscnpIOW1Da1dna2dGb0NRIn0.UcODBGEt6PqriTGD3iaJiMlbzMCTW7BiG7BE7_kU68Mu7gQ6yjaDCoD26qPnl7Kv69wYYL4d90luCTGM7XMrBw",
+      "floors": { "license": null, "config": 1700000060 },
+      "expect": { "imports": false, "reason": "inner-doc-rejected" }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "maxPayloadBytes": 262144,
+      "id": "bundle-floor-newer-imports",
+      "description": "V4 §7 step 4, the control: both inner documents are one second newer than the cached ones, so both import.",
+      "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMjU5MjAwMCwiZG9jcyI6eyJsaWNlbnNlIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0YkdsalpXNXpaU3RxZDNNaUxDSnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0pzYVdObGJuTmxTV1FpT2lKc2FXTmZNMlk0WVRsaUlpd2ljSEp2Wm1sc1pTSTZleUp1WVcxbElqb2lSM0poWTJVZ1NHOXdjR1Z5SWl3aVptbHljM1JPWVcxbElqb2lSM0poWTJVaUxDSmxiV0ZwYkNJNkltZHlZV05sUUdWNFlXMXdiR1V1WTI5dElpd2lZV04wYVhaaGRHVmtRWFFpT2pFMk9UQXdNREF3TURCOUxDSmxiblJwZEd4bGJXVnVkSE1pT25zaWJHbGpaVzV6WlM1MGFXVnlJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SW5CeWJ5SXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgwc0ltTm9ZVzV1Wld4eklqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZXeUp6ZEdGaWJHVWlMQ0p6ZEdGbmFXNW5JbDBzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbUZ3Y0M1dGFXNVdaWEp6YVc5dUlqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZJakV1TUM0d0lpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWNHOXNZWEpwYzFad2JpSTZleUp6ZEdGMFpTSTZJbVZ1Wm05eVkyVmtJaXdpZG1Gc2RXVWlPblJ5ZFdVc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDE5ZlEuOVc5MGtrWDRBM1VuTHJURXk0Z2MyR0RDTG9NNWJ0VU1YcTU5VHJTaV84REgzb29zZFJEWFdMTmF6SW1OZTd4ZGN0VXVlSEVrUlpiT3BBSjk0VmMyQnciLCJjb25maWciOiJleUpoYkdjaU9pSkZaRVJUUVNJc0luUjVjQ0k2SW5CclpYa3RZMjl1Wm1sbksycDNjeUlzSW10cFpDSTZJbVJxWkd3dGRHVnpkQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0p6WTJobGJXRldaWEp6YVc5dUlqbzBMQ0pqYjI1bWFXY2lPbnNpY25WdUxtTnZibU4xY25KbGJtTjVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2TkN3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrd01EQXdmU3dpZFdrdWRHaGxiV1VpT25zaWMzUmhkR1VpT2lKa1pXWmhkV3gwSWl3aWRtRnNkV1VpT2lKa1lYSnJJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt5TWpJeWZYMHNJbk5sWTNKbGRITWlPbnNpY0hKdmVIa3VjM1ZpYzJOeWFYQjBhVzl1VlhKc0lqcDdJbk4wWVhSbElqb2lhR2xrWkdWdUlpd2lkbUZzZFdVaU9pSm9kSFJ3Y3pvdkwzWndiaTVsZUdGdGNHeGxMbU52YlM5emRXSXZZV0pqSWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrek16TXpmWDE5Lmdvei1YeTJfSGRQZFlhaHB6bi11MjM1SXFSUHo1M1RxX0oza2hqWkZOMzk4dmd5Q3B2Rkc2TkZYUFZMY1pudGN1ek1xaF90S1pMeWg5aTFBNUVsV0FRIn0sInRydXN0IjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0ZEhKMWMzUXJhbmR6SWl3aWEybGtJam9pY0d0bGVTMTBaWE4wTFhCeWIyUXRNakF5TmlKOS5leUp6WTJobGJXRldaWEp6YVc5dUlqb3hMQ0poZFdRaU9pSmthbVJzSWl3aWFYTnpJam9pYTJWNUxuQnNjbk11YVcwaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF3TXpBd0xDSnFkMnR6VlhKc0lqb2lhSFIwY0hNNkx5OXJaWGt1Y0d4eWN5NXBiUzlrYW1Sc0x5NTNaV3hzTFd0dWIzZHVMMnAzYTNNdWFuTnZiaUlzSW1OaFkyaGxVMlZqYjI1a2N5STZNekF3TENKclpYbHpJanBiZXlKcmFXUWlPaUp3YTJWNUxYUmxjM1F0Y0hKdlpDMHlNREkySWl3aVlXeG5Jam9pUldSRVUwRWlMQ0pyZEhraU9pSlBTMUFpTENKamNuWWlPaUpGWkRJMU5URTVJaXdpY0hWaWJHbGpTMlY1SWpvaWEwUktSalpFWlhWbGVHODVNV2hHV2psVVFWQnlNbE50YWxWRmRWUllaR2xoTmpkVmIyZFVSWEJyU1NJc0luTjBZWFIxY3lJNkltRmpkR2wyWlNKOUxIc2lhMmxrSWpvaVpHcGtiQzEwWlhOMExUSXdNallpTENKaGJHY2lPaUpGWkVSVFFTSXNJbXQwZVNJNklrOUxVQ0lzSW1OeWRpSTZJa1ZrTWpVMU1Ua2lMQ0p3ZFdKc2FXTkxaWGtpT2lKSU0zVnpVMWxWWkVsUldISnlTazVWTUU0dFNHaFNOMWhUVTFoeU5HNHdZMncwU21aR1gxZzFaemhWSWl3aWMzUmhkSFZ6SWpvaWMzUmhaMlZrSW4xZGZRLnlhWmdLYnFCVlZfdkRNRVBweS03amZEUF9FTVBELWJuR3d2XzFFaWRtRHZtdGhORkdMamJ4eGkxVGlhWEtNOGEyR3Nwa1FscnpIOW1Da1dna2dGb0NRIn0.UcODBGEt6PqriTGD3iaJiMlbzMCTW7BiG7BE7_kU68Mu7gQ6yjaDCoD26qPnl7Kv69wYYL4d90luCTGM7XMrBw",
+      "floors": { "license": 1699999999, "config": 1699999999 },
+      "expect": { "imports": true, "docs": ["license", "config"] }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "now": 1719872300,
+      "maxPayloadBytes": 262144,
+      "id": "bundle-reload-past-import-window",
+      "description": "V4 §7 reload profile: the cached bundle re-verified at start, long after its 30-day import window closed. The reload profile is steps 1–3 without step 2's two import-window comparisons, so it still verifies; the import profile refuses the same bytes (`bundle-expired`).",
+      "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMjU5MjAwMCwiZG9jcyI6eyJsaWNlbnNlIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0YkdsalpXNXpaU3RxZDNNaUxDSnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0pzYVdObGJuTmxTV1FpT2lKc2FXTmZNMlk0WVRsaUlpd2ljSEp2Wm1sc1pTSTZleUp1WVcxbElqb2lSM0poWTJVZ1NHOXdjR1Z5SWl3aVptbHljM1JPWVcxbElqb2lSM0poWTJVaUxDSmxiV0ZwYkNJNkltZHlZV05sUUdWNFlXMXdiR1V1WTI5dElpd2lZV04wYVhaaGRHVmtRWFFpT2pFMk9UQXdNREF3TURCOUxDSmxiblJwZEd4bGJXVnVkSE1pT25zaWJHbGpaVzV6WlM1MGFXVnlJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SW5CeWJ5SXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgwc0ltTm9ZVzV1Wld4eklqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZXeUp6ZEdGaWJHVWlMQ0p6ZEdGbmFXNW5JbDBzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbUZ3Y0M1dGFXNVdaWEp6YVc5dUlqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZJakV1TUM0d0lpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWNHOXNZWEpwYzFad2JpSTZleUp6ZEdGMFpTSTZJbVZ1Wm05eVkyVmtJaXdpZG1Gc2RXVWlPblJ5ZFdVc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDE5ZlEuOVc5MGtrWDRBM1VuTHJURXk0Z2MyR0RDTG9NNWJ0VU1YcTU5VHJTaV84REgzb29zZFJEWFdMTmF6SW1OZTd4ZGN0VXVlSEVrUlpiT3BBSjk0VmMyQnciLCJjb25maWciOiJleUpoYkdjaU9pSkZaRVJUUVNJc0luUjVjQ0k2SW5CclpYa3RZMjl1Wm1sbksycDNjeUlzSW10cFpDSTZJbVJxWkd3dGRHVnpkQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0p6WTJobGJXRldaWEp6YVc5dUlqbzBMQ0pqYjI1bWFXY2lPbnNpY25WdUxtTnZibU4xY25KbGJtTjVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2TkN3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrd01EQXdmU3dpZFdrdWRHaGxiV1VpT25zaWMzUmhkR1VpT2lKa1pXWmhkV3gwSWl3aWRtRnNkV1VpT2lKa1lYSnJJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt5TWpJeWZYMHNJbk5sWTNKbGRITWlPbnNpY0hKdmVIa3VjM1ZpYzJOeWFYQjBhVzl1VlhKc0lqcDdJbk4wWVhSbElqb2lhR2xrWkdWdUlpd2lkbUZzZFdVaU9pSm9kSFJ3Y3pvdkwzWndiaTVsZUdGdGNHeGxMbU52YlM5emRXSXZZV0pqSWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrek16TXpmWDE5Lmdvei1YeTJfSGRQZFlhaHB6bi11MjM1SXFSUHo1M1RxX0oza2hqWkZOMzk4dmd5Q3B2Rkc2TkZYUFZMY1pudGN1ek1xaF90S1pMeWg5aTFBNUVsV0FRIn0sInRydXN0IjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0ZEhKMWMzUXJhbmR6SWl3aWEybGtJam9pY0d0bGVTMTBaWE4wTFhCeWIyUXRNakF5TmlKOS5leUp6WTJobGJXRldaWEp6YVc5dUlqb3hMQ0poZFdRaU9pSmthbVJzSWl3aWFYTnpJam9pYTJWNUxuQnNjbk11YVcwaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF3TXpBd0xDSnFkMnR6VlhKc0lqb2lhSFIwY0hNNkx5OXJaWGt1Y0d4eWN5NXBiUzlrYW1Sc0x5NTNaV3hzTFd0dWIzZHVMMnAzYTNNdWFuTnZiaUlzSW1OaFkyaGxVMlZqYjI1a2N5STZNekF3TENKclpYbHpJanBiZXlKcmFXUWlPaUp3YTJWNUxYUmxjM1F0Y0hKdlpDMHlNREkySWl3aVlXeG5Jam9pUldSRVUwRWlMQ0pyZEhraU9pSlBTMUFpTENKamNuWWlPaUpGWkRJMU5URTVJaXdpY0hWaWJHbGpTMlY1SWpvaWEwUktSalpFWlhWbGVHODVNV2hHV2psVVFWQnlNbE50YWxWRmRWUllaR2xoTmpkVmIyZFVSWEJyU1NJc0luTjBZWFIxY3lJNkltRmpkR2wyWlNKOUxIc2lhMmxrSWpvaVpHcGtiQzEwWlhOMExUSXdNallpTENKaGJHY2lPaUpGWkVSVFFTSXNJbXQwZVNJNklrOUxVQ0lzSW1OeWRpSTZJa1ZrTWpVMU1Ua2lMQ0p3ZFdKc2FXTkxaWGtpT2lKSU0zVnpVMWxWWkVsUldISnlTazVWTUU0dFNHaFNOMWhUVTFoeU5HNHdZMncwU21aR1gxZzFaemhWSWl3aWMzUmhkSFZ6SWpvaWMzUmhaMlZrSW4xZGZRLnlhWmdLYnFCVlZfdkRNRVBweS03amZEUF9FTVBELWJuR3d2XzFFaWRtRHZtdGhORkdMamJ4eGkxVGlhWEtNOGEyR3Nwa1FscnpIOW1Da1dna2dGb0NRIn0.UcODBGEt6PqriTGD3iaJiMlbzMCTW7BiG7BE7_kU68Mu7gQ6yjaDCoD26qPnl7Kv69wYYL4d90luCTGM7XMrBw",
+      "profile": "reload",
+      "expect": { "imports": true, "docs": ["license", "config"] }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "maxPayloadBytes": 262144,
+      "id": "bundle-reload-wrong-device",
+      "description": "V4 §7 reload profile, the control: everything in step 2 but the window still binds. A cached bundle minted for another device does not reload.",
+      "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfbm90X3RoaXNfbWFjaGluZSIsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDI1OTIwMDAsImRvY3MiOnsibGljZW5zZSI6ImV5SmhiR2NpT2lKRlpFUlRRU0lzSW5SNWNDSTZJbkJyWlhrdGJHbGpaVzV6WlN0cWQzTWlMQ0pyYVdRaU9pSndhMlY1TFhSbGMzUXRjSEp2WkMweU1ESTJJbjAuZXlKcGMzTWlPaUpyWlhrdWNHeHljeTVwYlNJc0ltRjFaQ0k2SW1ScVpHd2lMQ0prWlhacFkyVkpaQ0k2SW1SbGRsODNZekZsTW1RaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF6TmpBd0xDSm5jbUZqWlZWdWRHbHNJam94TnpBeU5Ua3lNREF3TENKc2FXTmxibk5sU1dRaU9pSnNhV05mTTJZNFlUbGlJaXdpY0hKdlptbHNaU0k2ZXlKdVlXMWxJam9pUjNKaFkyVWdTRzl3Y0dWeUlpd2labWx5YzNST1lXMWxJam9pUjNKaFkyVWlMQ0psYldGcGJDSTZJbWR5WVdObFFHVjRZVzF3YkdVdVkyOXRJaXdpWVdOMGFYWmhkR1ZrUVhRaU9qRTJPVEF3TURBd01EQjlMQ0psYm5ScGRHeGxiV1Z1ZEhNaU9uc2liR2xqWlc1elpTNTBhV1Z5SWpwN0luTjBZWFJsSWpvaVpXNW1iM0pqWldRaUxDSjJZV3gxWlNJNkluQnlieUlzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbU5vWVc1dVpXeHpJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2V3lKemRHRmliR1VpTENKemRHRm5hVzVuSWwwc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDBzSW1Gd2NDNXRhVzVXWlhKemFXOXVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SWpFdU1DNHdJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt3TURBd2ZTd2ljRzlzWVhKcGMxWndiaUk2ZXlKemRHRjBaU0k2SW1WdVptOXlZMlZrSWl3aWRtRnNkV1VpT25SeWRXVXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgxOWZRLjlXOTBra1g0QTNVbkxyVEV5NGdjMkdEQ0xvTTVidFVNWHE1OVRyU2lfOERIM29vc2RSRFhXTE5hekltTmU3eGRjdFV1ZUhFa1JaYk9wQUo5NFZjMkJ3IiwiY29uZmlnIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0WTI5dVptbG5LMnAzY3lJc0ltdHBaQ0k2SW1ScVpHd3RkR1Z6ZEMweU1ESTJJbjAuZXlKcGMzTWlPaUpyWlhrdWNHeHljeTVwYlNJc0ltRjFaQ0k2SW1ScVpHd2lMQ0prWlhacFkyVkpaQ0k2SW1SbGRsODNZekZsTW1RaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF6TmpBd0xDSm5jbUZqWlZWdWRHbHNJam94TnpBeU5Ua3lNREF3TENKelkyaGxiV0ZXWlhKemFXOXVJam8wTENKamIyNW1hV2NpT25zaWNuVnVMbU52Ym1OMWNuSmxibU41SWpwN0luTjBZWFJsSWpvaVpXNW1iM0pqWldRaUxDSjJZV3gxWlNJNk5Dd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWRXa3VkR2hsYldVaU9uc2ljM1JoZEdVaU9pSmtaV1poZFd4MElpd2lkbUZzZFdVaU9pSmtZWEpySWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1RreU1qSXlmWDBzSW5ObFkzSmxkSE1pT25zaWNISnZlSGt1YzNWaWMyTnlhWEIwYVc5dVZYSnNJanA3SW5OMFlYUmxJam9pYUdsa1pHVnVJaXdpZG1Gc2RXVWlPaUpvZEhSd2N6b3ZMM1p3Ymk1bGVHRnRjR3hsTG1OdmJTOXpkV0l2WVdKaklpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3pNek16ZlgxOS5nb3otWHkyX0hkUGRZYWhwem4tdTIzNUlxUlB6NTNUcV9KM2toalpGTjM5OHZneUNwdkZHNk5GWFBWTGNabnRjdXpNcWhfdEtaTHloOWkxQTVFbFdBUSJ9LCJ0cnVzdCI6ImV5SmhiR2NpT2lKRlpFUlRRU0lzSW5SNWNDSTZJbkJyWlhrdGRISjFjM1FyYW5keklpd2lhMmxrSWpvaWNHdGxlUzEwWlhOMExYQnliMlF0TWpBeU5pSjkuZXlKelkyaGxiV0ZXWlhKemFXOXVJam94TENKaGRXUWlPaUprYW1Sc0lpd2lhWE56SWpvaWEyVjVMbkJzY25NdWFXMGlMQ0pwYzNOMVpXUkJkQ0k2TVRjd01EQXdNREF3TUN3aVpYaHdhWEpsYzBGMElqb3hOekF3TURBd016QXdMQ0pxZDJ0elZYSnNJam9pYUhSMGNITTZMeTlyWlhrdWNHeHljeTVwYlM5a2FtUnNMeTUzWld4c0xXdHViM2R1TDJwM2EzTXVhbk52YmlJc0ltTmhZMmhsVTJWamIyNWtjeUk2TXpBd0xDSnJaWGx6SWpwYmV5SnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMklpd2lZV3huSWpvaVJXUkVVMEVpTENKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWNIVmliR2xqUzJWNUlqb2lhMFJLUmpaRVpYVmxlRzg1TVdoR1dqbFVRVkJ5TWxOdGFsVkZkVlJZWkdsaE5qZFZiMmRVUlhCclNTSXNJbk4wWVhSMWN5STZJbUZqZEdsMlpTSjlMSHNpYTJsa0lqb2laR3BrYkMxMFpYTjBMVEl3TWpZaUxDSmhiR2NpT2lKRlpFUlRRU0lzSW10MGVTSTZJazlMVUNJc0ltTnlkaUk2SWtWa01qVTFNVGtpTENKd2RXSnNhV05MWlhraU9pSklNM1Z6VTFsVlpFbFJXSEp5U2s1Vk1FNHRTR2hTTjFoVFUxaHlORzR3WTJ3MFNtWkdYMWcxWnpoVklpd2ljM1JoZEhWeklqb2ljM1JoWjJWa0luMWRmUS55YVpnS2JxQlZWX3ZETUVQcHktN2pmRFBfRU1QRC1ibkd3dl8xRWlkbUR2bXRoTkZHTGpieHhpMVRpYVhLTThhMkdzcGtRbHJ6SDltQ2tXZ2tnRm9DUSJ9.SXMtrtGcrbr70sLj9X2eyXLOiFKpK4OayWgI_8I03LeGmE8yYJnG7rrxYJEFiLmTLb7j4EXNKORK84_dz9yLCg",
+      "profile": "reload",
+      "expect": { "imports": false, "reason": "bundle-claims-rejected" }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "maxPayloadBytes": 262144,
+      "id": "bundle-reload-issued-in-future",
+      "description": "V4 §7 reload profile: a bundle whose `issuedAt` is a day past the device clock. The import profile refuses it (`issuedAt > now + skew`); the reload profile has no window, so it reloads. A wound-back clock cannot strand a bundle-activated install.",
+      "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwODc0MDAsImV4cGlyZXNBdCI6MTcwMjY3OTQwMCwiZG9jcyI6eyJsaWNlbnNlIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0YkdsalpXNXpaU3RxZDNNaUxDSnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0pzYVdObGJuTmxTV1FpT2lKc2FXTmZNMlk0WVRsaUlpd2ljSEp2Wm1sc1pTSTZleUp1WVcxbElqb2lSM0poWTJVZ1NHOXdjR1Z5SWl3aVptbHljM1JPWVcxbElqb2lSM0poWTJVaUxDSmxiV0ZwYkNJNkltZHlZV05sUUdWNFlXMXdiR1V1WTI5dElpd2lZV04wYVhaaGRHVmtRWFFpT2pFMk9UQXdNREF3TURCOUxDSmxiblJwZEd4bGJXVnVkSE1pT25zaWJHbGpaVzV6WlM1MGFXVnlJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SW5CeWJ5SXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgwc0ltTm9ZVzV1Wld4eklqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZXeUp6ZEdGaWJHVWlMQ0p6ZEdGbmFXNW5JbDBzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbUZ3Y0M1dGFXNVdaWEp6YVc5dUlqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZJakV1TUM0d0lpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWNHOXNZWEpwYzFad2JpSTZleUp6ZEdGMFpTSTZJbVZ1Wm05eVkyVmtJaXdpZG1Gc2RXVWlPblJ5ZFdVc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDE5ZlEuOVc5MGtrWDRBM1VuTHJURXk0Z2MyR0RDTG9NNWJ0VU1YcTU5VHJTaV84REgzb29zZFJEWFdMTmF6SW1OZTd4ZGN0VXVlSEVrUlpiT3BBSjk0VmMyQnciLCJjb25maWciOiJleUpoYkdjaU9pSkZaRVJUUVNJc0luUjVjQ0k2SW5CclpYa3RZMjl1Wm1sbksycDNjeUlzSW10cFpDSTZJbVJxWkd3dGRHVnpkQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0p6WTJobGJXRldaWEp6YVc5dUlqbzBMQ0pqYjI1bWFXY2lPbnNpY25WdUxtTnZibU4xY25KbGJtTjVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2TkN3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrd01EQXdmU3dpZFdrdWRHaGxiV1VpT25zaWMzUmhkR1VpT2lKa1pXWmhkV3gwSWl3aWRtRnNkV1VpT2lKa1lYSnJJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt5TWpJeWZYMHNJbk5sWTNKbGRITWlPbnNpY0hKdmVIa3VjM1ZpYzJOeWFYQjBhVzl1VlhKc0lqcDdJbk4wWVhSbElqb2lhR2xrWkdWdUlpd2lkbUZzZFdVaU9pSm9kSFJ3Y3pvdkwzWndiaTVsZUdGdGNHeGxMbU52YlM5emRXSXZZV0pqSWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrek16TXpmWDE5Lmdvei1YeTJfSGRQZFlhaHB6bi11MjM1SXFSUHo1M1RxX0oza2hqWkZOMzk4dmd5Q3B2Rkc2TkZYUFZMY1pudGN1ek1xaF90S1pMeWg5aTFBNUVsV0FRIn0sInRydXN0IjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0ZEhKMWMzUXJhbmR6SWl3aWEybGtJam9pY0d0bGVTMTBaWE4wTFhCeWIyUXRNakF5TmlKOS5leUp6WTJobGJXRldaWEp6YVc5dUlqb3hMQ0poZFdRaU9pSmthbVJzSWl3aWFYTnpJam9pYTJWNUxuQnNjbk11YVcwaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF3TXpBd0xDSnFkMnR6VlhKc0lqb2lhSFIwY0hNNkx5OXJaWGt1Y0d4eWN5NXBiUzlrYW1Sc0x5NTNaV3hzTFd0dWIzZHVMMnAzYTNNdWFuTnZiaUlzSW1OaFkyaGxVMlZqYjI1a2N5STZNekF3TENKclpYbHpJanBiZXlKcmFXUWlPaUp3YTJWNUxYUmxjM1F0Y0hKdlpDMHlNREkySWl3aVlXeG5Jam9pUldSRVUwRWlMQ0pyZEhraU9pSlBTMUFpTENKamNuWWlPaUpGWkRJMU5URTVJaXdpY0hWaWJHbGpTMlY1SWpvaWEwUktSalpFWlhWbGVHODVNV2hHV2psVVFWQnlNbE50YWxWRmRWUllaR2xoTmpkVmIyZFVSWEJyU1NJc0luTjBZWFIxY3lJNkltRmpkR2wyWlNKOUxIc2lhMmxrSWpvaVpHcGtiQzEwWlhOMExUSXdNallpTENKaGJHY2lPaUpGWkVSVFFTSXNJbXQwZVNJNklrOUxVQ0lzSW1OeWRpSTZJa1ZrTWpVMU1Ua2lMQ0p3ZFdKc2FXTkxaWGtpT2lKSU0zVnpVMWxWWkVsUldISnlTazVWTUU0dFNHaFNOMWhUVTFoeU5HNHdZMncwU21aR1gxZzFaemhWSWl3aWMzUmhkSFZ6SWpvaWMzUmhaMlZrSW4xZGZRLnlhWmdLYnFCVlZfdkRNRVBweS03amZEUF9FTVBELWJuR3d2XzFFaWRtRHZtdGhORkdMamJ4eGkxVGlhWEtNOGEyR3Nwa1FscnpIOW1Da1dna2dGb0NRIn0.6BECmnAVSyAhG_sKKhFJakzPBKIELOBVrK5IlmMmsCWJL789BKvhM62UdMl82oOV8wxUJXCY45gFDGZzFm6_Cw",
+      "profile": "reload",
+      "expect": { "imports": true, "docs": ["license", "config"] }
+    },
+    {
+      "pinned": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+        "djdl-test-2026": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"
+      },
+      "expectedAud": "djdl",
+      "deviceId": "dev_7c1e2d",
+      "now": 1700001000,
+      "maxPayloadBytes": 262144,
+      "id": "bundle-signed-by-tombstoned-pin-refused",
+      "description": "V4 §1 tombstone rule 3: the device holds evidence (`pinRevocations`) that ALT revoked PIN. PIN is no longer a usable pin for anything, so a bundle it signed is refused at step 1, however well-formed.",
+      "pinRevocations": {
+        "pkey-test-prod-2026": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoiZGpkbC10ZXN0LTIwMjYifQ.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTY5OTk5OTAwMCwiZXhwaXJlc0F0IjoxNjk5OTk5MzAwLCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6InJldm9rZWQifSx7ImtpZCI6ImRqZGwtdGVzdC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5IjoiSDN1c1NZVWRJUVhyckpOVTBOLUhoUjdYU1NYcjRuMGNsNEpmRl9YNWc4VSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.IG5H-m7l8nHDA-hDRx9R2fUVm0o3TV1LFzCr79GU8NYCnSJ_-Ku57NFkSS7JWzTZziZlTT1_XQMXXTkDqpFsAw"
+      },
+      "bundleJws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJidW5kbGVJZCI6IjAxSkJVTkRMRTAwMDAwMDAwMDAwMDAwMDEiLCJhdWQiOiJkamRsIiwiZGV2aWNlSWQiOiJkZXZfN2MxZTJkIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDAsImV4cGlyZXNBdCI6MTcwMjU5MjAwMCwiZG9jcyI6eyJsaWNlbnNlIjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0YkdsalpXNXpaU3RxZDNNaUxDSnJhV1FpT2lKd2EyVjVMWFJsYzNRdGNISnZaQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0pzYVdObGJuTmxTV1FpT2lKc2FXTmZNMlk0WVRsaUlpd2ljSEp2Wm1sc1pTSTZleUp1WVcxbElqb2lSM0poWTJVZ1NHOXdjR1Z5SWl3aVptbHljM1JPWVcxbElqb2lSM0poWTJVaUxDSmxiV0ZwYkNJNkltZHlZV05sUUdWNFlXMXdiR1V1WTI5dElpd2lZV04wYVhaaGRHVmtRWFFpT2pFMk9UQXdNREF3TURCOUxDSmxiblJwZEd4bGJXVnVkSE1pT25zaWJHbGpaVzV6WlM1MGFXVnlJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2SW5CeWJ5SXNJblZ3WkdGMFpXUkJkQ0k2TVRZNU9UazVNREF3TUgwc0ltTm9ZVzV1Wld4eklqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZXeUp6ZEdGaWJHVWlMQ0p6ZEdGbmFXNW5JbDBzSW5Wd1pHRjBaV1JCZENJNk1UWTVPVGs1TURBd01IMHNJbUZ3Y0M1dGFXNVdaWEp6YVc5dUlqcDdJbk4wWVhSbElqb2laVzVtYjNKalpXUWlMQ0oyWVd4MVpTSTZJakV1TUM0d0lpd2lkWEJrWVhSbFpFRjBJam94TmprNU9Ua3dNREF3ZlN3aWNHOXNZWEpwYzFad2JpSTZleUp6ZEdGMFpTSTZJbVZ1Wm05eVkyVmtJaXdpZG1Gc2RXVWlPblJ5ZFdVc0luVndaR0YwWldSQmRDSTZNVFk1T1RrNU1EQXdNSDE5ZlEuOVc5MGtrWDRBM1VuTHJURXk0Z2MyR0RDTG9NNWJ0VU1YcTU5VHJTaV84REgzb29zZFJEWFdMTmF6SW1OZTd4ZGN0VXVlSEVrUlpiT3BBSjk0VmMyQnciLCJjb25maWciOiJleUpoYkdjaU9pSkZaRVJUUVNJc0luUjVjQ0k2SW5CclpYa3RZMjl1Wm1sbksycDNjeUlzSW10cFpDSTZJbVJxWkd3dGRHVnpkQzB5TURJMkluMC5leUpwYzNNaU9pSnJaWGt1Y0d4eWN5NXBiU0lzSW1GMVpDSTZJbVJxWkd3aUxDSmtaWFpwWTJWSlpDSTZJbVJsZGw4M1l6RmxNbVFpTENKcGMzTjFaV1JCZENJNk1UY3dNREF3TURBd01Dd2laWGh3YVhKbGMwRjBJam94TnpBd01EQXpOakF3TENKbmNtRmpaVlZ1ZEdsc0lqb3hOekF5TlRreU1EQXdMQ0p6WTJobGJXRldaWEp6YVc5dUlqbzBMQ0pqYjI1bWFXY2lPbnNpY25WdUxtTnZibU4xY25KbGJtTjVJanA3SW5OMFlYUmxJam9pWlc1bWIzSmpaV1FpTENKMllXeDFaU0k2TkN3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrd01EQXdmU3dpZFdrdWRHaGxiV1VpT25zaWMzUmhkR1VpT2lKa1pXWmhkV3gwSWl3aWRtRnNkV1VpT2lKa1lYSnJJaXdpZFhCa1lYUmxaRUYwSWpveE5qazVPVGt5TWpJeWZYMHNJbk5sWTNKbGRITWlPbnNpY0hKdmVIa3VjM1ZpYzJOeWFYQjBhVzl1VlhKc0lqcDdJbk4wWVhSbElqb2lhR2xrWkdWdUlpd2lkbUZzZFdVaU9pSm9kSFJ3Y3pvdkwzWndiaTVsZUdGdGNHeGxMbU52YlM5emRXSXZZV0pqSWl3aWRYQmtZWFJsWkVGMElqb3hOams1T1Rrek16TXpmWDE5Lmdvei1YeTJfSGRQZFlhaHB6bi11MjM1SXFSUHo1M1RxX0oza2hqWkZOMzk4dmd5Q3B2Rkc2TkZYUFZMY1pudGN1ek1xaF90S1pMeWg5aTFBNUVsV0FRIn0sInRydXN0IjoiZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNkluQnJaWGt0ZEhKMWMzUXJhbmR6SWl3aWEybGtJam9pY0d0bGVTMTBaWE4wTFhCeWIyUXRNakF5TmlKOS5leUp6WTJobGJXRldaWEp6YVc5dUlqb3hMQ0poZFdRaU9pSmthbVJzSWl3aWFYTnpJam9pYTJWNUxuQnNjbk11YVcwaUxDSnBjM04xWldSQmRDSTZNVGN3TURBd01EQXdNQ3dpWlhod2FYSmxjMEYwSWpveE56QXdNREF3TXpBd0xDSnFkMnR6VlhKc0lqb2lhSFIwY0hNNkx5OXJaWGt1Y0d4eWN5NXBiUzlrYW1Sc0x5NTNaV3hzTFd0dWIzZHVMMnAzYTNNdWFuTnZiaUlzSW1OaFkyaGxVMlZqYjI1a2N5STZNekF3TENKclpYbHpJanBiZXlKcmFXUWlPaUp3YTJWNUxYUmxjM1F0Y0hKdlpDMHlNREkySWl3aVlXeG5Jam9pUldSRVUwRWlMQ0pyZEhraU9pSlBTMUFpTENKamNuWWlPaUpGWkRJMU5URTVJaXdpY0hWaWJHbGpTMlY1SWpvaWEwUktSalpFWlhWbGVHODVNV2hHV2psVVFWQnlNbE50YWxWRmRWUllaR2xoTmpkVmIyZFVSWEJyU1NJc0luTjBZWFIxY3lJNkltRmpkR2wyWlNKOUxIc2lhMmxrSWpvaVpHcGtiQzEwWlhOMExUSXdNallpTENKaGJHY2lPaUpGWkVSVFFTSXNJbXQwZVNJNklrOUxVQ0lzSW1OeWRpSTZJa1ZrTWpVMU1Ua2lMQ0p3ZFdKc2FXTkxaWGtpT2lKSU0zVnpVMWxWWkVsUldISnlTazVWTUU0dFNHaFNOMWhUVTFoeU5HNHdZMncwU21aR1gxZzFaemhWSWl3aWMzUmhkSFZ6SWpvaWMzUmhaMlZrSW4xZGZRLnlhWmdLYnFCVlZfdkRNRVBweS03amZEUF9FTVBELWJuR3d2XzFFaWRtRHZtdGhORkdMamJ4eGkxVGlhWEtNOGEyR3Nwa1FscnpIOW1Da1dna2dGb0NRIn0.UcODBGEt6PqriTGD3iaJiMlbzMCTW7BiG7BE7_kU68Mu7gQ6yjaDCoD26qPnl7Kv69wYYL4d90luCTGM7XMrBw",
+      "expect": { "imports": false, "reason": "bundle-jws-rejected" }
     }
   ],
   "feedCases": [

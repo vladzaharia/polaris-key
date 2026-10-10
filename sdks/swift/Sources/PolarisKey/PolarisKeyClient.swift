@@ -413,7 +413,7 @@ public actor PolarisKeyClient {
         let cache = await core.cache()
         let activation: ActivationSource? =
             await core.token != nil
-            ? .token : (cache.importedBundle != nil && cache.license != nil ? .bundle : nil)
+            ? .token : (cache.bundle?.activates == true && cache.license != nil ? .bundle : nil)
         return licenseState(
             GateInput(
                 licenseServiceEnabled: licenseOn, activation: activation, doc: cache.license?.doc,
@@ -492,7 +492,7 @@ public actor PolarisKeyClient {
         else { return await core.reportSnapshot(Data("{}".utf8)) }
         // The gate this device renders, the outlet the update client resolved, and the queued
         // update-health events (P6-03), wherever the SDK knows them (REPORT_KEYS).
-        let licenseOn = await core.enabled(.license)
+        let licenseOn = await core.licenseGateEnabled()
         fields["gate"] = .object([
             "status": .string(await gateState(core, licenseOn: licenseOn).status.rawValue)
         ])

@@ -144,10 +144,10 @@
   },
   "devDependencies": {
     "@polaris-key/react": "workspace:*",
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.20.5",
     "@types/yargs": "^17.0.33",
     "@xterm/headless": "^6.0.0",
     "commander": "^14.0.0",
-    "yargs": "^18.0.0"
+    "yargs": "^18.2.0"
   }
 }

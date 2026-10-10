@@ -57,6 +57,10 @@ public struct PolarisError: Error, Sendable, Equatable {
     public static let serviceUnavailable = "service-unavailable"
     /// Remote device management needs a credential this client does not hold.
     public static let deviceManagementUnsupported = "device-management-unsupported"
+    /// A redirect refused: it would downgrade to plaintext or replay a body to another origin.
+    public static let insecureRedirect = ErrorCode.insecureRedirect
+    /// More than five redirects.
+    public static let tooManyRedirects = ErrorCode.tooManyRedirects
 }
 
 /// One HTTP response, reduced to what this SDK actually reads.
@@ -174,7 +178,17 @@ extension PolarisResponse {
 public struct URLSessionTransport: PolarisTransport {
     private let session: URLSession
 
-    public init(session: URLSession = .shared) {
+    /// An ephemeral session: no on-disk cache, cookie jar or credential store, so a bearer-bearing
+    /// response never lands in `~/Library/Caches` and no cookie rides between calls.
+    public static func makeSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.httpShouldSetCookies = false
+        configuration.httpCookieAcceptPolicy = .never
+        configuration.urlCache = nil
+        return URLSession(configuration: configuration)
+    }
+
+    public init(session: URLSession = URLSessionTransport.makeSession()) {
         self.session = session
     }
 
@@ -187,11 +201,17 @@ public struct URLSessionTransport: PolarisTransport {
 
         let data: Data
         let response: URLResponse
+        let policy = RedirectPolicy.Delegate()
         if let limit = request.maxBodyBytes {
-            (data, response) = try await capped(req, limit: limit)
+            (data, response) = try await capped(req, limit: limit, delegate: policy)
         } else {
+            #if canImport(FoundationNetworking)
             (data, response) = try await session.data(for: req)
+            #else
+            (data, response) = try await session.data(for: req, delegate: policy)
+            #endif
         }
+        try policy.throwIfRefused()
         guard let http = response as? HTTPURLResponse else {
             throw PolarisError(code: "transport", message: "non-http response")
         }
@@ -211,7 +231,12 @@ public struct URLSessionTransport: PolarisTransport {
         if request.timeoutSeconds > 0 { req.timeoutInterval = request.timeoutSeconds }
         for (key, value) in request.headers { req.setValue(value, forHTTPHeaderField: key) }
         req.httpBody = request.body
-        let (bytes, response) = try await session.bytes(for: req)
+        let policy = RedirectPolicy.Delegate()
+        let (bytes, response) = try await session.bytes(for: req, delegate: policy)
+        if let refusal = policy.refusal {
+            bytes.task.cancel()
+            throw refusal
+        }
         guard let http = response as? HTTPURLResponse else {
             bytes.task.cancel()
             throw PolarisError(code: "transport", message: "non-http response")
@@ -249,12 +274,14 @@ public struct URLSessionTransport: PolarisTransport {
 
     /// Stream the body and stop at `limit` bytes, so a body larger than the caller can use is
     /// never buffered whole.
-    private func capped(_ req: URLRequest, limit: Int) async throws -> (Data, URLResponse) {
+    private func capped(
+        _ req: URLRequest, limit: Int, delegate: RedirectPolicy.Delegate
+    ) async throws -> (Data, URLResponse) {
         #if canImport(FoundationNetworking)
         let (data, response) = try await session.data(for: req)
         return (data.prefix(limit), response)
         #else
-        let (bytes, response) = try await session.bytes(for: req)
+        let (bytes, response) = try await session.bytes(for: req, delegate: delegate)
         var data = Data()
         if response.expectedContentLength > 0 {
             data.reserveCapacity(Int(min(response.expectedContentLength, Int64(limit))))
@@ -268,6 +295,104 @@ public struct URLSessionTransport: PolarisTransport {
         }
         return (data, response)
         #endif
+    }
+}
+
+/// The redirect rule for every product-scoped call (WIRE-CONTRACT-V4 §5):
+///
+///   * a same-origin hop keeps the headers;
+///   * a cross-origin hop drops `Authorization` and every `X-PKey-*` header, and is followed only
+///     for GET and HEAD;
+///   * a 307 or 308 on a non-GET/HEAD to another origin, and any https to non-https hop, is refused
+///     with `insecure-redirect`;
+///   * more than 5 hops is `too-many-redirects`.
+///
+/// A refusal stops the follow and `send` throws it as a `PolarisError`, so a response that was
+/// never meant for this device cannot be mistaken for the control plane's answer.
+enum RedirectPolicy {
+    static let maxHops = 5
+
+    enum Verdict: Equatable {
+        case follow(URLRequest)
+        case refuse(code: String)
+    }
+
+    static func origin(_ url: URL?) -> String {
+        "\(url?.scheme?.lowercased() ?? "")://\(url?.host?.lowercased() ?? ""):\(url?.port ?? -1)"
+    }
+
+    /// `from` is the request that was answered with `status`; `next` is the one URLSession
+    /// proposes; `hops` counts redirects already followed.
+    static func decide(
+        from: URLRequest, status: Int, next: URLRequest, hops: Int
+    ) -> Verdict {
+        if hops >= maxHops { return .refuse(code: PolarisError.tooManyRedirects) }
+        let fromScheme = from.url?.scheme?.lowercased()
+        let toScheme = next.url?.scheme?.lowercased()
+        guard toScheme == "https" || (toScheme == "http" && fromScheme == "http") else {
+            return .refuse(code: PolarisError.insecureRedirect)
+        }
+        if origin(from.url) == origin(next.url) { return .follow(next) }
+        let fromMethod = (from.httpMethod ?? "GET").uppercased()
+        let nextMethod = (next.httpMethod ?? "GET").uppercased()
+        let safe: Set<String> = ["GET", "HEAD"]
+        if (status == 307 || status == 308) && !safe.contains(fromMethod) {
+            return .refuse(code: PolarisError.insecureRedirect)
+        }
+        guard safe.contains(nextMethod) else { return .refuse(code: PolarisError.insecureRedirect) }
+        var stripped = next
+        for name in (next.allHTTPHeaderFields ?? [:]).keys {
+            let lower = name.lowercased()
+            if lower == "authorization" || lower.hasPrefix("x-pkey-") {
+                stripped.setValue(nil, forHTTPHeaderField: name)
+            }
+        }
+        // A body never follows a credential-stripped hop.
+        stripped.httpBody = nil
+        return .follow(stripped)
+    }
+
+    final class Delegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+        private let lock = NSLock()
+        private var hops = 0
+        private var refusalValue: PolarisError?
+
+        var refusal: PolarisError? {
+            lock.lock()
+            defer { lock.unlock() }
+            return refusalValue
+        }
+
+        func throwIfRefused() throws {
+            if let refusal { throw refusal }
+        }
+
+        func urlSession(
+            _ session: URLSession, task: URLSessionTask,
+            willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+            completionHandler: @escaping (URLRequest?) -> Void
+        ) {
+            lock.lock()
+            let count = hops
+            hops += 1
+            lock.unlock()
+            let from = task.currentRequest ?? task.originalRequest ?? request
+            switch RedirectPolicy.decide(
+                from: from, status: response.statusCode, next: request, hops: count)
+            {
+            case .follow(let next):
+                completionHandler(next)
+            case .refuse(let code):
+                lock.lock()
+                refusalValue = PolarisError(
+                    code: code,
+                    message: code == PolarisError.tooManyRedirects
+                        ? "The control plane redirected too many times."
+                        : "A redirect that would leak the device credential was refused.")
+                lock.unlock()
+                completionHandler(nil)
+            }
+        }
     }
 }
 

@@ -541,6 +541,23 @@ describe("OIDC issuer safety (R9-01)", () => {
     }
   });
 
+  it("refuses https loopback, NAT64, 6to4, Teredo and malformed hosts", () => {
+    for (const issuer of [
+      "https://localhost:8443",
+      "https://127.0.0.1/",
+      "https://2130706433/",
+      "https://[::1]/",
+      "https://[64:ff9b::a9fe:a9fe]/", // NAT64 of 169.254.169.254
+      "https://[64:ff9b::7f00:1]/",
+      "https://[2002:a9fe:a9fe::1]/", // 6to4 of 169.254.169.254
+      "https://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/", // Teredo
+      "https://169.254.169.254../",
+      "https://a..example/",
+    ]) {
+      expect(isSafeIssuerUrl(issuer), issuer).toBe(false);
+    }
+  });
+
   it("accepts a real IdP and the loopback dev carve-out", () => {
     for (const issuer of [
       "https://id.example.test",
@@ -550,8 +567,6 @@ describe("OIDC issuer safety (R9-01)", () => {
       "http://localhost:8788",
       "http://127.0.0.1:8788",
       "http://[::1]:8788",
-      "https://localhost:8443",
-      "https://2130706433/", // 127.0.0.1 written as a decimal integer
     ]) {
       expect(issuerUrlProblem(issuer), issuer).toBeNull();
       expect(withIssuer(issuer).ok, issuer).toBe(true);

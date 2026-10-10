@@ -15,17 +15,29 @@
  * independent of any single product's OIDC client.
  */
 
+import { recordPlatformSecurityEvent } from "../core/securityEvents.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import {
+  ALLOWED_ID_TOKEN_ALGS,
+  ID_TOKEN_CLOCK_TOLERANCE,
+  ID_TOKEN_MAX_AGE,
+} from "../services/identity/idToken.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../crypto.js";
-import { clientIp, rateLimitOk } from "../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
+  getArtefact,
   putArtefact,
   type ArtefactRef,
 } from "../core/singleUse.js";
+import {
+  accountRealmCookie,
+  clearAccountRealmCookie,
+  readCookie,
+} from "../core/accountCookies.js";
 import { adminOidcConfig } from "../platformOidc.js";
 import { brandedHtmlSecurityHeaders } from "../securityHeaders.js";
 import { renderBrandPage } from "../core/brandHtml.js";
@@ -66,7 +78,12 @@ interface FlowRecord {
   returnTo?: string;
   /** I-12: a step-up re-authentication (`prompt=login`, `max_age=0`) for the relink tool. */
   stepUp?: boolean;
+  /** Hash of the `ADMIN_FLOW_COOKIE` value of the browser that started the flow. */
+  bindingHash: string;
 }
+
+/** Binds an admin sign-in to the browser that started it (as the portal's I-17). */
+export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
 
 /**
  * Where a sign-in may land after the callback. Default (and the fallback for anything
@@ -145,6 +162,7 @@ const joseIdTokenVerifier: IdTokenVerifier = {
       `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
       {
         method: "POST",
+        signal: AbortSignal.timeout(10_000),
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           grant_type: "authorization_code",
@@ -166,7 +184,12 @@ const joseIdTokenVerifier: IdTokenVerifier = {
       const verified = await jwtVerify(tokens.id_token, jwks, {
         issuer: cfg.issuer,
         audience: cfg.clientId,
-        algorithms: ["RS256", "ES256", "EdDSA"],
+        algorithms: ALLOWED_ID_TOKEN_ALGS,
+        // Same freshness rules as the portal and product sign-ins; `exp` alone is
+        // the IdP's choice.
+        clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
+        maxTokenAge: ID_TOKEN_MAX_AGE,
+        requiredClaims: ["sub", "exp", "iat"],
       });
       const claims = verified.payload as Record<string, unknown>;
       // Reject unconditionally on a missing or mismatched nonce — a token with no nonce
@@ -209,6 +232,17 @@ function htmlError(status: number, message: string): Response {
   );
 }
 
+/** The configured `CONSOLE_ORIGIN` (https, origin-only) when set, else the request's. */
+function adminOrigin(env: Env, url: URL): string {
+  try {
+    const u = new URL(env.CONSOLE_ORIGIN ?? "");
+    if (u.protocol === "https:" || u.hostname === "localhost") return u.origin;
+  } catch {
+    // unset or unusable: the request's own origin
+  }
+  return url.origin;
+}
+
 /** GET /manage/login — start PKCE + redirect to the IdP authorize endpoint. */
 export async function handleAdminLogin(
   req: Request,
@@ -217,7 +251,7 @@ export async function handleAdminLogin(
   const ok = await rateLimitOk(
     env,
     "_admin",
-    { bucket: "adminLogin", id: clientIp(req), limit: 20, windowSec: 60 },
+    { bucket: "adminLogin", id: clientNetwork(req), limit: 20, windowSec: 60 },
     Math.floor(Date.now() / 1000),
   );
   if (!ok)
@@ -231,13 +265,15 @@ export async function handleAdminLogin(
   const nonce = randomToken(16);
   const { verifier, challenge } = await pkcePair();
   const url = new URL(req.url);
-  const redirectUri = `${url.origin}/manage/callback`;
+  const redirectUri = `${adminOrigin(env, url)}/manage/callback`;
   const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
   const stepUp = url.searchParams.get("stepUp") === "1";
+  const binding = randomToken(32);
   const flow: FlowRecord = {
     verifier,
     nonce,
     redirectUri,
+    bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
     ...(returnTo ? { returnTo } : {}),
     ...(stepUp ? { stepUp: true } : {}),
   };
@@ -265,7 +301,15 @@ export async function handleAdminLogin(
   }
   return new Response(null, {
     status: 302,
-    headers: { location: authorize.toString() },
+    headers: {
+      location: authorize.toString(),
+      "set-cookie": accountRealmCookie(
+        ADMIN_FLOW_COOKIE,
+        binding,
+        FLOW_TTL_SECONDS,
+      ),
+      "cache-control": "no-store",
+    },
   });
 }
 
@@ -280,7 +324,12 @@ export async function handleAdminCallback(
   const ok = await rateLimitOk(
     env,
     "_admin",
-    { bucket: "adminCallback", id: clientIp(req), limit: 20, windowSec: 60 },
+    {
+      bucket: "adminCallback",
+      id: clientNetwork(req),
+      limit: 20,
+      windowSec: 60,
+    },
     Math.floor(Date.now() / 1000),
   );
   if (!ok)
@@ -292,7 +341,24 @@ export async function handleAdminCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlError(400, "Missing authorization code.");
-  const raw = await consumeArtefact(env, await adminFlowKey(state, env));
+  // Only the browser that started the flow may finish it, checked
+  // before the single-use consume so another browser cannot burn the flow either.
+  const flowKey = await adminFlowKey(state, env);
+  const peeked = await getArtefact(env, flowKey);
+  let peekedFlow: FlowRecord | null = null;
+  try {
+    peekedFlow = peeked ? (JSON.parse(peeked) as FlowRecord) : null;
+  } catch {
+    peekedFlow = null;
+  }
+  const binding = readCookie(req.headers.get("cookie"), ADMIN_FLOW_COOKIE);
+  if (
+    !peekedFlow?.bindingHash ||
+    !binding ||
+    (await hashKey(binding, env.KEY_HASH_PEPPER)) !== peekedFlow.bindingHash
+  )
+    return htmlError(400, "This sign-in link has expired. Try again.");
+  const raw = await consumeArtefact(env, flowKey);
   if (!raw) return htmlError(400, "This sign-in link has expired. Try again.");
   let flow: FlowRecord;
   try {
@@ -302,12 +368,24 @@ export async function handleAdminCallback(
   }
 
   const identity = await verifier.verify({ code, flow, env });
-  if (!identity || !identity.sub)
+  if (!identity || !identity.sub) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.failed",
+      summary: "Admin sign-in: ID token could not be verified",
+      now,
+    });
     return htmlError(401, "Sign-in could not be verified.");
+  }
 
   // Admin authority is platform-wide, so the gate needs no product list — the `listProducts`
   // read that used to feed the (ignored) `_products` parameter is gone.
   if (!hasAnyAdminGrant(env, identity.groups)) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.refused",
+      sub: identity.sub,
+      summary: "Admin sign-in refused: no administrator grant",
+      now,
+    });
     return htmlError(
       403,
       "Your account is not an administrator of any product.",
@@ -328,13 +406,29 @@ export async function handleAdminCallback(
     );
   }
 
-  const { token } = await issueSession(env, identity, now);
+  // Only a step-up flow whose ID token carries `auth_time` records a step-up.
+  const { token } = await issueSession(
+    env,
+    { ...identity, stepUp: flow.stepUp === true },
+    now,
+  );
+  await recordPlatformSecurityEvent(db, {
+    action: "admin.signin",
+    sub: identity.sub,
+    summary: flow.stepUp ? "Admin sign-in (step-up)" : "Admin sign-in",
+    now,
+  });
   // Re-validated on read: the flow record is server-written, but a defense-in-depth re-check
   // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
   // property of this function rather than a cross-file invariant.
   const location = sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/";
   return new Response(null, {
     status: 302,
-    headers: { location, "set-cookie": buildSessionCookie(token) },
+    headers: new Headers([
+      ["location", location],
+      ["set-cookie", buildSessionCookie(token)],
+      ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
+      ["cache-control", "no-store"],
+    ]),
   });
 }

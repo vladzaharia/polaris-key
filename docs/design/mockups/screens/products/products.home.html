@@ -27,9 +27,11 @@
   </nav>
 
   <main class="main">
-    <!-- Wide (≥ 1600): Needs attention and Products in the main column, Platform ready in the aside. -->
-    <div class="page columns">
+    <!-- From 1280 (B4, admin-1-13): Needs attention takes two thirds and Platform ready the third
+         beside it, top-aligned; below 1280 they stack full width, attention first. -->
+    <div class="page columns split">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a></nav>
         <div class="page-heading"><h1>Home</h1></div>
         <div class="page-actions">
           <span class="freshness">Updated 1 min ago</span>
@@ -39,7 +41,7 @@
       </header>
 
       <!-- Attention: one server read (GET /manage/api/attention), broken things only. -->
-      <section class="card" aria-labelledby="attn-title">
+      <section class="card split-main" aria-labelledby="attn-title">
         <div class="card-head">
           <div class="title mk-cluster baseline"><h2 id="attn-title">Needs attention</h2><span class="count danger">3</span></div>
         </div>
@@ -47,7 +49,7 @@
           <div class="attn-row">
             <span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
             <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
-            <span class="attn-text">Resync failed: <code>.pkey/release</code> line 14 names “switch”, a platform this product doesn’t ship.</span>
+            <span class="attn-text mk-stack-1"><span>Resync failed.</span><span><code>.pkey/release</code> line 14 names “switch”, which Diceroll doesn’t ship.</span></span>
             <a class="link" href="#">Open error<i class="ic ic-arrow-right"></i></a>
           </div>
           <div class="attn-row">
@@ -59,14 +61,14 @@
           <div class="attn-row">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
-            <span class="attn-text">Google Play key expires Oct 16; uploads to Play stop then.</span>
+            <span class="attn-text">Google Play key expires Oct 16.</span>
             <a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a>
           </div>
         </div>
       </section>
 
       <!-- Platform ready (UX-67): platform admins only, until every row is done. -->
-      <section class="card aside span-2" aria-labelledby="ready-title">
+      <section class="card aside" aria-labelledby="ready-title">
         <div class="card-head">
           <div class="title"><h2 id="ready-title">Platform ready</h2></div>
           <div class="progress-inline"><span>8 of 9 done</span><div class="progress success" style="--v: 88.9%"></div></div>
@@ -74,7 +76,7 @@
         <div class="tasks padded">
           <div class="task todo">
             <span class="task-mark"></span>
-            <div class="task-title">Store connections</div>
+            <div class="task-title">Store accounts</div>
             <div class="task-desc">Diceroll’s Steam uploads need a Steamworks publisher key.</div>
             <div class="task-action"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></div>
           </div>
@@ -111,6 +113,7 @@
 
         <div class="product-cards">
           <article class="product-card">
+            <div class="art banner" data-product="djdl" aria-hidden="true"></div>
             <div class="product-card-head">
               <span class="logo" data-product="djdl"></span>
               <div class="grow">
@@ -133,6 +136,7 @@
           </article>
 
           <article class="product-card">
+            <div class="art banner" data-product="diceroll" aria-hidden="true"></div>
             <div class="product-card-head">
               <span class="logo" data-product="diceroll"></span>
               <div class="grow">
@@ -153,7 +157,9 @@
             </div>
           </article>
 
+          <!-- The system product has no hosted header art: its banner is the stored flat tint, never a gradient. -->
           <article class="product-card">
+            <div class="art banner flat" aria-hidden="true"></div>
             <div class="product-card-head">
               <span class="logo" data-product="polaris-key"></span>
               <div class="grow">

@@ -5,7 +5,7 @@
 | Phase       | P2: Release truth, publishing and release tracks (DX consolidation I: Packages, updates and packs)                                         |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                                     |
 | Depends on  | [P2-08](P2-08-built-in-dev-release-track-default-store.md), [A-26](A-26-customer-channel-actions.md), [A-30](A-30-generated-sha256sums.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                     |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-28](PX-28-license-page-v2.md)                                                                  |
 | Role        | `pkey-implementer`                                                                                                                         |
 | Plan mode   | no                                                                                                                                         |
 | Gates       | `portal-e2e`, `console-csp-parity`                                                                                                         |
@@ -45,6 +45,47 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - Working id **UC-07**; DX consolidation I: Packages, updates and packs.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
+
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- The focused download (`#/p/:product/download`) shows the same middle-truncated SHA-256 with Copy for the chosen build and the same channel rows in A-26's order for the chosen platform. One model (A-26) serves the product page, the focused download, dl.plrs.im and the React SDK. (portal-13)
 
 ## Steps
 

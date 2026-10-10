@@ -11,10 +11,11 @@
     "A profile holds settings and secrets only; entitlements live on the tier, and the card foot says so.",
     "Each value row: key and label, the value, In the app (Editable, Read-only, Hidden) as one select with its glyph, and remove. Secrets show Configured or Not set, Never listed, and Replace…, never a value.",
     "A changed row is tinted with the draft marker and a note under it says what changed and its effect from the U-29 read (\"Read-only blocks 1 license's own value (3)\"), matching config.effective's blocked-override case.",
-    "Where it sits shows the five steps with this profile as step 3; Used by gives Studio licenses (38), devices (104) and the overrides its locks block, from the same read as each license's Config tab. Those counts show only here: the header says who the profile covers, and the list says which tier.",
+    "Where it sits shows the five steps with this profile as step 3; Used by gives Studio licenses (38), devices (104) and the overrides its locks block, from the same read as each license's Config tab. Those counts show only here: the header has the chain step and the last save, and the list says which tier.",
     "Header: \"1 unsaved change\" as a neutral pill, Preview as… (license, tier or person), Discard and Save profile.",
     "Phone: the profile list becomes a switcher, each value row becomes a block (key, then value, In the app and remove on one line), and the rail follows. Tablet and desktop: the rail's two cards sit side by side under the values; wide: beside them.",
-    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

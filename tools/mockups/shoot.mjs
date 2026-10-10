@@ -15,7 +15,7 @@
 //   --screen <id>       only these screen ids (repeatable, or comma-separated)
 //   --gallery           the kit's component gallery (docs/design/mockups/kit/gallery.html), as kit.gallery
 //   --out <dir>         output directory (default /Users/vlad/Repos/pk-wt/_mockups/shots[/<area>])
-//   --sizes wide,desktop,tablet,phone (default: all four)   --themes dark,light   --scale 1 (device pixel ratio)
+//   --sizes wide,desktop,tablet,phone (default: all four; portrait 834×1194 is opt-in)   --themes dark,light   --scale 1 (device pixel ratio)
 //   --html <dir>        also write each composed page (<id>.<theme>.html) for opening in a browser
 //   --check             validate the screen contract only; render nothing
 //
@@ -43,7 +43,11 @@ const SIZES = {
   wide: { width: 1920, height: 1080 },
   tablet: { width: 1024, height: 768 },
   phone: { width: 390, height: 844 },
+  // Opt-in (--sizes portrait): a portrait tablet, where a split layout (the hosted card's passport,
+  // device-code and activation screens) stacks.
+  portrait: { width: 834, height: 1194 },
 };
+const DEFAULT_SIZES = ["wide", "desktop", "tablet", "phone"];
 const SURFACES = ["console", "portal", "terminal", "code", "kit", "dialog"];
 const REQUIRED = [
   "id",
@@ -88,7 +92,7 @@ for (const a of areas) {
     process.exit(2);
   }
 }
-const sizes = many("sizes").length ? many("sizes") : Object.keys(SIZES);
+const sizes = many("sizes").length ? many("sizes") : DEFAULT_SIZES;
 const themes = many("themes").length ? many("themes") : ["dark", "light"];
 const scale = Number(one("scale", "1"));
 const htmlDir = one("html", "");
@@ -219,9 +223,10 @@ for (const s of screens) {
       const fonts = await p.evaluate(async () => {
         await Promise.all([
           document.fonts.load('400 16px "Rubik"'),
-          document.fonts.load('700 16px "Rubik"'),
+          document.fonts.load('500 16px "Rubik"'),
+          document.fonts.load('600 16px "Rubik"'),
           document.fonts.load('400 16px "JetBrains Mono"'),
-          document.fonts.load('700 16px "JetBrains Mono"'),
+          document.fonts.load('600 16px "JetBrains Mono"'),
         ]);
         await document.fonts.ready;
         return {

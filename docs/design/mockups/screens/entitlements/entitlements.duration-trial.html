@@ -48,7 +48,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -58,6 +58,7 @@
   <main class="main">
     <div class="page form-page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a></nav>
         <div class="page-heading"><h1>Tiers</h1></div>
         <div class="page-actions">
           <button class="btn primary"><i class="ic ic-plus"></i>New tier</button>
@@ -126,7 +127,6 @@
                 <div class="field">
                   <span class="field-label" id="moves-label">Then moves to</span>
                   <div class="select" role="button" aria-labelledby="moves-label"><span class="grow">Standard</span><i class="ic ic-chevrons-up-down"></i></div>
-                  <span class="hint">Billing-run trials show as Trialing on the license, not here.</span>
                 </div>
                 </div>
               </div>
@@ -136,22 +136,22 @@
                     <li class="timeline-item">
                       <span class="timeline-when">Oct 7, 2026</span>
                       <span class="timeline-what">Starts as Pro</span>
-                      <span class="timeline-desc">Everything Pro includes, on the stable track.</span>
+                      <span class="timeline-desc">On the stable track.</span>
                     </li>
                     <li class="timeline-item note">
                       <span class="timeline-when">Oct 18, 2026</span>
                       <span class="timeline-what">Reminder email</span>
-                      <span class="timeline-desc">Three days before the end: “Your DJDL Pro trial ends on Oct 21.”</span>
+                      <span class="timeline-desc">“Your DJDL Pro trial ends on Oct 21.”</span>
                     </li>
                     <li class="timeline-item ended">
                       <span class="timeline-when">Oct 21, 2026</span>
                       <span class="timeline-what">Moves to Standard</span>
-                      <span class="timeline-desc">Lossless audio and stem separation turn off at the next refresh, and crates past 25 stop syncing.</span>
+                      <span class="timeline-desc">Lossless audio and stem separation turn off.</span>
+                      <span class="timeline-desc">Crates past 25 stop syncing.</span>
                     </li>
                     <li class="timeline-item later">
                       <span class="timeline-when">Any time before</span>
                       <span class="timeline-what">Moving it to Pro ends the trial</span>
-                      <span class="timeline-desc">Change the license’s tier by hand or through the admin API.</span>
                     </li>
                 </ol>
               </aside>

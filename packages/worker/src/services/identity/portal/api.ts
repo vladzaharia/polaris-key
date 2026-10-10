@@ -1,4 +1,5 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
+import { constantTimeEqual } from "../../../core/platform.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
@@ -72,6 +73,7 @@ import {
   type PortalSession,
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
+import { portalStepUpGate } from "./stepUpGate.js";
 import { licenseGrants } from "./entitlements.js";
 import {
   checkAccountSession,
@@ -132,6 +134,7 @@ import {
 } from "./deviceLogin.js";
 import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
 import { handleProfileApi } from "./profile.js";
+import { readBodyText } from "../../../core/cappedBody.js";
 
 export function portalJson(
   body: unknown,
@@ -171,7 +174,7 @@ function isMutation(method: string): boolean {
 }
 
 export async function readBody(req: Request): Promise<Record<string, unknown>> {
-  const raw = await req.text();
+  const raw = await readBodyText(req);
   if (!raw.trim()) return {};
   try {
     const parsed = JSON.parse(raw) as unknown;
@@ -622,6 +625,8 @@ async function handleMeDelete(
 ): Promise<Response> {
   const account = await getPortalAccount(db, session.accountId);
   if (!account) return unauthorized();
+  const stale = portalStepUpGate(session, now);
+  if (stale) return stale;
   const limited = await requireActionRateLimit(
     req,
     env,
@@ -860,6 +865,8 @@ async function handleRegistryTokens(
       },
     });
   if (req.method !== "POST") return err(405, "method_not_allowed");
+  const stale = portalStepUpGate(session, now);
+  if (stale) return stale;
   const limited = await requireActionRateLimit(
     req,
     env,
@@ -1416,7 +1423,8 @@ export async function handlePortalApi(
   const { session, sessionIdHash } = sessionResult;
   if (isMutation(req.method)) {
     const presented = req.headers.get(PORTAL_CSRF_HEADER);
-    if (!presented || presented !== session.csrf) return forbidden("csrf");
+    if (!presented || !constantTimeEqual(presented, session.csrf))
+      return forbidden("csrf");
   }
   // Erasure is dispatched BEFORE the per-request link sweep: re-deriving license links for an
   // account that is about to be deleted is pure waste, and it is the one request where a

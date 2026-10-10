@@ -288,6 +288,10 @@ public class KeyringStore(
 
     override suspend fun getDeviceId(): String = files.getDeviceId()
 
+    override suspend fun anchoredDeviceId(): String? = files.anchoredDeviceId()
+
+    override suspend fun replaceDeviceId(id: String): Unit = files.replaceDeviceId(id)
+
     override suspend fun readCache(): CacheRecord? = files.readCache()
 
     override suspend fun writeCache(record: CacheRecord): Unit = files.writeCache(record)

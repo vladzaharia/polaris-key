@@ -148,6 +148,31 @@ class SecureStoreTest {
     }
 
     @Test
+    fun aTransientNullKeyIsRequeriedAndNothingIsWiped() {
+        val keys = FakeKeyProvider()
+        val s = store(keys)
+        s.put("token", "pkeyt_abc")
+        var misses = 1
+        val flaky = object : KeyProvider by keys {
+            override fun get(alias: String): SecretKey? = if (misses-- > 0) null else keys.get(alias)
+        }
+        val again = SecureStore(tmp.root, "diceroll", flaky)
+        assertEquals("pkeyt_abc", again.get("token").value)
+        assertTrue(File(tmp.root, "token.kv").exists())
+    }
+
+    @Test
+    fun aKeyThatStaysMissingQuarantinesTheBlobInsteadOfDeletingIt() {
+        val keys = FakeKeyProvider()
+        val s = store(keys)
+        s.put("token", "pkeyt_abc")
+        keys.keys.clear()
+        assertEquals(SecureStore.RESET_MISSING, s.get("token").reset)
+        assertFalse(File(tmp.root, "token.kv").exists())
+        assertTrue(File(tmp.root, "token.kv.quarantine").exists())
+    }
+
+    @Test
     fun invalidatedKeyIsDeletedWithItsBlobs() {
         val keys = FakeKeyProvider()
         val s = store(keys)

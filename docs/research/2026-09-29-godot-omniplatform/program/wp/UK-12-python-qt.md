@@ -5,7 +5,7 @@
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                        |
 | Size        | 3–4 engineer-weeks                                                                                                                                                                                                                                                  |
 | Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md), [UK-13](UK-13-python-terminal.md), [UK-56](UK-56-kit-mockups-refresh.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md)                                                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md), [UK-61](UK-61-gnome-native-kit.md)                                   |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                                                                                                  |
 | Gates       | pytest-qt `grab()` baselines (offscreen); the Qt lint equivalent; Python `pytest -q`                                                                                                                                                                                |
@@ -77,6 +77,41 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **Minimum check:** pytest-qt `grab()` offscreen at the GUI rows as window sizes in the Windows, macOS and Linux variants, both schemes and both presets, and at font scale 2; the Qt lint.
 - **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
 ## Goal
 
 A PySide6 or PyQt6 app gates itself with `run_gate(client, window)`, and the Qt Quick screens render the macOS, Windows or Linux variant in the Polaris look.
@@ -118,6 +153,12 @@ Python has no UI kit today and its `ui.kit` row hid the gap (GA). The owner fixe
   structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
   replace it with the SDK's type when it lands.
 - **Fake sources.** Tests build fake sources from that type.
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Button order and roles come from QDialogButtonBox or Qt Quick DialogButtonBox platform layouts, never hard-coded. The KDE form (Breeze frame, KDE order) is for Qt only; the GNOME form belongs to the optional UK-61 (B10). Host ownership: the kit never constructs QApplication, never calls exec(), never sets the application palette or style globally and works under qasync; state changes marshal to the GUI thread. Floor PySide6/PyQt6 6.5 (MultiEffect); under the software backend or reduced transparency scrim and panels are opaque. `QLineEdit#pkKey` elides in the middle at rest. QAccessible names on every control (AT-SPI on Linux). A Flatpak run of the sample. Docs note that PyQt6 is GPL or commercial, so integrators pick PySide6 unless they hold a PyQt licence. (sdk-b-13)
 
 ## Steps
 

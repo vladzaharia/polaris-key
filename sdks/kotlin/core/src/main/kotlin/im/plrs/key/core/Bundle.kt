@@ -13,7 +13,11 @@ public data class VerifiedBundleDoc<T : DocClaims>(val jws: String, val doc: T)
 public data class VerifiedBundle(
     val bundleId: String,
     val trustJws: String,
-    /** `pinned ∪ non-revoked manifest keys`, pins terminal: the set step 4 used. */
+    /** The inner trust manifest's signed `issuedAt`. */
+    val trustIssuedAt: Long,
+    /** Pinned kids the inner manifest newly tombstones (§1); the host files it as their evidence. */
+    val revokedPins: List<String>,
+    /** `usable pins ∪ live manifest keys`, pins terminal: the set step 4 used. */
     val effectiveTrust: TrustSet,
     val license: VerifiedBundleDoc<LicenseDoc>?,
     val config: VerifiedBundleDoc<ConfigDoc>?,
@@ -45,8 +49,19 @@ public sealed interface BundleInspection {
     public data class Refused(val reason: BundleRefusalReason) : BundleInspection
 }
 
+/** §7 step 4's per-type anti-replay floors: the `issuedAt` of the verified cached document, or null. */
+public data class BundleFloors(val license: Long?, val config: Long?) {
+    public companion object {
+        /** The reload profile names no floor: the inner documents ARE the cached ones. */
+        public val NONE: BundleFloors = BundleFloors(null, null)
+    }
+}
+
+/** `import` is the operator's act; `reload` is the cached bundle re-verified at every start. */
+public enum class BundleProfile { import, reload }
+
 public data class BundleOptions(
-    /** The ONLY keys a bundle (and the manifest it carries) may verify against. */
+    /** The ONLY keys a bundle (and the manifest it carries) may verify against, less [tombstones]. */
     val pinned: TrustSet,
     /** The expected `aud`: this client's product slug. */
     val product: String,
@@ -54,6 +69,11 @@ public data class BundleOptions(
     val deviceId: String,
     /** Epoch seconds; required, never defaulted. */
     val now: Long,
+    /** Each inner document must be strictly newer than its floor, else `inner-doc-rejected`. */
+    val floors: BundleFloors,
+    val profile: BundleProfile,
+    /** Pinned kids tombstoned on this install: not usable for the bundle, its manifest or step 4. */
+    val tombstones: Collection<String> = emptyList(),
     val clockSkewSeconds: Long = CLOCK_SKEW_SECONDS,
 )
 
@@ -61,7 +81,8 @@ public data class BundleOptions(
 public fun inspectBundle(jws: String, options: BundleOptions): BundleInspection {
     fun refused(r: BundleRefusalReason) = BundleInspection.Refused(r)
     // 1. The bundle JWS against PINNED keys only, with the raised cap that travels with the typ.
-    val verified = JwsVerifier.verify(jws, options.pinned, JwsTyp.bundle, requireTyp = true, maxPayloadBytes = MAX_BUNDLE_BYTES)
+    val pins = usablePins(options.pinned, options.tombstones)
+    val verified = JwsVerifier.verify(jws, pins, JwsTyp.bundle, requireTyp = true, maxPayloadBytes = MAX_BUNDLE_BYTES)
         ?: return refused(BundleRefusalReason.bundleJwsRejected)
     // A missing or mistyped member is a CLAIMS failure, never a signature one.
     val bundle = BundleDoc.from(verified.payload) ?: return refused(BundleRefusalReason.bundleClaimsRejected)
@@ -71,14 +92,18 @@ public fun inspectBundle(jws: String, options: BundleOptions): BundleInspection 
         return refused(BundleRefusalReason.bundleClaimsRejected)
     }
 
-    // 2. The bundle's own claims, on NETWORK-path freshness (§7.2).
+    // 2. The bundle's own claims; the import profile adds the 30-day window (§7.2), the reload
+    //    profile (the cached bundle at every start) keeps everything else.
     val skew = options.clockSkewSeconds
     if (bundle.bundleId.isEmpty() ||
         bundle.aud != options.product ||
         bundle.deviceId != options.deviceId ||
-        bundle.issuedAt > saturatingAdd(options.now, skew) ||
-        options.now > saturatingAdd(bundle.expiresAt, skew) ||
         (bundle.docs.license == null && bundle.docs.config == null)
+    ) {
+        return refused(BundleRefusalReason.bundleClaimsRejected)
+    }
+    if (options.profile != BundleProfile.reload &&
+        (bundle.issuedAt > saturatingAdd(options.now, skew) || options.now > saturatingAdd(bundle.expiresAt, skew))
     ) {
         return refused(BundleRefusalReason.bundleClaimsRejected)
     }
@@ -86,27 +111,28 @@ public fun inspectBundle(jws: String, options: BundleOptions): BundleInspection 
     // 3. The inner trust manifest against the PINS, on the reload profile.
     val manifest = verifyTrustManifest(
         bundle.trust,
-        VerifyTrustManifestOptions(pinned = options.pinned, expectedAud = options.product, now = options.now, checkFreshness = false),
+        VerifyTrustManifestOptions(pinned = options.pinned, tombstones = options.tombstones, expectedAud = options.product, now = options.now, checkFreshness = false),
     )
     if (manifest.doc == null) return refused(BundleRefusalReason.bundleTrustRejected)
-    val effectiveTrust = mergeTrust(options.pinned, manifest.discovered)
+    val effectiveTrust = mergeTrust(usablePins(pins, manifest.revokedPins), manifest.discovered)
 
-    // 4. Each inner document against the EFFECTIVE set, reload profile, the LOCAL device id.
-    val reload = VerifyOptions(
+    // 4. Each inner document against the EFFECTIVE set, reload profile, the LOCAL device id, and
+    //    strictly newer than its per-type floor.
+    fun reload(floor: Long?) = VerifyOptions(
         trust = effectiveTrust, expectedAud = options.product, deviceId = options.deviceId,
-        now = options.now, clockSkewSeconds = skew, checkFreshness = false,
+        lastAcceptedIssuedAt = floor, now = options.now, clockSkewSeconds = skew, checkFreshness = false,
     )
     val license = bundle.docs.license?.let { j ->
-        val doc = verifyLicenseDoc(j, reload) ?: return refused(BundleRefusalReason.innerDocRejected)
+        val doc = verifyLicenseDoc(j, reload(options.floors.license)) ?: return refused(BundleRefusalReason.innerDocRejected)
         VerifiedBundleDoc(j, doc)
     }
     val config = bundle.docs.config?.let { j ->
-        val doc = verifyConfigDoc(j, reload) ?: return refused(BundleRefusalReason.innerDocRejected)
+        val doc = verifyConfigDoc(j, reload(options.floors.config)) ?: return refused(BundleRefusalReason.innerDocRejected)
         VerifiedBundleDoc(j, doc)
     }
 
     // 5. The caller's turn: the atomic cache write.
-    return BundleInspection.Ok(VerifiedBundle(bundle.bundleId, bundle.trust, effectiveTrust, license, config))
+    return BundleInspection.Ok(VerifiedBundle(bundle.bundleId, bundle.trust, manifest.doc.issuedAt, manifest.revokedPins, effectiveTrust, license, config))
 }
 
 /** Verify an offline bundle; null on any refusal (use [inspectBundle] when the reason matters). */

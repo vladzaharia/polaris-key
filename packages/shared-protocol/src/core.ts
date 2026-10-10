@@ -90,6 +90,13 @@ export const DATA_ONLY_TAIL_BYTES = 65557;
 /** A client fetches at most this many distinct delegations per update check or `ensure` (§2.3). */
 export const MAX_DELEGATIONS_PER_CHECK = 16;
 
+// ── Trust signers (WIRE-CONTRACT-V4 §2.3) ───────────────────────────────────────────────────
+
+/** When the default trust manifest's header `kid` is not a usable pin, a client retries with
+ *  `?signer=<kid>` for each usable pin in ascending kid byte order, at most this many requests,
+ *  and stops at the first manifest it accepts. */
+export const MAX_TRUST_SIGNER_ATTEMPTS = 4;
+
 /** The `iss` every Polaris Key document carries. A FIXED string, never derived from the base URL
  *  or the serving host — an attacker-controlled host must not be able to name its own issuer.
  *  (Amendment A1: the host-neutral `plrs.im` spelling was withdrawn; a future host move is a

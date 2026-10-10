@@ -68,6 +68,7 @@ import type { AccountContext } from "../../services/identity/accounts/links.js";
 import { audit } from "../audit.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
 import { WriteChecks } from "../lib/writeChecks.js";
+import { requireStepUp } from "../stepUp.js";
 import { handleUserOverrides } from "./accountOverrides.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
@@ -373,6 +374,8 @@ export async function handleProductUsers(
   if (second === "export" && third === undefined) {
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
+    const gate = requireStepUp(session, now);
+    if (gate) return gate;
     const doc = await exportProductUser(ctx, slug, found, identityOn);
     await audit(
       db,
@@ -407,6 +410,8 @@ export async function handleProductUsers(
   if (second === "data" && third === "delete" && fourth === undefined) {
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
+    const gate = requireStepUp(session, now);
+    if (gate) return gate;
     const { stores } = await deleteProductUserData(ctx, slug, found.subject);
     await audit(
       db,
@@ -425,6 +430,8 @@ export async function handleProductUsers(
       return err(405, ErrorCode.BadRequest, "method not allowed");
     const licenseId = third;
     if (fourth === "detach") {
+      const gate = requireStepUp(session, now);
+      if (gate) return gate;
       const done = await detachProductUserLicense(ctx, slug, found, licenseId);
       if (!done.ok) return refused("license_not_found");
       await audit(

@@ -7,7 +7,7 @@
   "uxRows": [],
   "summary": "The first step of the hosted sign-in card when DJDL on a Mac asks someone to sign in: identifier first (the browser offers saved passkeys from the same field), then DJDL's own store account (a product connection) and the built-in providers DJDL ships with. Email and passkeys are always on; there are no per-product sign-in switches behind this card.",
   "compare": [
-    "The card keeps SIGN-IN.md §3.1's measures: 456 px wide, 22 px radius, 48 px fields and buttons, 52 px provider buttons, the lockup at 18 px in muted text above it (an app context), and Help · Privacy · Terms under it. No 'Polaris Key · key.plrs.im' line.",
+    "The card keeps SIGN-IN.md §3.1's measures: 456 px form pane (the card adds a 280 px passport in a landscape window ≥960px), 22 px radius, 48 px fields and buttons, 52 px provider buttons, the lockup at 18 px in muted text above it (an app context), and Help · Privacy · Terms under it. No 'Polaris Key · key.plrs.im' line.",
     "The app header reads 'DJDL wants you to sign in' with the 56 px DJDL icon, then 'Example Audio · on Studio Mac mini' with a desktop icon (the icon follows the device kind: desktop, laptop or phone). Name and icon come from Core's Presentation (HA-12), not a per-product 'App name' field.",
     "The email field is the first and only primary path: one Continue. The address decides what happens next (see identity.sign-in-routes); there is no 'Continue with single sign-on' button for platform connections.",
     "The email field carries autocomplete=\"username webauthn\", so the browser offers a saved passkey as the person types (conditional UI) and choosing it signs in with no code. That suggestion is the browser's own chrome: it isn't drawn here and won't appear in built screenshots.",
@@ -16,7 +16,16 @@
     "'Sign in with a passkey' is a ghost button under the row; 'Have a license key?' and 'Sign in with another device' are quiet links under a rule, each with a 44 px target.",
     "The footer says 'Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.' with a lock, and stays on every step of this sign-in.",
     "Nothing on the card depends on a product toggle for email or passkeys (I-29 retires oidc_enabled, magic_enabled, license_key_claim_enabled and auto_link_enabled). The only way they disappear is an organization requiring SSO for the typed address's domain.",
-    "Phone: the card goes edge to edge under a 56 px lockup row, the star field is dropped, the two quiet links stack as full-width 44 px rows, and every target stays at least 44 px."
+    "Phone: the card goes edge to edge under a 56 px lockup row, the star field is dropped, the two quiet links stack as full-width 44 px rows, and every target stays at least 44 px.",
+    "Hosted card v2 (B8): the one primary is ink; the app header is a neutral strip, and in a landscape window ≥960px the passport (a sunken identity pane: the product's art, icon, the request, developer and device on their own lines, no eyebrow) beside the unchanged 456px form pane; the trust receipt spans the card; refusals are neutral callouts with the fix as the one primary.",
+    "Passport (auth-03): DJDL's banner art, icon, 'DJDL wants you to sign in', 'Example Audio' and 'on Studio Mac mini' on their own lines, top-aligned, at desktop, wide and the 1024 landscape tablet; the 834 portrait tablet and the phone keep the header strip. No 'YOUR NEXT SESSION' eyebrow. Light theme: the pane is sunken light, all text ≥4.5:1.",
+    "Provider buttons in light are white with a 3:1 edge (auth-16), never the lavender secondary tint.",
+    "Preserved (guide Ed. 04): Identifier-first routing",
+    "Preserved (guide Ed. 04): Passkeys",
+    "Preserved (guide Ed. 04): Providers (store account, Apple, Google)",
+    "Preserved (guide Ed. 04): Alternate-device access (Sign in with another device)",
+    "Preserved (guide Ed. 04): Disclosure (who signs in, what the developer never sees)",
+    "Round 2 (UX review): The passport is art-led with no void: the art grows to fill the pane and the icon, request, developer and device sit at its foot (M4)."
   ],
   "status": "mockup",
   "designReview": {

@@ -190,6 +190,14 @@ export class SafeStorageStore implements Store {
     return { backend: "keyring" };
   }
 
+  setDeviceId(id: string): Promise<void> {
+    return this.files.setDeviceId(id);
+  }
+
+  readAnchor(): string | null {
+    return this.files.readAnchor();
+  }
+
   getDeviceId(): Promise<string> {
     return this.files.getDeviceId();
   }

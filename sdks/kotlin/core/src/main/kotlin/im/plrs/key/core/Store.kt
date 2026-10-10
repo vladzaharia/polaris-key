@@ -33,9 +33,6 @@ import kotlinx.serialization.json.put
 /** The wire-v4 update slices Core holds (`CoreContext.updateSlices`). */
 public data class UpdateSlices(val feeds: Map<String, String>, val releaseRecords: Map<String, String>)
 
-/** Set by a bundle import (§7). */
-public data class ImportedBundle(val bundleId: String, val importedAt: Long)
-
 /** The unsigned 403 hint, as stored. */
 public data class BlockInfoRecord(val reason: BlockReason, val allowedRange: AllowedRange? = null)
 
@@ -44,13 +41,16 @@ public data class CacheRecord(
     val trustJws: String? = null,
     val docs: Map<DocumentSlice, String> = emptyMap(),
     val etags: Map<DocumentSlice, String> = emptyMap(),
-    val importedBundle: ImportedBundle? = null,
+    /** The imported `pkey-bundle+jws`, verbatim (§7): activation is re-derived from it on every load. */
+    val bundle: String? = null,
     val lastSyncUnauthorized: Boolean? = null,
     val blocked: BlockInfoRecord? = null,
     /** Wire v4: the committed channel feeds, keyed by canonical channel. */
     val feeds: Map<String, String> = emptyMap(),
     /** Wire v4: release records by lowercase hex SHA-256, kept while a feed pins one. */
     val releaseRecords: Map<String, String> = emptyMap(),
+    /** §1, §4.1: kid of a tombstoned pin → the verified trust manifest that revoked it, verbatim. */
+    val pinRevocations: Map<String, String> = emptyMap(),
     val v: Int = CACHE_RECORD_VERSION,
 ) {
     /** The record as the JSON every SDK writes (`{"docs":{"license":"…"}}`, §4.1). */
@@ -59,12 +59,7 @@ public data class CacheRecord(
         trustJws?.let { put("trustJws", it) }
         put("docs", JsonObject(docs.entries.associate { it.key.wire to JsonPrimitive(it.value) }))
         put("etags", JsonObject(etags.entries.associate { it.key.wire to JsonPrimitive(it.value) }))
-        importedBundle?.let {
-            put("importedBundle", buildJsonObject {
-                put("bundleId", it.bundleId)
-                put("importedAt", jsonInt(it.importedAt))
-            })
-        }
+        bundle?.let { put("bundle", it) }
         lastSyncUnauthorized?.let { put("lastSyncUnauthorized", it) }
         blocked?.let { b ->
             put("blocked", buildJsonObject {
@@ -79,6 +74,7 @@ public data class CacheRecord(
         }
         put("feeds", JsonObject(feeds.mapValues { JsonPrimitive(it.value) }))
         put("releaseRecords", JsonObject(releaseRecords.mapValues { JsonPrimitive(it.value) }))
+        if (pinRevocations.isNotEmpty()) put("pinRevocations", JsonObject(pinRevocations.mapValues { JsonPrimitive(it.value) }))
     }
 
     public companion object {
@@ -100,19 +96,16 @@ public data class CacheRecord(
                 val range = b["allowedRange"].objectValue?.let { AllowedRange(it["min"].stringValue, it["max"].stringValue) }
                 BlockInfoRecord(reason, range)
             }
-            val imported = o["importedBundle"].objectValue?.let { b ->
-                val id = b["bundleId"].stringValue ?: return@let null
-                ImportedBundle(id, b["importedAt"].longValue ?: return@let null)
-            }
             return CacheRecord(
                 trustJws = o["trustJws"].stringValue,
                 docs = slices(o["docs"]),
                 etags = slices(o["etags"]),
-                importedBundle = imported,
+                bundle = o["bundle"].stringValue,
                 lastSyncUnauthorized = o["lastSyncUnauthorized"].boolValue,
                 blocked = blocked,
                 feeds = strings(o["feeds"]),
                 releaseRecords = strings(o["releaseRecords"]),
+                pinRevocations = strings(o["pinRevocations"]),
                 v = if (v in Int.MIN_VALUE..Int.MAX_VALUE) v.toInt() else -1,
             )
         }
@@ -154,6 +147,16 @@ public interface Store {
 
     /** Where the token lives now; null when the store does not report. Never throws. */
     public suspend fun status(): StoreStatus? = null
+
+    /**
+     * The device id this host's platform anchor derives, for a store that keeps the id in a
+     * file a user could copy to another machine (a desktop file or keyring store). Null: no
+     * binding (memory, Keystore, or no anchor readable), so the stored id stands.
+     */
+    public suspend fun anchoredDeviceId(): String? = null
+
+    /** Replace the stored device id (Core calls it after discarding a stored id that disagrees with the anchor). */
+    public suspend fun replaceDeviceId(id: String) {}
 
     /**
      * A private directory for the SDK's own UNSIGNED state beside the token (the update-event
@@ -223,6 +226,12 @@ public class FileStore(public val productSlug: String, public val directory: Fil
         write(deviceFile, id)
         id
     }
+
+    override suspend fun anchoredDeviceId(): String? = io { DeviceId.anchored(productSlug) }
+
+    override suspend fun replaceDeviceId(id: String): Unit = locked { write(deviceFile, id) }
+
+    private suspend inline fun <T> io(crossinline block: () -> T): T = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { block() }
 
     override suspend fun readCache(): CacheRecord? = locked {
         val text = try {
@@ -348,8 +357,34 @@ public object DeviceId {
      * random UUID that the store persists. Android's app-scoped id is the :android module's (P6-12).
      */
     public fun derive(productSlug: String, raw: String? = null): String {
-        val source = raw ?: linuxAnchor() ?: UUID.randomUUID().toString()
+        val source = raw ?: anchor() ?: UUID.randomUUID().toString()
         return fromRaw(productSlug, source)
+    }
+
+    /** The id the platform anchor gives, or null when none is readable. */
+    public fun anchored(productSlug: String): String? = anchor()?.let { fromRaw(productSlug, it) }
+
+    /**
+     * The raw platform anchor: the Linux machine id, macOS's `IOPlatformUUID` (`/usr/sbin/ioreg`) or
+     * Windows' `MachineGuid` (`%SystemRoot%\System32\reg.exe`). Probes run by absolute path, never
+     * through `PATH`. Android's anchor is the :android module's.
+     */
+    internal fun anchor(
+        os: String = System.getProperty("os.name").orEmpty(),
+        run: (List<String>) -> String? = { JvmFingerprintSource.runProbe(it, null, 5_000) },
+        systemRoot: String? = System.getenv("SystemRoot"),
+    ): String? {
+        if (RuntimeFamily.isAndroid) return null
+        return when {
+            os.startsWith("Mac", true) -> run(listOf("/usr/sbin/ioreg", "-rd1", "-c", "IOPlatformExpertDevice"))
+                ?.let { Regex("\"IOPlatformUUID\"\\s*=\\s*\"([^\"]+)\"").find(it)?.groupValues?.get(1) }
+            os.startsWith("Windows", true) -> {
+                val root = systemRoot?.takeIf { it.isNotBlank() } ?: return null
+                run(listOf("$root\\System32\\reg.exe", "query", "HKLM\\SOFTWARE\\Microsoft\\Cryptography", "/v", "MachineGuid"))
+                    ?.let { Regex("MachineGuid\\s+REG_SZ\\s+([A-Za-z0-9-]+)").find(it)?.groupValues?.get(1) }
+            }
+            else -> linuxAnchor()
+        }
     }
 
     private fun linuxAnchor(): String? {

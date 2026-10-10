@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "sync-errors",
-  "description": "The document status ladder. (1) A 401 on the licence document gets exactly one POST /license/token and one retry with the rotated token; the licence was disabled when the document was fetched and re-enabled before the re-acquire, so each answer is the Worker's real one. (2) A 403 version block with allowedRange gates the client as version-too-old while the config document 304s. (3) A 500 on the config document is an error for that document only; the licence 304 clears the block.",
+  "description": "The document status ladder. (1) A 401 on the licence document gets exactly one POST /license/token and one retry with the rotated token; the licence was disabled when the document was fetched and re-enabled before the re-acquire, so each answer is the Worker's real one. (2) A 403 version block with allowedRange gates the client as version-too-old while the config document 304s; the block deletes the cached licence document and its ETag in the same write. (3) So the next licence request is unconditional, and its 200 clears the block; a 500 on the config document is an error for that document only.",
   "features": ["core.sync"],
   "requires": ["core.store"],
   "product": "djdl",
@@ -388,7 +388,7 @@
     },
     {
       "action": "sync",
-      "note": "The config document answers 500; the licence 304s and clears the block.",
+      "note": "The block deleted the licence document and its ETag, so the licence request is unconditional and its 200 clears the block; the config document answers 500.",
       "args": { "force": false },
       "now": 1700000120,
       "exchanges": {
@@ -418,8 +418,7 @@
               "headers": {
                 "x-pkey-device": "{deviceId}",
                 "x-pkey-version": "{version}",
-                "authorization": "Bearer {token}",
-                "if-none-match": "\"gfSC92lGm84iu7-bJm0XC6nAfTZZWMlF3gKQw8oZcY8\""
+                "authorization": "Bearer {token}"
               },
               "requiredHeaders": [
                 "x-pkey-device",
@@ -433,11 +432,13 @@
               "body": null
             },
             "response": {
-              "status": 304,
+              "status": 200,
               "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/jwt",
                 "etag": "\"gfSC92lGm84iu7-bJm0XC6nAfTZZWMlF3gKQw8oZcY8\""
               },
-              "body": ""
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAxMjAsImV4cGlyZXNBdCI6MTcwMDAwMzcyMCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjEyMCwibGljZW5zZUlkIjoibGljX2RqZGxfMSIsInByb2ZpbGUiOnsibmFtZSI6IkFkYSBMb3ZlbGFjZSIsImZpcnN0TmFtZSI6IkFkYSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiYWN0aXZhdGVkQXQiOjE3MDAwMDAwMDB9LCJlbnRpdGxlbWVudHMiOnsicG9sYXJpc1ZwbiI6eyJzdGF0ZSI6ImVuZm9yY2VkIiwidmFsdWUiOnRydWUsInVwZGF0ZWRBdCI6MTcwMDAwMDAwMH19fQ.dxmxXiw7DRR08IoR6ZvaLx33GNeOZuykqr0j3FsGaDb8ToL6zeYgp1z3QlGtE0LusI2lCfrWMbv0TvY2L1oSAA"
             }
           },
           {
@@ -532,10 +533,10 @@
         ]
       },
       "expect": {
-        "applied": false,
+        "applied": true,
         "unauthorized": false,
         "blocked": false,
-        "documents": { "license": "unchanged", "config": "error" },
+        "documents": { "license": "applied", "config": "error" },
         "licenseStatus": "ok",
         "tokenHeld": true
       }

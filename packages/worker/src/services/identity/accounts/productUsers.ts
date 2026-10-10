@@ -62,6 +62,7 @@ import { detachLicense, reassignLicense } from "./claim.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow, verifiedAccountEmails } from "./repo.js";
 import { PRODUCT_SIGNIN_ACTION, signInKindOf } from "./signIn.js";
+import { jsonList, jsonListArg } from "../../../core/sqlIn.js";
 
 /** How long a relink can be undone (S-16 §5.4 item 9: 72 hours). */
 export const RELINK_UNDO_SECONDS = 72 * 60 * 60;
@@ -426,10 +427,6 @@ async function subjectAliases(
   );
 }
 
-function placeholders(n: number): string {
-  return Array.from({ length: n }, () => "?").join(", ");
-}
-
 /** The row: everything the page shows for one subject, for this product only. */
 export async function productUserDetail(
   ctx: AccountContext,
@@ -476,12 +473,12 @@ export async function productUserDetail(
     `SELECT device_id, label, status, platform, app_version, license_id, last_seen, subject
        FROM devices
       WHERE product = ?
-        AND (subject IN (${placeholders(subjects.length)})
-             ${licenseIds.length ? `OR license_id IN (${placeholders(licenseIds.length)})` : ""})
+        AND (subject IN ${jsonList()}
+             ${licenseIds.length ? `OR license_id IN ${jsonList()}` : ""})
       ORDER BY last_seen DESC, device_id`,
     product,
-    ...subjects,
-    ...licenseIds,
+    jsonListArg(subjects),
+    ...(licenseIds.length ? [jsonListArg(licenseIds)] : []),
   );
 
   const grant = await db.first<{ claims_json: string | null }>(
@@ -521,10 +518,10 @@ export async function productUserDetail(
       payload_json: string | null;
     }>(
       `SELECT id, type, created_at, payload_json FROM subject_events
-        WHERE product = ? AND subject IN (${placeholders(subjects.length)})
+        WHERE product = ? AND subject IN ${jsonList()}
         ORDER BY created_at DESC, id LIMIT 50`,
       product,
-      ...subjects,
+      jsonListArg(subjects),
     )
   ).map((e) => {
     let payload: Record<string, unknown> = {};
@@ -563,10 +560,10 @@ export async function productUserDetail(
       summary: string | null;
     }>(
       `SELECT id, at, action, actor_name, target_kind, target_id, summary FROM audit
-        WHERE product = ? AND target_id IN (${placeholders(targets.length)})
+        WHERE product = ? AND target_id IN ${jsonList()}
         ORDER BY at DESC, id LIMIT ?`,
       product,
-      ...targets,
+      jsonListArg(targets),
       USER_AUDIT_LIMIT,
     )
   ).map((a) => ({
@@ -600,7 +597,9 @@ export async function productUserDetail(
     })),
     devices: devices.map((d) => ({
       deviceId: d.device_id,
-      label: d.label,
+      // A device bound to this licence by someone else is not this person's data.
+      label:
+        d.subject !== null && !subjects.includes(d.subject) ? null : d.label,
       status: d.status,
       platform: d.platform,
       appVersion: d.app_version,
@@ -764,12 +763,12 @@ async function relinksForSubjects(
   const rows = await db.all<RelinkRow>(
     `SELECT * FROM license_relinks
       WHERE product = ?
-        AND (from_subject IN (${placeholders(subjects.length)})
-             OR to_subject IN (${placeholders(subjects.length)}))
+        AND (from_subject IN ${jsonList()}
+             OR to_subject IN ${jsonList()})
       ORDER BY created_at DESC, id LIMIT 50`,
     product,
-    ...subjects,
-    ...subjects,
+    jsonListArg(subjects),
+    jsonListArg(subjects),
   );
   const out: ProductUserRelink[] = [];
   for (const r of rows) {

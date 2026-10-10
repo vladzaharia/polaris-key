@@ -292,6 +292,41 @@ describe("pkey sdk --lang", () => {
     expect(io.out()).toBe(renderSdkConfig("node", await facts()));
   });
 
+  it("warns on stderr when discovery lists one signing key, and not when it lists two", async () => {
+    const cwd = await tempDir();
+    const args = [
+      "sdk",
+      "--lang",
+      "node",
+      "--product",
+      "acme",
+      "--release-key",
+      `${RELEASE_KID}=${RELEASE_KEY}`,
+    ];
+    const one = capture();
+    expect(
+      await runPkey(args, {
+        cwd,
+        fetchImpl: fakeFetch(DISCOVERY).fetchImpl,
+        ...one,
+      }),
+    ).toBe(0);
+    expect(one.err()).toContain("stage a second key");
+    const two = structuredClone(DISCOVERY) as {
+      trust: { pinnedKeys: Record<string, string> };
+    };
+    two.trust.pinnedKeys["acme-backup-2026"] = OTHER_KEY;
+    const io = capture();
+    expect(
+      await runPkey(args, {
+        cwd,
+        fetchImpl: fakeFetch(two).fetchImpl,
+        ...io,
+      }),
+    ).toBe(0);
+    expect(io.err()).not.toContain("stage a second key");
+  });
+
   it("emits a JavaScript module for a .js --out", async () => {
     const js = renderSdkConfig("node", await facts(), {
       out: "polaris.config.mjs",

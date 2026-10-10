@@ -26,13 +26,13 @@
   {
     "key": "distribution",
     "title": "Release and distribution",
-    "accent": "distribution",
+    "accent": "release",
     "blurb": "Releases from CI; distribution channels with a page each, storefront tab included; channel wizards with human steps only; rollouts across channels."
   },
   {
     "key": "packages",
     "title": "Packages, release tracks and updates",
-    "accent": "update",
+    "accent": "release",
     "blurb": "Package feeds on pkg.plrs.im; release tracks (stable, beta, dev, custom) and how store testing lanes map from them; updater setup and feeds; packs for games and apps."
   },
   {
@@ -63,6 +63,6 @@
     "key": "portal",
     "title": "Customer portal",
     "accent": "core",
-    "blurb": "The customer's Library, product pages, license cards, devices, sign-in and activation, Discover and storefront links, connected apps and account settings."
+    "blurb": "The customer's Library, product pages, license cards, devices, sign-in and activation, Discover and storefront links, connected apps and account settings. The hosted sign-in, device-code and consent pages are under Identity (identity.*)."
   }
 ]

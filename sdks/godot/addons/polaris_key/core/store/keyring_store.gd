@@ -30,8 +30,8 @@ extends PKeyStore
 ##
 ## PKeyCore picks this store by default on macOS, Windows and Linux (preferred()); pass
 ## PKeyOptions.store to override. PKEY_DESKTOP_KEYRING=0 in the environment keeps the file store
-## (status() still says why), for headless machines and test runs that must not touch the
-## developer's keyring.
+## (status() still says why), for test runs that must not touch the developer's keyring; it is
+## honoured only in DEBUG builds (env_switch_honoured), never in a shipped release build.
 
 const SERVICE_PREFIX := "pkey:"
 const ACCOUNT := "device-token"
@@ -66,10 +66,22 @@ static func preferred(p_product: String, root := "user://pkey") -> PKeyStore:
 	match PKeyHeaders.platform():
 		PKeyConstants.Platform.MACOS, PKeyConstants.Platform.WINDOWS, PKeyConstants.Platform.LINUX:
 			var store := PKeyKeyringStore.new(p_product, null, root)
-			if OS.get_environment(ENV_SWITCH) == "0":
+			if env_switch_honoured() and OS.get_environment(ENV_SWITCH) == "0":
 				store.disabled = "the OS keyring is switched off (%s=0)" % ENV_SWITCH
 			return store
 	return PKeyFileStore.new(p_product, root)
+
+
+## Whether the environment switch applies: only in debug builds (the editor, debug exports). A
+## shipped (release) build ignores it, so a process environment cannot push a player's token out of
+## the OS keyring into the 0600 file. Tests replace the answer with `debug_build_source`.
+static var debug_build_source: Callable
+
+
+static func env_switch_honoured() -> bool:
+	if debug_build_source.is_valid():
+		return bool(debug_build_source.call())
+	return OS.is_debug_build()
 
 
 ## Why the OS keyring is not used here, or "" when it is. Reads nothing from the keyring.
@@ -133,6 +145,14 @@ func has_device_id() -> bool:
 
 func get_device_id() -> String:
 	return files.get_device_id()
+
+
+func bindable() -> bool:
+	return true
+
+
+func set_device_id(id: String) -> bool:
+	return files.set_device_id(id)
 
 
 func read_cache() -> Variant:

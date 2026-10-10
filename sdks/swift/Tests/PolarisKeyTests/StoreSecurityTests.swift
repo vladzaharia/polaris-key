@@ -121,10 +121,11 @@ final class StoreSecurityTests: XCTestCase {
             trustJws: "d.e.f",
             docs: [.license: "a.b.c", .config: "g.h.i"],
             etags: [.license: "v9", .config: "c3"],
-            importedBundle: ImportedBundle(bundleId: "01JB", importedAt: 1_700_000_000),
+            bundle: "x.y.z",
             lastSyncUnauthorized: true,
             blocked: BlockInfoRecord(
-                reason: .versionTooOld, allowedRange: AllowedRange(min: "1")))
+                reason: .versionTooOld, allowedRange: AllowedRange(min: "1")),
+            pinRevocations: ["pkey-test-prod-2026": "m.n.o"])
         try await store.writeCache(record)
         let loaded = await store.readCache()
         XCTAssertEqual(loaded, record)

@@ -36,7 +36,7 @@ Today's portal is a single `App.tsx` with ad-hoc fetching and no routing model (
 
 - Split `portal/App.tsx` into pages and components under `packages/admin/src/portal/`; TanStack Query for every portal API call.
 - Hash router with the §3.3 routes (Library `#/` default, `#/discover`, `#/p/:product[/:section]`, `#/account[/:section]`) and the redirects (`#/licenses` → `#/`, `#/licenses/:p/:id` → `#/p/:p/license?license=:id`, `#/downloads` → `#/`, `#/profile` → `#/account`, `#/claim?key=` → `#/?activate=<key>`, `#/account/emails|passkeys|linked` → `#/account/methods`); the `/activate?key=` path handler that lands on `#/?activate=`.
-- `PortalShell`: compact `PolarisLockup`, Library (count) and Discover nav with the 2 px violet underline, **Activate license** right-aligned next to the `AccountMenu` (an outlined button with the key glyph in `accent-fg`), the phone bottom bar (Library · Activate pill · Discover) with safe-area padding, footer "Polaris Key · key.plrs.im · Help · Privacy · Terms".
+- `PortalShell`: compact `PolarisLockup`, Library (count) and Discover nav with the 2 px underline in the service accent of the page it marks (core violet for Library and Discover, B17), **Activate license** right-aligned next to the `AccountMenu` (an outlined button with the key glyph in `accent-fg`), the phone bottom bar (Library · Activate pill · Discover) with safe-area padding, footer "Polaris Key · key.plrs.im · Help · Privacy · Terms".
 - Theme persistence; `document.title` "<Page> · Polaris Key"; one error mapping from portal API codes to copy (§6.4).
 - `ui/Button` gains the `quiet` and `action` variants (§5.2).
 

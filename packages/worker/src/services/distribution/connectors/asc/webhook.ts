@@ -46,7 +46,8 @@ import {
   importHmacKey,
   kvKey,
 } from "../../../../core/platform.js";
-import { rateLimitOk } from "../../../../core/rateLimit.js";
+import { claimOnce, releaseClaim } from "../../../../core/atomicClaim.js";
+import { clientNetwork, rateLimitOk } from "../../../../core/rateLimit.js";
 import { openOutletCredential } from "../../../../core/outletCredentials.js";
 import {
   eventSeen,
@@ -67,6 +68,10 @@ import {
 } from "./map.js";
 import { ascRun, finishRun } from "./run.js";
 import { ASC_CONNECTOR, ascSetup } from "./setup.js";
+import {
+  BodyTooLargeError,
+  readBodyBytes,
+} from "../../../../core/cappedBody.js";
 
 /** How long a processed `data.id` is remembered (7 days, as for GitHub deliveries). */
 export const ASC_DELIVERY_TTL_SECONDS = 604_800;
@@ -97,10 +102,12 @@ const unauthorized = () =>
   errorResponse(401, "unauthorized", "invalid webhook signature");
 
 async function readBody(req: Request): Promise<Uint8Array | null> {
-  const declared = Number(req.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > MAX_WEBHOOK_BODY) return null;
-  const buf = new Uint8Array(await req.arrayBuffer());
-  return buf.byteLength > MAX_WEBHOOK_BODY ? null : buf;
+  try {
+    return await readBodyBytes(req, MAX_WEBHOOK_BODY);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError) return null;
+    throw e;
+  }
 }
 
 function deliveryKey(product: string, id: string): string {
@@ -127,11 +134,13 @@ export async function handleAscWebhook(
   const body = await readBody(req);
   if (!body)
     return errorResponse(413, "body_too_large", "webhook body too large");
+  // Unauthenticated traffic is limited per client IP; the product bucket is charged
+  // only once the HMAC checked out, so junk cannot lock Apple's deliveries out.
   if (
     !(await rateLimitOk(
       env,
       slug,
-      { bucket: "ascWebhook", id: "asc", ...ASC_WEBHOOK_RATE },
+      { bucket: "ascWebhookIp", id: clientNetwork(req), ...ASC_WEBHOOK_RATE },
       now,
     ))
   )
@@ -150,6 +159,15 @@ export async function handleAscWebhook(
     !(await signatureMatches(secret.value.secret, body, presented))
   )
     return unauthorized();
+  if (
+    !(await rateLimitOk(
+      env,
+      slug,
+      { bucket: "ascWebhook", id: "asc", ...ASC_WEBHOOK_RATE },
+      now,
+    ))
+  )
+    return errorResponse(429, "rate_limited", "too many webhook deliveries");
 
   const raw = new TextDecoder().decode(body);
   let data: Record<string, unknown>;
@@ -185,6 +203,9 @@ export async function handleAscWebhook(
     (await env.HOT.get(kvk)) !== null ||
     (seen !== null && seen.outcome !== "failed")
   )
+    return json({ ok: true, duplicate: true });
+  // The KV get above is a fast path only; the atomic claim is the Durable Object's.
+  if (!(await claimOnce(env, "webhook-claim", kvk, 86_400)))
     return json({ ok: true, duplicate: true });
   await env.HOT.put(kvk, "1", { expirationTtl: ASC_DELIVERY_TTL_SECONDS });
 
@@ -256,7 +277,10 @@ async function processEvent(
   }
   try {
     await setEventOutcome(write, ASC_CONNECTOR, eventId, outcome);
-    if (outcome === "failed") await run.env.HOT.delete(kvk);
+    if (outcome === "failed") {
+      await run.env.HOT.delete(kvk);
+      await releaseClaim(run.env, "webhook-claim", kvk);
+    }
     await finishRun(run, error);
   } catch {
     /* the event row still says `received`; the poller re-drives it (`poll.ts`) */

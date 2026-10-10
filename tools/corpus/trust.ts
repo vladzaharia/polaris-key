@@ -1,4 +1,6 @@
-// `cases.json#/trustCases`: the trust-set vectors (§1) and the v4 trust claim cases.
+// `cases.json#/trustCases`: the trust-set vectors (§1), the v4 trust claim cases, and V4 §1's
+// key custody: the status allow-list, canonical published keys and pinned-key tombstones with
+// their signed evidence (`pinRevocations`).
 
 import {
   ALT_KID,
@@ -21,6 +23,7 @@ import {
   withNonWire,
   type WithNonWire,
 } from "./nonwire.js";
+import { refTrustOutcome } from "./reference/trust.js";
 
 // ── §1 trust-set vectors ─────────────────────────────────────────────────────
 // v1's eleven, carried verbatim in meaning: only `iss` (§8) and `typ` (§2) moved. The merge,
@@ -30,14 +33,23 @@ interface TrustCaseV2 {
   id: string;
   description: string;
   pinned: Record<string, string>;
+  /** The discovered set held before this manifest (kept when it is refused). */
   before: Record<string, string>;
+  /** V4 §4.1: the `pinRevocations` slice held before this manifest — kid → the revoking
+   *  manifest, verbatim. Absent means none. A runner re-derives the tombstones from it (in
+   *  ascending manifest `issuedAt`) before it verifies `manifestJws`. */
+  pinRevocations?: Record<string, string>;
   manifestJws: string;
   now: number;
   checkFreshness?: boolean;
   expect: {
     accepted: boolean;
+    /** The effective set after: the usable pins over the discovered keys. */
     trust: Record<string, string>;
     issuedAt?: number;
+    /** V4 §1: every tombstoned pin after this case, the evidence's and this manifest's,
+     *  ascending byte order. Absent means none. */
+    revokedPins?: string[];
   };
 }
 
@@ -50,7 +62,7 @@ export async function buildTrustCasesV2(): Promise<TrustCaseV2[]> {
   ): Promise<string> =>
     signAs(trustManifestV3({ keys }), signWith, "pkey-trust+jws");
 
-  return [
+  const all: TrustCaseV2[] = [
     {
       id: "trust-learn-rotated-key",
       description:
@@ -223,7 +235,11 @@ export async function buildTrustCasesV2(): Promise<TrustCaseV2[]> {
     },
     // Wire contract v4 §3: the trust-manifest claim cases, after the family's last case.
     ...(await buildTrustCasesV4()).map(placeNonWire),
+    // V4 §1: key custody, appended after the claim cases.
+    ...(await buildTrustCustodyCases()),
   ];
+  checkTrustCases(all);
+  return all;
 }
 
 async function buildTrustCasesV4(): Promise<WithNonWire<TrustCaseV2>[]> {
@@ -299,7 +315,7 @@ async function buildTrustCasesV4(): Promise<WithNonWire<TrustCaseV2>[]> {
     ),
     await mk(
       "trust-member-shapes-ignored",
-      "V4 §3 'Members outside the claims': no `jwksUrl` and no `cacheSeconds`, a key with no `status`, and a key whose `alg` is `1` (skipped). Swift's synthesized decoders refused the manifest.",
+      "V4 §3 'Members outside the claims': no `jwksUrl` and no `cacheSeconds`, a key with no `status`, and a key whose `alg` is `1`. The manifest is accepted (Swift's synthesized decoders refused it); both odd keys are skipped, the status-less one by V4 §1's status allow-list (it used to be trusted).",
       {
         keys: [
           keyEntry(PIN_KID, pub(PIN_KID), "active"),
@@ -324,7 +340,7 @@ async function buildTrustCasesV4(): Promise<WithNonWire<TrustCaseV2>[]> {
         drop: ["jwksUrl", "cacheSeconds"],
         expect: {
           accepted: true,
-          trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+          trust: { [PIN_KID]: pub(PIN_KID) },
           issuedAt: V3_ISSUED,
         },
       },
@@ -341,4 +357,279 @@ async function buildTrustCasesV4(): Promise<WithNonWire<TrustCaseV2>[]> {
       { checkFreshness: false },
     ),
   ];
+}
+
+// ── V4 §1: key custody ───────────────────────────────────────────────────────────────────────
+// Two pins (`PIN_KID` and `ALT_KID`) wherever a pin is revoked. Each case's expectation is
+// recomputed by the reference (`reference/trust.ts`), and every one but the substitution
+// control is refused, or answered differently, by a verifier without the rule it pins.
+
+/** The non-canonical spelling of a canonical base64url string: the lowest unused bit of the
+ *  last character set. A lenient decoder reads the same bytes. */
+export function noncanonical(s: string): string {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  if (s.length % 4 === 0) throw new Error("noncanonical: no unused bits");
+  const last = alphabet.indexOf(s[s.length - 1]!);
+  if ((last & 1) !== 0) throw new Error("noncanonical: input not canonical");
+  return s.slice(0, -1) + alphabet[last | 1]!;
+}
+
+async function buildTrustCustodyCases(): Promise<TrustCaseV2[]> {
+  const now = V3_ISSUED + 100;
+  const PINS2 = { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) };
+  const manifest = (
+    keys: Record<string, unknown>[],
+    signWith: string,
+    issuedAt = V3_ISSUED,
+  ): Promise<string> =>
+    signAs(trustManifestV3({ keys, issuedAt }), signWith, "pkey-trust+jws");
+  // Evidence: ALT_KID's manifest listing PIN_KID revoked, and the reverse, older and newer.
+  const altRevokesPin = await manifest(
+    [
+      keyEntry(PIN_KID, pub(PIN_KID), "revoked"),
+      keyEntry(ALT_KID, pub(ALT_KID), "active"),
+    ],
+    ALT_KID,
+    V3_ISSUED - 1000,
+  );
+  const pinRevokesAlt = await manifest(
+    [
+      keyEntry(PIN_KID, pub(PIN_KID), "active"),
+      keyEntry(ALT_KID, pub(ALT_KID), "revoked"),
+    ],
+    PIN_KID,
+    V3_ISSUED - 500,
+  );
+
+  const cases: TrustCaseV2[] = [
+    {
+      id: "key-status-unknown-skipped",
+      description:
+        'V4 §1 status allow-list: only `active`, `staged` and `retired` keep a key. `suspended`, the number 1 and `null` are skipped, never fatal; the manifest is accepted with the pin alone. A verifier that dropped only `"revoked"` trusted all three.',
+      pinned: PINNED_V3,
+      before: {},
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          keyEntry(ALT_KID, pub(ALT_KID), "suspended"),
+          { ...keyEntry("k-status-number", FOREIGN_PUB, "x"), status: 1 },
+          { ...keyEntry("k-status-null", FOREIGN_PUB, "x"), status: null },
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN_KID]: pub(PIN_KID) },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "key-status-case-variant-skipped",
+      description:
+        "V4 §1: statuses are exact, case-sensitive strings. `Staged` and `REVOKED` are unknown statuses, so both keys are skipped (a `REVOKED` key does not revoke, and is not trusted either).",
+      pinned: PINNED_V3,
+      before: {},
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          keyEntry(ALT_KID, pub(ALT_KID), "Staged"),
+          keyEntry("k-status-upper", FOREIGN_PUB, "REVOKED"),
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN_KID]: pub(PIN_KID) },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "trust-pubkey-noncanonical-skipped",
+      description:
+        "V4 §1 canonical base64url: a published (unpinned) key whose last character has an unused bit set. A lenient decoder reads the same 32 bytes; the entry is skipped, not fatal, and the manifest is accepted.",
+      pinned: PINNED_V3,
+      before: {},
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          keyEntry(ALT_KID, noncanonical(pub(ALT_KID)), "staged"),
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [PIN_KID]: pub(PIN_KID) },
+        issuedAt: V3_ISSUED,
+      },
+    },
+    {
+      id: "pin-revoked-by-other-pin",
+      description:
+        "V4 §1 tombstone rule 1: a manifest signed by the usable pin ALT lists the other pin with its exact pinned bytes as `revoked`. The pin is tombstoned: it leaves the effective set, and this manifest is its evidence (`pinRevocations`). A verifier with terminal pins kept it.",
+      pinned: PINS2,
+      before: {},
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "revoked"),
+          keyEntry(ALT_KID, pub(ALT_KID), "active"),
+        ],
+        ALT_KID,
+      ),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [ALT_KID]: pub(ALT_KID) },
+        issuedAt: V3_ISSUED,
+        revokedPins: [PIN_KID],
+      },
+    },
+    {
+      id: "pin-self-revocation-refused",
+      description:
+        "V4 §1 tombstone rule 2: a manifest that lists its own signer as `revoked` is refused in full, and the previous trust is kept. A key cannot revoke itself, so the usable pins are never empty.",
+      pinned: PINS2,
+      before: {},
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "revoked"),
+          keyEntry(ALT_KID, pub(ALT_KID), "active"),
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: { accepted: false, trust: PINS2 },
+    },
+    {
+      id: "pin-revocation-sticky",
+      description:
+        "V4 §1 tombstone rule 3: the pin was tombstoned earlier (the evidence in `pinRevocations`), and a newer manifest from the other pin lists it as `active` with its exact bytes. A tombstone is permanent: the kid stays out of every set.",
+      pinned: PINS2,
+      before: { [ALT_KID]: pub(ALT_KID) },
+      pinRevocations: { [PIN_KID]: altRevokesPin },
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          keyEntry(ALT_KID, pub(ALT_KID), "active"),
+        ],
+        ALT_KID,
+      ),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [ALT_KID]: pub(ALT_KID) },
+        issuedAt: V3_ISSUED,
+        revokedPins: [PIN_KID],
+      },
+    },
+    {
+      id: "pin-revocation-evidence-order",
+      description:
+        "V4 §4.1: the evidence is re-verified in ascending manifest `issuedAt`, each entry against the pins minus the tombstones before it. ALT revoked PIN first (issuedAt − 1000), so PIN's later revocation of ALT (− 500) has a tombstoned signer and is dropped. The map lists ALT's entry first, so a verifier that walks it in member or kid order tombstones ALT instead and refuses this manifest.",
+      pinned: PINS2,
+      before: { [ALT_KID]: pub(ALT_KID) },
+      pinRevocations: {
+        [ALT_KID]: pinRevokesAlt,
+        [PIN_KID]: altRevokesPin,
+      },
+      manifestJws: await manifest(
+        [keyEntry(ALT_KID, pub(ALT_KID), "active")],
+        ALT_KID,
+      ),
+      now,
+      expect: {
+        accepted: true,
+        trust: { [ALT_KID]: pub(ALT_KID) },
+        issuedAt: V3_ISSUED,
+        revokedPins: [PIN_KID],
+      },
+    },
+    {
+      id: "pin-revocation-evidence-mismatch-dropped",
+      description:
+        "V4 §4.1: an evidence entry counts only when its manifest verifies and revokes the kid it is filed under. Filed under PIN, this one (signed by ALT) does not list PIN at all, so it is dropped and PIN signs the new manifest as usual.",
+      pinned: PINS2,
+      before: {},
+      pinRevocations: {
+        [PIN_KID]: await manifest(
+          [keyEntry(ALT_KID, pub(ALT_KID), "active")],
+          ALT_KID,
+          V3_ISSUED - 1000,
+        ),
+      },
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          keyEntry(ALT_KID, pub(ALT_KID), "staged"),
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: { accepted: true, trust: PINS2, issuedAt: V3_ISSUED },
+    },
+    {
+      id: "manifest-signed-by-tombstoned-pin-refused",
+      description:
+        "V4 §1 tombstone rule 3: a tombstoned pin leaves the usable pins for every purpose. A well-formed manifest it signed is refused, and the previous trust (the other pin) is kept.",
+      pinned: PINS2,
+      before: { [ALT_KID]: pub(ALT_KID) },
+      pinRevocations: { [PIN_KID]: altRevokesPin },
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          keyEntry(ALT_KID, pub(ALT_KID), "staged"),
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: {
+        accepted: false,
+        trust: { [ALT_KID]: pub(ALT_KID) },
+        revokedPins: [PIN_KID],
+      },
+    },
+    {
+      id: "pin-revoked-with-other-bytes-is-substitution",
+      description:
+        "V4 §1 tombstone rule 5: listing a pinned kid with other bytes stays a substitution, even with `status: revoked`. The whole manifest is refused (the control: this verdict predates tombstones).",
+      pinned: PINS2,
+      before: {},
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, FOREIGN_PUB, "revoked"),
+          keyEntry(ALT_KID, pub(ALT_KID), "active"),
+        ],
+        ALT_KID,
+      ),
+      now,
+      expect: { accepted: false, trust: PINS2 },
+    },
+  ];
+  return cases;
+}
+
+/** Recompute every trust case's outcome with the reference (V4 §1, §4.1). */
+export function checkTrustCases(cases: TrustCaseV2[]): void {
+  for (const c of cases) {
+    const want = refTrustOutcome(c);
+    const got = {
+      accepted: c.expect.accepted,
+      trust: c.expect.trust,
+      revokedPins: c.expect.revokedPins ?? [],
+    };
+    const norm = (t: Record<string, string>) =>
+      JSON.stringify(Object.entries(t).sort(([a], [b]) => (a < b ? -1 : 1)));
+    if (
+      want.accepted !== got.accepted ||
+      norm(want.trust) !== norm(got.trust) ||
+      JSON.stringify(want.revokedPins) !== JSON.stringify(got.revokedPins) ||
+      (c.expect.issuedAt !== undefined && want.issuedAt !== c.expect.issuedAt)
+    )
+      throw new Error(
+        `trustCases: the reference disagrees on ${c.id}: ${JSON.stringify(want)}`,
+      );
+  }
 }

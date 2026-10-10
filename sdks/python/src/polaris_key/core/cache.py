@@ -8,10 +8,14 @@ Every load re-verifies EVERYTHING, in this order:
 1. a record whose ``v != 3`` is DISCARDED, never migrated — one network round trip is the
    right price for not carrying poisoned state forward, and an air-gapped install
    re-imports its bundle;
-2. ``trustJws`` against the PINS only, freshness off → the effective set;
-3. each entry of ``docs`` against THAT set, freshness off, full §3 claim validation
+2. ``pinRevocations`` (the evidence for each tombstoned pin) against the pins, in ascending
+   manifest ``issuedAt`` → the usable pins;
+3. ``trustJws`` against the USABLE pins only, freshness off → the effective set;
+4. each entry of ``docs`` against THAT set, freshness off, full §3 claim validation
    including ``aud`` and ``deviceId``;
-4. every derived counter — the per-type anti-replay floors, ``lastVerifiedAt``, the
+5. ``bundle`` (an offline activation) on the bundle RELOAD profile; only when its licence
+   document is byte-identical to the cached one does it count as ``activation="bundle"``;
+6. every derived counter — the per-type anti-replay floors, ``lastVerifiedAt``, the
    monotonic clock floor — computed from what verified, never read from the file.
 
 Any artifact that fails is treated as ABSENT and dropped from the in-memory record, so a
@@ -21,8 +25,8 @@ forging one now requires forging a signature.
 
 WHY WRITES ARE READ-MODIFY-WRITE OF THE WHOLE RECORD
 
-The record has independent slices — two documents, two ETags, a trust manifest, an import
-marker — updated by different call sites at different times. Serialising every mutation
+The record has independent slices — two documents, two ETags, a trust manifest, an imported
+bundle — updated by different call sites at different times. Serialising every mutation
 through :meth:`CacheManager.patch` is what keeps a config write from clobbering a licence
 slice that landed moments earlier in the same sync pass.
 """
@@ -30,10 +34,11 @@ slice that landed moments earlier in the same sync pass.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, Tuple, TypeVar
 
+from .bundle import inspect_bundle
 from .models import BlockedState, ConfigDoc, LicenseDoc
-from .store import CacheRecord, ImportedBundle
+from .store import CacheRecord
 from .verify import verify_config_doc, verify_license_doc
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -57,14 +62,26 @@ class CachedDoc(Generic[T]):
     doc: T
 
 
+@dataclass(frozen=True)
+class LoadedBundle:
+    """The cached offline bundle (§7), when it re-verified on the reload profile."""
+
+    bundleId: str
+    #: The documents it carried, in §7 order.
+    docs: Tuple[str, ...]
+    #: The signed fact behind ``activation="bundle"`` (with no token held): it carried a
+    #: licence document byte-identical to the cached one.
+    activates: bool
+
+
 @dataclass
 class LoadedCache:
     """What a load produced. Every field is DERIVED from a signature checked moments ago."""
 
     license: Optional[CachedDoc] = None
     config: Optional[CachedDoc] = None
-    #: Present ⇒ this install was activated (or configured) from an offline bundle (§7).
-    importedBundle: Optional[ImportedBundle] = None
+    #: Present ⇒ the cached offline bundle (§7) re-verified on the reload profile.
+    bundle: Optional[LoadedBundle] = None
     lastSyncUnauthorized: bool = False
     blocked: Optional[BlockedState] = None
     #: Epoch MILLIseconds of the last verification, derived from the newest document's
@@ -139,6 +156,11 @@ class CacheManager:
             return self._loaded
         self._record = rec
 
+        # §4.1: the tombstones first, so the manifest, the documents and the bundle all verify
+        # against the usable pins. Evidence that no longer verifies is dropped on the next write.
+        self._trust.load_evidence(rec.pinRevocations)
+        self._keep_evidence()
+
         if rec.trustJws and not self._trust.load_cached(rec.trustJws, now=now):
             # Drop it in memory too, so a later patch cannot write it back.
             self._record.trustJws = None
@@ -153,6 +175,7 @@ class CacheManager:
                 trust,
                 expected_aud=self._ctx.product,
                 device_id=self._ctx.device_id,
+                last_accepted_issued_at=None,
                 now=now,
                 # A cached document is EXPECTED to be past its short `expiresAt`; its
                 # signed outer bound is `graceUntil`, which the gate enforces against the
@@ -174,6 +197,7 @@ class CacheManager:
                 trust,
                 expected_aud=self._ctx.product,
                 device_id=self._ctx.device_id,
+                last_accepted_issued_at=None,
                 now=now,
                 check_freshness=False,
             )
@@ -184,11 +208,58 @@ class CacheManager:
                 self._ctx.raise_floor(doc.issuedAt)
                 newest = max(newest, doc.issuedAt)
 
-        self._loaded.importedBundle = self._record.importedBundle
+        self._loaded.bundle = self._reload_bundle(now)
+        # A cached manifest may have tombstoned a pin whose evidence the record lacked.
+        self._keep_evidence()
         self._loaded.lastSyncUnauthorized = self._record.lastSyncUnauthorized is True
         self._loaded.blocked = self._record.blocked
         self._loaded.lastVerifiedAt = newest * 1000 if newest > 0 else None
         return self._loaded
+
+    def _reload_bundle(self, now: Optional[int]) -> Optional[LoadedBundle]:
+        """§7 reload profile: the cached bundle's own signature and claims, without the import
+        window, against the usable pins; its inner documents against its own manifest's set
+        with no floor. It activates only when its licence document is the cached one, byte for
+        byte — otherwise a stale bundle could vouch for a licence it never carried."""
+        jws = self._record.bundle if self._record is not None else None
+        if not isinstance(jws, str):
+            return None
+        result = inspect_bundle(
+            jws,
+            pinned=self._ctx.pinned_trust,
+            tombstones=self._trust.revoked_pins,
+            product=self._ctx.product,
+            device_id=self._ctx.device_id,
+            now=self._ctx.now() if now is None else now,
+            floors={"license": None, "config": None},
+            profile="reload",
+        )
+        if not result.ok:
+            return None
+        docs = result.bundle.docs
+        lic = docs.get("license")
+        return LoadedBundle(
+            bundleId=result.bundle.bundleId,
+            docs=tuple(n for n in ("license", "config") if n in docs),
+            activates=lic is not None
+            and self._loaded.license is not None
+            and lic.jws == self._loaded.license.jws,
+        )
+
+    def _keep_evidence(self) -> None:
+        """The ``pinRevocations`` slice in memory follows the custodian's evidence."""
+        if self._record is not None:
+            self._record.pinRevocations = self._trust.pin_revocations
+
+    def trust_jws(self) -> Optional[str]:
+        """The cached trust manifest JWS as held (verified on load, or dropped)."""
+        t = self._record.trustJws if self._record is not None else None
+        return t if isinstance(t, str) else None
+
+    def bundle_jws(self) -> Optional[str]:
+        """The cached bundle JWS as stored (unverified), for the byte-identical re-import check."""
+        b = self._record.bundle if self._record is not None else None
+        return b if isinstance(b, str) else None
 
     def _drop_slice(self, slice_name: str) -> None:
         """In-memory only: a slice that failed verification is absent for the rest of this
@@ -216,6 +287,20 @@ class CacheManager:
         self._ctx.raise_floor(doc.issuedAt)
         self._stage("config", jws, etag)
 
+    def revoke_slice(self, slice_name: str) -> None:
+        """Remove one document slice (artifact, ETag and derived state) in memory, for the
+        next :meth:`flush` to persist. Called when the server has said, in
+        so many words, that this device must no longer hold it: a hard 401 for the slice it
+        answered, or a 403 build block for the licence. The monotonic floor is NOT lowered —
+        the dropped document's ``issuedAt`` stays a signed lower bound on real time."""
+        rec = self._ensure_record()
+        rec.docs.pop(slice_name, None)
+        rec.etags.pop(slice_name, None)
+        if slice_name == "license":
+            self._loaded.license = None
+        elif slice_name == "config":
+            self._loaded.config = None
+
     def _stage(self, slice_name: str, jws: str, etag: Optional[str]) -> None:
         rec = self._ensure_record()
         rec.docs[slice_name] = jws
@@ -238,7 +323,7 @@ class CacheManager:
         trust_jws: Any = _UNSET,
         blocked: Any = _UNSET,
         last_sync_unauthorized: Any = _UNSET,
-        imported_bundle: Any = _UNSET,
+        pin_revocations: Any = _UNSET,
         feeds: Any = _UNSET,
         release_records: Any = _UNSET,
     ) -> None:
@@ -254,9 +339,8 @@ class CacheManager:
         if last_sync_unauthorized is not _UNSET:
             rec.lastSyncUnauthorized = last_sync_unauthorized is True
             self._loaded.lastSyncUnauthorized = last_sync_unauthorized is True
-        if imported_bundle is not _UNSET:
-            rec.importedBundle = imported_bundle
-            self._loaded.importedBundle = imported_bundle
+        if pin_revocations is not _UNSET:
+            rec.pinRevocations = dict(pin_revocations or {})
         if feeds is not _UNSET:
             rec.feeds = dict(feeds or {})
         if release_records is not _UNSET:
@@ -282,6 +366,9 @@ class CacheManager:
         carried = self._carried_update_slices()
         record.feeds = {**record.feeds, **carried["feeds"]}
         record.releaseRecords = {**record.releaseRecords, **carried["releaseRecords"]}
+        # The pin evidence is the other exception: security state, not a grant (§4.1). The
+        # custodian's evidence (which includes any the new record's manifest added) is written.
+        record.pinRevocations = self._trust.pin_revocations
         self._record = record
         self._ctx.store.write_cache(record)
 
@@ -294,11 +381,14 @@ class CacheManager:
         self._loaded = LoadedCache()
         self._trust.reset()
         self._ctx.reset_floor()
-        if not carried["feeds"] and not carried["releaseRecords"]:
+        evidence = self._trust.pin_revocations
+        if not carried["feeds"] and not carried["releaseRecords"] and not evidence:
             self._ctx.store.clear_cache()
             return
         self._record = CacheRecord(
-            feeds=carried["feeds"], releaseRecords=carried["releaseRecords"]
+            feeds=carried["feeds"],
+            releaseRecords=carried["releaseRecords"],
+            pinRevocations=evidence,
         )
         self._ctx.store.write_cache(self._record)
 

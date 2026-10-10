@@ -739,6 +739,9 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const callback = await handleAuthCallback(
       signInReq(
         `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback?code=c&state=${state}`,
+        {
+          headers: { cookie: start.headers.get("set-cookie")!.split(";")[0]! },
+        },
       ),
       env,
       db,
@@ -809,6 +812,11 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const callback = await handleAuthCallback(
       signInReq(
         `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback?code=c&state=${state}`,
+        {
+          headers: {
+            cookie: confirmed.headers.get("set-cookie")!.split(";")[0]!,
+          },
+        },
       ),
       env,
       db,
@@ -1117,13 +1125,13 @@ describe("R12-08 committed prod resource IDs", () => {
     expect(toml).toContain("REPLACE_ME_DEV_D1_ID");
   });
 
-  it("CONFIRMED: Workers Logs persist invocation metadata at 100% sampling", () => {
+  it("FIXED: Workers Logs no longer record invocation URLs", () => {
     const toml = readFileSync(join(HERE, "..", "..", "wrangler.toml"), "utf8");
     const logs = toml.slice(toml.indexOf("[observability.logs]"));
     expect(logs).toMatch(/enabled = true/);
     expect(logs).toMatch(/head_sampling_rate = 1/);
     expect(logs).toMatch(/persist = true/);
-    expect(logs).toMatch(/invocation_logs = true/);
+    expect(logs).toMatch(/invocation_logs = false/);
   });
 });
 

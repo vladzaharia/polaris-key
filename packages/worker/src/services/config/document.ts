@@ -70,6 +70,7 @@ import {
   touchDeviceMetadata,
   validateDeviceToken,
 } from "../../core/devices.js";
+import { rateLimitOk } from "../../core/rateLimit.js";
 import { isStrictJsonError, signDoc } from "../../core/signing.js";
 
 // The payload resolution and the envelope stamper moved to `core/documents.ts` when offline
@@ -123,6 +124,22 @@ export async function handleConfigDocument(
     valid.device.license_id !== NO_LICENSE_ID;
   if (licenseBound && !licenseUsable(valid.license, now))
     return wireError(401, ErrorCode.LicenseUnusable);
+
+  // A per-device ceiling well above any SDK's schedule.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: "configDocument",
+        id: valid.device.device_id,
+        limit: 120,
+        windowSec: 60,
+      },
+      now,
+    ))
+  )
+    return wireError(429, "rate_limited");
 
   await touchDeviceMetadata(db, valid.device, deviceMetadata(req), now);
 

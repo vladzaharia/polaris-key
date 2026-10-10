@@ -838,10 +838,10 @@ describe("I-26 browser binder", () => {
     const before = await licenseCount();
     const flow = await startDeviceFlow();
     const cb = await callback(flow.state, flow.nonce, null);
-    expect(cb.status).toBe(403);
-    expect(await cb.text()).toContain("Start again on your device");
+    // Refused before the flow is touched, so it is neither finished nor burned.
+    expect(cb.status).toBe(400);
     expect(await licenseCount()).toBe(before);
-    expect((await devicePoll(flow, NOW + 10)).status).toBe("timeout");
+    expect((await devicePoll(flow, NOW + 10)).status).toBe("pending");
   });
 
   it("a different browser's binder is refused too", async () => {
@@ -852,7 +852,7 @@ describe("I-26 browser binder", () => {
       flow.nonce,
       "another-browsers-binder-value-xyz",
     );
-    expect(cb.status).toBe(403);
+    expect(cb.status).toBe(400);
     expect(await licenseCount()).toBe(1);
   });
 
@@ -937,14 +937,14 @@ describe("I-26 outside the trigger", () => {
     await signsInAsToday();
   });
 
-  it("a provider: custom product: no binder cookie, no chooser", async () => {
+  it("a provider: custom product: a binder but no chooser", async () => {
     await setProvider("custom");
     product = (await loadProduct(env, db, "djdl"))!;
     await insertLic({ id: "lic_std", tier: "std", account: accountId });
     const flow = await startDeviceFlow();
-    expect(flow.binder).toBeNull();
+    expect(flow.binder).not.toBeNull();
     const before = await licenseCount();
-    const cb = await callback(flow.state, flow.nonce, null);
+    const cb = await callback(flow.state, flow.nonce, flow.binder);
     expect(cb.status).toBe(200);
     expect((await devicePoll(flow, NOW + 10)).status).toBe("ready");
     expect(await licenseCount()).toBe(before + 1);

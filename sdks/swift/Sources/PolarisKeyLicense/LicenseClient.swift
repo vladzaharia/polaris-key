@@ -96,7 +96,7 @@ public actor LicenseClient {
         let cache = await core.cache()
         // A bundle activates ONLY if its licence document actually verified — a config-only
         // bundle imports settings and grants nothing.
-        if cache.importedBundle != nil, cache.license != nil { return .bundle }
+        if cache.bundle?.activates == true, cache.license != nil { return .bundle }
         return nil
     }
 
@@ -104,7 +104,7 @@ public actor LicenseClient {
         let cache = await core.cache()
         return licenseState(
             GateInput(
-                licenseServiceEnabled: await core.enabled(.license),
+                licenseServiceEnabled: await core.licenseGateEnabled(),
                 activation: await activation(),
                 doc: cache.license?.doc,
                 now: await core.now(now),

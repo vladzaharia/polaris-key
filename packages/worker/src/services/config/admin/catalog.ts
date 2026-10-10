@@ -30,6 +30,10 @@
 import { parseAccountOverridePayload } from "../../../core/accountOverrides.js";
 import { licenseConfigOverridesRetired } from "../../../core/overrideMigration.js";
 import { Catalog } from "@polaris-key/catalog";
+import {
+  catalogDeliveryIssues,
+  declassifyRefusal,
+} from "../../../core/configDelivery.js";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema } from "../../../core/data.js";
@@ -106,6 +110,22 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     // key is a member name in it. The prune would drop a flagged default at signing but checks
     // no key, so an unsignable key (U+0000, an NFC pair) or one the manifest's ID_RE refuses
     // is refused here.
+    const deliveryIssues = catalogDeliveryIssues(catalog.entries);
+    if (deliveryIssues.length > 0)
+      return err(422, ErrorCode.BadRequest, "invalid catalog", {
+        fields: deliveryIssues,
+      });
+    const declassify = await declassifyRefusal(
+      db,
+      slug,
+      (await getActiveSchema(db, slug))?.catalog_json,
+      catalog.entries,
+    );
+    if (declassify)
+      return err(409, ErrorCode.BadRequest, "invalid catalog", {
+        reason: "declassifies_stored_secret",
+        fields: [declassify],
+      });
     const unrepresentable = catalogRepresentabilityResponse({
       entries: catalog.entries,
     });

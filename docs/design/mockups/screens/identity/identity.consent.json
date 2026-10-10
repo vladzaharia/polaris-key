@@ -13,10 +13,13 @@
     "Required and optional come from the product's identity.claims {required, optional}; here the screen name is required and picture, email and Cloud Sync are optional. An item the product doesn't ask for isn't listed.",
     "Cloud Sync is optional unless the product requires it; switching it off leaves sync off for this app only, and says so on the app's Connected apps row.",
     "Optional switches start on the first time; the person's previous choice is kept when consent is asked again. This mockup shows two turned off.",
-    "Under the list, one line says where to change these later (Account → Connected apps); the switches already show what is off. The pairwise-id line stays.",
+    "Under the list, the pairwise-id line only, in the catalog's words (signin.consent.pairwise); the switches already show what is off.",
     "'Continue to Diceroll' posts the granted subset; scope_hash covers the granted subset, so turning an optional item off never re-asks on the next sign-in. A declined item is never delivered (I-34 acceptance).",
     "Cancel abandons the sign-in; nothing (license choice, grant, binding) is written before Continue.",
-    "Phone: edge to edge; switches stay at the row's right edge with 44 px rows; descriptions wrap and are never cut off; only raw values (the email address) truncate with an ellipsis; 'device 2 of 3' keeps its number on one line."
+    "Phone: edge to edge; switches stay at the row's right edge with 44 px rows; descriptions wrap and are never cut off; only raw values (the email address) truncate with an ellipsis; 'device 2 of 3' keeps its number on one line.",
+    "Hosted card v2 (B8): the one primary is ink; the app header is a neutral strip, and in a landscape window ≥960px the passport (a sunken identity pane: the product's art, icon, the request, developer and device on their own lines, no eyebrow) beside the unchanged 456px form pane; the trust receipt spans the card; refusals are neutral callouts with the fix as the one primary.",
+    "Passport layout as identity.sign-in (auth-05); under 400px of card width 'Not you?' drops under the name and the email wraps, never truncated; Continue and Don't allow are the same size (block, Deny outlined) with what is shared listed above them (B8); the h1 stays 24px/600.",
+    "Round 2 (UX review): Passport as identity.sign-in: the art fills the pane, the identity at its foot (M4)."
   ],
   "status": "mockup",
   "designReview": {

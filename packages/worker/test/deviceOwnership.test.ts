@@ -208,6 +208,18 @@ describe("device-id ownership (SEC-WP-01)", () => {
       expect(await tokenStillValid(token)).toBe(false);
     });
 
+    it("audits a legitimate move to another licence with both licence ids", async () => {
+      await victimActivates();
+      const res = await activate(attacker.key, VICTIM_DEVICE, VICTIM_HW);
+      expect(res.status).toBe(200);
+      const audit = await listAudit(db, "djdl", { limit: 50 });
+      const row = audit.find((a) => a.action === "device.rebind");
+      expect(row?.target_id).toBe(VICTIM_DEVICE);
+      expect(row?.parent_id).toBe(attacker.licenseId);
+      expect(row?.summary).toContain(victim.licenseId);
+      expect(JSON.stringify(row)).not.toContain(attacker.key);
+    });
+
     it("concurrent attackers against one held id: both refused, victim intact", async () => {
       const token = await victimActivates();
       const second = await seedLicenseWithKey(db, "djdl", { id: "lic_two" });

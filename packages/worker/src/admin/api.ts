@@ -40,6 +40,7 @@
  * focused handler modules under ./handlers. Shared helpers live under ./lib.
  */
 
+import { constantTimeEqual } from "../platform/compare.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { getProduct } from "../repo.js";
@@ -50,6 +51,7 @@ import { audit } from "./audit.js";
 /** Admin limiter shard. One global Durable Object for the whole platform — see the note in
  *  rateLimitDo.ts; sub-sharding it is tracked as R10-04a. */
 const ADMIN_RL_SHARD = "_admin";
+import { revokeAdminSessions } from "./sessionRevocation.js";
 import {
   buildClearCookie,
   CSRF_HEADER,
@@ -419,7 +421,8 @@ export async function handleAdminApi(
   // CSRF on every mutation (double-submit; SameSite=Strict is the primary defense).
   if (isMutation(req.method)) {
     const presented = req.headers.get(CSRF_HEADER);
-    if (!presented || presented !== session.csrf) return forbidden("csrf");
+    if (!presented || !constantTimeEqual(presented, session.csrf))
+      return forbidden("csrf");
   }
 
   const [head, ...rest] = segments;
@@ -447,7 +450,17 @@ export async function handleAdminApi(
     // `SameSite=Lax` (the usual fix for post-OIDC redirects) would quietly remove.
     if (req.method !== "POST")
       return err(405, "method_not_allowed", "logout requires POST");
-    return adminJson({ ok: true }, 200, { "set-cookie": buildClearCookie() });
+    // Sign-out also voids the cookie server-side, for every browser
+    // this operator holds; a replay of the old cookie is a 401.
+    let revoked = true;
+    try {
+      await revokeAdminSessions(env, session.sub, now);
+    } catch {
+      revoked = false;
+    }
+    return adminJson({ ok: true, revoked }, 200, {
+      "set-cookie": buildClearCookie(),
+    });
   }
   // UX-72 (W22): the repositories the GitHub App can read, for the New Product picker.
   if (head === "github") return handleGithub(req, env, db, session, rest, now);

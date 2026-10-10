@@ -7,6 +7,7 @@ import {
   SERVICE_ERROR_MESSAGES,
   setCsrf,
   setLoginRedirectForTests,
+  setStepUpRedirectForTests,
 } from "../src/api.js";
 
 // The api module is the same-origin client for /manage/api/*. These exercise the transport:
@@ -163,6 +164,44 @@ describe("api — request shaping", () => {
     expect(calls[1]!.url).toBe(
       "/manage/api/products/djdl/license/licenses/l1/enable",
     );
+  });
+});
+
+describe("api — step-up refusals", () => {
+  afterEach(() => setStepUpRedirectForTests());
+
+  it("a gated action refused for a stale step-up goes to the step-up sign-in", async () => {
+    const redirect = vi.fn();
+    setStepUpRedirectForTests(redirect);
+    stubFetch(() =>
+      json(
+        { error: { code: "step_up_required" }, code: "step_up_required" },
+        403,
+      ),
+    );
+    await expect(api.deleteProduct("djdl", "djdl")).rejects.toMatchObject({
+      status: 403,
+      code: "step_up_required",
+    });
+    expect(redirect).toHaveBeenCalledTimes(1);
+  });
+
+  it("an action with its own step-up callout is not redirected", async () => {
+    const redirect = vi.fn();
+    setStepUpRedirectForTests(redirect);
+    stubFetch(() =>
+      json(
+        { error: { code: "step_up_required" }, code: "step_up_required" },
+        403,
+      ),
+    );
+    await expect(
+      api.relinkProductUserLicense("djdl", "s", "l1", {
+        target: "t",
+        reason: "r",
+      }),
+    ).rejects.toMatchObject({ code: "step_up_required" });
+    expect(redirect).not.toHaveBeenCalled();
   });
 });
 

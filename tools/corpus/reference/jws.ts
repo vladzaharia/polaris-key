@@ -6,6 +6,7 @@
 import { createPublicKey, verify as nodeVerify } from "node:crypto";
 import { base64UrlDecode } from "@polaris-key/jws";
 import { type TypV3, utf8Bytes } from "../common.js";
+import { refCanonicalB64url } from "./b64url.js";
 import { hasOwn, isObj } from "./claims.js";
 import { refParseStrict } from "./config.js";
 import {
@@ -33,7 +34,7 @@ function refPointOk(enc: Uint8Array): boolean {
 
 /** Decode one segment's bytes as strict JSON text (rules 1–2), or null. */
 function refSegmentText(seg: string): string | null {
-  if (!/^[A-Za-z0-9_-]*$/.test(seg)) return null;
+  if (!refCanonicalB64url(seg)) return null;
   let bytes: Uint8Array;
   try {
     bytes = base64UrlDecode(seg);
@@ -74,8 +75,9 @@ export function refVerifyJws(
   if (header.alg !== "EdDSA") return null;
   if (typ !== undefined && header.typ !== typ) return null;
   if (typeof header.kid !== "string" || !hasOwn(trust, header.kid)) return null;
+  if (!refCanonicalB64url(trust[header.kid]!)) return null;
   const key = base64UrlDecode(trust[header.kid]!);
-  if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
+  if (!refCanonicalB64url(s)) return null;
   const sig = base64UrlDecode(s);
   if (key.length !== 32 || sig.length !== 64) return null;
   if (leToBig(sig.subarray(32)) >= ED_L) return null;

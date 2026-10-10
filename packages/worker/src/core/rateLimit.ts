@@ -214,6 +214,13 @@ const FAIL_MODE: Record<string, FailMode> = {
   // The images are public and nothing secret is behind the limit, so an outage must not blank
   // every icon on every page.
   imgHost: "open",
+  // Per-device cap on config-document fetches; a cost budget, nothing secret behind it.
+  configDocument: "open",
+  // Per-network budgets in front of the licence document and self-deauthorize. Both
+  // need a live device token, so the limit protects D1 cost, not a secret; an outage must not stop
+  // every licensed install from refreshing its document (as for `configDocument` above).
+  licenseDoc: "open",
+  deauthorize: "open",
 };
 
 function failModeFor(bucket: string): FailMode {
@@ -317,19 +324,26 @@ export function clientIp(req: Request): string {
 }
 
 /**
- * The caller's network, for a per-client bucket that guards a GUESSABLE secret: the IPv4
- * address as-is, or the IPv6 /64 the address sits in (`2001:db8:0:1::/64`). One ordinary IPv6
- * host is routed a whole /64 — 2^64 source addresses at no cost (R10-04b) — so keying such a
- * bucket on the full address would give it an unlimited supply of fresh budgets. Used only
- * where the budget itself is the brute-force bound (`authDeviceEntry`, the RFC 8628 user-code
- * page); every other bucket keeps `clientIp` (aggregating them is an unowned platform
- * follow-up). Anything that does not parse as IPv6 falls back to `clientIp`.
+ * The caller's network, the key for EVERY unauthenticated per-client rate-limit bucket: the
+ * IPv4 address as-is, or the IPv6 /64 the address sits in (`2001:db8:0:1::/64`). One ordinary
+ * IPv6 host is routed a whole /64 — 2^64 source addresses at no cost (R10-04b) — so keying a
+ * bucket on the full address (`clientIp`) hands an attacker an unlimited supply of fresh
+ * budgets. An IPv4-mapped IPv6 address (`::ffff:192.0.2.1`) is unwrapped to its
+ * IPv4 form, so it neither collides in one `::/64` bucket nor escapes its IPv4 bucket.
+ * Anything that does not parse as IPv6 falls back to `clientIp`. Callers must not key a
+ * rate-limit bucket on `clientIp` directly (`test/rateLimitKeys.test.ts` enforces it).
  */
 export function clientNetwork(req: Request): string {
   const ip = clientIp(req);
   if (!ip.includes(":")) return ip;
   const hextets = expandIpv6(ip);
-  return hextets ? `${hextets.slice(0, 4).join(":")}::/64` : ip;
+  if (!hextets) return ip;
+  if (hextets.slice(0, 5).every((h) => h === "0") && hextets[5] === "ffff") {
+    const hi = parseInt(hextets[6]!, 16);
+    const lo = parseInt(hextets[7]!, 16);
+    return `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`;
+  }
+  return `${hextets.slice(0, 4).join(":")}::/64`;
 }
 
 /**

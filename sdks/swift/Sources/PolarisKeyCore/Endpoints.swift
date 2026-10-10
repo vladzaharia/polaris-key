@@ -85,6 +85,13 @@ public struct Endpoints: Sendable, Equatable {
     // ── Core (§6) ────────────────────────────────────────────────────────────────────────
     public var discovery: URL { url(".well-known/polaris.json") }
     public var trustManifest: URL { url(".well-known/polaris-trust.jws") }
+    /// The default manifest re-signed by `kid` (§2.3): `?signer=<kid>`, escaped as a URI component.
+    public func trustManifest(signer kid: String) -> URL {
+        let allowed = CharacterSet(
+            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()")
+        let escaped = kid.addingPercentEncoding(withAllowedCharacters: allowed) ?? kid
+        return url(".well-known/polaris-trust.jws?signer=\(escaped)")
+    }
     public var jwks: URL { url(".well-known/jwks.json") }
     public var devicesRegister: URL { url("devices/register") }
     public var devicesReport: URL { url("devices/report") }

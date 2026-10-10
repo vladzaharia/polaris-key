@@ -312,6 +312,8 @@ export class SteamFake {
     }
   >();
   requests: FakeRequest[] = [];
+  /** steamids whose ownership check answers 500. */
+  failFor = new Set<string>();
   /** What `ISteamApps/GetPartnerAppListForWebAPIKey/v2` lists (A-16); `null` answers 403, as for
    *  a key without the permission. */
   partnerApps: Array<Record<string, unknown>> | null = [
@@ -355,6 +357,7 @@ export class SteamFake {
       });
     }
     if (req.url.pathname === "/ISteamUser/CheckAppOwnership/v4/") {
+      if (this.failFor.has(q.get("steamid") ?? "")) return json(500, null);
       const o = this.owns.get(`${q.get("steamid")}:${q.get("appid")}`);
       return json(200, {
         appownership: {

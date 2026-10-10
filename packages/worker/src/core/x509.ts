@@ -409,14 +409,22 @@ export function ecdsaDerToRaw(der: Uint8Array, size: number): Uint8Array {
 }
 
 /** The certificate's public key as a WebCrypto ECDSA verify key. */
-export function certificateKey(cert: X509Certificate): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    "spki",
-    toArrayBuffer(cert.spki),
-    { name: "ECDSA", namedCurve: cert.curve },
-    false,
-    ["verify"],
-  );
+export async function certificateKey(
+  cert: X509Certificate,
+): Promise<CryptoKey> {
+  // A key that is not a valid curve point makes WebCrypto throw a DataError; that is a
+  // refused certificate, not a crash.
+  try {
+    return await crypto.subtle.importKey(
+      "spki",
+      toArrayBuffer(cert.spki),
+      { name: "ECDSA", namedCurve: cert.curve },
+      false,
+      ["verify"],
+    );
+  } catch {
+    return fail("invalid public key");
+  }
 }
 
 async function signedBy(
@@ -433,12 +441,17 @@ async function signedBy(
     child.signature,
     issuer.curve === "P-256" ? 32 : 48,
   );
-  return crypto.subtle.verify(
-    { name: "ECDSA", hash },
-    await certificateKey(issuer),
-    toArrayBuffer(raw),
-    toArrayBuffer(child.tbs),
-  );
+  const key = await certificateKey(issuer);
+  try {
+    return await crypto.subtle.verify(
+      { name: "ECDSA", hash },
+      key,
+      toArrayBuffer(raw),
+      toArrayBuffer(child.tbs),
+    );
+  } catch {
+    return fail("bad certificate signature");
+  }
 }
 
 // ── Chains ───────────────────────────────────────────────────────────────────────────────────

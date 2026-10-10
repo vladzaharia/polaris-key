@@ -19,7 +19,10 @@ import {
   seedProduct,
 } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
-import { handleActivate } from "../src/services/license/activation.js";
+import {
+  handleActivate,
+  handleDeauthorize,
+} from "../src/services/license/activation.js";
 import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
@@ -208,7 +211,9 @@ describe("clientNetwork", () => {
     // A neighbouring /64 is a different client.
     expect(net("2001:db8:abcd:13::1")).toBe("2001:db8:abcd:13::/64");
     expect(net("::1")).toBe("0:0:0:0::/64");
-    expect(net("::ffff:192.0.2.1")).toBe("0:0:0:0::/64");
+    // An IPv4-mapped address is its IPv4 address, not one shared ::/64 bucket.
+    expect(net("::ffff:192.0.2.1")).toBe("192.0.2.1");
+    expect(net("::ffff:c000:201")).toBe("192.0.2.1");
     expect(net("2001:db8::")).toBe("2001:db8:0:0::/64");
   });
 
@@ -261,6 +266,47 @@ describe("register rate limiting", () => {
     const blocked = await call();
     expect(blocked.status).toBe(429);
     expect(await blocked.json()).toEqual({ error: { code: "rate_limited" } });
+  });
+
+  it("rotating addresses inside one IPv6 /64 does not mint fresh budgets", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await setServices(
+      db,
+      "djdl",
+      serializeServices({
+        services: {
+          license: { enabled: false },
+          config: { enabled: true },
+          release: { enabled: false },
+          distribution: { enabled: false },
+          update: { enabled: false },
+          identity: { enabled: false },
+          sync: { enabled: false },
+        },
+      }),
+      "manifest",
+      NOW,
+    );
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const statuses: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      const res = await handleRegister(
+        mkReq("POST", {
+          "cf-connecting-ip": `2001:db8:1:2::${i + 1}`,
+          "x-pkey-device": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
+        }),
+        env,
+        db,
+        product,
+        NOW,
+        SERVICES,
+      );
+      statuses.push(res.status);
+    }
+    expect(statuses.filter((s) => s === 200)).toHaveLength(10);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(20);
   });
 
   it("does not spend the budget on a product whose policy refuses anyway", async () => {
@@ -320,5 +366,26 @@ describe("activate rate limiting", () => {
       NOW,
     );
     expect(blocked.status).toBe(429);
+  });
+});
+
+describe("deauthorize rate limiting", () => {
+  it("429s a /64 after 30 attempts, before any token work", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const statuses: number[] = [];
+    for (let i = 0; i < 35; i++) {
+      const res = await handleDeauthorize(
+        mkReq("POST", { "cf-connecting-ip": `2001:db8:9:9::${i + 1}` }),
+        env,
+        db,
+        product,
+      );
+      statuses.push(res.status);
+    }
+    expect(statuses.filter((s) => s === 401)).toHaveLength(30);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(5);
   });
 });

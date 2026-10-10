@@ -161,12 +161,14 @@ export function deliver(
   w: AscWorld,
   body: string,
   signature: string | null = sign(body),
+  ip?: string,
 ): Promise<Response> {
   return call(w.env, w.db, w.fetchImpl, HOOK_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(signature !== null ? { "x-apple-signature": signature } : {}),
+      ...(ip ? { "cf-connecting-ip": ip } : {}),
     },
     body,
   });

@@ -316,7 +316,9 @@ describe("capabilities — the expectedServices fallback (D-08/D-21)", () => {
 // The expectation is what this BUILD believed; the document is what the PRODUCT says. Once
 // loaded, the document wins in both directions — it can take a service away and it can grant one.
 describe("capabilities — a discovery document wins (D-21)", () => {
-  it("turns the licence gate off against a build that expected it", async () => {
+  // Discovery is unsigned, so it can switch the licence gate ON but never OFF. It
+  // still governs which sub-clients exist (the `capabilities()` assertion below).
+  it("does NOT turn the licence gate off against a build that expected it", async () => {
     const m = mockFetch({
       [WELL_KNOWN]: () =>
         json(
@@ -336,9 +338,42 @@ describe("capabilities — a discovery document wins (D-21)", () => {
       ...NONE,
       config: { enabled: true },
     });
+    expect(client.license.status().status).toBe("needs-activation");
+    expect(client.isLicensed()).toBe(false);
+    expect(client.config.enabled).toBe(true);
+  });
+
+  it("a config-only BUILD (expectedServices without license) boots not-applicable, discovery or not", async () => {
+    const m = mockFetch({
+      [WELL_KNOWN]: () =>
+        json(
+          discoveryDoc({
+            license: { enabled: false },
+            config: { enabled: true, endpoints: {} },
+          }),
+        ),
+    });
+    const client = await makeClient(m.impl, { expectedServices: ["config"] });
+    expect(client.license.status().status).toBe("not-applicable");
+    await client.discover();
     expect(client.license.status().status).toBe("not-applicable");
     expect(client.isLicensed()).toBe(true);
-    expect(client.config.enabled).toBe(true);
+  });
+
+  it("a discovery that says license is enabled switches the gate ON for a build that did not name it", async () => {
+    const m = mockFetch({
+      [WELL_KNOWN]: () =>
+        json(
+          discoveryDoc({
+            license: { enabled: true, endpoints: {} },
+            config: { enabled: true, endpoints: {} },
+          }),
+        ),
+    });
+    const client = await makeClient(m.impl, { expectedServices: ["config"] });
+    expect(client.license.status().status).toBe("not-applicable");
+    await client.discover();
+    expect(client.license.status().status).toBe("needs-activation");
   });
 
   it("turns a service ON that no expectation named", async () => {
@@ -552,7 +587,7 @@ describe("getSyncState() — the React bridge contract", () => {
     expect(client.license.status().status).toBe("ok");
   });
 
-  it("(c) a recorded hard 401 sets lastSyncUnauthorized without discarding the document", async () => {
+  it("(c) a recorded hard 401 sets lastSyncUnauthorized AND deletes the document it answered for", async () => {
     const issuedAt = nowSec();
     let phase: "live" | "revoked" = "live";
     const m = mockFetch({
@@ -584,9 +619,9 @@ describe("getSyncState() — the React bridge contract", () => {
     expect(m.hit("/license/token")).toBe(1);
     expect(Object.keys(state).sort()).toEqual(BRIDGE_KEYS);
     expect(state.lastSyncUnauthorized).toBe(true);
-    // The signed document is still held: §4.3's offline revocation is an unsigned HINT layered
-    // over it, not an erasure of what was verified.
-    expect(state.doc?.licenseId).toBe("lic_djdl_1");
+    // §4.3: the hint is display state, so the document it answered for is gone in the same
+    // write — clearing the hint cannot bring a usable document back.
+    expect(state.doc).toBeNull();
     expect(state.activation).toBe("token");
     expect(client.license.status().status).toBe("revoked");
     expect(client.isLicensed()).toBe(false);

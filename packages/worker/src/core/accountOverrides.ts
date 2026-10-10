@@ -35,6 +35,7 @@
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
+import { getActiveSchema } from "../repo.js";
 import { sealManagedValue } from "../admin/lib/managedSecrets.js";
 import {
   existingSubjectFor,
@@ -231,6 +232,18 @@ export async function overrideSubject(
   license: OverrideLicenseFacts | null,
   device: OverrideDeviceFacts | null | undefined,
 ): Promise<string | null> {
+  return (
+    (await overrideSubjectVia(db, product, license, device))?.subject ?? null
+  );
+}
+
+/** {@link overrideSubject} plus which line answered: the signed-in subject, or the owner line. */
+async function overrideSubjectVia(
+  db: Db,
+  product: string,
+  license: OverrideLicenseFacts | null,
+  device: OverrideDeviceFacts | null | undefined,
+): Promise<{ subject: string; via: "signedIn" | "owner" } | null> {
   if (device) {
     const principal = await resolveSyncPrincipal(db, { ...device, product });
     if (
@@ -245,11 +258,14 @@ export async function overrideSubject(
         ))
       )
     )
-      return principal.subject;
+      return { subject: principal.subject, via: "signedIn" };
   }
   if (!license || isFloatingLicense(license)) return null;
   const accountId = license.account_id ?? null;
-  return accountId ? existingSubjectFor(db, accountId, product) : null;
+  const subject = accountId
+    ? await existingSubjectFor(db, accountId, product)
+    : null;
+  return subject ? { subject, via: "owner" } : null;
 }
 
 /**
@@ -294,14 +310,38 @@ export async function accountOverrideLayer(
   license: OverrideLicenseFacts | null,
   device: OverrideDeviceFacts | null | undefined,
 ): Promise<string | null> {
-  const subject = await overrideSubject(db, product, license, device);
-  if (!subject) return null;
-  const row = await getAccountOverrides(db, product, subject);
+  const answer = await overrideSubjectVia(db, product, license, device);
+  if (!answer) return null;
+  const row = await getAccountOverrides(db, product, answer.subject);
   if (!row) return null;
   const p = parseAccountOverridePayload(row.payload_json);
+  let config = p.config;
+  if (answer.via === "owner") {
+    // ...and neither does a `kind: "config"` entry the catalog flags `secret: true`.
+    const secretKeys = new Set<string>();
+    const schema = await getActiveSchema(db, product);
+    if (schema) {
+      try {
+        const entries = (
+          JSON.parse(schema.catalog_json) as { entries?: unknown }
+        ).entries;
+        if (Array.isArray(entries))
+          for (const e of entries as { key?: string; secret?: boolean }[])
+            if (e?.secret === true && typeof e.key === "string")
+              secretKeys.add(e.key);
+      } catch {
+        // an unreadable catalog fails closed at the document prune
+      }
+    }
+    config = Object.fromEntries(
+      Object.entries(config).filter(([k]) => !secretKeys.has(k)),
+    );
+  }
   return JSON.stringify({
-    config: p.config,
-    secrets: p.secrets,
+    config,
+    // The owner's personal secrets reach only a device signed in as the owner; a
+    // key-only device on an owned licence gets the owner's config but not their secrets.
+    secrets: answer.via === "owner" ? {} : p.secrets,
     entitlements: {},
   });
 }
@@ -330,8 +370,21 @@ export async function applyProvisionedAccountSecrets(
   provisioned: Record<string, ManagedEntry>,
   declared: ReadonlySet<string>,
   now: number,
+  /** The OIDC subject that signed in. Written only while that identity is still
+   *  linked to the licence's current owner account (a handed-over licence takes nothing from
+   *  its previous owner's sign-in). */
+  sub?: string,
 ): Promise<void> {
   if (declared.size === 0) return;
+  if (sub !== undefined) {
+    const link = await db.first<{ one: number }>(
+      `SELECT 1 AS one FROM account_links
+        WHERE account_id = ? AND subject = ? AND kind = 'oidc'`,
+      accountId,
+      sub,
+    );
+    if (link === null) return;
+  }
   // An account being erased has no new subject and nothing to seal (SEC-WP-04).
   const subject = await subjectForOrNull(db, accountId, product, now);
   if (subject === null) return;
