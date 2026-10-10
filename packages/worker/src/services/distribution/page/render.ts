@@ -369,6 +369,20 @@ function deliveryMark(): string {
   return delivery;
 }
 
+/**
+ * The release's generated `SHA256SUMS` (DC-15), beside its files: the URL of one of the release's
+ * builds with the file name swapped. Null when the page offers no build of the release with a
+ * `files/<releaseId>/<name>` URL, so nothing is linked that the Worker did not mint.
+ */
+function checksumsUrlOf(model: DownloadModel): string | null {
+  const id = model.release?.releaseId;
+  const url = model.platforms
+    .flatMap((g) => g.builds)
+    .find((b) => b.releaseId === id && b.url.includes("/distribution/files/"))
+    ?.url;
+  return url ? url.replace(/\/[^/]+$/, "/SHA256SUMS") : null;
+}
+
 /** What the page shows beside its model, resolved per request (`index.ts`). */
 export interface PageExtras {
   /**
@@ -446,10 +460,20 @@ export function renderDownloadPage(
           labelOf(b).long,
         )}</td><td>${esc(formatSize(b.size) ?? "")}</td><td>${esc(minOsText(b) ?? "")}</td><td class="sha"><code>${esc(b.sha256 ?? "")}</code></td></tr>`,
     );
+  const sums = link(
+    checksumsUrlOf(model),
+    "SHA256SUMS",
+    "",
+    "Checksums of every file in this release",
+  );
   const files = rows.length
     ? `<section aria-labelledby="files-title"><h2 id="files-title">All downloads</h2><div class="scroll"><table><thead><tr><th>Version</th><th>Platform</th><th>Arch</th><th>File</th><th>Size</th><th>Minimum OS</th><th>SHA-256</th></tr></thead><tbody>${rows.join(
         "",
-      )}</tbody></table></div></section>`
+      )}</tbody></table></div>${
+        sums
+          ? `<p class="note">Verify with ${sums}: <code>sha256sum --check SHA256SUMS</code></p>`
+          : ""
+      }</section>`
     : "";
 
   const keys = model.keys.length

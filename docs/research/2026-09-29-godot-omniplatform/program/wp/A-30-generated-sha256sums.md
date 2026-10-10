@@ -51,6 +51,13 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections after verifying against the code
+
+- The checksum file is served by the existing `file` byte route (`files/<releaseId>/SHA256SUMS`, both
+  hosts), not a new `<p>/<version>/SHA256SUMS` route: no new route, no OpenAPI or `routeCoverage` change.
+- Linked from the download page. The portal link is P2-13's (it changes the portal release JSON, which is
+  in the transcripts) and the channel Releases tab is console UI; both can build the URL from the release id.
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
@@ -59,8 +66,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every release has a SHA256SUMS file
-- [ ] MD5 is never offered
+- [x] Every release has a SHA256SUMS file
+- [x] MD5 is never offered
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
