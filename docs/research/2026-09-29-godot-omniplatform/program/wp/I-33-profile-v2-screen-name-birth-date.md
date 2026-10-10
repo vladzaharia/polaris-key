@@ -128,7 +128,7 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
       **I-33:** n/a: no kit screen (FinishStep's screen is PX-21's).
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
-      **I-33:** the lead's reviewer step.
+      **I-33:** a BUILT review ran during the build: its one blocking finding (the card line's privacy cue) and its functional and visual notes are fixed; the hint stays visible during an error as the editor's other fields do; a connection's label for an imported date waits for I-30; the date control (native field or locale-ordered selects) is PX-21's call. The pass is the lead's re-review.
 
 ## Steps
 
