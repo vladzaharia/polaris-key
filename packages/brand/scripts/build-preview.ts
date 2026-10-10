@@ -12,11 +12,22 @@ import { fileURLToPath } from "node:url";
 import { contrastRatio } from "../src/color.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import {
+  serviceIconSvg,
+  serviceIconSymbolId,
+  serviceIconTileSvg,
+} from "../src/marks/icons.js";
+import {
   escapeHtml,
   lockupSvg,
   markSvg,
   poweredBySvg,
 } from "../src/marks/svg.js";
+import {
+  SERVICE_ICON_IDS,
+  SERVICE_ICON_TILE,
+  SERVICE_ICONS,
+} from "../src/tokens/icons.js";
+import { expressionPage } from "./preview-expression.js";
 import { BRAND, POWERED_BY } from "../src/tokens/primitives.js";
 import {
   ELEVATION,
@@ -45,6 +56,8 @@ cpSync(join(PKG, "fonts"), join(OUT, "fonts"), { recursive: true });
 cpSync(join(PKG, "preview", "proofs"), join(OUT, "proofs"), {
   recursive: true,
 });
+for (const dir of ["icons", "marks", "social", "web"])
+  cpSync(join(PKG, dir), join(OUT, dir), { recursive: true });
 for (const dir of ["04-web", "06-games", "07-social"])
   cpSync(join(PKG, "kit", dir), join(OUT, "kit", dir), { recursive: true });
 
@@ -137,6 +150,77 @@ function lockups(): string {
         `<div class="ground" data-theme="${t}">${(["horizontal", "stacked", "compact"] as const).map((layout) => lockupSvg({ kind, layout, theme: t, height: layout === "compact" ? 64 : 120 })).join("")}</div>`,
       );
   return out.join("");
+}
+
+/** The trimmed horizontal lockup in the 64 px console header, which supplies the clear space. */
+function trimmedLockups(): string {
+  return (["dark", "light"] as const)
+    .map(
+      (t) =>
+        `<div class="ground" data-theme="${t}"><h3>${t}: 64 px header, 48 px glyph</h3>${(["key", "delivery"] as const).map((kind) => `<div class="hdr">${lockupSvg({ kind, layout: "horizontal", theme: t, trim: true, height: 48 })}</div>`).join("")}</div>`,
+    )
+    .join("");
+}
+
+function serviceIcons(): string {
+  const sizes = [16, 20, 24, 32, 64];
+  const out = (["dark", "light"] as const).map((t) => {
+    const rows = SERVICE_ICON_IDS.map((id) => {
+      const spec = SERVICE_ICONS[id];
+      const accent = spec.accent ?? "none";
+      const bare = sizes
+        .map(
+          (s) =>
+            `<figure${spec.accent ? ` data-service="${spec.accent}"` : ""}>${serviceIconSvg(id, { size: s })}<figcaption>${s}</figcaption></figure>`,
+        )
+        .join("");
+      const tiles = SERVICE_ICON_TILE.sizes
+        .map(
+          (s) =>
+            `<figure>${serviceIconTileSvg(id, { size: s, theme: t, title: spec.label })}<figcaption>${s}</figcaption></figure>`,
+        )
+        .join("");
+      return `<div class="icon-row${spec.accent ? "" : " neutral"}"${spec.accent ? ` data-service="${spec.accent}"` : ""}><strong>${escapeHtml(spec.label)}</strong><small>${spec.glyph} · accent ${accent}${spec.dataService ? "" : " · marketing and docs only"}</small><div class="row ink">${bare}</div><div class="row">${tiles}</div></div>`;
+    }).join("");
+    return `<div class="ground icons" data-theme="${t}"><h3>${t}: glyphs in the section accent (fg), then the tiles</h3>${rows}</div>`;
+  });
+  const sprite = SERVICE_ICON_IDS.map(
+    (id) =>
+      `<svg width="24" height="24" aria-hidden="true"><use href="icons/services/sprite.svg#${serviceIconSymbolId(id)}"/></svg><svg width="16" height="16" aria-hidden="true"><use href="icons/services/sprite.svg#${serviceIconSymbolId(id, true)}"/></svg>`,
+  ).join("");
+  return `${out.join("")}<div class="ground" data-theme="dark"><h3>sprite.svg, both strokes (1.6 at 24, 2 at 16)</h3><div class="row ink">${sprite}</div></div>`;
+}
+
+function deliveryAssets(): string {
+  const marksRow = (t: string) =>
+    (["display", "service", "favicon"] as const)
+      .map(
+        (cut) =>
+          `<figure class="ground" data-theme="${t}"><img src="marks/delivery/delivery-${cut}-${t}.svg" alt="Polaris Key Delivery mark, ${cut} cut" width="${cut === "display" ? 96 : cut === "service" ? 48 : 32}"><figcaption>${cut}</figcaption></figure>`,
+      )
+      .join("");
+  const cards = (["dark", "light"] as const)
+    .flatMap((t) =>
+      ["delivery", "key"].flatMap((k) => [
+        `<figure><img src="social/${k}/portrait-${t}.svg" alt="${k} portrait card, ${t}" width="216"><figcaption>${k} portrait ${t}, 1080×1350</figcaption></figure>`,
+      ]),
+    )
+    .join("");
+  const social = (["dark", "light"] as const)
+    .flatMap((t) =>
+      ["social-card", "square", "banner", "splash"].map(
+        (c) =>
+          `<figure><img src="social/delivery/${c}-${t}.svg" alt="Polaris Key Delivery ${c}, ${t}" width="${c === "square" ? 180 : 320}"><figcaption>delivery ${c} ${t}</figcaption></figure>`,
+      ),
+    )
+    .join("");
+  const web = ["favicon.svg", "app-icon-dark-192.png", "app-icon-light-192.png"]
+    .map(
+      (f) =>
+        `<figure><img src="web/delivery/${f}" alt="" width="${f.startsWith("favicon") ? 48 : 96}"><figcaption>web/delivery/${f}</figcaption></figure>`,
+    )
+    .join("");
+  return `<h3>Polaris Key Delivery marks</h3><div class="row">${marksRow("dark")}${marksRow("light")}</div><h3>Web (manifest name "Polaris Key Delivery")</h3><div class="row">${web}</div><h3>Social</h3><div class="row">${social}</div><h3>Portrait cards</h3><div class="row">${cards}</div>`;
 }
 
 function badges(): string {
@@ -277,12 +361,19 @@ const html = `<!doctype html>
   pre { font-family: var(--pk-font-mono); background: var(--pk-surface-sunken); padding: var(--pk-space-3); border-radius: var(--pk-radius-md); color: var(--pk-text-default); }
   code { font-family: var(--pk-font-mono); font-size: 0.9em; }
   .num { font-variant-numeric: tabular-nums; }
+  .hdr { display: flex; align-items: center; height: 64px; padding: 0 8px; background: var(--pk-surface-raised); border: 1px solid var(--pk-border-subtle); border-radius: var(--pk-radius-md); }
+  .icons { flex-direction: column; align-items: stretch; }
+  .icon-row { display: grid; gap: var(--pk-space-1); padding-bottom: var(--pk-space-3); border-bottom: 1px solid var(--pk-border-subtle); }
+  .icon-row .ink { color: var(--pk-accent-fg); }
+  .icon-row.neutral .ink { color: var(--pk-text-strong); }
+  .ink { color: var(--pk-text-strong); }
 </style>
 </head>
 <body>
 <header class="top">
   ${lockupSvg({ layout: "compact", height: 40, theme: "mono", title: "Polaris Key" }).replace("<svg", '<svg style="color:var(--pk-text-strong)"')}
   <h1>Brand preview</h1>
+  <a href="expression.html">Expression</a>
   <span role="group" aria-label="Theme" class="row" style="margin:0 0 0 auto">
     <button type="button" data-theme-pick="system">System</button>
     <button type="button" data-theme-pick="dark">Dark</button>
@@ -310,11 +401,20 @@ ${marks()}
 <h2>Lockups</h2>
 ${lockups()}
 
+<h2>Trimmed lockup (console header)</h2>
+${trimmedLockups()}
+
+<h2>Service icons</h2>
+${serviceIcons()}
+
 <h2>Powered by Polaris Key</h2>
 ${badges()}
 
 <h2>Assets</h2>
 ${assets()}
+
+<h2>Polaris Key Delivery assets</h2>
+${deliveryAssets()}
 
 <h2>Scales</h2>
 ${scales()}
@@ -341,4 +441,5 @@ ${scales()}
 `;
 
 writeFileSync(join(OUT, "index.html"), html);
+writeFileSync(join(OUT, "expression.html"), expressionPage());
 console.log(`wrote ${join(OUT, "index.html")}`);

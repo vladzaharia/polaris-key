@@ -849,6 +849,12 @@ function pyTheme(theme: Theme): Record<string, string> {
   for (const [k, x] of Object.entries(t.text)) out[`text_${snake(k)}`] = x;
   for (const [k, x] of Object.entries(t.border)) out[`border_${k}`] = x;
   out.focus = t.focus;
+  out.action = t.action.fill;
+  out.action_on = t.action.on;
+  out.action_hover = t.action.hover;
+  out.action_pressed = t.action.pressed;
+  out.action_disabled = t.action.disabledFill;
+  out.action_disabled_on = t.action.disabledOn;
   for (const s of STATUS_IDS) {
     out[s] = t.status[s].fg;
     out[`${s}_on`] = t.status[s].on;
