@@ -318,3 +318,12 @@ export function licenseTermsOf(
     maxOf: cmp.maxOf,
   });
 }
+
+/** LX-32: the offline days a licence grants (`null`: no licence). The product default is required
+ *  here, so no caller can read the duration against a missing default. */
+export function licenseOfflineDays(
+  license: Parameters<typeof licenseTermsOf>[0],
+  product: { defaultDeviceLimit: number; defaultMaxOfflineDays: number },
+): number {
+  return licenseTermsOf(license, null, product).maxOfflineDays.value;
+}

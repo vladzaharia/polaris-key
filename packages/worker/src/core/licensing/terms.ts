@@ -62,7 +62,7 @@ export interface LicenseTermsInput {
   maxOf: (a?: string, b?: string) => string | undefined;
 }
 
-export type FingerprintModeValue = "off" | "normal" | "strict";
+export type FingerprintModeValue = "off" | "lenient" | "normal" | "strict";
 
 export interface LicenseTerms {
   deviceLimit: Sourced<number>;
@@ -76,7 +76,7 @@ export interface LicenseTerms {
   fingerprintMode: Sourced<FingerprintModeValue, "tier" | "product" | "off">;
 }
 
-const MODES: readonly string[] = ["off", "normal", "strict"];
+const MODES: readonly string[] = ["off", "lenient", "normal", "strict"];
 
 function isMode(v: unknown): v is FingerprintModeValue {
   return typeof v === "string" && MODES.includes(v);

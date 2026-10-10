@@ -86,7 +86,7 @@ export {
 } from "../../core/documents.js";
 import { buildConfigDoc, resolveConfigPayload } from "../../core/documents.js";
 import { graceClampFor } from "../../core/graceClamp.js";
-import { licenseTermsOf } from "../../core/entitlements.js";
+import { licenseOfflineDays } from "../../core/entitlements.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 
 /** A strong ETag over the config content, excluding the per-request timestamps. Independent of
@@ -158,8 +158,7 @@ export async function handleConfigDocument(
     });
   }
 
-  const maxOfflineDays = licenseTermsOf(valid.license, null, product)
-    .maxOfflineDays.value;
+  const maxOfflineDays = licenseOfflineDays(valid.license, product);
   const doc = buildConfigDoc({
     aud: product.slug,
     deviceId: valid.device.device_id,

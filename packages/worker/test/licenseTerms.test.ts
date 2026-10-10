@@ -244,6 +244,102 @@ describe("signed-document entitlements are byte-identical to the pre-resolver ru
       });
 });
 
+/** The pre-resolver rules for the remaining fields, as the oracle. */
+const legacyOffline = (l: LicenseRow, p: number) => l.max_offline_days ?? p;
+const legacyFingerprint = (
+  t: TierRow | null,
+  fp: { enabled: boolean; defaultMode: string },
+) => {
+  const ok = (v: unknown) =>
+    v === "off" || v === "lenient" || v === "normal" || v === "strict";
+  if (!fp.enabled) return "off";
+  if (ok(t?.policy_fingerprint)) return t!.policy_fingerprint;
+  if (ok(fp.defaultMode)) return fp.defaultMode;
+  return "normal";
+};
+const legacyLimit = (
+  t: TierRow | null,
+  l: LicenseRow,
+  ent: number | null,
+  pd: number,
+) => {
+  const inherited =
+    tierDeviceLimit(t) !== null
+      ? { limit: tierDeviceLimit(t), source: "tier" }
+      : ent !== null
+        ? { limit: ent, source: "entitlement" }
+        : { limit: pd, source: "product" };
+  const own = licenseOwnDeviceLimit(l);
+  return own !== null
+    ? { limit: own, source: "license", inherited }
+    : { ...inherited, inherited };
+};
+
+describe("offline days, device limit info and fingerprint mode match the old rules", () => {
+  const modes = [null, "off", "lenient", "normal", "strict", "bogus"];
+  const defaults = ["off", "lenient", "normal", "strict"];
+  const tiersM = modes.flatMap((m) =>
+    [null, 4].map((d) =>
+      tier({ policy_fingerprint: m, policy_device_limit: d }),
+    ),
+  );
+  const licM = [null, 0, 2].flatMap((d) =>
+    [null, 7].map((o) => license({ device_limit: d, max_offline_days: o })),
+  );
+  it("matches over the whole matrix", () => {
+    for (const t of [null, ...tiersM])
+      for (const l of licM)
+        for (const ent of [null, 9])
+          for (const enabled of [true, false])
+            for (const dm of defaults) {
+              const fp = { enabled, defaultMode: dm };
+              const prod = {
+                defaultDeviceLimit: 3,
+                defaultMaxOfflineDays: 30,
+                fingerprintPolicy: fp,
+              };
+              const r = licenseTermsOf(l, t, prod, ent);
+              expect(r.maxOfflineDays.value).toBe(legacyOffline(l, 30));
+              expect(r.fingerprintMode.value).toBe(legacyFingerprint(t, fp));
+              const old = legacyLimit(t, l, ent, 3);
+              expect({
+                limit: r.deviceLimit.value,
+                source: r.deviceLimit.source,
+                inherited: {
+                  limit: r.inheritedDeviceLimit.value,
+                  source: r.inheritedDeviceLimit.source,
+                },
+              }).toEqual(old);
+            }
+  });
+  it("lenient: tier, product default, and opt-out wins", () => {
+    const fp = (enabled: boolean, defaultMode: string) => ({
+      ...product,
+      fingerprintPolicy: { enabled, defaultMode },
+    });
+    expect(
+      licenseTermsOf(
+        null,
+        tier({ policy_fingerprint: "lenient" }),
+        fp(true, "strict"),
+      ).fingerprintMode,
+    ).toEqual({ value: "lenient", source: "tier" });
+    expect(
+      licenseTermsOf(null, tier(), fp(true, "lenient")).fingerprintMode,
+    ).toEqual({
+      value: "lenient",
+      source: "product",
+    });
+    expect(
+      licenseTermsOf(
+        null,
+        tier({ policy_fingerprint: "lenient" }),
+        fp(false, "strict"),
+      ).fingerprintMode.value,
+    ).toBe("off");
+  });
+});
+
 describe("one terms implementation", () => {
   function walk(dir: string, out: string[] = []): string[] {
     for (const n of readdirSync(dir)) {
@@ -261,6 +357,9 @@ describe("one terms implementation", () => {
       /max_offline_days\s*\?\?/,
       /\?\?\s*product\.defaultMaxOfflineDays/,
       /\?\?\s*product\.defaultDeviceLimit/,
+      /\?\?\s*p\.defaultMaxOfflineDays/,
+      /\?\?\s*p\.defaultDeviceLimit/,
+      /license\.device_limit\s*\?\?\s*(?!null\b)/,
       /licenseOwnDeviceLimit\([^)]*\)\s*\?\?/,
     ];
     const hits: string[] = [];
