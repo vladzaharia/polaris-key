@@ -66,11 +66,11 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Acceptance criteria
 
-- [ ] WIRE-CONTRACT-V4 §13 is written and the verdict order, problem body and client rule are marked [C].
-- [ ] `gen corpus`, `gen constants --check` and `parity:check` pass with the new file and codes.
-- [ ] `PROTOCOL_VERSION` 4, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3 are unchanged.
-- [ ] The `backend` kind is exempt from the generator's Worker-emits-it check (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] WIRE-CONTRACT-V4 §13 is written and the verdict order, problem body and client rule are marked [C]. (It is §14: §13 is Cloud Sync. §14.1 headers, §14.2 verdict, §14.3 problem and §14.5 client rule are [C].)
+- [x] `gen corpus`, `gen constants --check` and `parity:check` pass with the new file and codes.
+- [x] `PROTOCOL_VERSION` 4, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3 are unchanged.
+- [x] The `backend` kind is exempt from the generator's Worker-emits-it check (test: `tools/gen-sdk-constants.test.ts`, which also refuses a backend code the Worker emits).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header (the lead gate, full scope; Kotlin `:core:test :conformance:test` and the browser runner's backend suites in Chromium run separately).
 
 ## Verify
 
