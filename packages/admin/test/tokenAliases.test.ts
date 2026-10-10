@@ -61,7 +61,7 @@ const PALETTE_COLORS = new Set(["black", "white"]);
  * until it is listed here, which is the point: every value is classified on purpose.
  */
 const NOT_COLOR: Record<string, RegExp> = {
-  text: /^([23]?xs|sm|md|base|lg|[2-9]?xl|display|code|headline|headline-lg|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|clip|ellipsis)$/,
+  text: /^([23]?xs|sm|md|base|lg|[2-9]?xl|display|code|headline|headline-lg|page-title|page-title-sm|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|clip|ellipsis)$/,
   border: /^(\d+|collapse|separate|solid|dashed|dotted|double|none|hidden)$/,
   divide: /^(x|y|\d+|x-\d+|y-\d+|solid|dashed|dotted|none)$/,
   outline: /^(hidden|none|\d+|solid|dashed|dotted|double|offset-\d+)$/,
