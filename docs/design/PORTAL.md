@@ -574,7 +574,7 @@ to sign in", and "<Developer> · <where>":
 - **Code** is §4.4 with "Continue".
 - **Register** (new account after a verified email code; a provider sign-in goes through the email
   gate, §4.29, instead): "Create your account", a `success` line
-  "mara@fennick.studio is verified", **Your name** ("Shown to you and in emails. Developers see it
+  "mara@fennick.studio is verified", **Screen name** (I-33; "Shown to you and in emails. Developers see it
   only when you continue to their app."), an opt-in checkbox "Add a passkey after this, so next time
   is one tap", **Create account and continue**, and the terms line naming both Polaris Key's terms
   and the developer's.
@@ -1196,7 +1196,7 @@ method it later uses.
 2. `h1` **Confirm your email**, with a lede saying what the email is for (sign-in codes, receipts,
    security notices; purchases made with it join the library). Inside an app: "One step before
    Saltwind."
-3. **Profile import** (§4.30 rules): the imported picture with the provider's badge, **Your name**
+3. **Profile import** (§4.30 rules): the imported picture with the provider's badge, **Screen name** (I-33)
    prefilled and editable, and one line naming the source ("Name and picture from Google. Change
    picture"). Google: name and picture. Apple: name, on first consent only, and no picture ("Apple
    doesn't share a picture. Add one"). Steam: persona name and avatar.

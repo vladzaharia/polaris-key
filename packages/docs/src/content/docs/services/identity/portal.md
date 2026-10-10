@@ -47,12 +47,12 @@ are the portal SPA's.
 | `GET /login`                            | Begins platform OIDC and 302s to the IdP.                                   |
 | `GET /callback`                         | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
 | `POST /api/signin/email/start`          | Emails a 6-digit code and a magic link, bound to this browser.              |
-| `POST /api/signin/email/verify`         | Redeems the code in the browser that asked.                                 |
+| `POST /api/signin/email/verify`         | Redeems the code in the browser that asked; a new address may finish first. |
 | `POST /api/signin/email/resend`         | Sends a new code and link for this browser's sign-in.                       |
 | `GET /magic/verify`                     | The magic link's landing page. Consumes nothing.                            |
 | `POST /magic/verify`                    | The landing page's button: signs in here, or confirms the asking browser.   |
 | `POST /api/signin/flow`                 | The asking browser's poll after the link was confirmed on another device.   |
-| `GET`/`POST /api/signin/confirm-email`  | The email gate: the required first-provider-sign-in interstitial.           |
+| `GET`/`POST /api/signin/confirm-email`  | FinishStep: the email gate, profile and terms of every new account.         |
 | `POST /api/signin/confirm-email/verify` | The gate's code, for a typed or unverified address.                         |
 | `POST /api/signin/confirm-email/join`   | Takes the join offer, once both identities are proven.                      |
 | `POST /api/signin/confirm-email/cancel` | Abandons the sign-in.                                                       |
@@ -121,6 +121,33 @@ primary email and an email sign-in method. When a product requires terms, the ga
 until that version is ticked; acceptances are kept per account, product and version. A new
 version asks again and is recorded beside the earlier ones, which are never overwritten; a merge
 carries them to the surviving account, and deleting the account or the product erases them.
+
+**FinishStep (I-33).** The gate is the one finish API of both new-account paths: a provider's
+first sign-in, and a new address's email code when there is something to ask (then
+`POST /api/signin/email/verify` answers `{"status": "finish", "next"}` with the gate cookie
+instead of a session, and the gate starts with the address confirmed: its view says
+`emailRequired: false`). Beside the email, the view carries:
+
+- `profile.suggestions`: the screen name's chips, one per name a source supplied (the provider's
+  name, its display name, the email's local part), each `{name, source}`;
+- `profile.picture` and `profile.initials`: the provider's picture, or Initials once chosen;
+- `profile.birthdate`: `{value, offered, from}` only when a connection's sign-in offered a full
+  birth date (from is the connection's label), else `null`;
+- `terms`: the product's `{version, url, privacyUrl}` (the URL defaults to the listing's
+  `eulaUrl`, and the listing's `privacyUrl` is linked beside it), or `null`;
+- `platformTerms`: Polaris Key's `{version, termsUrl, privacyUrl}` while the platform setting
+  `identity.platformTerms` is set (it is unset today), else `null`.
+
+The `POST` takes `name`, `picture` (`"provider"` or `"initials"`), `birthdate` (the offered date,
+or an edited one; absent or `null` declines it), `termsVersion` and `platformTermsVersion` (each
+must equal the version shown, or the answer is `400 terms_required` naming the terms), and, on a
+provider's gate, the email `choice`. A birth date nobody offered is `400 bad_request` with
+`reason: birthdate_not_offered`, and one that is not a real date up to today is
+`reason: invalid_birthdate`. The account, its methods and every acceptance are written in one
+batch: a product's terms as before, Polaris Key's as a `_platform` row whose URL is the terms URL
+(a privacy notice informs and gets no row). An accepted birth date is stored with its source
+(`connection:<id>` as offered, `user` once edited); the offer itself lives only in the gate record
+and is never kept on a sign-in method. No app or developer surface ever receives it.
 
 If the confirmed address belongs to another account, the gate answers `409 email_in_use` and
 offers "Join with your existing Polaris Key account". It never joins silently and never by email
@@ -242,15 +269,19 @@ session's CSRF value (`403` otherwise).
 - **`GET /api/me`** — account summary (`id`, `name`, `email`, and `avatarUrl`, the picture in
   use as a same-origin URL or `null`) plus the CSRF token, after folding in any newly-provable
   license links.
-- **`GET /api/me/profile`** — Account → Profile: the display name and picture, where each came
+- **`GET /api/me/profile`** — Account → Profile: the screen name and picture, where each came
   from (`{"kind": "provider", "linkId", "provider"}`, `typed`, `upload` or `initials`) and
   whether it was chosen explicitly (`explicitName`, `explicitPicture`), the locale, and
   `sources`, what each sign-in method supplied (its name and picture: the editor's chips and
-  tiles). **`PATCH /api/me/profile`** makes explicit choices, which later sign-ins never
-  overwrite: `name` (typed) or `nameFrom` (a method's id), and `picture` as `"initials"`,
-  `{"from": <method id>}` or `{"upload": <asset>}`. It answers the updated profile. Refusals use registered codes with a `reason` naming
-  the case: `400 bad_request` (`invalid_name`, `no_name`, `no_picture`, or a malformed body) and
-  `404 not_found` (`unknown_source`, `unknown_upload`).
+  tiles), and the person's own birth date (`birthdate`, `YYYY-MM-DD` or `null`, with
+  `birthdateSource` `{"kind": "user"}` or `{"kind": "connection", "connectionId"}`): this route is
+  the only one that ever answers it. **`PATCH /api/me/profile`** makes explicit choices, which
+  later sign-ins never overwrite: `name` (typed) or `nameFrom` (a method's id), `picture` as
+  `"initials"`, `{"from": <method id>}` or `{"upload": <asset>}`, and `birthdate` (a date, or
+  `null` to remove it). It answers the updated profile. Refusals use registered codes with a
+  `reason` naming the case: `400 bad_request` (`invalid_name`, `no_name`, `no_picture`,
+  `invalid_birthdate`, or a malformed body) and `404 not_found` (`unknown_source`,
+  `unknown_upload`). The audit records which values changed, never a birth date.
   **`POST /api/me/profile/picture`** takes the raw bytes of a PNG or JPEG (the bytes decide), at
   most 5 MB, re-encodes them like a provider's picture and answers `201 {"upload": {asset, url,
 url96}}`; it does not change the profile until a `PATCH` puts it to use. An unused upload is kept

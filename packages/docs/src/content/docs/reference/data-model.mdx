@@ -162,7 +162,7 @@ this page or fails the freshness gate.
 | --- | --- | --- |
 | `oidc_config` | 0001_init.sql | `product`, `issuer`, `client_id`, `client_secret_secret`, `redirect_uris_json`, `group_role_map_json`, `provider (0009)` |
 | `provisioning_config` | 0001_init.sql | `product`, `claim`, `entitlement_key`, `entitlement_value_json`, `secret_key`, `secret_url_template`, `allowed_hosts_json` |
-| `accounts` | 0068_a_accounts.sql | `id`, `status`, `primary_email`, `primary_email_verified_at`, `display_name`, `avatar_key`, `locale`, `details_source_json`, `terms_json`, `created_at`, `modified_at`, `last_sign_in_at`, `deleted_at`, `nudge_shown_at (0080)`, `passkey_user_handle (0094)` |
+| `accounts` | 0068_a_accounts.sql | `id`, `status`, `primary_email`, `primary_email_verified_at`, `display_name`, `avatar_key`, `locale`, `details_source_json`, `terms_json`, `created_at`, `modified_at`, `last_sign_in_at`, `deleted_at`, `nudge_shown_at (0080)`, `passkey_user_handle (0094)`, `birthdate (00XX)`, `birthdate_source (00XX)` |
 | `account_links` | 0068_a_accounts.sql | `id`, `account_id`, `issuer_key`, `tenant_scope`, `subject`, `kind`, `email`, `email_verified`, `display_name`, `amr_json`, `created_at`, `last_used_at`, `groups_json (0071)`, `profile_json (0079)`, `provider_flag (0081)` |
 | `account_product_subjects` | 0068_a_accounts.sql | `account_id`, `product`, `subject`, `created_at` |
 | `account_product_subject_aliases` | 0068_a_accounts.sql | `product`, `alias`, `subject`, `merged_at` |

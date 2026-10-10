@@ -22,6 +22,39 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/I-27.md`](../plans/I-27.md) §12: §2.4: the birth date accepted from the gate record only; terms URLs, with privacy linked and not accepted; one `ALTER` per file. Acceptance (Q2): terms acceptance is recorded for every new account once `identity.platformTerms` is set; none is shown or recorded while it is unset.
 
+## Corrections from the code (2026-10-09)
+
+Checked against `integ/ux-docs` at `ffefd94f5`. The code is the fact; these narrow how the scope
+lands, not what it is.
+
+- **The FinishStep UI is PX-21's.** `plans/I-27.md` §2.4: "the API in I-33, the UI in PX-21". The
+  portal SPA renders no gate step today (`SignInPage.tsx` has none). This package builds the one
+  finish API (`card/gate.ts`, both new-account paths) and the portal's Account → Profile; the
+  `identity.finish` and `hosted:finish-email-gate` mockup items stay with PX-21 for the screen.
+  `identity.app-sign-in`'s Terms card is I-29's page, over I-09's `identity.terms`.
+- **Copy keys.** The catalog's `signin.register.*` has no name key (title, verified, submit; no
+  kit draws a RegisterStep), and the portal does not read the catalog yet (UK-02a): its profile
+  copy is `portal/copy/profile.ts`. "Screen name" lands in `profile.name.label`; FinishStep's
+  catalog keys come with PX-21's UI. SIGN-IN.md and PORTAL.md say "Screen name".
+- **No connection exists yet (I-30).** A connection's `birthdate` claim enters through
+  `ProviderSignIn.connection` (`{id, label, birthdate}`), the seam I-30's connection client fills.
+  The platform IdP's `/callback` (until I-30) and the legacy product callback (until I-32b) still
+  create accounts outside the gate, so publishing `identity.platformTerms` waits for them and for
+  PX-21 (RUNBOOK "Publish Polaris Key's terms").
+- **`identity.terms` is I-09's.** Product terms URLs resolve through `productTerms()` and the
+  `delivery` hook's new `legalUrls` (the listing model's `eulaUrl`, `privacyUrl`); the front door
+  that passes a product's terms (I-08) calls it.
+- **The email path asks only when there is something to ask.** A new address finishes through the
+  gate while `identity.platformTerms` is set; otherwise it is created at the code as before, so the
+  live card keeps working until PX-21 renders the step (PX-21 then makes it unconditional).
+- **Existing accounts** are not asked to accept a new Polaris Key terms version (Q2's acceptance
+  covers new accounts); re-acceptance is a later owner decision.
+- **Docs.** The docs site has no `features/`, `operate/` or `help/` tree yet (the 2026-10-08 docs
+  plan's batches): this package updates today's pages for the same readers
+  (`users/portal.md`, `users/privacy.mdx` through `docs/PRIVACY.md`,
+  `services/identity/portal.md`, `admin/platform-settings.md`). The React cookie note belongs to
+  SP-40, which removes cookie mode.
+
 ## Goal
 
 Profile v2: screen name, birth date, platform terms, as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -7807,6 +7807,47 @@ expiresAt))` (`core/graceClamp.ts`, `core/documents.ts` `clampGraceUntil`): the 
   an offline copy, writes nothing (checked) and carries licence ids, tiers and counts only: no
   name, email or key.
 
+### Identity consolidation (I-27)
+
+plans/I-27.md §6: one row per threat, each written by the package that builds it.
+
+- **Birth date (I-33).** `accounts.birthdate` and `birthdate_source` (`accounts/birthdate.ts`).
+  Never released to an app, and never stored without the person's acceptance.
+  - _Stored only on acceptance._ A connection's mapped `birthdate` claim rides only in the
+    sign-in's gate record (I-02's store, 15 minutes, deleted when the gate passes), as
+    FinishStep's offer. The account gets it only when the person accepts it there (source
+    `connection:<id>`, or `user` once edited), or adds it in Account → Profile. A date nobody
+    offered is refused (`birthdate_not_offered`), and so is any value that is not a real calendar
+    date from 1900-01-01 to tomorrow in UTC (`invalid_birthdate`, strict `YYYY-MM-DD`; a
+    withheld-year or year-only claim is never offered). A refused submission writes nothing
+    (tests).
+  - _Never released._ The person's own `GET /api/me/profile` is the one route that answers it. No
+    consent item, device response, signed document, developer API, Users page, developer export
+    or `id_token` carries it, whatever the person consented to (a grant naming `birthdate` changes
+    nothing). Tests: every recorded transcript and its Godot mirror; the console's Users list,
+    search, row, export and events, its licence and device pages and Activity; the device routes
+    and the signed licence document. A source test allows the name only in the profile, FinishStep
+    and the account lifecycle files, so a new reader is a reviewed change.
+  - _Never kept elsewhere._ Not on a sign-in method (`account_links`), not in the audit (the
+    profile audit row names the field, never the value), not in mail, not in a log line (tests).
+    A join fills it on the survivor only when the survivor has none, with its source, and the
+    join's undo takes back exactly what it filled; the undo snapshot holds it for at most 72 hours.
+    Deleting the account clears it at once, before the erasure finishes.
+  - _Not built._ Age booleans, `minimumAge` and `identity.minimumAge` wait until a product gates
+    content: nothing decides anything from a birth date today.
+- **Polaris Key's terms (I-33).** `identity.platformTerms` (`core/platformTerms.ts`) is a platform
+  setting, unset by default, so no terms step shows and no `_platform` acceptance row is written
+  until the owner publishes reviewed terms (I-27 Q2). It widens nothing: it adds a step that every
+  new account must pass, and its worst misuse (a wrong version or URL) records a wrong acceptance,
+  never access. No console route writes it; a row that is not exactly `{version, termsUrl,
+privacyUrl}` with https URLs reads as unset, and an unreadable store fails the sign-in rather
+  than creating an account without the acceptance published terms require. The acceptance is
+  written in the same batch that creates the account, on both new-account paths (a provider's
+  first sign-in and a new address's email code), and records the version the gate opened with.
+  Residual: until I-30 sends the platform IdP's `/callback` through the gate and I-32b retires the
+  legacy product callback, those two paths create accounts without the step, so publishing waits
+  for them (docs/RUNBOOK.md).
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, and the SDK does not trust it.** Every

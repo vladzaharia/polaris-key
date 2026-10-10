@@ -365,7 +365,7 @@ sign-in, requested at {time} from {place}", with "The device that asked signs in
 itself."
 
 **RegisterStep** (new account after an email code): "Create your account". A success line reads
-"{email} is verified". **Your name** has the help "Shown to you and in emails. Developers see it only
+"{email} is verified". **Screen name** (I-33; never "Your name") has the help "Shown to you and in emails. Developers see it only
 when you continue to their app." Then the opt-in "Add a passkey after this, so next time is one tap",
 **Create account and continue**, and the terms line naming Polaris Key's terms (and the developer's
 in passthrough).
