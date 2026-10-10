@@ -7,6 +7,7 @@
  * NOTE: these tests assert the CURRENT (vulnerable) behaviour so they fail loudly when a
  * fix lands. Read them as "this is what an attacker can do today".
  */
+import { issuerMetadataResponse } from "../oidcIssuerFake.js";
 import { bindFlow } from "../flowBinderHelper.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { readFileSync } from "node:fs";
@@ -96,7 +97,9 @@ function req(url: string, init?: RequestInit): Request {
   return new Request(url, init) as unknown as Request;
 }
 
-/** Record every outbound `globalThis.fetch` (URL + serialized body) and answer 502. */
+/** Record every outbound `globalThis.fetch` (URL + serialized body) and answer 502. I-30: the
+ *  issuer's discovery document is answered (the attacker's host would serve one), so the
+ *  recorder sees what the one client sends after discovering it. */
 function recordGlobalFetch(): Array<{ url: string; body: string }> {
   const calls: Array<{ url: string; body: string }> = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(
@@ -107,6 +110,9 @@ function recordGlobalFetch(): Array<{ url: string; body: string }> {
           : input instanceof URL
             ? input.toString()
             : (input as Request).url;
+      if (url.endsWith("/.well-known/openid-configuration")) {
+        return (await issuerMetadataResponse(url, null))!;
+      }
       calls.push({ url, body: init?.body ? String(init.body) : "" });
       // 502 short-circuits handleAuthCallback right after the token POST — which is all
       // we need to prove: the request left the box, addressed at the attacker's host.

@@ -1,16 +1,23 @@
 import { isSameOriginRequest } from "../../../core/accounts/browserRequestGuard.js";
-import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
-  ALLOWED_ID_TOKEN_ALGS,
-  ID_TOKEN_CLOCK_TOLERANCE,
-  ID_TOKEN_MAX_AGE,
-} from "../idToken.js";
+  authorizationUrl,
+  discover,
+  newFlowSecrets,
+  redeemAuthorizationCode,
+} from "../../../core/oidc/client.js";
+import {
+  audienceCovers,
+  connectionRelyingParty,
+  openConnectionSecret,
+  resolveConnection,
+  verifiedDomains,
+  type Connection,
+} from "../../../core/oidc/connections.js";
+import { strictEmail } from "../../../core/strictEmail.js";
 import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
 import { hashKey } from "../../../platform/crypto.js";
 import { isSameOriginNavigation } from "../../../platform/http.js";
-import { pkcePair } from "../../../platform/pkce.js";
-import { platformOidcConfig } from "../../../platform/platformOidc.js";
 import {
   PORTAL_SIGNIN_RETURN_TO,
   safeReturnTo,
@@ -30,25 +37,24 @@ import {
   portalIdentityIssuerKey,
   rekeyLegacyPortalIdentities,
   portalAuthCapabilities,
-  portalAudit,
-  recordLinkGroups,
-  syncAccountLicenseLinks,
 } from "./repo.js";
-import { signIn, type SignInResult } from "../accounts/signIn.js";
-import { rekeyLegacyAccountLinks } from "../accounts/repo.js";
+import { type SignInResult } from "../accounts/signIn.js";
+import { findLink, rekeyLegacyAccountLinks } from "../accounts/repo.js";
 import {
-  claimPlatformSubject,
   platformSignInEnded,
+  platformSignInPolicy,
   PLATFORM_SIGNIN_ENDED,
 } from "../accounts/platformMigration.js";
 import { beginProviderSignIn } from "../card/gate.js";
+import { connectionIdentity } from "../connections/claims.js";
+import { autoLinkThroughDomain } from "../connections/autoLink.js";
+import {
+  PLATFORM_ENV_CONNECTION_ID,
+  platformEnvConnection,
+} from "../connections/seed.js";
 import { accountDisabledPage } from "../card/http.js";
 import { buildPortalClearCookie, portalSessionFromRequest } from "./session.js";
-import {
-  revokeSessionByHash,
-  sessionIdHash,
-  startAccountSession,
-} from "./accountSessions.js";
+import { revokeSessionByHash, sessionIdHash } from "./accountSessions.js";
 import {
   handleMagicConfirm,
   handleMagicLanding,
@@ -93,6 +99,9 @@ interface FlowRecord {
   nonce: string;
   redirectUri: string;
   returnTo?: string;
+  /** I-30: the connection the flow was started through (absent on a pre-I-30 flow: the seeded
+   *  platform connection, whose redirect URI it shares). */
+  connectionId?: string;
   /** I-17: the peppered hash of the `__Host-pkey_sso` cookie `/login` set on the browser that
    *  started the flow. `/callback` completes only in that browser. */
   bindingHash?: string;
@@ -187,77 +196,53 @@ function authJson(body: unknown, status = 200): Response {
   });
 }
 
-function mapClaims(payload: Record<string, unknown>): {
-  sub: string;
-  email?: string;
-  emailVerified: boolean;
-  name?: string;
-  groups?: string[];
-} {
-  const email =
-    typeof payload.email === "string" ? payload.email.toLowerCase() : undefined;
-  const emailVerified = payload.email_verified === true;
-  const name =
-    (typeof payload.name === "string" && payload.name) ||
-    [payload.given_name, payload.family_name]
-      .filter((s) => typeof s === "string")
-      .join(" ")
-      .trim() ||
-    (emailVerified ? email : "");
-  return {
-    sub: String(payload.sub ?? ""),
-    email,
-    emailVerified,
-    name: name || undefined,
-    // PX-W10: kept so Discover can evaluate a product's `groupRoleMap` for this account. The
-    // same filter the product sign-in applies (`oidc.ts` `mapClaims`): strings only; no claim
-    // at all is "not known", not "no groups".
-    groups: Array.isArray(payload.groups)
-      ? payload.groups.filter((g): g is string => typeof g === "string")
-      : undefined,
-  };
-}
-
-async function issueRedirectSession(
-  env: Env,
-  db: Db,
-  req: Request,
-  account: {
-    id: string;
-    display_name: string | null;
-    primary_email: string | null;
-  },
-  amr: readonly string[],
-  now: number,
-  location: string,
-): Promise<Response> {
-  // I-07: every sign-in opens a server-side account session the cookie names (revocable).
-  const { cookie } = await startAccountSession(
-    env,
-    db,
-    { account, req, amr },
-    now,
-  );
-  return new Response(null, {
-    status: 302,
-    headers: {
-      ...Object.fromEntries(
-        portalSecurityHeaders(
-          new Headers({
-            location,
-            "set-cookie": cookie,
-            "cache-control": "no-store",
-          }),
-        ),
-      ),
-    },
-  });
-}
-
+/**
+ * `GET /login`: the platform's single sign-on, which is the env-seeded platform connection
+ * (I-30; plans/I-27.md §2.3 "Pocket ID": the seeded row is the connection's only source).
+ */
 export async function handlePortalLogin(
   req: Request,
   env: Env,
   db: Db,
+  now: number = Math.floor(Date.now() / 1000),
+): Promise<Response> {
+  return handleConnectionLogin(req, env, db, PLATFORM_ENV_CONNECTION_ID, now);
+}
+
+/** The connection a customer-facing flow may use, or `null` (an unknown, disabled, product or
+ *  operators-only connection: the card never offers one). */
+async function customerConnection(
+  env: Env,
+  db: Db,
+  id: string,
+  now: number,
+): Promise<Connection | null> {
+  const conn =
+    id === PLATFORM_ENV_CONNECTION_ID
+      ? await platformEnvConnection(env, db, now)
+      : await resolveConnection(db, id);
+  if (!conn || conn.status !== "active" || conn.scope !== "platform") {
+    return null;
+  }
+  return audienceCovers(conn.audience, "customers") ? conn : null;
+}
+
+/** I-17's switch applies to the env-seeded connection only (the platform IdP it was written for). */
+function platformPolicyEnded(conn: Connection, env: Env, now: number): boolean {
+  return conn.source === "env" && platformSignInEnded(env, now);
+}
+
+/**
+ * `GET /login/sso/<id>` (I-30): start a sign-in through a platform connection. The one
+ * relying-party client discovers the issuer; the flow (`state`, nonce, PKCE verifier, the
+ * connection) is stored single-use and bound to this browser; `login_hint` is passed on when it
+ * is an address.
+ */
+export async function handleConnectionLogin(
+  req: Request,
+  env: Env,
+  db: Db,
+  connectionId: string,
   now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
   const ok = await rateLimitOk(
@@ -271,21 +256,27 @@ export async function handlePortalLogin(
   if (!caps.portalEnabled || !caps.oidcEnabled) {
     return signInPage.off();
   }
-  const cfg = platformOidcConfig(env);
-  if (!cfg) return signInPage.off();
+  const conn = await customerConnection(env, db, connectionId, now);
+  if (!conn) return signInPage.off();
   // I-17: past the sunset nobody is sent to the platform IdP only to be refused on the way back.
-  if (platformSignInEnded(env, now)) return signInPage.platformEnded();
+  if (platformPolicyEnded(conn, env, now)) return signInPage.platformEnded();
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
   const returnTo = safeReturnTo(req, rawReturnTo, PORTAL_SIGNIN_RETURN_TO);
   if (rawReturnTo && !returnTo) return htmlError(400, "Invalid return URL.");
+  const loginHint = strictEmail(url.searchParams.get("login_hint"));
 
-  const state = randomToken(16);
-  const nonce = randomToken(16);
-  const { verifier, challenge } = await pkcePair();
+  const rp = connectionRelyingParty(conn, null);
+  let discovered;
+  try {
+    discovered = await discover(rp);
+  } catch {
+    return signInPage.unavailable();
+  }
+  const { state, nonce, verifier, challenge } = await newFlowSecrets();
   const redirectUri = `${url.origin}/callback`;
-  // I-17: the flow is bound to this browser. Pocket ID returns by a top-level GET, which carries a
+  // I-17: the flow is bound to this browser. The IdP returns by a top-level GET, which carries a
   // `SameSite=Lax` cookie, so the callback can require it (login CSRF, and a planted join offer).
   const binding = randomToken(32);
   const flow: FlowRecord = {
@@ -293,6 +284,7 @@ export async function handlePortalLogin(
     nonce,
     redirectUri,
     returnTo,
+    connectionId: conn.id,
     bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
   };
   await putArtefact(
@@ -301,21 +293,21 @@ export async function handlePortalLogin(
     JSON.stringify(flow),
     FLOW_TTL_SECONDS,
   );
-
-  const authorize = new URL(`${cfg.issuer.replace(/\/$/, "")}/authorize`);
-  authorize.searchParams.set("response_type", "code");
-  authorize.searchParams.set("client_id", cfg.clientId);
-  authorize.searchParams.set("redirect_uri", redirectUri);
-  authorize.searchParams.set("scope", "openid email profile groups");
-  authorize.searchParams.set("state", state);
-  authorize.searchParams.set("nonce", nonce);
-  authorize.searchParams.set("code_challenge", challenge);
-  authorize.searchParams.set("code_challenge_method", "S256");
+  const scope = conn.claimMap.groups
+    ? "openid email profile groups"
+    : "openid email profile";
   return new Response(null, {
     status: 302,
     headers: portalSecurityHeaders(
       new Headers({
-        location: authorize.toString(),
+        location: authorizationUrl(discovered, rp, {
+          redirectUri,
+          scope,
+          state,
+          nonce,
+          codeChallenge: challenge,
+          extra: loginHint ? { login_hint: loginHint } : undefined,
+        }),
         "set-cookie": accountRealmCookie(
           PORTAL_SSO_COOKIE,
           binding,
@@ -338,6 +330,7 @@ function clearingBinding(res: Response): Response {
   });
 }
 
+/** `GET /callback`: the one redirect URI of every connection; `state` names the flow. */
 export async function handlePortalCallback(
   req: Request,
   env: Env,
@@ -365,9 +358,9 @@ export async function handlePortalCallback(
   }
   // I-17: only the browser that started the flow may finish it. Without this, anyone could hand
   // a victim the callback URL of their own sign-in: the victim's browser would get the
-  // attacker's session (login CSRF) or, in `claim` mode, the attacker's email gate, whose join
-  // the victim's own proof would complete onto the victim's account. Refused generically before
-  // the code is exchanged; a flow without a binding (minted before this check) is refused too.
+  // attacker's session (login CSRF) or the attacker's email gate, whose join the victim's own
+  // proof would complete onto the victim's account. Refused generically before the code is
+  // exchanged; a flow without a binding (minted before this check) is refused too.
   const binding = readCookie(req.headers.get("cookie"), PORTAL_SSO_COOKIE);
   if (
     !binding ||
@@ -379,142 +372,131 @@ export async function handlePortalCallback(
   // Atomic and single-use: of two racing callbacks for one `state`, one gets the flow.
   if (!(await consumeArtefact(env, flowKey))) return signInPage.tookTooLong();
   return clearingBinding(
-    await completePortalCallback(req, env, db, flow, code, now),
+    await completeConnectionCallback(
+      req,
+      env,
+      db,
+      flow,
+      { code, iss: url.searchParams.get("iss") },
+      now,
+    ),
   );
 }
 
-/** The rest of `/callback`, once the flow is known to be this browser's. */
-async function completePortalCallback(
+/**
+ * The rest of `/callback`, once the flow is known to be this browser's (I-30; plans/I-27.md
+ * §2.3 "The rewritten `/callback`"): the one client redeems the code; the env-seeded connection
+ * applies I-17's `platformSignInPolicy` first; Q1's auto-link may attach a new identity to the
+ * one account that verified its address; every identity then goes through
+ * `beginProviderSignIn`, so an address the connection does not vouch for reaches the email gate,
+ * never an email-less account.
+ */
+async function completeConnectionCallback(
   req: Request,
   env: Env,
   db: Db,
   flow: FlowRecord,
-  code: string,
+  response: { code: string; iss: string | null },
   now: number,
 ): Promise<Response> {
-  const cfg = platformOidcConfig(env);
-  if (!cfg) return signInPage.off();
+  const conn = await customerConnection(
+    env,
+    db,
+    flow.connectionId ?? PLATFORM_ENV_CONNECTION_ID,
+    now,
+  );
+  if (!conn) return signInPage.off();
+  const policy =
+    conn.source === "env"
+      ? platformSignInPolicy(env, now)
+      : ({ kind: "as-before" } as const);
   // I-17: a flow started before the sunset is not completed after it (the flow is spent above).
-  if (platformSignInEnded(env, now)) return signInPage.platformEnded();
-  const tokenRes = await fetch(
-    `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: flow.redirectUri,
-        client_id: cfg.clientId,
-        code_verifier: flow.verifier,
-        ...(cfg.clientSecret ? { client_secret: cfg.clientSecret } : {}),
-      }),
-    },
-  );
-  if (!tokenRes.ok) return signInPage.unavailable();
-  const tokens = (await tokenRes.json()) as { id_token?: string };
-  if (!tokens.id_token) return signInPage.unavailable();
+  if (policy.kind === "ended") return signInPage.platformEnded();
 
-  const jwks = createRemoteJWKSet(
-    new URL(`${cfg.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
+  const rp = connectionRelyingParty(
+    conn,
+    await openConnectionSecret(env, db, conn.id),
   );
-  let claims: Record<string, unknown>;
+  let claims;
   try {
-    const verified = await jwtVerify(tokens.id_token, jwks, {
-      issuer: cfg.issuer,
-      audience: cfg.clientId,
-      algorithms: ALLOWED_ID_TOKEN_ALGS,
-      // Freshness is ours to enforce: `exp` is entirely the IdP's choice, so a token minted
-      // long before this exchange must not be replayable into a sign-in (R8-05d).
-      clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
-      maxTokenAge: ID_TOKEN_MAX_AGE,
-    });
-    claims = verified.payload as Record<string, unknown>;
-    if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce) {
-      throw new Error("nonce mismatch");
-    }
-  } catch {
-    return signInPage.unverified();
+    ({ claims } = await redeemAuthorizationCode(rp, {
+      code: response.code,
+      iss: response.iss,
+      redirectUri: flow.redirectUri,
+      codeVerifier: flow.verifier,
+      nonce: flow.nonce,
+    }));
+  } catch (err) {
+    return err instanceof Error && err.name === "OidcNetworkError"
+      ? signInPage.unavailable()
+      : signInPage.unverified();
   }
 
-  const identity = mapClaims(claims);
-  if (!identity.sub) return signInPage.unverified();
-  // I-17: with `PLATFORM_OIDC_MIGRATION` on, the claim decides (it re-keys and signs in itself);
-  // off (the default), the sign-in below is exactly what it was.
-  const claim = await claimPlatformSubject(
-    db,
+  const identity = connectionIdentity(
+    conn,
+    claims,
+    await verifiedDomains(db, conn.id),
+  );
+  if (!identity.sub.trim()) return signInPage.unverified();
+  const issuerKey = portalIdentityIssuerKey(conn.issuer);
+  if (conn.source === "env") {
+    // A pre-I-01 row still keyed by the literal `oidc` is this IdP's subject: re-key it before
+    // the lookup, or the person would get a second account (until I-28 removes the helpers).
+    await rekeyLegacyPortalIdentities(db, issuerKey);
+    await rekeyLegacyAccountLinks(db, issuerKey);
+  }
+  const known = await findLink(db, {
+    issuerKey,
+    tenantScope: "",
+    subject: identity.sub.trim(),
+  });
+  // I-17's `operators-only`: an unknown subject is refused.
+  if (!known && policy.kind === "claim" && policy.linkedOnly) {
+    return signInPage.platformEnded();
+  }
+  if (!known && identity.email && identity.emailVerified) {
+    await autoLinkThroughDomain(
+      env,
+      db,
+      {
+        connection: conn,
+        issuerKey,
+        subject: identity.sub.trim(),
+        email: identity.email,
+        displayName: identity.displayName,
+        origin: new URL(req.url).origin,
+      },
+      now,
+    );
+  }
+  return beginProviderSignIn(
+    req,
     env,
+    db,
     {
-      issuer: cfg.issuer,
-      sub: identity.sub,
-      email: identity.email ?? null,
-      emailVerified: identity.emailVerified,
-      displayName: identity.name ?? null,
-      groups: identity.groups,
+      identity: {
+        issuerKey,
+        subject: identity.sub,
+        kind: "oidc",
+        email: identity.email,
+        emailVerified: identity.emailVerified,
+        displayName: identity.displayName,
+        amr: [`connection:${conn.id}`],
+      },
+      profile: {
+        name: identity.displayName,
+        pictureUrl: identity.pictureUrl,
+      },
+      connection: {
+        id: conn.id,
+        label: conn.label,
+        birthdate: identity.birthdate,
+      },
+      linkAssertion: { groups: identity.groups, claims: identity.claims },
+      amr: [`connection:${conn.id}`],
+      returnTo: flow.returnTo ?? null,
     },
     now,
-  );
-  let result: SignInResult;
-  switch (claim.status) {
-    case "off": {
-      // Keyed by issuer (S-16 G14). Re-key any pre-I-01 rows first, so the lookup finds them.
-      const issuerKey = portalIdentityIssuerKey(cfg.issuer);
-      await rekeyLegacyPortalIdentities(db, issuerKey);
-      await rekeyLegacyAccountLinks(db, issuerKey);
-      // I-05: every front door ends in one `signIn(verifiedIdentity)`.
-      result = await signIn(
-        db,
-        {
-          issuerKey,
-          subject: identity.sub,
-          kind: "oidc",
-          email: identity.emailVerified ? identity.email : null,
-          emailVerified: Boolean(identity.emailVerified && identity.email),
-          displayName: identity.name ?? null,
-        },
-        now,
-      );
-      break;
-    }
-    case "ended":
-      return signInPage.platformEnded();
-    case "join_offer":
-      // The email step (I-07's gate) offers the join: nothing is written until the person proves
-      // the account that uses the address in this browser and confirms (S-16, owner 2026-10-04).
-      return beginProviderSignIn(
-        req,
-        env,
-        db,
-        { identity: claim.identity, returnTo: flow.returnTo ?? null },
-        now,
-      );
-    case "ambiguous":
-      // More than one account uses the address: nothing is offered (the same page as before).
-      return emailInUsePage();
-    default:
-      result = claim.result;
-  }
-  const refused = signInRefusal(result, flow.returnTo);
-  if (refused) return refused;
-  const signedIn = result as Extract<SignInResult, { status: "signed_in" }>;
-  const account = signedIn.account;
-  // PX-W10: the platform IdP's `groups` claim, kept on this link for Discover (NULL = not sent).
-  await recordLinkGroups(db, signedIn.linkId, identity.groups);
-  await syncAccountLicenseLinks(db, account.id, now);
-  await portalAudit(db, {
-    accountId: account.id,
-    action: "portal.login.oidc",
-    summary: "Signed in with OIDC",
-    now,
-  });
-  return issueRedirectSession(
-    env,
-    db,
-    req,
-    account,
-    ["oidc"],
-    now,
-    flow.returnTo ?? "/",
   );
 }
 

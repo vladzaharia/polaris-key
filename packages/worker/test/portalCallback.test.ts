@@ -10,6 +10,7 @@
 // jose reads the REAL system clock, so the token's `iat`/`exp` are built from `Date.now()`
 // while the handler's `now` parameter (session stamping only) stays the seed constant.
 
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { makeTestDb } from "./helpers.js";
@@ -112,6 +113,11 @@ async function callbackWith(
           : input.url,
     );
     fetched.push(u.toString());
+    const meta = await issuerMetadataResponse(
+      u.toString(),
+      idp.jwks.keys[0] ?? null,
+    );
+    if (meta) return meta;
     if (u.origin === ISSUER && u.pathname === "/api/oidc/token")
       return new Response(JSON.stringify({ id_token: idToken }), {
         headers: { "content-type": "application/json" },
@@ -133,10 +139,12 @@ async function callbackWith(
 }
 
 describe("portal OIDC callback ID-token hardening (R8-05d)", () => {
-  it("control: a fresh, nonce-bound token signs in", async () => {
+  it("control: a fresh, nonce-bound token is accepted (a new identity goes on to the email gate)", async () => {
     const res = await callbackWith(idClaims());
     expect(res.status).toBe(302);
-    expect(res.headers.get("set-cookie")).toContain("pkey_portal");
+    // I-30: the seeded connection has no verified domain, so it vouches for no address and a
+    // new identity meets the email gate (plans/I-27.md §2.3 "Pocket ID").
+    expect(res.headers.get("set-cookie")).toContain("__Host-pkey_gate=");
   });
 
   it("refuses a stale token — old iat, still-valid exp", async () => {
@@ -166,27 +174,29 @@ describe("the callback is bound to the browser that started it (I-17)", () => {
     }
   });
 
-  it("the starting browser signs in, and its binding is cleared", async () => {
+  it("the starting browser goes on, and its binding is cleared", async () => {
     const res = await callbackWith(idClaims());
     expect(res.status).toBe(302);
     const cookies = (
       res.headers as unknown as { getSetCookie(): string[] }
     ).getSetCookie();
-    expect(cookies.some((c) => c.startsWith("__Host-pkey_portal="))).toBe(true);
+    expect(cookies.some((c) => c.startsWith("__Host-pkey_gate="))).toBe(true);
     expect(cookies).toContain(clearAccountRealmCookie(PORTAL_SSO_COOKIE));
   });
 });
 
 describe("portal identities are keyed by issuer (I-01, S-16 G14)", () => {
-  it("a first sign-in keys the identity by the configured platform issuer", async () => {
+  it("a first sign-in writes nothing until the email gate passes (I-30)", async () => {
     const db = makeTestDb();
     const res = await callbackWith(idClaims(), db);
     expect(res.status).toBe(302);
-    // I-05: the sign-in method is an `account_links` row keyed by (issuer, tenant scope, subject).
-    const rows = await db.all<{ issuer_key: string; subject: string }>(
-      "SELECT issuer_key, subject FROM account_links WHERE kind = 'oidc'",
-    );
-    expect(rows).toEqual([{ issuer_key: ISSUER, subject: "user-1" }]);
+    // I-30: the identity waits in the gate record; no account and no link exist yet. The gate
+    // writes the link keyed by (issuer, tenant scope, subject) when it passes
+    // (test/connectionCallback.test.ts).
+    expect(await db.all("SELECT id FROM accounts")).toEqual([]);
+    expect(
+      await db.all("SELECT id FROM account_links WHERE kind = 'oidc'"),
+    ).toEqual([]);
   });
 
   it("re-keys a pre-I-01 'oidc' link and signs into the same account", async () => {
@@ -219,7 +229,7 @@ describe("portal identities are keyed by issuer (I-01, S-16 G14)", () => {
 });
 
 describe("the portal callback ends in signIn (I-05)", () => {
-  it("an unknown identity whose verified email another account uses is a join offer: nothing is attached or created", async () => {
+  it("an unknown identity whose email another account uses goes to the email gate: nothing is attached or created", async () => {
     const db = makeTestDb();
     const existing = await getOrCreateAccountByEmail(
       db,
@@ -230,11 +240,16 @@ describe("the portal callback ends in signIn (I-05)", () => {
       idClaims({ email: "ada@example.com", email_verified: true }),
       db,
     );
-    expect(res.status).toBe(409);
-    // No session: the only cookie is the spent single sign-on binding being cleared (I-17).
-    expect(res.headers.get("set-cookie")).toBe(
-      clearAccountRealmCookie(PORTAL_SSO_COOKIE),
+    // I-30: the address is not inside a verified domain of the connection, so it is not vouched
+    // for: the gate proves it by code, and only then offers the join (never by email match).
+    expect(res.status).toBe(302);
+    const cookies = (
+      res.headers as unknown as { getSetCookie(): string[] }
+    ).getSetCookie();
+    expect(cookies.some((c) => c.startsWith("__Host-pkey_portal="))).toBe(
+      false,
     );
+    expect(cookies.some((c) => c.startsWith("__Host-pkey_gate="))).toBe(true);
     expect(await db.all("SELECT id FROM accounts")).toEqual([
       { id: existing.id },
     ]);

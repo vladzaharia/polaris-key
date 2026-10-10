@@ -524,6 +524,10 @@ export const TABLE_OWNERS = {
     "storefront_seen",
     // PX-W12: account joins and their 72-hour undo.
     "account_merges",
+    // I-30 (plans/I-27.md §2.3): connections and their DNS-verified email domains. Other code
+    // reads them only through src/core/oidc/connections.ts.
+    "identity_connections",
+    "identity_connection_domains",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",

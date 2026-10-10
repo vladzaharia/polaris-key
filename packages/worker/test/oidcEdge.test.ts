@@ -1,3 +1,4 @@
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -1324,6 +1325,8 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
             : input instanceof URL
               ? input.toString()
               : input.url;
+        const meta = await issuerMetadataResponse(u, idpKey.getKey);
+        if (meta) return meta;
         if (u.includes("/api/oidc/token")) {
           return new Response(JSON.stringify({ id_token: idToken }), {
             status: 200,
@@ -1514,6 +1517,8 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
             : input instanceof URL
               ? input.toString()
               : input.url;
+        const meta = await issuerMetadataResponse(u, idpKey.getKey);
+        if (meta) return meta;
         if (u.includes("/api/oidc/token")) {
           tokenExchangeCalled = true;
           const idToken = await signIdToken({
@@ -1563,6 +1568,8 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
             : input instanceof URL
               ? input.toString()
               : input.url;
+        const meta = await issuerMetadataResponse(u, idpKey.getKey);
+        if (meta) return meta;
         if (u.includes("/api/oidc/token")) {
           const params = new URLSearchParams(String(init?.body ?? ""));
           sentClientSecret = params.get("client_secret");
@@ -1610,6 +1617,8 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
             : input instanceof URL
               ? input.toString()
               : input.url;
+        const meta = await issuerMetadataResponse(u, idpKey.getKey);
+        if (meta) return meta;
         if (u.includes("/api/oidc/token")) tokenExchangeCalled = true;
         throw new Error(`unexpected fetch: ${u}`);
       },

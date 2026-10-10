@@ -291,6 +291,28 @@ export async function recordLinkGroups(
 }
 
 /**
+ * What a connection asserted at this sign-in, on the link it signed in through (I-30; plans/I-27.md
+ * §2.3 "Links"): the mapped groups and the access-rule claims, replaced together in ONE `UPDATE`.
+ * `null` is "not asserted" (fail closed). ST-30's `asserted_at` joins this statement when it lands;
+ * nothing else writes these columns for a connection link.
+ */
+export async function recordLinkAssertion(
+  db: Db,
+  linkId: string,
+  assertion: {
+    groups: readonly string[] | null;
+    claims: Readonly<Record<string, string>> | null;
+  },
+): Promise<void> {
+  await db.run(
+    "UPDATE account_links SET groups_json = ?, claims_json = ? WHERE id = ?",
+    assertion.groups ? JSON.stringify(assertion.groups) : null,
+    assertion.claims ? JSON.stringify(assertion.claims) : null,
+    linkId,
+  );
+}
+
+/**
  * Add an address the caller has just proved to the account as a verified email sign-in method.
  * A trusted primitive (no step-up): the interactive path is `linkIdentity`. An address that is
  * already another account's method is left where it is (one link, one account).

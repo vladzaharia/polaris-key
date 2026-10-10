@@ -10,6 +10,10 @@
  */
 
 import type { VerifiedIdentity } from "../accounts/signIn.js";
+import {
+  emailDomain,
+  type Connection,
+} from "../../../core/oidc/connections.js";
 
 /** Google's consumer domains: an address there is Google's own, so `email_verified` is current. */
 const GOOGLE_CONSUMER_DOMAINS: ReadonlySet<string> = new Set([
@@ -37,4 +41,36 @@ export function providerVouchesForEmail(
   if (GOOGLE_CONSUMER_DOMAINS.has(domain)) return true;
   const hd = hostedDomain?.trim().toLowerCase();
   return Boolean(hd) && hd === domain;
+}
+
+/**
+ * The narrowed rule for a connection's `email_verified` (I-30; plans/I-27.md §2.3 "Trust in
+ * `email_verified`"). Used only by `beginProviderSignIn` on the gate paths: the card's connection
+ * buttons and routing, and the rewritten `/callback`. The legacy product engine keeps
+ * `providerVouchesForEmail` until I-32b.
+ *
+ *   - A PLATFORM connection vouches only for an address inside one of its DNS-verified domains,
+ *     exactly (`example.com` never covers `sub.example.com`), and only when the ID token said
+ *     `email_verified` and the address is plain ASCII before it is lower-cased (a lookalike such
+ *     as the Kelvin sign would otherwise fold onto a verified domain).
+ *   - A PRODUCT connection never vouches: its addresses get the email gate's code (I-32).
+ *   - A disabled connection vouches for nothing.
+ *
+ * `verifiedDomains` is the connection's verified list as `verifiedDomains()` reads it; an
+ * unverified domain is simply not in it, so it never vouches.
+ */
+export function connectionVouchesForEmail(
+  connection: Pick<Connection, "scope" | "status">,
+  identity: Pick<VerifiedIdentity, "email" | "emailVerified">,
+  verifiedDomains: readonly string[],
+): boolean {
+  if (connection.status !== "active") return false;
+  if (connection.scope !== "platform") return false;
+  if (!identity.emailVerified) return false;
+  const raw = identity.email?.trim() ?? "";
+  // The whole address, plain ASCII, before anything lower-cases it.
+  if (!/^[\x21-\x7e]+$/.test(raw)) return false;
+  const domain = emailDomain(raw);
+  if (!domain) return false;
+  return verifiedDomains.includes(domain);
 }

@@ -14,10 +14,21 @@
  *
  * Redirects are never followed (`redirect: "manual"`, a 3xx is a failure), so a gated URL cannot
  * hand the request on to an ungated `Location`. Bodies are read under a byte cap.
+ *
+ * I-30: the door itself is the one relying-party client's (`core/oidc/client.ts`); this module
+ * keeps only the built-in providers' host lists and their names for its errors.
  */
 
-import { isSafeIssuerUrl } from "@polaris-key/manifest";
-import { isRedirect, readCappedText } from "../../../core/readCapped.js";
+import {
+  gatedFetch as coreGatedFetch,
+  gatedJson as coreGatedJson,
+  OIDC_MAX_BYTES,
+  OIDC_TIMEOUT_MS,
+  OidcGrantRefusedError,
+  OidcNetworkError,
+  oidcUrlProblem,
+  type OidcFetch,
+} from "../../../core/oidc/client.js";
 import type { SignInProviderKind } from "./config.js";
 
 /** The hosts each provider's endpoints may live on. Exact host names, lower case. */
@@ -35,132 +46,47 @@ export const PROVIDER_HOSTS: Readonly<
 };
 
 /** The largest provider response this module reads (a discovery document or a JWKS is ~2 KB). */
-export const PROVIDER_MAX_BYTES = 64 * 1024;
-
-/**
- * The provider refused the grant itself (RFC 6749 §5.2 `invalid_grant`: a replayed, expired or
- * foreign authorization code). The user's sign-in could not be verified; the provider is up.
- */
-export class ProviderGrantRefusedError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ProviderGrantRefusedError";
-  }
-}
+export const PROVIDER_MAX_BYTES = OIDC_MAX_BYTES;
 
 /** How long one outbound provider call may take. */
-export const PROVIDER_TIMEOUT_MS = 10_000;
-
-export class ProviderNetworkError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ProviderNetworkError";
-  }
-}
-
-/** Why `raw` may not be dialled for `kind`, or `null` when it may. */
-export function providerUrlProblem(
-  raw: unknown,
-  allowedHosts: readonly string[],
-): string | null {
-  if (typeof raw !== "string" || !raw) return "not a URL";
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return "not a URL";
-  }
-  if (url.protocol !== "https:") return "not https";
-  if (url.username || url.password) return "embeds credentials";
-  if (url.port !== "") return "names a port";
-  // The reserved-address rule, on the origin alone (an endpoint may carry a query string, which
-  // the issuer rule refuses for its own reasons).
-  if (!isSafeIssuerUrl(url.origin)) return "reserved or private address";
-  if (!allowedHosts.includes(url.hostname.toLowerCase())) {
-    return "host not on the provider allowlist";
-  }
-  return null;
-}
-
-/** The fetch a provider module uses; tests pass a fake. */
-export type ProviderFetch = (
-  input: string,
-  init?: RequestInit,
-) => Promise<Response>;
-
-export const defaultProviderFetch: ProviderFetch = (input, init) =>
-  fetch(input, init);
+export const PROVIDER_TIMEOUT_MS = OIDC_TIMEOUT_MS;
 
 /**
- * Dial a gated URL and return the status with the body as text (capped). Throws
- * `ProviderNetworkError` for a refused URL, a redirect, a timeout or an oversized body; a non-2xx
- * status is returned for the caller to judge.
+ * The provider refused the grant itself (RFC 6749 §5.2 `invalid_grant`). The core client's class
+ * under the name the provider modules have always used.
+ */
+export const ProviderGrantRefusedError = OidcGrantRefusedError;
+export type ProviderGrantRefusedError = OidcGrantRefusedError;
+
+/** A refused URL, a redirect, a timeout or a malformed answer: the core client's class. */
+export const ProviderNetworkError = OidcNetworkError;
+export type ProviderNetworkError = OidcNetworkError;
+
+/** Why `raw` may not be dialled with `allowedHosts`, or `null` when it may. */
+export const providerUrlProblem = oidcUrlProblem;
+
+/** The fetch a provider module uses; tests pass a fake. */
+export type ProviderFetch = OidcFetch;
+
+/**
+ * Dial a gated URL for `kind` (its `PROVIDER_HOSTS`) through the core client's gated fetch, and
+ * return the status with the body as text (capped).
  */
 export async function gatedFetch(
   kind: SignInProviderKind,
   url: string,
   init: RequestInit,
-  fetchImpl: ProviderFetch = defaultProviderFetch,
+  fetchImpl?: ProviderFetch,
 ): Promise<{ status: number; body: string }> {
-  const problem = providerUrlProblem(url, PROVIDER_HOSTS[kind]);
-  if (problem) {
-    throw new ProviderNetworkError(`refused ${kind} URL: ${problem}`);
-  }
-  let res: Response;
-  try {
-    res = await fetchImpl(url, {
-      ...init,
-      redirect: "manual",
-      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
-    });
-  } catch {
-    throw new ProviderNetworkError(`${kind} request failed`);
-  }
-  if (isRedirect(res)) {
-    await res.body?.cancel().catch(() => undefined);
-    throw new ProviderNetworkError(`${kind} answered a redirect`);
-  }
-  const body = await readCappedText(
-    res,
-    PROVIDER_MAX_BYTES,
-    (detail) =>
-      new ProviderNetworkError(`${kind} response too large (${detail})`),
-  );
-  return { status: res.status, body };
+  return coreGatedFetch(kind, url, init, PROVIDER_HOSTS[kind], fetchImpl);
 }
 
-/** `gatedFetch` for a JSON answer: a 2xx with an object body, or a `ProviderNetworkError`. */
+/** `gatedFetch` for a JSON answer: a 2xx with an object body, or an error. */
 export async function gatedJson(
   kind: SignInProviderKind,
   url: string,
   init: RequestInit,
   fetchImpl?: ProviderFetch,
 ): Promise<Record<string, unknown>> {
-  const { status, body } = await gatedFetch(kind, url, init, fetchImpl);
-  if (status < 200 || status >= 300) {
-    if (status === 400 && grantError(body) === "invalid_grant") {
-      throw new ProviderGrantRefusedError(`${kind} refused the grant`);
-    }
-    throw new ProviderNetworkError(`${kind} answered ${status}`);
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(body);
-  } catch {
-    throw new ProviderNetworkError(`${kind} answered invalid JSON`);
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw new ProviderNetworkError(`${kind} answered a non-object`);
-  }
-  return parsed as Record<string, unknown>;
-}
-
-/** The OAuth `error` code of a token-endpoint error body, or `null`. */
-function grantError(body: string): string | null {
-  try {
-    const parsed = JSON.parse(body) as { error?: unknown };
-    return typeof parsed?.error === "string" ? parsed.error : null;
-  } catch {
-    return null;
-  }
+  return coreGatedJson(kind, url, init, PROVIDER_HOSTS[kind], fetchImpl);
 }

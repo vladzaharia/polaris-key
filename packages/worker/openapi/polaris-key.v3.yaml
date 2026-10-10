@@ -12401,6 +12401,15 @@ paths:
         (`GET /api/capabilities` → `turnstileSiteKey`), `turnstileToken` is verified with
         Cloudflare first and any failure refuses (fail closed). `POST /api/magic/start` is the
         older name of this route.
+
+        Identifier-first routing (I-30): when the address's domain is DNS-verified by an active
+        connection whose audience covers customers, the answer carries `next` (`kind: "sso"`, the
+        connection's `id` and `label`, and `enforced`) and NO email goes out. On a domain that is
+        not enforced the flow is opened with nothing sent (`resendIn: 0`): the person continues
+        with the connection, or picks the code, which `POST /api/signin/email/resend` sends at
+        once; `method: "code"` on the start picks it immediately. An enforced domain opens no flow
+        and never gets an email code or magic link. The answer depends on the domain only, never
+        on whether an account uses the address.
       requestBody:
         required: true
         content:
@@ -12415,6 +12424,12 @@ paths:
                   {
                     type: string,
                     description: "A same-origin path to land on afterwards (never under `/manage`).",
+                  }
+                method:
+                  {
+                    type: string,
+                    enum: [code],
+                    description: "I-30: on a routed domain that is not enforced, send the code now instead of answering `next` alone. Ignored on an enforced domain.",
                   }
       responses:
         "200":
@@ -12498,6 +12513,13 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CardEmailSent" }
         "400": { $ref: "#/components/responses/CardError" }
+        "403":
+          description: >
+            `auth_method_disabled` with `next` (I-30): the address's domain is enforced by a
+            connection, so no email code or magic link is sent. A fact about the domain.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
         "404":
           description: "`auth_method_disabled`: email sign-in is off."
           content:
@@ -19481,8 +19503,28 @@ components:
         codeLength: { type: integer, enum: [6] }
         resendIn:
           type: integer
-          enum: [60]
-          description: Seconds before `POST /api/signin/email/resend` accepts this flow (the card's countdown).
+          enum: [60, 0]
+          description: >
+            Seconds before `POST /api/signin/email/resend` accepts this flow (the card's countdown);
+            0 on a routed start, which sent nothing yet.
+        next:
+          $ref: "#/components/schemas/CardSsoNext"
+    CardSsoNext:
+      type: object
+      description: >
+        I-30: the connection an address's domain routes to (identifier-first routing). Present only
+        when the domain is DNS-verified by an active connection whose audience covers customers;
+        it depends on the domain only. `enforced`: the domain gets no email code or magic link.
+      required: [kind, connection, enforced]
+      properties:
+        kind: { type: string, enum: [sso] }
+        connection:
+          type: object
+          required: [id, label]
+          properties:
+            id: { type: string, pattern: "^[A-Za-z0-9_-]{1,64}$" }
+            label: { type: string }
+        enforced: { type: boolean }
     CardSignedIn:
       type: object
       required: [status, next, nudge]

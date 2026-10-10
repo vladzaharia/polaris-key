@@ -98,6 +98,11 @@ import {
 } from "./http.js";
 import { verifyTurnstile } from "./turnstile.js";
 import { readBodyText } from "../../../core/cappedBody.js";
+import {
+  emailDomain,
+  routeForDomain,
+  type DomainRoute,
+} from "../../../core/oidc/connections.js";
 
 /** The rate-limit and email-limit scope of platform (account) sign-in. */
 export const PORTAL_EMAIL_SCOPE = "_portal";
@@ -126,6 +131,51 @@ interface FlowRecord {
   sends?: number;
   /** The store id of the magic link minted with the current code (PX-W4), so a resend retires it. */
   link?: string;
+}
+
+/**
+ * I-30: the scopes an address's domain is routed in, in order. The card here has no product
+ * context, so only the platform's connections route; a product context (I-32) goes first.
+ */
+const CARD_ROUTE_SCOPES: readonly string[] = ["platform"];
+
+/** I-30: the `next` member of a routed start: the connection the address's domain belongs to. */
+function ssoNext(route: DomainRoute): {
+  kind: "sso";
+  connection: { id: string; label: string };
+  enforced: boolean;
+} {
+  return {
+    kind: "sso",
+    connection: { id: route.connection.id, label: route.connection.label },
+    enforced: route.enforced,
+  };
+}
+
+/**
+ * Where `email`'s domain routes on the card, or `null`. Depends on the domain only (exact,
+ * DNS-verified, an active connection whose audience covers customers), never on any account.
+ */
+async function cardRoute(db: Db, email: string): Promise<DomainRoute | null> {
+  const domain = emailDomain(email);
+  if (!domain) return null;
+  return routeForDomain(db, domain, CARD_ROUTE_SCOPES, "customers");
+}
+
+/**
+ * An enforced domain's refusal of an email code or magic link: a fact about the domain (the start
+ * already said so), never about the address.
+ */
+function enforcedRefusal(route: DomainRoute, cookies: string[] = []): Response {
+  return cardJson(
+    {
+      error: "auth_method_disabled",
+      message: `Sign in with ${route.connection.label} for this email address.`,
+      next: ssoNext(route),
+    },
+    403,
+    cookies,
+  );
 }
 
 interface MagicRecord {
@@ -235,8 +285,32 @@ export async function handleSigninEmailStart(
       403,
     );
   }
+  // I-30: identifier-first routing. A DNS-verified domain of an active connection answers `next`
+  // and sends nothing: the person continues with the connection, or (unless the domain is
+  // enforced) picks the code, which `resend` then sends. `method: "code"` on the start picks it
+  // at once. The answer depends on the domain only.
+  const route = await cardRoute(db, email);
+  if (route?.enforced) return routedStart(route);
+  // Routed, the connection works without mail; the code (resend) checks the sender itself.
+  if (route && body.method !== "code") {
+    return openFlow(req, env, db, { email, returnTo, sends: 0 }, now, route);
+  }
   if (!portalEmailConfigured(env)) return emailUnavailable();
   return openFlow(req, env, db, { email, returnTo, sends: 1 }, now);
+}
+
+/** An enforced domain's start: the connection only, no flow and no email. */
+function routedStart(route: DomainRoute): Response {
+  return cardJson(
+    {
+      ok: true,
+      expiresIn: EMAIL_CODE_TTL_SECONDS,
+      codeLength: EMAIL_CODE_DIGITS,
+      resendIn: 0,
+      next: ssoNext(route),
+    },
+    200,
+  );
 }
 
 /**
@@ -250,6 +324,8 @@ async function openFlow(
   db: Db,
   input: { email: string; returnTo?: string; sends: number },
   now: number,
+  /** I-30: the start was routed and the person has not picked the code: nothing is sent. */
+  routed?: DomainRoute,
 ): Promise<Response> {
   const { email, returnTo } = input;
   const secret = randomToken(32);
@@ -272,11 +348,13 @@ async function openFlow(
   await putArtefact(env, ref, JSON.stringify(record), EMAIL_CODE_TTL_SECONDS);
 
   // Every refusal past this point answers exactly like a send (enumeration safety).
-  const { send } = await checkEmailSend(
-    env,
-    { product: PORTAL_EMAIL_SCOPE, recipient: email, req },
-    now,
-  );
+  const { send } = routed
+    ? { send: false }
+    : await checkEmailSend(
+        env,
+        { product: PORTAL_EMAIL_SCOPE, recipient: email, req },
+        now,
+      );
   if (send) {
     const { code } = await issueEmailCode(
       env,
@@ -316,7 +394,9 @@ async function openFlow(
       ok: true,
       expiresIn: EMAIL_CODE_TTL_SECONDS,
       codeLength: EMAIL_CODE_DIGITS,
-      resendIn: EMAIL_RESEND_AFTER_SECONDS,
+      // A routed flow has sent nothing yet: the code can be asked for at once.
+      resendIn: routed ? 0 : EMAIL_RESEND_AFTER_SECONDS,
+      ...(routed ? { next: ssoNext(routed) } : {}),
     },
     200,
     [accountRealmCookie(SIGNIN_FLOW_COOKIE, secret, EMAIL_CODE_TTL_SECONDS)],
@@ -383,8 +463,14 @@ export async function handleSigninEmailResend(
       429,
     );
   }
-  const wait = flow.record.createdAt + EMAIL_RESEND_AFTER_SECONDS - now;
-  if (wait > 0) return resendLater(wait);
+  // I-30: a routed start sent nothing (`sends` 0), so its first code has no wait. An enforced
+  // domain never gets one, whenever it became enforced.
+  const route = await cardRoute(db, flow.record.email);
+  if (route?.enforced) return enforcedRefusal(route);
+  if (sends > 0) {
+    const wait = flow.record.createdAt + EMAIL_RESEND_AFTER_SECONDS - now;
+    if (wait > 0) return resendLater(wait);
+  }
   if (!portalEmailConfigured(env)) return emailUnavailable();
   // Retire the flow atomically: of two racing resends (or a resend and a completion) one wins,
   // and the previous code and link die with it (both are bound to its id).
@@ -503,6 +589,22 @@ async function completeEmailSignIn(
   now: number,
   answer: "json" | "redirect",
 ): Promise<Response> {
+  // I-30: an enforced domain's address never signs in by an email code or link, even one sent
+  // before the domain was enforced. Its passkeys and other links still sign the account in.
+  const route = await cardRoute(db, record.email);
+  if (route?.enforced) {
+    return answer === "json"
+      ? enforcedRefusal(route, [clearFlow()])
+      : cardPage(
+          403,
+          {
+            title: "Sign in",
+            heading: `Sign in with ${route.connection.label} for this email address.`,
+            body: signInAgainAction(record.returnTo ?? "/"),
+          },
+          [clearFlow()],
+        );
+  }
   // I-33: a new address finishes through the gate's FinishStep when it has something to ask
   // (Polaris Key's terms, once published); the account is created there, not here.
   const finish = await beginEmailFinish(
