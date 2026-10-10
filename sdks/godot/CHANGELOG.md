@@ -9,6 +9,17 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Second review fixes.** The persistent gate carries the kit's theme over the game. Dialogs opened
+  from the boot's gate (Sign in, Activate offline, "Is this you?") take the focus and give it back.
+  The settings panel shows "Loading settings…" instead of raw keys while the live schema loads, names
+  an uncategorised group "General", takes the focus from the game when its first rows arrive, and its
+  list fills the room the screen leaves it. "Check again" says "Checking…", "No update yet." or
+  "Couldn't check."; a store build with no way to activate says "Get {product} from {store} to
+  play." (with Restore purchases where it works). The product header grows with a large title and
+  is not drawn for this repository's own project name. A `boot()` during a retry or READY's
+  background installs joins the run. Copy: "Connecting…", the blocked-update line, the
+  verify-failure line.
+
 - **Drop-in fixes.** **Behaviour change:** `await PolarisKey.boot()` resolves at READY, through any
   number of stops and retries (a stop keeps its card with Try again on screen); pass
   `resolve_on_stop: true` for the old first-stop result. `boot()` is re-entrant (a second call while
