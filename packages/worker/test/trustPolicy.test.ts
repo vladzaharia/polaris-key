@@ -206,7 +206,11 @@ describe("stored policies from a later build", () => {
     });
     expect(
       parseTrustPolicy(
-        JSON.stringify({ ...POLICY, cloudSyncWrite: "basic", laterOp: "attested" }),
+        JSON.stringify({
+          ...POLICY,
+          cloudSyncWrite: "basic",
+          laterOp: "attested",
+        }),
       ),
     ).toEqual(POLICY);
   });

@@ -62,7 +62,8 @@ const PLATFORM_DOCS = "/docs/admin/platform-settings/";
 
 /** The lowest platform default quota (1 MiB, the licence-less quota): below it no person could
  *  keep even the settings budget's worth of data. */
-export const CLOUD_SYNC_QUOTA_DEFAULT_MIN = CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes;
+export const CLOUD_SYNC_QUOTA_DEFAULT_MIN =
+  CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes;
 
 export const PLATFORM_SLICE: readonly SettingDef[] = [
   // ── A-13's four (live) ──────────────────────────────────────────────────────────────────
