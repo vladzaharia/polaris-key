@@ -442,7 +442,12 @@ describe("GodotEnv: index.json", () => {
     };
     const p = doc.packages[0]!;
     expect(p.latest).toBe("1.1.0");
-    expect(p.tags).toEqual({ beta: "1.2.0-beta.1", latest: "1.1.0" });
+    // `dev` is built in and serves what its include chain reaches: the newest beta here.
+    expect(p.tags).toEqual({
+      beta: "1.2.0-beta.1",
+      dev: "1.2.0-beta.1",
+      latest: "1.1.0",
+    });
     expect(p.versions.map((v) => v.version)).toEqual([
       "1.2.0-beta.1",
       "1.1.0",

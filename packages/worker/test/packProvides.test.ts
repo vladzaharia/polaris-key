@@ -362,6 +362,8 @@ describe("provides and removes at publish (P4-20)", () => {
     });
     expect(r.body.warnings).toEqual([
       `beta currently serves foe.dragon (${FOES}@1.1.0-beta.1), which ${FOES}@1.1.0 does not provide; beta players will lose it when this release outranks beta's.`,
+      // dev includes beta, so it serves the same beta-only id.
+      `dev currently serves foe.dragon (${FOES}@1.1.0-beta.1), which ${FOES}@1.1.0 does not provide; dev players will lose it when this release outranks dev's.`,
     ]);
   });
 

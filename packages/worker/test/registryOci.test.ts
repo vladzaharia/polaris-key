@@ -121,17 +121,19 @@ describe("the OCI tag rules (§6.3, §6.7)", () => {
   const v = (version: string) =>
     base.versions.find((x) => x.version === version)!;
 
-  it("tags every version but the yanked one, plus latest and beta, in lexical order", () => {
+  it("tags every version but the yanked one, plus latest, beta and dev, in lexical order", () => {
     const refs = ociRefs(base);
     expect(Object.keys(refs)).toEqual([
       "0.8.0",
       "1.0.0",
       "1.1.0-beta.1",
       "beta",
+      "dev",
       "latest",
     ]);
     expect(refs.latest).toEqual(refs["1.0.0"]);
     expect(refs.beta).toEqual(refs["1.1.0-beta.1"]);
+    expect(refs.dev).toEqual(refs["1.1.0-beta.1"]);
     expect(refs["1.0.0"]!.mediaType).toBe(OCI_INDEX);
     // The deprecated version is served like a live one (OCI has no deprecation field).
     expect(refs["0.8.0"]!.mediaType).toBe(DOCKER_MANIFEST);
@@ -278,7 +280,7 @@ describe("OCI pull through the registry host (F-08)", () => {
     expect(res.headers.get("etag")).toBe(`"${sha256(body)}"`);
     expect(JSON.parse(body)).toEqual({
       name: NAME,
-      tags: ["0.8.0", "1.0.0", "1.1.0-beta.1", "beta", "latest"],
+      tags: ["0.8.0", "1.0.0", "1.1.0-beta.1", "beta", "dev", "latest"],
     });
     const stored = await bucket.get(
       registryObjectKey("oci", OWNER, `${OCI_REPO}/_tags.json`),
@@ -332,12 +334,13 @@ describe("OCI pull through the registry host (F-08)", () => {
       tags: ["1.1.0-beta.1", "beta"],
     });
     const third = await get(`/v2/${NAME}/tags/list?n=2&last=beta`);
-    expect(await third.json()).toEqual({ name: NAME, tags: ["latest"] });
+    // `dev` is built in and serves what its include chain serves (here beta's build).
+    expect(await third.json()).toEqual({ name: NAME, tags: ["dev", "latest"] });
     expect(third.headers.get("link")).toBeNull();
     const after = await get(`/v2/${NAME}/tags/list?last=1.1.0-beta.1`);
     expect(await after.json()).toEqual({
       name: NAME,
-      tags: ["beta", "latest"],
+      tags: ["beta", "dev", "latest"],
     });
     const none = await get(`/v2/${NAME}/tags/list?n=0`);
     expect(await none.json()).toEqual({ name: NAME, tags: [] });
