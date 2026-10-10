@@ -146,8 +146,13 @@ Continue with, in order:
 1. **The one sign-in form** (SIGN-IN.md §3.17, §3.18): `<SignIn presentation replace>` driven by
    ui-core's `SignInModel` over the SDK (SignIn → hand-off or code → LicenseChoice → Replace →
    done, morphing in place with View Transitions and the Web Animations fallback), inside the
-   gate and alone; `useSignIn()`. Then flip `ui.signin`. `SignIn/choose` today draws its title
-   with no rows, because the rows are LicenseChoice's: compose them in the form.
+   gate and alone; `useSignIn()`. UK-04's `packages/elements/src/signin.ts` (on main since
+   2026-10-10) is the elements' form: port it, as `src/kit/views.tsx` ports `views.ts`, then flip
+   `ui.signin`. `SignIn/choose` drawn alone shows its title with no rows, because the rows are
+   LicenseChoice's: the form composes them. Keep React's views in step with every later change
+   to the elements' `render.ts` and `views.ts` (the matrix and browser suites catch a key that
+   goes missing, not a look that drifts; the cross-renderer diff will once UK-04 records
+   baselines).
 2. **Re-point the legacy components** onto the kit and retire the inline-style theme
    (`components/theme.ts` neutral default): `LicenseGate`, `PolarisLogin`, `DeviceManager` →
    `Devices` wired to `listDevices`/`renameDevice`/`deauthorizeDevice`, `UpdatePrompt` (the root
