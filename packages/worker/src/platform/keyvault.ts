@@ -57,7 +57,8 @@ const dec = new TextDecoder();
  * store key held in `platform_credentials`) is sealed with the product slot `_platform`, which no
  * product slug can spell, under its own kind. A `signin-provider-secret` (I-06 — the login card's
  * Google client secret, Apple `.p8` and Steam Web API key, held as sealed Worker secrets) uses the
- * same `_platform` slot under its own kind.
+ * same `_platform` slot under its own kind. An `identity-connection` (I-30 — a platform
+ * connection's OIDC client secret, held in `identity_connections.client_secret_sealed`) does too.
  */
 export interface SealContext {
   product: string;
@@ -66,7 +67,8 @@ export interface SealContext {
     | "product-secret"
     | "outlet-credential"
     | "platform-credential"
-    | "signin-provider-secret";
+    | "signin-provider-secret"
+    | "identity-connection";
   id: string;
 }
 

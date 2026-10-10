@@ -1,0 +1,14 @@
+-- I-30 (plans/I-27.md §2.3 "Links", §6): the access-rule claims a connection asserted.
+--
+-- `account_links.claims_json`: the values of the claims the connection's claim map lists under
+-- `claims[]` (the ones access rules may name, LX-36 and ST-32), as a JSON object of claim name to
+-- string value, from the verified ID token of the last sign-in through that link. Replaced at each
+-- such sign-in, in the one `UPDATE` that also writes `groups_json` (0071). NULL: not known. A
+-- connection's `name`, `picture` and `birthdate` are never kept here: the first two have their
+-- home in `profile_json` (0079), and the birth date rides only in the sign-in's gate record.
+--
+-- Expand only: the Worker deployed before I-30 never names it. Rollback:
+-- scripts/rollback/00XX_account_links_claims.down.sql.
+--
+-- ONE statement per file (R11-04).
+ALTER TABLE account_links ADD COLUMN claims_json TEXT;
