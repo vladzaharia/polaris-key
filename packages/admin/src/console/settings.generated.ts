@@ -179,7 +179,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The version and URLs of Polaris Key's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
     keywords: ["terms", "privacy", "legal", "FinishStep", "_platform"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
