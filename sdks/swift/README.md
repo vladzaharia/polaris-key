@@ -274,6 +274,76 @@ complete the sign-in on the verification page, so the player must be able to see
 Lovelace <ada@example.com>" with a way out: `PolarisSignIn` does, ending in Continue and
 "Not you?" (which signs out and starts again).
 
+`SignInPrompt` and `MintedToken` print (`print`, `String(describing:)`, `debugPrint`, `dump`)
+with `deviceCode` / `token` as `[redacted]`; the properties themselves read normally.
+
+### Edge-mint
+
+`try await client.config.mintToken("musickit")` asks the Worker to sign a short-lived
+third-party token through an operator-approved recipe (`GET /<product>/config/mint/<id>/token`,
+with the device token) and returns a `MintedToken(token:expiresAt:)`. It is cached **in memory
+only** — never in the cache file or the keychain — and reused until 30 seconds before
+`expiresAt`, and only while the client still holds the device token it was minted with —
+`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures throw
+`PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`)
+before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
+`rate_limited` / `misconfigured`.
+
+### Stores
+
+- `KeychainStore` (default) — token in the OS keychain (service **`pkey:<product>`**), device id
+  - offline cache as 0600 files under `~/.config/<product>/` (Application Support on iOS). Files
+    are created at 0600 by `open(2)` (never chmod'd afterwards) and both the read and write paths
+    refuse to follow a symlink.
+- `InMemoryStore` — for tests.
+- `Store` is a protocol; supply your own to back the token/cache differently. Its mutating
+  methods `throw`, so a failed keychain write or an unwritable config dir surfaces as a typed
+  `StoreError` instead of vanishing.
+
+**The keychain.** The token goes to the data-protection keychain with
+`kSecAttrAccessibleAfterFirstUnlock`. A macOS process without the entitlement it needs (an
+unsigned CLI, a test bundle) has its writes refused with `errSecMissingEntitlement` and keeps
+using the file-based login keychain, which ignores the accessibility attribute. Its reads of the
+data-protection keychain answer "not found" rather than that error, so `status()` follows a "not
+found" with a delete of a sentinel item that never exists, which does answer
+`errSecMissingEntitlement`. Reads try the data-protection keychain
+first and migrate a legacy item into it when it is available; `clearToken()` deletes from both.
+iOS always uses the data-protection keychain.
+
+**Store status.** `await client.storeStatus()` returns a `StoreStatus` (`backend`, `degraded`), or
+`nil` for a host store that does not implement `status()` (the protocol's default). The default
+store reports `.keychain`, degraded by `.legacyKeychain` on an unentitled macOS process (and on an entitled one whose
+token has not yet been migrated out of the legacy keychain) and by
+`.keyringError` when the keychain refuses; `InMemoryStore` reports `.memory`.
+
+**Directories.** `CoreOptions` takes `dataDir`, `cacheDir` and `stateDir` (bases; `<product>` is
+appended), and `core.dirs` holds the resolved `ProductDirs`. Nothing is created until something
+uses one, and the config directory has not moved.
+
+| Base   | macOS                                     | iOS                                       |
+| ------ | ----------------------------------------- | ----------------------------------------- |
+| config | `~/.config`                               | Application Support (unchanged)           |
+| data   | `<Application Support>/polaris-key/data`  | `<Application Support>/polaris-key/data`  |
+| cache  | `<Caches>/polaris-key`                    | `<Caches>/polaris-key`                    |
+| state  | `<Application Support>/polaris-key/state` | `<Application Support>/polaris-key/state` |
+
+Application Support and Caches come from `FileManager` (the container's inside a sandbox).
+`ProductDirs.excludeFromBackup(_:)` sets `isExcludedFromBackup` on an existing directory (plus a
+`CACHEDIR.TAG` on macOS) and never throws.
+
+### What the cache holds
+
+Only **signed artifacts** (§4.1): the compact JWS of each per-service document and of the trust
+manifest, per-document ETags, the imported offline bundle (`bundle`, verbatim), the evidence for any
+tombstoned pin (`pinRevocations`), two fail-closed hints
+(`blocked`, `lastSyncUnauthorized`), and wire v4's two update slices — `feeds` (each committed
+`pkey-feed+jws`, keyed by its own `channel` claim) and `releaseRecords` (each `pkey-release+jws`,
+keyed by its SHA-256, kept only while a committed feed pins it). Every JWS is re-verified on load — the manifest against the
+**usable pinned** keys only (pins minus the tombstoned ones) — and every counter (the per-type anti-replay floors, the monotonic clock
+floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that re-verified
+content; `core.feedFloors` shows the floors. A record from any other cache
+version is **discarded, never migrated**.
+
 ## When every seat is taken
 
 A refused activation returns `.deviceLimit(limit:deviceCount:manageURL:)`. `manageURL` is the

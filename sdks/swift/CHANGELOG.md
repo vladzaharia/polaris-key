@@ -13,6 +13,10 @@ Gate and SDK correctness.
   different key and Sign in; the explanation is worded for the controls it has. Use a different
   key shows the activation form in place and Cancel goes back. `GateOptions.blockedAction` adds
   the host's own action.
+- **Behaviour change on iOS:** a gate built directly with `PolarisGate(model:...)` no longer offers
+  "Activate offline" by default (its default is now `GateOptions.defaultOffersOfflineActivation`,
+  false on iOS). To keep it, pass `offersOfflineActivation: true` or
+  `options: GateOptions(offersOfflineActivation: true)`.
 - **`.polarisKey(client, theme:, options: GateOptions)`** carries key entry, offline activation
   (off on iOS), the free tier, the return URL for Replace a device and a renewal page.
   `PolarisKeyModel` takes the return URL, which the device-limit link now carries.

@@ -27,34 +27,34 @@ Done when every row holds for each screen and state this package ships, checked 
 (not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
 apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
 
-- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+- [x] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
       Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
       when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
       changes neither.
-- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+- [x] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
       linked (aria-describedby); one polite announcement per change, none while typing; tables use
       th with scope; status is a word and an icon, never colour alone.
-- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+- [x] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
       no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
       targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
-- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+- [x] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
       sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
-- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+- [x] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
       expired or stale, network and API error with Try again, partial failure, success; input survives a
       failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
       Reload.
-- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+- [x] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
       without moving content; progress is real (no invented percentage, nothing loops after a failure);
       no celebration on refunds, revocation, removal, deletion or consent.
-- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+- [x] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
       sign-in; the product accent in kits); focus, selected, hover, checked and context
       borders take the accent of the service the element references (data-service; -fg for
       text and edges, base for fills; a non-colour cue stays); status colours (success,
       warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
       taglines; no text drawn over customer art.
-- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+- [x] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
-- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+- [x] pkey-ux-reviewer passes the built screens (BUILT mode).
 
 ## Goal
 
@@ -91,6 +91,51 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
+
+## Corrections and follow-ups (UK-49 hand-off)
+
+Verified against the code (step 1):
+
+- Return submits, the refusal announcement, Replace a device, the neutral device-limit callout and the
+  `CFBundleDisplayName` default already existed. What was missing and is now fixed: the same refusal
+  twice was not announced again, the return URL never reached the Replace a device link, and the bundle
+  name ignored a localized value.
+- "Revoked" showed the activation form directly; it now shows the blocking page with its actions, so
+  Use a different key and Sign in are reachable the same way as from Expired.
+- The README had more than five wrong snippets (install `platforms:`/`from:`, the device-code `.ready`
+  pattern and its stale identity note, the gate snippet, the `UpdateDecision` patterns and an
+  incomplete `switch`); all are fixed and typechecked.
+- Tests: GateUITests (XCUITest over a scripted host, in `PlatformHostTests/run.sh`) drives the flows;
+  the first-frame check is a macOS KitLayoutTests render (no controls before the first read).
+
+Follow-ups, not done here:
+
+- Move the new `PolarisKitCopy` and `UpdateCopy` strings into the shared copy catalog (plan-mode: the
+  catalog is generated into every SDK).
+- `installUpdateBootHooks` still turns a failed `update.decide()` into "no decision" (`try?`). A refused
+  pin is named by `client.update.decide()` itself, but the boot machine has no event to carry it; add a
+  boot event for a refused update configuration.
+- VoiceOver focus after Cancel on the different-key form is left to the system; verify on a device.
+
+## Screen acceptance evidence (2026-10-09)
+
+Real iOS simulator (iPhone 17) and hosted renders, in `/private/tmp/claude-501/uk49-evidence/`
+(not committed; regenerate with `PlatformHostTests/run.sh` and `KitLayoutTests` with
+`TEST_RUNNER_PKEY_KIT_SNAPSHOTS`):
+
+- `ui-tests/`: screenshots and accessibility trees (VoiceOver names) for expired, expired-different-key,
+  expired-sign-in, revoked, revoked-refused, device-limit, signed-in and welcome.
+- `layout-ios/swiftui.<screen>/`: gate, gate-expired, gate-revoked, gate-version-too-old,
+  gate-different-key, gate-limit, signin, signin-ready, offline at iPhone SE/Max, iPad, landscape; L, AX3
+  and AX5; native and polaris presets; dark and light.
+
+Rows: Keyboard (Return submits, Cancel and Escape back out, UI tests), Screen readers (every button
+named, in the trees), Sizing (AX3 and AX5 rows pass), Themes (dark and light, both presets, accent
+contrast test), States (loading ground, refusal, expired, revoked, device limit), Motion (none added),
+Hierarchy and copy (one filled primary per state), Native (Dynamic Type, VoiceOver names) hold for the
+screens this package ships. Not applicable: landmarks/h1/zoom/forced-colors rows are web terms; gamepad,
+TV and terminal rows do not apply to the iOS and Mac gate. pkey-ux-reviewer (BUILT): pass, no blocking
+findings (expired good, revoked good, different key good, signed in good, device-limit callout ok).
 
 ## UX coverage (2026-10-09)
 
