@@ -4,6 +4,7 @@
   "runtimes": ["macos", "ios"],
   "testRoots": [
     "sdks/swift/Tests/PolarisKeyTests",
+    "sdks/swift/Tests/PolarisKeyUICoreTests",
     "tools/gen-mirrors.test.ts"
   ],
   "features": {

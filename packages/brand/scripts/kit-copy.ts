@@ -12,6 +12,8 @@
 //   web     packages/brand/src/generated/kit-copy/<locale>.json + index.ts
 //   Node    packages/sdk-node/src/kitCopy.generated.ts
 //   Swift   sdks/swift/Sources/PolarisKeyUI/Resources/Localizable.xcstrings
+//           sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json (the presentation core's
+//           ICU tables, formatted by the core itself; UK-07)
 //   Kotlin  sdks/kotlin/ui/src/commonMain/composeResources/values{,-<q>}/strings.xml
 //   Godot   sdks/godot/addons/polaris_key/ui/locale/polaris_key_ui.pot + <locale>.po
 //   Python  sdks/python/src/polaris_key/ui/kit_copy_generated.py + ui/locale/polaris_key_ui.pot
@@ -1167,6 +1169,23 @@ export function xcstrings(model: KitCopyModel): string {
   );
 }
 
+/**
+ * The Swift presentation core's catalog (UK-07): the same ICU-subset tables as the web and Node
+ * targets, one JSON resource for `PolarisKeyUICore`, which formats them itself. The String Catalog
+ * above maps `formFactor` onto Apple's device variation, so it cannot say "This phone"; the core
+ * runs every `ui-matrix.json` i18n row on every form factor, so it reads the ICU source.
+ */
+export function swiftCoreJson(model: KitCopyModel): string {
+  return JSON.stringify({
+    $comment: BANNER_LINES.filter((l) => l !== "").join(" "),
+    locales: model.locales,
+    tables: Object.fromEntries(
+      model.locales.map((l) => [l, tableFor(model, l)]),
+    ),
+    variants: variantsFor(model),
+  });
+}
+
 // Kotlin (Compose Resources strings.xml) -----------------------------------------------------
 
 /** BCP 47 → Compose Resources qualifier (plans/UK-02.md §3.3). */
@@ -1489,6 +1508,11 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
   {
     path: "sdks/swift/Sources/PolarisKeyUI/Resources/Localizable.xcstrings",
     render: () => xcstrings(model()),
+  },
+  {
+    path: "sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json",
+    render: () => swiftCoreJson(model()),
+    parser: "json",
   },
   ...KIT_LOCALES.map((l) => ({
     path: `sdks/kotlin/ui/src/commonMain/composeResources/values${COMPOSE_QUALIFIER[l]}/strings.xml`,

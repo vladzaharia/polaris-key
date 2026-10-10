@@ -28,7 +28,7 @@ a product with no license service does not carry the gate.
 | `PolarisKeyUI`       | the brandable SwiftUI gate, sign-in and offline activation over the `@Observable` `PolarisKeyModel`                                                  | Core, License, Config                     |
 | `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                            |
 
-Platforms: macOS 14+, iOS 17+ (iPadOS and Mac Catalyst take the iOS paths and are built in CI).
+Platforms: macOS 15+, iOS 18+ (iPadOS and Mac Catalyst take the iOS paths and are built in CI); tvOS 18 and visionOS 2 are declared.
 tvOS, visionOS and watchOS derive the device id from `identifierForVendor`; their platform header
 value waits on a shared enum (W8), so until then they report `ios`. Swift 6 (strict concurrency,
 everything `Sendable`).

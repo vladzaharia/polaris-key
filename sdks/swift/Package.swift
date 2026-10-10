@@ -33,6 +33,12 @@ import PackageDescription
 //   PolarisKeyPlatformC the C surface over it (`pkp_call`, `pkp_free`,
 //                   `pkp_set_event_callback`), linked by native hosts only, so a Swift
 //                   consumer of PolarisKeyPlatform exports no `pkp_*` symbols.  (deps Platform)
+//   PolarisKeyUICore   the presentation core (UK-07; UI-KITS §1.3 layer c): every kit component's
+//                   state machine, copy keys and actions over plain inputs, the ICU copy catalog,
+//                   the product identity and theme resolution, public preview states and the
+//                   @Observable models over the client. SWIFTUI-FREE, so a UIKit, AppKit or
+//                   custom-UI app builds on it without the views; conformance-pinned by
+//                   ui-matrix.json.                                     (deps the umbrella)
 //   PolarisKeyUI       the drop-in SwiftUI gate.              (deps Core + License + Config)
 //   PolarisKey      the umbrella: `PolarisKeyClient` + `@_exported import` of the
 //                   cross-platform modules (Core, License, Config, Identity, Release), so a
@@ -59,9 +65,14 @@ let package = Package(
     // The kit copy catalog's String Catalog (Resources/Localizable.xcstrings, written by
     // `pnpm gen:brand`, plans/UK-02.md §3.3) is English-sourced, in nine locales.
     defaultLocalization: "en",
+    // The Apple floors (owner, 2026-10-05; UI-KITS "Apple floors"): the 2024 releases. Liquid
+    // Glass on the 26 releases, a designed material fallback on 18; no iOS 17 / macOS 14 path.
+    // watchOS 11 joins when UK-33 fixes Core's 64-bit literals.
     platforms: [
-        .macOS(.v14),
-        .iOS(.v17),
+        .macOS(.v15),
+        .iOS(.v18),
+        .tvOS(.v18),
+        .visionOS(.v2),
     ],
     products: [
         // The one-import surface: Core + License + Config + Identity + Release re-exported, plus
@@ -79,6 +90,8 @@ let package = Package(
         .library(name: "PolarisKeyPacks", targets: ["PolarisKeyPacks"]),
         // Sparkle is macOS only — see the conditioning note above.
         .library(name: "PolarisKeyUpdate", targets: ["PolarisKeyUpdate"]),
+        // The presentation core: the kit's state machines, copy and models with no SwiftUI.
+        .library(name: "PolarisKeyUICore", targets: ["PolarisKeyUICore"]),
         // Brandable SwiftUI login/gate components layered over the services.
         .library(name: "PolarisKeyUI", targets: ["PolarisKeyUI"]),
         // The Apple platform edges (P5-05), and their C surface for native hosts (only a native
@@ -166,6 +179,17 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
+            name: "PolarisKeyUICore",
+            // The umbrella (never Sparkle, never SwiftUI) for the @Observable models over the client.
+            dependencies: [
+                "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyIdentity",
+            ],
+            // The ICU copy tables of every launch locale, written by `pnpm gen:brand`
+            // (packages/brand/scripts/kit-copy.ts) beside the String Catalog.
+            resources: [.copy("Resources/kit-copy.json")],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .target(
             name: "PolarisKeyUI",
             // The umbrella (never Sparkle) for `.polarisKey(client)` and the models that observe
             // `client.events`; Packs (no Sparkle) for the pack-progress view's events.
@@ -195,6 +219,13 @@ let package = Package(
             // runners drive (`conformance/corpus/v2/`) and the HTTP transcripts
             // (`conformance/transcripts/`) in place, through `CorpusLocator` (`#filePath`), so
             // `swift test` runs from a monorepo checkout and there is no copy to keep in step.
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // The presentation core against conformance/corpus/v2/ui-matrix.json, every row of every
+        // family, read in place like the other corpus suites.
+        .testTarget(
+            name: "PolarisKeyUICoreTests",
+            dependencies: ["PolarisKeyUICore", "PolarisKeyCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // PolarisKeyPlatform against fakes only: StoreKit Testing loads no products under
