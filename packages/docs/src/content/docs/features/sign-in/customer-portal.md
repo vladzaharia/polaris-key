@@ -122,7 +122,7 @@ until that version is ticked; acceptances are kept per account, product and vers
 version asks again and is recorded beside the earlier ones, which are never overwritten; a merge
 carries them to the surviving account, and deleting the account or the product erases them.
 
-**FinishStep (I-33).** The gate is the one finish API of both new-account paths: a provider's
+**FinishStep.** The gate is the one finish API of both new-account paths: a provider's
 first sign-in, and a new address's email code when there is something to ask (then
 `POST /api/signin/email/verify` answers `{"status": "finish", "next"}` with the gate cookie
 instead of a session, and the gate starts with the address confirmed: its view says

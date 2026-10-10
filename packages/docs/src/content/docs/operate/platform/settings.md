@@ -72,8 +72,8 @@ product's quotas and its own mirroring switch are on its
 `identity.platformTerms` is Polaris Key's own terms: `{version, termsUrl, privacyUrl}`, with
 https URLs. It is unset, so no new account is asked to accept anything of Polaris Key's and nothing
 is recorded. Set, every new account accepts that terms version before it is created, recorded
-beside the products' terms acceptances; the privacy notice is linked, not accepted. It is not an
-A-13 key and the console does not write it: publishing it is the owner's step in the runbook
+beside the products' terms acceptances; the privacy notice is linked, not accepted. The console
+does not write it: publishing it is the owner's step in the runbook
 (`docs/RUNBOOK.md`, "Publish Polaris Key's terms"), once the terms are reviewed.
 
 Nothing else can become a runtime setting. Origins, the platform admin group, the admin identity
