@@ -400,6 +400,18 @@ expect: {feedIds, target, plan}}`. A runner computes `withFeedDeltas(variant, de
 
 The only edit outside the new sections is the `feedContentCases` count, 48 → 76, in every runner.
 
+The signed-in subject, `profile.user` (WIRE-CONTRACT-V4 §2.1, §3.2), appends two sets; no version moves:
+
+- `licenseDocCases` gains three accepted cases (25 → 28): `license-profile-user-valid`,
+  `license-profile-user-not-object` and `license-profile-user-extra-members`. They prove a
+  verifier that predates the member accepts it in every shape.
+- `cases.json` gains `licenseUserCases` (14), its last section. Each case is a licence document
+  that verifies, with the `licenseDocCases` keys and `expect: {accept: true, user}`, where `user`
+  is `{subject}` or `null`. A runner verifies the document, then compares `licenseUserOf` on its
+  payload with `expect.user`. The generator's reference reader recomputes every row, and the
+  self-check proves each row differs from `user-valid` only under `/profile/user` (the
+  no-profile row, under `/profile`).
+
 ## HTTP transcripts
 
 Registration, activation and sync are conversations, not pure functions, so the corpus cannot
@@ -575,6 +587,7 @@ row pins the opt-in bypass instead.
 | `releaseRecordCases` | §2.5, §3.5       | Release records: the hash before the signature, the release keys, the claims, the pin                                                             |
 | `packRecordCases`    | §2.5.1, §2.5.2   | `kind: pack` records and an app record's `content` and `builds[].embeds`, one case per registered claim check, over the content set's object refs |
 | `markerCases`        | §2.7, §3.7       | Embedded-pack markers, in the marker verification order                                                                                           |
+| `licenseUserCases`   | §2.1, §3.2       | The signed-in subject, `profile.user`, read beside the claims by `licenseUserOf`; never refuses a document                                        |
 
 ### The content corpus
 
