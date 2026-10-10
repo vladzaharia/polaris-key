@@ -72,3 +72,9 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-16 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-16 done`.
+
+## Corrections found against the code (P0-16 builder)
+
+- `core/http/` did not exist and the console's `readBody`/`AdminBodyError` already lived in `core/console/respond.ts` (capped, 413/400). The bare `req.json()` sites at `browserSession.ts`, `oidc.ts` and `core/devices.ts` no longer exist; only Durable Object RPC bodies remain (not route handlers).
+- Done: `core/http/body.ts` is the one reader (`core/console/respond.ts` re-exports it); the portal's silent `{}` reader is gone and `handlePortalApi` answers `AdminBodyError` as 413/400 in the portal's `{ error, message }` shape.
+- Not done (kept the diff small, behaviour-preserving, no wire change): the nested error shape, one 405 helper for the 122 sites and `input`/`paging` modules. Proposed follow-up under ST-29 / P0-25.
