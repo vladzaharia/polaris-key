@@ -351,7 +351,58 @@ func _misc(t: PKeyTestContext) -> void:
 	t.check("device name: a game's own name stays", named.device_name == "Living room TV")
 	sdk.queue_free()
 	await _update_prompt(t)
+	await _check_again(t)
 	await _settings_schema(t)
+
+
+class FakeUpdate:
+	extends RefCounted
+	signal update_available(r)
+	var last_available = null
+	var next: PKeyUpdateCheck = null
+
+	func decide(_channel := "", _staged = null, _skip = null) -> PKeyUpdateCheck:
+		await (Engine.get_main_loop() as SceneTree).create_timer(0.15).timeout
+		return next
+
+
+class FakeSdk:
+	extends Node
+	var update := FakeUpdate.new()
+
+
+## "Check again" says what it is doing and what it found.
+func _check_again(t: PKeyTestContext) -> void:
+	var sc := SC.new()
+	var sdk := FakeSdk.new()
+	_tree().root.add_child(sdk)
+	var blocked = sc.update_check({"action": "blocked", "reason": "version-below-floor", "discardStaged": false})
+	var prompt := PKeyUpdatePrompt.new()
+	prompt.auto_sdk = false
+	prompt.sdk = sdk
+	_tree().root.add_child(prompt)
+	prompt.show_result(blocked)
+	t.check("check again: a locked answer offers it", prompt._action.visible and prompt._action.text == PKeyUiCopy.new().text("update_check_again"))
+	# Unchanged: it says so and keeps the answer.
+	sdk.update.next = sc.update_check({"action": "blocked", "reason": "version-below-floor", "discardStaged": false})
+	prompt._on_action()
+	await _tree().process_frame
+	t.check("check again: while asking it is disabled and reads Checking…", prompt._action.disabled and prompt._action.text == PKeyUiCopy.new().text("update_checking"), prompt._action.text)
+	await _until(func() -> bool: return not prompt._checking)
+	t.check("check again: an unchanged answer says 'No update yet.' and stays", prompt.visible and prompt._note.visible and prompt._note.text == PKeyUiCopy.new().text("update_no_update_yet") and not prompt._action.disabled, prompt._note.text)
+	# A failed check keeps the answer and says so.
+	sdk.update.next = PKeyUpdateCheck.new(false, &"network-error", "x")
+	prompt._on_action()
+	await _until(func() -> bool: return not prompt._checking)
+	t.check("check again: a failed check keeps the old answer with a note", prompt.visible and prompt.result is PKeyUpdateCheck and prompt._note.text == PKeyUiCopy.new().text("update_check_failed"), prompt._note.text)
+	# A different answer replaces it, without the note.
+	sdk.update.next = sc.update_check({"action": "none", "reason": "up-to-date", "discardStaged": false})
+	prompt._on_action()
+	await _until(func() -> bool: return not prompt._checking)
+	t.check("check again: a new answer replaces it (nothing to show now)", not prompt.visible and prompt._note.text == "", str(prompt.visible))
+	prompt.queue_free()
+	sdk.queue_free()
+	await _tree().process_frame
 
 
 func _scan_for_mark(dir: String, found: Array) -> void:

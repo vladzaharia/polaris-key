@@ -348,6 +348,9 @@ const DEFAULTS := {
 	"channel_restart": "The new channel applies at the next update check.",
 	# ── PKeyUpdatePrompt additions ──────────────────────────────────────────────────────────
 	"update_check_again": "Check again",
+	"update_checking": "Checking…",
+	"update_no_update_yet": "No update yet.",
+	"update_check_failed": "Couldn't check. Try again.",
 	"update_notes": "What's new",
 	"update_downloading": "Downloading the update… %d%%",
 }

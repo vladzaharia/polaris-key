@@ -59,6 +59,9 @@ var _bound := false
 var _covering := false
 var _fit_queued := false
 var _page_link := false
+var _checking := false
+var _check_note := ""
+var _note: Label
 
 
 func _build() -> void:
@@ -75,6 +78,7 @@ func _build() -> void:
 	_product.card = true
 	_title = label(_text, "Title", "PKeyTitle")
 	_body = label(_text, "Message", "PKeyMuted")
+	_note = label(_text, "CheckNote", "PKeyMuted")
 	_actions = actions_row(_card, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
@@ -233,6 +237,7 @@ func _yield_to_newer() -> void:
 
 
 func show_result(r: PKeyResult) -> void:
+	_check_note = ""
 	result = r
 	is_dismissed = false
 	refresh_view()
@@ -325,7 +330,9 @@ func _render() -> void:
 	if model["visible"] and locked and model["action"] == "" and model["state"] not in ["", "current"] and sdk != null and sdk.get("update") != null:
 		model["action"] = "update_check_again"
 		model["behaviour"] = "check"
-	show_text(_action, t.text(model["action"]) if model["action"] != "" else "")
+	show_text(_action, (t.text("update_checking") if _checking else t.text(model["action"])) if model["action"] != "" else "")
+	_action.disabled = _checking
+	show_text(_note, _check_note)
 	_dismiss.visible = not locked and model["state"] != "current"
 	_dismiss.text = t.text("update_dismiss")
 
@@ -337,8 +344,25 @@ func _focus_chain() -> Array:
 func _on_action() -> void:
 	if model.get("behaviour", "") == "check":
 		action_taken.emit(result)
+		_checking = true
+		_check_note = ""
+		refresh_view()
+		var before := model.duplicate()
 		var again: PKeyUpdateCheck = await sdk.update.decide()
-		if is_inside_tree():
+		_checking = false
+		if not is_inside_tree():
+			return
+		if not again.ok:
+			# The old answer stays; the failure is said under it.
+			_check_note = c().text("update_check_failed")
+			refresh_view()
+			return
+		var after := PKeyUpdatePromptController.model(again, _outlet(), release_url, show_when_current, {})
+		if after["visible"] and after["state"] == before.get("state") and after["version"] == before.get("version"):
+			result = again
+			_check_note = c().text("update_no_update_yet")
+			refresh_view()
+		else:
 			show_result(again)
 		return
 	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("apply") and outlet == "":
