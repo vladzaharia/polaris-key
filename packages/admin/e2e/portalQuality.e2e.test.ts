@@ -52,6 +52,16 @@ const TABLET_STATES = new Set([
   "activate-enter",
 ]);
 
+/**
+ * The Library and Discover pages (PX-27) keep a baseline at every size the design names: 360 and
+ * 1024 px in both themes, and the 768 px tablet in light as well as dark.
+ */
+const PRESENCE_STATES = new Set(["library-3", "library-12", "discover"]);
+const PRESENCE_SIZES = [
+  { label: "small", width: 360, height: 780 },
+  { label: "landscape", width: 1024, height: 768 },
+] as const;
+
 let portal: PortalHarness;
 
 beforeAll(async () => {
@@ -69,6 +79,7 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
     const ids = SHIPPED.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of TABLET_STATES) expect(ids).toContain(id);
+    for (const id of PRESENCE_STATES) expect(ids).toContain(id);
   });
 
   for (const state of SHIPPED) {
@@ -76,7 +87,11 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
       const sizes = THEMES.flatMap((theme) =>
         [
           ...WIDTHS,
-          ...(theme === "dark" && TABLET_STATES.has(state.id) ? [TABLET] : []),
+          ...((theme === "dark" && TABLET_STATES.has(state.id)) ||
+          PRESENCE_STATES.has(state.id)
+            ? [TABLET]
+            : []),
+          ...(PRESENCE_STATES.has(state.id) ? PRESENCE_SIZES : []),
         ].map((w) => ({ theme, w })),
       );
       for (const { theme, w } of sizes) {
