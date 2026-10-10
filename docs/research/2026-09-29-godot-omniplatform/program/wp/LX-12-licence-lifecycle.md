@@ -91,7 +91,8 @@ There is no term model beyond one `expires_at` (G8, [S-19 §4.3](../../notes/S-1
 - [x] `ended_reason` is set on disable (test): `licenseLifecycle.test.ts` (Disable, product
       deletion), `licenseBatches.test.ts` (Disable unused keys), `enroll.test.ts` (the merge's
       `superseded`).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header
+      (the lead gate, scope changed, 2026-10-09; the migration gate is not exercised: no migration).
 
 ## Verify
 
