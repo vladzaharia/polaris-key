@@ -84,6 +84,8 @@ export interface ServiceTableRow {
   docs: string;
   defaultEnabled: boolean;
   requires: readonly ServiceSlug[];
+  /** The feature the console shows it under. */
+  group: FeatureId;
 }
 
 /** The service table, in canonical order. */
@@ -98,6 +100,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     docs: "/docs/services/license/",
     defaultEnabled: true,
     requires: [],
+    group: "licensing",
   },
   {
     slug: "config",
@@ -109,6 +112,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     docs: "/docs/services/config/",
     defaultEnabled: true,
     requires: [],
+    group: "managed-config",
   },
   {
     slug: "release",
@@ -120,17 +124,19 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     docs: "/docs/services/release/",
     defaultEnabled: false,
     requires: [],
+    group: "ship-builds",
   },
   {
     slug: "distribution",
     label: "Distribution",
     summary:
-      "How releases reach devices and outlets — transports, availability, and rollouts.",
+      "How releases reach devices and channels — transports, availability, and rollouts.",
     accent: "distribution",
     icon: "Waypoints",
     docs: "/docs/services/distribution/",
     defaultEnabled: false,
     requires: ["release"],
+    group: "ship-builds",
   },
   {
     slug: "update",
@@ -142,6 +148,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     docs: "/docs/services/update/",
     defaultEnabled: false,
     requires: ["distribution"],
+    group: "ship-builds",
   },
   {
     slug: "identity",
@@ -153,6 +160,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     docs: "/docs/services/identity/",
     defaultEnabled: false,
     requires: [],
+    group: "sign-in",
   },
   {
     slug: "sync",
@@ -164,5 +172,105 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     docs: "/docs/services/sync/",
     defaultEnabled: false,
     requires: ["config", "identity"],
+    group: "cloud-sync",
+  },
+];
+
+/** The console's features (ST-38): the grouping of slugs an operator turns on. */
+export type FeatureId =
+  | "licensing"
+  | "managed-config"
+  | "ship-builds"
+  | "sign-in"
+  | "cloud-sync";
+
+/** Every switch or fact a feature's row holds below its own switch. The console renders each
+ *  `setting` and `fact` id itself, so a new one is a type error until it does. */
+export type FeatureSwitchId = "minted-tokens" | "in-app-updates" | "packages";
+
+export interface FeatureSwitchRow {
+  id: FeatureSwitchId;
+  label: string;
+  /** `service`: a slug of the feature, on by default with it; `setting`: an operator setting;
+   *  `fact`: a read-only status. */
+  kind: "service" | "setting" | "fact";
+  /** The slug a `service` switch controls; `null` otherwise. */
+  service: ServiceSlug | null;
+}
+
+export interface FeatureRow {
+  id: FeatureId;
+  label: string;
+  /** The first slug's accent and icon. */
+  accent: ServiceAccentToken;
+  icon: ServiceIconName;
+  /** Every slug of the feature, in canonical order. */
+  services: readonly ServiceSlug[];
+  /** What the feature's own switch writes: its slugs, less those a `service` switch controls. */
+  primary: readonly ServiceSlug[];
+  switches: readonly FeatureSwitchRow[];
+}
+
+/** The features, in canonical order. */
+export const FEATURES: readonly FeatureRow[] = [
+  {
+    id: "licensing",
+    label: "Licensing",
+    accent: "license",
+    icon: "KeyRound",
+    services: ["license"],
+    primary: ["license"],
+    switches: [],
+  },
+  {
+    id: "managed-config",
+    label: "Managed config",
+    accent: "config",
+    icon: "SlidersHorizontal",
+    services: ["config"],
+    primary: ["config"],
+    switches: [
+      {
+        id: "minted-tokens",
+        label: "Minted tokens",
+        kind: "fact",
+        service: null,
+      },
+    ],
+  },
+  {
+    id: "ship-builds",
+    label: "Ship builds",
+    accent: "release",
+    icon: "Package",
+    services: ["release", "distribution", "update"],
+    primary: ["release", "distribution"],
+    switches: [
+      {
+        id: "in-app-updates",
+        label: "In-app updates",
+        kind: "service",
+        service: "update",
+      },
+      { id: "packages", label: "Packages", kind: "setting", service: null },
+    ],
+  },
+  {
+    id: "sign-in",
+    label: "Sign-in",
+    accent: "identity",
+    icon: "UserRound",
+    services: ["identity"],
+    primary: ["identity"],
+    switches: [],
+  },
+  {
+    id: "cloud-sync",
+    label: "Cloud Sync",
+    accent: "sync",
+    icon: "Cloud",
+    services: ["sync"],
+    primary: ["sync"],
+    switches: [],
   },
 ];

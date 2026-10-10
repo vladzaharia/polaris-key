@@ -1,49 +1,61 @@
 /**
- * Features (docs plan section 3.2.1): the map from feature to service slugs, checked against the
- * service table, and the section a page's accent comes from.
+ * Features (docs plan section 3.2.1): the features come from the service table's `console.group`
+ * (ST-38, `src/lib/features.generated.ts`), and the section a page's accent comes from.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { FEATURE_IDS, FEATURES } from "../src/lib/features";
-import { sectionFor } from "../src/lib/section";
+import { FEATURE_IDS, FEATURES } from "../src/lib/features.generated";
+import { AREAS, sectionFor } from "../src/lib/section";
 import { allIds } from "../scripts/site-map.mjs";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const table = JSON.parse(
   readFileSync(join(docsRoot, "..", "..", "tools", "services.json"), "utf8"),
-) as { services: { slug: string; label: string }[] };
+) as {
+  features: { id: string; label: string }[];
+  services: { slug: string; console: { group: string } }[];
+};
 const slugs = table.services.map((s) => s.slug);
 
 describe("features", () => {
-  it("covers every row of the service table exactly once", () => {
-    const owned = FEATURE_IDS.flatMap((id) => FEATURES[id].services);
-    expect([...owned].sort()).toEqual([...slugs].sort());
+  it("are the service table's features, in its order, with its labels", () => {
+    expect([...FEATURE_IDS]).toEqual(table.features.map((f) => f.id));
+    for (const f of table.features)
+      expect(FEATURES[f.id as never]).toMatchObject({
+        id: f.id,
+        label: f.label,
+      });
   });
 
-  it("takes every accent from the service table", () => {
+  it("cover every row of the service table exactly once, by its console.group", () => {
+    const owned = FEATURE_IDS.flatMap((id) => FEATURES[id].services);
+    expect([...owned].sort()).toEqual([...slugs].sort());
+    for (const row of table.services)
+      expect(FEATURES[row.console.group as never]).toBeDefined();
+  });
+
+  it("take every accent from the service table", () => {
     for (const id of FEATURE_IDS) {
       const f = FEATURES[id];
       expect(slugs, `${id} accent`).toContain(f.accent);
-      for (const accent of Object.values(f.areas ?? {}))
+      for (const accent of Object.values(AREAS[id] ?? {}))
         expect(slugs, `${id} area accent`).toContain(accent);
     }
   });
 
-  it("keys the map by id", () => {
+  it("key the map by id", () => {
     for (const id of FEATURE_IDS) expect(FEATURES[id].id).toBe(id);
   });
 
-  it("every feature with a service has a docs directory with an index page", () => {
+  it("each have a docs directory with an index page", () => {
     const ids = new Set(allIds());
-    for (const id of FEATURE_IDS) {
-      if (FEATURES[id].services.length === 0) continue;
+    for (const id of FEATURE_IDS)
       expect(ids.has(`features/${id}/index`), `features/${id}/index`).toBe(
         true,
       );
-    }
   });
 
   it("every page under features/ belongs to a known feature", () => {
@@ -54,7 +66,7 @@ describe("features", () => {
       expect(known.has(id.split("/")[1]!), id).toBe(true);
   });
 
-  it("Commerce reserves its directory and has no page yet", () => {
+  it("Commerce has no directory until its service row lands (CM-29)", () => {
     expect(allIds().some((id) => id.startsWith("features/commerce/"))).toBe(
       false,
     );

@@ -9,6 +9,7 @@ import {
   loadTable,
   renderAdminTs,
   renderAll,
+  renderDocsTs,
   renderGdscript,
   renderKotlin,
   kotlinCase,
@@ -26,6 +27,7 @@ const TABLE = loadTable();
 
 function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
   return {
+    features: TABLE.features,
     services: [
       ...TABLE.services,
       {
@@ -35,7 +37,7 @@ function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
         defaultEnabled: false,
         requires: [],
         legacyModules: [],
-        console: { accent: "telemetry", icon: "Activity" },
+        console: { accent: "telemetry", icon: "Activity", group: "cloud-sync" },
         docs: "/docs/services/telemetry/",
         ...extra,
       },
@@ -80,13 +82,32 @@ describe("validateTable", () => {
     [{ requires: ["nope"] }, 'unknown slug "nope"'],
     [{ requires: ["telemetry"] }, "cannot require itself"],
     [{ legacyModules: ["config"] }, "is a service slug"],
-    [{ console: { accent: "license", icon: "Boxes" } }, 'duplicate "license"'],
     [
-      { console: { accent: "distribution", icon: "Boxes" } },
+      { console: { accent: "license", icon: "Boxes", group: "cloud-sync" } },
+      'duplicate "license"',
+    ],
+    [
+      {
+        console: { accent: "distribution", icon: "Boxes", group: "cloud-sync" },
+      },
       'duplicate "distribution"',
     ],
-    [{ console: { accent: "core", icon: "Boxes" } }, "platform section"],
-    [{ console: { accent: "tele", icon: "boxes" } }, "lucide-react icon"],
+    [
+      { console: { accent: "core", icon: "Boxes", group: "cloud-sync" } },
+      "platform section",
+    ],
+    [
+      { console: { accent: "tele", icon: "boxes", group: "cloud-sync" } },
+      "lucide-react icon",
+    ],
+    [
+      { console: { accent: "tele", icon: "Boxes", group: "nowhere" } },
+      '"nowhere" is not a feature id',
+    ],
+    [
+      { console: { accent: "tele", icon: "Boxes", group: "licensing" } },
+      'the "licensing" feature\'s rows are not contiguous',
+    ],
     [{ docs: "/docs/telemetry/" }, "/docs/services/telemetry/"],
     [{ defaultEnabled: "yes" as unknown as boolean }, "must be a boolean"],
     [{ label: "" }, ".label: must be a non-empty string"],
@@ -97,10 +118,72 @@ describe("validateTable", () => {
 
   it("rejects a table that is not a table", () => {
     expect(validateTable(null)).not.toEqual([]);
-    expect(validateTable({ services: [] })).toEqual([
+    expect(validateTable({ features: [], services: [] })).toEqual([
       "the table has no services",
+      "`features` must be a non-empty array",
     ]);
   });
+
+  const withFeatures = (
+    edit: (f: ServiceTable["features"]) => void,
+  ): ServiceTable => {
+    const features = structuredClone(TABLE.features);
+    edit(features);
+    return { ...TABLE, features };
+  };
+
+  it.each([
+    [
+      (f: ServiceTable["features"]) =>
+        f.push({ id: "empty", label: "Empty", switches: [] }),
+      'no service row names "empty"',
+    ],
+    [
+      (f: ServiceTable["features"]) => (f[0]!.id = "managed-config"),
+      'duplicate "managed-config"',
+    ],
+    [
+      (f: ServiceTable["features"]) =>
+        f[0]!.switches.push({
+          id: "x",
+          label: "X",
+          kind: "service",
+          service: "update",
+        }),
+      'a slug whose console.group is "licensing"',
+    ],
+    [
+      (f: ServiceTable["features"]) =>
+        f[0]!.switches.push({
+          id: "y",
+          label: "Y",
+          kind: "service",
+          service: "license",
+        }),
+      "the feature's switch writes nothing",
+    ],
+    [
+      (f: ServiceTable["features"]) =>
+        f[0]!.switches.push({ id: "packages", label: "P", kind: "setting" }),
+      'duplicate "packages"',
+    ],
+    [
+      (f: ServiceTable["features"]) =>
+        f[0]!.switches.push({
+          id: "z",
+          label: "Z",
+          kind: "fact",
+          service: "license",
+        }),
+      'only a "service" switch names a slug',
+    ],
+    [(f: ServiceTable["features"]) => f.reverse(), "the order must match"],
+  ] as [(f: ServiceTable["features"]) => void, string][])(
+    "rejects a bad feature table (%#)",
+    (edit, message) => {
+      expect(validateTable(withFeatures(edit)).join("\n")).toContain(message);
+    },
+  );
 });
 
 describe("renderers", () => {
@@ -145,6 +228,27 @@ describe("renderers", () => {
       'releases: ["release", "distribution", "update"]',
     );
     expect(renderSwift(TABLE)).toContain("    case distribution\n");
+  });
+
+  it("the features reach the console and the docs, and no SDK target", async () => {
+    const admin = renderAdminTs(TABLE);
+    expect(admin).toContain(
+      '  {\n    id: "ship-builds",\n    label: "Ship builds",\n    accent: "release",\n    icon: "Package",\n    services: ["release", "distribution", "update"],\n    primary: ["release", "distribution"],',
+    );
+    expect(admin).toContain('group: "ship-builds",');
+    expect(renderDocsTs(TABLE)).toContain(
+      '"ship-builds": {\n    id: "ship-builds",\n    label: "Ship builds",\n    services: ["release", "distribution", "update"],\n    accent: "release",',
+    );
+    const rendered = await renderAll(TABLE);
+    for (const [path, content] of rendered) {
+      if (
+        path.startsWith("packages/admin/") ||
+        path.startsWith("packages/docs/")
+      )
+        continue;
+      expect(content, path).not.toContain("ship-builds");
+      expect(content, path).not.toContain("Ship builds");
+    }
   });
 
   it("defaults are generated from defaultEnabled", () => {

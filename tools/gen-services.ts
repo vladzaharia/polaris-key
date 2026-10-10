@@ -6,9 +6,11 @@
 // Input: tools/services.json — one row per opt-in service, in canonical order. Core is not a
 // service and has no row.
 //
-// Output: the files below, each with a GENERATED banner. They are committed on purpose (the
-// packages build without running this, and a diff is reviewable), and `--check` is the drift
-// gate in the green gate, CI and the pre-commit hook, so a hand edit fails before it ships.
+// Output: the files below, each with a GENERATED banner. The SDK targets carry only the slugs and
+// their defaults; the features (ST-38) go to the console and the docs only. They are committed
+// on purpose (the packages build without running this, and a diff is reviewable), and `--check`
+// is the drift gate in the green gate, CI and the pre-commit hook, so a hand edit fails before it
+// ships.
 //
 // WHY GENERATED FILES AND NOT ONE IMPORT. The Worker and the CLI already depend on
 // `@polaris-key/manifest`, so they import the manifest package's generated file. The console and
@@ -47,13 +49,42 @@ export interface ServiceRow {
     accent: string;
     /** A lucide-react icon name for the Services card. */
     icon: string;
+    /** The feature (a `features[].id`) the console shows this service under (ST-38). */
+    group: string;
   };
   /** The service's docs section, site-absolute with a trailing slash. */
   docs: string;
 }
 
+/**
+ * One switch or fact on a feature's row (ST-38), below the feature's own switch.
+ *
+ * - `service`: a slug of the same feature that this switch controls on its own. The feature's
+ *   switch turns it on with the rest of the group (on by default) and off with it.
+ * - `setting`: an operator setting the console renders by `id` (Packages: Distribution's
+ *   package-feeds switch).
+ * - `fact`: a read-only status the console renders by `id` (Minted tokens).
+ */
+export interface FeatureSwitch {
+  id: string;
+  label: string;
+  kind: "service" | "setting" | "fact";
+  /** `kind: "service"` only: the slug it controls. */
+  service?: string;
+}
+
+/** A feature: the console's grouping of service slugs (integration.md §1.2, ST-38). */
+export interface FeatureRow {
+  /** Stable id, also the docs directory `features/<id>/`. */
+  id: string;
+  /** The visible name. */
+  label: string;
+  switches: FeatureSwitch[];
+}
+
 export interface ServiceTable {
   $comment?: string;
+  features: FeatureRow[];
   services: ServiceRow[];
 }
 
@@ -65,6 +96,81 @@ const MODULE_RE = /^[a-z][A-Za-z0-9]*$/;
 const ICON_RE = /^[A-Z][A-Za-z0-9]*$/;
 /** Names a slug may never take: Core's own namespace and the discovery blob's other key. */
 const RESERVED = new Set(["core", "registration", "__proto__"]);
+const SWITCH_KINDS = new Set(["service", "setting", "fact"]);
+
+/** The feature table's own rules; `groups` maps each service slug to its row's `console.group`. */
+function validateFeatures(
+  features: unknown,
+  groups: Map<string, string>,
+): string[] {
+  const errors: string[] = [];
+  if (!Array.isArray(features) || features.length === 0)
+    return ["`features` must be a non-empty array"];
+  const ids = new Set<string>();
+  const switchIds = new Set<string>();
+  for (const [i, raw] of features.entries()) {
+    const at = `features[${i}]`;
+    const f = raw as FeatureRow;
+    if (!f || typeof f !== "object") {
+      errors.push(`${at}: not an object`);
+      continue;
+    }
+    if (typeof f.id !== "string" || !SLUG_RE.test(f.id)) {
+      errors.push(`${at}.id: must match ${SLUG_RE}`);
+      continue;
+    }
+    if (ids.has(f.id)) errors.push(`${at}.id: duplicate "${f.id}"`);
+    ids.add(f.id);
+    if (typeof f.label !== "string" || f.label.trim() === "")
+      errors.push(`${at}.label: must be a non-empty string`);
+    if (!Array.isArray(f.switches)) {
+      errors.push(`${at}.switches: must be an array`);
+      continue;
+    }
+    const members = [...groups].filter(([, g]) => g === f.id).map(([s]) => s);
+    if (members.length === 0)
+      errors.push(`${at}: no service row names "${f.id}" in console.group`);
+    const controlled = new Set<string>();
+    for (const [j, sw] of f.switches.entries()) {
+      const sat = `${at}.switches[${j}]`;
+      if (!sw || typeof sw !== "object") {
+        errors.push(`${sat}: not an object`);
+        continue;
+      }
+      if (typeof sw.id !== "string" || !SLUG_RE.test(sw.id))
+        errors.push(`${sat}.id: must match ${SLUG_RE}`);
+      else if (switchIds.has(sw.id))
+        errors.push(`${sat}.id: duplicate "${sw.id}"`);
+      else switchIds.add(sw.id);
+      if (typeof sw.label !== "string" || sw.label.trim() === "")
+        errors.push(`${sat}.label: must be a non-empty string`);
+      if (!SWITCH_KINDS.has(sw.kind))
+        errors.push(`${sat}.kind: must be one of ${[...SWITCH_KINDS]}`);
+      if (sw.kind === "service") {
+        if (typeof sw.service !== "string" || !members.includes(sw.service))
+          errors.push(
+            `${sat}.service: must be a slug whose console.group is "${f.id}"`,
+          );
+        else if (controlled.has(sw.service))
+          errors.push(`${sat}.service: "${sw.service}" has two switches`);
+        else controlled.add(sw.service);
+      } else if (sw.service !== undefined) {
+        errors.push(`${sat}.service: only a "service" switch names a slug`);
+      }
+    }
+    if (members.length > 0 && members.every((s) => controlled.has(s)))
+      errors.push(
+        `${at}: every slug has its own switch, so the feature's switch writes nothing`,
+      );
+  }
+  for (const [slug, group] of groups) {
+    if (!ids.has(group))
+      errors.push(
+        `services "${slug}".console.group: "${group}" is not a feature id`,
+      );
+  }
+  return errors;
+}
 
 /** Every structural rule the generated code relies on. Empty = valid. */
 export function validateTable(table: unknown): string[] {
@@ -74,6 +180,7 @@ export function validateTable(table: unknown): string[] {
     return ["the table must be an object with a `services` array"];
   }
   if (t.services.length === 0) errors.push("the table has no services");
+  const groups = new Map<string, string>();
   const slugs = new Set<string>();
   const accents = new Set<string>();
   for (const [i, row] of t.services.entries()) {
@@ -115,6 +222,12 @@ export function validateTable(table: unknown): string[] {
       !ICON_RE.test(row.console.icon)
     )
       errors.push(`${at}.console.icon: must be a lucide-react icon name`);
+    if (
+      typeof row.console?.group !== "string" ||
+      !SLUG_RE.test(row.console.group)
+    )
+      errors.push(`${at}.console.group: must match ${SLUG_RE}`);
+    else groups.set(row.slug, row.console.group);
     if (row.docs !== `/docs/services/${row.slug}/`)
       errors.push(`${at}.docs: must be "/docs/services/${row.slug}/"`);
   }
@@ -143,6 +256,29 @@ export function validateTable(table: unknown): string[] {
         );
     }
   }
+  errors.push(...validateFeatures(t.features, groups));
+  // A feature's rows sit together, in canonical order: the console reads a feature's slugs in
+  // table order, and a feature whose rows interleave with another's has no single place.
+  const order = t.services
+    .map((r) => r?.console?.group)
+    .filter((g): g is string => typeof g === "string");
+  const seen = new Set<string>();
+  for (const [i, g] of order.entries()) {
+    if (i > 0 && order[i - 1] === g) continue;
+    if (seen.has(g))
+      errors.push(`services: the "${g}" feature's rows are not contiguous`);
+    seen.add(g);
+  }
+  if (Array.isArray(t.features)) {
+    const featureOrder = t.features.map((f) => f?.id);
+    if (
+      [...seen].join(",") !==
+      featureOrder.filter((id) => seen.has(id)).join(",")
+    )
+      errors.push(
+        "features: the order must match the service rows' order of first appearance",
+      );
+  }
   return errors;
 }
 
@@ -170,6 +306,33 @@ export function legacyModuleMap(table: ServiceTable): Map<string, string[]> {
     }
   }
   return out;
+}
+
+/** A feature with what the generated files need: its slugs, and what its own switch writes. */
+export interface FeatureView extends FeatureRow {
+  /** Every slug whose `console.group` is this feature, in canonical order. */
+  services: string[];
+  /** What the feature's own switch writes: its slugs, less those a `service` switch controls. */
+  primary: string[];
+  /** The first slug's accent and icon: the feature's colour and glyph. */
+  accent: string;
+  icon: string;
+}
+
+export function featureViews(table: ServiceTable): FeatureView[] {
+  return table.features.map((f) => {
+    const rows = table.services.filter((r) => r.console.group === f.id);
+    const controlled = new Set(
+      f.switches.filter((s) => s.kind === "service").map((s) => s.service),
+    );
+    return {
+      ...f,
+      services: rows.map((r) => r.slug),
+      primary: rows.map((r) => r.slug).filter((s) => !controlled.has(s)),
+      accent: rows[0]!.console.accent,
+      icon: rows[0]!.console.icon,
+    };
+  });
 }
 
 const q = (s: string): string => JSON.stringify(s);
@@ -265,6 +428,27 @@ export function renderAdminTs(table: ServiceTable): string {
     docs: ${q(r.docs)},
     defaultEnabled: ${r.defaultEnabled},
     requires: ${list(r.requires)},
+    group: ${q(r.console.group)},
+  },`,
+    )
+    .join("\n");
+  const features = featureViews(table);
+  const switchIds = features.flatMap((f) => f.switches.map((s) => s.id));
+  const featureRows = features
+    .map(
+      (f) => `  {
+    id: ${q(f.id)},
+    label: ${q(f.label)},
+    accent: ${q(f.accent)},
+    icon: ${q(f.icon)},
+    services: ${list(f.services)},
+    primary: ${list(f.primary)},
+    switches: [${f.switches
+      .map(
+        (s) =>
+          `{ id: ${q(s.id)}, label: ${q(s.label)}, kind: ${q(s.kind)}, service: ${s.service === undefined ? "null" : q(s.service)} }`,
+      )
+      .join(", ")}],
   },`,
     )
     .join("\n");
@@ -288,12 +472,88 @@ export interface ServiceTableRow {
   docs: string;
   defaultEnabled: boolean;
   requires: readonly ServiceSlug[];
+  /** The feature the console shows it under. */
+  group: FeatureId;
 }
 
 /** The service table, in canonical order. */
 export const SERVICE_TABLE: readonly ServiceTableRow[] = [
 ${rows}
 ];
+
+/** The console's features (ST-38): the grouping of slugs an operator turns on. */
+export type FeatureId = ${union(features.map((f) => f.id))};
+
+/** Every switch or fact a feature's row holds below its own switch. The console renders each
+ *  \`setting\` and \`fact\` id itself, so a new one is a type error until it does. */
+export type FeatureSwitchId = ${union(switchIds)};
+
+export interface FeatureSwitchRow {
+  id: FeatureSwitchId;
+  label: string;
+  /** \`service\`: a slug of the feature, on by default with it; \`setting\`: an operator setting;
+   *  \`fact\`: a read-only status. */
+  kind: "service" | "setting" | "fact";
+  /** The slug a \`service\` switch controls; \`null\` otherwise. */
+  service: ServiceSlug | null;
+}
+
+export interface FeatureRow {
+  id: FeatureId;
+  label: string;
+  /** The first slug's accent and icon. */
+  accent: ServiceAccentToken;
+  icon: ServiceIconName;
+  /** Every slug of the feature, in canonical order. */
+  services: readonly ServiceSlug[];
+  /** What the feature's own switch writes: its slugs, less those a \`service\` switch controls. */
+  primary: readonly ServiceSlug[];
+  switches: readonly FeatureSwitchRow[];
+}
+
+/** The features, in canonical order. */
+export const FEATURES: readonly FeatureRow[] = [
+${featureRows}
+];
+`;
+}
+
+/** The docs site's features (docs plan §3.2.1): \`features/<id>/\` and its accent. */
+export function renderDocsTs(table: ServiceTable): string {
+  const features = featureViews(table);
+  const entries = features
+    .map(
+      (f) => `  ${q(f.id)}: {
+    id: ${q(f.id)},
+    label: ${q(f.label)},
+    services: ${list(f.services)},
+    accent: ${q(f.accent)},
+  },`,
+    )
+    .join("\n");
+  return `${banner("//")}
+/** The features, in canonical order: the unit the Developers door is organised by. */
+export const FEATURE_IDS = ${list(features.map((f) => f.id))} as const;
+
+export type FeatureId = (typeof FEATURE_IDS)[number];
+
+export interface Feature {
+  id: FeatureId;
+  /** The visible name. */
+  label: string;
+  /** The service slugs this feature documents, in canonical order. */
+  services: readonly string[];
+  /** The service slug whose accent the feature's pages take: its first. */
+  accent: string;
+}
+
+export const FEATURES: Readonly<Record<FeatureId, Feature>> = {
+${entries}
+};
+
+export function isFeatureId(value: string): value is FeatureId {
+  return (FEATURE_IDS as readonly string[]).includes(value);
+}
 `;
 }
 
@@ -516,6 +776,11 @@ export const TARGETS: readonly Target[] = [
   {
     path: "packages/admin/src/services.generated.ts",
     render: renderAdminTs,
+    parser: "typescript",
+  },
+  {
+    path: "packages/docs/src/lib/features.generated.ts",
+    render: renderDocsTs,
     parser: "typescript",
   },
   {

@@ -174,8 +174,9 @@ work down the list until it passes.
    `@polaris-key/brand` (`packages/brand/src/tokens/services.ts`; its `services.test.ts` fails
    until there is one, and `gen brand` emits the `[data-service="<slug>"]` rule), and the row's
    icon in `ServicesCard`'s `SERVICE_ICONS` (a type error until it is there).
-10. **Docs.** Add the slug to a feature's `services` in `packages/docs/src/lib/features.ts`. The
-    feature's `features/<feature>/` directory needs an `index` page and a group in the
+10. **Docs.** The row's `console.group` puts the slug in a feature (`pnpm gen services` writes
+    `packages/docs/src/lib/features.generated.ts`). A new feature also needs a `features` entry in
+    the table, a `features/<feature>/` directory with an `index` page and a group in the
     Developers tree of `packages/docs/src/lib/doors.ts`.
 11. **Parity and SDKs.** The feature registry (`conformance/parity/features.json`) must accept
     the slug as a feature's `service`; SDK sub-clients for the service follow their own work.

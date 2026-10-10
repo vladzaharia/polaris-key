@@ -240,8 +240,8 @@ h6,
 }
 
 /* Each feature's group (and Ship builds' sub-areas) carries its service accent as a marker beside
-   its name. The feature -> service map is src/lib/features.ts; test/brand.test.ts keeps this
-   list in step with it. */
+   its name. The feature -> service map is tools/services.json's console.group
+   (src/lib/features.generated.ts); test/brand.test.ts keeps this list in step with it. */
 .sidebar-content
   details:has(> ul > li > a[href*="/docs/features/"])
   > summary

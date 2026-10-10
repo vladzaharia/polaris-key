@@ -1,5 +1,50 @@
 {
-  "$comment": "The opt-in service table — ONE row per Polaris Key service, in canonical order. Core is not a service and has no row. `pnpm gen services` writes every language's slug constants from this file (tools/gen-services.ts) and `pnpm gen services --check` fails on drift. Adding a service starts here: see /docs/contribute/layout/#adding-a-service.",
+  "$comment": "The opt-in service table — ONE row per Polaris Key service, in canonical order, and the console's features over them. Core is not a service and has no row. `features` is the console's grouping (ST-38): each service row names its feature in `console.group`; a feature's switch writes every slug of its group except those a `service` switch of its own controls, which turn on with it by default. `setting` and `fact` switches are operator settings and read-only facts the console renders by id. `pnpm gen services` writes every language's slug constants from this file and the features to the console and the docs only (tools/gen-services.ts); `pnpm gen services --check` fails on drift. Adding a service starts here: see /docs/contribute/layout/#adding-a-service.",
+  "features": [
+    {
+      "id": "licensing",
+      "label": "Licensing",
+      "switches": []
+    },
+    {
+      "id": "managed-config",
+      "label": "Managed config",
+      "switches": [
+        {
+          "id": "minted-tokens",
+          "label": "Minted tokens",
+          "kind": "fact"
+        }
+      ]
+    },
+    {
+      "id": "ship-builds",
+      "label": "Ship builds",
+      "switches": [
+        {
+          "id": "in-app-updates",
+          "label": "In-app updates",
+          "kind": "service",
+          "service": "update"
+        },
+        {
+          "id": "packages",
+          "label": "Packages",
+          "kind": "setting"
+        }
+      ]
+    },
+    {
+      "id": "sign-in",
+      "label": "Sign-in",
+      "switches": []
+    },
+    {
+      "id": "cloud-sync",
+      "label": "Cloud Sync",
+      "switches": []
+    }
+  ],
   "services": [
     {
       "slug": "license",
@@ -10,7 +55,8 @@
       "legacyModules": ["licensing"],
       "console": {
         "accent": "license",
-        "icon": "KeyRound"
+        "icon": "KeyRound",
+        "group": "licensing"
       },
       "docs": "/docs/services/license/"
     },
@@ -23,7 +69,8 @@
       "legacyModules": ["edgeMint"],
       "console": {
         "accent": "config",
-        "icon": "SlidersHorizontal"
+        "icon": "SlidersHorizontal",
+        "group": "managed-config"
       },
       "docs": "/docs/services/config/"
     },
@@ -36,20 +83,22 @@
       "legacyModules": ["releases"],
       "console": {
         "accent": "release",
-        "icon": "Package"
+        "icon": "Package",
+        "group": "ship-builds"
       },
       "docs": "/docs/services/release/"
     },
     {
       "slug": "distribution",
       "label": "Distribution",
-      "summary": "How releases reach devices and outlets — transports, availability, and rollouts.",
+      "summary": "How releases reach devices and channels — transports, availability, and rollouts.",
       "defaultEnabled": false,
       "requires": ["release"],
       "legacyModules": ["releases"],
       "console": {
         "accent": "distribution",
-        "icon": "Waypoints"
+        "icon": "Waypoints",
+        "group": "ship-builds"
       },
       "docs": "/docs/services/distribution/"
     },
@@ -62,7 +111,8 @@
       "legacyModules": ["releases"],
       "console": {
         "accent": "update",
-        "icon": "CircleArrowUp"
+        "icon": "CircleArrowUp",
+        "group": "ship-builds"
       },
       "docs": "/docs/services/update/"
     },
@@ -75,7 +125,8 @@
       "legacyModules": ["oidc"],
       "console": {
         "accent": "identity",
-        "icon": "UserRound"
+        "icon": "UserRound",
+        "group": "sign-in"
       },
       "docs": "/docs/services/identity/"
     },
@@ -88,7 +139,8 @@
       "legacyModules": [],
       "console": {
         "accent": "sync",
-        "icon": "Cloud"
+        "icon": "Cloud",
+        "group": "cloud-sync"
       },
       "docs": "/docs/services/sync/"
     }
