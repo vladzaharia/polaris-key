@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 Offline grace: the deadline and countdown, Reconnect, and a dismissal that lasts for the session. When grace runs out it hands over to the status screen.
 
@@ -23,6 +24,8 @@ Offline grace: the deadline and countdown, Reconnect, and a dismissal that lasts
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `status` while offline grace holds.
 
     **Styled part.** `screens.gate(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ Offline grace: the deadline and countdown, Reconnect, and a dismissal that lasts
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `status` (`statusFlow`) while the license works offline in grace: `days-left` or
     `last-day`, with the date to reconnect by. The exit code stays 0: the product still runs.
 

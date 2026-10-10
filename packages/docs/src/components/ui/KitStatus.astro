@@ -1,0 +1,31 @@
+---
+/**
+ * A kit's status as a badge: "Ships today" or "Planned in UK-xx". It leads a kit's tab on a
+ * component page and a kit's row in the tables, so a reader never takes a spec name for a shipped
+ * one. The status itself is src/lib/uiKits.ts. Several kits in one tab get one badge each,
+ * named.
+ */
+import { Badge } from "@astrojs/starlight/components";
+import { kitById, statusLabel } from "../../lib/uiKits";
+
+interface Props {
+  /** The kit's id in src/lib/uiKits.ts. */
+  kit?: string;
+  /** The kit ids a shared tab covers. */
+  kits?: string[];
+}
+
+const { kit, kits } = Astro.props;
+const list = (kits ?? (kit === undefined ? [] : [kit])).map(kitById);
+const named = list.length > 1;
+---
+
+<p>
+  {list.map((k) => (
+    <Badge
+      text={named ? `${k.label}: ${statusLabel(k)}` : statusLabel(k)}
+      variant={"ships" in k.status ? "success" : "caution"}
+    />
+  ))
+}
+</p>

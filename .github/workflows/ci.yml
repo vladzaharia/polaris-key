@@ -25,6 +25,15 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The docs snippet lane (packages/docs/test/snippets) compiles every Python code block on a
+      # covered docs page against the SDK with mypy, so it needs the SDK's own venv.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python venv for the docs snippet lane
+        run: |
+          python -m venv sdks/python/.venv
+          sdks/python/.venv/bin/pip install -e "sdks/python[dev]"
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test

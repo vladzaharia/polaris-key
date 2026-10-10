@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The drop-in root: it boots, gates and runs every flow the product needs, renders the app once it is licensed, and adds the grace banner, the update prompt and toasts. It starts itself, never flashes the sign-in form before the real state has loaded, and re-renders when the license changes in the background.
 
@@ -23,6 +24,8 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `status` (needs-activation, not-applicable) and the bare `boot`.
 
     **Styled part.** `screens.gate(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `status` (`statusFlow`) before there is a license (`needs-activation`): the
     commands that get one (`activate`, `login`, `enroll` for a free tier) and exit code 1.
     `checkFlow`, the check a product runs before its own work, prints the `licensed` line or falls

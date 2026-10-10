@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The blocking states, each with its primary fix: revoked, expired, version too old, version too new, and channel not entitled. Each state names what happened and what to do, never a raw code.
 
@@ -23,6 +24,8 @@ The blocking states, each with its primary fix: revoked, expired, version too ol
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `status` when the gate blocks: the title, the message and the fix as a command.
 
     **Styled part.** `screens.gate(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ The blocking states, each with its primary fix: revoked, expired, version too ol
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `status` (`statusFlow`) when the license is blocked (`revoked`, `expired`,
     `version-too-old`, `version-too-new`, `channel-not-entitled`): the reason and the commands
     that fix it, with exit code 1. The gate check, `checkFlow`, falls through to it.

@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The product, its version and build, the open-source notices, the optional Powered by badge, and Copy diagnostics. The Powered by badge is off by default.
 
@@ -23,6 +24,8 @@ The product, its version and build, the open-source notices, the optional Powere
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `doctor` (`doctorFlow`): the SDK, the product's version and channel, the server, the
     device id, the token store, discovery, the services, the license, and any feature this device
     cannot use. The theme's `poweredBy` adds the Powered by Polaris Key line.

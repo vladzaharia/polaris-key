@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 Activation without a network: the request code as text and a QR code, then a response file loaded, dropped or pasted. A response whose signature does not verify is rejected with its reason, never silently.
 
@@ -23,6 +24,8 @@ Activation without a network: the request code as text and a QR code, then a res
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `offline-request` (the request code, and a half-block QR wherever the whole screen fits with it) and `import-bundle <file | ->`.
 
     **Styled part.** `screens.offline_activation(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ Activation without a network: the request code as text and a QR code, then a res
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `offline-request` (`offlineRequestFlow`) prints the request code, with a QR code
     wherever the whole screen fits with it (`default`); `import-bundle <file>`
     (`importBundleFlow`) activates from the operator's file (`done`, `rejected-signature`).

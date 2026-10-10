@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 An available, downloading, ready, mandatory, blocked or store update, with its release notes and the right verb for the outlet, such as Update on the App Store or Restart when ready. Only a mandatory update blocks; an available one is a quiet offer.
 
@@ -23,6 +24,8 @@ An available, downloading, ready, mandatory, blocked or store update, with its r
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `update` (`check`, `download --to <path>`, `apply`) with the progress bar.
 
     **Styled part.** `screens.update(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ An available, downloading, ready, mandatory, blocked or store update, with its r
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `update check` (`updateCheckFlow`): `up-to-date`, `available` with the command that
     installs it, `mandatory`, `store`, `platform`, `ready` or `blocked`.
 

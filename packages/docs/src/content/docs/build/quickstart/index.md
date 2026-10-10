@@ -1,6 +1,6 @@
 ---
 title: "Integrate in 5 minutes"
-description: "From a registered product to a gated, configured app in each SDK: generate the config module with pkey sdk, create the client, gate, read config."
+description: "From a registered product to a gated, configured app in each SDK: install, generate the config module with pkey sdk, then take the drop-in screens or draw your own UI."
 sidebar:
   order: 4.1
   label: "Integrate in 5 minutes"
@@ -13,7 +13,7 @@ Every SDK starts the same way, and none of the product facts are pasted by hand:
 3. **Generate the config module** with the CLI, in the product repo:
 
    ```sh
-   pkey sdk --lang <node|react|python|swift|kotlin|godot> --write
+   pkey sdk --lang <node|react|python|swift|kotlin|godot> --product <slug> --write
    ```
 
    It reads the product's discovery document and writes the slug, the base URL, the trust pins,
@@ -23,17 +23,24 @@ Every SDK starts the same way, and none of the product facts are pasted by hand:
    `pkey trust` pair as `--kid`/`--public-key`) before you ship. Every flag is in
    `packages/cli/README.md` (`@polaris-key/cli`).
 
-4. **Create the client** from the module and the app's own version, **gate** on the licence,
-   **read config**, and **sync**. The page for your SDK has the four lines.
+4. **Create the client** from the module and the app's own version.
+5. **Pick a lane.** Each SDK's page forks here, and both lanes reach the same eight checkpoints:
+   install, config, first activation, each refusal, sign-in, status and offline, an update offer,
+   and tests.
 
-| SDK                                      | Generated module        | Then                                                                 |
-| ---------------------------------------- | ----------------------- | -------------------------------------------------------------------- |
-| [Node](/docs/build/quickstart/node/)     | `polaris.config.ts`     | `PolarisKeyClient.create({ ...polarisConfig, version })`             |
-| [React](/docs/build/quickstart/react/)   | `polaris.config.ts`     | `<PolarisKeyProvider {...polarisConfig}>` + `LicenseGate`            |
-| [Python](/docs/build/quickstart/python/) | `polaris_config.py`     | `PolarisKeyClient.create(**polaris_config.CONFIG, ...)`              |
-| [Swift](/docs/build/quickstart/swift/)   | `PolarisConfig.swift`   | `PolarisKeyClient.create(options: PolarisConfig.clientOptions(...))` |
-| [Kotlin](/docs/build/quickstart/kotlin/) | `PolarisConfig.kt`      | `PolarisKeyClient.create(PolarisConfig.clientOptions(...))`          |
-| [Godot](/docs/build/quickstart/godot/)   | `polaris_key_config.gd` | `PolarisKey.boot({options = PolarisConfig.options()})`               |
+   | Lane            | You get                                               | You write                                 |
+   | --------------- | ----------------------------------------------------- | ----------------------------------------- |
+   | Drop-in screens | The finished screens: gate, sign-in, devices, updates | The one call the kit documents            |
+   | Your own UI     | The state, the call and the words for each step       | Your screens, on the SDK's headless layer |
+
+| SDK                                      | Generated module        | Create the client                                                    | Drop-in lane                                                                                                                         | Your own UI                                    |
+| ---------------------------------------- | ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| [Node](/docs/build/quickstart/node/)     | `polaris.config.ts`     | `PolarisKeyClient.create({ ...polarisConfig, version })`             | [Terminal kit](/docs/build/ui/frameworks/terminal-node/); the [React kit](/docs/build/ui/frameworks/react/) over the Electron bridge | [Node](/docs/build/sdks/node/your-own-ui/)     |
+| [React](/docs/build/quickstart/react/)   | `polaris.config.ts`     | `<PolarisKeyProvider {...polarisConfig}>` + `LicenseGate`            | [React kit](/docs/build/ui/frameworks/react/)                                                                                        | [React](/docs/build/sdks/react/your-own-ui/)   |
+| [Python](/docs/build/quickstart/python/) | `polaris_config.py`     | `PolarisKeyClient.create(**polaris_config.CONFIG, ...)`              | [Terminal kit](/docs/build/ui/frameworks/terminal-python/)                                                                           | [Python](/docs/build/sdks/python/your-own-ui/) |
+| [Swift](/docs/build/quickstart/swift/)   | `PolarisConfig.swift`   | `PolarisKeyClient.create(options: PolarisConfig.clientOptions(...))` | [Swift](/docs/build/sdks/swift/)                                                                                                     |                                                |
+| [Kotlin](/docs/build/quickstart/kotlin/) | `PolarisConfig.kt`      | `PolarisKeyClient.create(PolarisConfig.clientOptions(...))`          | [Compose](/docs/build/ui/frameworks/compose/)                                                                                        |                                                |
+| [Godot](/docs/build/quickstart/godot/)   | `polaris_key_config.gd` | `PolarisKey.boot({options = PolarisConfig.options()})`               | [Godot](/docs/build/sdks/godot/)                                                                                                     |                                                |
 
 Re-run the command whenever a key rotates or a service is turned on: it replaces only the file
 it wrote. Typed catalog mirrors for compile-time config keys come from `pkey mirror`

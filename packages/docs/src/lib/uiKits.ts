@@ -15,6 +15,9 @@
 
 export type Tier = "must" | "should";
 
+/** Where a kit is: it ships today, or the work package that builds it. */
+export type KitStatus = { ships: true } | { planned: string };
+
 export interface UiKit {
   id: string;
   label: string;
@@ -25,6 +28,9 @@ export interface UiKit {
   tier: Tier;
   /** The package or module a host installs. */
   package: string;
+  /** "Ships today" or "Planned in UK-xx". The package's rebuild (UK-05, UK-07, …) does not change
+   *  a shipped kit's status: the names it ships now are the ones its page documents. */
+  status: KitStatus;
   current?: { label: string; href: string };
 }
 
@@ -36,6 +42,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "must",
     package: "@polaris-key/elements",
+    status: { planned: "UK-04" },
   },
   {
     id: "react",
@@ -44,6 +51,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "must",
     package: "@polaris-key/react",
+    status: { ships: true },
     current: { label: "React SDK", href: "/docs/build/sdks/react/" },
   },
   {
@@ -53,6 +61,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "must",
     package: "@polaris-key/electron",
+    status: { planned: "UK-06" },
   },
   {
     id: "vue",
@@ -61,6 +70,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "should",
     package: "@polaris-key/vue",
+    status: { planned: "UK-17" },
   },
   {
     id: "svelte",
@@ -69,6 +79,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "should",
     package: "@polaris-key/svelte",
+    status: { planned: "UK-18" },
   },
   {
     id: "angular",
@@ -77,6 +88,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "should",
     package: "@polaris-key/angular",
+    status: { planned: "UK-19" },
   },
   {
     id: "react-native",
@@ -85,6 +97,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "should",
     package: "@polaris-key/react-native",
+    status: { planned: "UK-20" },
   },
   {
     id: "tauri",
@@ -93,6 +106,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "JS / TS",
     tier: "should",
     package: "tauri-plugin-polaris-key",
+    status: { planned: "UK-21" },
   },
   {
     id: "swiftui",
@@ -101,6 +115,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Swift",
     tier: "must",
     package: "PolarisKeyUI",
+    status: { ships: true },
     current: { label: "Swift SDK", href: "/docs/build/sdks/swift/" },
   },
   {
@@ -110,6 +125,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Swift",
     tier: "should",
     package: "PolarisKeyUIKit",
+    status: { planned: "UK-23" },
   },
   {
     id: "appkit",
@@ -118,6 +134,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Swift",
     tier: "should",
     package: "PolarisKeyAppKit",
+    status: { planned: "UK-24" },
   },
   {
     id: "compose",
@@ -126,6 +143,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Kotlin",
     tier: "must",
     package: "im.plrs.key:polaris-key-ui",
+    status: { ships: true },
     current: { label: "Compose", href: "/docs/build/ui/frameworks/compose/" },
   },
   {
@@ -135,6 +153,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Kotlin",
     tier: "should",
     package: "im.plrs.key:polaris-key-ui-views",
+    status: { planned: "UK-28" },
   },
   {
     id: "godot",
@@ -143,6 +162,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Godot",
     tier: "must",
     package: "the addons/polaris_key addon",
+    status: { ships: true },
     current: { label: "Godot SDK", href: "/docs/build/sdks/godot/" },
   },
   {
@@ -152,6 +172,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Godot",
     tier: "should",
     package: "the addon's C# facade",
+    status: { planned: "UK-29" },
   },
   {
     id: "qt",
@@ -160,6 +181,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Python",
     tier: "must",
     package: "polaris-key[qt]",
+    status: { planned: "UK-12" },
   },
   {
     id: "terminal-python",
@@ -168,6 +190,7 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Python",
     tier: "must",
     package: "polaris-key[cli]",
+    status: { ships: true },
     current: { label: "Python SDK", href: "/docs/build/sdks/python/" },
   },
   {
@@ -177,12 +200,19 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Node",
     tier: "must",
     package: "@polaris-key/node",
+    status: { ships: true },
     current: {
       label: "Terminal (Node)",
       href: "/docs/build/ui/frameworks/terminal-node/",
     },
   },
 ];
+
+export function statusLabel(kit: UiKit): string {
+  return "ships" in kit.status
+    ? "Ships today"
+    : `Planned in ${kit.status.planned}`;
+}
 
 export function kitById(id: string): UiKit {
   const kit = UI_KITS.find((k) => k.id === id);

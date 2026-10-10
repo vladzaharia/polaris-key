@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 Step two of the sign-in form, in place: Finish in your browser, with Open browser again, Cancel and Use a code instead, or the device code with its countdown. A QR code appears only on TV and console. The step moves on by itself when the browser finishes.
 
@@ -23,6 +24,8 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `login --device-code`, and automatically over SSH, with no display or with `CI` (D-68): the code in reverse video, `c` copies it (OSC 52); never a QR in a terminal (D-67).
 
     **Styled part.** `screens.sign_in(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `login` (`loginFlow`) opens the browser and waits: Enter opens it again, `c` shows
     the code, Esc cancels. `login --device-code`, an SSH session, CI or Linux without a display show
     the code instead, with a countdown and `c` to copy it. No QR code. Under `--json` it streams

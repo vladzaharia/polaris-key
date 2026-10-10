@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import AccentVectors from "../../../../components/ui/AccentVectors.astro";
 import KitPending from "../../../../components/ui/KitPending.astro";
+import KitStatus from "../../../../components/ui/KitStatus.astro";
 
 :::note[Status]
 This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
@@ -46,16 +47,23 @@ point and links to the kit's current docs.
 
 <Tabs syncKey="ui-kit">
   <TabItem label="React">
-    <KitPending kits={["react"]} what="this theme API" />
+    <KitStatus kit="react" />
 
-    **Planned:** `<PolarisKeyProvider theme={…}>`, or the `polarisKeyTheme({ … })` helper.
-    Beyond the theme: the stable `pk-*` class names and `data-part` attributes, all inside the
-    `@layer polaris-key` cascade layer so host CSS wins without `!important`; slots and render
-    props; and `--pk-*` variables scoped to the provider element, never `:root`. React and the web
-    components share one `styles.css` and one `data-part` contract.
+    `branding`, `colorScheme` and `theme` on `<PolarisKeyProvider>`: `theme.tokens` and
+    `theme.lightTokens` (every colour, radius and the font, as `--pk-*` variables), `theme.copy`,
+    `theme.logo` and `theme.poweredBy`. An accent needs its label colour and focus ring set with it
+    (`accentText`, `ring`): the kit does not resolve contrast yet. The
+    [framework page](/docs/build/ui/frameworks/react/#theming) has the table.
+
+    **Planned in UK-05:** the `polarisKeyTheme({ … })` helper, the stable `pk-*` class names and
+    `data-part` attributes inside the `@layer polaris-key` cascade layer so host CSS wins without
+    `!important`, and `--pk-*` variables scoped to the provider element. React and the web
+    components then share one `styles.css` and one `data-part` contract.
 
   </TabItem>
   <TabItem label="Web components">
+    <KitStatus kit="elements" />
+
     <KitPending kits={["elements"]} what="this theme API" />
 
     **Planned:** `<pk-provider theme='…'>`, `PolarisKey.theme({ … })`, or `--pk-*` custom
@@ -64,6 +72,8 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="Vue, Svelte, Angular">
+    <KitStatus kits={["vue", "svelte", "angular"]} />
+
     <KitPending kits={["vue", "svelte", "angular"]} what="this theme API" />
 
     **Planned:** `providePolarisKey({ theme })` in Vue and Angular, `setPolarisKeyTheme` in
@@ -71,6 +81,8 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     <KitPending kits={["swiftui"]} what="this theme API" />
 
     **Planned:** the `.polarisKeyTheme(PolarisKeyTheme(…))` environment modifier. Beyond the
@@ -79,6 +91,8 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="UIKit, AppKit">
+    <KitStatus kits={["uikit", "appkit"]} />
+
     <KitPending kits={["uikit", "appkit"]} what="this theme API" />
 
     **Planned:** `PolarisKeyUI.theme = …`, or a theme per presenter. Beyond the theme:
@@ -86,6 +100,8 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
     <KitPending kits={["compose"]} what="this theme API" />
 
     **Planned:** `PolarisKeyTheme(theme = PolarisKeyTheme(…)) { }`. Beyond the theme:
@@ -94,6 +110,8 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
     <KitPending kits={["godot"]} what="this theme API" />
 
     **Planned:** `ui_theme_preset`, `ui_accent`, `ui_radius`, `ui_density` and the other `ui_*`
@@ -102,6 +120,8 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="Qt">
+    <KitStatus kit="qt" />
+
     <KitPending kits={["qt"]} what="this theme API" />
 
     **Planned:** `polaris_key.ui.qt.apply_theme(app, Theme(…))`. Beyond the theme: object names
@@ -110,6 +130,8 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     `theme` in the options of the commander or yargs adapter (`registerPolarisCommands`,
     `registerYargsCommands`), or in `createKitContext` for a program's own commands.
     `PKEY_THEME=dark` or `light` pins the scheme and `NO_COLOR` drops colour. Beyond the theme: the `symbols` restyle
@@ -119,10 +141,12 @@ point and links to the kit's current docs.
 
   </TabItem>
   <TabItem label="Terminal (Python)">
-    <KitPending kits={["terminal-python"]} what="this theme API" />
+    <KitStatus kit="terminal-python" />
 
-    **Planned:** `PolarisKeyTheme` in the CLI adapter's options, `PKEY_THEME=dark` or `light`, and
-    `NO_COLOR`. Beyond the theme: a unicode or ascii symbol set.
+    `Theme` (`polaris_key.ui.core`) as `theme=` of `register_argparse`, `polaris_click_group` and
+    `polaris_typer_app`, with `PKEY_THEME=dark` or `light` and `NO_COLOR`. Beyond the theme: a
+    unicode or ascii symbol set and per-role truecolor `colors`. What each field does in a terminal
+    is on the [framework page](/docs/build/ui/frameworks/terminal-python/#theming).
 
   </TabItem>
 </Tabs>

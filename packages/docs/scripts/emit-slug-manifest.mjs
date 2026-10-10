@@ -4,7 +4,7 @@
 // (packages/worker/test/docsLinks.test.ts), so a help link pointing at a page that stopped
 // existing fails CI instead of 404ing an operator.
 
-import { readdirSync, statSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +20,8 @@ function* htmlFiles(dir) {
 }
 
 const routes = new Set();
+/** Heading ids per route: the fragments a help link may name. */
+const anchors = {};
 for (const file of htmlFiles(dist)) {
   const rel = relative(dist, file).split(sep).join("/");
   if (rel === "404.html") continue;
@@ -30,12 +32,17 @@ for (const file of htmlFiles(dist)) {
       ? ""
       : rel;
   routes.add(`/docs/${route}`);
+  const html = readFileSync(file, "utf8");
+  const ids = [...html.matchAll(/<h[1-6][^>]*\sid="([^"]+)"/g)].map(
+    (m) => m[1],
+  );
+  if (ids.length) anchors[`/docs/${route}`] = [...new Set(ids)].sort();
 }
 
 const sorted = [...routes].sort();
 writeFileSync(
   join(dist, "docs-slugs.json"),
-  JSON.stringify({ routes: sorted }, null, 2) + "\n",
+  JSON.stringify({ routes: sorted, anchors }, null, 2) + "\n",
 );
 console.log(
   `emit-slug-manifest: ${sorted.length} routes -> dist/docs-slugs.json`,

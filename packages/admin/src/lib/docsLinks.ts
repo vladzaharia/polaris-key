@@ -8,7 +8,7 @@
  *
  * Drift gate: `packages/worker/test/docsLinks.test.ts` asserts every path this module (and
  * `console/nav.ts`'s per-page `docs` declarations) names exists in the built site's slug manifest
- * (`packages/docs/dist/docs-slugs.json`) — a help link cannot silently point at a page that
+ * (`packages/docs/dist/docs-slugs.json`), and that a `#fragment` names a heading on that page — a help link cannot silently point at a page that
  * stopped existing. Add a link here → the page must exist; rename a page → this table (or
  * the nav table) fails CI until it follows.
  */
@@ -55,6 +55,19 @@ export const DOCS_LINKS = {
   deviceFingerprints: "/docs/services/core/fingerprints/",
   offlineBundles: "/docs/build/wire/bundles/",
   registrationPolicy: "/docs/services/core/device-principal/",
+  // The Integration page (ST-41): one drop-in per host, then these two links. "Customise the
+  // screens" opens the kit's page, "Integrate directly with the library" the SDK's own-UI page.
+  // A path may end in a #fragment; the docs build's slug manifest checks it names a heading.
+  nodeCustomiseCli: "/docs/build/ui/frameworks/terminal-node/#piecemeal",
+  nodeOwnUiCli: "/docs/build/sdks/node/your-own-ui/#cli",
+  nodeCustomiseElectron: "/docs/build/ui/frameworks/react/",
+  nodeOwnUiElectron: "/docs/build/sdks/node/your-own-ui/#electron",
+  nodeLibrary: "/docs/build/sdks/node/",
+  reactCustomise: "/docs/build/ui/frameworks/react/#piecemeal",
+  reactOwnUi: "/docs/build/sdks/react/your-own-ui/",
+  pythonCustomise: "/docs/build/ui/frameworks/terminal-python/#piecemeal",
+  pythonOwnUi: "/docs/build/sdks/python/your-own-ui/",
+  pythonQt: "/docs/build/sdks/python/your-own-ui/#qt",
   // Landing
   docsHome: "/docs/",
 } as const;
