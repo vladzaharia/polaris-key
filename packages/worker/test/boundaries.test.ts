@@ -455,7 +455,7 @@ describe("the adapter layer (A-18a)", () => {
       for (const s of importsOf(readFileSync(file, "utf8"))) {
         if (!s.startsWith(".")) continue;
         const seg = resolveFrom(file, s);
-        if (seg[0] === "services" || seg[0] === "admin")
+        if (seg[0] === "services" || seg[0] === "console")
           bad.push(`${relative(WORKER_ROOT, file)}: ${s}`);
       }
     expect(bad).toEqual([]);
