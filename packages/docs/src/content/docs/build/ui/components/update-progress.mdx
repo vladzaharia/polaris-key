@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 Compact download and install progress for app updates and content packs, as a toast, a pill or an inline row. A metered connection pauses the download until the person agrees to continue.
 
@@ -23,6 +24,8 @@ Compact download and install progress for app updates and content packs, as a to
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `packs ensure <pack…>`.
 
     **Styled part.** `screens.update_progress(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ Compact download and install progress for app updates and content packs, as a to
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `update apply` (`updateApplyFlow`): the download as a bar with its percentage, size
     and time left, redrawn at most ten times a second (Esc cancels), then the install's outcome.
     `packs ensure <packIds...>` draws the same bar for each pack.

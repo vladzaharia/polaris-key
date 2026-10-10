@@ -5,6 +5,7 @@
  */
 import { getCollection } from "astro:content";
 import { frameworkHref, UI_KITS } from "../../lib/uiKits";
+import KitStatus from "./KitStatus.astro";
 
 const pages = new Set(
   (
@@ -20,6 +21,7 @@ const pages = new Set(
     <tr>
       <th scope="col">Kit</th>
       <th scope="col">Framework</th>
+      <th scope="col">Status</th>
       <th scope="col">Tier</th>
       <th scope="col">Package</th>
       <th scope="col">Docs today</th>
@@ -37,6 +39,9 @@ const pages = new Set(
             )}
           </td>
           <td>{kit.framework}</td>
+          <td>
+            <KitStatus kit={kit.id} />
+          </td>
           <td>{kit.tier}</td>
           <td>
             <code>{kit.package}</code>

@@ -8,6 +8,7 @@ sidebar:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 Settings driven by the product's config catalog: typed controls, categories, search above twelve rows, provenance as text, locked rows set by an organization, and reset. A locked setting shows its value as text with a lock, never as a dimmed control.
 
@@ -23,6 +24,8 @@ Settings driven by the product's config catalog: typed controls, categories, sea
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
+    <KitStatus kit="terminal-python" />
+
     **Drop-in.** `config` (`list`, `get`, `set`, `reset`).
 
     **Styled part.** `screens.settings(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
@@ -32,6 +35,8 @@ Settings driven by the product's config catalog: typed controls, categories, sea
 
   </TabItem>
   <TabItem label="Terminal (Node)">
+    <KitStatus kit="terminal-node" />
+
     **Drop-in.** `config list` (`configListFlow`): each setting, its value and where it comes from,
     with the operator's locked ones marked (`list`, `locked`); `config get <key>`,
     `config set <key> <value>` and `config reset <key>` (`saving`). `secret <key>` and

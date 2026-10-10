@@ -48,14 +48,28 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections (verified against the code, 2026-10-09)
+
+- The lane for Node, React and Python is built; Swift, Kotlin and Godot (part b) are SP-45b's,
+  which adds its pages to `packages/docs/test/snippets/covered.ts`. `packages/agent-kit/skills/` does
+  not exist yet: the extractor reads it when it does.
+- The compile lane is `packages/docs/test/snippets/`: README and other pages outside `covered.ts`
+  are held to `advisory-baseline.json`, which may only shrink (AX-01 clears the README entries).
+- `build/ui/frameworks/terminal-node` and `terminal-python` already existed; they were corrected
+  and made to compile instead of being created.
+- Not done, by instruction: the UI-KITS §4.2 amendment (design docs are out of bounds for this
+  branch) and the SDK READMEs (AX-01). Swift, Kotlin and Godot own-UI pages, the Xcode tab, the
+  Compose Desktop recipe and the Godot checks are SP-45b.
+- A `#fragment` in `DOCS_LINKS` is now allowed and checked: the slug manifest carries heading ids.
+
 ## Acceptance criteria
 
-- [ ] For each SDK, both lanes reach the eight checkpoints.
-- [ ] Every code block on the new and changed pages compiles in its lane, and a deliberately broken block fails CI.
-- [ ] A check fails when a page names a symbol the SDK does not export.
-- [ ] Docs-links and the slug manifest pass.
-- [ ] A newcomer dry run per SDK is recorded in the PR.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] For each SDK, both lanes reach the eight checkpoints.
+- [x] Every code block on the new and changed pages compiles in its lane, and a deliberately broken block fails CI.
+- [x] A check fails when a page names a symbol the SDK does not export.
+- [x] Docs-links and the slug manifest pass.
+- [x] A newcomer dry run per SDK is recorded in the PR.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

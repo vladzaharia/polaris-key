@@ -48,10 +48,6 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "build/quickstart/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
     "build/quickstart/kotlin": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
@@ -85,15 +81,27 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "build/sdks/node": {
+    "build/sdks/node/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "build/sdks/python": {
+    "build/sdks/node/your-own-ui": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "build/sdks/react": {
+    "build/sdks/python/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/python/your-own-ui": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/react/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/react/your-own-ui": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
@@ -208,10 +216,13 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
+    "build/ui/frameworks/react": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
     "build/ui/frameworks/terminal-node": {
       "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 1
+      "frontmatter-last-reviewed": 1
     },
     "build/ui/frameworks/terminal-python": {
       "frontmatter-type": 1,
@@ -222,16 +233,11 @@
       "frontmatter-last-reviewed": 1,
       "future-tense": 2
     },
-    "build/ui/localisation": {
+    "build/ui/localization": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
       "count": 1,
       "future-tense": 7
-    },
-    "build/ui/recipes": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 3
     },
     "build/ui/theming": {
       "frontmatter-type": 1,

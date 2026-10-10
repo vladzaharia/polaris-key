@@ -43,10 +43,11 @@ function declaredLinks(): Map<string, string[]> {
 describe.skipIf(!existsSync(slugManifest))(
   "console help links resolve in the built docs site",
   () => {
-    const routes = new Set<string>(
-      (JSON.parse(readFileSync(slugManifest, "utf8")) as { routes: string[] })
-        .routes,
-    );
+    const manifest = JSON.parse(readFileSync(slugManifest, "utf8")) as {
+      routes: string[];
+      pages: Record<string, { anchors?: string[] }>;
+    };
+    const routes = new Set<string>(manifest.routes);
 
     it("the slug manifest is non-trivial", () => {
       expect(routes.size).toBeGreaterThan(10);
@@ -56,10 +57,23 @@ describe.skipIf(!existsSync(slugManifest))(
     for (const [file, links] of declaredLinks()) {
       it(`every /docs/ path in ${file.split("/").slice(-2).join("/")} exists`, () => {
         expect(links.length).toBeGreaterThan(0);
-        const missing = links.filter((link) => !routes.has(link));
+        const missing = links.filter(
+          (link) => !routes.has(link.split("#")[0]!),
+        );
         expect(
           missing,
           `help links pointing at pages that do not exist: ${missing.join(", ")}`,
+        ).toEqual([]);
+        // A #fragment must name a heading on the page it points at.
+        const unanchored = links.filter((link) => {
+          const [route, fragment] = link.split("#");
+          return (
+            fragment && !manifest.pages[route!]?.anchors?.includes(fragment)
+          );
+        });
+        expect(
+          unanchored,
+          `help links naming a heading that does not exist: ${unanchored.join(", ")}`,
         ).toEqual([]);
       });
     }
@@ -70,7 +84,7 @@ describe("help-link declarations are well-formed", () => {
   for (const [file, links] of declaredLinks()) {
     it(`${file.split("/").slice(-2).join("/")} uses absolute trailing-slash paths`, () => {
       for (const link of links) {
-        expect(link, link).toMatch(/^\/docs\/([a-z0-9-]+\/)*$/);
+        expect(link, link).toMatch(/^\/docs\/([a-z0-9-]+\/)*(#[a-z0-9-]+)?$/);
       }
     });
   }

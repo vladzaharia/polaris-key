@@ -36,7 +36,7 @@ describe("docsFor", () => {
 describe("DOCS_LINKS registry", () => {
   it("every entry is an absolute trailing-slash docs path", () => {
     for (const [key, href] of Object.entries(DOCS_LINKS)) {
-      expect(href, key).toMatch(/^\/docs\/([a-z0-9-]+\/)*$/);
+      expect(href, key).toMatch(/^\/docs\/([a-z0-9-]+\/)*(#[a-z0-9-]+)?$/);
     }
   });
 

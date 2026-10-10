@@ -338,6 +338,12 @@ stubs out of the sitemap). Skipping the build and editing either output by hand 
 - Never leave a bare `{` or `}` in MDX prose — MDX evaluates it as JSX. Braces inside backticked
   code spans are literal and need no escape.
 - Internal links are absolute and end in a slash: `/docs/features/managed-config/catalog/`.
+- Code blocks are compiled. A `ts`, `tsx`, `js` or `python` fence on a page listed in
+  `packages/docs/test/snippets/covered.ts` compiles in its SDK lane against the built packages (the
+  Python lane needs `sdks/python/.venv`); ` ```ts run ` also executes it. A code span naming an
+  export (`LicenseGate`, `useLicenseGate`, `register_argparse()`) must be one the SDK exports, or
+  its line must say "planned". `no-compile` opts a block out on other pages, never on a covered
+  one. Conventions: `packages/docs/test/snippets/extract.ts`.
 - Console help links live in exactly two tables (`packages/admin/src/console/nav.ts` and
   `packages/admin/src/lib/docsLinks.ts`) and are gated against the built slug manifest. Renaming
   a page means updating those tables in the same change.

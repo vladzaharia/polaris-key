@@ -40,18 +40,19 @@ stylesheet and no font: the terminal's own face and palette draw everything.
 import { Command } from "commander";
 import { PolarisKeyClient } from "@polaris-key/node";
 import { registerPolarisCommands } from "@polaris-key/node/cli";
+import { polarisConfig } from "./polaris.config.js";
 
 const program = new Command("tidewater");
 registerPolarisCommands(
   program,
-  (o) =>
-    PolarisKeyClient.create({
-      productSlug: o.productSlug,
-      trust: { pinnedKeys: o.pinnedKeys },
-    }),
+  // Spread the generated config. A factory that builds from the slug and pins alone drops
+  // baseUrl and the release keys, and its writes go to production.
+  (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }),
   {
-    productSlug: "tidewater",
-    pinnedKeys: { "pkey-tidewater-prod-2026-10": "…" },
+    productSlug: polarisConfig.productSlug,
+    version: "2.4.1",
+    pinnedKeys: polarisConfig.trust.pinnedKeys,
+    expectedServices: polarisConfig.expectedServices,
   },
 );
 await program.parseAsync();
@@ -112,12 +113,17 @@ the commands that fix it and exit code 1. `runKitVerb` runs it, or any verb of t
 with the kit's flags and its `--json` envelope. Here it is what the program does with no verb:
 
 ```ts
+import { Command } from "commander";
+import { PolarisKeyClient } from "@polaris-key/node";
 import {
   checkFlow,
   runKitVerb,
   status,
   type CliVerb,
 } from "@polaris-key/node/cli";
+import { polarisConfig } from "./polaris.config.js";
+
+const program = new Command("tidewater");
 
 const check: CliVerb = {
   group: "license",
@@ -137,12 +143,8 @@ program
       check,
       [],
       { json: program.opts().json === true },
-      () =>
-        PolarisKeyClient.create({
-          productSlug: "tidewater",
-          trust: { pinnedKeys },
-        }),
-      { slug: "tidewater", bin: "tidewater" },
+      () => PolarisKeyClient.create({ ...polarisConfig, version: "2.4.1" }),
+      { slug: polarisConfig.productSlug, bin: "tidewater" },
     );
   });
 ```
@@ -159,6 +161,7 @@ a screen, so a program's own commands can draw on the same rail. They take a `Ki
 their words come from the context's copy or from the program:
 
 ```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
 import {
   createKitContext,
   endRow,
@@ -168,18 +171,20 @@ import {
   textRow,
 } from "@polaris-key/node/cli";
 
-const ctx = await createKitContext({
-  slug: "tidewater",
-  bin: "tidewater",
-  presentation: presentationSourceOf(client),
-});
-ctx.rows([
-  ...productHeader(ctx, "export"),
-  stepRow("ok", "Stems exported", `${ctx.symbols.separator} 12 files`),
-  textRow("Saved to ~/Music/Tidewater/Exports"),
-  endRow(),
-]);
-ctx.close();
+export async function exported(client: PolarisKeyClient) {
+  const ctx = await createKitContext({
+    slug: "tidewater",
+    bin: "tidewater",
+    presentation: presentationSourceOf(client),
+  });
+  ctx.rows([
+    ...productHeader(ctx, "export"),
+    stepRow("ok", "Stems exported", `${ctx.symbols.separator} 12 files`),
+    textRow("Saved to ~/Music/Tidewater/Exports"),
+    endRow(),
+  ]);
+  ctx.close();
+}
 ```
 
 | Part                                 | What it draws                                                                                        |
@@ -236,16 +241,20 @@ the exit code for a gate status, the seat meter's cells, a `m:ss` countdown, the
 `KitCopy` turns a view's keys into words in the active locale:
 
 ```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
 import { KitCopy, statusView } from "@polaris-key/node/cli";
 
-const copy = new KitCopy({ locale: "de" });
-const view = statusView({
-  ...client.status(),
-  info: client.license.licenseInfo(),
-  now: Math.floor(Date.now() / 1000),
-});
-if (view.component === "AccountAndLicense" && view.tier !== null)
-  draw(view.state, copy.t("account.tier", { tier: view.tier })); // "signed-in", "Pro-Lizenz"
+export function accountLine(client: PolarisKeyClient): string | null {
+  const copy = new KitCopy({ locale: "de" });
+  const view = statusView({
+    ...client.status(),
+    info: client.license.licenseInfo(),
+    now: Math.floor(Date.now() / 1000),
+  });
+  return view.component === "AccountAndLicense" && view.tier !== null
+    ? copy.t("account.tier", { tier: view.tier }) // "Pro-Lizenz"
+    : null;
+}
 ```
 
 ## Theming
@@ -268,17 +277,25 @@ The theme goes in the adapter's options as `theme` (or to `createKitContext`). I
 | `serviceCues`, `radius`, `typography`, `ambient`, `platform` | Accepted, so one theme value serves every kit, and without effect: a terminal has no tiles, radii, faces or ambient art                                                                                                                                                                        |
 
 ```ts
-registerPolarisCommands(program, factory, {
-  productSlug: "tidewater",
-  pinnedKeys,
-  theme: { preset: "native", density: "compact", poweredBy: "line" },
-});
+import { Command } from "commander";
+import { PolarisKeyClient } from "@polaris-key/node";
+import { registerPolarisCommands } from "@polaris-key/node/cli";
+import { polarisConfig } from "./polaris.config.js";
+
+registerPolarisCommands(
+  new Command("tidewater"),
+  (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }),
+  {
+    productSlug: polarisConfig.productSlug,
+    pinnedKeys: polarisConfig.trust.pinnedKeys,
+    theme: { preset: "native", density: "compact", poweredBy: "line" },
+  },
+);
 ```
 
-(`factory` is the client factory of [the one-line flow](#the-one-line-flow).)
-
 The chip names the product from, in order: the theme's `product`; the SDK's presentation
-accessor; the bundle (`productName` and `author` in the `package.json` above the entry script);
+accessor (`PolarisKeyClient` has none yet, so pass `theme: { product: { name, developer } }` for
+now); the bundle (`productName` and `author` in the `package.json` above the entry script);
 the slug in title case. The accent follows the same order, then is derived from `iconPixels`, then
 falls back to ink. The kit never fetches discovery or an icon itself. Status colours are the
 terminal's own ANSI-16 roles, so they follow its theme; truecolor appears only in the chip, and
@@ -298,13 +315,15 @@ override for the locale, the catalog's string in the locale, your English overri
 English.
 
 ```ts
-theme: {
+import type { PolarisKeyTerminalTheme } from "@polaris-key/node/cli";
+
+export const theme: PolarisKeyTerminalTheme = {
   copy: {
     overrides: {
       en: { "activate.lede": "It's in your Harbor Audio receipt." },
     },
   },
-},
+};
 ```
 
 Dates, durations and sizes are formatted with `Intl` in the active locale. With ASCII symbols the
@@ -429,7 +448,7 @@ For people using the terminal:
 - A link is printed as text, without its scheme, and is an OSC 8 hyperlink where the terminal
   supports one; `c` copies the sign-in code with OSC 52.
 - Without animation, every line prints once, which reads well in a screen reader and in a log.
-- Sign-in never draws a QR code (SIGN-IN.md D-67): the browser opens, or the code shows. The only
+- Sign-in never draws a QR code: the browser opens, or the code shows. The only
   QR is `offline-request`'s, and only where it fits: as wide as the terminal, and the whole
   screen with it no taller than the terminal, so it never pushes the header off.
 

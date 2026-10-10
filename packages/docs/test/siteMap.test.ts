@@ -58,7 +58,8 @@ describe("every old page still resolves", () => {
   it("is still a page, or a redirect forwards it to one", () => {
     const lost: string[] = [];
     for (const id of old.pages) {
-      if (ids.has(id)) continue;
+      // A page moved to `<id>/index` keeps its route.
+      if (ids.has(id) || ids.has(`${id}/index`)) continue;
       const route =
         routeOf(id)
           .replace(/^\/docs/, "")

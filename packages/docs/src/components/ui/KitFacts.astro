@@ -7,6 +7,7 @@
 import { DIRS } from "../../lib/baselines";
 import { repoHas } from "../../lib/repo";
 import { kitById } from "../../lib/uiKits";
+import KitStatus from "./KitStatus.astro";
 
 interface Props {
   /** The kit's id in src/lib/uiKits.ts, e.g. "compose". */
@@ -28,6 +29,10 @@ const hasSample = repoHas(sample);
     <tr>
       <th scope="row">SDK</th>
       <td>{kit.sdk}</td>
+    </tr>
+    <tr>
+      <th scope="row">Status</th>
+      <td><KitStatus kit={kit.id} /></td>
     </tr>
     <tr>
       <th scope="row">Tier</th>

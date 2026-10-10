@@ -62,13 +62,20 @@ const leaf = (id: string, label?: string): SidebarLeaf =>
   label === undefined ? { id } : { id, label };
 const leaves = (...ids: string[]): SidebarLeaf[] => ids.map((id) => leaf(id));
 
-const sdkPages = (sdk: string, label: string): SidebarGroup => ({
+/** An SDK's pages. `ownUi`: the SDK's reference is a folder with a "Your own UI" page. */
+const sdkPages = (sdk: string, label: string, ownUi = false): SidebarGroup => ({
   label,
   collapsed: true,
-  items: [
-    leaf(`build/quickstart/${sdk}`, "Quickstart"),
-    leaf(`build/sdks/${sdk}`, "Reference"),
-  ],
+  items: ownUi
+    ? [
+        leaf(`build/quickstart/${sdk}`, "Quickstart"),
+        leaf(`build/sdks/${sdk}/index`, "Reference"),
+        leaf(`build/sdks/${sdk}/your-own-ui`, "Your own UI"),
+      ]
+    : [
+        leaf(`build/quickstart/${sdk}`, "Quickstart"),
+        leaf(`build/sdks/${sdk}`, "Reference"),
+      ],
 });
 
 /**
@@ -109,24 +116,23 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: [
           leaf("build/index", "Build map"),
           leaf("build/install"),
-          sdkPages("node", "Node"),
-          sdkPages("react", "React"),
-          sdkPages("python", "Python"),
+          sdkPages("node", "Node", true),
+          sdkPages("react", "React", true),
+          sdkPages("python", "Python", true),
           sdkPages("swift", "Swift"),
           sdkPages("kotlin", "Kotlin"),
           sdkPages("godot", "Godot"),
           leaf("build/sdks/index", "All SDKs"),
-          leaf("build/quickstart/index", "Quickstarts"),
           {
             label: "Drop-in UI kits",
             collapsed: true,
             items: leaves(
               "build/ui/index",
               "build/ui/theming",
-              "build/ui/localisation",
-              "build/ui/recipes",
+              "build/ui/localization",
               "build/ui/components/index",
               "build/ui/frameworks/index",
+              "build/ui/frameworks/react",
               "build/ui/frameworks/compose",
               "build/ui/frameworks/terminal-node",
               "build/ui/frameworks/terminal-python",

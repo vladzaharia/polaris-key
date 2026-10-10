@@ -1,0 +1,171 @@
+---
+title: "React"
+description: "@polaris-key/react: the drop-in gate, the styled parts with slots, the headless hooks, theming and copy, as they ship today; the rebuilt kit is planned."
+sidebar:
+  order: 2
+---
+
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+
+The React kit is part of `@polaris-key/react`. It covers a browser page (on Polaris Key's origin, your
+own, or in Tauri) and the Electron renderer, and ships all three layers today: the gate, the parts
+with slots, and the headless hooks. The rebuild on a shared headless layer, with the Polaris Key look
+by default, is planned; the names below are the ones that ship now. The rest of the SDK is
+on the [React](/docs/build/sdks/react/) page.
+
+<KitFacts kit="react" />
+
+## Install
+
+From Polaris Key's npm feed ([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)),
+with the config `pkey sdk --lang react --write` generates
+([quickstart](/docs/build/quickstart/react/)):
+
+```sh
+# .npmrc: @polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
+pnpm add @polaris-key/react react react-dom
+```
+
+React 18 or later. There is no stylesheet to import: the components style through the `style` prop,
+so a page needs no `'unsafe-inline'` in its Content-Security-Policy.
+
+## The one-line flow
+
+Layer (a): `PolarisKeyProvider` owns the transport and the theme; `LicenseGate` shows your app only
+when the license is usable and otherwise the screen for the state.
+
+```tsx
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { LicenseGate } from "@polaris-key/react/license";
+import { polarisConfig } from "./polaris.config";
+
+export function App() {
+  return (
+    <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>
+      <LicenseGate>
+        <YourApp />
+      </LicenseGate>
+    </PolarisKeyProvider>
+  );
+}
+```
+
+`LicenseGate` takes `allowGrace` (keep the app open under a countdown banner while the grace period
+runs) and `returnUrl` (where the portal sends the person back after Replace a device).
+
+## Piecemeal
+
+Layer (b): each screen on its own, from the service subpaths. All are built from the exported
+primitives `MessageScreen`, `Button`, `Panel` and `TextField`, so a screen of your own keeps the
+same accessibility behaviour.
+
+| Component       | Subpath                       | What it draws                                                                        | Slots                                                                      |
+| --------------- | ----------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `LicenseGate`   | `@polaris-key/react/license`  | The gate: loading, sign-in, grace, revoked, expired, version block, error            | `loading`, `login`, `grace`, `revoked`, `expired`, `versionBlock`, `error` |
+| `PolarisLogin`  | `@polaris-key/react/identity` | The sign-in card: sign in, a license key, the device-code hand-off, Replace a device | none; `hideKeyEntry`, `logo`, `bare`, `returnUrl` props                    |
+| `PolarisLogout` | `@polaris-key/react/identity` | A sign-out button                                                                    | none; `variant`, `label` props                                             |
+| `DeviceManager` | `@polaris-key/react/license`  | List, rename and remove devices                                                      | `devices`, `device`, `empty`, `unsupported`                                |
+| `ConfigPanel`   | `@polaris-key/react/config`   | The settings the product delivers, with their source and an override                 | `rows`, `row`, `empty`, `disabled`                                         |
+| `UpdatePrompt`  | `@polaris-key/react/update`   | A banner or dialog for an update; `source="decision"` for the signed answer          | `prompt`, `decision`                                                       |
+
+Replace one screen and keep the rest:
+
+```tsx
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { LicenseGate } from "@polaris-key/react/license";
+import { DeviceManager } from "@polaris-key/react/license";
+import { polarisConfig } from "./polaris.config";
+
+export function App() {
+  return (
+    <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>
+      <LicenseGate
+        allowGrace
+        slots={{
+          revoked: ({ retry }) => (
+            <button onClick={() => void retry()}>Try again</button>
+          ),
+        }}
+      >
+        <YourApp />
+        <DeviceManager bare readOnly />
+      </LicenseGate>
+    </PolarisKeyProvider>
+  );
+}
+```
+
+`DeviceManager` and `ConfigPanel` start at your container's start edge, fill it up to 40rem and keep
+their border; `bare` drops the chrome when you frame the panel yourself. A blocking screen is a
+centred card, full-bleed under 35rem of width and in two columns under 30rem of height.
+
+Planned: `PolarisKeyGate`, `Activate` and `DeviceList`, the Polaris Key look by default,
+and `@layer polaris-key` styling.
+
+## Headless
+
+Layer (c): the hooks return state and actions and draw nothing. `useLicenseGate()` is the gate's
+state machine (`screen`, `status`, `error`, `retry`), `usePolarisAuth()` takes a key or starts a
+sign-in, `useUpdateDecision()` answers the signed update decision, and `useEntitlement(name)`,
+`useManagedConfig()`, `useCapabilities()` and `useChangelog()` cover the rest. Each screen's
+state, and the copy helper for it, is in the table on
+[Your own UI](/docs/build/sdks/react/your-own-ui/#the-state-table). A shared headless layer with
+`useActivate()` is planned.
+
+## Theming
+
+The theme goes in the Provider, as `branding`, `colorScheme` and `theme`. The fields are the
+[one theme](/docs/build/ui/theming/) every kit takes; here they do this:
+
+| Field               | In React                                                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `branding`          | `"neutral"` (default) is greyscale, inherits your font and shows no Polaris Key mark; `"polaris-key"` is the Polaris Key design system |
+| `colorScheme`       | `"system"` (default) matches the page the kit sits on; `"dark"` and `"light"` pin it                                                   |
+| `theme.tokens`      | Every colour, radius and the font as a `--pk-*` variable, set on a wrapper and on `:root` so portalled dialogs inherit them            |
+| `theme.lightTokens` | Overrides for the light scheme only                                                                                                    |
+| `theme.copy`        | The product's name and every string ([Localisation](#localisation))                                                                    |
+| `theme.logo`        | Your logo above the screens; `null` for none                                                                                           |
+| `theme.poweredBy`   | The "Powered by Polaris Key" line on the sign-in card and the device list; off by default                                              |
+
+```tsx
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { LicenseGate } from "@polaris-key/react/license";
+import { polarisConfig } from "./polaris.config";
+
+export function Themed() {
+  return (
+    <PolarisKeyProvider
+      {...polarisConfig}
+      branding="polaris-key"
+      colorScheme="system"
+      theme={{
+        // An accent needs its label colour and focus ring set with it: the kit does not resolve
+        // contrast yet (planned). Keep 4.5:1 for the label, 3:1 for the fill.
+        tokens: { accent: "#ff5c00", accentText: "#000000", ring: "#ff5c00" },
+        copy: { productName: "Acme" },
+        poweredBy: true,
+      }}
+    >
+      <LicenseGate>
+        <YourApp />
+      </LicenseGate>
+    </PolarisKeyProvider>
+  );
+}
+```
+
+The look follows the product's name once `copy.productName` is set: the title, the identity tile and
+the product lines appear only then. The product's registered presentation as the default identity is
+planned.
+
+## Localisation
+
+Every default string is a value of the kit and core copy catalogs, and `theme.copy` overrides any
+one. English ships; add a locale with `registerCopyLocale(locale, bundle)`, and read the sentences
+your own screens need with `copyMessage(code)`, `activationMessage(kind)` and `describeError(error)`.
+The kit's eight launch locales are planned.
+
+## Baselines
+
+<KitCoverage kit="react" />

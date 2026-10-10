@@ -13,4 +13,4 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [Integrate in 5 minutes](/docs/build/quickstart/) for the nearest live page.
+Placeholder page. See [Quickstart by goal](/docs/start/first-product/) for the nearest live page.

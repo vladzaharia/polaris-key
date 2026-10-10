@@ -10,8 +10,10 @@ import ComponentIndex from "../../../../../components/ui/ComponentIndex.astro";
 
 Every kit is to implement the same components under the same names. Web components add a `pk-` prefix
 and Godot a `PKey` prefix; Swift and Compose use the bare name inside their module; React exports
-the bare name. Headless names follow each language (`useActivate`, `ActivateModel`,
-`rememberActivateState`, `PKeyActivateController`, `ActivateViewModel`).
+the bare name. Headless names follow each language; the specification's are `useActivate`,
+`ActivateModel`, `rememberActivateState`, `PKeyActivateController` and `ActivateViewModel`, and the
+names a kit ships today are on its [framework page](/docs/build/ui/frameworks/). The headless names
+are planned except where that page lists them.
 
 The table is the catalog, `packages/brand/kit-copy/components.json`: each component, its states,
 and the copy keys each state shows. A kit cannot add a state the catalog lacks, and every catalog

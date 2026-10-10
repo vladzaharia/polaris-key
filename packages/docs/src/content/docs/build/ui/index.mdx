@@ -10,9 +10,11 @@ import KitTable from "../../../../components/ui/KitTable.astro";
 
 :::note[Status]
 This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
-rebuilt to. The [Node terminal kit](/docs/build/ui/frameworks/terminal-node/) is the first to ship
-the shared theme API and copy catalog; [The kits](#the-kits) says where each other kit's current
-docs are.
+rebuilt to. Every kit carries a badge: **Ships today** means the names on its page exist in the
+package now; **Planned in UK-xx** means the work package that builds it. A name the specification
+uses that does not ship yet is labelled planned wherever it appears. The
+[Node terminal kit](/docs/build/ui/frameworks/terminal-node/) is the first to ship the shared theme
+API and copy catalog; [The kits](#the-kits) says where each other kit's docs are.
 :::
 
 Every Polaris Key SDK that draws UI is getting a **UI kit** built to one specification,
@@ -25,12 +27,18 @@ This section is the shared half of the kit docs. Each kit adds its own framework
 on every component page, as it ships. Until a kit has its framework page, its current docs are on
 its SDK page (see [The kits](#the-kits)).
 
-## Two ways to integrate
+## Two lanes
 
-- **The hosted card.** No UI code: the kit's sign-in form runs with `presentation: "browser"` and
-  hands the whole flow to the Polaris Key sign-in card in the browser.
-- **The kit.** The kit's own form, dropped in whole or used piece by piece, or your own UI drawn
-  over the kit's headless layer and the SDK's primitives.
+Each SDK's quickstart forks after the shared setup into two lanes of equal weight.
+
+- **Drop-in screens.** The kit, whole or piece by piece: the gate, the sign-in form, devices,
+  updates. The sign-in form's `presentation: "browser"` hands the whole flow to the Polaris Key
+  sign-in card in the browser, with no UI code. Customise it on the kit's framework page.
+- **Your own UI.** Your screens drawn over the SDK's headless layer: the call, the state and the
+  copy key for each step, on the SDK's own-UI page ([Node](/docs/build/sdks/node/your-own-ui/),
+  [React](/docs/build/sdks/react/your-own-ui/), [Python](/docs/build/sdks/python/your-own-ui/)).
+
+The console's Integration page shows the drop-in and links to the other.
 
 ## Three layers in every kit
 
@@ -41,16 +49,20 @@ drop in a flow, restyle a component, or rebuild the UI on the state alone:
 - **(b) The styled parts:** each screen and each part on its own, themed, with slots.
 - **(c) Headless:** the state machine, its actions and its copy keys, with no UI.
 
-The specification names each layer per kit as follows; a kit's framework page documents the API it
-ships.
+A kit's framework page documents the API it ships. The table gives the names that ship today and
+labels the specification's names that do not.
 
-| Kit     | (a) Drop-in flow                             | (b) Styled parts                                        | (c) Headless                                       |
-| ------- | -------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
-| Web     | `<PolarisKeyGate>`, `<pk-gate>`              | `<Activate>`, `<DeviceList>` with `data-part` and slots | `useActivate()` (React), `ActivateModel` (ui-core) |
-| SwiftUI | `.polarisKeyGate(client)`                    | `ActivateView`, `DeviceList` with a style               | `@Observable ActivateModel`                        |
-| Compose | `PolarisKeyGate(client) { }`                 | `Activate(state)`, `DeviceList(state)` with `*Defaults` | `rememberActivateState(client)`                    |
-| Godot   | `PKeyGate` node, `await PolarisKey.boot()`   | `PKeyActivate.tscn` with theme type variations          | `PKeyActivateController`                           |
-| Qt      | `polaris_key.ui.qt.run_gate(client, window)` | `Activate.qml`, QWidget parts with QSS                  | `ActivateViewModel` (`polaris_key.ui.core`)        |
+| Kit               | Status      | (a) Drop-in flow                                                               | (b) Styled parts                                                                                   | (c) Headless                                                             |
+| ----------------- | ----------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| React             | Ships today | `<PolarisKeyProvider>` with `<LicenseGate>`                                    | `PolarisLogin`, `DeviceManager`, `ConfigPanel`, `UpdatePrompt` with slots                          | `useLicenseGate()`, `usePolarisAuth()`, `useUpdateDecision()`            |
+| Web components    | Planned     | Planned: `<pk-gate>`                                                           | Planned: `<pk-activate>` with `data-part` and slots                                                | Planned: `ActivateModel`                                                 |
+| Terminal (Node)   | Ships today | `registerPolarisCommands(program, factory, options)`                           | `productHeader`, `stepRow`, `fixRows` over a `KitContext`                                          | `statusView`, `activationOutcome`, `KitCopy`                             |
+| Terminal (Python) | Ships today | `register_argparse(subparsers, client_factory)`                                | `Kit` and `screens` in `polaris_key.ui.terminal`                                                   | `gate_view`, `activation_view`, `SignInModel` in `polaris_key.ui.core`   |
+| Electron          | Planned     | The bridge today: `exposePolarisBridge(client, { ipcMain })` and the React kit | The React kit's parts                                                                              | The React kit's hooks                                                    |
+| SwiftUI           | Ships today | `.polarisKey(client, theme:)`; Planned: `.polarisKeyGate(client)`              | `PolarisSignIn`, `PolarisOfflineActivation`, `PolarisGate(model:)`                                 | `PolarisKeyModel`                                                        |
+| Compose           | Ships today | `PolarisKeyApp(client) { }`                                                    | `PolarisGate`, `PolarisActivationScreen`, `PolarisDevices`, `PolarisGraceBanner`                   | `PolarisGateState`, `rememberPolarisLicense`                             |
+| Godot             | Ships today | `await PolarisKey.boot()`                                                      | `PKeyGateView`, `PKeyActivationPanel`, `PKeySignInDialog`, `PKeyUpdatePrompt`, `PKeySettingsPanel` | `PKeyGateController`, `PKeyActivationController`, `PKeySignInController` |
+| Qt                | Planned     | Planned: `run_gate(client, window)`                                            | Planned: `Activate.qml`, QWidget parts with QSS                                                    | Planned: `ActivateViewModel`                                             |
 
 Layer (c) is to be one state machine in every language, specified once as shared fixtures: a
 React screen, a SwiftUI screen and a Godot scene fed the same inputs will show the same step with

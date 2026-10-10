@@ -22,6 +22,12 @@ per-service-sub-client shape, and fails closed the same way when a capability is
 | Kotlin  | `polaris-key-sdk` (Polaris Key's Maven feed)              | [Kotlin](/docs/build/sdks/kotlin/); the Compose UI kit: [Compose](/docs/build/ui/frameworks/compose/) |
 | CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script   | shipped inside the Node and Python pages above                                                        |
 
+Node, React and Python each have two lanes, with equal depth: the drop-in screens on the kit's
+[framework page](/docs/build/ui/frameworks/), and your own UI over the library
+([Node](/docs/build/sdks/node/your-own-ui/), [React](/docs/build/sdks/react/your-own-ui/),
+[Python](/docs/build/sdks/python/your-own-ui/)). The [quickstarts](/docs/build/quickstart/) fork
+into them.
+
 Every SDK that draws UI ships a UI kit. The kits share one component catalog, one theme API and
 one copy catalog, documented once in [UI kits](/docs/build/ui/), with a page per framework.
 

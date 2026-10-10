@@ -170,8 +170,7 @@
       "to": ["start/first-product"],
       "pri": "P1",
       "package": "DOC-07a",
-      "primary": false,
-      "deferred": "SP-45a"
+      "primary": false
     },
     {
       "from": "build/recipes/index",
@@ -221,16 +220,14 @@
       "action": "move",
       "to": ["build/ui/localization"],
       "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "package": "DOC-08b"
     },
     {
       "from": "build/ui/recipes",
       "action": "delete",
       "to": ["build/ui/frameworks/index"],
       "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "package": "DOC-08b"
     },
     {
       "from": "build/ui/components/channel-picker",
@@ -238,7 +235,7 @@
       "to": ["build/ui/components/index"],
       "pri": "P1",
       "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "deferred": "DOC-08b"
     },
     {
       "from": "build/ui/components/cloud-sync-status",
@@ -246,7 +243,7 @@
       "to": ["build/ui/components/index"],
       "pri": "P1",
       "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "deferred": "DOC-08b"
     },
     {
       "from": "build/ui/components/entitlement-gate",
@@ -254,7 +251,7 @@
       "to": ["build/ui/components/index"],
       "pri": "P1",
       "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "deferred": "DOC-08b"
     },
     {
       "from": "build/ui/components/license-choice",
@@ -262,7 +259,7 @@
       "to": ["build/ui/components/index"],
       "pri": "P1",
       "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "deferred": "DOC-08b"
     },
     {
       "from": "build/ui/components/paywall",
@@ -270,7 +267,7 @@
       "to": ["build/ui/components/index"],
       "pri": "P1",
       "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "deferred": "DOC-08b"
     },
     {
       "from": "build/ui/components/toast",
@@ -278,7 +275,7 @@
       "to": ["build/ui/components/index"],
       "pri": "P1",
       "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "deferred": "DOC-08b"
     },
     {
       "from": "build/ui/components/welcome",
@@ -286,7 +283,7 @@
       "to": ["build/ui/components/index"],
       "pri": "P1",
       "package": "DOC-08b",
-      "deferred": "SP-45a"
+      "deferred": "DOC-08b"
     },
     {
       "from": "build/wire/index",
@@ -955,7 +952,7 @@
       "type": "how-to",
       "title": "Test your integration",
       "description": "Check your integration with test licenses, offline and grace states, and a skewed clock.",
-      "nearest": "/docs/build/quickstart/",
+      "nearest": "/docs/start/first-product/",
       "package": "DOC-07b",
       "pri": "P1"
     },
