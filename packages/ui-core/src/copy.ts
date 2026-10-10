@@ -118,7 +118,11 @@ export function parseMessage(src: string): Parsed {
     if (!m) throw new Error(`ui-core copy: a bad plural or select in "${src}"`);
     i += m[0].length;
     const kind = m[2] as "plural" | "select";
-    const cases: Record<string, Piece[]> = {};
+    // No prototype: a select value such as "constructor" is never a case.
+    const cases: Record<string, Piece[]> = Object.create(null) as Record<
+      string,
+      Piece[]
+    >;
     for (;;) {
       while (src[i] === " ") i++;
       if (src[i] === "}") {
@@ -156,15 +160,21 @@ export function formatMessage(
         ? args[x.arg] === undefined
           ? `{${x.arg}}`
           : String(args[x.arg])
-        : String(args[p.complex!.arg]);
+        : args[p.complex!.arg] === undefined
+          ? `{${p.complex!.arg}}`
+          : String(args[p.complex!.arg]);
   let body: Piece[] = [];
   if (p.complex) {
     const v = args[p.complex.arg];
     let c: string;
     if (p.complex.kind === "plural") {
       c = new Intl.PluralRules(locale).select(Number(v));
-      if (!(c in p.complex.cases)) c = "other";
-    } else c = typeof v === "string" && v in p.complex.cases ? v : "other";
+      if (!Object.hasOwn(p.complex.cases, c)) c = "other";
+    } else
+      c =
+        typeof v === "string" && Object.hasOwn(p.complex.cases, v)
+          ? v
+          : "other";
     body = p.complex.cases[c] ?? [];
   }
   return [...p.head, ...body, ...p.tail].map(render).join("");

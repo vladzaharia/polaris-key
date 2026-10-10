@@ -134,6 +134,24 @@ describe("DL14: links fail closed", () => {
     expect(countdown(-3)).toBe("0:00");
   });
 
+  it("a broken integrator address never hides the server's valid one", () => {
+    const view = viewOf("SignInHandoff", {
+      platform: MAC,
+      integrator: { deviceCodeUrl: "http://driftkart.gg/tv" },
+      signIn: {
+        presentation: "inline",
+        replace: "inline",
+        channel: "device-code",
+      },
+      deviceCode: {
+        phase: "waiting",
+        secondsLeft: 200,
+        verificationUri: "https://key.plrs.im/device",
+      },
+    });
+    expect(view.decisions.link?.url).toBe("https://key.plrs.im/device");
+  });
+
   it("the QR, Copy and the text carry the same link", () => {
     const view = viewOf("SignInHandoff", {
       platform: TV,
@@ -275,6 +293,17 @@ describe("the copy formatter", () => {
     expect(formatMessage("Hello {name}", {})).toBe("Hello {name}");
   });
 
+  it("never takes a prototype member for a select case", () => {
+    expect(
+      formatMessage(tables.en["part.thisDeviceTitle"], {
+        formFactor: "constructor",
+      }),
+    ).toBe("This device");
+    expect(formatMessage(tables.en["devices.count"], {})).toBe(
+      "{count} devices",
+    );
+  });
+
   it("refuses anything outside the subset", () => {
     expect(() =>
       parseMessage("{a, plural, one {{b, select, x {y}}}}"),
@@ -362,6 +391,18 @@ describe("ViewModel: a component's view as a live value", () => {
     expect(m.view.state).toBe("empty");
     expect(delivered).toEqual(["loading:2", "empty:1"]);
     m.dispose();
+  });
+
+  it("delivers nothing after dispose, and nothing for an equal view", () => {
+    const m = new ViewModel("Devices", { devices: [] });
+    const seen: string[] = [];
+    m.subscribe((v) => seen.push(v.state));
+    m.update({ devices: [] });
+    expect(seen).toEqual([]);
+    m.dispose();
+    m.update({ loading: true });
+    expect(seen).toEqual([]);
+    expect(m.view.state).toBe("empty");
   });
 
   it("marks the arguments that are someone's own text for an isolated run", () => {

@@ -31,6 +31,7 @@ export class ViewModel<C extends ComponentName = ComponentName> {
   private readonly schedule: Schedule;
   private readonly now: Now | undefined;
   private timer: LoadingTimer | null = null;
+  private disposed = false;
 
   constructor(
     component: C,
@@ -43,6 +44,8 @@ export class ViewModel<C extends ComponentName = ComponentName> {
     this.now = options.now;
     this.store = createStore<View>(this.compute(), {
       deliver: options.deliver,
+      // A view is plain data: an equal one notifies no one.
+      equals: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
   }
 
@@ -63,6 +66,7 @@ export class ViewModel<C extends ComponentName = ComponentName> {
 
   /** Change the input: a patch over the last one, or a new input from it. */
   update(next: Partial<UiInput> | ((prev: UiInput) => UiInput)): void {
+    if (this.disposed) return;
     this.input =
       typeof next === "function"
         ? next(this.input)
@@ -72,6 +76,7 @@ export class ViewModel<C extends ComponentName = ComponentName> {
 
   /** Stop the loading timer; no view is delivered after this. */
   dispose(): void {
+    this.disposed = true;
     this.timer?.stop();
     this.timer = null;
   }
@@ -88,7 +93,7 @@ export class ViewModel<C extends ComponentName = ComponentName> {
     const delayed = DELAYED_LOADING_STATES.includes(
       `${plain.component}.${plain.state}`,
     );
-    if (!delayed) {
+    if (!delayed || this.disposed) {
       this.timer?.stop();
       this.timer = null;
       return plain;

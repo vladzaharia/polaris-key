@@ -303,6 +303,40 @@ describe("SignInModel: the one form over the SDK primitives", () => {
     expect(m.views().licenseChoice.actions).toEqual(["retry"]);
   });
 
+  it("a failed Continue never leaves the form redeeming", async () => {
+    const sdk = fakeSdk([{ outcome: "choose", grant: "sg_6", choices: VIEW }]);
+    sdk.primitives.choice!.complete = async () => {
+      throw new Error("network");
+    };
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    await m.start();
+    await tick();
+    await m.continue();
+    expect(m.snapshot.session.redeeming).toBe(false);
+    expect(m.views().signIn.state).toBe("error");
+  });
+
+  it("a second start ends the first request, and Use a code never flashes cancelled", async () => {
+    const sdk = fakeSdk([]);
+    const seen: string[] = [];
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    await m.start();
+    await m.start();
+    await tick();
+    expect(sdk.calls.filter((c) => c === "cancel")).toHaveLength(1);
+    m.subscribe(() => seen.push(m.views().handoff.state));
+    await m.useCode();
+    await tick();
+    expect(seen).not.toContain("cancelled");
+    expect(m.views().handoff.state).toBe("code");
+  });
+
   it("delivers each snapshot through the UI-thread hook, as plain data", async () => {
     const delivered: unknown[] = [];
     const queue: (() => void)[] = [];

@@ -132,6 +132,14 @@ export interface SignInViews {
 
 const GRANT_SECONDS = 300;
 
+/** Cancel a session the form no longer follows; its failure is nobody's to show. */
+function release(handle: SignInSessionHandle | null): void {
+  if (!handle) return;
+  void Promise.resolve()
+    .then(() => handle.cancel())
+    .catch(() => {});
+}
+
 export class SignInModel {
   readonly store: Store<SignInSnapshot>;
   private base: UiInput;
@@ -274,7 +282,10 @@ export class SignInModel {
     const p = this.requirePrimitives();
     const channel = options.channel ?? this.store.get().session.channel;
     const presentation = this.store.get().session.presentation;
+    // A second start (Retry, another provider, a double click) ends the first request too.
+    const previous = this.handle;
     this.endSession();
+    release(previous);
     this.live = true;
     const epoch = this.epoch;
     this.store.set((s) => ({
@@ -307,7 +318,11 @@ export class SignInModel {
         );
       return;
     }
-    if (epoch !== this.epoch) return;
+    if (epoch !== this.epoch) {
+      // The form moved on while the request started: nobody follows it now.
+      release(handle);
+      return;
+    }
     this.handle = handle;
     if (channel === "device-code")
       this.patch({ deviceCode: handle.deviceCode ?? { phase: "waiting" } });
@@ -434,7 +449,10 @@ export class SignInModel {
 
   /** Use a code instead: the device-code channel, in the same form. */
   async useCode(): Promise<void> {
-    await this.handle?.cancel();
+    // The epoch moves first, so the browser session's late "cancelled" never shows.
+    const previous = this.handle;
+    this.endSession();
+    release(previous);
     await this.start({ channel: "device-code" });
   }
 
@@ -479,7 +497,15 @@ export class SignInModel {
       keyField: { text: key, submitted: true },
       activation: undefined,
     });
-    const result = await p.activate(key);
+    const epoch = this.epoch;
+    let result: ActivationInput;
+    try {
+      result = await p.activate(key);
+    } catch {
+      // A failed call is an error under the key field (DL7), never a silent stop.
+      result = { result: "error" };
+    }
+    if (epoch !== this.epoch) return;
     if (result.result === "ok") this.finish(true);
     else this.patch({ activation: result });
   }
@@ -487,13 +513,20 @@ export class SignInModel {
   /** Replace a device on a full license: the device list in place, or the card's Replace. */
   async openReplace(licenseId: string): Promise<void> {
     const s = this.store.get();
-    if (s.session.replace === "browser" || !this.grant) {
+    const choice = this.primitives?.choice;
+    if (s.session.replace === "browser" || !this.grant || !choice) {
+      // The card's Replace: the kit opens the row's freeDeviceUrl (replace-in-browser).
       this.patch({}, { event: "open-replace" });
       return;
     }
-    const p = this.requirePrimitives();
     const epoch = this.epoch;
-    const view = await p.choice!.devices(this.grant, licenseId);
+    let view: ReplaceView;
+    try {
+      view = await choice.devices(this.grant, licenseId);
+    } catch {
+      if (epoch === this.epoch) this.patch({}, { raced: true });
+      return;
+    }
     if (epoch === this.epoch)
       this.patch({ replaceView: view }, { event: "open-replace" });
   }
@@ -531,7 +564,14 @@ export class SignInModel {
     if (!grant || !p.choice) return;
     const epoch = this.epoch;
     this.patch({}, { redeeming: true });
-    const r = await p.choice.complete(grant, choice);
+    let r: ChoiceComplete;
+    try {
+      r = await p.choice.complete(grant, choice);
+    } catch {
+      if (epoch === this.epoch)
+        this.patch({ error: { code: "sign-in-failed" } }, { redeeming: false });
+      return;
+    }
     if (epoch !== this.epoch) return;
     this.patch({}, { redeeming: false });
     if (r.outcome === "signedIn") {
@@ -544,11 +584,19 @@ export class SignInModel {
     }
     // Raced: the seat was taken since the view loaded. Re-read the view and say so.
     this.patch({}, { raced: true });
-    const fresh = await p.choice.licenses(grant);
-    if (epoch === this.epoch) this.patch({ choices: fresh });
+    try {
+      const fresh = await p.choice.licenses(grant);
+      if (epoch === this.epoch) this.patch({ choices: fresh });
+    } catch {
+      // The race message stays over the last list; Continue tries again.
+    }
   }
 
-  /** Stop: no answer from the session is applied after this. */
+  /**
+   * Stop following the session: no answer is applied after this. The request itself stays
+   * open, so a binding that re-mounts (React's StrictMode) can follow it again with a new
+   * model; `cancel()` ends it on the server.
+   */
   dispose(): void {
     this.endSession();
   }

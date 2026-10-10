@@ -22,7 +22,7 @@ import {
   type Context,
   type LicenseChoiceRow,
 } from "../input.js";
-import { codeExpired, countdown, linkVerdict } from "../link.js";
+import { codeExpired, countdown, linkVerdict, validLink } from "../link.js";
 import { loadingVisible } from "../loading.js";
 import { hiddenView, identityText, makeView, type View } from "../view.js";
 
@@ -43,10 +43,13 @@ function choosesInApp(ctx: Context): boolean {
 /** The device-code page: the product's own `deviceCodeUrl`, else the server's address, else
  *  Polaris Key's (`/tv` on a TV or console, `/device` elsewhere; SIGN-IN.md D-16). */
 export function verificationUrl(ctx: Context): string {
-  const own = ctx.input.integrator?.deviceCodeUrl;
-  if (own) return own;
-  const served = ctx.input.deviceCode?.verificationUri;
-  if (served) return served;
+  // The first that passes the opener (DL14): a broken integrator address never hides the
+  // server's valid one.
+  for (const candidate of [
+    ctx.input.integrator?.deviceCodeUrl,
+    ctx.input.deviceCode?.verificationUri,
+  ])
+    if (validLink(candidate) !== null) return candidate!;
   const c = platformClass(ctx.platform);
   return c === "tv" || c === "console" ? DEFAULT_TV_URL : DEFAULT_DEVICE_URL;
 }
