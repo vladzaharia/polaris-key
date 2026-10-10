@@ -19,6 +19,10 @@
       "types": "./dist/headless.d.ts",
       "default": "./dist/headless.js"
     },
+    "./contract": {
+      "types": "./dist/contract.d.ts",
+      "default": "./dist/contract.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json"
   },

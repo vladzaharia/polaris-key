@@ -7,9 +7,7 @@ import { html, nothing, svg, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { styleMap } from "lit/directives/style-map.js";
 import {
-  ACTION_KEYS,
   countdown,
-  type Action,
   type Copy,
   type UiInput,
   type View,
@@ -17,6 +15,7 @@ import {
 
 import { encodeQr } from "@polaris-key/node/qr";
 
+import { actionOf, OPENS } from "./contract.js";
 import { isTitleKey, LAYOUTS, type Layout } from "./layout.js";
 import type { Resolved } from "./theme.js";
 
@@ -33,32 +32,6 @@ export interface RenderCtx {
   /** The person picked a row. */
   pick(id: string): void;
 }
-
-/** The vocabulary action a control performs, or `null` (a kit-local control). */
-export function actionOf(key: string): Action | null {
-  for (const [action, keys] of Object.entries(ACTION_KEYS) as [
-    Action,
-    readonly string[],
-  ][])
-    if (keys.includes(key)) return action;
-  return null;
-}
-
-const OPENS = new Set([
-  ...ACTION_KEYS["open-card"],
-  ...ACTION_KEYS["open-browser"],
-  ...ACTION_KEYS["open-manage-url"],
-  "status.renew",
-  "status.update",
-  "update.appStore",
-  "update.googlePlay",
-  "update.steam",
-  "update.openStore",
-  "paywall.portal",
-  "signin.none.get",
-  "common.manage",
-  "about.licenses",
-]);
 
 // ── Text ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -659,4 +632,4 @@ export function callout(
   </div>`;
 }
 
-export { LAYOUTS, countdown };
+export { LAYOUTS, actionOf, countdown };

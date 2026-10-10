@@ -875,9 +875,10 @@ dialog[open] .card {
 }
 `;
 
-/** The whole stylesheet: tokens, then the kit's rules in the `polaris-key` layer. */
+/** The whole stylesheet: tokens, then the kit's rules, all in the `polaris-key` layer (an
+ *  unlayered token block would outrank every layered rule, `native`'s surfaces included). */
 export function stylesCss(): string {
-  return `${tokenCss()}\n\n${KIT_CSS.trim()}\n`;
+  return `@layer polaris-key {\n${tokenCss()}\n}\n\n${KIT_CSS.trim()}\n`;
 }
 
 let shared: CSSStyleSheet | null = null;
