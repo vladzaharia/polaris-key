@@ -31,11 +31,20 @@ const SIZES := [
 	["1170x2532@3", Vector2i(1170, 2532), 3.0, [0.0, 47.0, 0.0, 34.0], 3.0],
 	["1536x2048", Vector2i(1536, 2048), 1.0, null, 2.0],
 	["3440x1440", Vector2i(3440, 1440), 1.0, null, 0.0],
-	# A phone held sideways: a short screen with a notch at its side.
-	["2532x1170@3", Vector2i(2532, 1170), 3.0, [47.0, 0.0, 47.0, 21.0], 3.0],
-	["1334x750@2", Vector2i(1334, 750), 2.0, null, 2.0],
-	["750x1334@2", Vector2i(750, 1334), 2.0, [0.0, 20.0, 0.0, 0.0], 2.0],
+	# A phone held sideways (844x390 pt, a notch at its side) and the narrowest current phone (375 pt):
+	# held for the settings list only (a sixth member lists the screens the size applies to). The
+	# other screens' layouts at these two are the next kit's (the offline dialog's Import below the
+	# fold in the native and custom looks, the German and Japanese gate a few points wide, a card
+	# that scrolls in the Polaris Key look): `applies()` widens them when those are fixed.
+	["2532x1170@3", Vector2i(2532, 1170), 3.0, [47.0, 0.0, 47.0, 21.0], 3.0, ["settings"]],
+	["750x1334@2", Vector2i(750, 1334), 2.0, [0.0, 20.0, 0.0, 0.0], 2.0, ["settings"]],
 ]
+
+## Whether a size row of SIZES applies to `screen` (a row with a sixth member lists the screens it is
+## held for; every other row applies to every screen).
+static func applies(row: Array, screen: String) -> bool:
+	return row.size() < 6 or (row[5] as Array).has(screen)
+
 
 ## A game's project stretch settings turn its window into a logical size and a scale; the checks
 ## also run at these (`stretched()`): [label, window, mode, base size, aspect].

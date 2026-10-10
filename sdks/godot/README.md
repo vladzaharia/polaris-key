@@ -541,7 +541,9 @@ func _ready() -> void:
   the boot's screens when it is revoked, expired or signed out). A second `boot()` while one runs
   joins it; after READY it starts a new boot (a sign-out, say) with a fresh gate. A
   `PKeyUpdatePrompt` the game places replaces the one the boot kept over the game, so one update
-  prompt is on screen; a prompt with nothing to open or install offers Check again.
+  prompt is on screen; a prompt with nothing to open or install offers Check again. The boot names
+  the device for the sign-in page and the customer's device list by the computer's own name
+  ("Ada's MacBook Pro") where the OS has one, unless `PKeyOptions.device_name` says otherwise.
 
 - **One machine, many views.** `PKeyStages` (core/stages.gd) is the port of client-core's
   `stages.ts`; the `stage_matrix` suite (`--pkey-test stage-matrix` works too) replays every row,

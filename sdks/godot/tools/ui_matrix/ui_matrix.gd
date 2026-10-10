@@ -57,7 +57,7 @@ func _run() -> void:
 				mx.use_locale(locale)
 				var shots: Array = []
 				for s in MATRIX.SIZES:
-					if not labels.has(s[0]):
+					if not labels.has(s[0]) or not MATRIX.applies(s, entry[0]):
 						continue
 					if progress:
 						print("ui_matrix: %s %s %s %s" % [entry[0], s[0], preset, locale])

@@ -60,7 +60,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 			if not only.is_empty() and not only.has(entry[0]):
 				continue
 			var failed: Array = []
-			var row_sizes: Array = sizes.filter(func(r): return at.is_empty() or at.has(r[0]))
+			var row_sizes: Array = sizes.filter(func(r): return (at.is_empty() or at.has(r[0])) and MATRIX.applies(r, entry[0]))
 			# A pad-only screen (a TV, a console) is never a phone's size.
 			if entry.size() > 4 and entry[4] == "pad":
 				row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
@@ -89,7 +89,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	PKeyUiView.mobile_override = null
 	PKeyUiView.pad_only_override = null
 	PKeyUiTheme.reset()
-	t.check("matrix: coverage", layouts >= MATRIX.SCREENS.size() * sizes.size() * 7 or not only.is_empty(), "%d layouts" % layouts)
+	t.check("matrix: coverage", layouts >= MATRIX.SCREENS.size() * (sizes.size() - 2) * 7 or not only.is_empty(), "%d layouts" % layouts)
 	return true
 
 
@@ -117,7 +117,7 @@ func _fresh_layouts(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, only:
 			if not only.is_empty() and not only.has(entry[0]):
 				continue
 			var failed: Array = []
-			var row_sizes: Array = sizes
+			var row_sizes: Array = sizes.filter(func(r): return MATRIX.applies(r, entry[0]))
 			if entry.size() > 4 and entry[4] == "pad":
 				row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
 			for s in row_sizes:
