@@ -865,15 +865,21 @@ is never talked into self-updating code.
   `is_available()`, `check_now()`, `install_and_relaunch()`, with the feed URL from discovery):
   Sparkle on macOS (the appcast), Velopack on a Velopack install or with its plugin, else
   WinSparkle, on Windows (`update.endpoints.velopack` up to `releases.`, `…/winsparkle.xml`), and
-  AppImageUpdate in an AppImage, else Velopack, on Linux. Each bridge calls, in order, a `native`
+  the verified AppImage installer in an AppImage, else Velopack, on Linux. The desktop plugin
+  bridges call, in order, a `native`
   object a test injects, an Engine singleton (`PolarisKeySparkle`, `PolarisKeyVelopack`,
   `PolarisKeyWinSparkle`, `PolarisKeyStoreContext`) a game registers itself, or P5-07's facade
   (see "Native desktop plugins" below). With no plugin every call is the typed unsupported result
   (`unsupported`, `detail.reason` `dependency`, or `runtime` on the wrong OS), `native` is not
   offered to the decision, and an adapter given `native` anyway opens the download link: a missing
-  plugin never breaks boot. AppImage needs no plugin: with `APPIMAGE` set and `appimageupdatetool`
-  on PATH it runs `appimageupdatetool -O $APPIMAGE` on a worker thread and relaunches `$APPIMAGE`
-  (not the mounted executable).
+  plugin never breaks boot. AppImage needs no plugin or external updater: with `APPIMAGE` pointing
+  to an existing Linux image, the adapter passes the verified `PKeyUpdateCheck` through
+  `PKeyUpdater.install_appimage(check)`. It downloads the selected `appimage` build into a private
+  sibling directory, verifies the payload's exact size and SHA-256 against the pinned-key-verified
+  release record, then atomically replaces and relaunches `$APPIMAGE` (not the mounted executable).
+  Verification or replacement failure leaves the original image untouched and reports an error.
+  The generic AppImage `install_and_relaunch()` hook refuses calls, including custom plugins.
+  `appimageupdatetool -j` remains an optional informational check only.
 - **`download`**: the build's URL from discovery's `distribution.endpoints.builds` (else
   `release.endpoints.builds`; never the R2-only `blobs`), `{selector}` = the record's version and
   `{buildId}` = the decision's build, percent-encoded; else `PKeyOptions.update_release_url`.
