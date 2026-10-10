@@ -313,10 +313,20 @@ static func reset() -> void:
 ## `product_name` / `product_icon`, else the project's `application/config/name` and
 ## `application/config/icon` (UI-KITS.md §1.2: the integrator first, the bundle last; never a
 ## Polaris Key mark).
+## The name of this repository's own Godot project (a fallback no player should read as a product).
+const DEV_PROJECT_NAME := "Polaris Key SDK"
+## Off in this repository's own tests and screenshots, which render that project's name as a stand-in
+## for a product's.
+static var hide_dev_project_name := true
+
+
 static func product_identity() -> Dictionary:
 	var n := product_name
 	if n == "":
 		n = str(ProjectSettings.get_setting("application/config/name", ""))
+		# The SDK's own development project is no product: its name never heads a screen.
+		if n == DEV_PROJECT_NAME and hide_dev_project_name:
+			n = ""
 	var icon := product_icon
 	if icon == null:
 		var path := str(ProjectSettings.get_setting("application/config/icon", ""))

@@ -118,9 +118,19 @@ func _size() -> void:
 		return
 	var which := "hero_icon_size" if hero or splash else ("icon_size_card" if card else "icon_size")
 	var side := float(_constant(which)) * (2.0 if splash else 1.0)
+	# Beside a large title (a game's own 28 or 36 px type) the icon and the name keep up with it:
+	# never a small mark and a small name next to a big title.
+	var title_size := float(get_theme_font_size("font_size", "PKeyTitle")) if has_theme_font_size("font_size", "PKeyTitle") else 0.0
+	if not splash:
+		side = maxf(side, roundf(title_size * 1.5))
 	_icon.custom_minimum_size = Vector2(side, side)
 	_tile.custom_minimum_size = Vector2(side, side)
 	_name.theme_type_variation = "PKeyTitle" if splash or as_title else ("PKeySection" if hero else "PKeyStrong")
+	var name_size := float(get_theme_font_size("font_size", _name.theme_type_variation)) if has_theme_font_size("font_size", _name.theme_type_variation) else 0.0
+	if not splash and not as_title and title_size * 0.62 > name_size:
+		_name.add_theme_font_size_override("font_size", roundi(title_size * 0.62))
+	else:
+		_name.remove_theme_font_size_override("font_size")
 	var ink := get_theme_color("font_color", "PKeyTitle") if has_theme_color("font_color", "PKeyTitle") else get_theme_color("font_color", "Label")
 	var tile := StyleBoxFlat.new()
 	tile.bg_color = Color(ink, 0.12)

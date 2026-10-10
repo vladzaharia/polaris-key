@@ -16,6 +16,8 @@ const MATRIX := preload("res://tests/ui/matrix.gd")
 
 
 func _initialize() -> void:
+	# The renders show this project's name as the product, as the suites do.
+	PKeyUiTheme.hide_dev_project_name = false
 	_run.call_deferred()
 
 

@@ -42,6 +42,8 @@ func _initialize() -> void:
 
 
 func _run(args: PackedStringArray, at: int) -> void:
+	# This project's own name stands in for a product's in the screens the suites pin.
+	PKeyUiTheme.hide_dev_project_name = false
 	var names: Array[String] = []
 	var bad_selection := at + 1 >= args.size() or args[at + 1].begins_with("--")
 	if not bad_selection:

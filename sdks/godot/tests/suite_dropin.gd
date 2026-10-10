@@ -331,6 +331,26 @@ func _misc(t: PKeyTestContext) -> void:
 	storeonly.queue_free()
 	storesdk.queue_free()
 	PKeyUiTheme.product_name = ""
+	# The product header: a large host title is matched by the icon and the name, and the SDK's own
+	# development project name is no product (the header is not drawn).
+	var header := PKeyProductHeader.new()
+	_tree().root.add_child(header)
+	PKeyUiTheme.product_name = ""
+	PKeyUiTheme.hide_dev_project_name = true
+	header.refresh()
+	t.check("product header: the dev project's name draws no header", not header.visible)
+	PKeyUiTheme.hide_dev_project_name = false
+	header.refresh()
+	t.check("product header: ... other names do", header.visible and header.product_name() == PKeyUiTheme.DEV_PROJECT_NAME)
+	PKeyUiTheme.product_name = "Diceroll"
+	var big := Theme.new()
+	big.set_font_size("font_size", "PKeyTitle", 36)
+	big.set_font_size("font_size", "PKeyStrong", 16)
+	header.theme = big
+	header.refresh()
+	t.check("product header: beside a 36 px title the icon is 54 px or more and the name 22 px or more", header._tile.custom_minimum_size.x >= 54.0 and header._name.get_theme_font_size("font_size") >= 22, "%s %d" % [header._tile.custom_minimum_size, header._name.get_theme_font_size("font_size")])
+	header.queue_free()
+	PKeyUiTheme.product_name = ""
 	# The banner's expired state.
 	var lines := PKeyBannerController.lines({"status": "expired"}, 0.0, false, false, c)
 	t.check("banner: an expired licence earns a line", lines.size() == 1 and lines[0][0] == "banner_expired", str(lines))
