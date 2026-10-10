@@ -41,9 +41,9 @@ func run(t: PKeyTestContext) -> void:
 	t.check("mirror: DEFAULTS keep their JSON types", defaults["audio.musicVolume"] is int and defaults["dice.animSpeed"] is float and defaults["game.killSwitch"] == false \
 			and S.same(defaults["difficulty.tuning"], {"easy": 0.5, "hard": [1, 2.5, 3], "none": null}))
 	var users: Dictionary = m.get("USER_SETTINGS", {})
-	# U-01b: every Editable config key is a setting a person chooses, in catalog order; a locked key
+	# U-01b: every Editable config key is a setting a person chooses, in key order; a locked key
 	# (enforced, hidden) is not, and a `user` block only tunes the defaults.
-	t.check("mirror: USER_SETTINGS names every Editable key, defaults applied (U-01b)", users.keys() == ["dice.animSpeed", "audio.musicVolume", "ui.theme"] \
+	t.check("mirror: USER_SETTINGS names every Editable key, defaults applied (U-01b)", users.keys() == ["audio.musicVolume", "dice.animSpeed", "ui.theme"] \
 			and S.same(users["dice.animSpeed"], {"sync": "user", "conflict": "lastWrite", "listed": true}) \
 			and S.same(users["audio.musicVolume"], {"sync": "user", "conflict": "max", "listed": true}) \
 			and S.same(users["ui.theme"], {"sync": "local", "conflict": "lastWrite", "listed": false}), str(users))
