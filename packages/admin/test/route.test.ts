@@ -775,7 +775,7 @@ describe("package feeds (F-11): a feed under a page, a package under a feed, in 
     expect(labels({ packageFeeds: true })).toContain("Package feeds");
     // While the product loads, the item shows (the nav does not jump).
     expect(labels(null)).toContain("Package feeds");
-    expect(docsFor("package-feeds")).toBe("/docs/admin/feeds/");
-    expect(docsFor("platform-feeds")).toBe("/docs/admin/feeds/");
+    expect(docsFor("package-feeds")).toBe("/docs/features/ship-builds/packages/");
+    expect(docsFor("platform-feeds")).toBe("/docs/features/ship-builds/packages/");
   });
 });

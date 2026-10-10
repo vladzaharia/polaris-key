@@ -365,7 +365,7 @@ describe("Store connections: navigation and URL", () => {
       screen
         .getAllByRole("link", { name: /Docs/ })
         .some((a) =>
-          a.getAttribute("href")?.includes("/docs/admin/store-connections/"),
+          a.getAttribute("href")?.includes("/docs/operate/platform/connections/"),
         ),
     ).toBe(true);
   });
@@ -446,7 +446,7 @@ describe("Store connections: credentials", () => {
       within(page)
         .getAllByRole("link")
         .some(
-          (a) => a.getAttribute("href") === "/docs/admin/store-connections/",
+          (a) => a.getAttribute("href") === "/docs/operate/platform/connections/",
         ),
     ).toBe(true);
     // No listing is requested for a store with no credential. UX-69 (SETUP.md D42): the key is

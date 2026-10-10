@@ -953,7 +953,7 @@ describe("the top bar", () => {
   it("the docs link is a labelled link to this page's docs (SH-13)", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     const docs = await screen.findByRole("link", { name: "Docs" });
-    expect(docs.getAttribute("href")).toBe("/docs/services/license/model/");
+    expect(docs.getAttribute("href")).toBe("/docs/features/licensing/model/");
   });
 
   it.each([
