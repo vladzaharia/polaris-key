@@ -72,7 +72,7 @@ program now has every verb, grouped on its help page by the service that owns it
 
 `activate` asks for the key with masked entry. A key piped on stdin works too
 (`echo "$KEY" | tidewater activate`); a key typed on the command line still works, and warns that
-it is now in the shell's history. A piped key is read only when stdin is a file or a pipe, stops at the first
+it is now in the shell's history. A piped key is read only when stdin is a file, a pipe or a socket, stops at the first
 non-empty line and is given up on after about two seconds, so a server with an open, silent stdin
 ends in "No license key" (exit 2) and never waits on a hidden prompt. `completion bash`, `zsh` or
 `fish` prints a completion script generated from the same verb table.
@@ -384,8 +384,8 @@ the page for the script to show, then the result line.
 
 No `--json` line carries a license key, a device token, the sign-in poll credential, a secret's
 value or a minted token. Off `--json`, `secret` and `mint` print the value alone on stdout for a
-script that pipes it, and only with `--reveal`: without it `secret` says the value is set and how to
-print it, and `mint` mints nothing and exits 2. Inside a CI job whose runner reads commands from its log (`GITHUB_ACTIONS`,
+script that pipes it, and only with `--reveal`: without it `secret` and `mint` print nothing, say how to
+ask for it and exit 2 (`mint` also mints nothing). Inside a CI job whose runner reads commands from its log (`GITHUB_ACTIONS`,
 `TF_BUILD` for Azure Pipelines, or `TEAMCITY_VERSION` set), a value with a line the runner would
 obey (`::…` at the start of a line, or `##[`, `##vso[` or `##teamcity[`) is not printed when stdout
 is not a terminal: the command exits 1 and says so on stderr. The value is never altered, so a

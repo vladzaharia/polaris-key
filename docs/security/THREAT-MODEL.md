@@ -432,8 +432,8 @@ applies. The defusing knows GitHub's `::` and `##[` syntax only: Azure Pipelines
 vendor tools `pkey storefront` runs with inherited stdio (`storefronts/run.ts`) bypass the guard.
 
 **A secret or a minted token is never a CI log command (UK-14 follow-up).** The Node kit's `secret`
-and `mint` print the value alone on stdout, and only with `--reveal` (without it `secret` says
-the value is set and `mint` mints nothing), so a script's `$(tidewater secret api.key --reveal)`
+and `mint` print the value alone on stdout, and only with `--reveal` (without it both exit 2 and print
+nothing, and `mint` mints nothing), so a script's `$(tidewater secret api.key --reveal)`
 captures it, and the capture must stay byte-exact: defusing the value
 (a zero-width space, a `::stop-commands::` pair around it) would corrupt what the script receives.
 Where that stdout may instead reach a job log whose runner obeys commands written into it

@@ -553,8 +553,8 @@ included, as a `\u` escape). Each line on stdout is one JSON object (NDJSON) wit
 - **Never on a `--json` line:** a license key, a device token, a sign-in poll credential, a
   secret's value or a minted token.
 - **Off `--json`,** the Node kit's `secret` and `mint` print the value alone on stdout for a script
-  to capture byte for byte, and only with `--reveal` (without it `secret` says the value is set and
-  `mint` mints nothing and exits 2); the Python kit's never print it. Inside a CI job whose runner obeys
+  to capture byte for byte, and only with `--reveal` (without it both print nothing and exit 2, and
+  `mint` mints nothing); the Python kit's never print it. Inside a CI job whose runner obeys
   commands in its log (`GITHUB_ACTIONS`, `TF_BUILD`, `TEAMCITY_VERSION`), with stdout not a
   terminal, the Node kit withholds a value with a line the runner would obey (`::`, `##[`,
   `##vso[`, `##teamcity[`) and exits 1, unless `--allow-workflow-commands` is given. It never
@@ -565,7 +565,7 @@ interactive, animate, links) in the UK-51 `cli` rows runs in both kits' tests. P
 Node: CI is truthy over `CI`, `GITHUB_ACTIONS` and `BUILDKITE` (`CI=0` is not CI); `FORCE_COLOR`
 forces colour on a pipe but never OSC 8 (links only on a TTY stdout); animation follows a TTY
 stdout, not stdin; no OSC 11 query under `NO_COLOR`. `activate` with no key reads piped stdin only
-when it is a file or FIFO, stops at the first non-empty line and gives up after about 2 s (exit 2,
+when it is a file, FIFO or socket (a Node parent's pipe is a socket), stops at the first non-empty line and gives up after about 2 s (exit 2,
 `cli.activate.noKey`), so a headless server never waits on a hidden prompt. `NO_COLOR` and
 `--no-color` drop colour; on a terminal bold, reverse video and OSC 8 links stay.
 

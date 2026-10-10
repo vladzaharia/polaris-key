@@ -86,7 +86,7 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
 
 - Align terminal detection in one capability table (env x streams x flags to color, unicode, interactive, animate, links) in the `cli` family of `ui-matrix.json`, run by both kits: CI truthiness over `CI`, `GITHUB_ACTIONS` and `BUILDKITE` (CI=0 or false is not CI); OSC 8 links only on a TTY; the animation rule; no OSC 11 query under NO_COLOR. (sdk-c-09, sdk-c-10, sdk-c-30)
-- `activate` with no key reads piped stdin only when it is a file or FIFO, stops at the first non-empty line and gives up after about 2 s with `cli.activate.noKey` (exit 2). [ ] A test with an open, silent stdin returns within the bound; `echo key | activate` still works. (sdk-c-09, sdk-c-10, sdk-c-30)
+- `activate` with no key reads piped stdin only when it is a file, FIFO or socket, stops at the first non-empty line and gives up after about 2 s with `cli.activate.noKey` (exit 2). [ ] A test with an open, silent stdin returns within the bound; `echo key | activate` still works. (sdk-c-09, sdk-c-10, sdk-c-30)
 - Update apply: downloading (bar, '38 of 61 MB · 20 s left'), verifying (spinner, `update.verifying`), ready ('2.5.0 is ready · Restart to finish'), installed only after restart; never '100% · Up to date' while a restart is pending. Up to three What's new lines when the release carries notes. (sdk-c-09, sdk-c-10, sdk-c-30)
 
 ## Steps
