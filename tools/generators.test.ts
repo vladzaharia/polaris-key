@@ -173,6 +173,7 @@ describe("pnpm gen selection", () => {
     expect(select(parseArgs(["--fast"])).map((g) => g.id)).toEqual([
       "corpus",
       "services",
+      "channels",
       "registry-docs",
     ]);
   });

@@ -100,6 +100,18 @@ export const GENERATORS: Generator[] = [
     fast: true,
   },
   {
+    id: "channels",
+    title: "Distribution-channel catalogue",
+    order: 21,
+    inputs: ["tools/channels.json", "tools/gen-channels.ts"],
+    outputs: [
+      "packages/shared-manifest/src/channels.generated.ts",
+      "packages/docs/src/content/docs/reference/channels.mdx",
+    ],
+    write: [tsx("tools/gen-channels.ts")],
+    fast: true,
+  },
+  {
     id: "transcripts",
     title:
       "HTTP transcripts recorded through the Worker router, and their Godot mirror",

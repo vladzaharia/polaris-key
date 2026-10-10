@@ -109,6 +109,21 @@ export {
   type ServiceSlug,
 } from "./services.generated.js";
 
+/** The distribution-channel catalogue (A-19): generated from `tools/channels.json` by `pnpm gen channels`. */
+export {
+  CHANNELS,
+  CHANNEL_ALIASES,
+  CHANNEL_IDS,
+  channelForOutlet,
+  channelLabel,
+  findChannel,
+  type ChannelEntry,
+  type ChannelFamily,
+  type ChannelId,
+  type ChannelPlane,
+  type ChannelStorefrontFacet,
+} from "./channels.generated.js";
+
 /**
  * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, every
  * rule as it applies to `.pkey/schema`) for a catalog published outside a manifest: the console's
