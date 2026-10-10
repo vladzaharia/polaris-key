@@ -393,8 +393,12 @@ func _render() -> void:
 	_advanced_row.visible = has_advanced
 	_advanced.text = t.text("settings_advanced")
 	_advanced.set_pressed_no_signal(show_advanced)
-	var shown := rows.filter(func(r): return r["visible"] and (show_advanced or not r["advanced"]))
-	show_text(_empty, t.text("settings_empty") if shown.is_empty() else "")
+	# The live catalog is on its way (or this product has one): a key it names no entry for would
+	# show as its raw name ("ui.theme"), so it waits for the catalog or stays out.
+	var pending := cfg != null and cfg.enabled() and not cfg.has_meta(&"pkey_schema_done")
+	var catalogued := cfg != null and not cfg.catalog().is_empty()
+	var shown := rows.filter(func(r): return r["visible"] and (show_advanced or not r["advanced"]) and not ((pending or catalogued) and cfg.catalog_entry(r["key"]).is_empty()))
+	show_text(_empty, (t.text("settings_loading") if pending else t.text("settings_empty")) if shown.is_empty() else "")
 	var sig := JSON.stringify(shown.map(func(r): return [r["key"], r["widget"], r["editable"], r["category"], r["options"].size(), r["min"] > -1e8 and r["max"] < 1e8]))
 	if sig != _signature:
 		_rebuild(shown)
@@ -411,6 +415,7 @@ func _fetch_schema(cfg: PKeyConfig) -> void:
 		return
 	cfg.set_meta(&"pkey_schema_asked", true)
 	await cfg.fetch_schema()
+	cfg.set_meta(&"pkey_schema_done", true)
 	if is_inside_tree() and cfg == _bound:
 		refresh_view()
 
@@ -460,10 +465,10 @@ func _rebuild(shown: Array) -> void:
 	if section >= _groups.size():
 		section = 0
 	for i in _groups.size():
-		var name_text: String = _groups[i]["category"] if _groups[i]["category"] != "" else tr("settings_title")
+		var name_text: String = _groups[i]["category"] if _groups[i]["category"] != "" else c().text("settings_general")
 		var b := Button.new()
 		b.name = "Section_%d" % i
-		b.text = tr(name_text)
+		b.text = tr(name_text) if _groups[i]["category"] != "" else name_text
 		b.toggle_mode = true
 		b.theme_type_variation = &"PKeyRailItem"
 		# 0 is the start edge (left to right); the layout direction mirrors it.
@@ -475,6 +480,10 @@ func _rebuild(shown: Array) -> void:
 		b.pressed.connect(func() -> void: _select_section(i))
 		_rail.add_child(b)
 		_rail_buttons.append(b)
+	if focused == null or not is_ancestor_of(focused):
+		# The first rows to arrive (the live schema) take the focus from the game behind, as the panel
+		# did on opening when it had rows then.
+		_take_focus.call_deferred()
 	if focused_key != "" and _controls.has(focused_key):
 		var input = _controls[focused_key].get(focused_part)
 		if input is SpinBox:
@@ -745,6 +754,13 @@ func _row_of(ctl: Control) -> Control:
 			return n as Control
 		n = p
 	return null
+
+
+func _take_focus() -> void:
+	if is_inside_tree() and is_visible_in_tree() and not _controls.is_empty() and not _has_focus_inside():
+		if _opener == null:
+			remember_opener()
+		outer_view().ensure_focus(not PKeyUiView.pointer_last)
 
 
 func _refocus() -> void:

@@ -152,6 +152,8 @@ const DEFAULTS := {
 	# ── PKeySettingsPanel (React's ConfigPanel copy) ────────────────────────────────────────
 	"settings_title": "Settings",
 	"settings_empty": "There are no settings to show.",
+	"settings_loading": "Loading settings…",
+	"settings_general": "General",
 	"settings_advanced": "Show advanced settings",
 	"settings_decrease": "Decrease",
 	"settings_increase": "Increase",

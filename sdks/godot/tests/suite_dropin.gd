@@ -398,19 +398,42 @@ func _update_prompt(t: PKeyTestContext) -> void:
 
 
 func _settings_schema(t: PKeyTestContext) -> void:
-	# The panel asks the Worker for the live catalog once, and renders it.
+	# The panel asks the Worker for the live catalog once, shows no raw key while it waits, renders it,
+	# and takes the focus from the game behind when its first rows arrive.
 	var asked := [0]
-	h.plan = {"/config/schema": [func(_req: Dictionary) -> Dictionary:
+	var release := [false]
+	h.serve_docs([h.F["token"]])
+	h.plan["/config/schema"] = [func(_req: Dictionary) -> Dictionary:
 		asked[0] += 1
-		return S.json(200, {"schemaVersion": 3, "entries": [{"key": "audio.volume", "kind": "config", "category": "Sound", "ui": {"label": "Master volume", "widget": "stepper", "order": 1}, "schema": {"type": "number", "minimum": 0, "maximum": 100}}]})]}
-	var sdk := await _sdk(PKeyMemoryStore.new(h.F["device_id"]))
+		if not release[0]:
+			return {"hang": true}
+		return S.json(200, {"schemaVersion": 3, "entries": [
+			{"key": "audio.volume", "kind": "config", "label": "Master volume", "ui": {"widget": "stepper", "order": 1}, "schema": {"type": "number", "minimum": 0, "maximum": 100}},
+			{"key": "ui.theme", "kind": "config", "category": "Look", "label": "Theme", "ui": {"order": 2}, "schema": {"type": "string", "enum": ["dark", "light"]}}]})]
+	var sdk := await _sdk(_licensed_store())
+	await sdk.sync(true)
+	var game := Button.new()
+	_tree().root.add_child(game)
+	game.grab_focus()
 	var panel := PKeySettingsPanel.new()
 	panel.sdk = sdk
 	panel.auto_sdk = false
 	_tree().root.add_child(panel)
 	await _until(func() -> bool: return asked[0] > 0)
+	var raw: Array = panel._controls.keys()
+	t.check("settings: no raw key shows while the schema loads", raw.is_empty() and panel._empty.visible and panel._empty.text == PKeyUiCopy.new().text("settings_loading"), str(raw))
+	release[0] = true
+	panel.refresh_view()
+	sdk.config.fetch_schema()
 	await _until(func() -> bool: return panel._controls.has("audio.volume"), 5.0)
-	t.check("settings: the panel fetches the product's schema once it opens", asked[0] == 1 and panel._controls.has("audio.volume"), "asked %d, rows %s" % [asked[0], panel._controls.keys()])
+	t.check("settings: the panel fetches the product's schema", asked[0] >= 1 and panel._controls.has("audio.volume") and panel._controls.has("ui.theme"), str(panel._controls.keys()))
+	var labels: Array = panel._controls.values().map(func(n): return (n["label"] as Label).text)
+	t.check("settings: rows read their catalog labels, never their keys", labels.has("Master volume") and labels.has("Theme") and not labels.has("ui.theme"), str(labels))
+	var names: Array = panel._rail_buttons.map(func(b): return (b as Button).text)
+	t.check("settings: an uncategorised group is named General", names.has("General") and names.has("Look") and not names.has("settings_title"), str(names))
+	await _until(func() -> bool: return panel.is_ancestor_of(_tree().root.gui_get_focus_owner()) if _tree().root.gui_get_focus_owner() != null else false, 3.0)
+	t.check("settings: the focus left the game for the panel", panel.is_ancestor_of(_tree().root.gui_get_focus_owner()) if _tree().root.gui_get_focus_owner() != null else false)
+	game.queue_free()
 	panel.queue_free()
 	sdk.queue_free()
 	await _tree().process_frame
