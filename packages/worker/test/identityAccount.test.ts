@@ -22,22 +22,25 @@ import {
 import { dispatchWith } from "../src/dispatch.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { serializeServices, SERVICE_SLUGS } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
-import { countKeyEntries } from "../src/core/keyEntries.js";
-import { setDeviceSubject, subjectFor } from "../src/core/accountSubjects.js";
+import { countKeyEntries } from "../src/core/licensing/keyEntries.js";
+import {
+  setDeviceSubject,
+  subjectFor,
+} from "../src/core/accounts/accountSubjects.js";
 import {
   bindSignedInDevice,
   compareCandidates,
   licenseAccess,
   rankAnchorCandidates,
-} from "../src/core/anchor.js";
+} from "../src/core/licensing/anchor.js";
 import { enrollFate } from "../src/services/license/enroll.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import { getLicense } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+import { getLicense } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { LicenseRow } from "../src/repo.js";
+import type { LicenseRow } from "../src/core/repo.js";
 
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
@@ -708,7 +711,7 @@ describe("subject and sign-out (§12.3)", () => {
   });
 });
 
-// ── The sign-in licence choice (core/anchor.ts) ───────────────────────────────────────────
+// ── The sign-in licence choice (core/licensing/anchor.ts) ───────────────────────────────────────────
 
 describe("rankAnchorCandidates and bindSignedInDevice", () => {
   async function accountLicence(

@@ -42,7 +42,7 @@ import type {
   PatchFromResult,
 } from "@polaris-key/zstd-wasm/encoder";
 import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   checksumHex,
   deltaKey,
@@ -50,7 +50,7 @@ import {
   putVerified,
   recordObject,
   recordRef,
-} from "../../../../core/blobs.js";
+} from "../../../../core/assets/blobs.js";
 import {
   HOT_WINDOW_SECONDS,
   installedBase,
@@ -58,7 +58,7 @@ import {
   lazyDeltasOn,
   pairDemand,
   payloadDevices,
-} from "../../../../core/deltaDemand.js";
+} from "../../../../core/assets/deltaDemand.js";
 import { cheapestAlternative } from "./alternative.js";
 import {
   pairMessage,

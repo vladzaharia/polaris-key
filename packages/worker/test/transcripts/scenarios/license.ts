@@ -48,7 +48,7 @@ import {
 } from "../world.js";
 import { BASE_URL } from "../recorder.js";
 import { retireDeviceBinding } from "../../../src/core/devices.js";
-import { hashKey } from "../../../src/crypto.js";
+import { hashKey } from "../../../src/platform/crypto.js";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { seedLicenseWithKey } from "../../seed.js";
 import type { World } from "../recorder.js";

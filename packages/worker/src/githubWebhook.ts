@@ -1,15 +1,18 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import { errorResponse, json } from "./core/errors.js";
-import { pk } from "./kv.js";
+import { pk } from "./platform/kv.js";
 import { hexDecode } from "./platform/bytes.js";
 import { claimOnce, releaseClaim } from "./core/atomicClaim.js";
 import { constantTimeEqualBytes } from "./platform/compare.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { hmacSha256, importHmacKey, sha256Hex } from "./platform/hash.js";
-import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
+import {
+  listProductsByGithubRepo,
+  upsertProductSyncState,
+} from "./core/repo.js";
 import { manifestIngestFor } from "./core/registry.js";
 import { systemResyncRefusal } from "./core/settingsClaims.js";
 import { SERVICES } from "./mount.js";

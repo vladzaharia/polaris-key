@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
+import { appSecurityHeaders } from "../../worker/src/platform/securityHeaders.js";
 import { DISTRIBUTION_ROUTES } from "../test/distributionData.js";
 
 /**

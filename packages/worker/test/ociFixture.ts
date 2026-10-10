@@ -14,13 +14,13 @@
 import { createHash } from "node:crypto";
 import { expect } from "vitest";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { blobKey, recordObject } from "../src/core/blobs.js";
+import type { Env } from "../src/platform/env.js";
+import { blobKey, recordObject } from "../src/core/assets/blobs.js";
 import { stmtUpsertDeliverable } from "../src/services/release/model.js";
 import { ingestPackageDescriptor } from "../src/services/release/packages/ingest.js";
 import { packageStateStatements } from "../src/services/release/packages/state.js";
 import { yank } from "../src/services/release/policy.js";
-import type { AdminSession } from "../src/admin/session.js";
+import type { AdminSession } from "../src/core/console/session.js";
 import type {
   PackageFile,
   RegistryPackage,

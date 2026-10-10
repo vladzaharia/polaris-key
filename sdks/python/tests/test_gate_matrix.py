@@ -45,7 +45,7 @@ _MATRIX = json.loads(_MATRIX_PATH.read_text(encoding="utf-8"))
 _ROWS: List[Dict[str, Any]] = _MATRIX["rows"]
 
 
-# ── Build-gate port (mirrors packages/worker/src/core/gate.ts `checkBuildGate`) ──────
+# ── Build-gate port (mirrors packages/worker/src/core/licensing/gate.ts `checkBuildGate`) ──────
 # WIRE-CONTRACT-V3 §5.1 rules 2–5, rebuilt from the SDK's own semver/channel primitives. The
 # Worker replays the same rows through the real gate (packages/worker/test/gateMatrixCorpus.test.ts).
 _CHANNEL_ALIASES = {"staging": "beta", "latest": "stable"}

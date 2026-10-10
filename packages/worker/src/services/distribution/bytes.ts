@@ -81,9 +81,9 @@
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
-import { appSecurityHeaders } from "../../securityHeaders.js";
-import { bearer } from "../../http.js";
+import type { Env } from "../../platform/env.js";
+import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { bearer } from "../../platform/http.js";
 import type { ProductPublic } from "../../core/products.js";
 import type {
   CatalogLocation,
@@ -98,18 +98,18 @@ import {
   blobResponse,
   hasRef,
   parseKey,
-} from "../../core/blobs.js";
-import { isBytesHost } from "../../core/bytesHost.js";
+} from "../../core/assets/blobs.js";
+import { isBytesHost } from "../../core/assets/bytesHost.js";
 import {
   DOWNLOAD_TICKET_PARAM,
   verifyDownloadTicket,
 } from "../../core/downloadTicket.js";
-import type { ByteRoute, ByteRouteMatch } from "../../core/bytesHost.js";
+import type { ByteRoute, ByteRouteMatch } from "../../core/assets/bytesHost.js";
 import {
   accessRefusal,
   fixedReleaseSelector,
   type EntitledSelector,
-} from "../../core/entitledAccess.js";
+} from "../../core/licensing/entitledAccess.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { decideBlob, type BlobDecision } from "./blobAccess.js";
 import {
@@ -614,7 +614,7 @@ function checksumResponse(
   return new Response(`${sha256}\n`, {
     status: 200,
     headers: {
-      // The bytes host serves no text type at all (`core/bytesHost.ts`); the console keeps the
+      // The bytes host serves no text type at all (`core/assets/bytesHost.ts`); the console keeps the
       // legacy route's `text/plain`.
       "content-type": onBytesHost
         ? "application/octet-stream"
@@ -670,7 +670,7 @@ async function computeFile(
     return new Response(ctx.req.method === "HEAD" ? null : body, {
       status: 200,
       headers: {
-        // The bytes host serves no text type at all (`core/bytesHost.ts`).
+        // The bytes host serves no text type at all (`core/assets/bytesHost.ts`).
         "content-type": isBytesHost(new URL(ctx.req.url), ctx.env)
           ? "application/octet-stream"
           : "text/plain; charset=utf-8",

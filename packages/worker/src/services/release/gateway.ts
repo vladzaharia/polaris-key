@@ -31,11 +31,11 @@
  */
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { appSecurityHeaders } from "../../securityHeaders.js";
+import { appSecurityHeaders } from "../../platform/securityHeaders.js";
 import type { ProductPublic } from "../../core/products.js";
-import { BLOB_CSP } from "../../core/blobs.js";
+import { BLOB_CSP } from "../../core/assets/blobs.js";
 import { errorResponse, json, notFound } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
@@ -64,7 +64,10 @@ import {
   type ReleaseChannelFloorRow,
   storedAppReleases,
 } from "./store.js";
-import { compareSemver, parseSemver } from "../../core/entitlements.js";
+import {
+  compareSemver,
+  parseSemver,
+} from "../../core/licensing/entitlements.js";
 import {
   accessModeFor,
   artifactPolicy,

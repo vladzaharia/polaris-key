@@ -13,15 +13,15 @@ import {
   seedTier,
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleEnroll } from "../src/services/license/enroll.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { activateFromIdentity } from "../src/services/identity/oidc.js";
-import { countActiveDevices, getLicense, listAudit } from "../src/repo.js";
-import { licenseMergeFor } from "../src/core/licenseMerge.js";
+import { countActiveDevices, getLicense, listAudit } from "../src/core/repo.js";
+import { licenseMergeFor } from "../src/core/licensing/licenseMerge.js";
 import { SERVICES } from "../src/mount.js";
 
 function hash(seed: string): string {

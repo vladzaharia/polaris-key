@@ -15,23 +15,23 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import { writeListing } from "./listingWrites.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { setServices } from "../src/core/repo.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { STOREFRONT_ADAPTERS } from "../src/core/storefront/adapter.js";
 import { STOREFRONT_ENABLED_KEY } from "../src/core/storefrontSwitch.js";
 import { isBuiltIn } from "../src/services/distribution/storefronts/plan.js";
 import {
   PERSONA_FIELDS,
   parsePersona,
-} from "../src/admin/handlers/polarisKeyStorefront.js";
+} from "../src/console/handlers/polarisKeyStorefront.js";
 import { storefrontDay } from "../src/services/identity/portal/store/analytics.js";
 
 const ISSUER = "https://id.plrs.im";

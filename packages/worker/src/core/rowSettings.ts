@@ -16,7 +16,7 @@
  * storage and claimable ownership. Core never names a service (rule 6): each service hands its
  * own entries to `manifestRowSettingStatements` from its descriptor's `manifestIngestAlways`
  * (License: `licensing.*`; Identity: `identity.oidc.syncTierOnSignIn`), and the admin API
- * (`admin/handlers/productSettings.ts`) takes them from the assembled registry.
+ * (`console/handlers/productSettings.ts`) takes them from the assembled registry.
  *
  * The manifest side is OMIT-CLEARS (S-18 §4.5 item 1's exception): a setting the manifest stops
  * declaring loses its manifest row and returns to the default, so `.pkey/` keeps describing what
@@ -31,7 +31,7 @@
  */
 
 import type { Db, DbStatement } from "../db/types.js";
-import { randomId } from "../crypto.js";
+import { randomId } from "../platform/crypto.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
 import {
   auditValue,

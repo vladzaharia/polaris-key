@@ -10,7 +10,7 @@
  *      (`seedFixture(ctx)` from seed.mjs, `seedWithBindings(env, ctx)` from `fixtures.mjs`), every
  *      `seeds/*.ts`, and each selected client's own seed (see below);
  *   3. `wrangler dev --env test` on 127.0.0.1, with PKG_ORIGIN naming that address, so every
- *      request the clients make arrives on the registry host (`core/registryHost.ts`);
+ *      request the clients make arrives on the registry host (`core/registry/registryHost.ts`);
  *   4. each client in `clients/<name>.sh` (default: all of them), with REGISTRY (the origin),
  *      OWNER (the fixture owner) and STATE in its environment; a non-zero exit fails the run.
  *      A client's `clients/<name>.seed.mjs` (or its family's, `swift-linux` → `swift`) runs

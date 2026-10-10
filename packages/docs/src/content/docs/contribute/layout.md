@@ -81,8 +81,8 @@ in its failure message.
 
 The identity service is the one that exercised the rule hardest: its OIDC sign-in mints and
 claims licenses, and its browser session enforces the same build gate License's document route
-does. Neither need became an `identity → license` import — both became `core/authz.ts` and
-`core/gate.ts`, with License re-exporting them so there is exactly one definition of each. That
+does. Neither need became an `identity → license` import — both became `core/licensing/authz.ts` and
+`core/licensing/gate.ts`, with License re-exporting them so there is exactly one definition of each. That
 move is what "cross via a Core-mediated interface" means in practice, and the boundary test is
 what stops the cheaper answer — a direct import — from being taken next time.
 

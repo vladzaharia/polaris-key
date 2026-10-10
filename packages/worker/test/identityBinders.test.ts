@@ -17,14 +17,14 @@ import {
   BROWSER_JSON_MAX_BYTES,
   isSameOriginRequest,
   readGuardedJsonObject,
-} from "../src/core/browserRequestGuard.js";
+} from "../src/core/accounts/browserRequestGuard.js";
 import { readJsonObject } from "../src/services/identity/card/http.js";
 import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "../src/services/identity/browserSession.js";
 import { handlePortalLogout } from "../src/services/identity/portal/auth.js";
-import { handleAdminCallback, handleAdminLogin } from "../src/admin/auth.js";
+import { handleAdminCallback, handleAdminLogin } from "../src/console/auth.js";
 import { bindAdminFlow } from "./flowBinderHelper.js";
 
 const ORIGIN = "https://key.plrs.im";

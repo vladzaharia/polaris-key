@@ -11,7 +11,7 @@
  * installer from `release_config` — lives in `source.ts`, behind the `releaseCatalog` hook.
  */
 
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { ProductPublic } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";

@@ -12,11 +12,11 @@ import { describe, expect, it } from "vitest";
 import { Catalog } from "@polaris-key/catalog";
 import { signJws, verifyJws } from "@polaris-key/jws";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import type { ManagedPayload } from "../src/core/payload.js";
+import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import djdlCatalog from "../../../products/djdl/catalog.json";
 import { D1Db } from "../src/db/d1.js";
-import { validatePayload } from "../src/core/payload.js";
+import { validatePayload } from "../src/core/licensing/payload.js";
 import { signJwtEs256, signJwtRs256 } from "../src/core/jwt.js";
 import {
   parseSignature,
@@ -28,7 +28,7 @@ import {
   recordUpdateEvents,
   staticScope,
 } from "../src/core/updateHealth.js";
-import type { Env as WorkerEnv } from "../src/env.js";
+import type { Env as WorkerEnv } from "../src/platform/env.js";
 import type { ServiceHooks } from "../src/core/hooks.js";
 import { playSetup } from "../src/services/distribution/connectors/play/setup.js";
 import { playRun } from "../src/services/distribution/connectors/play/run.js";

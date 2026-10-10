@@ -22,16 +22,16 @@ on:
   pull_request:
     paths:
       - "packages/worker/src/services/distribution/registry/**"
-      - "packages/worker/src/core/registryHost.ts"
-      - "packages/worker/src/core/registryHostname.ts"
-      - "packages/worker/src/core/registryLanding.ts"
-      - "packages/worker/src/core/registryTokens.ts"
+      - "packages/worker/src/core/registry/registryHost.ts"
+      - "packages/worker/src/core/registry/registryHostname.ts"
+      - "packages/worker/src/core/registry/registryLanding.ts"
+      - "packages/worker/src/core/registry/registryTokens.ts"
       - "packages/worker/src/services/release/packages/oci*.ts"
       - "packages/worker/scripts/registry-clients/**"
       - "packages/worker/wrangler.toml"
       - "packages/cli/src/package/**"
       - "packages/worker/src/services/release/packages/**"
-      - "packages/worker/src/core/registryPublish.ts"
+      - "packages/worker/src/core/registry/registryPublish.ts"
       - ".github/workflows/registry-clients.yml"
   workflow_dispatch:
     inputs:

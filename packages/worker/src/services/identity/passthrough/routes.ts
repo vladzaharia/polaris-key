@@ -23,9 +23,9 @@ import type {
   ConsentItem,
   SignInRequestView,
 } from "@polaris-key/protocol/identity";
-import { hashKey } from "../../../crypto.js";
+import { hashKey } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { loadProductPublic } from "../../../core/products.js";
 import type { PortalHooksFor } from "../portal/api.js";
 import { getPortalAccount } from "../portal/repo.js";

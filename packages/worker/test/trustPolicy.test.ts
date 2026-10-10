@@ -1,4 +1,4 @@
-// P6-02 — the platform-admin trust-policy resource (`admin/handlers/trustPolicy.ts`):
+// P6-02 — the platform-admin trust-policy resource (`console/handlers/trustPolicy.ts`):
 // `GET|PUT|DELETE /manage/api/products/<slug>/trust-policy`. Platform admins only, validated
 // field by field (an invalid body writes nothing), every write audited, and `source` tracking who
 // owns the row (`default` until an admin sets it).
@@ -7,19 +7,19 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
 import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   DEFAULT_TRUST_POLICY,
   parseTrustPolicy,
-} from "../src/core/deviceTrust.js";
+} from "../src/core/trust/deviceTrust.js";
 import { loadProduct } from "../src/core/products.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 
 const SLUG = "djdl";
 

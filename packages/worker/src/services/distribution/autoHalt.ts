@@ -50,7 +50,7 @@
 
 import type { Db } from "../../db/types.js";
 import type { ServiceHooks } from "../../core/hooks.js";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import { countsFor, readUpdateHealth } from "../../core/updateHealth.js";
 import { applyRollout, listRollouts, type DistRolloutRow } from "./rollouts.js";
 import {

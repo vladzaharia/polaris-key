@@ -40,19 +40,22 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { getLicense, getDevice, setServices } from "../src/repo.js";
+import { getLicense, getDevice, setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import { setDeviceSubject, subjectFor } from "../src/core/accountSubjects.js";
+import {
+  setDeviceSubject,
+  subjectFor,
+} from "../src/core/accounts/accountSubjects.js";
 import {
   applyProvisionedAccountSecrets,
   getAccountOverrides,
   overrideSubject,
   parseAccountOverridePayload,
   putAccountOverrides,
-} from "../src/core/accountOverrides.js";
+} from "../src/core/accounts/accountOverrides.js";
 import {
   OVERRIDE_MIGRATION_NOTICE_DAYS,
   OVERRIDE_MIGRATION_REPORT_DAYS,
@@ -65,9 +68,9 @@ import {
   runOverrideMigration,
   setOverrideMigrationPrerequisite,
   startOverrideMigrationNotice,
-} from "../src/core/overrideMigration.js";
-import { resolveMergedPayload } from "../src/core/payload.js";
-import { sealManagedValue } from "../src/admin/lib/managedSecrets.js";
+} from "../src/core/ops/overrideMigration.js";
+import { resolveMergedPayload } from "../src/core/licensing/payload.js";
+import { sealManagedValue } from "../src/core/managedSecrets.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
@@ -76,14 +79,14 @@ import {
   attachLicense,
   detachLicense,
 } from "../src/services/identity/accounts/claim.js";
-import { handleAdmin } from "../src/admin/index.js";
-import { deleteProduct } from "../src/admin/repo.js";
+import { handleAdmin } from "../src/console/index.js";
+import { deleteProduct } from "../src/core/console/repo.js";
 import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "platform-admins";

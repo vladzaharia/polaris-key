@@ -15,7 +15,7 @@
 import { checkDisplayName } from "@polaris-key/manifest";
 import type { ClientKind, ClientRecord } from "@polaris-key/protocol/identity";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import type { ProductPublic } from "../../../core/products.js";
 import type { PortalHooksFor } from "../portal/api.js";
 import { presentationFor } from "../portal/library.js";

@@ -18,21 +18,24 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import { deleteTokenRecord } from "../../../kv.js";
-import { hashKey, mintLicenseKey, randomId } from "../../../crypto.js";
-import { getTier } from "../../../repo.js";
+import { deleteTokenRecord } from "../../../platform/kv.js";
+import { hashKey, mintLicenseKey, randomId } from "../../../platform/crypto.js";
+import { getTier } from "../../../core/repo.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../../admin/lib/respond.js";
-import { auditStatementFor } from "../../../admin/audit.js";
-import { WriteChecks } from "../../../admin/lib/writeChecks.js";
-import type { AdminSession } from "../../../admin/session.js";
+} from "../../../core/console/respond.js";
+import { auditStatementFor } from "../../../core/console/audit.js";
+import { WriteChecks } from "../../../core/console/writeChecks.js";
+import type { AdminSession } from "../../../core/console/session.js";
 import type { Db, DbStatement } from "../../../db/types.js";
-import { describeHolder, licenseHolder } from "../../../core/licenseHolders.js";
-import { tierExpiresAt } from "../../../core/authz.js";
+import {
+  describeHolder,
+  licenseHolder,
+} from "../../../core/licensing/licenseHolders.js";
+import { tierExpiresAt } from "../../../core/licensing/authz.js";
 import {
   BATCH_PAGE_MAX,
   batchDisabledDeviceTokens,

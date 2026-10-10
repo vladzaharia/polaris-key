@@ -29,7 +29,7 @@
 
 import { createHash } from "node:crypto";
 import { packageNameNorm } from "@polaris-key/manifest";
-import type { RegistryRoute } from "../../../../core/registryHost.js";
+import type { RegistryRoute } from "../../../../core/registry/registryHost.js";
 import { readCappedBody } from "./body.js";
 import {
   nativeDescriptor,

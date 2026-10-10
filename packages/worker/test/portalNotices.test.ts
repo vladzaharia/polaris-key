@@ -20,9 +20,9 @@ import {
   seedProduct,
   setClaimByKey,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { handlePortalApi } from "./portalHarness.js";
 import {
@@ -387,7 +387,7 @@ describe("security notices reach every verified address", () => {
       "ada.work@example.com",
       "ada@example.com",
     ]);
-    // Platform mail, From "Polaris Key" (core/emailSender.ts platformSender, I-18).
+    // Platform mail, From "Polaris Key" (core/notify/emailSender.ts platformSender, I-18).
     for (const m of sent)
       expect(m.from).toEqual({ name: "Polaris Key", email: "noreply@plrs.im" });
   });

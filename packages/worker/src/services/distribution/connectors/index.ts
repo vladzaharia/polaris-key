@@ -23,7 +23,7 @@
  */
 
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import type { ProductPublic } from "../../../core/products.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { ServiceContext } from "../../../core/registry.js";

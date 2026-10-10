@@ -12,7 +12,7 @@
  */
 
 import { patchFrom } from "@polaris-key/zstd-wasm/encoder";
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 import { D1Db } from "./db/d1.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
 import type { Db } from "./db/types.js";
@@ -21,7 +21,7 @@ import {
   type DeltaConsumerDeps,
   type DeltaOutcome,
 } from "./services/release/packs/deltas/consumer.js";
-import { writeHeartbeat } from "./core/platformOps.js";
+import { writeHeartbeat } from "./core/ops/platformOps.js";
 
 /** The consumer's bindings: the request Worker's D1 and blob store, and the queue it drains
  *  (bound again as a producer, to fan an R2 event out into pair jobs). */

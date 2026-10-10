@@ -26,7 +26,7 @@
 import { parseJsonColumn } from "../../../platform/json.js";
 import { sha256Hex } from "../../../platform/hash.js";
 import type { Db, DbStatement } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { FetchImpl } from "../../../core/outletTokens.js";
 import {

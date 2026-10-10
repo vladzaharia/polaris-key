@@ -14,28 +14,28 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import { randomId } from "../../../crypto.js";
+import { randomId } from "../../../platform/crypto.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../../admin/lib/respond.js";
+} from "../../../core/console/respond.js";
 import {
   applyOverrides,
   type OverrideUpdate,
-} from "../../../admin/lib/overrides.js";
-import { audit } from "../../../admin/audit.js";
+} from "../../../core/console/overrides.js";
+import { audit } from "../../../core/console/audit.js";
 import {
   countLicensesUsingProfile,
   deleteProfile,
   listProfileReferences,
   listProfiles,
   upsertProfile,
-} from "../../../admin/repo.js";
-import { isManagedSecretKey } from "../../../admin/lib/managedSecrets.js";
+} from "../../../core/console/repo.js";
+import { isManagedSecretKey } from "../../../core/managedSecrets.js";
 import { loadCatalog } from "../../../core/activeCatalog.js";
-import { parsePayload, redactPayload } from "../../../admin/lib/redact.js";
+import { parsePayload, redactPayload } from "../../../core/console/redact.js";
 import type { ConfigAdminContext } from "./index.js";
 
 export async function handleProfiles(

@@ -56,17 +56,17 @@ import type {
   ReleaseCatalog,
 } from "../../core/hooks.js";
 import { errorResponse, notFound } from "../../core/errors.js";
-import { bearer } from "../../http.js";
+import { bearer } from "../../platform/http.js";
 import { sha256Hex } from "../../platform/hash.js";
 import {
   accessRefusal,
   fixedReleaseSelector,
-} from "../../core/entitledAccess.js";
+} from "../../core/licensing/entitledAccess.js";
 import {
   DOWNLOAD_TICKET_PARAM,
   mintDownloadTicket,
 } from "../../core/downloadTicket.js";
-import { isBytesHost } from "../../core/bytesHostname.js";
+import { isBytesHost } from "../../core/assets/bytesHostname.js";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {

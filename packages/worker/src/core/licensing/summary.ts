@@ -4,23 +4,23 @@
  * for it).
  */
 
-import { licenseAccess } from "../anchor.js";
+import { licenseAccess } from "./anchor.js";
 import type { Db } from "../../db/types.js";
 import {
   listDevicesByLicense,
   listLicenseProfiles,
   type LicenseRow,
-} from "../../repo.js";
-import { countKeysByLicense } from "../../admin/repo.js";
-import { licenseHolder } from "../licenseHolders.js";
+} from "../repo.js";
+import { countKeysByLicense } from "../console/repo.js";
+import { licenseHolder } from "./licenseHolders.js";
 import { licenseEndedReason } from "./lifecycle.js";
 import {
   countKeyEntries,
   keyEntriesApply,
   keyEntryLimit,
   type KeyEntrySettings,
-} from "../keyEntries.js";
-import { subjectForOrNull } from "../accountSubjects.js";
+} from "./keyEntries.js";
+import { subjectForOrNull } from "../accounts/accountSubjects.js";
 import { parseJsonStringList } from "../../platform/json.js";
 
 /**

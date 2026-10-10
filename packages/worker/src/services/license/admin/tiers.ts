@@ -7,7 +7,7 @@
  */
 
 import { parseJsonStringList } from "../../../platform/json.js";
-import { randomId } from "../../../crypto.js";
+import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
@@ -15,16 +15,16 @@ import {
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../../admin/lib/respond.js";
-import { audit } from "../../../admin/audit.js";
+} from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
 import {
   countLicensesUsingTier,
   deleteTier,
   listProfiles,
   listTiers,
   upsertTier,
-} from "../../../admin/repo.js";
-import { WriteChecks } from "../../../admin/lib/writeChecks.js";
+} from "../../../core/console/repo.js";
+import { WriteChecks } from "../../../core/console/writeChecks.js";
 import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 

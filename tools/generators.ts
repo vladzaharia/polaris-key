@@ -149,7 +149,7 @@ export const GENERATORS: Generator[] = [
     order: 50,
     inputs: [
       "packages/worker/scripts/gen-platform-inventory.ts",
-      "packages/worker/src/env.ts",
+      "packages/worker/src/platform/env.ts",
       "packages/worker/wrangler.toml",
     ],
     outputs: ["packages/worker/src/platformInventory.generated.ts"],

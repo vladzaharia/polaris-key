@@ -16,7 +16,7 @@
  * and the user handle are not derived from it.
  */
 
-import { randomId } from "../../../crypto.js";
+import { randomId } from "../../../platform/crypto.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import { PASSKEY_ISSUER } from "../accounts/repo.js";

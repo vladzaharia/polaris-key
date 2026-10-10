@@ -11,7 +11,7 @@
  */
 
 import type { FetchImpl } from "./githubApp.js";
-import { isAllowedStorageHost } from "../../http.js";
+import { isAllowedStorageHost } from "../../platform/http.js";
 import { readCappedText } from "../../core/readCapped.js";
 import { MAX_MANIFEST_BYTES } from "@polaris-key/manifest";
 
@@ -23,7 +23,7 @@ import { MAX_MANIFEST_BYTES } from "@polaris-key/manifest";
  * import a sibling. Re-exported rather than repointed so every existing importer — and the
  * suites that pin this predicate — sees an unchanged surface.
  */
-export { isAllowedStorageHost } from "../../http.js";
+export { isAllowedStorageHost } from "../../platform/http.js";
 
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";

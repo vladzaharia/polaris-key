@@ -34,7 +34,7 @@ import {
 } from "./releaseKeysFixture.js";
 import { packRecord, sha, treeVariant, type Obj } from "./packFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";

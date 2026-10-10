@@ -2,7 +2,7 @@
 
 /**
  * The hosted-asset pull consumer (HA-05; notes/S-20 §6.3), composed here because it joins Core's
- * ingest (`core/hostedAssetPulls.ts`) to Release's GitHub App installation token
+ * ingest (`core/assets/hostedAssetPulls.ts`) to Release's GitHub App installation token
  * (`services/release/assetSource.ts`), and only the composition root may import both.
  *
  * Each message is one slot's pull, one slot's ladder retry (a ready copy whose variants an
@@ -19,14 +19,14 @@
  * 15-minute wall clock however large its release files.
  */
 
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import {
   processAssetPull,
   processLadderRetry,
   readAssetLadderMessage,
   readAssetPullMessage,
-} from "./core/hostedAssetPulls.js";
+} from "./core/assets/hostedAssetPulls.js";
 import type { FetchImpl } from "./core/safeFetch.js";
 import { loadProductPublic } from "./core/products.js";
 import { resolveRepoAssetSource } from "./services/release/assetSource.js";

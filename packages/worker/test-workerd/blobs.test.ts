@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── The blob store on miniflare's R2 (P2-01) ─────────────────────────────────────────────
 //
-// The Node lane runs `core/blobs.ts` against `test/r2Mock.ts`. This file runs the same flows
+// The Node lane runs `core/assets/blobs.ts` against `test/r2Mock.ts`. This file runs the same flows
 // against the real binding, which is what proves the fake has not drifted: that R2 itself
 // refuses a put whose bytes miss the `sha256` option, that `If-None-Match: *` makes a put
 // create-only, that ranged gets return the right bytes, and that workerd's native
@@ -23,10 +23,10 @@ import {
   stagingKey,
   streamSha256,
   verifyStaged,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import { D1Db } from "../src/db/d1.js";
-import { inertDocumentPolicy } from "../src/core/bytesHost.js";
-import { landingCsp } from "../src/core/bytesLanding.js";
+import { inertDocumentPolicy } from "../src/core/assets/bytesHost.js";
+import { landingCsp } from "../src/core/assets/bytesLanding.js";
 import { NOW, seedProduct } from "./seed.js";
 
 const MiB = 1024 * 1024;

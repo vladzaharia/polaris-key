@@ -1,12 +1,12 @@
 /**
  * A hosted copy as HA-01's ingest leaves it (HA-07's serving tests): the `hosted_assets` row, the
  * `blob_objects` row and the product's `hosted-asset` ref (`<slot>@`) to the original, which is
- * what the image host's tenancy check (and `core/hostedImages.ts`) requires.
+ * what the image host's tenancy check (and `core/assets/hostedImages.ts`) requires.
  */
 
 import type { Db } from "../src/db/types.js";
 import type { SettingsEnv } from "../src/core/platformSettings.js";
-import { assetSettingsRegistry } from "../src/core/assetSettings.js";
+import { assetSettingsRegistry } from "../src/core/assets/assetSettings.js";
 import { writeSetting } from "../src/core/settings/write.js";
 import { NOW } from "./seed.js";
 

@@ -2091,5 +2091,5 @@ differences are present now:
 | File                                                                             | Now                                                                           | Change to                                 | Owner       |
 | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------- | ----------- |
 | `worker/src/services/identity/oidc.ts` (the device entry and confirmation pages) | "Authorize <Product>", "Connect a device to <Product>"                        | the card with the app header (§3.13)      | UX-43, I-08 |
-| `worker/src/admin/auth.ts`                                                       | "This sign-in link has expired. Try again.", "Sign-in could not be verified." | ConsoleMethodsStep and its states (§3.12) | ST-30       |
+| `worker/src/console/auth.ts`                                                     | "This sign-in link has expired. Try again.", "Sign-in could not be verified." | ConsoleMethodsStep and its states (§3.12) | ST-30       |
 | `admin/src/portal/pages/FreeDevicePage.tsx`                                      | "Free up a device"                                                            | **Free a device** (D-49)                  | UX-04       |

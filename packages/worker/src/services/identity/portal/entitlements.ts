@@ -16,8 +16,8 @@ import { Catalog } from "@polaris-key/catalog";
 import type { ConfigEntry } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../../../db/types.js";
-import { getActiveSchema } from "../../../repo.js";
-import { resolveEntitlements } from "../../../core/authz.js";
+import { getActiveSchema } from "../../../core/repo.js";
+import { resolveEntitlements } from "../../../core/licensing/authz.js";
 import type { PortalLicenseRow } from "./repo.js";
 
 /** The reserved entitlement the document carries a licence's release channels in. */

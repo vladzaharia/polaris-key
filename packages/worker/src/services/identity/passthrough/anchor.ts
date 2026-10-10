@@ -8,7 +8,7 @@
  * to that model changes this file and nothing else.
  *
  * The anchor is a DRY RUN: it writes nothing and binds nothing. It is the row the sign-in
- * choice would preselect (`core/anchor.ts` `rankAnchorCandidates`, I-09's rank-first order until
+ * choice would preselect (`core/licensing/anchor.ts` `rankAnchorCandidates`, I-09's rank-first order until
  * LX-10's `chooseAnchor`): the first free licence the account holds for the product, else the
  * first listed one with no seat for this device. `more` counts the
  * account's other usable licences for THIS product under `combined`, never names and never other
@@ -21,12 +21,12 @@
 
 import type { ConsentItem } from "@polaris-key/protocol/identity";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { resolveProductSetting } from "../../../core/settings/resolve.js";
 import type { ProductPublic } from "../../../core/products.js";
-import { getTier } from "../../../repo.js";
-import { rankAnchorCandidates } from "../../../core/anchor.js";
+import { getTier } from "../../../core/repo.js";
+import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 
 /** S-19's `licensing.entitlementModel`. `legacy` reproduces today's documents byte for byte. */
 export type EntitlementModel = "legacy" | "combined";

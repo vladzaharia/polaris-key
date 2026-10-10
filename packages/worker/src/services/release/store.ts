@@ -99,7 +99,10 @@ import {
   hasArtifactMap,
   type ClassifiedFile,
 } from "./artifactMap.js";
-import { compareSemver, parseSemver } from "../../core/entitlements.js";
+import {
+  compareSemver,
+  parseSemver,
+} from "../../core/licensing/entitlements.js";
 import {
   classifyChannel,
   floorChannelOf,

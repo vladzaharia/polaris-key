@@ -29,38 +29,38 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, TEST_KEK } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { parseManifest } from "@polaris-key/manifest";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
-import { isSealedEnvelope } from "../src/admin/lib/managedSecrets.js";
+import { isSealedEnvelope } from "../src/core/managedSecrets.js";
 import {
   ensureSystemProduct,
   linkSystemProduct,
-} from "../src/admin/systemProduct.js";
+} from "../src/console/systemProduct.js";
 import { parseServices, serializeServices } from "../src/core/services.js";
 import {
   runPlatformBackfill,
   runSettingsBackfill,
   type BackfillRunOptions,
-} from "../src/admin/settingsBackfill.js";
+} from "../src/console/settingsBackfill.js";
 import {
   planBackfill,
   REDACTED,
   type BackfillItem,
   type BackfillManifest,
   type BackfillReport,
-} from "../src/core/settingsBackfill.js";
+} from "../src/core/ops/settingsBackfill.js";
 import type { ProductSettingRow } from "../src/core/settingsClaims.js";
 
 const SLUG = "acme";

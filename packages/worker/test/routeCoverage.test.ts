@@ -24,7 +24,7 @@ import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
-import { matchImgPath } from "../src/core/imgHost.js";
+import { matchImgPath } from "../src/core/assets/imgHost.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
 import {
   RELEASE_PUBLISH_OPENAPI,
@@ -403,7 +403,7 @@ const REGISTRY_PATHS: Array<[string, string[], string[]]> = mergeRegistryRows([
 /**
  * The image host's paths (HA-02, notes/S-20 §6.5): `img.plrs.im` answers only these, each
  * documented under a path-level `servers` override with tag `img`. They are Core's own routes
- * (`core/imgHost.ts` `matchImgPath`), not a service's and not a route table's, so the check
+ * (`core/assets/imgHost.ts` `matchImgPath`), not a service's and not a route table's, so the check
  * runs a concrete request path of each through the host's own parser and pins the parsed kind.
  */
 const IMG_SERVER = "https://img.plrs.im";

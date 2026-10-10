@@ -23,26 +23,26 @@ import {
   TEST_PUB,
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
   licenseDeviceLimit,
   licenseDeviceLimitInfo,
-} from "../src/core/authz.js";
+} from "../src/core/licensing/authz.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   claimEnrolledLicense,
   getLicense,
   listAudit,
   SEAT_DORMANCY_SECONDS,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";

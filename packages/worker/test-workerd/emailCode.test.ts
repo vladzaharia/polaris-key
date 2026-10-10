@@ -6,15 +6,15 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { D1Db } from "../src/db/d1.js";
-import { issueEmailCode } from "../src/core/emailLimits.js";
+import { issueEmailCode } from "../src/core/notify/emailLimits.js";
 import { putArtefact } from "../src/core/singleUse.js";
-import { SIGNIN_FLOW_COOKIE } from "../src/core/accountCookies.js";
+import { SIGNIN_FLOW_COOKIE } from "../src/core/accounts/accountCookies.js";
 import {
   handleSigninEmailVerify,
   PORTAL_EMAIL_SCOPE,
   signinFlowRef,
 } from "../src/services/identity/card/emailSignIn.js";
-import type { Env as WorkerEnv } from "../src/env.js";
+import type { Env as WorkerEnv } from "../src/platform/env.js";
 
 const workerEnv = {
   ...env,

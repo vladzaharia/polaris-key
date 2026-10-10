@@ -42,7 +42,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     manifest: { path: "product:licensing.defaultDeviceLimit" },
     confirm: { up: "L1", down: "L1" },
     visibleWhen: VISIBLE,
-    readers: ["core/products.ts", "core/authz.ts"],
+    readers: ["core/products.ts", "core/licensing/authz.ts"],
     storage: {
       kind: "column",
       table: "products",
@@ -140,7 +140,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
     wire: ["document"],
-    readers: ["core/authz.ts"],
+    readers: ["core/licensing/authz.ts"],
     storage: { kind: "rich", adapter: "tiers" },
   }),
 ];

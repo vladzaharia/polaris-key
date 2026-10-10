@@ -54,14 +54,14 @@ import {
 import { scanStrictJson } from "@polaris-key/jws";
 import { feedClaims, feedContent } from "@polaris-key/client-core/feed";
 import type { ServiceContext } from "../../core/registry.js";
-import { appSecurityHeaders } from "../../securityHeaders.js";
-import { randomId } from "../../crypto.js";
+import { appSecurityHeaders } from "../../platform/securityHeaders.js";
+import { randomId } from "../../platform/crypto.js";
 import { sha256Hex } from "../../platform/hash.js";
 import type { Db } from "../../db/types.js";
 import { errorResponse, wireError } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { signDoc } from "../../core/signing.js";
-import { appendAudit } from "../../repo.js";
+import { appendAudit } from "../../core/repo.js";
 import {
   accessModeFor,
   artifactPolicy,

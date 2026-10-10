@@ -47,11 +47,11 @@
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
-import type { Env } from "../../env.js";
-import { randomId } from "../../crypto.js";
-import { appendAudit } from "../../repo.js";
-import { audit } from "../../admin/audit.js";
-import type { AdminSession } from "../../admin/session.js";
+import type { Env } from "../../platform/env.js";
+import { randomId } from "../../platform/crypto.js";
+import { appendAudit } from "../../core/repo.js";
+import { audit } from "../../core/console/audit.js";
+import type { AdminSession } from "../../core/console/session.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import { parseManualChannels } from "./channels.js";
 import type { ReleaseConfigRow } from "./config.js";
@@ -84,7 +84,7 @@ import { parseManifestPackDeliverable } from "@polaris-key/manifest";
 
 export { knownChannels };
 import type { ReleaseMetadataRow } from "./store.js";
-import { stmtEnqueuePackageRender } from "../../core/registryQueue.js";
+import { stmtEnqueuePackageRender } from "../../core/registry/registryQueue.js";
 import { packageReleaseOf, packageStateStatements } from "./packages/state.js";
 
 // ── Actors and results ───────────────────────────────────────────────────────────────────────

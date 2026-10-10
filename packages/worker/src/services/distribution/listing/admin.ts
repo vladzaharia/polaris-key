@@ -33,7 +33,7 @@
  *                                                          apply it (A-18c, `import.ts`)
  *
  * Narrative-only like the rest of the console API (`routeCoverage`'s `adminApi` kind); session,
- * CSRF, rate limit and the platform-admin gate run in `admin/api.ts` first. Every write is
+ * CSRF, rate limit and the platform-admin gate run in `console/api.ts` first. Every write is
  * audited (`distribution.listing.*`) with the fields it changed, never their text. Every value is
  * validated against the model's limits (`core/storefront/listingModel.ts`) and refused, never cut;
  * a store's tighter limit is the fit report's to show.
@@ -44,11 +44,11 @@ import {
   checkDisplayName,
   type ReservedDisplayNamesMode,
 } from "@polaris-key/manifest";
-import { reservedDisplayNamesMode } from "../../../core/reservedDisplayNames.js";
+import { reservedDisplayNamesMode } from "../../../core/accounts/reservedDisplayNames.js";
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../admin/session.js";
-import { adminJson, err, readBody } from "../../../admin/lib/respond.js";
-import { audit } from "../../../admin/audit.js";
+import type { AdminSession } from "../../../core/console/session.js";
+import { adminJson, err, readBody } from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
 import {
   appProblems,
   DEFAULT_PRECEDENCE,

@@ -62,12 +62,12 @@
  *     and deleting the survivor deletes its rows (docs/PRIVACY.md).
  */
 
-import { randomId } from "../../../crypto.js";
+import { randomId } from "../../../platform/crypto.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
-} from "../../../core/subjectHooks.js";
+} from "../../../core/accounts/subjectHooks.js";
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsSeparatedNotice } from "../portal/notices.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";

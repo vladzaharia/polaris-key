@@ -41,23 +41,26 @@
  * spending a GitHub subrequest to find out. Each app release carries its signed record's `signer`
  * (the CI release key's `kid` and the record hash; `null` for a legacy release with no record).
  *
- * The session, CSRF, rate-limit and platform-admin gates all run in `admin/api.ts` before this
+ * The session, CSRF, rate-limit and platform-admin gates all run in `console/api.ts` before this
  * is reached — see `core/adminApi.ts` for why they stay there.
  */
 
 import { platformFromFileName } from "@polaris-key/manifest";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../admin/session.js";
+import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../admin/lib/respond.js";
-import { audit } from "../../admin/audit.js";
-import { compareSemver, parseSemver } from "../../core/entitlements.js";
-import { getProduct, upsertProductSyncState } from "../../repo.js";
+} from "../../core/console/respond.js";
+import { audit } from "../../core/console/audit.js";
+import {
+  compareSemver,
+  parseSemver,
+} from "../../core/licensing/entitlements.js";
+import { getProduct, upsertProductSyncState } from "../../core/repo.js";
 import { systemResyncRefusal } from "../../core/settingsClaims.js";
 import {
   classifyChannel,

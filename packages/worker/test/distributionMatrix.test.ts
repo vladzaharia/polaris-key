@@ -6,12 +6,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProduct } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";

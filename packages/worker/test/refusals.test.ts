@@ -1,5 +1,5 @@
 /**
- * UX-15: the refusal log (`core/refusals.ts`, docs/design/EXPERIENCE.md §0.9).
+ * UX-15: the refusal log (`core/licensing/refusals.ts`, docs/design/EXPERIENCE.md §0.9).
  *
  *   - `authorizeDevice` logs every refusal, with the reason, a plain-text label and a device hash
  *   - with a `waitUntil` the write is handed off, not awaited; without one it runs inline
@@ -23,7 +23,7 @@ import {
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseRoutes } from "../src/services/license/routes.js";
-import { authorizeDevice } from "../src/core/authz.js";
+import { authorizeDevice } from "../src/core/licensing/authz.js";
 import {
   REFUSAL_LABEL_MAX,
   REFUSAL_RETENTION_SECONDS,
@@ -31,16 +31,16 @@ import {
   recordRefusal,
   refusalDeviceHash,
   sanitizeRefusalLabel,
-} from "../src/core/refusals.js";
+} from "../src/core/licensing/refusals.js";
 import { runScheduledMaintenance } from "../src/scheduled.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { getLicense } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+} from "../src/core/console/session.js";
+import { getLicense } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { ServiceContext } from "../src/core/registry.js";

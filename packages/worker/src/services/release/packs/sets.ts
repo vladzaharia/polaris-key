@@ -17,10 +17,10 @@ import {
 import { packSetId, variantKey } from "@polaris-key/client-core/packs";
 import { parseJsonOr } from "../../../platform/json.js";
 import { randomHex } from "../../../platform/random.js";
-import { randomId } from "../../../crypto.js";
+import { randomId } from "../../../platform/crypto.js";
 import type { Db, DbStatement } from "../../../db/types.js";
 import { parseIgnoreTags, parseManualChannels } from "../channels.js";
-import { appendAudit } from "../../../repo.js";
+import { appendAudit } from "../../../core/repo.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "../config.js";
 import type { ReleaseChannelPolicyRow } from "../model.js";
 import {

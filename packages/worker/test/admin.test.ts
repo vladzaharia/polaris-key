@@ -10,24 +10,24 @@ import {
   approveEdgeMintRecipe,
   seedProductSecret,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
-import { handleAdminLogin } from "../src/admin/auth.js";
+import { handleAdmin } from "../src/console/index.js";
+import { handleAdminLogin } from "../src/console/auth.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
   verifySession,
   type SessionIdentity,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   getActiveProductKey,
   getProduct,
   getProductSecret,
   listAudit,
   setServices,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 import { loadProduct } from "../src/core/products.js";
 import type { ServiceHooks } from "../src/core/hooks.js";
 import type { ServiceDescriptor } from "../src/core/registry.js";
@@ -40,14 +40,14 @@ import { handleMintToken } from "../src/services/config/mint.js";
 import { buildDoc } from "../src/services/identity/doc.js";
 import { upsertDeliverable } from "../src/services/release/model.js";
 import { signDoc } from "../src/core/signing.js";
-import { open } from "../src/keyvault.js";
+import { open } from "../src/platform/keyvault.js";
 import { verifyJws } from "@polaris-key/jws";
 import type { DocProfile } from "@polaris-key/protocol";
 import type { FusedSessionDoc } from "../src/services/identity/doc.js";
-import type { ManagedPayload } from "../src/core/payload.js";
+import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
-import { getTokenRecord } from "../src/kv.js";
-import { hashKey } from "../src/crypto.js";
+import { getTokenRecord } from "../src/platform/kv.js";
+import { hashKey } from "../src/platform/crypto.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";

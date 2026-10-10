@@ -23,13 +23,13 @@ import {
 import type { Db } from "../src/db/types.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
-import type { Env } from "../src/env.js";
-import { subjectFor } from "../src/core/accountSubjects.js";
+import type { Env } from "../src/platform/env.js";
+import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import {
   runOverrideMigration,
   setOverrideMigrationPrerequisite,
   startOverrideMigrationNotice,
-} from "../src/core/overrideMigration.js";
+} from "../src/core/ops/overrideMigration.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 
 async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {

@@ -7,7 +7,7 @@
  */
 
 import type { Db, DbStatement } from "../../../db/types.js";
-import { stmtEnqueuePackageRender } from "../../../core/registryQueue.js";
+import { stmtEnqueuePackageRender } from "../../../core/registry/registryQueue.js";
 
 /** The package row of a release, or null when the release is not a package version. */
 export async function packageReleaseOf(

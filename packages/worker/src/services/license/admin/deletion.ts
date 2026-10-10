@@ -9,7 +9,7 @@
  * (`origin` `oidc` or `enroll`) — never an active licence the developer issued, which is
  * disabled first. And never a licence with commerce history: store grants (License) or recorded
  * store purchases (Distribution), whatever their state. The owners answer through Core's
- * collector (`core/licenseDelete.ts`); a refusal names every reason and suggests disabling.
+ * collector (`core/licensing/licenseDelete.ts`); a refusal names every reason and suggests disabling.
  *
  * WHAT GOES. Everything keyed by the licence, in ONE batch with the `license.delete` audit row:
  * the licence, its keys and profile stack, its devices and their facts and fingerprints, its
@@ -29,31 +29,31 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import { deleteTokenRecord } from "../../../kv.js";
+import { deleteTokenRecord } from "../../../platform/kv.js";
 import {
   getLicense,
   listDevicesByLicense,
   type LicenseRow,
-} from "../../../repo.js";
+} from "../../../core/repo.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   existingSubjectFor,
   existingSubjectsFor,
-} from "../../../core/accountSubjects.js";
-import { forgetRegistryTokens } from "../../../core/registryTokens.js";
+} from "../../../core/accounts/accountSubjects.js";
+import { forgetRegistryTokens } from "../../../core/registry/registryTokens.js";
 import {
   idChunks,
   LicenseDeleteReason,
   type LicenseDelete,
   type LicenseDeleteBlocker,
-} from "../../../core/licenseDelete.js";
+} from "../../../core/licensing/licenseDelete.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../../admin/lib/respond.js";
-import { auditStatementFor } from "../../../admin/audit.js";
+} from "../../../core/console/respond.js";
+import { auditStatementFor } from "../../../core/console/audit.js";
 import type { LicenseAdminContext } from "./index.js";
 
 /** Origins a licence may be deleted from while still active: minted by a flow, not by a person. */

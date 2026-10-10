@@ -31,7 +31,7 @@ Three things are worse than merely missing, and all three are new findings in th
    deleted all the products."
 
 2. **The production deploy smoke check cannot fail.** `deploy.yml:60-66` curls
-   `https://key.plrs.im/manage`, which `admin/index.ts:40-62` serves as a **static asset** with
+   `https://key.plrs.im/manage`, which `console/index.ts:40-62` serves as a **static asset** with
    no D1, KV or DO access. A deploy that takes the entire data plane down passes its own smoke
    test.
 
@@ -62,7 +62,7 @@ Three of the established facts need adjusting before building on them.
   disclosure policy_ — reporting channels, SLAs, scope. It contains no incident-response
   procedure, no key-compromise runbook, and no "what we do when it happens" content. The
   substance of the finding stands; the file is not the missing artefact.
-- **The status-vocabulary "drift" at `repo.ts:359` vs `admin/repo.ts:74` is not drift.** Those
+- **The status-vocabulary "drift" at `repo.ts:359` vs `core/console/repo.ts:74` is not drift.** Those
   are different operations: `stmtRetireProductKeys` retires the previously-active key during a
   rotation (it stays in the verification set, `repo.ts:330`), and `deleteProduct` revokes all
   keys on product deletion (dropping them from the verification set). That is correct and
@@ -82,7 +82,7 @@ Everything else in the brief I confirmed. Additional confirmations worth stating
 
 - `keyvault.ts:135-138` rejects any blob whose `kekId` differs from the single configured value.
   There are exactly **two** `open()` call sites (`product.ts:97`, `product.ts:134`) and **four**
-  `seal()` call sites (`admin/handlers/products.ts:276,600,644`, `release/linkRepo.ts:183`). The
+  `seal()` call sites (`console/handlers/products.ts:276,600,644`, `release/linkRepo.ts:183`). The
   surface is small; §2 is a half-day of work, not a project.
 - All three SDKs merge trust additively and ignore `key.status`: `client.ts:536-542`,
   `sdks/python/src/polaris_key/client.py:535-550`,
@@ -189,15 +189,15 @@ it should be done before anything else in this document.
 ### 1.3 Leaked `ADMIN_SESSION_SECRET`
 
 **Detection: none — and worse, the compromise poisons its own evidence.** A forged session
-carries attacker-chosen `sub`/`name`/`email` (`admin/session.ts:117-124`), and `audit()` copies
-those verbatim into the audit row (`admin/audit.ts:22-24`) with a comment stating the actor is
+carries attacker-chosen `sub`/`name`/`email` (`core/console/session.ts:117-124`), and `audit()` copies
+those verbatim into the audit row (`core/console/audit.ts:22-24`) with a comment stating the actor is
 "taken from the VERIFIED session, never from a request field." That is true and it is exactly
 the problem: with the signing secret, the attacker _is_ the verified session. The audit table
 will show a plausible-looking admin doing plausible-looking things.
 
 There is no `admin.login` audit event (confirmed by enumerating all 29 audit action strings in
 the tree), so there is nothing to diff against PocketID's sign-in log. The only forensic handle
-is the eight-hour session TTL (`admin/session.ts:30`) bounding how long any single forged cookie
+is the eight-hour session TTL (`core/console/session.ts:30`) bounding how long any single forged cookie
 lasts — which does not bound the attacker, who can mint a fresh one.
 
 **Containment is clean and instant** — the one genuinely good rotation story here:
@@ -226,14 +226,14 @@ contained — but the fallback should be deleted, because it silently merges two
 
 **What is unrecoverable:** the audit trail as evidence, and any state the attacker changed.
 Product secrets are write-only (`products.ts:621-622`) so you cannot diff them; `deleteProduct`
-is a soft delete (`admin/repo.ts:58`) but there is no undelete endpoint; and a forged
+is a soft delete (`core/console/repo.ts:58`) but there is no undelete endpoint; and a forged
 `linkRepo` rewrites tiers, profiles, `admin_group`, and OIDC issuer/client_id with no prior
 version retained.
 
 **Also containment-relevant, and currently broken:** removing someone from the `admins` group at
 PocketID has **no effect for up to 8 hours**, because `groups` are baked into the cookie at issue
-time (`admin/session.ts:117-124`) and `isPlatformAdmin` reads them from the cookie
-(`admin/authz.ts:16-18`). For a compromised _admin account_ — a more likely incident than a
+time (`core/console/session.ts:117-124`) and `isPlatformAdmin` reads them from the cookie
+(`console/authz.ts:16-18`). For a compromised _admin account_ — a more likely incident than a
 leaked signing secret — the only working containment is the same global secret rotation. That
 should be written down as the procedure, because it is not obvious.
 
@@ -716,7 +716,7 @@ catastrophically wrong.
 | `POST /<p>/token`                                 | 500 / 404                                                                                                                          | **500**                                           | **500**                                    |
 | `POST /<p>/enroll`                                | 500 / 404                                                                                                                          | **500**                                           | **500**                                    |
 | `/<p>/.well-known/jwks.json`, `polaris-trust.jws` | **404** (`loadProduct` → null before the handler runs)                                                                             | 200                                               | n/a                                        |
-| `/manage/api/*`                                   | 500                                                                                                                                | 500                                               | 500 on login (`admin/auth.ts:150,195`)     |
+| `/manage/api/*`                                   | 500                                                                                                                                | 500                                               | 500 on login (`console/auth.ts:150,195`)   |
 | `/manage` (SPA)                                   | **200**                                                                                                                            | 200                                               | 200                                        |
 | `/webhooks/github`                                | 500                                                                                                                                | —                                                 | n/a                                        |
 
@@ -822,7 +822,7 @@ Note the counter increment is **not** idempotent, so a retry can double-count on
 is the correct trade here — over-counting a rate limit is harmless; failing the request is not.
 
 My recommendation: **`allow` on the licensing hot paths** (`activate`, `token`, `enroll`,
-`mint`) and **`deny` on `admin/auth.ts:150,195`**. Rationale: the limiter bounds credential
+`mint`) and **`deny` on `console/auth.ts:150,195`**. Rationale: the limiter bounds credential
 guessing, but the credential check itself still runs behind it — a DO outage that blocks every
 activation is a worse business outcome than a temporarily unrated activation path. Admin login
 is the opposite trade: highest-value target, human on the other end who can retry in a minute.
@@ -1186,7 +1186,7 @@ because it only ever fires on deliberate admin mutations.
 ### 6.2 Two channels, deliberately separated
 
 - **Workers Logs**, via one structured helper, for anything high-volume or platform-scoped. The
-  existing rationale for not auditing unauthenticated 401s (`admin/api.ts:69-71`: "that would be
+  existing rationale for not auditing unauthenticated 401s (`console/api.ts:69-71`: "that would be
   a D1-write DoS amplifier") is correct — and applies to **D1 writes**, not to a log line. A
   `console.log` costs nothing and is exactly the right channel for that traffic.
 - **D1 `audit`**, unchanged, for low-volume, actor-attributable, operator-facing events.
@@ -1211,22 +1211,22 @@ export function logEvent(e: {
 Ordered by value. The first one alone would have turned this review's worst-case outage into a
 one-line diagnosis.
 
-| Event                                                                           | Where                                                                                          | Channel           |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------- |
-| **`kek.open.failed`** — `{product, kind, id, sealedKekId, activeKekId}`         | `product.ts:118` and `product.ts:139` catch blocks                                             | log               |
-| `product.load.failed` — `{slug, reason: "no-product"\|"no-key"\|"kek"}`         | `product.ts:93`, `:95`, `:118`                                                                 | log               |
-| `auth.admin.login` / `auth.admin.denied` — `{sub, groups, ip}`                  | `admin/auth.ts`, after `issueSession` / at the `hasAnyAdminGrant` denial (`admin/auth.ts:220`) | **audit + log**   |
-| `auth.admin.session.invalid`                                                    | `admin/session.ts:160` (`if (!ok) return null`)                                                | log               |
-| `token.validate.failed` — `{reason}`                                            | `licenseCore.ts:453-471`, which already computes 6 distinct reasons and collapses them all     | log               |
-| `license.activate.failed` — `{reason: "bad-key"\|"inactive-key"\|"no-license"}` | `licensing.ts:316-320`                                                                         | log (counts only) |
-| `ratelimit.tripped` — `{bucket, product, ipHash}`                               | `rateLimit.ts`, on `ok === false`                                                              | log               |
-| `ratelimit.unavailable`                                                         | new catch, `rateLimit.ts:34` (§4.3)                                                            | log               |
-| `kv.unavailable`                                                                | new catch, `kv.ts:23` (§4.3)                                                                   | log               |
-| `db.error` — `{op, table}`                                                      | wrap the four methods in `db/d1.ts`                                                            | log               |
-| `webhook.github.signature.failed` — `{delivery, repo}`                          | `githubWebhook.ts` verify path                                                                 | **log + audit**   |
-| `webhook.github.resync` — `{repo, ref, products, changedPaths}`                 | `githubWebhook.ts` success path                                                                | **audit**         |
-| `kek.reseal` — `{from, to, count}`                                              | new (§2.6)                                                                                     | **audit**         |
-| `unhandled` — `{route, message}`                                                | new top-level catch, `index.ts:76`                                                             | log               |
+| Event                                                                           | Where                                                                                              | Channel           |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------- |
+| **`kek.open.failed`** — `{product, kind, id, sealedKekId, activeKekId}`         | `product.ts:118` and `product.ts:139` catch blocks                                                 | log               |
+| `product.load.failed` — `{slug, reason: "no-product"\|"no-key"\|"kek"}`         | `product.ts:93`, `:95`, `:118`                                                                     | log               |
+| `auth.admin.login` / `auth.admin.denied` — `{sub, groups, ip}`                  | `console/auth.ts`, after `issueSession` / at the `hasAnyAdminGrant` denial (`console/auth.ts:220`) | **audit + log**   |
+| `auth.admin.session.invalid`                                                    | `core/console/session.ts:160` (`if (!ok) return null`)                                             | log               |
+| `token.validate.failed` — `{reason}`                                            | `licenseCore.ts:453-471`, which already computes 6 distinct reasons and collapses them all         | log               |
+| `license.activate.failed` — `{reason: "bad-key"\|"inactive-key"\|"no-license"}` | `licensing.ts:316-320`                                                                             | log (counts only) |
+| `ratelimit.tripped` — `{bucket, product, ipHash}`                               | `rateLimit.ts`, on `ok === false`                                                                  | log               |
+| `ratelimit.unavailable`                                                         | new catch, `rateLimit.ts:34` (§4.3)                                                                | log               |
+| `kv.unavailable`                                                                | new catch, `kv.ts:23` (§4.3)                                                                       | log               |
+| `db.error` — `{op, table}`                                                      | wrap the four methods in `db/d1.ts`                                                                | log               |
+| `webhook.github.signature.failed` — `{delivery, repo}`                          | `githubWebhook.ts` verify path                                                                     | **log + audit**   |
+| `webhook.github.resync` — `{repo, ref, products, changedPaths}`                 | `githubWebhook.ts` success path                                                                    | **audit**         |
+| `kek.reseal` — `{from, to, count}`                                              | new (§2.6)                                                                                         | **audit**         |
+| `unhandled` — `{route, message}`                                                | new top-level catch, `index.ts:76`                                                                 | log               |
 
 ### 6.4 The audit table cannot hold platform events
 

@@ -3,7 +3,7 @@
  * upload or a CI push into one of the shared listing model's image slots (`icon-master`,
  * `play:feature-graphic`, `<store>:screenshot:<class>:<n>`, …) also writes that slot's
  * `dist_listing_assets` row, so A-18j's slot board and the store pushers read the same bytes the
- * image host serves. Core's `core/hostedAssetUploads.ts` owns the upload; this table is
+ * image host serves. Core's `core/assets/hostedAssetUploads.ts` owns the upload; this table is
  * Distribution's, so the composition root hands this writer to Core (`ListingSlotMirror`).
  *
  *   - A console upload writes `source = 'admin'`: the operator's own image, which counts as
@@ -19,12 +19,12 @@
  */
 
 import type { Db, DbStatement } from "../../../db/types.js";
-import { blobKey } from "../../../core/blobs.js";
+import { blobKey } from "../../../core/assets/blobs.js";
 import { listingAssetRule } from "../../../core/storefront/listingModel.js";
 import type {
   ListingSlotCopy,
   ListingSlotMirror,
-} from "../../../core/hostedAssetUploads.js";
+} from "../../../core/assets/hostedAssetUploads.js";
 import { LISTING_ASSET_REF } from "./assets.js";
 
 const refIdOf = (slot: string, locale: string) => `${slot}@${locale}`;

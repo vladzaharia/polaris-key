@@ -6,15 +6,15 @@
  * ── WHY THESE MOVED INTO CORE ───────────────────────────────────────────────────────────────
  *
  * They were License's and Config's while their routes were the only place a document was minted.
- * Offline bundles (`core/bundles.ts`, §7) make that false: one bundle carries a license document
+ * Offline bundles (`console/handlers/bundles.ts`, §7) make that false: one bundle carries a license document
  * AND a config document, either of which may be absent, and a config-only product (D-08) mints
  * a bundle with no licence anywhere in it. Core has to compose both — a service may not import a
  * sibling (`test/boundaries.test.ts`), and Core importing a service would invert the layering
  * that rule exists to protect.
  *
  * So the builders live here and the two services re-export them, which is exactly the move
- * `injectAdminPolicy` made into `core/entitlements.ts` and `resolveEntitlements`/`docProfile`
- * made into `core/authz.ts` when Identity was carved. Every existing importer is unchanged, and
+ * `injectAdminPolicy` made into `core/licensing/entitlements.ts` and `resolveEntitlements`/`docProfile`
+ * made into `core/licensing/authz.ts` when Identity was carved. Every existing importer is unchanged, and
  * — the point of the exercise — a bundle-activated install receives a document assembled by the
  * same code as the network path, rather than by a second implementation that would be free to
  * drift a grant or a merge order without anyone noticing until a customer did.
@@ -31,14 +31,14 @@
  * the licence's resolved offline days (`licenseTermsOf`), the mint passes the operator's
  * `graceDays`. `expiresAt` is NOT parameterised — it is `DOC_EXPIRY_SECONDS` on both paths,
  * because §7 step 4 verifies inner documents on the reload profile where `graceUntil` is the
- * bound that matters. See the note in `core/bundles.ts`.
+ * bound that matters. See the note in `console/handlers/bundles.ts`.
  *
  * ── THE `clampGraceTo` PARAMETER (LX-07, S-19 G9) ───────────────────────────────────────────
  *
  * Offline grace never outlasts the licence it serves: when the product's
  * `licensing.clampGraceToExpiry` is on (the default) and the licence expires inside the window,
  * the caller passes the licence's `expires_at` and `graceUntil` stops there (`clampGraceUntil`).
- * The builders stay pure: the setting is read by `core/graceClamp.ts`' `graceClampFor`, which
+ * The builders stay pure: the setting is read by `core/licensing/graceClamp.ts`' `graceClampFor`, which
  * answers `null` (no clamp) for a perpetual licence, a licence whose expiry lies past the window,
  * and a product that opted out.
  */
@@ -51,14 +51,14 @@ import {
 import { ISSUER } from "@polaris-key/protocol/core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
-import type { DeviceRow, LicenseRow } from "../repo.js";
+import type { DeviceRow, LicenseRow } from "./repo.js";
 import {
   openManagedPayload,
   prunePayloadAgainstCatalog,
   resolveMergedPayload,
-} from "./payload.js";
+} from "./licensing/payload.js";
 
 /**
  * The unclamped offline window's end, with integer arithmetic (plans/P3-01.md §2.2): a fractional
@@ -142,7 +142,7 @@ export interface ConfigPayload {
  * Resolve the config + secrets a device should receive, or `null` when the active catalog
  * exists but cannot be interpreted (the fail-closed arm — see `prunePayloadAgainstCatalog`).
  *
- * `env` is REQUIRED, unlike on the entitlement side. `admin/lib/overrides.ts` seals every
+ * `env` is REQUIRED, unlike on the entitlement side. `core/console/overrides.ts` seals every
  * catalog-declared secret before it reaches `profiles.payload_json` / `licenses.overrides_json`
  * (R12-02), so without opening them here the still-sealed envelope reaches the catalog prune,
  * fails validation and is dropped — silently delivering a document with every managed secret

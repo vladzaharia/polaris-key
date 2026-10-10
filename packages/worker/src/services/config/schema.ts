@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
-import { getActiveSchema } from "../../repo.js";
+import { getActiveSchema } from "../../core/repo.js";
 import { errorResponse } from "../../core/errors.js";
 
 /** Anonymous callers get the catalog without `default`/`examples` of secret entries. */

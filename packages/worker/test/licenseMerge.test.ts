@@ -4,13 +4,13 @@
  *
  *   - `moveDevices` / `planDeviceMove` (`repo.ts`): refuses beyond the destination's seats,
  *     otherwise gives every moved authorized device a free ordinal of the destination.
- *   - `mergeLicenseInto` + every service's `licenseMerge` (`core/licenseMerge.ts`): the retired
+ *   - `mergeLicenseInto` + every service's `licenseMerge` (`core/licensing/licenseMerge.ts`): the retired
  *     licence's store grants and purchases move to the survivor, and its purchase binding keeps
  *     resolving as an alias, so a restore that names it reaches the survivor. Driven through the
  *     commerce bridge's real routes (`commerceWorld.ts`).
  */
 
-import { storeGrantDrift } from "../src/core/grants.js";
+import { storeGrantDrift } from "../src/core/licensing/grants.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedLicenseWithKey, seedProduct, seedTier } from "./seed.js";
@@ -19,12 +19,12 @@ import {
   moveDevices,
   SEAT_DORMANCY_SECONDS,
   setDeviceStatus,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 import {
   licenseMergeFor,
   licenseMergeStatements,
   mergeLicenseInto,
-} from "../src/core/licenseMerge.js";
+} from "../src/core/licensing/licenseMerge.js";
 import { SERVICES } from "../src/mount.js";
 import { SLUG } from "./releaseRoutesFixture.js";
 import {

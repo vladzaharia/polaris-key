@@ -16,12 +16,12 @@ import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "../seed.js";
 import type { Db } from "../../src/db/types.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { Product } from "../../src/core/products.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
-} from "../../src/fingerprint.js";
+} from "../../src/platform/fingerprint.js";
 import { DEFAULT_SERVICES } from "../../src/core/services.js";
 import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import type { Arch } from "../../src/services/release/assets.js";
@@ -40,12 +40,12 @@ import { handleGithubWebhook } from "../../src/githubWebhook.js";
 import { getReleaseConfig } from "../../src/services/release/index.js";
 import { syncReleaseStore } from "../../src/services/release/sync.js";
 import { checkReleaseHealth } from "../../src/services/release/health.js";
-import { handleAdmin } from "../../src/admin/index.js";
+import { handleAdmin } from "../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../../src/admin/session.js";
+} from "../../src/core/console/session.js";
 import {
   enableDownloads,
   handlePortalDownload,

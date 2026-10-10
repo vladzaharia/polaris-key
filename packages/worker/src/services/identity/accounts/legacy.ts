@@ -14,11 +14,11 @@
  * log, which is the operator report.
  */
 
-import { stmtMoveLicenseAccount } from "../../../core/accountSubjects.js";
-import { onLicenseOwnershipEnded } from "../../../core/subjectHooks.js";
-import { appendPlatformEvent } from "../../../core/platformEvents.js";
+import { stmtMoveLicenseAccount } from "../../../core/accounts/accountSubjects.js";
+import { onLicenseOwnershipEnded } from "../../../core/accounts/subjectHooks.js";
+import { appendPlatformEvent } from "../../../core/ops/platformEvents.js";
 import type { Db } from "../../../db/types.js";
-import { getProduct } from "../../../repo.js";
+import { getProduct } from "../../../core/repo.js";
 import { sendSecurityNotice } from "../portal/email.js";
 import { licenseLinkSupersededNotice } from "../portal/notices.js";
 import { portalAudit } from "../portal/repo.js";

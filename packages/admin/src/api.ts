@@ -1,6 +1,6 @@
 /**
  * Same-origin typed client for the `/manage/api/*` surface. The worker
- * (`packages/worker/src/admin/api.ts` + each service's `admin.ts`) is the source of truth for
+ * (`packages/worker/src/console/api.ts` + each service's `admin.ts`) is the source of truth for
  * these shapes.
  *
  * ── THE ADMIN SURFACE IS SERVICE-GROUPED (plan §R1) ─────────────────────────────────────────
@@ -3729,7 +3729,7 @@ export interface PatchLicenseBody {
 // ── offline bundles ───────────────────────────────────────────────────────────
 /**
  * What to mint into one offline activation bundle. The server
- * (`packages/worker/src/core/bundles.ts`) decides what actually rides inside by ENABLEMENT,
+ * (`packages/worker/src/console/handlers/bundles.ts`) decides what actually rides inside by ENABLEMENT,
  * so this is a request, not an instruction.
  */
 export interface MintBundleBody {

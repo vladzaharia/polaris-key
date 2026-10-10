@@ -55,14 +55,14 @@
 
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../admin/session.js";
+import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   err,
   readBody,
   settingRefused,
-} from "../../admin/lib/respond.js";
-import { audit, auditStatementFor } from "../../admin/audit.js";
+} from "../../core/console/respond.js";
+import { audit, auditStatementFor } from "../../core/console/audit.js";
 import { getCompatWindow } from "../../core/products.js";
 import {
   writeSettings,
@@ -419,7 +419,7 @@ async function handleSettings(
  * `POST …/update/settings/revert` — `{ "fields": ["access" | "compat", …] }`.
  *
  * Flips the named ownership markers back to `manifest` and NOTHING else, exactly like
- * `POST …/services/revert` (see `core/servicesAdmin.ts` for why reverting never reaches out to
+ * `POST …/services/revert` (see `console/handlers/servicesAdmin.ts` for why reverting never reaches out to
  * GitHub on the spot). The live values stay as the operator left them; the next resync re-applies
  * the manifest.
  */

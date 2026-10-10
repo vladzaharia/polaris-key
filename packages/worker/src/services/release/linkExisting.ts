@@ -34,7 +34,7 @@ import {
 } from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../platform/json.js";
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import {
   claimsForApply,
   type BreakGlassClaim,
@@ -44,12 +44,12 @@ import {
   countLicensesUsingTier,
   listProfiles,
   listTiers,
-} from "../../admin/repo.js";
+} from "../../core/console/repo.js";
 import {
   getActiveSchema,
   getProduct,
   stmtInsertReleaseConfig,
-} from "../../repo.js";
+} from "../../core/repo.js";
 import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
 import { liveRowClaimKeys } from "../../core/rowSettings.js";
 import { parseServices } from "../../core/services.js";
@@ -57,7 +57,7 @@ import {
   parseStoredPresentation,
   serializePresentation,
 } from "../../core/products.js";
-import { reservedNamesMode } from "../../core/reservedNames.js";
+import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import { getPublisherPolicy } from "../../core/publisher.js";
 import { getReleaseConfig } from "./config.js";
 import { parseManifest, type ParsedManifest } from "@polaris-key/manifest";

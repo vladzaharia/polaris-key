@@ -13,12 +13,12 @@
  * `REGISTRY_ROUTES`, and they read the feed settings only through the `delivery` hook (rule 6).
  *
  * Who may publish: a `pkeyr_` token with the `publish` scope, owner-bound and narrowed to the
- * ecosystem, or the owner's `pkeyci_` with `release:publish` (`core/registryPublish.ts`). CI
+ * ecosystem, or the owner's `pkeyci_` with `release:publish` (`core/registry/registryPublish.ts`). CI
  * should present the 30-minute `pkeyci_` `pkey auth github-oidc` exchanges for the job's OIDC
  * token, so no long-lived publish secret is stored in CI at all.
  */
 
-import type { RegistryRoute } from "../../../../core/registryHost.js";
+import type { RegistryRoute } from "../../../../core/registry/registryHost.js";
 import { MAVEN_DEPLOY_ROUTE } from "./maven.js";
 import { NPM_PUBLISH_ROUTE } from "./npm.js";
 import { PYPI_UPLOAD_ROUTE } from "./pypi.js";

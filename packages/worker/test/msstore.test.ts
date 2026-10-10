@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   checkOutletCredentialPin,
   putOutletCredential,
@@ -20,7 +20,7 @@ import {
 } from "../src/core/outletCredentials.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProductPublic } from "../src/core/products.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { SERVICES } from "../src/mount.js";
 import {

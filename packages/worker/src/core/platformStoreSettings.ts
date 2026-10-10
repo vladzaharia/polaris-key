@@ -11,7 +11,7 @@
  * the Core admin handler's (platform admin, audited).
  */
 
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 
 /** A store with a platform (team-level) connection. Declared here, in the non-custody module,

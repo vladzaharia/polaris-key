@@ -29,10 +29,10 @@ import { seedHosted } from "./hostedFixture.js";
 import { portalHooksFor } from "./portalHarness.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { withDefaultHead } from "./githubHead.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import {
   loadProduct,
   loadProductPublic,
@@ -41,8 +41,8 @@ import {
 } from "../src/core/products.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { resolvePresentation } from "../src/core/presentation.js";
-import { hostedImages } from "../src/core/hostedImages.js";
-import { IMG_HOST_TYPES } from "../src/core/imgHost.js";
+import { hostedImages } from "../src/core/assets/hostedImages.js";
+import { IMG_HOST_TYPES } from "../src/core/assets/imgHost.js";
 import { SERVICES, SETTINGS } from "../src/mount.js";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { writeSetting } from "../src/core/settings/write.js";
@@ -55,12 +55,14 @@ import { parseManifest } from "@polaris-key/manifest";
 import {
   ensureSystemProduct,
   linkSystemProduct,
-} from "../src/admin/systemProduct.js";
+} from "../src/console/systemProduct.js";
 
 // The kill switch, controllable per test (HA-10's settings read, `assetHostingEnabled(env, db)`).
 const hosting = vi.hoisted(() => ({ on: true }));
-vi.mock("../src/core/assetHosting.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/core/assetHosting.js")>()),
+vi.mock("../src/core/assets/assetHosting.js", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../src/core/assets/assetHosting.js")
+  >()),
   assetHostingEnabled: async () => hosting.on,
 }));
 

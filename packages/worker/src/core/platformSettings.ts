@@ -552,7 +552,7 @@ export async function platformSetting<K extends PlatformSettingKey>(
     .value as PlatformSettingValues[K];
 }
 
-// ── Writes (the console, `admin/handlers/platformSettings.ts`) ──────────────────────────────
+// ── Writes (the console, `console/handlers/platformSettings.ts`) ──────────────────────────────
 
 export type SettingWrite =
   | { ok: true; version: number }

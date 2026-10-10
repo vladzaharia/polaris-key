@@ -42,7 +42,11 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       confirm: { change: "L1" },
       visibleWhen: { service: "release", offBehaviour: "readOnly" },
       wire: ["discovery", "document"],
-      readers: ["core/products.ts", "core/discovery.ts", "core/gate.ts"],
+      readers: [
+        "core/products.ts",
+        "core/discovery.ts",
+        "core/licensing/gate.ts",
+      ],
       storage: { kind: "column", table: "products", column: "compat_min" },
     }),
     ...RELEASE_MANIFEST_SETTINGS,
@@ -126,7 +130,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       visibleWhen: VISIBLE,
       readers: [
         "services/release/packages/prune.ts",
-        "admin/handlers/feeds.ts",
+        "console/handlers/feeds.ts",
       ],
       storage: {
         kind: "column",

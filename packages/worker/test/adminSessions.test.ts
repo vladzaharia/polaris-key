@@ -12,21 +12,21 @@ import { bindAdminFlow } from "./flowBinderHelper.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   handleAdminCallback,
   handleAdminLogin,
   type IdTokenVerifier,
-} from "../src/admin/auth.js";
+} from "../src/console/auth.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   isSteppedUp,
   issueSession,
   verifySession,
-} from "../src/admin/session.js";
-import { STEP_UP_ROUTES } from "../src/admin/stepUp.js";
+} from "../src/core/console/session.js";
+import { STEP_UP_ROUTES } from "../src/console/stepUp.js";
 import { handleDocs } from "../src/docs.js";
 
 const GROUP = "platform-admins";

@@ -29,7 +29,7 @@
  */
 
 import type { Db } from "../../../../db/types.js";
-import type { AdminSession } from "../../../../admin/session.js";
+import type { AdminSession } from "../../../../core/console/session.js";
 import {
   typedConfirmationRefusal,
   type ConfirmationRefusal,

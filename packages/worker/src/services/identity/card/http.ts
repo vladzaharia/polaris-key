@@ -1,16 +1,16 @@
 /**
  * Small HTTP helpers the login card's handlers share (I-07). The card's JSON answers carry the
  * portal's security headers and `no-store`; its server-rendered pages are the branded,
- * script-free shell (`core/brandHtml.ts`) under the branded-page CSP.
+ * script-free shell (`platform/brandHtml.ts`) under the branded-page CSP.
  */
 
-import { brandedHtmlSecurityHeaders } from "../../../securityHeaders.js";
+import { brandedHtmlSecurityHeaders } from "../../../platform/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { strictEmail } from "../../../core/strictEmail.js";
-import { renderBrandPage } from "../../../core/brandHtml.js";
-import { readGuardedJsonObject } from "../../../core/browserRequestGuard.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
+import { renderBrandPage } from "../../../platform/brandHtml.js";
+import { readGuardedJsonObject } from "../../../core/accounts/browserRequestGuard.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
 
 /** A JSON answer. `cookies` become separate `Set-Cookie` fields. */
 export function cardJson(

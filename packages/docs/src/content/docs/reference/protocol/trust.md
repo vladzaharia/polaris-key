@@ -21,7 +21,7 @@ export type TrustSet = Record<string, string>; // kid → base64url(raw 32-byte 
 ```
 
 Implementation: `packages/client-core/src/trust.ts`. Server side:
-`packages/worker/src/core/trust.ts`.
+`packages/worker/src/core/trust/trust.ts`.
 
 ## Tier 1: pins are terminal
 

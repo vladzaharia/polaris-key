@@ -1,7 +1,7 @@
 /**
  * F-03 — the data model learns `package` (plans/F-01.md §6.3): `stmtUpsertDeliverable` (model.ts),
  * the resync's package rows (deliverables.ts), and the render queue's coalescing
- * (core/registryQueue.ts).
+ * (core/registry/registryQueue.ts).
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -17,7 +17,7 @@ import {
   readRenderQueue,
   stmtConsumeRender,
   stmtEnqueuePackageRender,
-} from "../src/core/registryQueue.js";
+} from "../src/core/registry/registryQueue.js";
 import type { ManifestPackageDeliverable } from "@polaris-key/manifest";
 
 let db: Db;

@@ -25,14 +25,14 @@ import {
   seedProductSecret,
 } from "../seed.js";
 import type { Db } from "../../src/db/types.js";
-import { setServices } from "../../src/repo.js";
-import type { Env } from "../../src/env.js";
+import { setServices } from "../../src/core/repo.js";
+import type { Env } from "../../src/platform/env.js";
 import type { Product } from "../../src/core/products.js";
 import { loadProduct } from "../../src/core/products.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
-} from "../../src/fingerprint.js";
+} from "../../src/platform/fingerprint.js";
 import {
   DEFAULT_SERVICES,
   serializeServices,
@@ -52,7 +52,7 @@ import {
   type FetchImpl,
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
-import { seal } from "../../src/keyvault.js";
+import { seal } from "../../src/platform/keyvault.js";
 import { escapeHtmlKeepApostrophe } from "../../src/platform/html.js";
 import { linkRepo, parseRepoUrl } from "../../src/services/release/linkRepo.js";
 import { resyncRepo } from "../../src/services/release/resync.js";
@@ -66,7 +66,7 @@ import {
   proseToHtml,
   renderAppcast,
 } from "../../src/services/update/appcast.js";
-import { applyOverrides } from "../../src/admin/lib/overrides.js";
+import { applyOverrides } from "../../src/core/console/overrides.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
   handlePortalApi,
@@ -1760,7 +1760,8 @@ describe("R9-12 escapeHtml coverage", () => {
     // `secureResponse`, which supplies a CSP to any HTML response that lacks one. That
     // apostrophe is why `style-src 'unsafe-inline'` is the only inline allowance in the
     // static policy — scripts stay fully blocked by `default-src 'none'`.
-    const { secureResponse } = await import("../../src/securityHeaders.js");
+    const { secureResponse } =
+      await import("../../src/platform/securityHeaders.js");
     const served = secureResponse(
       new Response(html, {
         status: 200,

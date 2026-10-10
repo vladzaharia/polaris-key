@@ -4,20 +4,20 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import { hashKey, mintLicenseKey } from "../../../crypto.js";
+import { hashKey, mintLicenseKey } from "../../../platform/crypto.js";
 import {
   getKey,
   insertKey,
   listKeysByLicense,
   setKeyStatus,
-} from "../../../repo.js";
+} from "../../../core/repo.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../../admin/lib/respond.js";
-import { audit } from "../../../admin/audit.js";
+} from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
 import type { LicenseAdminContext } from "./index.js";
 
 export async function handleKeys(

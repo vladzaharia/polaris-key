@@ -47,7 +47,7 @@
 
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import {
   portalIdentityIssuerKey,
   recordLinkGroups,

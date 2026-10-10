@@ -22,16 +22,16 @@ import {
   seedLicenseWithKey,
   seedProduct,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct, loadProductPublic } from "../src/core/products.js";
 import { serializeServices } from "../src/core/services.js";
-import { getDevice, setServices } from "../src/repo.js";
+import { getDevice, setServices } from "../src/core/repo.js";
 import {
   resolveSyncPrincipal,
   subjectFor,
-} from "../src/core/accountSubjects.js";
+} from "../src/core/accounts/accountSubjects.js";
 import { applyStoreGrant } from "../src/services/license/storeGrants.js";
 import {
   getOrCreateAccountByEmail,

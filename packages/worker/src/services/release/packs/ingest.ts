@@ -79,7 +79,7 @@ import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import { b64urlDecodeUtf8 } from "../../../platform/bytes.js";
 import { parseJsonObject } from "../../../platform/json.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
-import { blobKey } from "../../../core/blobs.js";
+import { blobKey } from "../../../core/assets/blobs.js";
 import type { RecordRefusalReason } from "../records.js";
 
 /** At most this many `[storageKey, bytes]` pairs per `json_each` object check (≈ 750 KB). */

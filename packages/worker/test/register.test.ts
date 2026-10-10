@@ -17,7 +17,7 @@
 
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
-import { pairDemand } from "../src/core/deltaDemand.js";
+import { pairDemand } from "../src/core/assets/deltaDemand.js";
 import { KvMock } from "./kvMock.js";
 import {
   makeEnv,
@@ -48,8 +48,8 @@ import {
   validateServices,
   type ServicesMap,
 } from "../src/core/services.js";
-import { getDevice, getLicense, setServices } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+import { getDevice, getLicense, setServices } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 /** A well-formed device id: 32 base64url chars, the shape every SDK derives (§6). */

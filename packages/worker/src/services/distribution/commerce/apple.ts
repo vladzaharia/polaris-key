@@ -31,7 +31,7 @@
 import { b64urlDecodeStrict } from "../../../platform/bytes.js";
 import { parseJsonObject } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
@@ -44,7 +44,11 @@ import {
   platformPin,
   resolvePlatformCredential,
 } from "../../../core/platformCredentials.js";
-import { X509Error, base64ToBytes, verifyChain } from "../../../core/x509.js";
+import {
+  X509Error,
+  base64ToBytes,
+  verifyChain,
+} from "../../../core/trust/x509.js";
 import { APPLE_ROOT_CA_G3_DER } from "./appleRoot.js";
 import type { AppStoreSettings } from "./settings.js";
 import { normaliseBinding, type VerifiedPurchase } from "./state.js";

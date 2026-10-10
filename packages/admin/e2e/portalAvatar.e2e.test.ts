@@ -3,13 +3,13 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
+import { appSecurityHeaders } from "../../worker/src/platform/securityHeaders.js";
 import {
   AVATAR_CSP,
   renditionKey,
   serveAvatar,
 } from "../../worker/src/services/identity/card/avatars.js";
-import type { Env } from "../../worker/src/env.js";
+import type { Env } from "../../worker/src/platform/env.js";
 
 /**
  * PX-W16 (docs/design/PORTAL.md §4.30 rule 3, G33): account pictures are copied, re-encoded and

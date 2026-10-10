@@ -40,7 +40,7 @@ export const KEY_ENTRY_LIMIT_MIN = IDENTITY_KEY_ENTRY_LIMIT.min;
 export const KEY_ENTRY_LIMIT_MAX = IDENTITY_KEY_ENTRY_LIMIT.max;
 export const KEY_ENTRY_LIMIT_DEFAULT = IDENTITY_KEY_ENTRY_LIMIT.default;
 
-/** The console's offline-window bound (`admin/lib/writeChecks.ts` `MAX_OFFLINE_DAYS`; a test pins them). */
+/** The console's offline-window bound (`core/console/writeChecks.ts` `MAX_OFFLINE_DAYS`; a test pins them). */
 export const OFFLINE_DAYS_MAX = 365;
 /** The column defaults of `products.default_max_offline_days` / `default_device_limit` (0001). */
 export const DEFAULT_MAX_OFFLINE_DAYS = 30;
@@ -51,7 +51,7 @@ export const DEVICE_LIMIT_MAX = 1_000_000;
 /**
  * HA-10 (notes/S-20 owner decision 9): the hosting quotas' defaults and bounds. The defaults are
  * S-20's (512 MiB of images, 100 GiB of mirrored release files); the maxima only keep the value a
- * bounded integer (1 TiB, 10 TiB). Per-file caps are code constants (`core/hostedAssets.ts`
+ * bounded integer (1 TiB, 10 TiB). Per-file caps are code constants (`core/assets/hostedAssets.ts`
  * `SLOT_CLASSES`), never settings: they are security bounds (S-18 §5.6).
  */
 export const ASSET_MEDIA_QUOTA_DEFAULT = 512 * 1024 * 1024;
@@ -92,7 +92,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { on: "L1", off: "L0" },
     readers: [
-      "core/deltaDemand.ts",
+      "core/assets/deltaDemand.ts",
       "services/release/packs/deltas/consumer.ts",
       "services/release/packs/deltas/sweep.ts",
     ],
@@ -145,7 +145,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "ceiling",
     ownership: "operator",
     confirm: { on: "L1", off: "L0" },
-    readers: ["core/blobGc.ts"],
+    readers: ["core/assets/blobGc.ts"],
     storage: { kind: "scalar", storedAs: "BLOB_GC_MODE" },
     since: "A-13",
   }),
@@ -166,7 +166,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "runtime",
     ownership: "operator",
     confirm: { up: "L0", down: "L1" },
-    readers: ["core/blobGc.ts"],
+    readers: ["core/assets/blobGc.ts"],
     storage: { kind: "scalar", storedAs: "BLOB_GC_GRACE_DAYS" },
     since: "A-13",
   }),
@@ -197,7 +197,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "runtime",
     ownership: "operator",
     confirm: { up: "L1", down: "L0" },
-    readers: ["core/reservedNames.ts"],
+    readers: ["core/licensing/reservedNames.ts"],
     storage: { kind: "scalar", storedAs: "LICENSING_RESERVED_NAMES" },
     since: "LX-05",
   }),
@@ -228,7 +228,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     precedence: "runtime",
     ownership: "operator",
     confirm: { up: "L1", down: "L0" },
-    readers: ["core/reservedDisplayNames.ts"],
+    readers: ["core/accounts/reservedDisplayNames.ts"],
     storage: { kind: "scalar", storedAs: "IDENTITY_RESERVED_DISPLAY_NAMES" },
     since: "PX-W13",
   }),
@@ -313,7 +313,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { on: "L1", off: "L1" },
     wire: ["refusal"],
-    readers: ["core/keyEntries.ts"],
+    readers: ["core/licensing/keyEntries.ts"],
     storage: { kind: "scalar", storedAs: "KEYENTRY_REFUSALS" },
   }),
   setting({
@@ -398,8 +398,8 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     confirm: { on: "L1", off: "L1" },
     readers: [
-      "core/assetHosting.ts",
-      "core/hostedImages.ts",
+      "core/assets/assetHosting.ts",
+      "core/assets/hostedImages.ts",
       "services/release/mirrorSwitch.ts",
     ],
     storage: { kind: "scalar", storedAs: "ASSET_HOSTING" },
@@ -430,7 +430,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     productLink: { default: true, bound: false },
     ownership: "operator",
     confirm: { up: "L1", down: "L1" },
-    readers: ["core/assetSettings.ts", "core/assetQuota.ts"],
+    readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
   }),
@@ -455,7 +455,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     productLink: { default: true, bound: false },
     ownership: "operator",
     confirm: { up: "L1", down: "L1" },
-    readers: ["core/assetSettings.ts", "core/assetQuota.ts"],
+    readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
   }),

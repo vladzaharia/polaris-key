@@ -41,7 +41,7 @@
  * The identity carve (P3) is the one that exercised the rule hardest, because identity genuinely
  * needs licence-shaped answers: its OIDC sign-in mints and claims licences, its browser session
  * authorizes a device and enforces the build gate. None of that became an
- * `identity -> license` import. It became `core/authz.ts` and `core/gate.ts`, with License
+ * `identity -> license` import. It became `core/licensing/authz.ts` and `core/licensing/gate.ts`, with License
  * re-exporting them — the same move `injectAdminPolicy` and the semver algebra made in P2. That
  * is what "everything else crosses via core-mediated interfaces" means in practice, and this
  * suite is what stops the cheaper answer from being taken next time.
@@ -214,7 +214,7 @@ describe("service boundaries", () => {
   it("refuses identity -> license, the edge the carve was most likely to introduce", () => {
     // Identity mints licences, claims enrolled ones and runs the build gate, so `../license/…`
     // is the import a hurried carve leaves behind. It is not a sanctioned edge: those answers
-    // come from `core/authz.ts` and `core/gate.ts`, which License re-exports.
+    // come from `core/licensing/authz.ts` and `core/licensing/gate.ts`, which License re-exports.
     for (const specifier of [
       "../license/authz.js",
       "../license/gate.js",

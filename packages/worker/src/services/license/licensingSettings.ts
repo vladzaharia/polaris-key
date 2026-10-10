@@ -17,7 +17,7 @@
  * `identity.oidc.syncTierOnSignIn`. ST-04's resolver and `writeSetting()` take both over.
  *
  * The behaviour behind each setting is NOT here. LX-07's grace clamp reads
- * `licensing.clampGraceToExpiry` through ST-04's resolver (`core/graceClamp.ts`, which the bundle
+ * `licensing.clampGraceToExpiry` through ST-04's resolver (`core/licensing/graceClamp.ts`, which the bundle
  * mint and every licence-bearing document share); LX-09 (the model and the holder), LX-10 (anchor
  * and re-anchor), LX-12 (refund grace) and LX-23 (billing-retry grace) read theirs through the
  * resolver or `readLicensingSettings` below.
@@ -137,7 +137,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     visibleWhen: VISIBLE,
     wire: ["document"],
     // LX-07: the clamp itself (licence, config, bundle and browser-session documents).
-    readers: [...READERS, "core/graceClamp.ts"],
+    readers: [...READERS, "core/licensing/graceClamp.ts"],
     storage: { kind: "scalar" },
     since: "LX-06",
   }),

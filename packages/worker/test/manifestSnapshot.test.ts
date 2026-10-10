@@ -28,13 +28,13 @@ import { MAX_REPO_FILE_BYTES } from "../src/services/release/github.js";
 import {
   ensureSystemProduct,
   linkSystemProduct,
-} from "../src/admin/systemProduct.js";
+} from "../src/console/systemProduct.js";
 import {
   getManifestSnapshot,
   manifestFilesSha256,
   manifestSnapshotStatement,
 } from "../src/core/manifestSnapshot.js";
-import { getProduct } from "../src/repo.js";
+import { getProduct } from "../src/core/repo.js";
 
 const SLUG = "snap";
 const SNAPSHOT_INSERT = /INSERT INTO product_manifest_snapshot/;

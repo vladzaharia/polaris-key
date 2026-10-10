@@ -16,21 +16,21 @@ import {
   seedTier,
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   getFingerprint,
   getProduct,
   setFingerprintPolicy,
-} from "../src/repo.js";
-import { parseFingerprintPolicy } from "../src/fingerprint.js";
+} from "../src/core/repo.js";
+import { parseFingerprintPolicy } from "../src/platform/fingerprint.js";
 import { SETTINGS } from "../src/mount.js";
 import { writeSetting } from "../src/core/settings/write.js";
 

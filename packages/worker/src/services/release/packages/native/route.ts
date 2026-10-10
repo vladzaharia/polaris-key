@@ -5,7 +5,7 @@
  *   1. the feed: the owner's feed of the ecosystem must answer (Distribution, `packageFeeds`, the
  *      feed and the platform's kill switch all on, read through the `delivery` hook); otherwise
  *      the host's not-found, the same as a read of a feed that is off or absent;
- *   2. the credential (`core/registryPublish.ts`), before any body is read: the client's native
+ *   2. the credential (`core/registry/registryPublish.ts`), before any body is read: the client's native
  *      401 challenge, a 403, or a 429;
  *   3. the `registryPublish` budget per publishing token (fail closed: each request writes to the
  *      blob store);
@@ -27,12 +27,12 @@ import {
   type RegistryRouteContext,
   type RegistryRouteMatch,
   type RegistryWriteMethod,
-} from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
 import type { PackageFeedSettings } from "../../../../core/hooks.js";
 import {
   authorizeRegistryPublish,
   type PublishPrincipal,
-} from "../../../../core/registryPublish.js";
+} from "../../../../core/registry/registryPublish.js";
 import { answeringFeed, type NativeRefusal } from "./publish.js";
 
 /** `registryPublish` (per publishing token): a Maven deploy is ~25 PUTs per artifact. */

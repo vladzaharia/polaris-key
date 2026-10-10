@@ -16,32 +16,32 @@ import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { insertLicense, setServices } from "../src/repo.js";
+import { insertLicense, setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import {
   attachLicenseAccount,
   subjectFor,
-} from "../src/core/accountSubjects.js";
+} from "../src/core/accounts/accountSubjects.js";
 import {
   registerSubjectStore,
   unregisterSubjectStore,
-} from "../src/core/subjectHooks.js";
-import { handleAdmin } from "../src/admin/index.js";
+} from "../src/core/accounts/subjectHooks.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   isSteppedUp,
   issueSession,
   verifySession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   handleAdminCallback,
   handleAdminLogin,
   sanitizeReturnTo,
   type IdTokenVerifier,
-} from "../src/admin/auth.js";
+} from "../src/console/auth.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import { deleteAccount } from "../src/services/identity/accounts/deletion.js";

@@ -16,7 +16,7 @@
  *      caller's (`binding_mismatch`): a transaction bound to one licence can never grant another.
  *   3. **First licence wins.** A purchase already recorded for a licence stays that licence's;
  *      any other licence is refused (`bound_elsewhere`) — whatever binding a replay carries. The
- *      one exception is a licence merge (LX-03, `core/licenseMerge.ts`): the retired licence's
+ *      one exception is a licence merge (LX-03, `core/licensing/licenseMerge.ts`): the retired licence's
  *      purchases move to the survivor and its binding becomes an alias of the survivor
  *      (`commerceMergeStatements`), so "that licence" is then the survivor.
  *   4. **State.** `active` grants the mapped flag through Core's `applyStoreGrant` (License);
@@ -32,14 +32,17 @@ import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { isDeliverableId } from "@polaris-key/manifest";
 import { sha256Hex } from "../../../platform/hash.js";
 import type { Db, DbStatement } from "../../../db/types.js";
-import type { LicenseMergeChange } from "../../../core/licenseMerge.js";
+import type { LicenseMergeChange } from "../../../core/licensing/licenseMerge.js";
 import {
   idChunks,
   LicenseDeleteReason,
   type LicenseDeleteBlocker,
   type LicenseDeleteContributor,
-} from "../../../core/licenseDelete.js";
-import type { Store, StoreGrantWriter } from "../../../core/storeGrants.js";
+} from "../../../core/licensing/licenseDelete.js";
+import type {
+  Store,
+  StoreGrantWriter,
+} from "../../../core/licensing/storeGrants.js";
 
 // ── hashing ──────────────────────────────────────────────────────────────────────────────────
 
@@ -191,7 +194,7 @@ export function storeProductEntitlementStatements(
 
 /**
  * Name the grant a purchase made on its `dist_purchases` row (`grant_id`), for one purchase or
- * every purchase of the product: the grant License's write projected (`core/grants.ts`
+ * every purchase of the product: the grant License's write projected (`core/licensing/grants.ts`
  * `storeGrantId`), once it exists. A purchase that granted nothing (pending, rejected) keeps NULL.
  * Idempotent.
  */
@@ -219,7 +222,7 @@ export function purchaseGrantIdStatements(
 
 /**
  * Distribution's share of the licensing catch-up (`ServiceDescriptor.licensingReconcile`,
- * `core/licensingCatchUp.ts`): re-project every purchase's `grant_id` and every mapping's
+ * `core/licensing/licensingCatchUp.ts`): re-project every purchase's `grant_id` and every mapping's
  * entitlement rows, so rows a pre-LX-08 Worker wrote between the migration and the deploy catch
  * up. Run whatever Distribution's enablement, like the licence merge.
  */
@@ -300,7 +303,7 @@ export async function licenseOfBinding(
 }
 
 /**
- * LX-03: Distribution's share of a licence merge (`core/licenseMerge.ts`), in order:
+ * LX-03: Distribution's share of a licence merge (`core/licensing/licenseMerge.ts`), in order:
  *
  *   1. aliases that already name the retired licence (it absorbed an earlier merge) re-point at
  *      the survivor, so a chain of merges resolves in one read;
@@ -340,7 +343,7 @@ export function commerceMergeStatements(
 }
 
 /**
- * Distribution's share of a licence deletion (`core/licenseDelete.ts`):
+ * Distribution's share of a licence deletion (`core/licensing/licenseDelete.ts`):
  *
  *   - blockers: any purchase recorded for the licence, whatever its state (active, pending,
  *     revoked or rejected) — a store transaction names it, so it is commerce history and the

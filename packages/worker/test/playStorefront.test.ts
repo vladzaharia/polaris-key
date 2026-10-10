@@ -46,7 +46,7 @@ import {
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProductPublic } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
-import type { AdminSession } from "../src/admin/session.js";
+import type { AdminSession } from "../src/core/console/session.js";
 import {
   playWorld,
   NOW,

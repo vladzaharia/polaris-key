@@ -4,7 +4,7 @@
  * into `platformInventory.generated.ts` by `pnpm gen platform-inventory`; this module holds its
  * types (it imports nothing, so the generator can run before the generated file exists).
  *
- * Readers: `GET /manage/api/platform/settings` (`admin/handlers/platformSettings.ts`) builds its
+ * Readers: `GET /manage/api/platform/settings` (`console/handlers/platformSettings.ts`) builds its
  * deploy-time values and its secrets-presence list from here, so a name added to `Env` reaches
  * the console without a second hand-kept list. The settings registry (ST-03) and its generated
  * reference page and coverage test (ST-06) read it too.

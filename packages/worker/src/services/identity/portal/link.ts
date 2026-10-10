@@ -32,17 +32,17 @@
  * the flow's cookie.
  */
 
-import { hashKey } from "../../../crypto.js";
+import { hashKey } from "../../../platform/crypto.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import {
   LINK_FLOW_COOKIE,
   accountRealmCookie,
   clearAccountRealmCookie,
   readCookie,
-} from "../../../core/accountCookies.js";
+} from "../../../core/accounts/accountCookies.js";
 import {
   artefactRef,
   consumeArtefact,

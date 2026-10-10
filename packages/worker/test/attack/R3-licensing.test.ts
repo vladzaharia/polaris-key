@@ -42,20 +42,20 @@ import {
   checkBuildGate,
   tighterMax,
   tighterMin,
-} from "../../src/core/gate.js";
-import { resolveEffective } from "../../src/core/authz.js";
+} from "../../src/core/licensing/gate.js";
+import { resolveEffective } from "../../src/core/licensing/authz.js";
 import {
   isSealedEnvelope,
   sealManagedValue,
-} from "../../src/admin/lib/managedSecrets.js";
+} from "../../src/core/managedSecrets.js";
 import {
   countActiveDevices,
   findFingerprintByHwid,
   getFingerprint,
   getLicense,
   listDevicesByLicense,
-} from "../../src/repo.js";
-import type { Env } from "../../src/env.js";
+} from "../../src/core/repo.js";
+import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
@@ -423,7 +423,7 @@ describe("R3-01 build gate is attacker-controlled", () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // R12-02 read half — `resolveEffective` must OPEN the envelopes that
-// admin/lib/overrides.ts now seals, or a managed secret silently stops being
+// core/console/overrides.ts now seals, or a managed secret silently stops being
 // delivered. Not an R3 attack: a cross-lane regression guard.
 // ─────────────────────────────────────────────────────────────────────────────
 describe("R12-02 sealed managed secrets survive the read path", () => {
@@ -866,7 +866,7 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
       await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
     );
 
-    // core/payload.ts validatePayload — config is pruned against the catalog, entitlements are
+    // core/licensing/payload.ts validatePayload — config is pruned against the catalog, entitlements are
     // not.
     expect(cfg.config).not.toHaveProperty("not.in.catalog");
     expect(cfg.config["quality.floor"]).toBeTruthy();
@@ -892,7 +892,7 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
       }),
     );
 
-    // The license document merges the device layer (core/payload.ts) and reports a limit of 1...
+    // The license document merges the device layer (core/licensing/payload.ts) and reports a limit of 1...
     const doc = await docOf(
       await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
     );

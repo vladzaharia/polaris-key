@@ -34,7 +34,7 @@
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { CatalogRelease, ServiceHooks } from "../../../../core/hooks.js";
 import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import { recordOutletCredentialResult } from "../../../../core/outletCredentials.js";
 import {
   parsePlatformCredentialHandle,

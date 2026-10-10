@@ -32,7 +32,7 @@ import type {
 import {
   isRegistryEcosystem,
   type RegistryEcosystem,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 import { registryCacheHeaders } from "./cache.js";
 import {
   RENDER_STAMP_META,

@@ -353,7 +353,7 @@ npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
 
 ### Blob store (R2) and the bytes host
 
-The Core blob store (`packages/worker/src/core/blobs.ts`) keeps content-addressed release
+The Core blob store (`packages/worker/src/core/assets/blobs.ts`) keeps content-addressed release
 bytes in one R2 bucket per environment, bound as `BLOBS`, and serves them through the Worker
 on a second custom domain, the **bytes host**. Both are already declared in `wrangler.toml`:
 
@@ -494,7 +494,7 @@ and the file should download; the same URL without `?ticket=` answers `401`.
 ### Registry host and feeds (F-02)
 
 The package feeds (plans/F-01.md §6) answer on a THIRD custom domain of the same Worker, the
-**registry host**, confined by `packages/worker/src/core/registryHost.ts` to the package-feed
+**registry host**, confined by `packages/worker/src/core/registry/registryHost.ts` to the package-feed
 routes, a static landing page at `/` and OCI's `/v2/` root. It keeps every bytes-host
 compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
 `Cross-Origin-Resource-Policy: same-origin`, answers no CORS and only `GET`/`HEAD`. Declared in
@@ -555,7 +555,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X OPTIONS https://pkg.plrs.im/npm/x/y
 ### Image host (HA-02)
 
 A product's public hosted images (notes/S-20 §6.5) answer on a FOURTH custom domain of the same
-Worker, the **image host**, confined by `packages/worker/src/core/imgHost.ts` to five path shapes:
+Worker, the **image host**, confined by `packages/worker/src/core/assets/imgHost.ts` to five path shapes:
 `/<product>/a/<sha256>` and `/<product>/a/<sha256>/<w>.webp` (content-addressed, immutable) and
 the stable aliases `/<product>/icon`, `/<product>/header` and `/<product>/screenshots/<n>` (a 302
 to the current copy, cached for five minutes). It serves raster images only (PNG, JPEG, WebP, GIF,

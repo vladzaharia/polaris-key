@@ -2,7 +2,7 @@
  * The error taxonomy and the JSON response helpers every surface answers with (design spec
  * §5.1: "error taxonomy" is a core capability).
  *
- * Extracted verbatim from `src/http.ts`, which keeps the REQUEST-side helpers (`bearer`,
+ * Extracted verbatim from `src/platform/http.ts`, which keeps the REQUEST-side helpers (`bearer`,
  * `isSafeAssetPath`, `isSameOriginNavigation`). The split is the one the layout draws: a
  * service may import `core/`, so the codes and the response shapes have to live here for
  * `services/<slug>/` to be able to answer at all, while request parsing is not a core concern.

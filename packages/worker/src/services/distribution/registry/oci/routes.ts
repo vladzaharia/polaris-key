@@ -25,7 +25,7 @@
  * registry/2.0`, and a manifest or blob `Docker-Content-Digest`.
  *
  * Blobs skip the Cache API (`cacheApi: false`): they are up to 5 GiB, must honour `Range`, and
- * `core/blobs.ts` `blobResponse` already answers them with immutable headers, `Range`,
+ * `core/assets/blobs.ts` `blobResponse` already answers them with immutable headers, `Range`,
  * `If-Range` and `If-None-Match` straight from R2.
  */
 
@@ -33,14 +33,14 @@ import { sha256Hex } from "../../../../platform/hash.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,
-} from "../../../../core/registryHost.js";
-import { registryOrigin } from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
+import { registryOrigin } from "../../../../core/registry/registryHost.js";
 import {
   blobKey,
   blobResponse,
   checksumHex,
   heldByPush,
-} from "../../../../core/blobs.js";
+} from "../../../../core/assets/blobs.js";
 import { json } from "../../../../core/errors.js";
 import { registryCacheHeaders } from "../cache.js";
 import {

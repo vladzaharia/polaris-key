@@ -6,23 +6,23 @@
  * Owner decision 6: mirroring is ON by default for every product, existing ones included. HA-10
  * registered the two settings that turn it off, and this function reads them:
  *
- *   - `assets.hosting.enabled` (the platform kill switch, `core/assetHosting.ts`): off returns
+ *   - `assets.hosting.enabled` (the platform kill switch, `core/assets/assetHosting.ts`): off returns
  *     every consumer to today's behaviour: nothing is queued or copied, and the legacy alias
  *     streams from GitHub;
- *   - `assets.releases.mirror` (product, operator-owned, default on, `core/assetSettings.ts`):
+ *   - `assets.releases.mirror` (product, operator-owned, default on, `core/assets/assetSettings.ts`):
  *     off copies no new file for that product, so GitHub serves the files without a copy, and the
  *     legacy alias streams from GitHub.
  *
  * And only for a product that exists and runs Release (a product with Release off has no truth
  * store to serve from). Copies already made stay valid either way: their `r2` locations are
  * hash-pinned. The release-file quota (`assets.quota.releaseBytes`) is not a switch: it stops new
- * copies (`mirror.ts`, `core/hostedAssets.ts`), never the serving of the ones already made.
+ * copies (`mirror.ts`, `core/assets/hostedAssets.ts`), never the serving of the ones already made.
  */
 
 import type { Db } from "../../db/types.js";
 import { parseServices } from "../../core/services.js";
-import { assetHostingEnabled } from "../../core/assetHosting.js";
-import { productAssetSettings } from "../../core/assetSettings.js";
+import { assetHostingEnabled } from "../../core/assets/assetHosting.js";
+import { productAssetSettings } from "../../core/assets/assetSettings.js";
 import type { SettingsEnv } from "../../core/platformSettings.js";
 import type { ProductFacts } from "../../core/settings/resolve.js";
 

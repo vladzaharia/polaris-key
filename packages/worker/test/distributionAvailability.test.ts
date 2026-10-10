@@ -25,13 +25,13 @@ vi.mock("../src/core/publisher.js", async (importOriginal) => ({
 
 import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { buildHooks, type Delivery } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
 import { loadProduct } from "../src/core/products.js";

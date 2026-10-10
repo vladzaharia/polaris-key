@@ -16,7 +16,7 @@ import {
   seedTier,
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleEnroll } from "../src/services/license/enroll.js";
 import {
@@ -29,7 +29,7 @@ import {
   getDevice,
   listAudit,
   setDeviceStatus,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 
 function hash(seed: string): string {
   return seed

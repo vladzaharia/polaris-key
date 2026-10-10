@@ -23,7 +23,7 @@
 import { createHash } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { describe, expect, it } from "vitest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   ed25519SignaturePrecheck,
   streamingEd25519Check,

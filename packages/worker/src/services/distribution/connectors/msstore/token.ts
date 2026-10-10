@@ -37,7 +37,7 @@
  */
 
 import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   openOutletCredential,
   outletCredentialVersion,

@@ -13,12 +13,12 @@ import {
   BRAND_PAGE_CSS,
   brandPageStyleSource,
   renderBrandPage,
-} from "../src/core/brandHtml.js";
+} from "../src/platform/brandHtml.js";
 import {
   brandedHtmlSecurityHeaders,
   secureResponse,
-} from "../src/securityHeaders.js";
-import { handleAdminCallback } from "../src/admin/auth.js";
+} from "../src/platform/securityHeaders.js";
+import { handleAdminCallback } from "../src/console/auth.js";
 import {
   handleMagicVerify,
   signInRefusal,
@@ -35,12 +35,12 @@ import {
   sendNotice,
 } from "../src/services/identity/portal/email.js";
 import { licenseAddedNotice } from "../src/services/identity/portal/notices.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { artefacts } from "./singleUseMock.js";
 
 /**
  * The Worker's branded pages and email (docs/design/BRAND.md): every server-rendered page on the
- * console host is the one shell (`core/brandHtml.ts`) under a policy that allows exactly its
+ * console host is the one shell (`platform/brandHtml.ts`) under a policy that allows exactly its
  * stylesheet (by hash) and the brand font, with no inline style or script anywhere.
  */
 

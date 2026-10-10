@@ -23,7 +23,7 @@ import {
 import { approveEdgeMintRecipe, seedProductSecret } from "../../seed.js";
 import { ed25519Pem } from "../idp.js";
 import { retireDeviceBinding } from "../../../src/core/devices.js";
-import { hashKey } from "../../../src/crypto.js";
+import { hashKey } from "../../../src/platform/crypto.js";
 
 const RECIPE = "transcript-token";
 const TTL = 600;

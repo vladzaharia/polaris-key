@@ -105,7 +105,7 @@ A licence's own overrides keep their **entitlements** on every product, floating
 included. Config and secrets for a customer are **account overrides** (U-03), set on the user's
 record; see [Management states](/docs/services/config/management-states/#account-overrides).
 
-The merge is Core's (`core/payload.ts`) because both signed documents are assembled from it.
+The merge is Core's (`core/licensing/payload.ts`) because both signed documents are assembled from it.
 License then takes the `entitlements` slice and stamps admin/tier policy on top as **enforced**
 entries:
 

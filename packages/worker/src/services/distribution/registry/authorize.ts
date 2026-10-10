@@ -17,7 +17,7 @@
  *   4. `public` admits anyone, `cache: "public"`. A credential on a public read is never looked
  *      up, so the public hot path reads no token;
  *   5. every other mode resolves the credential, now and only now (lazily, through Core's
- *      30-second cache, `core/registryTokens.ts`), and judges the principal:
+ *      30-second cache, `core/registry/registryTokens.ts`), and judges the principal:
  *        - anonymous (no credential, or one that resolves to nothing: malformed, unknown,
  *          expired, revoked, another owner's, outside its ecosystems, a URL token in a header
  *          or the reverse) → the client's native challenge, 401;
@@ -38,16 +38,16 @@
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { json } from "../../../core/errors.js";
 import type { ServicesMap } from "../../../core/services.js";
 import {
   registryHostname,
   registryNotFound,
   type RegistryEcosystem,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 import { licenseUsable } from "../../../core/devices.js";
-import { licenseHoldsFlags } from "../../../core/entitledAccess.js";
+import { licenseHoldsFlags } from "../../../core/licensing/entitledAccess.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import {
   ANONYMOUS,
@@ -60,12 +60,12 @@ import {
   verifyPullToken,
   type FeedPrincipal,
   type ResolvedRegistryToken,
-} from "../../../core/registryTokens.js";
+} from "../../../core/registry/registryTokens.js";
 import { stricter } from "../access.js";
 import {
   extractFeedCredential,
   type FeedCredential,
-} from "../../../core/registryCredential.js";
+} from "../../../core/registry/registryCredential.js";
 import {
   cachedAccessMode,
   cachedEntitlement,
@@ -75,9 +75,9 @@ import {
   type RegistrySettingsSource,
 } from "./settings.js";
 
-export type { FeedPrincipal } from "../../../core/registryTokens.js";
+export type { FeedPrincipal } from "../../../core/registry/registryTokens.js";
 
-// The extractor and the credential type live in Core since F-22 (`core/registryCredential.ts`),
+// The extractor and the credential type live in Core since F-22 (`core/registry/registryCredential.ts`),
 // because Release's native publish routes read them too; re-exported unchanged.
 export { extractFeedCredential, type FeedCredential };
 

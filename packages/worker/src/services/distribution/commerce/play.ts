@@ -34,7 +34,7 @@ import {
 } from "jose";
 import { parseJsonObject } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,

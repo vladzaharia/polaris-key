@@ -25,8 +25,8 @@ import {
   isReservedProductSlug,
   type ManifestDocumentName,
 } from "@polaris-key/manifest";
-import { generateEd25519, seal } from "../../keyvault.js";
-import { secret, type Env } from "../../env.js";
+import { generateEd25519, seal } from "../../platform/keyvault.js";
+import { secret, type Env } from "../../platform/env.js";
 import { sha256Hex } from "../../platform/hash.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import {
@@ -42,7 +42,7 @@ import {
   stmtInsertReleaseConfig,
   stmtInsertSchema,
   stmtInsertTier,
-} from "../../repo.js";
+} from "../../core/repo.js";
 import { parseManifest, type ParsedManifest } from "@polaris-key/manifest";
 import {
   discoverInstallation,
@@ -61,11 +61,11 @@ import { serializeWebOrigins } from "../../core/cors.js";
 import { serializePresentation } from "../../core/products.js";
 import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
-import { syncHostedAssets } from "../../core/hostedAssetPulls.js";
+import { syncHostedAssets } from "../../core/assets/hostedAssetPulls.js";
 import { repoBlobLookup } from "./assetSource.js";
-import { reservedNamesMode } from "../../core/reservedNames.js";
+import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import type { LinkCheck } from "./linkExisting.js";
-import { reservedDisplayNamesMode } from "../../core/reservedDisplayNames.js";
+import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
 
 export type LinkRepoResult =
   | {
@@ -371,8 +371,8 @@ function createPolicyProblems(
         message: refusal,
       });
   }
-  // The admin API screens every catalog it accepts (`admin/handlers/schema.ts`,
-  // `admin/handlers/products.ts` both `compileAll()` before writing). The repo-sync path did
+  // The admin API screens every catalog it accepts (`console/handlers/schema.ts`,
+  // `console/handlers/products.ts` both `compileAll()` before writing). The repo-sync path did
   // not, so a manifest from GitHub could install a catalog the admin API would have rejected
   // — unsupported keywords, or a `pattern` the validator cannot compile. Screen it here too,
   // so there is no route into `product_schema` that skips the check.

@@ -49,7 +49,7 @@
  * - Possession (THREAT-MODEL §3): the `release-artifact` ref is earned only in the batch that
  *   finds this product holding the key, which `ingest` has just proven by reading and hashing
  *   every byte. Whether another product stored the same bytes is never consulted.
- * - Blob GC: neither ref kind is ever dropped by the collector (`core/blobGc.ts`), and nothing
+ * - Blob GC: neither ref kind is ever dropped by the collector (`core/assets/blobGc.ts`), and nothing
  *   else drops them yet, so a copy is held until reclaiming lands (HA-15: the refs of a deleted
  *   release, or of a product that turned mirroring off). Holding too long costs storage; it can
  *   never serve bytes that are not the file's, since every location is hash-pinned.
@@ -58,7 +58,7 @@
  * - `releaseMirrorEnabled` (`mirrorSwitch.ts`) is asked first everywhere: HA-10's
  *   `assets.releases.mirror`, on by default, under the platform kill switch
  *   `assets.hosting.enabled`.
- * - The release-file quota (HA-10, `assets.quota.releaseBytes`, `core/assetQuota.ts`): a product
+ * - The release-file quota (HA-10, `assets.quota.releaseBytes`, `core/assets/assetQuota.ts`): a product
  *   at its quota has nothing queued (`quotaFull`), "mirror now" answers `quota`, and a file that
  *   would take it past is refused `quota` before anything is downloaded (and, atomically, by
  *   `ingest`'s batch). The job row goes `failed` with back-off, and GitHub keeps serving.
@@ -66,27 +66,27 @@
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
-import type { Env } from "../../env.js";
-import { isAllowedStorageHost } from "../../http.js";
-import { randomId } from "../../crypto.js";
-import { blobKey } from "../../core/blobs.js";
+import type { Env } from "../../platform/env.js";
+import { isAllowedStorageHost } from "../../platform/http.js";
+import { randomId } from "../../platform/crypto.js";
+import { blobKey } from "../../core/assets/blobs.js";
 import {
   hostedAssetRefId,
   ingest,
   SLOT_CLASSES,
   type IngestInput,
-} from "../../core/hostedAssets.js";
+} from "../../core/assets/hostedAssets.js";
 import {
   PULL_BACKOFF_BASE_SECONDS,
   PULL_BACKOFF_CAP_SECONDS,
   pullBackoffSeconds,
-} from "../../core/hostedAssetPulls.js";
+} from "../../core/assets/hostedAssetPulls.js";
 import {
   quotaFull,
   quotaLimit,
   RELEASE_ARTIFACT_REF_KIND,
   withinQuota,
-} from "../../core/assetQuota.js";
+} from "../../core/assets/assetQuota.js";
 import { getReleaseConfig, isResolved, type ResolvedConfig } from "./config.js";
 import { installationToken } from "./gateway.js";
 import {
@@ -104,7 +104,7 @@ export { releaseMirrorEnabled } from "./mirrorSwitch.js";
 
 /** The `blob_refs.ref_kind` a mirrored file's `r2` location is held by (ref id
  *  `<release_id>/<artifact_id>`). Never dropped by the collector. Core's constant, since the
- *  release-file quota counts these refs (`core/assetQuota.ts`). */
+ *  release-file quota counts these refs (`core/assets/assetQuota.ts`). */
 export const RELEASE_ARTIFACT_REF = RELEASE_ARTIFACT_REF_KIND;
 
 /** How many files one sync, resync or publish queues at most. */

@@ -30,9 +30,9 @@ import {
   REQUEST_HANDLE_TTL_SECONDS,
   type ClientKind,
 } from "@polaris-key/protocol/identity";
-import { hashKey } from "../../../crypto.js";
+import { hashKey } from "../../../platform/crypto.js";
 import { randomToken } from "../../../platform/random.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import {
   artefactRef,
   getArtefact,

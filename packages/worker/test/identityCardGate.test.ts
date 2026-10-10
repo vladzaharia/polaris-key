@@ -15,7 +15,7 @@ import { CODE_VERIFY_PER_IP_MINUTE } from "../src/services/identity/card/emailSi
 import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import {
   EMAIL_ISSUER,
   insertAccount,

@@ -39,15 +39,19 @@
  * ── KEY ENTRIES (PX-W9) ────────────────────────────────────────────────────────────────────
  *
  * On an Identity product both previews answer `keyEntries {used, limit}` (else `null`), and a
- * claim whose attach commits records one `portal` entry (`core/keyEntries.ts`). A claim is never
+ * claim whose attach commits records one `portal` entry (`core/licensing/keyEntries.ts`). A claim is never
  * refused for the limit: adding the key to an account is the way past it.
  */
 
-import { hashKey, mintLicenseKey, productFromKey } from "../../../crypto.js";
+import {
+  hashKey,
+  mintLicenseKey,
+  productFromKey,
+} from "../../../platform/crypto.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import { parseJsonColumn } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import {
   getKey,
   getLicense,
@@ -57,14 +61,14 @@ import {
   setDeviceLabel,
   getDevice,
   type LicenseRow,
-} from "../../../repo.js";
-import { licenseDeviceLimit } from "../../../core/authz.js";
+} from "../../../core/repo.js";
+import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   keyEntryRefusalsOn,
   keyEntryState,
   recordPortalKeyEntry,
-} from "../../../core/keyEntries.js";
+} from "../../../core/licensing/keyEntries.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { loadProductPublic } from "../../../core/products.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";

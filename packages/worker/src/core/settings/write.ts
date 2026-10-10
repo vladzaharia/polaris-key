@@ -32,7 +32,7 @@
  */
 
 import type { Db, DbStatement } from "../../db/types.js";
-import { randomId } from "../../crypto.js";
+import { randomId } from "../../platform/crypto.js";
 import {
   invalidatePlatformSettings,
   type SettingsEnv,

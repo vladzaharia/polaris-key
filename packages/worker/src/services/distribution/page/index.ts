@@ -13,7 +13,7 @@
  * distribution` listings), so it must never be served on the console's origin, beside `/manage`
  * and its session cookie (notes/A3 §7.2): on the console host both page paths are the ordinary
  * not-found (`routes.ts` returns `null`). It is served on the cookie-free bytes host instead, as a
- * `document` byte route (`core/bytesHost.ts`), where the dispatcher admits exactly this kind of
+ * `document` byte route (`core/assets/bytesHost.ts`), where the dispatcher admits exactly this kind of
  * answer and nothing looser: `text/html` with a policy that keeps the host's guarantees —
  *
  *   - `sandbox` (no `allow-scripts`, no `allow-same-origin`): the document has an opaque origin
@@ -49,13 +49,16 @@
 
 import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
 import type { ServiceContext } from "../../../core/registry.js";
-import type { ByteRoute, ByteRouteContext } from "../../../core/bytesHost.js";
-import { bytesHostname } from "../../../core/bytesHost.js";
-import { normalizeHostname } from "../../../core/bytesHostname.js";
-import { cspImageOrigin } from "../../../securityHeaders.js";
+import type {
+  ByteRoute,
+  ByteRouteContext,
+} from "../../../core/assets/bytesHost.js";
+import { bytesHostname } from "../../../core/assets/bytesHost.js";
+import { normalizeHostname } from "../../../core/assets/bytesHostname.js";
+import { cspImageOrigin } from "../../../platform/securityHeaders.js";
 import { sha256Base64 } from "../../../platform/hash.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { errorResponse, notFound } from "../../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
@@ -73,7 +76,7 @@ import {
   hostedImageOrigin,
   hostedImageUrl,
   hostedImages,
-} from "../../../core/hostedImages.js";
+} from "../../../core/assets/hostedImages.js";
 import { buildDownloadModel, memoHooks, type DownloadModel } from "./model.js";
 import { PAGE_CSS, renderDownloadPage } from "./render.js";
 
@@ -295,7 +298,7 @@ const PAGE_PATH = /^\/([a-z0-9-]+)(?:\/distribution\/download)?\/?$/;
 
 /**
  * The page's entry in the bytes-host allowlist (`mount.ts` `BYTE_ROUTES`). A `document` route:
- * the dispatcher admits its HTML only under a policy it checks itself (`core/bytesHost.ts`).
+ * the dispatcher admits its HTML only under a policy it checks itself (`core/assets/bytesHost.ts`).
  */
 export const DOWNLOAD_PAGE_ROUTE: ByteRoute = {
   name: "distribution.page",

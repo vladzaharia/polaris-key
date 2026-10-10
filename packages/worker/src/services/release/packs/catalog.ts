@@ -45,8 +45,8 @@ import {
 } from "./sets.js";
 import { PackResolver } from "./resolve.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
-import { blobKey } from "../../../core/blobs.js";
+import type { Env } from "../../../platform/env.js";
+import { blobKey } from "../../../core/assets/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
 import { packObjects, storedRecordPayload, variantBuildId } from "./ingest.js";
 import { readAllRevocations } from "./revocations.js";
@@ -54,7 +54,7 @@ import {
   HOT_WINDOW_SECONDS,
   installedBase,
   lazyDeltasEnabled,
-} from "../../../core/deltaDemand.js";
+} from "../../../core/assets/deltaDemand.js";
 import { menuEntryOf, readyLazyDeltas } from "./deltas/menu.js";
 import { readyDeltasTo } from "./deltas/store.js";
 

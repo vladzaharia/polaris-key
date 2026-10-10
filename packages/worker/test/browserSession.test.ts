@@ -8,7 +8,7 @@ import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "../src/services/identity/browserSession.js";
-import { getDevice } from "../src/repo.js";
+import { getDevice } from "../src/core/repo.js";
 
 function req(
   method: string,

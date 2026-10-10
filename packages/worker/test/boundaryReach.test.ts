@@ -4,7 +4,7 @@
  * `boundaries.test.ts` checks one hop: a file under `src/services/<a>/` may import Core, itself
  * and packages, and `update → release` is the one sanctioned cross-service edge. It cannot see a
  * service reaching another THROUGH Core: `services/license/admin/deletion.ts → core/adminApi.ts →
- * admin/lib/shape.ts → services/release/store.ts` is legal hop by hop, and loads Release's store
+ * console/lib/shape.ts → services/release/store.ts` is legal hop by hop, and loads Release's store
  * whenever License runs. This file walks the runtime import graph over `src/` (type-only imports
  * are erased at build and skipped) and prints, per service, every other service its files reach,
  * with one example path each, and the Core modules that reach any service at all.
@@ -13,7 +13,7 @@
  * and this report is its measurable before and after. `BASELINE` is the reach measured on
  * 2026-10-07; the report names what has grown or shrunk since. When the layering lands, the
  * report is expected to read "none" for every service but `update → release`, and the test can
- * turn into an assertion. Today every path runs through `core/adminApi.ts → admin/lib/shape.ts`.
+ * turn into an assertion. Today every path runs through `core/adminApi.ts → console/lib/shape.ts`.
  *
  * The default reporter hides a passing test's output; to read the report:
  *
@@ -42,8 +42,8 @@ const BASELINE: Record<string, readonly string[]> = {
 const CORE_BASELINE: readonly string[] = [
   "core/adminApi.ts",
   "core/ascProvisioning.ts",
-  "core/blobGc.ts",
-  "core/deviceAdmin.ts",
+  "core/assets/blobGc.ts",
+  "core/console/deviceAdmin.ts",
   "core/storefront/audit.ts",
   "core/storefront/ledger.ts",
 ];

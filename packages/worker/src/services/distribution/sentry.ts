@@ -44,8 +44,8 @@ import { hmacSha256, importHmacKey, sha256Hex } from "../../platform/hash.js";
 import type { Db } from "../../db/types.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { ServiceHooks } from "../../core/hooks.js";
-import type { AdminSession } from "../../admin/session.js";
-import { audit } from "../../admin/audit.js";
+import type { AdminSession } from "../../core/console/session.js";
+import { audit } from "../../core/console/audit.js";
 import { errorResponse, json } from "../../core/errors.js";
 import { rateLimitOk } from "../../core/rateLimit.js";
 import {

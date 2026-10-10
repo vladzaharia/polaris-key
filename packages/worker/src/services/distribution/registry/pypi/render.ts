@@ -33,7 +33,7 @@ import type {
 
 /** PEP 691's JSON type, the one pip and uv ask for first. */
 export const PYPI_JSON_TYPE = "application/vnd.pypi.simple.v1+json";
-/** PEP 691's HTML type (`core/registryHost.ts` `PYPI_HTML_TYPE`, restated: a service never
+/** PEP 691's HTML type (`core/registry/registryHost.ts` `PYPI_HTML_TYPE`, restated: a service never
  *  needs Core's value to render). */
 export const PYPI_HTML_TYPE = "application/vnd.pypi.simple.v1+html";
 /** The simple API version every document declares (PEP 700's `size`, `upload-time`, `versions`). */

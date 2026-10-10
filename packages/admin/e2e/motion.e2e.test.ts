@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Locator, type Page } from "playwright";
 import { build, preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
+import { appSecurityHeaders } from "../../worker/src/platform/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { h1, startPortal, type PortalHarness } from "./portalHarness.js";
 

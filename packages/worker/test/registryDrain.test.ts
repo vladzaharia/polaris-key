@@ -20,7 +20,7 @@ import { NOW, TEST_KEK, seedProduct } from "./seed.js";
 import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import { asR2, installDigestStream, R2Mock } from "./r2Mock.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type {
   RegistryMaterialiser,
   ServiceRegistry,
@@ -34,7 +34,7 @@ import {
   selfCheckRenders,
   stmtEnqueuePackageRender,
   watchRenderEnqueues,
-} from "../src/core/registryQueue.js";
+} from "../src/core/registry/registryQueue.js";
 import { SERVICES } from "../src/mount.js";
 import { dispatch } from "../src/dispatch.js";
 import {
@@ -51,7 +51,7 @@ import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 installDigestStream();
 

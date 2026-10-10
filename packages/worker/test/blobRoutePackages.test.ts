@@ -28,7 +28,7 @@ import {
   recordObject,
   recordRef,
   stmtDropRefs,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import {
   reconcilePackageFileRefs,
   reconcileSql,

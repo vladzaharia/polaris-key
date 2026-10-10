@@ -24,7 +24,7 @@ import type {
   ServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { AdminSession } from "../../admin/session.js";
+import type { AdminSession } from "../../core/console/session.js";
 import { getReleaseConfig } from "../release/config.js";
 import { knownChannels } from "../release/resolve.js";
 import { handleUpdateRoutes } from "./routes.js";

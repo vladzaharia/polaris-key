@@ -29,9 +29,9 @@
 
 import { hexEncode } from "../../../../platform/bytes.js";
 import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
-import type { AdminSession } from "../../../../admin/session.js";
+import type { AdminSession } from "../../../../core/console/session.js";
 import { parsePlatformCredentialHandle } from "../../../../core/platformCredentials.js";
 import {
   budgetAllows,
@@ -57,7 +57,10 @@ import {
   type PlayImageType,
 } from "../../../../core/storefront/rules/googlePlay.js";
 import { GOOGLE_PLAY_ADAPTER } from "../../../../core/storefront/stores/googlePlay.js";
-import { SNIFF_BYTES, sniffContentType } from "../../../../core/sniff.js";
+import {
+  SNIFF_BYTES,
+  sniffContentType,
+} from "../../../../core/assets/sniff.js";
 import { PlayError, type FetchImpl, type GoogleApiClient } from "./client.js";
 import {
   acquirePlayEditLease,

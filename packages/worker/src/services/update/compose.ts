@@ -57,7 +57,7 @@ import {
 } from "@polaris-key/client-core/version";
 import { base64UrlDecode } from "@polaris-key/jws";
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import {
   composeFeedDeltas,
   type ComposedFeedDeltas,

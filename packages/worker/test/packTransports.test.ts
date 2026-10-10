@@ -49,7 +49,7 @@ import {
   type Obj,
 } from "./packFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
@@ -58,15 +58,15 @@ import { loadProduct } from "../src/core/products.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { SERVICES } from "../src/mount.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { blobKey, recordRef } from "../src/core/blobs.js";
+import { blobKey, recordRef } from "../src/core/assets/blobs.js";
 import { buildMatrix } from "../src/services/distribution/matrix.js";
-import { hashKey } from "../src/crypto.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { hashKey } from "../src/platform/crypto.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 installDigestStream();
 

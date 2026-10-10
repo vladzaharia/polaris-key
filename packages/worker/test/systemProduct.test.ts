@@ -10,17 +10,17 @@ import { KvMock } from "./kvMock.js";
 import { NOW, TEST_KEK, seedProduct } from "./seed.js";
 import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { getProduct } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { getProduct } from "../src/core/repo.js";
 import { parseServices, serializeServices } from "../src/core/services.js";
-import { SYSTEM_FEEDS } from "../src/admin/systemProduct.js";
-import { open } from "../src/keyvault.js";
+import { SYSTEM_FEEDS } from "../src/console/systemProduct.js";
+import { open } from "../src/platform/keyvault.js";
 
 let db: Db;
 let env: Env;

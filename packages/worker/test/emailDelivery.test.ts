@@ -9,13 +9,13 @@ import {
   suppressEmail,
   unsuppressEmail,
   type OutgoingEmail,
-} from "../src/core/emailDelivery.js";
+} from "../src/core/notify/emailDelivery.js";
 import {
   EMAIL_SEND_PRODUCT_DAILY_DEFAULT,
   recipientHash,
-} from "../src/core/emailLimits.js";
+} from "../src/core/notify/emailLimits.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";

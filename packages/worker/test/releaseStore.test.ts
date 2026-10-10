@@ -20,7 +20,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Db, DbParam, DbStatement } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { resyncRepo } from "../src/services/release/resync.js";

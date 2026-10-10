@@ -10,7 +10,7 @@
 // Moved verbatim from `src/enroll.ts` under the v3 namespace (§R1). It stays in its own module
 // rather than joining `activation.ts`, which owns the key-redemption hot path.
 
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import {
@@ -19,9 +19,12 @@ import {
   json,
   methodNotAllowed,
 } from "../../core/errors.js";
-import { randomId } from "../../crypto.js";
+import { randomId } from "../../platform/crypto.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
-import { allowsAnonymousEnroll, computeEnrollHwid } from "../../fingerprint.js";
+import {
+  allowsAnonymousEnroll,
+  computeEnrollHwid,
+} from "../../platform/fingerprint.js";
 import {
   appendAudit,
   getLicense,
@@ -30,7 +33,7 @@ import {
   insertLicense,
   type LicenseRow,
   type TierRow,
-} from "../../repo.js";
+} from "../../core/repo.js";
 import {
   authorizationError,
   refusalManageUrl,
@@ -42,8 +45,8 @@ import {
   readFingerprint,
   shapeDevice,
 } from "../../core/devices.js";
-import { authorizeDevice, tierExpiresAt } from "../../core/authz.js";
-import type { WaitUntil } from "../../core/refusals.js";
+import { authorizeDevice, tierExpiresAt } from "../../core/licensing/authz.js";
+import type { WaitUntil } from "../../core/licensing/refusals.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 
 /**

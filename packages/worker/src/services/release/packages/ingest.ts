@@ -45,7 +45,7 @@ import {
 } from "@polaris-key/manifest";
 import { sha256Hex } from "../../../platform/hash.js";
 import type { Db, DbStatement } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { ErrorCode } from "../../../core/errors.js";
 import type { PackageFeedSettings } from "../../../core/hooks.js";
 import {
@@ -53,8 +53,8 @@ import {
   referencedKeys,
   stmtRecordRef,
   storedObjects,
-} from "../../../core/blobs.js";
-import { stmtEnqueuePackageRender } from "../../../core/registryQueue.js";
+} from "../../../core/assets/blobs.js";
+import { stmtEnqueuePackageRender } from "../../../core/registry/registryQueue.js";
 import { parseManualChannels } from "../channels.js";
 import { getReleaseConfig } from "../config.js";
 import { NEXT_SEQ_SQL } from "../model.js";

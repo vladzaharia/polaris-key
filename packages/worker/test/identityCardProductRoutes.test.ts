@@ -5,7 +5,7 @@ import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
   SIGNIN_FLOW_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 
 // I-07 (S-16 §5.4 item 7): no product route receives or sets the account cookie. The browser
 // sends the host-only cookie to every path on key.plrs.im; the dispatcher removes it before a
@@ -15,9 +15,9 @@ import {
 
 const seen: { cookie: string | null }[] = [];
 
-vi.mock("../src/core/trust.js", async (importOriginal) => {
+vi.mock("../src/core/trust/trust.js", async (importOriginal) => {
   const original =
-    await importOriginal<typeof import("../src/core/trust.js")>();
+    await importOriginal<typeof import("../src/core/trust/trust.js")>();
   return {
     ...original,
     handleTrustManifest: vi.fn(async (req: Request) => {

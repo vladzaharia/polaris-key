@@ -29,7 +29,7 @@ import type { Db } from "../../db/types.js";
 import {
   checkSenderAppName,
   type SenderNameRefusal,
-} from "../../core/emailSender.js";
+} from "../../core/notify/emailSender.js";
 import {
   getPortalProductSettings,
   type PortalSettingsPatch,

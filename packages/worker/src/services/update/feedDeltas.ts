@@ -30,8 +30,8 @@ import type {
 } from "@polaris-key/protocol/update";
 import type { CatalogLazyDelta, ServiceHooks } from "../../core/hooks.js";
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
-import { lazyDeltasOn } from "../../core/deltaDemand.js";
+import type { Env } from "../../platform/env.js";
+import { lazyDeltasOn } from "../../core/assets/deltaDemand.js";
 
 /** What the composer read for a channel's menu: the candidate set, and each target's records.
  *  Unranked: this is what the seq hash covers, read on every request. */

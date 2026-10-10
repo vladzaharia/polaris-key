@@ -16,12 +16,12 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import { makeTestDb } from "./helpers.js";
-import { ADMIN_COOKIE, issueSession } from "../src/admin/session.js";
+import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
 
 const DB = makeTestDb();
 const here = dirname(fileURLToPath(import.meta.url));

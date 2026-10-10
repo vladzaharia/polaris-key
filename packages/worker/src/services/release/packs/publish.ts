@@ -37,7 +37,7 @@ import {
   promote,
   stagingKey,
   verifyStaged,
-} from "../../../core/blobs.js";
+} from "../../../core/assets/blobs.js";
 import {
   claimUploadTicket,
   findUploadTicket,
@@ -45,8 +45,8 @@ import {
   type CiTokenRecord,
   type TicketRecord,
 } from "../../../core/publisher.js";
-import { appendAudit } from "../../../repo.js";
-import { randomId } from "../../../crypto.js";
+import { appendAudit } from "../../../core/repo.js";
+import { randomId } from "../../../platform/crypto.js";
 import { sha256Hex } from "../../../platform/hash.js";
 import type { DbStatement } from "../../../db/types.js";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";

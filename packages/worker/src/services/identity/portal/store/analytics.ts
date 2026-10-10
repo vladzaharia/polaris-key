@@ -36,9 +36,9 @@
  * aggregates are a trend, not a ledger.
  */
 
-import { hashKey } from "../../../../crypto.js";
+import { hashKey } from "../../../../platform/crypto.js";
 import type { Db, DbStatement } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   registerAuthorizationListener,
   type AuthorizationListenerContext,

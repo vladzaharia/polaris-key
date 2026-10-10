@@ -57,12 +57,12 @@ import {
   playFixtures,
   rsaKeyPair,
 } from "./playWorld.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

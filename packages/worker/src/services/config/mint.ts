@@ -28,10 +28,10 @@
 //      it (`invalidateWidenedEdgeMintApprovals`, core/edgeMintApproval.ts). No approval, or one
 //      that no longer applies, answers exactly like an unknown recipe (404).
 
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { bearer } from "../../http.js";
-import { staticHtmlSecurityHeaders } from "../../securityHeaders.js";
+import { bearer } from "../../platform/http.js";
+import { staticHtmlSecurityHeaders } from "../../platform/securityHeaders.js";
 import { type Product, openProductSecret } from "../../core/products.js";
 import {
   approvalMismatch,
@@ -43,7 +43,7 @@ import { errorResponse } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws, StrictJsonError } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
-import { trustRefusal } from "../../core/deviceTrust.js";
+import { trustRefusal } from "../../core/trust/deviceTrust.js";
 import { signJwtEs256, signJwtRs256 } from "../../core/jwt.js";
 
 export interface EdgeMintRow {
@@ -230,7 +230,7 @@ export async function handleMintToken(
   }
 
   // P6-02 — the operator's device-trust policy. Log-only unless the policy enforces: a basic
-  // device that the policy would refuse is audited and still mints (`core/deviceTrust.ts`).
+  // device that the policy would refuse is audited and still mints (`core/trust/deviceTrust.ts`).
   const untrusted = await trustRefusal(
     env,
     db,

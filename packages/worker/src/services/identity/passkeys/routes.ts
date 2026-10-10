@@ -31,15 +31,15 @@
 import { CARD_RETURN_TO, safeReturnTo } from "../../../platform/returnTo.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
-import { readGuardedJsonObject } from "../../../core/browserRequestGuard.js";
+import type { Env } from "../../../platform/env.js";
+import { readGuardedJsonObject } from "../../../core/accounts/browserRequestGuard.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   PASSKEY_FLOW_COOKIE,
   accountRealmCookie,
   clearAccountRealmCookie,
   readCookie,
-} from "../../../core/accountCookies.js";
+} from "../../../core/accounts/accountCookies.js";
 import { signIn } from "../accounts/signIn.js";
 import { PASSKEY_ISSUER, findLink, getAccountRow } from "../accounts/repo.js";
 import {

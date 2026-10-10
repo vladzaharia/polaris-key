@@ -6,8 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import { validatePayload } from "../src/core/payload.js";
-import { mergePayloads } from "../src/merge.js";
+import { validatePayload } from "../src/core/licensing/payload.js";
+import { mergePayloads } from "../src/core/licensing/merge.js";
 import { publicCatalogJson } from "../src/services/config/schema.js";
 import {
   catalogDeliveryIssues,

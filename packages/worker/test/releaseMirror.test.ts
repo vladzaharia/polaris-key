@@ -14,21 +14,21 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
-import { blobKey } from "../src/core/blobs.js";
+import { blobKey } from "../src/core/assets/blobs.js";
 import {
   HOSTED_ASSET_REF,
   ingest,
   releaseFileTimeoutMs,
   SLOT_CLASSES,
-} from "../src/core/hostedAssets.js";
+} from "../src/core/assets/hostedAssets.js";
 import {
   readAssetLadderMessage,
   readAssetPullMessage,
   PULL_BACKOFF_BASE_SECONDS,
   syncHostedAssets,
-} from "../src/core/hostedAssetPulls.js";
+} from "../src/core/assets/hostedAssetPulls.js";
 import {
   SAFE_FETCH_FILE_TIMEOUT_MS,
   SAFE_FETCH_TIMEOUT_MS,
@@ -47,12 +47,12 @@ import {
   RELEASE_ARTIFACT_REF,
   type ReleaseMirrorMessage,
 } from "../src/services/release/mirror.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import {
   ASSET_BYTES,
@@ -69,7 +69,7 @@ import {
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
 import { setAssetHosting, setProductAssetSetting } from "./hostedFixture.js";
-import { assetUsage } from "../src/core/assetQuota.js";
+import { assetUsage } from "../src/core/assets/assetQuota.js";
 import { mirrorNow } from "../src/services/release/mirror.js";
 
 beforeAll(() => installDigestStream());

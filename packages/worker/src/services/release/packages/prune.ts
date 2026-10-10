@@ -22,7 +22,7 @@
  *          silently.
  *   HOW    In atomic D1 batches of up to 20 versions (at most 200 per run): per version, the
  *          `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows
- *          go, the version's `package-file` blob refs are dropped (`core/blobs.ts` `stmtDropRefs`), a
+ *          go, the version's `package-file` blob refs are dropped (`core/assets/blobs.ts` `stmtDropRefs`), a
  *          tombstone is written (`release_package_prunes`, which keeps the version unique
  *          forever: ingest refuses to republish it), the deletion is audited
  *          (`package.version.prune`: package, version, actor, bytes; its `parent_id` the stable
@@ -37,7 +37,7 @@
  *          (THREAT-MODEL "Feed retention").
  *   SPACE  Bytes are never deleted here. Dropping the refs leaves an object that NOTHING else
  *          references (no ref from any product, of any kind, including a remaining version that
- *          shares the content-addressed blob) for the blob collector (`core/blobGc.ts`) to
+ *          shares the content-addressed blob) for the blob collector (`core/assets/blobGc.ts`) to
  *          reclaim after its grace period and the bucket lock's age; an object another ref holds
  *          stays. `bytes` is the version's total; `freedBytes` the part no remaining ref holds.
  *          A plan counts it against the whole plan; an apply recounts it per batch against the
@@ -58,17 +58,17 @@
 
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
-import { randomId } from "../../../crypto.js";
-import { appendAudit, auditStatement } from "../../../repo.js";
+import type { Env } from "../../../platform/env.js";
+import { randomId } from "../../../platform/crypto.js";
+import { appendAudit, auditStatement } from "../../../core/repo.js";
 import {
   PACKAGE_FILE_REF,
   heldObjects,
   refsBeyond,
   stmtDropRefs,
   type HeldObject,
-} from "../../../core/blobs.js";
-import { stmtEnqueuePackageRender } from "../../../core/registryQueue.js";
+} from "../../../core/assets/blobs.js";
+import { stmtEnqueuePackageRender } from "../../../core/registry/registryQueue.js";
 import { bumpReleaseGeneration } from "../ghCache.js";
 import {
   writeSetting,

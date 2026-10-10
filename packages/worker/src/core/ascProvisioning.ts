@@ -27,7 +27,7 @@
  */
 
 import type { Db } from "../db/types.js";
-import type { AdminSession } from "../admin/session.js";
+import type { AdminSession } from "./console/session.js";
 import {
   ascPath,
   attr,

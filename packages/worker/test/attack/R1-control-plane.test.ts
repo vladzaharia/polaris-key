@@ -13,27 +13,27 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock, asKv } from "../kvMock.js";
 import { approveEdgeMintRecipe, makeEnv, NOW, seedProduct } from "../seed.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { Db } from "../../src/db/types.js";
-import { handleAdmin } from "../../src/admin/index.js";
-import type { IdTokenVerifier } from "../../src/admin/auth.js";
+import { handleAdmin } from "../../src/console/index.js";
+import type { IdTokenVerifier } from "../../src/console/auth.js";
 import {
   ADMIN_COOKIE,
   buildClearCookie,
   buildSessionCookie,
   issueSession,
   verifySession,
-} from "../../src/admin/session.js";
+} from "../../src/core/console/session.js";
 import {
   PORTAL_COOKIE,
   issuePortalSession,
   verifyPortalSession,
 } from "../../src/services/identity/portal/session.js";
-import { hasAnyAdminGrant } from "../../src/admin/authz.js";
-import { hashKey } from "../../src/crypto.js";
-import { listAudit } from "../../src/repo.js";
+import { hasAnyAdminGrant } from "../../src/console/authz.js";
+import { hashKey } from "../../src/platform/crypto.js";
+import { listAudit } from "../../src/core/repo.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
-import { secureResponse } from "../../src/securityHeaders.js";
+import { secureResponse } from "../../src/platform/securityHeaders.js";
 import { loadProduct } from "../../src/core/products.js";
 import {
   deviceFlowKey,
@@ -41,7 +41,7 @@ import {
   handleAuthDeviceVerify,
 } from "../../src/services/identity/oidc.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
-import { adminFlowKey } from "../../src/admin/auth.js";
+import { adminFlowKey } from "../../src/console/auth.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -65,7 +65,7 @@ function req(
   return new Request(url, { method, headers }) as unknown as Request;
 }
 
-/** base64url helpers — identical scheme to src/admin/session.ts. */
+/** base64url helpers — identical scheme to src/core/console/session.ts. */
 function b64url(bytes: Uint8Array): string {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
@@ -571,7 +571,7 @@ describe("R1-05 /<product>/mint/<id>/auth renders stored HTML with no CSP and no
     await seedProduct(db, "djdl");
     // `stmtInsertEdgeMint` (the only writer, used by link-repo, resync and the webhook)
     // hard-codes NULL, and there is no admin API route for the column.
-    const { stmtInsertEdgeMint } = await import("../../src/repo.js");
+    const { stmtInsertEdgeMint } = await import("../../src/core/repo.js");
     const stmt = stmtInsertEdgeMint({
       product: "djdl",
       id: "music",

@@ -20,14 +20,14 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { planRepoManifest } from "../src/services/release/linkExisting.js";
@@ -39,7 +39,7 @@ import {
   readLicensingSettings,
 } from "../src/services/license/licensingSettings.js";
 import { readSyncTierOnSignIn } from "../src/services/identity/settings.js";
-import { getProduct } from "../src/repo.js";
+import { getProduct } from "../src/core/repo.js";
 import { revertRowSetting, writeRowSetting } from "../src/core/rowSettings.js";
 import { BREAK_GLASS_MAX_SECONDS } from "../src/core/settingsClaims.js";
 import type { Db, DbParam } from "../src/db/types.js";

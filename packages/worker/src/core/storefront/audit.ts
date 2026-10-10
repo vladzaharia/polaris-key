@@ -19,9 +19,9 @@
  */
 
 import type { Db } from "../../db/types.js";
-import { audit } from "../../admin/audit.js";
-import type { AdminSession } from "../../admin/session.js";
-import { appendPlatformEvent } from "../platformEvents.js";
+import { audit } from "../console/audit.js";
+import type { AdminSession } from "../console/session.js";
+import { appendPlatformEvent } from "../ops/platformEvents.js";
 import { storefrontAdapter, type StorefrontId } from "./adapter.js";
 
 /** A resource as a store answers it (JSON:API objects; other stores map theirs onto this). */

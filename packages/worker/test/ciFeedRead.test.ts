@@ -1,6 +1,6 @@
 /** A CI token is a feed-read credential only with the publish scope. */
 import { describe, expect, it } from "vitest";
-import { ANONYMOUS, principalOf } from "../src/core/registryTokens.js";
+import { ANONYMOUS, principalOf } from "../src/core/registry/registryTokens.js";
 
 const ci = (scopes: string[]) =>
   ({

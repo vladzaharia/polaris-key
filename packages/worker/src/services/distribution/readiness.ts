@@ -52,12 +52,12 @@
  */
 
 import { parseJsonColumn } from "../../platform/json.js";
-import { randomId } from "../../crypto.js";
+import { randomId } from "../../platform/crypto.js";
 import type { Db } from "../../db/types.js";
 import { APP_DELIVERABLE_ID, assetPackId } from "@polaris-key/manifest";
 import { OUTLET_PLATFORMS } from "@polaris-key/protocol/distribution";
-import { appendAudit } from "../../repo.js";
-import { referencedKeys, storedObjects } from "../../core/blobs.js";
+import { appendAudit } from "../../core/repo.js";
+import { referencedKeys, storedObjects } from "../../core/assets/blobs.js";
 import {
   DEFAULT_TRANSPORT,
   type AvailabilityRecord,

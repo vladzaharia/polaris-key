@@ -27,9 +27,9 @@
  * caller hardens the answer, exactly as the gateway's `runSurface` did.
  */
 
-import { isAllowedStorageHost } from "../../http.js";
+import { isAllowedStorageHost } from "../../platform/http.js";
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { ProductPublic } from "../../core/products.js";
 import type { CatalogLocation, CatalogSourceRef } from "../../core/hooks.js";
 import { notFound } from "../../core/errors.js";
@@ -38,8 +38,8 @@ import {
   blobResponse,
   BYTES_HOST_TYPES,
   hasRef,
-} from "../../core/blobs.js";
-import { isBytesHost } from "../../core/bytesHost.js";
+} from "../../core/assets/blobs.js";
+import { isBytesHost } from "../../core/assets/bytesHost.js";
 import { getReleaseConfig, isResolved, type ResolvedConfig } from "./config.js";
 import {
   ARTIFACT_CONTENT_TYPE,

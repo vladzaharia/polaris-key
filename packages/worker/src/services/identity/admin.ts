@@ -8,9 +8,9 @@
  * They are Identity's because `portal_product_settings` is Identity's table (spec §5.2) and
  * because every switch on the form is a statement about how a HUMAN signs in to this product.
  *
- * Moved here verbatim from `admin/handlers/products.ts`. The console's pre-namespace spelling
+ * Moved here verbatim from `console/handlers/products.ts`. The console's pre-namespace spelling
  * `/manage/api/products/<slug>/portal` is GONE, not rewritten: the transitional alias was deleted
- * once the console migrated in P7, and `admin/api.ts` now lets that bare spelling fall through to
+ * once the console migrated in P7, and `console/api.ts` now lets that bare spelling fall through to
  * the same 404 every other unknown resource gets. `identity/portal` is the only way in.
  *
  * The OIDC half of spec §4.2's `identity/{oidc,portal}` is not here yet: product OIDC has no
@@ -20,15 +20,15 @@
 
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../admin/session.js";
+import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
   settingRefused,
-} from "../../admin/lib/respond.js";
-import { audit, auditStatementFor } from "../../admin/audit.js";
+} from "../../core/console/respond.js";
+import { audit, auditStatementFor } from "../../core/console/audit.js";
 import { writeSettings } from "../../core/settings/write.js";
 import {
   planSignInSettingsPatch,

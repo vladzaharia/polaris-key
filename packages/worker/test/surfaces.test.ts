@@ -14,16 +14,16 @@ import {
   TEST_PUB,
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import { generateEd25519 } from "../src/keyvault.js";
+import { generateEd25519 } from "../src/platform/keyvault.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { handleJwks } from "../src/core/trust.js";
+import { handleJwks } from "../src/core/trust/trust.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { SERVICES } from "../src/mount.js";
 import { SERVICE_SLUGS, serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 
 const ES_PEM =
   "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgav85fotyJ04AYsKF\nDojZziUJg9TuJamPiszlECztPLuhRANCAATgaZHNpIiLDSEQHY4H4BE5HnA9L8hR\n11WcM/ABvqCnO5CWZyHKWoEnKnKnmQwVibF2w5YwimX7Z1hIqJPHGCTB\n-----END PRIVATE KEY-----";

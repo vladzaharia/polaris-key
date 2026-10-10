@@ -124,7 +124,7 @@ pnpm --filter @polaris-key/admin build
 pnpm --filter @polaris-key/worker assemble  # admin + docs built into the worker's [assets] root
 pnpm --filter @polaris-key/docs check:links # internal link + anchor integrity on the built site
 pnpm --filter @polaris-key/worker test adminCspParity  # console CSP parity (after the admin build):
-                                 # the SPA shells' inline-script hashes == packages/worker/src/adminCsp.ts
+                                 # the SPA shells' inline-script hashes == packages/worker/src/platform/adminCsp.ts
                                  # (also inside `pnpm test`; the admin half is test/theme.test.tsx)
 
 # The workerd smoke job. Node permits the runtime code generation workerd forbids, so a green

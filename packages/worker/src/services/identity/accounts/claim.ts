@@ -25,21 +25,21 @@ import {
   attachLicenseAccount,
   licenseAccountId,
   subjectFor,
-} from "../../../core/accountSubjects.js";
+} from "../../../core/accounts/accountSubjects.js";
 import {
   autoAttachBlocked,
   runBlockStatement,
   stmtBlockAutoAttach,
   stmtUnblockAutoAttach,
-} from "../../../core/licenseHolders.js";
-import { getLicense, type LicenseRow } from "../../../repo.js";
+} from "../../../core/licensing/licenseHolders.js";
+import { getLicense, type LicenseRow } from "../../../core/repo.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
-} from "../../../core/subjectHooks.js";
-import { getProduct } from "../../../repo.js";
+} from "../../../core/accounts/subjectHooks.js";
+import { getProduct } from "../../../core/repo.js";
 import { sendNotice } from "../portal/email.js";
 import { licenseAttachedNotice } from "../portal/notices.js";
 import {

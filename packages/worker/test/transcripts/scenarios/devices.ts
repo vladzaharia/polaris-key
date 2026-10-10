@@ -46,7 +46,7 @@ import {
   type Scenario,
 } from "../world.js";
 import { retireDeviceBinding } from "../../../src/core/devices.js";
-import { hashKey } from "../../../src/crypto.js";
+import { hashKey } from "../../../src/platform/crypto.js";
 
 const NO_VALUES = { config: {}, entitlements: {} };
 

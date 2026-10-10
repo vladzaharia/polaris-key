@@ -1,23 +1,23 @@
-import { isSameOriginRequest } from "../../../core/browserRequestGuard.js";
+import { isSameOriginRequest } from "../../../core/accounts/browserRequestGuard.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
   ALLOWED_ID_TOKEN_ALGS,
   ID_TOKEN_CLOCK_TOLERANCE,
   ID_TOKEN_MAX_AGE,
 } from "../idToken.js";
-import { brandedHtmlSecurityHeaders } from "../../../securityHeaders.js";
+import { brandedHtmlSecurityHeaders } from "../../../platform/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
-import { hashKey } from "../../../crypto.js";
-import { isSameOriginNavigation } from "../../../http.js";
+import { hashKey } from "../../../platform/crypto.js";
+import { isSameOriginNavigation } from "../../../platform/http.js";
 import { pkcePair } from "../../../platform/pkce.js";
-import { platformOidcConfig } from "../../../platformOidc.js";
+import { platformOidcConfig } from "../../../platform/platformOidc.js";
 import {
   PORTAL_SIGNIN_RETURN_TO,
   safeReturnTo,
 } from "../../../platform/returnTo.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -56,15 +56,15 @@ import {
 } from "../card/emailSignIn.js";
 
 export { portalMagicKey } from "../card/emailSignIn.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
-import { renderBrandPage } from "../../../core/brandHtml.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
+import { renderBrandPage } from "../../../platform/brandHtml.js";
 import {
   LINK_FLOW_COOKIE,
   PORTAL_SSO_COOKIE,
   accountRealmCookie,
   clearAccountRealmCookie,
   readCookie,
-} from "../../../core/accountCookies.js";
+} from "../../../core/accounts/accountCookies.js";
 
 const FLOW_TTL_SECONDS = 600;
 
@@ -99,7 +99,7 @@ interface FlowRecord {
 }
 
 /**
- * A sign-in error page: the branded, script-free shell (`core/brandHtml.ts`) with no surface
+ * A sign-in error page: the branded, script-free shell (`platform/brandHtml.ts`) with no surface
  * label (SIGN-IN.md §3.13, D-32). `heading` is a hard-coded literal, escaped anyway; `body` is
  * TRUSTED markup. **Sign in again** is offered where one can help (by default on a 400, 401 or
  * 502).

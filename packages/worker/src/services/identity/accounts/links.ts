@@ -12,8 +12,8 @@
  */
 
 import type { Db, DbStatement } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
-import { onAccountEmailVerified } from "../../../core/licenseHolders.js";
+import type { Env } from "../../../platform/env.js";
+import { onAccountEmailVerified } from "../../../core/licensing/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
 import { sendSecurityNotice } from "../portal/email.js";
 import {

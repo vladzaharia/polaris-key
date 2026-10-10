@@ -12,7 +12,7 @@
  * `boundedUpdates` keeps only well-formed entries of a known `event` (the seven `updateEvent`
  * values of `conformance/parity/enums.json`, fixed by plans/P3-01.md §2.10; `test/updateHealth
  * .test.ts` pins this list to that file) and drops every unknown field. `recordUpdateEvents`
- * counts them in `UpdateHealthDO` (`src/updateHealthDo.ts`), one object per (product,
+ * counts them in `UpdateHealthDO` (`src/core/updateHealthDo.ts`), one object per (product,
  * deliverable, release), deduplicated on (device, `eventId`); `readUpdateHealth` answers a
  * window's totals per outlet, channel and event.
  *
@@ -31,7 +31,7 @@
  */
 
 import { OUTLET_ID_PATTERN } from "@polaris-key/protocol/distribution";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { ServiceHooks } from "./hooks.js";
 import {
   hourOf,
@@ -40,7 +40,7 @@ import {
   type HealthCount,
   type HealthEvent,
   type ReadAnswer,
-} from "../updateHealthDo.js";
+} from "./updateHealthDo.js";
 
 /** The seven event names (`updateEvent` in `conformance/parity/enums.json`). */
 export const UPDATE_EVENTS = [

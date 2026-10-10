@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { AdminSession } from "../src/admin/session.js";
-import type { Env } from "../src/env.js";
+import type { AdminSession } from "../src/core/console/session.js";
+import type { Env } from "../src/platform/env.js";
 import {
   storeOpId as ascOpId,
   beginStoreOperation,

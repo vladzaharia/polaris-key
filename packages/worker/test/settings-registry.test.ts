@@ -35,7 +35,7 @@ import {
   PLATFORM_SETTINGS,
   platformSettingDef,
 } from "../src/core/platformSettings.js";
-import { MAX_OFFLINE_DAYS } from "../src/admin/lib/writeChecks.js";
+import { MAX_OFFLINE_DAYS } from "../src/core/console/writeChecks.js";
 import { DEPRECATED_SPELLINGS, spellingPath } from "@polaris-key/manifest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -84,7 +84,7 @@ function platform(key: string, over: Partial<SettingDef> = {}): SettingDef {
     merge: "cascade",
     ownership: "operator",
     confirm: { up: "L0", down: "L0" },
-    readers: ["core/blobGc.ts"],
+    readers: ["core/assets/blobGc.ts"],
     storage: { kind: "scalar" },
     ...over,
   });

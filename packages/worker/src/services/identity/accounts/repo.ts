@@ -1,15 +1,15 @@
 /**
  * The account tables (I-05; plans/I-04.md §6.1): `accounts` and `account_links`, plus the small
  * reads every account flow shares. Identity owns these tables (`TABLE_OWNERS`); Core reads only
- * the subject rows, through `core/accountSubjects.ts`.
+ * the subject rows, through `core/accounts/accountSubjects.ts`.
  *
  * The account id is INTERNAL: it lives in Identity and Core and never reaches a developer.
  */
 
 import { normalizeEmail } from "../../../platform/email.js";
-import { randomId } from "../../../crypto.js";
+import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
-import { MERGE_REDIRECT_SECONDS } from "../../../core/accountSubjects.js";
+import { MERGE_REDIRECT_SECONDS } from "../../../core/accounts/accountSubjects.js";
 
 export interface AccountRow {
   id: string;

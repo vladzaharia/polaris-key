@@ -11,7 +11,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FingerprintComponent } from "@polaris-key/protocol";
-import { computeComponentHash, computeHwid } from "../src/fingerprint.js";
+import {
+  computeComponentHash,
+  computeHwid,
+} from "../src/platform/fingerprint.js";
 
 interface Vector {
   id: string;

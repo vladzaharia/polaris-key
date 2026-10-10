@@ -16,9 +16,12 @@
  */
 
 import type { DbStatement } from "../../db/types.js";
-import { parseAutoIssue, parseFingerprintPolicy } from "../../fingerprint.js";
+import {
+  parseAutoIssue,
+  parseFingerprintPolicy,
+} from "../../platform/fingerprint.js";
 import { parseWebOrigins, serializeWebOrigins } from "../cors.js";
-import { parseTrustPolicy } from "../deviceTrust.js";
+import { parseTrustPolicy } from "../trust/deviceTrust.js";
 import { parseStoredPresentation } from "../products.js";
 import { parseServices, serializeServices } from "../services.js";
 import {

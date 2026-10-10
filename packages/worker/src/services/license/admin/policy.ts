@@ -19,26 +19,26 @@
  * operator is paging about at 3am cannot wait for a pull request. That is only coherent if the
  * next resync cannot silently undo the change, so the row carries an owner: a PATCH marks it
  * `admin`, `revert` hands it back to `manifest` and the next resync re-applies the declaration.
- * Same machinery as `services_json` (`core/servicesAdmin.ts`) and for the same reason.
+ * Same machinery as `services_json` (`console/handlers/servicesAdmin.ts`) and for the same reason.
  */
 
 import { ErrorCode } from "../../../core/errors.js";
-import type { ProductRow } from "../../../repo.js";
-import { getProduct, getTier } from "../../../repo.js";
+import type { ProductRow } from "../../../core/repo.js";
+import { getProduct, getTier } from "../../../core/repo.js";
 import { writeSettings } from "../../../core/settings/write.js";
 import {
   isAutoIssueMode,
   isFingerprintMode,
   parseAutoIssue,
   parseFingerprintPolicy,
-} from "../../../fingerprint.js";
+} from "../../../platform/fingerprint.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
   settingRefused,
-} from "../../../admin/lib/respond.js";
+} from "../../../core/console/respond.js";
 import { invalidateWidenedEdgeMintApprovals } from "../../../core/edgeMintApproval.js";
 import type { LicenseAdminContext } from "./index.js";
 
@@ -172,7 +172,7 @@ export async function handleFingerprintPolicy(
     // approval the product has ALREADY widened before writing it — otherwise turning anonymous
     // enrolment back off here, after a push that turned it on was killed before its own sweep,
     // would make the approval apply again for the strangers who enrolled meanwhile. Same rule
-    // as `core/servicesAdmin.ts`.
+    // as `console/handlers/servicesAdmin.ts`.
     await invalidateWidenedEdgeMintApprovals(
       db,
       slug,

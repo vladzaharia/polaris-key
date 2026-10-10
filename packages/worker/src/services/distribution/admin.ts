@@ -82,7 +82,7 @@
  *
  * Narrative-only (the console's API is not in the wire spec). Every write is audited with the
  * session's subject. The session, CSRF, rate-limit and platform-admin gates run in
- * `admin/api.ts` before this is reached.
+ * `console/api.ts` before this is reached.
  *
  * The outlets themselves are manifest-owned (`.pkey/distribution`); only the capability override
  * is the operator's, and only in the narrowing direction — `capabilities.ts` explains why. The
@@ -95,14 +95,14 @@ import { parseJsonColumn } from "../../platform/json.js";
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../admin/session.js";
+import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../admin/lib/respond.js";
-import { audit } from "../../admin/audit.js";
+} from "../../core/console/respond.js";
+import { audit } from "../../core/console/audit.js";
 import {
   CAPABILITY_KEYS,
   defaultCapabilities,
@@ -159,7 +159,7 @@ import {
 import {
   RENDER_ALL,
   stmtEnqueuePackageRender,
-} from "../../core/registryQueue.js";
+} from "../../core/registry/registryQueue.js";
 import { buildMatrix, MATRIX_DEFAULT_LIMIT } from "./matrix.js";
 import {
   READINESS_STATES,

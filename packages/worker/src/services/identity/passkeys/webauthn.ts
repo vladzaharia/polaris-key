@@ -37,9 +37,9 @@ import {
   type RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
-import { hashKey } from "../../../crypto.js";
-import type { Env } from "../../../env.js";
-import { portalOriginOf } from "../../../core/manageUrl.js";
+import { hashKey } from "../../../platform/crypto.js";
+import type { Env } from "../../../platform/env.js";
+import { portalOriginOf } from "../../../core/licensing/manageUrl.js";
 import {
   artefactRef,
   consumeArtefact,

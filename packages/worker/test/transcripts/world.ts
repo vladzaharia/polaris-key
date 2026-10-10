@@ -11,7 +11,7 @@ import {
   type ServiceSlug,
   type ServicesMap,
 } from "../../src/core/services.js";
-import { setServices } from "../../src/repo.js";
+import { setServices } from "../../src/core/repo.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { makeEnv, seedLicenseWithKey, seedProduct, seedTier } from "../seed.js";

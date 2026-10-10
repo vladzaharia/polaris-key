@@ -23,9 +23,9 @@ import {
   upsertDevice,
   type DeviceRow,
   type LicenseRow,
-} from "../../src/repo.js";
+} from "../../src/core/repo.js";
 import { D1Db } from "../../src/db/d1.js";
-import { deleteProfile, deleteTier } from "../../src/admin/repo.js";
+import { deleteProfile, deleteTier } from "../../src/core/console/repo.js";
 import { licenseSummary } from "../../src/core/licensing/summary.js";
 import {
   getOrCreateAccountByEmail,
@@ -273,7 +273,7 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
       NOW,
     );
 
-    await deleteProfile(db, "acme", "p1"); // admin/repo.ts:229 — a bare DELETE
+    await deleteProfile(db, "acme", "p1"); // core/console/repo.ts:229 — a bare DELETE
 
     const orphanLinks = await db.first<{ n: number }>(
       "SELECT COUNT(*) AS n FROM license_profiles WHERE product='acme' AND profile_id='p1'",
@@ -380,7 +380,7 @@ describe("R11-02 status vocabulary drift", () => {
     await seedProduct(db, "acme");
     const active = await getActiveProductKey(db, "acme");
     expect(active).not.toBeNull();
-    // admin/handlers/products.ts:731-737 — the retire/revoke action has no `status` guard.
+    // console/handlers/products.ts:731-737 — the retire/revoke action has no `status` guard.
     await db.run(
       "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND kid = ?",
       NOW,
@@ -677,7 +677,7 @@ describe("R11-05 product scoping", () => {
       "dist_registry_policy",
       // 0062 (I-18) — the email suppression list. A bounce or a complaint hurts the ONE shared
       // sender whichever product's mail caused it, so an entry belongs to no product: it is keyed
-      // by the recipient's peppered hash alone and read only by `core/emailDelivery.ts` before
+      // by the recipient's peppered hash alone and read only by `core/notify/emailDelivery.ts` before
       // every send. The per-product caps (`email_product_caps`) ARE product-first (this loop).
       "email_suppressions",
       // 0068_a (I-05) — the Polaris Key account is PLATFORM-level (owner, 2026-10-04): one
@@ -891,7 +891,7 @@ describe("R11-06 unindexed hot queries", () => {
 // ── R11-07 — JSON.parse of DB columns with no try/catch ──────────────────────
 describe("R11-07 corrupt JSON column throws out of the handler", () => {
   // FIXED (R11-06): every `_json` column on the admin surface now reads through the single
-  // guarded helper in admin/lib/shape.ts. `licenseSummary` runs for EVERY row of the license
+  // guarded helper in console/lib/shape.ts. `licenseSummary` runs for EVERY row of the license
   // list, so one corrupt channels_json used to 500 the whole admin view — including the view an
   // operator would use to repair it. It now degrades to an empty channel list.
   it("licenseSummary() DEGRADES on a corrupt licenses.channels_json instead of throwing", async () => {

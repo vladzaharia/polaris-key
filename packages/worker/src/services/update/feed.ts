@@ -15,7 +15,7 @@
  * The arch is part of the edge-cache key (`gateway.ts`), so the two feeds cannot collide.
  */
 
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";

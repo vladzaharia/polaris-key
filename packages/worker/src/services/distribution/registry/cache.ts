@@ -19,7 +19,7 @@
  *   - Where there is no Cache API (Node tests) or it throws, the answer is computed every time.
  */
 
-import type { RegistryEcosystem } from "../../../core/registryHost.js";
+import type { RegistryEcosystem } from "../../../core/registry/registryHost.js";
 
 export const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 export const INDEX_CACHE_CONTROL =

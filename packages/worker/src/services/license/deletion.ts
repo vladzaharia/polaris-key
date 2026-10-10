@@ -1,5 +1,5 @@
 /**
- * License's share of a licence deletion (`core/licenseDelete.ts`).
+ * License's share of a licence deletion (`core/licensing/licenseDelete.ts`).
  *
  *   - blockers: a licence that holds store grants (`license_store_grants`, active OR revoked)
  *     carries a purchase history — a buyer paid for something on it — and is never deleted; the
@@ -16,7 +16,7 @@ import {
   type LicenseDeleteBlocker,
   type LicenseDeleteContributor,
   type LicenseDeleteTarget,
-} from "../../core/licenseDelete.js";
+} from "../../core/licensing/licenseDelete.js";
 
 async function storeGrantBlockers(
   db: Db,

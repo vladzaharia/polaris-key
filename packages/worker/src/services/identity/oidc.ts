@@ -31,7 +31,7 @@ import {
   ID_TOKEN_MAX_AGE,
 } from "./idToken.js";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import type { ManagedPayload } from "../../core/payload.js";
+import type { ManagedPayload } from "../../core/licensing/payload.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // R9-01: the manifest validator's issuer rule, applied again at the SINK. Ingest-only
 // validation would leave every `oidc_config` row written before it landed (or by any future
@@ -40,11 +40,11 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 // `manifest.ts` merely re-exports it — a service may not import a sibling.
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import { representabilityIssue } from "@polaris-key/catalog";
-import { bearer } from "../../http.js";
-import { hashKey, randomId } from "../../crypto.js";
-import { platformOidcConfig } from "../../platformOidc.js";
-import { secret, type Env } from "../../env.js";
-import { brandedHtmlSecurityHeaders } from "../../securityHeaders.js";
+import { bearer } from "../../platform/http.js";
+import { hashKey, randomId } from "../../platform/crypto.js";
+import { platformOidcConfig } from "../../platform/platformOidc.js";
+import { secret, type Env } from "../../platform/env.js";
+import { brandedHtmlSecurityHeaders } from "../../platform/securityHeaders.js";
 import { escapeHtmlKeepApostrophe as escapeHtml } from "../../platform/html.js";
 import { pkcePair } from "../../platform/pkce.js";
 import {
@@ -59,7 +59,7 @@ import {
   type Product,
   type ProductPublic,
 } from "../../core/products.js";
-import { renderBrandPage } from "../../core/brandHtml.js";
+import { renderBrandPage } from "../../platform/brandHtml.js";
 import { accountDisabledPage } from "./card/http.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
@@ -80,32 +80,32 @@ import {
   stmtInsertLicense,
   type LicenseRow,
   type TierRow,
-} from "../../repo.js";
+} from "../../core/repo.js";
 import {
   guardedInsert,
   guardedWrite,
   oidcGrantStatements,
-} from "../../core/grants.js";
+} from "../../core/licensing/grants.js";
 import { licenseTransitionStatement } from "../../core/licensing/lifecycleWrites.js";
 import { readSyncTierOnSignIn } from "./settings.js";
 import {
   mergeLicenseInto,
   type LicenseMerge,
-} from "../../core/licenseMerge.js";
-import { allowsOidcDefault } from "../../fingerprint.js";
+} from "../../core/licensing/licenseMerge.js";
+import { allowsOidcDefault } from "../../platform/fingerprint.js";
 import {
   authorizeDevice,
   licenseDeviceLimit,
   tierFingerprintMode,
   tierExpiresAt,
-} from "../../core/authz.js";
+} from "../../core/licensing/authz.js";
 import {
   isValidClientDeviceId,
   licenseUsable,
   validateDeviceToken,
 } from "../../core/devices.js";
-import { applyProvisionedAccountSecrets } from "../../core/accountOverrides.js";
-import { licenseConfigOverridesFrozen } from "../../core/overrideMigration.js";
+import { applyProvisionedAccountSecrets } from "../../core/accounts/accountOverrides.js";
+import { licenseConfigOverridesFrozen } from "../../core/ops/overrideMigration.js";
 import {
   createBrowserSession,
   type BrowserSessionSubject,
@@ -1036,7 +1036,7 @@ const SIGNIN_UPDATE_ATTEMPTS = 3;
 /**
  * The column a sign-in writes on top of the provisioning (LX-08, S-19 §7.14 step 4): provisioned
  * ENTITLEMENT keys never go into `overrides_json` any more, they are the licence's `oidc` grant
- * (`core/grants.ts`); provisioned secrets go to the column until the U-03 run freezes it (then to
+ * (`core/licensing/grants.ts`); provisioned secrets go to the column until the U-03 run freezes it (then to
  * the owner's account overrides). Config is never provisioned.
  */
 function provisionedColumn(
@@ -2248,7 +2248,7 @@ export async function handleAuthCallback(
 
   // An identity with no subject is not an identity: `getLicenseBySub(…, "")` would match every
   // other subject-less row, so distinct people would share one license. Admin and portal both
-  // reject this already (admin/auth.ts:216, portal/auth.ts:280) — so does the product flow now
+  // reject this already (console/auth.ts:216, portal/auth.ts:280) — so does the product flow now
   // (R8-05a). Same generic 401 as any other bad ID token.
   const identity = mapClaims(claims);
   if (!identity.sub) {

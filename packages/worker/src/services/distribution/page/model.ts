@@ -48,7 +48,7 @@ import {
   NUMERIC_ID_PATTERN,
 } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import type {
   Delivery,
   ReleaseCatalog,

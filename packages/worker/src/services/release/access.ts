@@ -34,15 +34,15 @@
 
 import { CHANNEL_BETA, CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { bearer } from "../../http.js";
+import { bearer } from "../../platform/http.js";
 import type { ProductPublic } from "../../core/products.js";
 import {
   accessRefusal,
   fixedReleaseSelector,
   type EntitledSelector,
-} from "../../core/entitledAccess.js";
+} from "../../core/licensing/entitledAccess.js";
 import {
   accessModeFor,
   artifactPolicy,

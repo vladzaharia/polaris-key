@@ -21,23 +21,23 @@ import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { handlePortalApi } from "./portalHarness.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { listAudit } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { listAudit } from "../src/core/repo.js";
 import {
   isFloatingLicense,
   floatingLicenseSql,
-} from "../src/core/accountSubjects.js";
+} from "../src/core/accounts/accountSubjects.js";
 import {
   licenseHolder,
   licenseHolderHooksRegistered,
   onAccountEmailVerified,
-} from "../src/core/licenseHolders.js";
+} from "../src/core/licensing/licenseHolders.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
 import { linkIdentity } from "../src/services/identity/accounts/links.js";
@@ -57,7 +57,7 @@ import {
   insertLink,
   verifiedAccountEmails,
 } from "../src/services/identity/accounts/repo.js";
-import { deleteProduct } from "../src/admin/repo.js";
+import { deleteProduct } from "../src/core/console/repo.js";
 import type { Db, DbStatement } from "../src/db/types.js";
 import {
   syncAccountLicenseLinks,

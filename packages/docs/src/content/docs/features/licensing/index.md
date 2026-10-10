@@ -75,11 +75,11 @@ test enforces that no service imports a sibling.
 Two computations that read like License's live in Core instead, and the reason is the same in
 both cases — Identity performs them too:
 
-- **The seat decision** (`core/authz.ts`). `POST /<product>/identity/session/license` and the
+- **The seat decision** (`core/licensing/authz.ts`). `POST /<product>/identity/session/license` and the
   whole OIDC sign-in path authorize a device and mint a token exactly as activation does. A
   duplicated seat check is how two services end up admitting a different number of machines to
   one license, so the computation lives once in Core and both bind to it.
-- **The build gate** (`core/gate.ts`). Wire contract v3 §5 names two enforcement points for
+- **The build gate** (`core/licensing/gate.ts`). Wire contract v3 §5 names two enforcement points for
   channel and version blocking: this service's document route, and identity's
   `GET /<product>/identity/session`. They must refuse exactly the same builds.
 

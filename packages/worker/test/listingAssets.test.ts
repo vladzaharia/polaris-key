@@ -36,7 +36,7 @@ import { R2Mock, asR2 } from "./r2Mock.js";
 import { NOW, seedProduct } from "./seed.js";
 import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import {
   blobKey,
@@ -44,7 +44,7 @@ import {
   recordObject,
   recordRef,
   stagingKey,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import { issueUploadTicket } from "../src/core/publisher.js";
 import {
   aiGeneratedStateOf,

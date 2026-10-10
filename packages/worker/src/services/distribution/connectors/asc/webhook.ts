@@ -42,7 +42,7 @@ import { errorResponse, json } from "../../../../core/errors.js";
 import { constantTimeEqualBytes } from "../../../../platform/compare.js";
 import { hexDecode } from "../../../../platform/bytes.js";
 import { hmacSha256, importHmacKey } from "../../../../platform/hash.js";
-import { pk as kvKey } from "../../../../kv.js";
+import { pk as kvKey } from "../../../../platform/kv.js";
 import { claimOnce, releaseClaim } from "../../../../core/atomicClaim.js";
 import { clientNetwork, rateLimitOk } from "../../../../core/rateLimit.js";
 import { openOutletCredential } from "../../../../core/outletCredentials.js";

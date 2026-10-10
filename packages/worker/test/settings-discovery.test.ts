@@ -16,7 +16,7 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   loadProduct,
   serializePresentation,
@@ -29,8 +29,8 @@ import { writeSetting } from "../src/core/settings/write.js";
 import { resolveProductSetting } from "../src/core/settings/resolve.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
 import { parseManualChannels } from "../src/services/release/channels.js";
-import { setServices } from "../src/repo.js";
-import { keyEntryLimit } from "../src/core/keyEntries.js";
+import { setServices } from "../src/core/repo.js";
+import { keyEntryLimit } from "../src/core/licensing/keyEntries.js";
 
 interface Probe {
   /** A value to write that differs from the seeded product's. */
@@ -185,7 +185,7 @@ const PROBES: Readonly<Record<string, Probe>> = {
     enforced: (p) => ({ accent: p.presentation?.accent }),
   },
   // I-09 (WIRE-CONTRACT-V4 §12.6): the Identity fragment's `keyEntryLimit` is the limit key entry
-  // enforces (`core/keyEntries.ts` `keyEntryLimit()`). The probe turns Identity on and writes the
+  // enforces (`core/licensing/keyEntries.ts` `keyEntryLimit()`). The probe turns Identity on and writes the
   // row the manifest's `identity.keyEntry.limit` seeds at link and resync.
   "identity.keyEntry.limit": {
     value: 7,

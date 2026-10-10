@@ -12,7 +12,7 @@
 // deleted rather than generalised.
 //
 // `validatePayload` is not defined here: the catalog prune is the last gate before signing on
-// all THREE document paths, so it lives in `core/payload.ts` and the browser session imports it
+// all THREE document paths, so it lives in `core/licensing/payload.ts` and the browser session imports it
 // from there directly.
 
 import { sha256Base64Url } from "@polaris-key/jws";
@@ -22,7 +22,7 @@ import {
   SECONDS_PER_DAY,
   type DocProfile,
 } from "@polaris-key/protocol";
-import type { ManagedPayload } from "../../core/payload.js";
+import type { ManagedPayload } from "../../core/licensing/payload.js";
 import { clampGraceUntil } from "../../core/documents.js";
 
 /**
@@ -53,7 +53,7 @@ export interface BuildDocInput {
   deviceId: string;
   now: number;
   maxOfflineDays: number;
-  /** LX-07: the licence's expiry when the product clamps grace to it (`core/graceClamp.ts`). */
+  /** LX-07: the licence's expiry when the product clamps grace to it (`core/licensing/graceClamp.ts`). */
   clampGraceTo?: number | null;
   profile: DocProfile;
   payload: ManagedPayload;

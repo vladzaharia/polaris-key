@@ -22,10 +22,10 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
-import { secureResponse } from "../src/securityHeaders.js";
+import { secureResponse } from "../src/platform/securityHeaders.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+import { setServices } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 
 const BASE = "https://key.plrs.im";
 const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";

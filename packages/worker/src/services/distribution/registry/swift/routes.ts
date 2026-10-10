@@ -34,14 +34,14 @@
  */
 
 import { sha256Hex } from "../../../../platform/hash.js";
-import { blobKey, blobResponse } from "../../../../core/blobs.js";
+import { blobKey, blobResponse } from "../../../../core/assets/blobs.js";
 import type { ReleaseCatalog } from "../../../../core/hooks.js";
 import {
   registryNotFound,
   registryOrigin,
   type RegistryRoute,
   type RegistryRouteContext,
-} from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
 import { authorizeFeedRead } from "../authorize.js";
 import { registryCacheHeaders } from "../cache.js";
 import {

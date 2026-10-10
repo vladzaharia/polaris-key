@@ -22,7 +22,7 @@
  * routes that reach `signIn` THROUGH a product (I-08, I-09, I-13, I-15) check the toggle.
  */
 
-import { subjectFor } from "../../../core/accountSubjects.js";
+import { subjectFor } from "../../../core/accounts/accountSubjects.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
 import { portalAudit } from "../portal/repo.js";

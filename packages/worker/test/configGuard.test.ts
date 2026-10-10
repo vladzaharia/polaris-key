@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { configProblems } from "../src/core/configGuard.js";
 import { check } from "../scripts/check-config.mjs";
-import { hashKey } from "../src/crypto.js";
-import type { Env } from "../src/env.js";
+import { hashKey } from "../src/platform/crypto.js";
+import type { Env } from "../src/platform/env.js";
 
 const S = "s".repeat(32);
 const good = {

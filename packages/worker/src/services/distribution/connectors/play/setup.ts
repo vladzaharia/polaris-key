@@ -46,7 +46,7 @@
 import { effectiveTrackMap } from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../../../platform/json.js";
 import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,

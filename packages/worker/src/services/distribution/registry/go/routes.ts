@@ -32,14 +32,14 @@ import type {
   CatalogPackageDeliverable,
   ReleaseCatalog,
 } from "../../../../core/hooks.js";
-import { blobKey, blobResponse } from "../../../../core/blobs.js";
-import { registryOrigin } from "../../../../core/registryHostname.js";
+import { blobKey, blobResponse } from "../../../../core/assets/blobs.js";
+import { registryOrigin } from "../../../../core/registry/registryHostname.js";
 import {
   registryNotFound,
   type RegistryRoute,
   type RegistryRouteContext,
   type RegistryRouteMatch,
-} from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
 import { GO_MODULE_PATH } from "@polaris-key/manifest";
 import { catalogPackageSource, freshRegistryObject } from "../catalogSource.js";
 import type { RegistryRenderer } from "../materialise.js";

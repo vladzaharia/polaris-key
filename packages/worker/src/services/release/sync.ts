@@ -12,7 +12,7 @@
  *
  * `linkRepo.ts` and `resync.ts` keep their own files (they are ~900 lines of manifest ingestion
  * between them, and folding that in would make this module unreviewable). What lives here is the
- * boundary: `admin/handlers/products.ts` and `githubWebhook.ts` import from `sync.js` and know
+ * boundary: `console/handlers/products.ts` and `githubWebhook.ts` import from `sync.js` and know
  * nothing about the layout behind it.
  *
  * ── WHY INGESTION LIVES IN THE SERVICE AT ALL ───────────────────────────────────────────────
@@ -25,7 +25,7 @@
  */
 
 import type { Db, DbStatement } from "../../db/types.js";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { FetchImpl } from "./githubApp.js";
 import { listReleasePages, RELEASE_PAGE_CAP, type Release } from "./github.js";
 import {

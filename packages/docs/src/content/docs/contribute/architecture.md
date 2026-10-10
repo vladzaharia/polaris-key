@@ -144,7 +144,7 @@ standing as a hole nothing needs. It also asserts nothing crosses back the other
 Identity was the case that exercised the rule hardest, because it genuinely needs license-shaped
 answers: its OIDC sign-in mints and claims licenses, and its browser session authorizes a device and
 enforces the build gate. None of that became an `identity → license` import. It became
-`core/authz.ts` and `core/gate.ts`, with License re-exporting them. That is what "everything else
+`core/licensing/authz.ts` and `core/licensing/gate.ts`, with License re-exporting them. That is what "everything else
 crosses via core-mediated interfaces" means in practice.
 
 ## Hide, don't reveal

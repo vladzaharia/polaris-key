@@ -39,12 +39,12 @@ import {
   stagePackObjects,
 } from "../../seed.js";
 import { asR2, installDigestStream, R2Mock } from "../../r2Mock.js";
-import { setServices } from "../../../src/repo.js";
+import { setServices } from "../../../src/core/repo.js";
 import { serializeServices } from "../../../src/core/services.js";
 import { issueStaticCiToken } from "../../../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../../../src/services/release/deliverables.js";
 import { manifestIngestStatements } from "../../../src/services/distribution/outlets.js";
-import { reprDigest } from "../../../src/core/blobs.js";
+import { reprDigest } from "../../../src/core/assets/blobs.js";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { releaseKeysJson } from "../../releaseKeysFixture.js";
 import { sha256Hex } from "../../releaseRoutesFixture.js";

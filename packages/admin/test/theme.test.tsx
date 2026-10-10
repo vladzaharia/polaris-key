@@ -84,7 +84,7 @@ describe("the pre-paint theme script", () => {
     }
   });
 
-  it("is allowed by the Worker's CSP hash (packages/worker/src/adminCsp.ts)", () => {
+  it("is allowed by the Worker's CSP hash (packages/worker/src/platform/adminCsp.ts)", () => {
     const hash = `'sha256-${createHash("sha256").update(PRE_PAINT, "utf8").digest("base64")}'`;
     const adminCsp = readFileSync(
       join(pkg, "..", "worker", "src", "adminCsp.ts"),

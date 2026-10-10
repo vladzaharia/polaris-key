@@ -16,11 +16,11 @@
  */
 
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
-import { bearer } from "../../http.js";
-import { deleteTokenRecord } from "../../kv.js";
-import { hashKey } from "../../crypto.js";
+import { bearer } from "../../platform/http.js";
+import { deleteTokenRecord } from "../../platform/kv.js";
+import { hashKey } from "../../platform/crypto.js";
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Product } from "../../core/products.js";
 import {
   errorResponse,
@@ -34,7 +34,7 @@ import {
   setDeviceStatus,
   touchKey,
   type LicenseRow,
-} from "../../repo.js";
+} from "../../core/repo.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   deviceMetadata,
@@ -45,17 +45,20 @@ import {
   shapeDevice,
   shapeLicense,
 } from "../../core/devices.js";
-import { requireLicensedDevice } from "../../core/authz.js";
-import { authorizeDevice, type AuthzError } from "../../core/authz.js";
-import { logRefusal, type WaitUntil } from "../../core/refusals.js";
-import { buildManageUrl } from "../../core/manageUrl.js";
+import { requireLicensedDevice } from "../../core/licensing/authz.js";
+import {
+  authorizeDevice,
+  type AuthzError,
+} from "../../core/licensing/authz.js";
+import { logRefusal, type WaitUntil } from "../../core/licensing/refusals.js";
+import { buildManageUrl } from "../../core/licensing/manageUrl.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 import {
   countKeyEntries,
   keyEntryGate,
   keyEntryLimitResponse,
   licenseOwnedResponse,
-} from "../../core/keyEntries.js";
+} from "../../core/licensing/keyEntries.js";
 
 /**
  * The refusal link for an `authorizeDevice` failure (PX-W8, WIRE-CONTRACT-V4 §5.3): a

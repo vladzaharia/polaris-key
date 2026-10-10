@@ -25,10 +25,10 @@
  */
 
 import type { DbStatement } from "../../../db/types.js";
-import { stmtMoveAccountLicenses } from "../../../core/accountSubjects.js";
-import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
-import { runSubjectMerge } from "../../../core/subjectHooks.js";
-import { randomId } from "../../../crypto.js";
+import { stmtMoveAccountLicenses } from "../../../core/accounts/accountSubjects.js";
+import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licensing/licenseHolders.js";
+import { runSubjectMerge } from "../../../core/accounts/subjectHooks.js";
+import { randomId } from "../../../platform/crypto.js";
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsMergedNotice } from "../portal/notices.js";
 import { stmtSubjectEvent } from "./events.js";

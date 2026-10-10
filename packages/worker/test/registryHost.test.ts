@@ -32,17 +32,17 @@ import {
   FEED_PUSH_ROUTE,
   FEED_READ_ROUTE,
   type RegistryRoute,
-} from "../src/core/registryHost.js";
-import { inertDocumentPolicy } from "../src/core/bytesHost.js";
-import { BLOB_CSP } from "../src/core/blobs.js";
-import { LANDING_CSS, landingCsp } from "../src/core/bytesLanding.js";
-import { ADMIN_COOKIE } from "../src/admin/session.js";
+} from "../src/core/registry/registryHost.js";
+import { inertDocumentPolicy } from "../src/core/assets/bytesHost.js";
+import { BLOB_CSP } from "../src/core/assets/blobs.js";
+import { LANDING_CSS, landingCsp } from "../src/core/assets/bytesLanding.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { serializeWebOrigins } from "../src/core/cors.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";

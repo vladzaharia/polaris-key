@@ -15,14 +15,14 @@
  * `__Host-` rename made, R1-08).
  *
  * The cookie is host-only (`__Host-`, `Path=/`), `HttpOnly`, `Secure`, `SameSite=Lax`, and never
- * reaches a product route: the dispatcher strips it (`core/accountCookies.ts`).
+ * reaches a product route: the dispatcher strips it (`core/accounts/accountCookies.ts`).
  */
 
-import { hashKey } from "../../../crypto.js";
+import { hashKey } from "../../../platform/crypto.js";
 import { parseJsonStringList } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { getPortalAccount } from "./repo.js";
 import {
   buildPortalSessionCookie,

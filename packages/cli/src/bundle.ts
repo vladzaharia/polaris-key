@@ -1,7 +1,7 @@
 /**
  * `pkey bundle` — mint one OFFLINE ACTIVATION BUNDLE and write it to a file.
  *
- * The server half is `packages/worker/src/core/bundles.ts` —
+ * The server half is `packages/worker/src/console/handlers/bundles.ts` —
  * `POST /manage/api/products/<slug>/bundles`. It signs the licence and/or config documents an
  * air-gapped install would have fetched, wraps them with the trust manifest needed to verify
  * them, and returns one compact `pkey-bundle+jws`. This module performs that call and drops the
@@ -14,7 +14,7 @@
  * the same authority. So this command reads the operator's live session cookie out of the
  * environment variable `PKEY_ADMIN_COOKIE`, GETs `/manage/api/me` with it to learn that
  * session's CSRF token, and echoes that token in `X-PKey-CSRF` on the POST — the same
- * double-submit the console itself performs (`packages/worker/src/admin/api.ts`). This is
+ * double-submit the console itself performs (`packages/worker/src/console/api.ts`). This is
  * pre-launch operator-grade pragmatism, stated plainly rather than dressed up: it is the only
  * credential that exists.
  *
@@ -64,7 +64,7 @@ export const DEFAULT_BASE_URL = "https://key.plrs.im";
 /** The environment variable this command reads its admin session cookie from. */
 export const ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
 
-/** The console's session cookie name (`packages/worker/src/admin/session.ts`). */
+/** The console's session cookie name (`packages/worker/src/core/console/session.ts`). */
 export const ADMIN_COOKIE_NAME = "__Host-pkey_admin";
 
 /** The CSRF header every admin-API mutation must echo `/manage/api/me`'s `csrf` in. */

@@ -2,7 +2,7 @@
  * The nightly lazy-delta sweep (P4-17), one product at a time from `src/scheduled.ts`'s
  * maintenance tick. For each opted-in product:
  *
- *   1. refresh its demand (`core/deltaDemand.ts`: prune device rows past 30 days, rebuild the
+ *   1. refresh its demand (`core/assets/deltaDemand.ts`: prune device rows past 30 days, rebuild the
  *      7-day aggregate);
  *   2. enqueue the hot pairs that have no row yet, after the same policy the consumer applies
  *      (so a pair below the threshold, with a CI delta, over the cap or past the daily cap is
@@ -14,14 +14,14 @@
  */
 
 import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   DEMAND_RETENTION_SECONDS,
   hotPairs,
   lazyDeltaSettings,
   pairSeenSince,
   refreshDemand,
-} from "../../../../core/deltaDemand.js";
+} from "../../../../core/assets/deltaDemand.js";
 import { pairMessage } from "./messages.js";
 import { shouldQueue } from "./policy.js";
 import { platformSetting } from "../../../../core/platformSettings.js";

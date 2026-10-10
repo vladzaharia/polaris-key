@@ -15,14 +15,14 @@
  * and a permanent alias on an admin API buys nothing except two paths that can answer
  * differently after the next refactor.
  *
- * Sub-routing lives here, not in `admin/api.ts`: the dispatcher hands over the FULL remaining
+ * Sub-routing lives here, not in `console/api.ts`: the dispatcher hands over the FULL remaining
  * path and a service routes itself (`ServiceDescriptor.adminHandle`). Session, CSRF, rate limit
  * and the platform-admin gate all ran before this is reached — see `core/adminApi.ts` for why
  * they stay there.
  */
 
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../admin/session.js";
+import type { AdminSession } from "../../../core/console/session.js";
 import { handleLicenses } from "./licenses.js";
 import { handleTiers } from "./tiers.js";
 import { handleFingerprintPolicy } from "./policy.js";

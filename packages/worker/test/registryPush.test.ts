@@ -17,16 +17,16 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dispatchRegistryHost } from "../src/core/registryHost.js";
+import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import {
   BYTE_ROUTES,
   REGISTRY_OWNERLESS_ROUTES,
   REGISTRY_ROUTES,
   SERVICES,
 } from "../src/mount.js";
-import { dispatchBytesHost } from "../src/core/bytesHost.js";
+import { dispatchBytesHost } from "../src/core/assets/bytesHost.js";
 import { forgetRegistrySettings } from "../src/services/distribution/registry/settings.js";
 import { forgetLicenceHolds } from "../src/services/distribution/registry/authorize.js";
 import {
@@ -36,8 +36,8 @@ import {
   revokeRegistryToken,
   signPullToken,
   verifyPullToken,
-} from "../src/core/registryTokens.js";
-import { OCI_PUSH_REF, blobKey } from "../src/core/blobs.js";
+} from "../src/core/registry/registryTokens.js";
+import { OCI_PUSH_REF, blobKey } from "../src/core/assets/blobs.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import {
   OCI_PUSH_ROUTES,
@@ -47,7 +47,7 @@ import {
 import { RELEASE_REGISTRY_OPENAPI } from "../src/services/release/index.js";
 import { stmtUpsertDeliverable } from "../src/services/release/model.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";

@@ -35,9 +35,9 @@
  *   - Changes share 10 a minute per account (`portalMethodChange`).
  */
 
-import { hashKey } from "../../../crypto.js";
+import { hashKey } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -54,8 +54,8 @@ import {
   EMAIL_CODE_TTL_SECONDS,
   issueEmailCode,
   verifyEmailCode,
-} from "../../../core/emailLimits.js";
-import { isApplePrivateRelay } from "../../../core/emailDelivery.js";
+} from "../../../core/notify/emailLimits.js";
+import { isApplePrivateRelay } from "../../../core/notify/emailDelivery.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   isFresh,

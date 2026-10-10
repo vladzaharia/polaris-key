@@ -2,7 +2,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 /**
- * An in-memory R2Bucket fake covering exactly the surface `core/blobs.ts` uses: `head`, `get`
+ * An in-memory R2Bucket fake covering exactly the surface `core/assets/blobs.ts` uses: `head`, `get`
  * with `range` + `onlyIf`, `put` with a `sha256` checksum + `onlyIf`, `delete` and `list`, plus
  * the multipart upload F-23's OCI push uses (R2's part-size rule enforced at `complete`; a
  * completed object carries no SHA-256, as on R2).
@@ -165,7 +165,9 @@ export class R2Mock {
     let range: R2Range | undefined;
     if (options?.range) {
       if (options.range instanceof Headers)
-        throw new Error("R2Mock: header ranges are not used by core/blobs.ts");
+        throw new Error(
+          "R2Mock: header ranges are not used by core/assets/blobs.ts",
+        );
       const r = options.range as {
         offset?: number;
         length?: number;

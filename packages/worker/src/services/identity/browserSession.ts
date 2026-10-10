@@ -20,15 +20,15 @@
  * exactly the order and with exactly the fail-closed behaviour they had before the move.
  */
 
-import { isSameOriginRequest } from "../../core/browserRequestGuard.js";
+import { isSameOriginRequest } from "../../core/accounts/browserRequestGuard.js";
 import { constantTimeEqual } from "../../platform/compare.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { Catalog } from "@polaris-key/catalog";
-import { bearer } from "../../http.js";
-import { deleteTokenRecord } from "../../kv.js";
-import { hashKey, mintOpaqueToken, randomId } from "../../crypto.js";
+import { bearer } from "../../platform/http.js";
+import { deleteTokenRecord } from "../../platform/kv.js";
+import { hashKey, mintOpaqueToken, randomId } from "../../platform/crypto.js";
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../env.js";
+import type { Env } from "../../platform/env.js";
 import type { Product } from "../../core/products.js";
 import {
   errorResponse,
@@ -44,18 +44,18 @@ import {
   setDeviceStatus,
   touchKey,
   type LicenseRow,
-} from "../../repo.js";
+} from "../../core/repo.js";
 import { deviceMetadata } from "../../core/devices.js";
-import { buildManageUrl } from "../../core/manageUrl.js";
+import { buildManageUrl } from "../../core/licensing/manageUrl.js";
 import {
   countKeyEntries,
   keyEntryGate,
   keyEntryLimitResponse,
   licenseOwnedResponse,
-} from "../../core/keyEntries.js";
-import { logRefusal } from "../../core/refusals.js";
+} from "../../core/licensing/keyEntries.js";
+import { logRefusal } from "../../core/licensing/refusals.js";
 // The seat decision, the licence-gated device check and the fused merge all live in
-// `core/authz.ts`: Core's `validateDeviceToken` answers only "is this token a live device",
+// `core/licensing/authz.ts`: Core's `validateDeviceToken` answers only "is this token a live device",
 // because a config-only product has devices with no licence at all (D-08), and the
 // licence-usability half is shared with License, Release and Update rather than owned by any
 // of them. This surface therefore behaves byte-identically to before the wire-v3 split.
@@ -64,13 +64,17 @@ import {
   docProfile,
   requireLicensedDevice,
   resolveEffective,
-} from "../../core/authz.js";
-import { validatePayload } from "../../core/payload.js";
-import { clearDeviceSubjects } from "../../core/subjectHooks.js";
-import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
+} from "../../core/licensing/authz.js";
+import { validatePayload } from "../../core/licensing/payload.js";
+import { clearDeviceSubjects } from "../../core/accounts/subjectHooks.js";
+import {
+  checkBuildGate,
+  tighterMax,
+  tighterMin,
+} from "../../core/licensing/gate.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
-import { graceClampFor } from "../../core/graceClamp.js";
-import { licenseOfflineDays } from "../../core/entitlements.js";
+import { graceClampFor } from "../../core/licensing/graceClamp.js";
+import { licenseOfflineDays } from "../../core/licensing/entitlements.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 import { resolveAccount } from "./accounts/repo.js";
 import { platformSubjectAccountRefused } from "./accounts/platformMigration.js";

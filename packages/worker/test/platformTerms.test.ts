@@ -14,7 +14,7 @@ import {
 import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import {
   httpsUrl,
   parsePlatformTerms,

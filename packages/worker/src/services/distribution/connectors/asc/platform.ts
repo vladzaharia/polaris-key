@@ -17,7 +17,7 @@
  */
 
 import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../env.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   platformAscToken,
   transientAscToken,
@@ -30,7 +30,7 @@ import {
   recordPlatformCredentialResult,
   resolvePlatformCredential,
 } from "../../../../core/platformCredentials.js";
-import type { PlatformEventActor } from "../../../../core/platformEvents.js";
+import type { PlatformEventActor } from "../../../../core/ops/platformEvents.js";
 import {
   AscClient,
   AscError,

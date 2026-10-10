@@ -6,7 +6,7 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../db/types.js";
-import { getActiveSchema } from "../repo.js";
+import { getActiveSchema } from "./repo.js";
 
 /** Load + compile a product's active catalog (for value validation). Null if none/invalid. */
 export async function loadCatalog(

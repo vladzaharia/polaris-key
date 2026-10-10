@@ -30,11 +30,15 @@ import { sha256Hex } from "../../../../platform/hash.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,
-} from "../../../../core/registryHost.js";
+} from "../../../../core/registry/registryHost.js";
 import type { CatalogPackageDeliverable } from "../../../../core/hooks.js";
-import { registryNotFound } from "../../../../core/registryHost.js";
-import { registryOrigin } from "../../../../core/registryHostname.js";
-import { blobKey, blobResponse, hasRef } from "../../../../core/blobs.js";
+import { registryNotFound } from "../../../../core/registry/registryHost.js";
+import { registryOrigin } from "../../../../core/registry/registryHostname.js";
+import {
+  blobKey,
+  blobResponse,
+  hasRef,
+} from "../../../../core/assets/blobs.js";
 import { registryCacheHeaders } from "../cache.js";
 import { freshRegistryObject, registryPackageOf } from "../catalogSource.js";
 import { feedRoute } from "../serve.js";

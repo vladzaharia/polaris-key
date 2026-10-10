@@ -35,8 +35,8 @@
  * SwiftPM verifies the certificate chain (§5.3).
  */
 
-import { blobKey } from "../../../../core/blobs.js";
-import { compareSemver } from "../../../../core/entitlements.js";
+import { blobKey } from "../../../../core/assets/blobs.js";
+import { compareSemver } from "../../../../core/licensing/entitlements.js";
 import type {
   PackageFile,
   PackageVersion,

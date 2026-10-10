@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProductPublic } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import {
   getOrCreateAccountByEmail,
@@ -40,7 +40,7 @@ import type { CustomerFile } from "../src/core/hooks.js";
 import { detectPlatform as coreDetect } from "../src/core/platformDetect.js";
 import { detectPlatform as pageDetect } from "../src/core/platformDetect.js";
 import { rateLimitOk } from "../src/core/rateLimit.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   handlePortalApi,
   handlePortalDownload,

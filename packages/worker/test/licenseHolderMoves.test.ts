@@ -19,14 +19,14 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { attachLicenseAccount } from "../src/core/accountSubjects.js";
+} from "../src/core/console/session.js";
+import { attachLicenseAccount } from "../src/core/accounts/accountSubjects.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { RELINK_UNDO_SECONDS } from "../src/services/identity/accounts/productUsers.js";
 
@@ -573,7 +573,7 @@ describe("Reassign", () => {
     // Bo verifies the address after the move: the licence joins his account through it.
     const bo = await account("bo@example.com");
     const { onAccountEmailVerified } =
-      await import("../src/core/licenseHolders.js");
+      await import("../src/core/licensing/licenseHolders.js");
     await onAccountEmailVerified(db, bo.id, "bo@example.com", NOW);
     expect((await row(id)).account_id).toBe(bo.id);
 
@@ -658,7 +658,7 @@ describe("holder moves count towards the operator's daily relink alert", () => {
 
 describe("a product deletion takes its relink history", () => {
   it("leaves no license_relinks row (names, emails, accounts) behind", async () => {
-    const { deleteProduct } = await import("../src/admin/repo.js");
+    const { deleteProduct } = await import("../src/core/console/repo.js");
     await account("ada@example.com");
     const id = await create({ name: "Studio Pro", email: "ada@example.com" });
     expect(

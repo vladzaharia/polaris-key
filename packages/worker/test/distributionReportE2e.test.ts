@@ -27,7 +27,7 @@ vi.mock("../src/core/publisher.js", async (importOriginal) => ({
 import { driveRollout, reportDistribution } from "@polaris-key/cli";
 import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import {
   CONSOLE,

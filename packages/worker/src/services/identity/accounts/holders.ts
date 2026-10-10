@@ -1,6 +1,6 @@
 /**
  * Identity's half of the licence-holder hooks (LX-26; notes/S-24 §5.4, D2–D4), registered with
- * Core at module load (`core/licenseHolders.ts` explains the contract).
+ * Core at module load (`core/licensing/licenseHolders.ts` explains the contract).
  *
  *   accountEmailVerified   an account verified an address: the email half of the portal's link
  *                          sweep, for that address (`attachWaitingLicensesByEmail`)
@@ -15,13 +15,13 @@
  * account has verified leaves the licence waiting.
  */
 
-import { getLicense } from "../../../repo.js";
-import { licenseEmail } from "../../../core/accountSubjects.js";
+import { getLicense } from "../../../core/repo.js";
+import { licenseEmail } from "../../../core/accounts/accountSubjects.js";
 import {
   autoAttachBlockedAccounts,
   registerLicenseHolderHooks,
   type LicenseHolderContext,
-} from "../../../core/licenseHolders.js";
+} from "../../../core/licensing/licenseHolders.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
 import {

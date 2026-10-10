@@ -22,10 +22,10 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { seedHosted, setAssetHosting } from "./hostedFixture.js";
 import { handlePortalApi, portalHooksFor } from "./portalHarness.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { loadProductPublic } from "../src/core/products.js";
 import {
   getOrCreateAccountByEmail,
@@ -47,7 +47,7 @@ import {
   mediaVersion,
 } from "../src/services/identity/portal/media.js";
 import { clientRecordFor } from "../src/services/identity/passthrough/client.js";
-import { pickVariantWidth } from "../src/core/hostedImages.js";
+import { pickVariantWidth } from "../src/core/assets/hostedImages.js";
 
 const PORTAL_SECRET = "test-portal-session-secret";
 const IMG = "https://img.example.test";
@@ -173,7 +173,7 @@ async function media(
   );
 }
 
-describe("the variant choice (core/hostedImages.ts)", () => {
+describe("the variant choice (core/assets/hostedImages.ts)", () => {
   it("is the narrowest rung at least as wide, else the original", () => {
     expect(pickVariantWidth([64, 128, 256, 512, 1024], 128)).toBe(128);
     expect(pickVariantWidth([64, 128, 256, 512, 1024], 200)).toBe(256);

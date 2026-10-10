@@ -38,14 +38,14 @@
  * are audited by its own ledger steps (`performStoreWrite`).
  *
  * Narrative-only (rule 10, `routeCoverage`'s `adminApi` kind); session, CSRF, rate limit and the
- * platform-admin gate run in `admin/api.ts` first.
+ * platform-admin gate run in `console/api.ts` first.
  */
 
 import { ErrorCode } from "../../../core/errors.js";
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../admin/session.js";
-import { adminJson, err, readBody } from "../../../admin/lib/respond.js";
-import { audit } from "../../../admin/audit.js";
+import type { AdminSession } from "../../../core/console/session.js";
+import { adminJson, err, readBody } from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
 import { typedConfirmationRefusal } from "../../../core/storefront/confirm.js";
 import {
   beginStoreOperation,

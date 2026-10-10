@@ -23,7 +23,7 @@
  *      never our own zone). A provider-supplied URL naming anything else is never fetched.
  *   2. REDIRECTS RE-CHECKED: by hand, at most three, every hop against rule 1 before it is dialled.
  *   3. BOUNDED: a 5 s budget; at most `PROVIDER_PICTURE_MAX_BYTES`, counted while reading.
- *   4. STRICT TYPE: the bytes must BE a PNG, JPEG, WebP or GIF by magic number (`core/sniff.ts`,
+ *   4. STRICT TYPE: the bytes must BE a PNG, JPEG, WebP or GIF by magic number (`core/assets/sniff.ts`,
  *      which can never answer SVG or HTML); the upstream `Content-Type` is ignored.
  *
  * The URL comes from the provider's own answer (Google's ID token, Steam's Web API), never from a
@@ -64,10 +64,10 @@
  * a deleted account's picture must be gone at once, not in 180 days.
  */
 
-import { hashKey } from "../../../crypto.js";
+import { hashKey } from "../../../platform/crypto.js";
 import { sha256Hex } from "../../../platform/hash.js";
 import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../env.js";
+import type { Env } from "../../../platform/env.js";
 import {
   cappedStream,
   guardUrl,
@@ -77,8 +77,8 @@ import {
   type SafeFetchReason,
 } from "../../../core/safeFetch.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
-import { sniffContentType, SNIFF_BYTES } from "../../../core/sniff.js";
-import { appSecurityHeaders as portalSecurityHeaders } from "../../../securityHeaders.js";
+import { sniffContentType, SNIFF_BYTES } from "../../../core/assets/sniff.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../platform/securityHeaders.js";
 
 /** The R2 prefix every avatar rendition lives under. */
 export const AVATAR_PREFIX = "avatars/";

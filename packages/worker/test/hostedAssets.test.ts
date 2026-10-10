@@ -1,6 +1,6 @@
 /**
- * HA-01 — the hosted-asset ingest (`core/hostedAssets.ts`; notes/S-20 §6.2, §6.3), the content
- * sniff (`core/sniff.ts`), and the Content-Type every R2 put now stores (S-20 §4.6 #1), down to the
+ * HA-01 — the hosted-asset ingest (`core/assets/hostedAssets.ts`; notes/S-20 §6.2, §6.3), the content
+ * sniff (`core/assets/sniff.ts`), and the Content-Type every R2 put now stores (S-20 §4.6 #1), down to the
  * Play listing-image read that depended on it.
  */
 import { createHash } from "node:crypto";
@@ -21,17 +21,17 @@ import {
   slotClass,
   variantFamily,
   type IngestContext,
-} from "../src/core/hostedAssets.js";
-import { peekStream, sniffContentType } from "../src/core/sniff.js";
+} from "../src/core/assets/hostedAssets.js";
+import { peekStream, sniffContentType } from "../src/core/assets/sniff.js";
 import {
   blobKey,
   promote,
   putVerified,
   stagingKey,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
 import { playImageFromListingAsset } from "../src/services/distribution/connectors/play/storefront.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { makeTestDb } from "./helpers.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
@@ -41,8 +41,8 @@ import {
   assetUsage,
   quotaClassOf,
   RELEASE_ARTIFACT_REF_KIND,
-} from "../src/core/assetQuota.js";
-import { hostedImages } from "../src/core/hostedImages.js";
+} from "../src/core/assets/assetQuota.js";
+import { hostedImages } from "../src/core/assets/hostedImages.js";
 import type { Db, DbStatement } from "../src/db/types.js";
 
 beforeAll(() => installDigestStream());

@@ -83,15 +83,15 @@ import {
   notFound as adminNotFound,
   err,
   readBody,
-} from "../../../admin/lib/respond.js";
-import { audit } from "../../../admin/audit.js";
+} from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
 import { getProductSecretUsage } from "../../../core/products.js";
 import { parseJsonColumn } from "../../../platform/json.js";
 import {
   allowsAnonymousEnroll,
   allowsOidcDefault,
-} from "../../../fingerprint.js";
-import type { IdentityIssuance } from "../../../core/identityTrust.js";
+} from "../../../platform/fingerprint.js";
+import type { IdentityIssuance } from "../../../core/accounts/identityTrust.js";
 import {
   approvalMismatch,
   differingRecipeFields,
