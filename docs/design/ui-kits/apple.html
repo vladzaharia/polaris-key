@@ -246,6 +246,17 @@
         --acc-fg: #5eb0ff;
         --acc-on: #fff;
       }
+      .room.s {
+        --wh: 580px;
+      }
+      .room.s2 {
+        --wh: 500px;
+      }
+      .vl.sm {
+        font-size: 19px;
+        line-height: 26px;
+        color: rgb(255 255 255 / 0.7);
+      }
       .room.tall {
         --wt: 40px;
         --wh: 560px;
@@ -275,7 +286,7 @@
         top: var(--wt);
         translate: -50% 0;
         width: 1000px;
-        height: var(--wh);
+        min-height: var(--wh);
         border-radius: 52px;
         background: rgb(128 128 128 / 0.3);
         backdrop-filter: blur(40px) saturate(1.5);
@@ -309,8 +320,7 @@
         background: rgb(0 0 0 / 0.16);
         display: grid;
         justify-items: center;
-        align-content: start;
-        padding-top: 64px;
+        align-content: center;
       }
       .tall .vstart {
         padding: 16px 0;
@@ -479,7 +489,10 @@
       .ornament > span.vb {
         height: 60px;
         font-size: 18px;
-        padding: 0 22px;
+        padding: 0 28px;
+      }
+      .ornament:has(> span.vb) {
+        padding: 0 6px 0 10px;
       }
       .ornament > span.note {
         font-weight: 400;
@@ -782,7 +795,7 @@
         color: #fff;
         position: relative;
         overflow: hidden;
-        padding: 30px 12px 12px;
+        padding: 36px 12px 12px;
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -806,7 +819,7 @@
         font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
       }
       .wt {
-        margin: 0;
+        margin: 0 0 12px;
         font-weight: 600;
         font-size: 17px;
         line-height: 21px;
@@ -834,6 +847,7 @@
         letter-spacing: 0.06em;
       }
       .wbtn {
+        flex: none;
         margin-top: auto;
         width: 100%;
         height: 44px;
@@ -859,10 +873,12 @@
         color: color-mix(in oklab, var(--acc) 55%, var(--kit-white));
       }
       .wscreen.big {
+        padding-top: 32px;
         font-size: 20px;
         line-height: 25px;
       }
       .big .wt {
+        margin-bottom: 6px;
         font-size: 23px;
         line-height: 27px;
       }
@@ -873,8 +889,8 @@
         line-height: 25px;
       }
       .big .wbtn {
-        height: 56px;
-        border-radius: 28px;
+        height: 50px;
+        border-radius: 25px;
         font-size: 21px;
       }
       .big .wcode {
@@ -1031,7 +1047,7 @@
         const vGate = (hv) =>
           `<h1 class="vt">Welcome to Tidewater Studio</h1><p class="vl">Sign in or use a license key to continue.</p><div class="vacts"><div class="vb p${hv ? " hv" : ""}">Sign in</div><div class="vb">Use a license key</div></div>`;
         const vSignIn = () =>
-          `<h1 class="vt">Finish in your browser</h1><p class="vl">Check the code there matches this one.</p><div class="vcode"><b class="mono">WDJB-MJHT</b><span class="vchip">${ic("copy", 22)}Copy</span></div><div class="vwait">${countdown(0.84, 24)}Code expires in 4:12</div><div class="vacts"><div class="vb p">Open browser again${ext(20)}</div><div class="vb">Cancel</div></div>`;
+          `<h1 class="vt">Finish in your browser</h1><p class="vl">Check the code there matches this one.</p><div class="vcode"><b class="mono">WDJB-MJHT</b><span class="vchip">${ic("copy", 22)}Copy</span></div><div class="vwait">${countdown(0.84, 24)}Code expires in 4:12</div><p class="vl sm">Or go to key.plrs.im/activate</p><div class="vacts"><div class="vb p">Open browser again${ext(20)}</div><div class="vb">Cancel</div></div>`;
         const vLimit = () =>
           `<h1 class="vt">Your license is on 3 of 3 devices</h1><div class="vcall">Replace a device in your browser. Tidewater Studio continues when you're done.</div><div class="vacts"><div class="vb p">Open in browser${ext(20)}</div><div class="vb">Cancel</div></div>`;
         const start = () => icon3(168, true);
@@ -1043,7 +1059,7 @@
         for (const [, native, label] of presets) {
           const sfx = native ? "-native" : "";
           fig(
-            `<b>visionOS · Welcome</b> ${label}, default window. ${native ? "System font and tint." : "Rubik on the window's own glass."}`,
+            `<b>visionOS · Welcome</b> ${label}, default window. ${native ? "System font and tint." : "Rubik on the window's own glass."} The icon is a circle, as visionOS draws it.`,
             "",
             room(
               "visionos-gate" + sfx,
@@ -1057,7 +1073,7 @@
             "",
             room(
               "visionos-sign-in" + sfx,
-              "",
+              "s",
               vwin(start(), vSignIn()),
               native,
             ),
@@ -1067,7 +1083,7 @@
             "",
             room(
               "visionos-device-limit" + sfx,
-              "",
+              "s2",
               vwin(start(), vLimit()),
               native,
             ),
@@ -1100,7 +1116,7 @@
           "",
           `<div data-shot="visionos-banners" style="display:flex;gap:40px">${hostRoom(
             "pk",
-            `<div class="ornament"><span class="note">${ic("wifiOff", 24)}Offline · 5 days left to reconnect</span></div>`,
+            `<div class="ornament"><span class="note">${ic("wifiOff", 24)}Offline · 5 days left to reconnect</span><span class="vb p">Try again</span></div>`,
           )}${hostRoom(
             "pk",
             `<div class="ornament"><span class="note">Tidewater Studio 2.5 is available</span><span>Later</span><span class="vb p">Update now</span></div>`,
@@ -1126,7 +1142,7 @@
           fig(
             `<b>tvOS · Welcome</b> ${label}. First focus is Sign in, which opens no browser.`,
             "",
-            tv("tvos-gate" + sfx, native, "", tGate(native)),
+            tv("tvos-gate" + sfx, native, "", tGate(native), false),
           );
           fig(
             `<b>tvOS · Sign-in code</b> ${label}. Focus lands on the first real control once the code arrives.`,
@@ -1176,7 +1192,7 @@
         };
         const wIcon = (s) => icon3(s, true);
         const wWelcome = (mm, big) =>
-          `${wIcon(big ? 32 : mm === 41 ? 36 : 40)}<h1 class="wt">Welcome to Tidewater Studio</h1><div class="wbtn p">Sign in</div>`;
+          `${wIcon(big ? (mm === 41 ? 26 : 32) : mm === 41 ? 36 : 40)}<h1 class="wt">Welcome to Tidewater Studio</h1><div class="wbtn p">Sign in</div>`;
         const wActive = () =>
           `${wIcon(36)}<h1 class="wt">Tidewater Studio</h1><div class="wstat"><span style="color:color-mix(in oklab, var(--pk-success) 55%, var(--kit-white))">${ic("checkCircle", 18)}</span>Active</div><p class="wl">Pro · Lifetime</p><div class="wbtn p">Manage</div>`;
         const wHandoff = () =>
