@@ -1,16 +1,24 @@
 # SP-62 Swift server drop-in: `PolarisKeyServer` building on Linux, and the Vapor package
 
-| Field       | Value                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))         |
-| Size        | 1.2–1.7 engineer-weeks                                                                   |
-| Depends on  | [SP-53](SP-53-backend-credential-contract.md), [SP-52](SP-52-swift-package-footprint.md) |
-| Unblocks    | none                                                                                     |
-| Role        | `pkey-sdk-porter`                                                                        |
-| Plan mode   | no                                                                                       |
-| Gates       | `ci:macos`                                                                               |
-| Human input | none                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                |
+| Field       | Value                                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))                                                                  |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                            |
+| Depends on  | [SP-53](SP-53-backend-credential-contract.md), [SP-52](SP-52-swift-package-footprint.md), [SP-54](SP-54-signed-in-subject-in-licence-document.md) |
+| Unblocks    | none                                                                                                                                              |
+| Role        | `pkey-sdk-porter`                                                                                                                                 |
+| Plan mode   | no                                                                                                                                                |
+| Gates       | `ci:macos`                                                                                                                                        |
+| Human input | none                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                         |
+
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/SP-53.md`](../plans/SP-53.md) and [`plans/SP-54.md`](../plans/SP-54.md) (2026-10-09) bear on this package; where they differ from the text below, they win.
+
+- **Dependency.** Depends on SP-53 (the verdict, `backend-matrix.json`) and now also on SP-54: `requireSignIn()` reads `profile.user.subject` through its own port of the `licenseUserOf` rule, and replays `licenseUserCases` plus the `verdict` rows.
+- **Corrections.** The privacy file is `docs/PRIVACY.md`; there are eight locales, not nine (`en`, `de`, `es`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`); `tools/gen-sdk-constants.test.ts` pins the `sdkId` list, which already holds this package's `<lang>-server` value after SP-53.
+- **Sequencing.** SP-53 merges first, then SP-54 rebases, swaps SP-53's private subject decoder for `licenseUserOf` and runs the one batched `pnpm gen corpus` after UK-03. This package builds on the integrated tree and regenerates nothing.
 
 ## Goal
 

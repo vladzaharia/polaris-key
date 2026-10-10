@@ -12,6 +12,14 @@
 | Human input | none                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                            |
 
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/SP-53.md`](../plans/SP-53.md) and [`plans/SP-54.md`](../plans/SP-54.md) (2026-10-09) bear on this package; where they differ from the text below, they win.
+
+- **Corrections.** The privacy file is `docs/PRIVACY.md`; there are eight locales, not nine; the `client` section of `backend-matrix.json` is SP-53's and is replayed here, not regenerated. `tools/gen-sdk-constants.test.ts` pins the `sdkId` list.
+- **Sign-in refresh.** A client that signs in must refresh the licence document afterwards, because `profile.user` appears only once the device refreshes (SP-54 rollout step 4). I-10 already does this for the kit; `client.backend` must not send a document minted before the sign-in to a route that requires one.
+- **Sequencing.** SP-53 merges first, SP-54 rebases and runs the one batched `pnpm gen corpus` after UK-03; this package starts on the integrated tree and regenerates nothing.
+
 ## Goal
 
 The client half: `client.backend` in Node, React and Python, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
