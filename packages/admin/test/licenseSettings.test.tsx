@@ -12,10 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { productRow, resetConsole, ALL_ON } from "./consoleHarness.js";
 import { API, axe, bootLicense, writes } from "./licenseFixture.js";
 import type { ProductSetting } from "../src/api.js";
-import {
-  confirmLevel,
-  formatSettingValue,
-} from "../src/console/components/ProductSettingsSection.js";
+import { confirmLevel, formatSettingValue } from "../src/ui/settings/model.js";
 import { LICENSING_PENDING } from "../src/console/sections/license/pages/LicenseSettingsPage.js";
 
 beforeEach(resetConsole);
@@ -222,7 +219,7 @@ describe("License → Settings", () => {
       within(dialog).getByText(/claims it from \.pkey\/product/),
     ).toBeTruthy();
     const confirm = within(dialog).getByRole("button", {
-      name: "Change clamp offline grace to expiry",
+      name: "Turn off clamp offline grace to expiry",
     });
     // A critical setting asks for a reason first.
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
@@ -247,9 +244,8 @@ describe("License → Settings", () => {
     const log = boot();
     const c = await card();
     await user.click(
-      await within(c).findByRole("button", { name: /Set in console/ }),
+      await within(c).findByRole("button", { name: "Revert refund grace…" }),
     );
-    await user.click(await screen.findByRole("button", { name: "Revert…" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText("Return refund grace to the manifest?"),
