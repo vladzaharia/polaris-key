@@ -14,6 +14,8 @@
 import { defineConfig, passthroughImageService } from "astro/config";
 import starlight from "@astrojs/starlight";
 import tailwindcss from "@tailwindcss/vite";
+import { loadMap, redirectsFor } from "./scripts/site-map.mjs";
+import { starlightSidebar } from "./src/lib/doors.ts";
 
 export default defineConfig({
   site: "https://key.plrs.im",
@@ -21,11 +23,9 @@ export default defineConfig({
   trailingSlash: "ignore",
   // Moved pages. Each key is the old route (without the base); the value is the full new URL,
   // base included. Astro writes a meta-refresh page at the old path, so old links and console
-  // help links keep working and check:links still sees a target.
-  redirects: {
-    // The Compose kit's page moved into the UI-kit section (docs/design/UI-KITS.md §6.2).
-    "/build/sdks/kotlin-ui": "/docs/build/ui/frameworks/compose/",
-  },
+  // help links keep working and check:links still sees a target. The table is derived from
+  // site-map.json (scripts/site-map.mjs): a row redirects once its old page is gone.
+  redirects: redirectsFor(loadMap()),
   image: { service: passthroughImageService() },
   build: {
     format: "directory",
@@ -45,7 +45,7 @@ export default defineConfig({
     starlight({
       title: "Polaris Key",
       description:
-        "Licensing, managed config, releases, distribution, updates, and identity for multi-product apps — one worker, seven services, six SDKs.",
+        "Licensing, managed config, releases, distribution, updates and sign-in for apps built on Polaris Key.",
       // The brand (docs/design/BRAND.md §2): tokens and Rubik from @polaris-key/brand, then the
       // Starlight mapping in global.css. All three are bundled stylesheets (no inline style).
       customCss: [
@@ -96,86 +96,9 @@ export default defineConfig({
         PageFrame: "./src/components/PageFrame.astro",
         PageTitle: "./src/components/PageTitle.astro",
       },
-      sidebar: [
-        {
-          label: "Start here",
-          items: [{ autogenerate: { directory: "start" } }],
-        },
-        {
-          label: "For users",
-          collapsed: true,
-          items: [{ autogenerate: { directory: "users" } }],
-        },
-        {
-          label: "Services",
-          items: [
-            {
-              label: "Core",
-              items: [{ autogenerate: { directory: "services/core" } }],
-              collapsed: true,
-            },
-            {
-              label: "License",
-              items: [{ autogenerate: { directory: "services/license" } }],
-              collapsed: true,
-            },
-            {
-              label: "Config",
-              items: [{ autogenerate: { directory: "services/config" } }],
-              collapsed: true,
-            },
-            {
-              label: "Release",
-              items: [{ autogenerate: { directory: "services/release" } }],
-              collapsed: true,
-            },
-            {
-              label: "Distribution",
-              items: [{ autogenerate: { directory: "services/distribution" } }],
-              collapsed: true,
-            },
-            {
-              label: "Update",
-              items: [{ autogenerate: { directory: "services/update" } }],
-              collapsed: true,
-            },
-            {
-              label: "Identity",
-              items: [{ autogenerate: { directory: "services/identity" } }],
-              collapsed: true,
-            },
-            {
-              label: "Cloud Sync",
-              items: [{ autogenerate: { directory: "services/sync" } }],
-              collapsed: true,
-            },
-          ],
-        },
-        {
-          label: "Build on it",
-          items: [{ autogenerate: { directory: "build" } }],
-        },
-        {
-          label: "Administer",
-          collapsed: true,
-          items: [{ autogenerate: { directory: "admin" } }],
-        },
-        {
-          label: "For AI agents",
-          collapsed: true,
-          items: [{ autogenerate: { directory: "agents" } }],
-        },
-        {
-          label: "Reference",
-          collapsed: true,
-          items: [{ autogenerate: { directory: "reference" } }],
-        },
-        {
-          label: "Contribute",
-          collapsed: true,
-          items: [{ autogenerate: { directory: "contribute" } }],
-        },
-      ],
+      // The three doors' trees (src/lib/doors.ts), in door order. Stubs are hidden by their own
+      // frontmatter. DOC-02b's Sidebar override renders only the current door's tree.
+      sidebar: starlightSidebar(),
     }),
   ],
 });

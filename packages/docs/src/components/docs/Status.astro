@@ -1,0 +1,15 @@
+---
+/**
+ * Whether a component, kit or feature ships. "Not built yet" is a row in a generated status
+ * table, never a callout (style guide §8); this is the badge in that row.
+ */
+import { STATUS_LABELS, type StatusState } from "../../lib/docs";
+
+export interface Props {
+  state: StatusState;
+}
+
+const { state } = Astro.props;
+---
+
+<span class="pk-status" data-state={state}>{STATUS_LABELS[state]}</span>

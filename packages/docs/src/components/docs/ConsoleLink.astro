@@ -1,0 +1,15 @@
+---
+/**
+ * A deep link that opens a console page, "Open Licenses ↗" (docs plan §8.3). The console lives at
+ * `/manage` on the same origin, so a console member is already signed in.
+ */
+export interface Props {
+  /** The console path after `/manage/`, e.g. `products` or `platform/settings`. */
+  to: string;
+}
+
+const { to } = Astro.props;
+const href = `/manage/${to.replace(/^\/+/, "")}`;
+---
+
+<a class="pk-console-link" href={href} target="_blank" rel="noopener"><slot>Open the console</slot> ↗</a>

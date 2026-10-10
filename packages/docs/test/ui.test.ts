@@ -176,8 +176,12 @@ describe("framework pages", () => {
         ),
       ),
     ).toBe(false);
-    expect(read(docsRoot, "astro.config.mjs")).toContain(
-      '"/build/sdks/kotlin-ui": "/docs/build/ui/frameworks/compose/"',
-    );
+    expect(
+      (
+        JSON.parse(read(docsRoot, "site-map.json")) as {
+          extraRedirects: Record<string, string>;
+        }
+      ).extraRedirects["/build/sdks/kotlin-ui"],
+    ).toBe("/docs/build/ui/frameworks/compose/");
   });
 });

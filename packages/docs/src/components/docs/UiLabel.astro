@@ -1,0 +1,16 @@
+---
+/**
+ * A UI label, exactly as the screen shows it, in bold (style guide §7). `name` is the label's
+ * catalog key (`portal.activate.title`). Until the portal reads its strings from the copy catalog
+ * the text comes from the slot and a reviewer checks it against the screen; once the catalog
+ * exists this component renders it and the slot goes. (The plan sketches the prop as `key`; JSX
+ * runtimes reserve that name.)
+ */
+export interface Props {
+  name: string;
+}
+
+const { name } = Astro.props;
+---
+
+<strong class="pk-ui-label" data-label={name}><slot /></strong>

@@ -6,7 +6,7 @@
   "description": "The Polaris Key documentation site — an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
   "license": "MIT",
   "scripts": {
-    "build": "node scripts/copy-artifacts.mjs && astro build && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs",
+    "build": "node scripts/copy-artifacts.mjs && astro build && node scripts/redirect-fragments.mjs && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs",
     "dev": "node scripts/copy-artifacts.mjs && astro dev",
     "typecheck": "astro check",
     "test": "vitest run --passWithNoTests",
@@ -14,7 +14,9 @@
     "clean": "rm -rf dist .astro public/schemas public/openapi",
     "gen": "node scripts/gen-reference.mjs",
     "gen:check": "node scripts/gen-reference.mjs --check",
-    "check:links": "node scripts/check-links.mjs"
+    "check:links": "node scripts/check-links.mjs",
+    "lint:docs": "tsx scripts/lint-docs.ts",
+    "site-map": "node scripts/site-map.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.42.5",

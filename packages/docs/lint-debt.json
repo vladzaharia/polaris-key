@@ -1,0 +1,864 @@
+{
+  "$comment": "Today's hits of scripts/lint-docs.ts, by page and rule. It only shrinks: a new hit fails the lint, and so does an entry nothing hits any more. A package that writes a page clears the page's entries in the same change; `tsx scripts/lint-docs.ts --update` rewrites the file.",
+  "version": 1,
+  "debt": {
+    "build/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 5
+    },
+    "build/install": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "banned-word": 1,
+      "http-path": 1
+    },
+    "build/manifest/distribution": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1,
+      "future-tense": 2
+    },
+    "build/manifest/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/manifest/json-schema": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 2,
+      "programme-id": 1
+    },
+    "build/manifest/product": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 3,
+      "time-word": 1,
+      "http-path": 1,
+      "banned-word": 1,
+      "programme-id": 3
+    },
+    "build/manifest/register": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 1
+    },
+    "build/quickstart/godot": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/quickstart/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/quickstart/kotlin": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/quickstart/node": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/quickstart/python": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/quickstart/react": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/quickstart/swift": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/godot": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1
+    },
+    "build/sdks/kotlin": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/node": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/python": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/react": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/sdks/swift": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/about": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/account-and-license": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/activate": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1
+    },
+    "build/ui/components/boot": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/channel-picker": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/cloud-sync-status": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/device-limit": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1
+    },
+    "build/ui/components/devices": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/entitlement-gate": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/grace-banner": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/license-choice": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/offline-activation": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/paywall": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/polaris-key-gate": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/release-notes": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/settings": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/sign-in": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/sign-in-handoff": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 2
+    },
+    "build/ui/components/status-screen": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/toast": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/update-progress": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/update-prompt": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/components/welcome": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/frameworks/compose": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/frameworks/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/frameworks/terminal-node": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 1
+    },
+    "build/ui/frameworks/terminal-python": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "build/ui/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 2
+    },
+    "build/ui/localisation": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "future-tense": 7
+    },
+    "build/ui/recipes": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 3
+    },
+    "build/ui/theming": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 4
+    },
+    "build/web-apps": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "contribute/agents/conventions": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1
+    },
+    "contribute/agents/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "contribute/agents/recipes": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "contribute/architecture": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 2,
+      "programme-id": 1
+    },
+    "contribute/corpus": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 42,
+      "count": 1
+    },
+    "contribute/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "contribute/layout": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 1
+    },
+    "contribute/package-feeds": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 7
+    },
+    "contribute/release-truth-store": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 4,
+      "banned-word": 4,
+      "future-tense": 2
+    },
+    "contribute/releasing": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 2
+    },
+    "contribute/setup": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 1
+    },
+    "contribute/waves": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "banned-word": 1
+    },
+    "features/cloud-sync/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1
+    },
+    "features/licensing/access": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "future-tense": 1,
+      "time-word": 1,
+      "banned-word": 2,
+      "http-path": 5
+    },
+    "features/licensing/activation": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 2,
+      "http-path": 1,
+      "time-word": 1,
+      "banned-word": 1
+    },
+    "features/licensing/attestation": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "features/licensing/device-limit": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1
+    },
+    "features/licensing/device-trust": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 1
+    },
+    "features/licensing/fingerprints": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 2
+    },
+    "features/licensing/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 2
+    },
+    "features/licensing/manage-licenses": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 2,
+      "future-tense": 2,
+      "programme-id": 1,
+      "http-path": 7
+    },
+    "features/licensing/model": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 1,
+      "banned-word": 1
+    },
+    "features/licensing/offline": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1,
+      "http-path": 3,
+      "banned-word": 2
+    },
+    "features/licensing/relicensing": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 3,
+      "future-tense": 2
+    },
+    "features/licensing/server-verification": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "features/managed-config/catalog": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 3,
+      "future-tense": 2,
+      "http-path": 1
+    },
+    "features/managed-config/crash-tags": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "features/managed-config/edge-mint": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 4,
+      "future-tense": 3,
+      "programme-id": 1
+    },
+    "features/managed-config/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 3,
+      "programme-id": 3,
+      "http-path": 1,
+      "banned-word": 1
+    },
+    "features/managed-config/management-states": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 2,
+      "programme-id": 2,
+      "time-word": 1
+    },
+    "features/managed-config/profiles": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 2,
+      "time-word": 1
+    },
+    "features/ship-builds/channels/app-store": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 22,
+      "time-word": 2
+    },
+    "features/ship-builds/channels/availability": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "features/ship-builds/channels/delivery": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 2,
+      "http-path": 3
+    },
+    "features/ship-builds/channels/feeds": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1,
+      "programme-id": 1
+    },
+    "features/ship-builds/channels/google-play": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 4
+    },
+    "features/ship-builds/channels/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "time-word": 1
+    },
+    "features/ship-builds/channels/microsoft-store": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1,
+      "http-path": 5
+    },
+    "features/ship-builds/channels/polaris-key": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 1,
+      "time-word": 1
+    },
+    "features/ship-builds/channels/rollouts": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 2
+    },
+    "features/ship-builds/channels/steam": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 2,
+      "count": 1,
+      "time-word": 1
+    },
+    "features/ship-builds/channels/storefronts": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1,
+      "future-tense": 1
+    },
+    "features/ship-builds/channels/update-health": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1,
+      "http-path": 4
+    },
+    "features/ship-builds/ci": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1
+    },
+    "features/ship-builds/commerce": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 2
+    },
+    "features/ship-builds/packages/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 4,
+      "banned-word": 1,
+      "programme-id": 2
+    },
+    "features/ship-builds/packs/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 10,
+      "banned-word": 3,
+      "time-word": 1,
+      "future-tense": 1
+    },
+    "features/ship-builds/packs/transports": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "programme-id": 1
+    },
+    "features/ship-builds/releases/artifacts": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 2,
+      "banned-word": 4,
+      "time-word": 1,
+      "http-path": 1,
+      "programme-id": 1
+    },
+    "features/ship-builds/releases/channels": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 2,
+      "time-word": 3,
+      "http-path": 2
+    },
+    "features/ship-builds/releases/compatibility": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "features/ship-builds/releases/github-sync": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 2,
+      "banned-word": 1,
+      "time-word": 1,
+      "future-tense": 1
+    },
+    "features/ship-builds/releases/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "time-word": 1
+    },
+    "features/ship-builds/updates/appcast": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 1,
+      "banned-word": 2
+    },
+    "features/ship-builds/updates/eligibility": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 2,
+      "http-path": 3,
+      "banned-word": 2
+    },
+    "features/ship-builds/updates/godot-desktop": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 2
+    },
+    "features/ship-builds/updates/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1,
+      "time-word": 1,
+      "banned-word": 1,
+      "count": 1
+    },
+    "features/ship-builds/updates/signed-feed": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 2,
+      "banned-word": 1
+    },
+    "features/ship-builds/updates/sparkle": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 4,
+      "future-tense": 1
+    },
+    "features/ship-builds/updates/updater-feeds": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "features/sign-in/customer-portal": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 22,
+      "programme-id": 4
+    },
+    "features/sign-in/device-flow": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 4,
+      "banned-word": 1,
+      "http-path": 4
+    },
+    "features/sign-in/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 2,
+      "programme-id": 3,
+      "time-word": 1,
+      "http-path": 2,
+      "banned-word": 1
+    },
+    "features/sign-in/oidc": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 1
+    },
+    "features/sign-in/sessions": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "help/activate": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 20,
+      "future-tense": 2,
+      "banned-word": 3
+    },
+    "help/devices": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 17,
+      "banned-word": 2,
+      "time-word": 1
+    },
+    "help/download": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 23
+    },
+    "help/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 19,
+      "banned-word": 1
+    },
+    "help/messages/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 10
+    },
+    "help/sign-in": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 28,
+      "time-word": 1
+    },
+    "help/update": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "help-word": 5
+    },
+    "index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "operate/console/activity": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 2,
+      "programme-id": 1,
+      "future-tense": 1
+    },
+    "operate/console/keys-and-secrets": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 7,
+      "time-word": 1
+    },
+    "operate/console/presentation": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "operate/console/products": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 2,
+      "count": 4,
+      "http-path": 6,
+      "banned-word": 2,
+      "future-tense": 2,
+      "programme-id": 3
+    },
+    "operate/console/tour": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 1
+    },
+    "operate/console/users": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 1
+    },
+    "operate/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "operate/platform/connections": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1,
+      "http-path": 6
+    },
+    "operate/platform/deploy": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "operate/platform/jobs": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 1
+    },
+    "operate/platform/runbook/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 1
+    },
+    "operate/platform/security": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "operate/platform/settings": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1,
+      "http-path": 4
+    },
+    "reference/http-api": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 1
+    },
+    "reference/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "reference/protocol/bundles": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 2,
+      "http-path": 1
+    },
+    "reference/protocol/cache-and-clock": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 3
+    },
+    "reference/protocol/config-document": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 2,
+      "count": 1,
+      "banned-word": 1
+    },
+    "reference/protocol/device-principal": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "http-path": 1,
+      "future-tense": 2,
+      "banned-word": 1,
+      "time-word": 1,
+      "programme-id": 1
+    },
+    "reference/protocol/discovery": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1,
+      "banned-word": 1
+    },
+    "reference/protocol/envelope": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 2,
+      "time-word": 2
+    },
+    "reference/protocol/errors": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "reference/protocol/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 1,
+      "future-tense": 2,
+      "http-path": 1,
+      "programme-id": 1,
+      "banned-word": 1
+    },
+    "reference/protocol/license-document": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "future-tense": 1,
+      "banned-word": 1
+    },
+    "reference/protocol/packs": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 11,
+      "count": 1,
+      "time-word": 1
+    },
+    "reference/protocol/trust": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "time-word": 2,
+      "banned-word": 2,
+      "count": 1
+    },
+    "reference/what-apps-collect": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1
+    },
+    "start/concepts": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "programme-id": 35,
+      "http-path": 2,
+      "count": 2,
+      "future-tense": 2
+    },
+    "start/first-product": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "banned-word": 4,
+      "count": 3,
+      "future-tense": 3,
+      "http-path": 2,
+      "time-word": 1
+    },
+    "start/how-it-works": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 2,
+      "banned-word": 1,
+      "http-path": 3,
+      "future-tense": 1
+    },
+    "start/index": {
+      "frontmatter-type": 1,
+      "frontmatter-last-reviewed": 1,
+      "count": 5,
+      "banned-word": 1,
+      "future-tense": 1
+    }
+  }
+}

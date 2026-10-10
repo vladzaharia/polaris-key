@@ -1,0 +1,327 @@
+{
+  "$schema": "./help-messages.schema.json",
+  "version": 1,
+  "pages": {
+    "index": {
+      "title": "All messages, A to Z"
+    },
+    "signing-in": {
+      "title": "Messages about signing in",
+      "group": "Sign in"
+    },
+    "license-key": {
+      "title": "Messages about your license key",
+      "group": "Your library"
+    },
+    "license-status": {
+      "title": "Messages about your license status",
+      "group": "Your library"
+    },
+    "devices": {
+      "title": "Messages about devices",
+      "group": "Devices"
+    },
+    "downloads-and-updates": {
+      "title": "Messages about downloads and updates",
+      "group": "Downloads and updates"
+    },
+    "accounts": {
+      "title": "Messages about accounts",
+      "group": "Account and privacy"
+    },
+    "other": {
+      "title": "Other messages",
+      "group": "Messages"
+    }
+  },
+  "messages": {
+    "activation.attestation-required": {
+      "page": "devices"
+    },
+    "activation.device-limit": {
+      "page": "devices",
+      "article": "device-limit"
+    },
+    "activation.enroll-claimed": {
+      "page": "signing-in"
+    },
+    "activation.enroll-disabled": {
+      "page": "license-key"
+    },
+    "activation.error": {
+      "page": "license-key"
+    },
+    "activation.fingerprint-required": {
+      "page": "devices"
+    },
+    "activation.hardware-mismatch": {
+      "page": "devices"
+    },
+    "activation.key-entry-limit": {
+      "page": "accounts"
+    },
+    "activation.license-disabled": {
+      "page": "license-key"
+    },
+    "activation.license-expired": {
+      "page": "license-status"
+    },
+    "activation.rate-limited": {
+      "page": "signing-in"
+    },
+    "activation.refused": {
+      "page": "license-key"
+    },
+    "activation.unauthorized": {
+      "page": "license-key"
+    },
+    "attestation_rejected": {
+      "page": "devices"
+    },
+    "attestation_required": {
+      "page": "devices"
+    },
+    "attestation_unavailable": {
+      "page": "devices"
+    },
+    "auth_method_disabled": {
+      "page": "signing-in"
+    },
+    "bundle": {
+      "page": "devices"
+    },
+    "bundle-claims-rejected": {
+      "page": "devices"
+    },
+    "bundle-jws-rejected": {
+      "page": "devices"
+    },
+    "bundle-rejected": {
+      "page": "devices"
+    },
+    "bundle-trust-rejected": {
+      "page": "devices"
+    },
+    "cancelled": {
+      "page": "signing-in"
+    },
+    "channel_not_allowed": {
+      "page": "license-status"
+    },
+    "chunk-bundle-truncated": {
+      "page": "downloads-and-updates"
+    },
+    "chunk-corrupt": {
+      "page": "downloads-and-updates"
+    },
+    "delivery_gate_missing": {
+      "page": "downloads-and-updates"
+    },
+    "delta-apply-failed": {
+      "page": "downloads-and-updates"
+    },
+    "delta-artifact-mismatch": {
+      "page": "downloads-and-updates"
+    },
+    "device_deauthorize_failed": {
+      "page": "devices"
+    },
+    "device_limit": {
+      "page": "devices",
+      "article": "device-limit"
+    },
+    "device_list_failed": {
+      "page": "devices"
+    },
+    "device_rename_failed": {
+      "page": "devices"
+    },
+    "disabled": {
+      "page": "signing-in"
+    },
+    "download_auth_required": {
+      "page": "downloads-and-updates"
+    },
+    "email_in_use": {
+      "page": "accounts"
+    },
+    "email_mismatch": {
+      "page": "accounts"
+    },
+    "email_unavailable": {
+      "page": "signing-in"
+    },
+    "enroll_claimed": {
+      "page": "signing-in"
+    },
+    "enroll_disabled": {
+      "page": "license-key"
+    },
+    "enroll_failed": {
+      "page": "license-key"
+    },
+    "feed-rejected": {
+      "page": "downloads-and-updates"
+    },
+    "feed-rollback": {
+      "page": "downloads-and-updates"
+    },
+    "file-corrupt": {
+      "page": "downloads-and-updates"
+    },
+    "fingerprint_required": {
+      "page": "devices"
+    },
+    "full-corrupt": {
+      "page": "downloads-and-updates"
+    },
+    "gate.channel-not-entitled": {
+      "page": "license-status"
+    },
+    "gate.expired": {
+      "page": "license-status"
+    },
+    "gate.grace": {
+      "page": "license-status"
+    },
+    "gate.revoked": {
+      "page": "license-status"
+    },
+    "gate.version-too-new": {
+      "page": "license-status"
+    },
+    "gate.version-too-old": {
+      "page": "license-status"
+    },
+    "hardware_mismatch": {
+      "page": "devices"
+    },
+    "identity_disabled": {
+      "page": "signing-in"
+    },
+    "inner-doc-rejected": {
+      "page": "devices"
+    },
+    "invalid_code": {
+      "page": "signing-in"
+    },
+    "key_entry_limit": {
+      "page": "accounts"
+    },
+    "last_link": {
+      "page": "accounts"
+    },
+    "license_disabled": {
+      "page": "license-key"
+    },
+    "license_expired": {
+      "page": "license-status"
+    },
+    "license_owned": {
+      "page": "accounts"
+    },
+    "license_unusable": {
+      "page": "license-key"
+    },
+    "link_conflict": {
+      "page": "accounts"
+    },
+    "local-only": {
+      "page": "license-status"
+    },
+    "no-token": {
+      "page": "license-key"
+    },
+    "not_eligible": {
+      "page": "license-key"
+    },
+    "not_entitled": {
+      "page": "license-status"
+    },
+    "not_removable": {
+      "page": "accounts"
+    },
+    "oidc_error": {
+      "page": "signing-in"
+    },
+    "pack-not-entitled": {
+      "page": "license-status"
+    },
+    "payload-hash-mismatch": {
+      "page": "downloads-and-updates"
+    },
+    "payload-mismatch": {
+      "page": "downloads-and-updates"
+    },
+    "plan-insufficient-disk": {
+      "page": "downloads-and-updates"
+    },
+    "plan-transport-unsupported": {
+      "page": "downloads-and-updates"
+    },
+    "rate_limited": {
+      "page": "signing-in"
+    },
+    "record-mismatch": {
+      "page": "downloads-and-updates"
+    },
+    "record-rejected": {
+      "page": "downloads-and-updates"
+    },
+    "refresh-failed": {
+      "page": "license-status"
+    },
+    "registration_closed": {
+      "page": "license-key"
+    },
+    "release-refused": {
+      "page": "license-status"
+    },
+    "sign-in-denied": {
+      "page": "signing-in"
+    },
+    "sign-in-expired": {
+      "page": "signing-in"
+    },
+    "sign-in-failed": {
+      "page": "signing-in"
+    },
+    "sign-in-unavailable": {
+      "page": "signing-in"
+    },
+    "signin_expired": {
+      "page": "signing-in"
+    },
+    "step_up_required": {
+      "page": "signing-in"
+    },
+    "swap-failed": {
+      "page": "downloads-and-updates"
+    },
+    "swap-refused": {
+      "page": "downloads-and-updates"
+    },
+    "sync-failed": {
+      "page": "license-status"
+    },
+    "terms_required": {
+      "page": "signing-in"
+    },
+    "turnstile_failed": {
+      "page": "signing-in"
+    },
+    "unauthorized": {
+      "page": "license-status"
+    },
+    "unavailable": {
+      "page": "signing-in"
+    },
+    "upstream_rate_limited": {
+      "page": "downloads-and-updates"
+    },
+    "version_blocked": {
+      "page": "license-status"
+    }
+  },
+  "developerOnly": []
+}

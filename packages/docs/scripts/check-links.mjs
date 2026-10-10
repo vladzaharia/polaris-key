@@ -11,6 +11,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isRedirectPage, redirectTarget } from "./redirect-fragments.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, "..", "dist");
@@ -33,6 +34,25 @@ function distFileFor(path) {
   const last = path.slice(path.lastIndexOf("/") + 1);
   if (!last.includes(".")) return join(dist, rel, "index.html");
   return join(dist, rel);
+}
+
+/**
+ * Follows a moved-page redirect to the page it forwards to. A link to an old path with a
+ * fragment is valid when the fragment exists on the new page (redirect-fragments.mjs carries it
+ * across), so the fragment is checked there. Stops at 5 hops.
+ */
+function resolveRedirects(file) {
+  let current = file;
+  for (let hops = 0; hops < 5; hops += 1) {
+    const html = readFileSync(current, "utf8");
+    if (!isRedirectPage(html)) return current;
+    const next = redirectTarget(html);
+    if (next === null || !next.startsWith("/docs/")) return current;
+    const target = distFileFor(next.split("#")[0]);
+    if (!existsSync(target)) return current;
+    current = target;
+  }
+  return current;
 }
 
 const idCache = new Map();
@@ -64,7 +84,11 @@ for (const file of htmlFiles(dist)) {
       );
       continue;
     }
-    if (fragment && target.endsWith(".html") && !idsOf(target).has(fragment)) {
+    if (
+      fragment &&
+      target.endsWith(".html") &&
+      !idsOf(resolveRedirects(target)).has(fragment)
+    ) {
       failures.push(`${page}: dead anchor ${href} (no id "${fragment}")`);
     }
   }

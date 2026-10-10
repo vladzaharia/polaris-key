@@ -55,9 +55,9 @@ export const ASSET_RELEASE_QUOTA_DEFAULT = 100 * 1024 ** 3;
 export const ASSET_RELEASE_QUOTA_MAX = 10 * 1024 ** 4;
 
 /** The page that explains hosted assets, their switches and their quotas. */
-export const ASSETS_DOCS = "/docs/admin/presentation/";
+export const ASSETS_DOCS = "/docs/operate/console/presentation/";
 
-const PLATFORM_DOCS = "/docs/admin/platform-settings/";
+const PLATFORM_DOCS = "/docs/operate/platform/settings/";
 
 export const PLATFORM_SLICE: readonly SettingDef[] = [
   // ── A-13's four (live) ──────────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "How a product name or listing name that uses a platform or store name (Polaris Key, Apple, Google Play, Steam and others) is treated: warn and accept it, or refuse the manifest or listing.",
     keywords: ["reserved", "display name", "spoofing", "sign-in"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     // Ordered: `up` is toward `error`. Refusing can stop a product's next resync, so it is
     // confirmed; relaxing is not.
     value: { kind: "enum", values: ["warn", "error"] },
@@ -235,7 +235,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
     keywords: ["reserved", "display name", "spoofing"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     value: { kind: "list", of: { kind: "string", maxLength: 64 }, max: 64 },
     defaultValue: [],
     merge: "cascade",
@@ -262,7 +262,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "Lets Identity products refuse key entry past the per-licence limit and on owned licences. Counting runs either way; turn it on once the SDKs that show the refusals are released.",
     keywords: ["key entry", "key_entry_limit", "license_owned", "rollout"],
-    docs: "/docs/services/identity/",
+    docs: "/docs/features/sign-in/",
     value: { kind: "switch" },
     defaultValue: "off",
     merge: "policy",
@@ -286,7 +286,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "The most key entries any product may allow per licence that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
     keywords: ["key entry", "activations", "floating licence"],
-    docs: "/docs/services/identity/",
+    docs: "/docs/features/sign-in/",
     value: {
       kind: "integer",
       unit: "count",
@@ -315,7 +315,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
-    docs: "/docs/services/identity/portal/",
+    docs: "/docs/features/sign-in/customer-portal/",
     value: { kind: "switch" },
     defaultValue: "on",
     merge: "cascade",
@@ -431,7 +431,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it.",
     keywords: ["seats", "devices"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     value: { kind: "integer", unit: "count", min: 1, max: DEVICE_LIMIT_MAX },
     defaultValue: DEFAULT_DEVICE_LIMIT,
     merge: "cascade",
@@ -450,7 +450,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "How many days a device may run offline when its product sets no window of its own. A change reaches every product that inherits it.",
     keywords: ["grace", "offline", "graceUntil"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     value: { kind: "integer", unit: "days", min: 0, max: OFFLINE_DAYS_MAX },
     defaultValue: DEFAULT_MAX_OFFLINE_DAYS,
     // S-18 A.1 also names a platform MAXIMUM for this key. A default and a bound are two values,

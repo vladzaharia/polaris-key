@@ -1,0 +1,1681 @@
+{
+  "$comment": "The docs site map (docs plan section 5). Read by scripts/site-map.mjs, astro.config.mjs and test/siteMap.test.ts. `rows` are the moves, splits, merges and deletes; `stubs` are the hidden placeholder pages that reserve every other target path. Change the map and run `node scripts/site-map.mjs apply`; never move pages by hand.",
+  "rows": [
+    {
+      "from": "start/architecture",
+      "action": "move",
+      "to": ["contribute/architecture"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "users/index",
+      "action": "move",
+      "to": ["help/index"],
+      "pri": "P1",
+      "package": "DOC-04a"
+    },
+    {
+      "from": "users/activation",
+      "action": "move",
+      "to": ["help/activate"],
+      "pri": "P1",
+      "package": "DOC-04a"
+    },
+    {
+      "from": "users/portal",
+      "action": "split",
+      "to": [
+        "help/sign-in",
+        "help/account",
+        "help/delete-account",
+        "help/library",
+        "help/add-a-license"
+      ],
+      "pri": "P1",
+      "package": "DOC-04b"
+    },
+    {
+      "from": "users/devices",
+      "action": "split",
+      "to": ["help/devices", "help/new-computer", "help/device-limit"],
+      "pri": "P1",
+      "package": "DOC-05b"
+    },
+    {
+      "from": "users/updates",
+      "action": "move",
+      "to": ["help/update"],
+      "pri": "P1",
+      "package": "DOC-05c"
+    },
+    {
+      "from": "users/downloads",
+      "action": "split",
+      "to": ["help/download", "help/check-a-download", "help/install-sources"],
+      "pri": "P1",
+      "package": "DOC-05c"
+    },
+    {
+      "from": "users/troubleshooting",
+      "action": "split",
+      "to": [
+        "help/messages/index",
+        "help/messages/signing-in",
+        "help/messages/license-key",
+        "help/messages/license-status",
+        "help/messages/devices",
+        "help/messages/downloads-and-updates",
+        "help/messages/accounts",
+        "help/messages/other"
+      ],
+      "pri": "P1",
+      "package": "DOC-05a"
+    },
+    {
+      "from": "users/privacy",
+      "action": "split",
+      "to": ["reference/what-apps-collect", "help/your-data"],
+      "pri": "P1",
+      "package": "DOC-04b"
+    },
+    {
+      "from": "build/api",
+      "action": "move",
+      "to": ["reference/http-api"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "build/ci",
+      "action": "move",
+      "to": ["features/ship-builds/ci"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "build/install-from-feeds",
+      "action": "move",
+      "to": ["build/install"],
+      "pri": "P1",
+      "package": "DOC-07a"
+    },
+    {
+      "from": "build/offline",
+      "action": "merge",
+      "to": ["features/licensing/offline"],
+      "pri": "P1",
+      "package": "DOC-09a",
+      "primary": true
+    },
+    {
+      "from": "admin/bundles",
+      "action": "merge",
+      "to": ["features/licensing/offline"],
+      "pri": "P1",
+      "package": "DOC-09a",
+      "primary": false
+    },
+    {
+      "from": "build/pack-transports",
+      "action": "move",
+      "to": ["features/ship-builds/packs/transports"],
+      "pri": "P1",
+      "package": "DOC-10c"
+    },
+    {
+      "from": "build/registering",
+      "action": "move",
+      "to": ["build/manifest/register"],
+      "pri": "P1",
+      "package": "DOC-07b"
+    },
+    {
+      "from": "build/web-cors",
+      "action": "move",
+      "to": ["build/web-apps"],
+      "pri": "P1",
+      "package": "DOC-08b"
+    },
+    {
+      "from": "build/manifest/authoring",
+      "action": "split",
+      "to": [
+        "build/manifest/product",
+        "build/manifest/catalog",
+        "build/manifest/release"
+      ],
+      "pri": "P1",
+      "package": "DOC-07b"
+    },
+    {
+      "from": "start/quickstart",
+      "action": "merge",
+      "to": ["start/first-product"],
+      "pri": "P1",
+      "package": "DOC-07a",
+      "primary": true
+    },
+    {
+      "from": "build/onboarding",
+      "action": "merge",
+      "to": ["start/first-product"],
+      "pri": "P1",
+      "package": "DOC-07a",
+      "primary": false
+    },
+    {
+      "from": "build/quickstart/index",
+      "action": "merge",
+      "to": ["start/first-product"],
+      "pri": "P1",
+      "package": "DOC-07a",
+      "primary": false,
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/recipes/index",
+      "action": "delete",
+      "to": ["features/index"],
+      "pri": "P1",
+      "package": "DOC-03a"
+    },
+    {
+      "from": "build/recipes/attestation",
+      "action": "move",
+      "to": ["features/licensing/attestation"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "build/recipes/crash-tags",
+      "action": "move",
+      "to": ["features/managed-config/crash-tags"],
+      "pri": "P1",
+      "package": "DOC-09c"
+    },
+    {
+      "from": "build/recipes/device-limit",
+      "action": "move",
+      "to": ["features/licensing/device-limit"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "build/recipes/server-verification",
+      "action": "move",
+      "to": ["features/licensing/server-verification"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "build/recipes/store-outlets",
+      "action": "merge",
+      "to": ["features/ship-builds/channels/index"],
+      "pri": "P1",
+      "package": "DOC-10b",
+      "primary": false
+    },
+    {
+      "from": "build/ui/localisation",
+      "action": "move",
+      "to": ["build/ui/localization"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/recipes",
+      "action": "delete",
+      "to": ["build/ui/frameworks/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/components/channel-picker",
+      "action": "delete",
+      "to": ["build/ui/components/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/components/cloud-sync-status",
+      "action": "delete",
+      "to": ["build/ui/components/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/components/entitlement-gate",
+      "action": "delete",
+      "to": ["build/ui/components/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/components/license-choice",
+      "action": "delete",
+      "to": ["build/ui/components/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/components/paywall",
+      "action": "delete",
+      "to": ["build/ui/components/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/components/toast",
+      "action": "delete",
+      "to": ["build/ui/components/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/ui/components/welcome",
+      "action": "delete",
+      "to": ["build/ui/components/index"],
+      "pri": "P1",
+      "package": "DOC-08b",
+      "deferred": "SP-45a"
+    },
+    {
+      "from": "build/wire/index",
+      "action": "move",
+      "to": ["reference/protocol/index"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "build/wire/envelope",
+      "action": "move",
+      "to": ["reference/protocol/envelope"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "build/wire/trust",
+      "action": "merge",
+      "to": ["reference/protocol/trust"],
+      "pri": "P1",
+      "package": "DOC-12b",
+      "primary": true
+    },
+    {
+      "from": "build/wire/cache-and-clock",
+      "action": "move",
+      "to": ["reference/protocol/cache-and-clock"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "build/wire/bundles",
+      "action": "move",
+      "to": ["reference/protocol/bundles"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "build/wire/packs",
+      "action": "move",
+      "to": ["reference/protocol/packs"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "build/wire/corpus",
+      "action": "merge",
+      "to": ["contribute/corpus"],
+      "pri": "P1",
+      "package": "DOC-12b",
+      "primary": false
+    },
+    {
+      "from": "services/core/index",
+      "action": "merge",
+      "to": ["start/how-it-works"],
+      "pri": "P1",
+      "package": "DOC-07a",
+      "primary": false
+    },
+    {
+      "from": "services/core/device-principal",
+      "action": "move",
+      "to": ["reference/protocol/device-principal"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "services/core/device-trust",
+      "action": "move",
+      "to": ["features/licensing/device-trust"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "services/core/discovery",
+      "action": "move",
+      "to": ["reference/protocol/discovery"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "services/core/errors",
+      "action": "move",
+      "to": ["reference/protocol/errors"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "services/core/fingerprints",
+      "action": "move",
+      "to": ["features/licensing/fingerprints"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "services/core/trust",
+      "action": "merge",
+      "to": ["reference/protocol/trust"],
+      "pri": "P1",
+      "package": "DOC-12b",
+      "primary": false
+    },
+    {
+      "from": "services/license/index",
+      "action": "move",
+      "to": ["features/licensing/index"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "services/license/model",
+      "action": "move",
+      "to": ["features/licensing/model"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "services/license/activation",
+      "action": "move",
+      "to": ["features/licensing/activation"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "services/license/enrollment",
+      "action": "merge",
+      "to": ["features/licensing/access"],
+      "pri": "P1",
+      "package": "DOC-09a",
+      "primary": true
+    },
+    {
+      "from": "services/license/policy",
+      "action": "merge",
+      "to": ["features/licensing/access"],
+      "pri": "P1",
+      "package": "DOC-09a",
+      "primary": false
+    },
+    {
+      "from": "services/license/document",
+      "action": "move",
+      "to": ["reference/protocol/license-document"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "services/license/relicensing",
+      "action": "move",
+      "to": ["features/licensing/relicensing"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "services/config/index",
+      "action": "move",
+      "to": ["features/managed-config/index"],
+      "pri": "P1",
+      "package": "DOC-09c"
+    },
+    {
+      "from": "services/config/catalog",
+      "action": "move",
+      "to": ["features/managed-config/catalog"],
+      "pri": "P1",
+      "package": "DOC-09c"
+    },
+    {
+      "from": "services/config/document",
+      "action": "move",
+      "to": ["reference/protocol/config-document"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "services/config/edge-mint",
+      "action": "move",
+      "to": ["features/managed-config/edge-mint"],
+      "pri": "P1",
+      "package": "DOC-09c"
+    },
+    {
+      "from": "services/config/management-states",
+      "action": "move",
+      "to": ["features/managed-config/management-states"],
+      "pri": "P1",
+      "package": "DOC-09c"
+    },
+    {
+      "from": "services/config/profiles",
+      "action": "move",
+      "to": ["features/managed-config/profiles"],
+      "pri": "P1",
+      "package": "DOC-09c"
+    },
+    {
+      "from": "services/sync/index",
+      "action": "move",
+      "to": ["features/cloud-sync/index"],
+      "pri": "P1",
+      "package": "DOC-09c"
+    },
+    {
+      "from": "services/identity/index",
+      "action": "move",
+      "to": ["features/sign-in/index"],
+      "pri": "P1",
+      "package": "DOC-09b"
+    },
+    {
+      "from": "services/identity/oidc",
+      "action": "move",
+      "to": ["features/sign-in/oidc"],
+      "pri": "P1",
+      "package": "DOC-09b"
+    },
+    {
+      "from": "services/identity/device-flow",
+      "action": "move",
+      "to": ["features/sign-in/device-flow"],
+      "pri": "P1",
+      "package": "DOC-09b"
+    },
+    {
+      "from": "services/identity/sessions",
+      "action": "move",
+      "to": ["features/sign-in/sessions"],
+      "pri": "P1",
+      "package": "DOC-09b"
+    },
+    {
+      "from": "services/identity/portal",
+      "action": "split",
+      "to": ["features/sign-in/customer-portal", "reference/portal-api"],
+      "pri": "P1",
+      "package": "DOC-09b"
+    },
+    {
+      "from": "services/release/index",
+      "action": "move",
+      "to": ["features/ship-builds/releases/index"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/release/github-sync",
+      "action": "move",
+      "to": ["features/ship-builds/releases/github-sync"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/release/truth-store",
+      "action": "move",
+      "to": ["contribute/release-truth-store"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "services/release/artifacts",
+      "action": "move",
+      "to": ["features/ship-builds/releases/artifacts"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/release/channels",
+      "action": "move",
+      "to": ["features/ship-builds/releases/channels"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/release/packs",
+      "action": "split",
+      "to": [
+        "features/ship-builds/packs/index",
+        "features/ship-builds/packs/ship-a-pack"
+      ],
+      "pri": "P1",
+      "package": "DOC-10c"
+    },
+    {
+      "from": "services/release/compatibility",
+      "action": "move",
+      "to": ["features/ship-builds/releases/compatibility"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/distribution/index",
+      "action": "merge",
+      "to": ["features/ship-builds/channels/index"],
+      "pri": "P1",
+      "package": "DOC-10b",
+      "primary": true
+    },
+    {
+      "from": "services/distribution/delivery",
+      "action": "move",
+      "to": ["features/ship-builds/channels/delivery"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/rollouts",
+      "action": "move",
+      "to": ["features/ship-builds/channels/rollouts"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/availability",
+      "action": "move",
+      "to": ["features/ship-builds/channels/availability"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/app-store-connect",
+      "action": "merge",
+      "to": ["features/ship-builds/channels/app-store"],
+      "pri": "P1",
+      "package": "DOC-10b",
+      "primary": true
+    },
+    {
+      "from": "services/distribution/google-play",
+      "action": "move",
+      "to": ["features/ship-builds/channels/google-play"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/microsoft-store",
+      "action": "move",
+      "to": ["features/ship-builds/channels/microsoft-store"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/steam",
+      "action": "move",
+      "to": ["features/ship-builds/channels/steam"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/feeds",
+      "action": "move",
+      "to": ["features/ship-builds/channels/feeds"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/update-health",
+      "action": "move",
+      "to": ["features/ship-builds/channels/update-health"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/commerce",
+      "action": "move",
+      "to": ["features/ship-builds/commerce"],
+      "pri": "P2",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "services/distribution/package-feeds",
+      "action": "split",
+      "to": [
+        "features/ship-builds/packages/index",
+        "features/ship-builds/packages/publish"
+      ],
+      "pri": "P1",
+      "package": "DOC-10c"
+    },
+    {
+      "from": "services/update/index",
+      "action": "move",
+      "to": ["features/ship-builds/updates/index"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/update/signed-feed",
+      "action": "move",
+      "to": ["features/ship-builds/updates/signed-feed"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/update/updater-feeds",
+      "action": "move",
+      "to": ["features/ship-builds/updates/updater-feeds"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/update/appcast",
+      "action": "move",
+      "to": ["features/ship-builds/updates/appcast"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/update/eligibility",
+      "action": "move",
+      "to": ["features/ship-builds/updates/eligibility"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/update/godot-desktop",
+      "action": "move",
+      "to": ["features/ship-builds/updates/godot-desktop"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "services/update/sparkle",
+      "action": "move",
+      "to": ["features/ship-builds/updates/sparkle"],
+      "pri": "P1",
+      "package": "DOC-10a"
+    },
+    {
+      "from": "admin/index",
+      "action": "move",
+      "to": ["operate/index"],
+      "pri": "P1",
+      "package": "DOC-11a"
+    },
+    {
+      "from": "admin/console-tour",
+      "action": "move",
+      "to": ["operate/console/tour"],
+      "pri": "P1",
+      "package": "DOC-11a"
+    },
+    {
+      "from": "admin/products",
+      "action": "merge",
+      "to": ["operate/console/products"],
+      "pri": "P1",
+      "package": "DOC-11a",
+      "primary": true
+    },
+    {
+      "from": "admin/services-enablement",
+      "action": "merge",
+      "to": ["operate/console/products"],
+      "pri": "P1",
+      "package": "DOC-11a",
+      "primary": false
+    },
+    {
+      "from": "admin/licenses-and-devices",
+      "action": "move",
+      "to": ["features/licensing/manage-licenses"],
+      "pri": "P1",
+      "package": "DOC-09a"
+    },
+    {
+      "from": "admin/users",
+      "action": "move",
+      "to": ["operate/console/users"],
+      "pri": "P1",
+      "package": "DOC-11a"
+    },
+    {
+      "from": "admin/presentation",
+      "action": "move",
+      "to": ["operate/console/presentation"],
+      "pri": "P1",
+      "package": "DOC-11a"
+    },
+    {
+      "from": "admin/secrets-and-keys",
+      "action": "move",
+      "to": ["operate/console/keys-and-secrets"],
+      "pri": "P1",
+      "package": "DOC-11a"
+    },
+    {
+      "from": "admin/kek",
+      "action": "move",
+      "to": ["operate/platform/runbook/index"],
+      "pri": "P1",
+      "package": "DOC-11b"
+    },
+    {
+      "from": "admin/deploy",
+      "action": "move",
+      "to": ["operate/platform/deploy"],
+      "pri": "P1",
+      "package": "DOC-11b"
+    },
+    {
+      "from": "admin/activity",
+      "action": "move",
+      "to": ["operate/console/activity"],
+      "pri": "P1",
+      "package": "DOC-11a"
+    },
+    {
+      "from": "admin/security-pointers",
+      "action": "move",
+      "to": ["operate/platform/security"],
+      "pri": "P1",
+      "package": "DOC-11b"
+    },
+    {
+      "from": "admin/platform-settings",
+      "action": "move",
+      "to": ["operate/platform/settings"],
+      "pri": "P1",
+      "package": "DOC-11b"
+    },
+    {
+      "from": "admin/operations",
+      "action": "move",
+      "to": ["operate/platform/jobs"],
+      "pri": "P1",
+      "package": "DOC-11b"
+    },
+    {
+      "from": "admin/distribution-matrix",
+      "action": "merge",
+      "to": ["features/ship-builds/channels/index"],
+      "pri": "P1",
+      "package": "DOC-10b",
+      "primary": false
+    },
+    {
+      "from": "admin/storefronts",
+      "action": "move",
+      "to": ["features/ship-builds/channels/storefronts"],
+      "pri": "P1",
+      "package": "DOC-10b"
+    },
+    {
+      "from": "admin/store-connections",
+      "action": "move",
+      "to": ["operate/platform/connections"],
+      "pri": "P1",
+      "package": "DOC-11b"
+    },
+    {
+      "from": "admin/app-store",
+      "action": "merge",
+      "to": ["features/ship-builds/channels/app-store"],
+      "pri": "P1",
+      "package": "DOC-10b",
+      "primary": false
+    },
+    {
+      "from": "admin/polaris-key-storefront",
+      "action": "merge",
+      "to": ["features/ship-builds/channels/polaris-key"],
+      "pri": "P1",
+      "package": "DOC-10b",
+      "primary": true
+    },
+    {
+      "from": "admin/storefront-listing",
+      "action": "merge",
+      "to": ["features/ship-builds/channels/polaris-key"],
+      "pri": "P1",
+      "package": "DOC-10b",
+      "primary": false
+    },
+    {
+      "from": "admin/feeds",
+      "action": "merge",
+      "to": ["features/ship-builds/packages/index"],
+      "pri": "P1",
+      "package": "DOC-10c",
+      "primary": false
+    },
+    {
+      "from": "agents/index",
+      "action": "move",
+      "to": ["contribute/agents/index"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "agents/recipes",
+      "action": "move",
+      "to": ["contribute/agents/recipes"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "agents/conventions",
+      "action": "move",
+      "to": ["contribute/agents/conventions"],
+      "pri": "P1",
+      "package": "DOC-12b"
+    },
+    {
+      "from": "reference/corpus",
+      "action": "move",
+      "to": ["reference/protocol/corpus"],
+      "pri": "P1",
+      "package": "DOC-12b",
+      "generated": true
+    },
+    {
+      "from": "reference/data-model",
+      "action": "move",
+      "to": ["contribute/data-model"],
+      "pri": "P1",
+      "package": "DOC-12b",
+      "generated": true
+    },
+    {
+      "from": "reference/fingerprint-constants",
+      "action": "move",
+      "to": ["reference/protocol/fingerprint-constants"],
+      "pri": "P1",
+      "package": "DOC-12b",
+      "generated": true
+    },
+    {
+      "from": "start/service-model",
+      "action": "split",
+      "to": ["start/how-it-works", "contribute/service-model"],
+      "pri": "P1",
+      "package": "DOC-07a"
+    }
+  ],
+  "stubs": [
+    {
+      "path": "access",
+      "type": "overview",
+      "title": "Docs access",
+      "description": "Who the gated docs are for, and how to sign in or go to Help.",
+      "nearest": "/docs/",
+      "package": "DOC-03b",
+      "pri": "P1"
+    },
+    {
+      "path": "features/index",
+      "type": "overview",
+      "title": "Features",
+      "description": "Everything about one feature in one place: licensing, managed config, ship builds, sign-in and Cloud Sync.",
+      "nearest": "/docs/start/",
+      "package": "DOC-07a",
+      "pri": "P1"
+    },
+    {
+      "path": "start/choose-your-integration",
+      "type": "overview",
+      "title": "Choose your integration",
+      "description": "Compare the drop-in UI kit with your own UI, and pick an SDK.",
+      "nearest": "/docs/build/sdks/",
+      "package": "DOC-07a",
+      "pri": "P1"
+    },
+    {
+      "path": "build/test-your-integration",
+      "type": "how-to",
+      "title": "Test your integration",
+      "description": "Check your integration with test licenses, offline and grace states, and a skewed clock.",
+      "nearest": "/docs/build/quickstart/",
+      "package": "DOC-07b",
+      "pri": "P1"
+    },
+    {
+      "path": "build/troubleshooting",
+      "type": "troubleshooting",
+      "title": "Troubleshoot your integration",
+      "description": "Find the cause of an integration error from the code or message you see.",
+      "nearest": "/docs/reference/error-codes/",
+      "package": "DOC-07b",
+      "pri": "P1"
+    },
+    {
+      "path": "build/go-live",
+      "type": "how-to",
+      "title": "Go live",
+      "description": "Pin keys, sign builds, wire CI and confirm each platform before you ship.",
+      "nearest": "/docs/features/ship-builds/ci/",
+      "package": "DOC-07b",
+      "pri": "P1"
+    },
+    {
+      "path": "build/upgrade-to-0-9",
+      "type": "how-to",
+      "title": "Upgrade to 0.9",
+      "description": "Move an integration from 0.8 to 0.9, change by change.",
+      "nearest": "/docs/build/sdks/",
+      "package": "DOC-12a",
+      "pri": "P1"
+    },
+    {
+      "path": "build/manifest/catalog",
+      "type": "how-to",
+      "title": "Write the catalog",
+      "description": "Declare config, secret and flag entries in the .pkey/schema manifest.",
+      "nearest": "/docs/build/manifest/product/",
+      "package": "DOC-07b",
+      "pri": "P1"
+    },
+    {
+      "path": "build/manifest/release",
+      "type": "how-to",
+      "title": "Write the release manifest",
+      "description": "Declare releases, tracks and artifacts in the .pkey/release manifest.",
+      "nearest": "/docs/build/manifest/product/",
+      "package": "DOC-07b",
+      "pri": "P1"
+    },
+    {
+      "path": "features/licensing/add-licensing",
+      "type": "how-to",
+      "title": "Add licensing to your app",
+      "description": "Gate your app on a license, with the drop-in kit or with your own screens.",
+      "nearest": "/docs/features/licensing/",
+      "package": "DOC-09a",
+      "pri": "P1"
+    },
+    {
+      "path": "features/licensing/troubleshooting",
+      "type": "troubleshooting",
+      "title": "Troubleshoot licensing",
+      "description": "Find the cause of a licensing error from the code or message you see.",
+      "nearest": "/docs/reference/error-codes/",
+      "package": "DOC-09a",
+      "pri": "P1"
+    },
+    {
+      "path": "features/managed-config/add-config",
+      "type": "how-to",
+      "title": "Add managed config to your app",
+      "description": "Read settings and secrets from Polaris Key, with the drop-in kit or with your own screens.",
+      "nearest": "/docs/features/managed-config/",
+      "package": "DOC-09c",
+      "pri": "P1"
+    },
+    {
+      "path": "features/managed-config/troubleshooting",
+      "type": "troubleshooting",
+      "title": "Troubleshoot managed config",
+      "description": "Find the cause of a config error from the code or message you see.",
+      "nearest": "/docs/reference/error-codes/",
+      "package": "DOC-09c",
+      "pri": "P1"
+    },
+    {
+      "path": "features/sign-in/add-sign-in",
+      "type": "how-to",
+      "title": "Add sign-in to your app",
+      "description": "Sign people in with a Polaris Key account, with the drop-in kit or with your own screens.",
+      "nearest": "/docs/features/sign-in/",
+      "package": "DOC-09b",
+      "pri": "P1"
+    },
+    {
+      "path": "features/sign-in/troubleshooting",
+      "type": "troubleshooting",
+      "title": "Troubleshoot sign-in",
+      "description": "Find the cause of a sign-in error from the code or message you see.",
+      "nearest": "/docs/reference/error-codes/",
+      "package": "DOC-09b",
+      "pri": "P1"
+    },
+    {
+      "path": "features/ship-builds/index",
+      "type": "overview",
+      "title": "Ship builds",
+      "description": "Publish releases, route them to channels and keep apps updated.",
+      "nearest": "/docs/features/ship-builds/releases/",
+      "package": "DOC-10a",
+      "pri": "P1"
+    },
+    {
+      "path": "features/ship-builds/troubleshooting",
+      "type": "troubleshooting",
+      "title": "Troubleshoot shipping builds",
+      "description": "Find the cause of a release, channel or update error from the code or message you see.",
+      "nearest": "/docs/reference/error-codes/",
+      "package": "DOC-10a",
+      "pri": "P1"
+    },
+    {
+      "path": "features/ship-builds/packages/publish",
+      "type": "how-to",
+      "title": "Publish a package",
+      "description": "Publish a package to a Polaris Key feed.",
+      "nearest": "/docs/features/ship-builds/packages/",
+      "package": "DOC-10c",
+      "pri": "P1"
+    },
+    {
+      "path": "features/ship-builds/packs/ship-a-pack",
+      "type": "how-to",
+      "title": "Ship a pack",
+      "description": "Publish a content pack and deliver it to devices.",
+      "nearest": "/docs/features/ship-builds/packs/",
+      "package": "DOC-10c",
+      "pri": "P1"
+    },
+    {
+      "path": "contribute/service-model",
+      "type": "concept",
+      "title": "Service model internals",
+      "description": "How the service table, the parser and the guard fit together.",
+      "nearest": "/docs/start/how-it-works/",
+      "package": "DOC-12b",
+      "pri": "P1"
+    },
+    {
+      "path": "contribute/writing-docs",
+      "type": "reference",
+      "title": "Writing docs",
+      "description": "The style guide every page follows.",
+      "nearest": "/docs/contribute/",
+      "package": "DOC-12b",
+      "pri": "P1"
+    },
+    {
+      "path": "reference/portal-api",
+      "type": "reference",
+      "title": "Portal API",
+      "description": "The customer portal's HTTP surface.",
+      "nearest": "/docs/features/sign-in/customer-portal/",
+      "package": "DOC-09b",
+      "pri": "P1"
+    },
+    {
+      "path": "reference/cli",
+      "type": "reference",
+      "title": "pkey CLI",
+      "description": "Every pkey command and flag, generated from the CLI.",
+      "nearest": "/docs/reference/",
+      "package": "DOC-12a",
+      "pri": "P1"
+    },
+    {
+      "path": "reference/github-action",
+      "type": "reference",
+      "title": "GitHub Action",
+      "description": "The publish Action's inputs and outputs, generated from action.yml.",
+      "nearest": "/docs/reference/",
+      "package": "DOC-12a",
+      "pri": "P1"
+    },
+    {
+      "path": "reference/compatibility",
+      "type": "reference",
+      "title": "Compatibility and versions",
+      "description": "The protocol version and the minimum version of each SDK.",
+      "nearest": "/docs/reference/",
+      "package": "DOC-12a",
+      "pri": "P1"
+    },
+    {
+      "path": "reference/changelog/index",
+      "type": "reference",
+      "title": "Developer changelog",
+      "description": "Changes to the SDKs, the CLI, the manifest and the API, newest first.",
+      "nearest": "/docs/reference/",
+      "package": "DOC-12a",
+      "pri": "P1"
+    },
+    {
+      "path": "operate/console/help-a-customer",
+      "type": "how-to",
+      "title": "Help a customer",
+      "description": "Fix a lost key, changed hardware, a refund or an account problem from the console.",
+      "nearest": "/docs/operate/",
+      "package": "DOC-11a",
+      "pri": "P1"
+    },
+    {
+      "path": "operate/platform/incidents",
+      "type": "overview",
+      "title": "Incidents",
+      "description": "Where to start when products 404, the KEK is wrong, a connector fails or email is down.",
+      "nearest": "/docs/operate/platform/runbook/",
+      "package": "DOC-11b",
+      "pri": "P1"
+    },
+    {
+      "path": "operate/platform/email",
+      "type": "runbook",
+      "title": "Email delivery",
+      "description": "Sending domain, Apple private relay, limits and what to do when email is down.",
+      "nearest": "/docs/operate/platform/runbook/",
+      "package": "DOC-11b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/what-is-polaris-key",
+      "type": "help",
+      "title": "What is Polaris Key?",
+      "description": "The service an app uses for licenses, sign-in and downloads.",
+      "nearest": "/docs/help/",
+      "package": "DOC-04a",
+      "pri": "P1"
+    },
+    {
+      "path": "help/emails",
+      "type": "help",
+      "title": "Emails from Polaris Key",
+      "description": "The real sender addresses, what each email means and how to spot a fake.",
+      "nearest": "/docs/help/",
+      "package": "DOC-04a",
+      "pri": "P1",
+      "anchors": [
+        {
+          "id": "license-added",
+          "title": "A license was added"
+        },
+        {
+          "id": "license-attached",
+          "title": "A license was attached"
+        },
+        {
+          "id": "license-key-replaced",
+          "title": "Your license has a new key"
+        },
+        {
+          "id": "download-link",
+          "title": "Your download link"
+        },
+        {
+          "id": "device-removed",
+          "title": "A device was removed"
+        },
+        {
+          "id": "new-device-sign-in",
+          "title": "A new device signed in"
+        },
+        {
+          "id": "sign-in-method-added",
+          "title": "A sign-in method was added"
+        },
+        {
+          "id": "sign-in-method-removed",
+          "title": "A sign-in method was removed"
+        },
+        {
+          "id": "account-deleted",
+          "title": "Your account was deleted"
+        },
+        {
+          "id": "accounts-merged",
+          "title": "Accounts were joined"
+        },
+        {
+          "id": "accounts-separated",
+          "title": "Accounts were separated"
+        },
+        {
+          "id": "license-link-superseded",
+          "title": "A license link was replaced"
+        },
+        {
+          "id": "license-relinked-away",
+          "title": "A license moved to another account"
+        },
+        {
+          "id": "license-relinked-in",
+          "title": "A license moved to your account"
+        },
+        {
+          "id": "license-relink-undone",
+          "title": "A license move was undone"
+        },
+        {
+          "id": "license-made-floating",
+          "title": "A license no longer needs an account"
+        },
+        {
+          "id": "license-reassigned-away",
+          "title": "A license was reassigned"
+        },
+        {
+          "id": "license-assigned-to-you",
+          "title": "A license was assigned to you"
+        }
+      ]
+    },
+    {
+      "path": "help/contact",
+      "type": "help",
+      "title": "Get help with an app",
+      "description": "Who to ask about an app, a store purchase or your account.",
+      "nearest": "/docs/help/",
+      "package": "DOC-04a",
+      "pri": "P1"
+    },
+    {
+      "path": "help/code-didnt-arrive",
+      "type": "help",
+      "title": "Your sign-in code didn't arrive",
+      "description": "What to check when the email with your sign-in code is missing.",
+      "nearest": "/docs/help/sign-in/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/passkeys",
+      "type": "help",
+      "title": "Use a passkey",
+      "description": "Add, use and remove a passkey.",
+      "nearest": "/docs/help/sign-in/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/approve-a-sign-in",
+      "type": "help",
+      "title": "Approve a sign-in on another device",
+      "description": "Enter the code a TV, console or terminal shows.",
+      "nearest": "/docs/help/sign-in/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/secure-your-account",
+      "type": "help",
+      "title": "Secure your account",
+      "description": "What to do after an email asks \"Wasn't you?\".",
+      "nearest": "/docs/help/sign-in/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/join-accounts",
+      "type": "help",
+      "title": "Bought with a different email or on Steam?",
+      "description": "Add an email or Steam so your purchases show up.",
+      "nearest": "/docs/help/sign-in/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/your-data",
+      "type": "help",
+      "title": "Your data and privacy",
+      "description": "What apps read from your device and what developers see.",
+      "nearest": "/docs/reference/what-apps-collect/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/discover",
+      "type": "help",
+      "title": "Get free apps from Discover",
+      "description": "Add a free app to your library.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/lost-key",
+      "type": "help",
+      "title": "Find a lost license key",
+      "description": "Where to find your key, or get a new one.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/license-status",
+      "type": "help",
+      "title": "What your license status means",
+      "description": "What Active, Offline, Expired, Suspended, Signed out and Update required mean.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/remove-from-library",
+      "type": "help",
+      "title": "Remove an app from your library",
+      "description": "What happens to your devices, and the steps.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/offline-activation",
+      "type": "help",
+      "title": "Activate a computer without internet",
+      "description": "Use a request code and an activation file.",
+      "nearest": "/docs/help/devices/",
+      "package": "DOC-05b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/restore-purchase",
+      "type": "help",
+      "title": "Restore a purchase",
+      "description": "Restore an App Store, Google Play or Steam purchase.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05c",
+      "pri": "P1"
+    },
+    {
+      "path": "help/refunds",
+      "type": "help",
+      "title": "Refunds, billing and cancellations",
+      "description": "What Polaris Key does and doesn't handle about payment.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05c",
+      "pri": "P1"
+    },
+    {
+      "path": "help/messages/signing-in",
+      "type": "help-messages",
+      "title": "Messages about signing in",
+      "description": "What each sign-in message means and what to do.",
+      "nearest": "/docs/help/messages/",
+      "package": "DOC-05a",
+      "pri": "P1",
+      "messages": [
+        "enroll_claimed",
+        "activation.enroll-claimed",
+        "signin_expired",
+        "oidc_error",
+        "sign-in-failed",
+        "sign-in-denied",
+        "cancelled",
+        "disabled",
+        "unavailable",
+        "identity_disabled",
+        "sign-in-unavailable",
+        "auth_method_disabled",
+        "sign-in-expired",
+        "invalid_code",
+        "turnstile_failed",
+        "rate_limited",
+        "activation.rate-limited",
+        "step_up_required",
+        "email_unavailable",
+        "terms_required"
+      ]
+    },
+    {
+      "path": "help/messages/license-key",
+      "type": "help-messages",
+      "title": "Messages about your license key",
+      "description": "What each license key message means and what to do.",
+      "nearest": "/docs/help/messages/",
+      "package": "DOC-05a",
+      "pri": "P1",
+      "messages": [
+        "activation.unauthorized",
+        "license_disabled",
+        "activation.license-disabled",
+        "license_unusable",
+        "no-token",
+        "activation.refused",
+        "activation.error",
+        "enroll_disabled",
+        "activation.enroll-disabled",
+        "enroll_failed",
+        "registration_closed",
+        "not_eligible"
+      ]
+    },
+    {
+      "path": "help/messages/license-status",
+      "type": "help-messages",
+      "title": "Messages about your license status",
+      "description": "What each license status message means and what to do.",
+      "nearest": "/docs/help/messages/",
+      "package": "DOC-05a",
+      "pri": "P1",
+      "messages": [
+        "license_expired",
+        "gate.expired",
+        "activation.license-expired",
+        "gate.grace",
+        "gate.revoked",
+        "unauthorized",
+        "sync-failed",
+        "refresh-failed",
+        "local-only",
+        "version_blocked",
+        "gate.version-too-old",
+        "gate.version-too-new",
+        "channel_not_allowed",
+        "gate.channel-not-entitled",
+        "not_entitled",
+        "release-refused",
+        "pack-not-entitled"
+      ]
+    },
+    {
+      "path": "help/messages/devices",
+      "type": "help-messages",
+      "title": "Messages about devices",
+      "description": "What each device message means and what to do.",
+      "nearest": "/docs/help/messages/",
+      "package": "DOC-05a",
+      "pri": "P1",
+      "messages": [
+        "device_limit",
+        "activation.device-limit",
+        "hardware_mismatch",
+        "activation.hardware-mismatch",
+        "attestation_rejected",
+        "fingerprint_required",
+        "activation.fingerprint-required",
+        "attestation_required",
+        "activation.attestation-required",
+        "attestation_unavailable",
+        "device_list_failed",
+        "device_deauthorize_failed",
+        "device_rename_failed",
+        "bundle-jws-rejected",
+        "bundle-claims-rejected",
+        "inner-doc-rejected",
+        "bundle",
+        "bundle-rejected",
+        "bundle-trust-rejected"
+      ]
+    },
+    {
+      "path": "help/messages/downloads-and-updates",
+      "type": "help-messages",
+      "title": "Messages about downloads and updates",
+      "description": "What each download and update message means and what to do.",
+      "nearest": "/docs/help/messages/",
+      "package": "DOC-05a",
+      "pri": "P1",
+      "messages": [
+        "download_auth_required",
+        "delivery_gate_missing",
+        "upstream_rate_limited",
+        "payload-mismatch",
+        "full-corrupt",
+        "delta-artifact-mismatch",
+        "file-corrupt",
+        "payload-hash-mismatch",
+        "chunk-corrupt",
+        "chunk-bundle-truncated",
+        "plan-transport-unsupported",
+        "plan-insufficient-disk",
+        "swap-refused",
+        "swap-failed",
+        "delta-apply-failed",
+        "feed-rejected",
+        "feed-rollback",
+        "record-rejected",
+        "record-mismatch"
+      ]
+    },
+    {
+      "path": "help/messages/accounts",
+      "type": "help-messages",
+      "title": "Messages about accounts",
+      "description": "What each account message means and what to do.",
+      "nearest": "/docs/help/messages/",
+      "package": "DOC-05a",
+      "pri": "P1",
+      "messages": [
+        "license_owned",
+        "email_mismatch",
+        "key_entry_limit",
+        "activation.key-entry-limit",
+        "email_in_use",
+        "link_conflict",
+        "last_link",
+        "not_removable"
+      ]
+    },
+    {
+      "path": "help/messages/other",
+      "type": "help-messages",
+      "title": "Other messages",
+      "description": "Connection, settings and \"something went wrong\" messages.",
+      "nearest": "/docs/help/messages/",
+      "package": "DOC-05a",
+      "pri": "P1"
+    },
+    {
+      "path": "help/account",
+      "type": "help",
+      "title": "Your account and sign-in methods",
+      "description": "Your profile, appearance, sign-in methods and where you're signed in.",
+      "nearest": "/docs/help/sign-in/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/delete-account",
+      "type": "help",
+      "title": "Delete your account",
+      "description": "What happens when you delete your Polaris Key account, and the steps.",
+      "nearest": "/docs/help/sign-in/",
+      "package": "DOC-04b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/library",
+      "type": "help",
+      "title": "Your library",
+      "description": "The apps and licenses in your Polaris Key library.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05b",
+      "pri": "P1"
+    },
+    {
+      "path": "help/add-a-license",
+      "type": "help",
+      "title": "Add a license with a key",
+      "description": "Enter a license key in the Activate license dialog.",
+      "nearest": "/docs/help/",
+      "package": "DOC-05b",
+      "pri": "P1",
+      "anchors": [
+        {
+          "id": "license_owned",
+          "title": "License in another account"
+        },
+        {
+          "id": "email_mismatch",
+          "title": "Email doesn't match"
+        },
+        {
+          "id": "key_entry_limit",
+          "title": "No key entries left"
+        }
+      ]
+    },
+    {
+      "path": "help/new-computer",
+      "type": "help",
+      "title": "Move your license to a new computer",
+      "description": "Free a device and activate the new one.",
+      "nearest": "/docs/help/devices/",
+      "package": "DOC-05b",
+      "pri": "P1",
+      "anchors": [
+        {
+          "id": "hardware_mismatch",
+          "title": "Device changed"
+        }
+      ]
+    },
+    {
+      "path": "help/device-limit",
+      "type": "help",
+      "title": "Device limit reached",
+      "description": "Replace a device when your license is on all its devices.",
+      "nearest": "/docs/help/devices/",
+      "package": "DOC-05b",
+      "pri": "P1",
+      "anchors": [
+        {
+          "id": "device_limit",
+          "title": "Device limit reached"
+        },
+        {
+          "id": "activation.device-limit",
+          "title": "Device limit reached"
+        }
+      ]
+    },
+    {
+      "path": "help/check-a-download",
+      "type": "help",
+      "title": "Check a download is genuine",
+      "description": "Verify a download's checksum and signature.",
+      "nearest": "/docs/help/download/",
+      "package": "DOC-05c",
+      "pri": "P1"
+    },
+    {
+      "path": "help/install-sources",
+      "type": "help",
+      "title": "Install from AltStore, F-Droid, Obtainium or Scoop",
+      "description": "Install an app from a package source.",
+      "nearest": "/docs/help/download/",
+      "package": "DOC-05c",
+      "pri": "P1"
+    }
+  ],
+  "extraRedirects": {
+    "/build/sdks/kotlin-ui": "/docs/build/ui/frameworks/compose/"
+  }
+}

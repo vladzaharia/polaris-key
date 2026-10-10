@@ -7,6 +7,7 @@ packages/worker/src/docsCsp.generated.ts
 packages/admin/index.html
 packages/admin/manage.html
 packages/docs/src/content/docs/reference/
+packages/docs/src/content/docs/contribute/data-model.mdx
 # P2b-05's storefront feed goldens: byte-compared against the rendered feed bodies.
 packages/worker/test/fixtures/feeds/
 packages/cli/test/fixtures/feeds/

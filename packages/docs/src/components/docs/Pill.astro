@@ -1,0 +1,15 @@
+---
+/**
+ * A short status label (the console's `Pill`). Never the only carrier of meaning: it always has
+ * a word. `signed` (gold) is only for signature facts.
+ */
+import type { PillTone } from "../../lib/docs";
+
+export interface Props {
+  tone?: PillTone;
+}
+
+const { tone = "neutral" } = Astro.props;
+---
+
+<span class="pk-pill" data-tone={tone}><slot /></span>

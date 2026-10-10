@@ -64,12 +64,12 @@ docs/                RUNBOOK · DEPLOYMENT · PRIVACY
 **`docs/` is much smaller than it used to be.** Four long-form documents moved into the docs
 site and are no longer at their old paths — follow the move rather than recreating them:
 
-| Was                        | Now                                                          | Served at                         |
-| -------------------------- | ------------------------------------------------------------ | --------------------------------- |
-| `docs/CONCEPTS.md`         | `packages/docs/src/content/docs/start/concepts.md`           | `/docs/start/concepts/`           |
-| `docs/ADOPTER-GUIDE.md`    | `packages/docs/src/content/docs/build/onboarding.md`         | `/docs/build/onboarding/`         |
-| `docs/CONFIG-AUTHORING.md` | `packages/docs/src/content/docs/build/manifest/authoring.md` | `/docs/build/manifest/authoring/` |
-| `products/README.md`       | `packages/docs/src/content/docs/build/registering.md`        | `/docs/build/registering/`        |
+| Was                        | Now                                                                | Served at                        |
+| -------------------------- | ------------------------------------------------------------------ | -------------------------------- |
+| `docs/CONCEPTS.md`         | `packages/docs/src/content/docs/start/concepts.md`                 | `/docs/start/concepts/`          |
+| `docs/ADOPTER-GUIDE.md`    | `packages/docs/src/content/docs/start/first-product.md` (appended) | `/docs/start/first-product/`     |
+| `docs/CONFIG-AUTHORING.md` | `packages/docs/src/content/docs/build/manifest/product.md`         | `/docs/build/manifest/product/`  |
+| `products/README.md`       | `packages/docs/src/content/docs/build/manifest/register.md`        | `/docs/build/manifest/register/` |
 
 `CONTRIBUTING.md` was slimmed to match: setup, the green gate and the pre-commit hook stay in
 the repo; the monorepo map, the wave model, the corpus and the release flow now live under
@@ -244,8 +244,13 @@ of the opt-in services; adding one is the checklist at
 
 **4. Terminology comes from the concepts page.** `packages/docs/src/content/docs/start/concepts.md`
 (served at `/docs/start/concepts/`) is the canonical glossary — the former `docs/CONCEPTS.md`,
-moved into the site. Device, not machine. Product, not app. Tier, not plan. When code and the
-glossary disagree, the glossary wins; open a PR to reconcile. **"Profile" is already taken twice**
+moved into the site. Device, not machine. Tier, not plan. **Product** is the record in Polaris
+Key (the console's product, the manifest, the API); **app** is the developer's build that embeds an
+SDK, and what consumers use. "Create the product in the console" and "Add licensing to your app"
+are both right; "create the app in the console" is wrong, and Help says "app" throughout. The
+style guide (`docs/research/2026-10-08-docs/style-guide.md` §4, published as Contribute → Writing
+docs) holds the rest of the writing rules. When code and the glossary disagree, the glossary wins;
+open a PR to reconcile. **"Profile" is already taken twice**
 — the reusable managed-payload baseline, and `DocProfile` in the signed payload. Do not overload
 it a third time.
 
@@ -303,28 +308,36 @@ origin and no `llms.txt`. An agent reads this file and the repo, not the deploye
 - **`docs/`** — operator material (`RUNBOOK`, `DEPLOYMENT`, `PRIVACY`), `docs/security/` (threat
   model, wire contract v4, audit + findings), and `docs/superpowers/` (historical specs and
   plans — read the specs' **closeouts**, not the plans, for shipped state).
-- **`packages/docs/src/content/docs/`** — the published site: `start/`, `users/`, `services/`,
-  `build/`, `admin/`, `agents/`, `reference/`, `contribute/`. Long-form adopter and authoring
-  material lives here now, not in `docs/`.
+- **`packages/docs/src/content/docs/`** — the published site, in three doors
+  (`docs/research/2026-10-08-docs/README.md` §3.1): **Help** for people using an app built on
+  Polaris Key (`help/`); **Developers** (`start/`, `build/`, `features/<feature>/`, `reference/`);
+  **Operate** (`operate/console/`, `operate/platform/`, `contribute/`). The door and the access tier
+  of a page come from its directory (`src/lib/doors.ts`), never from frontmatter. A page that moves
+  is a row in `packages/docs/site-map.json`, which also lists the hidden stubs that reserve every
+  planned path; `node scripts/site-map.mjs apply` performs the rows and
+  `pnpm --filter @polaris-key/docs lint:docs` runs the lints against `lint-debt.json`, which only
+  shrinks. Long-form adopter and authoring material lives here, not in `docs/`.
 
 ```sh
 pnpm --filter @polaris-key/docs dev       # local preview at /docs
 pnpm --filter @polaris-key/docs gen       # regenerate the reference/*.mdx pages
 pnpm --filter @polaris-key/docs gen:check # fail if any generated page is stale
+pnpm --filter @polaris-key/docs lint:docs # the writing lints; fails on a hit lint-debt.json does not hold
 pnpm --filter @polaris-key/docs build     # astro build + CSP hashes + slug manifest
 ```
 
-The `build` script does three things in order: `astro build`, then `collect-csp-hashes.mjs`
-(writes the worker's `docsCsp.generated.ts`), then `emit-slug-manifest.mjs` (writes
-`dist/docs-slugs.json`, which the console's help-link drift gate reads). Skipping the build and
-editing either output by hand fails CI.
+The `build` script does four things in order: `astro build`, then `redirect-fragments.mjs` (keeps
+a link's `#fragment` through a moved-page redirect), then `collect-csp-hashes.mjs` (writes the
+worker's `docsCsp.generated.ts`), then `emit-slug-manifest.mjs` (writes `dist/docs-slugs.json`, with
+each page's frontmatter and anchors, which the console's help-link drift gate reads, and takes the
+stubs out of the sitemap). Skipping the build and editing either output by hand fails CI.
 
 ## Conventions when writing docs pages
 
 - Frontmatter values are **quoted** (`title: "…"`, `description: "…"`).
 - Never leave a bare `{` or `}` in MDX prose — MDX evaluates it as JSX. Braces inside backticked
   code spans are literal and need no escape.
-- Internal links are absolute and end in a slash: `/docs/services/config/catalog/`.
+- Internal links are absolute and end in a slash: `/docs/features/managed-config/catalog/`.
 - Console help links live in exactly two tables (`packages/admin/src/console/nav.ts` and
   `packages/admin/src/lib/docsLinks.ts`) and are gated against the built slug manifest. Renaming
   a page means updating those tables in the same change.

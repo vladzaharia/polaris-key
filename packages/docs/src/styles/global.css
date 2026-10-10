@@ -9,7 +9,7 @@
  * Nothing in this file is a colour of its own: every value is a token.
  *
  * Sections: src/components/PageFrame.astro puts data-service="<slug>" around every page, and
- * service pages (services/<slug>/) take that service's accent. The accent mapping below is
+ * feature pages (features/<feature>/) take the feature's service accent. The accent mapping below is
  * declared on [data-service] as well as :root, because a custom property that references another
  * one is resolved where it is declared.
  *
@@ -239,9 +239,11 @@ h6,
   color: var(--pk-text-strong);
 }
 
-/* Each service's group in the "Services" list carries its accent as a marker beside its name. */
+/* Each feature's group (and Ship builds' sub-areas) carries its service accent as a marker beside
+   its name. The feature -> service map is src/lib/features.ts; test/brand.test.ts keeps this
+   list in step with it. */
 .sidebar-content
-  details:has(> ul > li > a[href*="/docs/services/"])
+  details:has(> ul > li > a[href*="/docs/features/"])
   > summary
   .large::before {
   content: "";
@@ -254,29 +256,30 @@ h6,
   vertical-align: 0.08em;
 }
 
-.sidebar-content details:has(> ul > li > a[href*="/docs/services/core/"]) {
-  --pkd-group-accent: var(--pk-service-core);
-}
-.sidebar-content details:has(> ul > li > a[href*="/docs/services/license/"]) {
+.sidebar-content details:has(> ul > li > a[href*="/docs/features/licensing/"]) {
   --pkd-group-accent: var(--pk-service-license);
 }
-.sidebar-content details:has(> ul > li > a[href*="/docs/services/config/"]) {
+.sidebar-content
+  details:has(> ul > li > a[href*="/docs/features/managed-config/"]) {
   --pkd-group-accent: var(--pk-service-config);
 }
-.sidebar-content details:has(> ul > li > a[href*="/docs/services/release/"]) {
+.sidebar-content
+  details:has(> ul > li > a[href*="/docs/features/ship-builds/releases/"]) {
   --pkd-group-accent: var(--pk-service-release);
 }
 .sidebar-content
-  details:has(> ul > li > a[href*="/docs/services/distribution/"]) {
+  details:has(> ul > li > a[href*="/docs/features/ship-builds/channels/"]) {
   --pkd-group-accent: var(--pk-service-distribution);
 }
-.sidebar-content details:has(> ul > li > a[href*="/docs/services/update/"]) {
+.sidebar-content
+  details:has(> ul > li > a[href*="/docs/features/ship-builds/updates/"]) {
   --pkd-group-accent: var(--pk-service-update);
 }
-.sidebar-content details:has(> ul > li > a[href*="/docs/services/identity/"]) {
+.sidebar-content details:has(> ul > li > a[href*="/docs/features/sign-in/"]) {
   --pkd-group-accent: var(--pk-service-identity);
 }
-.sidebar-content details:has(> ul > li > a[href*="/docs/services/sync/"]) {
+.sidebar-content
+  details:has(> ul > li > a[href*="/docs/features/cloud-sync/"]) {
   --pkd-group-accent: var(--pk-service-sync);
 }
 

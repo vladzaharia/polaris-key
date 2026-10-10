@@ -60,6 +60,12 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 1. Verify this brief against the code and the docs site (the code is the fact) and record any correction here, in the same branch.
 2. Write or build the scope against DOC-03a's contracts; run the docs tests while working and the scoped gate once at hand-off.
 
+## Corrections to the brief (recorded at hand-off)
+
+- Moves of pages another package is editing right now (`build/quickstart/index`, `build/ui/localisation`, `build/ui/recipes`, seven `build/ui/components/*` deletions) are `deferred` rows in `packages/docs/site-map.json`; `node scripts/site-map.mjs apply --include-deferred` performs them after that package merges, then `src/lib/doors.ts` follows.
+- `<UiLabel>` takes `name`, not `key` (JSX runtimes reserve `key`).
+- `users/privacy` puts its content at `reference/what-apps-collect`; `help/your-data` is the stub.
+
 ## Acceptance criteria
 
 - [ ] The common definition of done in the docs plan §6.3 holds.

@@ -21,7 +21,7 @@ import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
 
 const VISIBLE = { service: "sync", offBehaviour: "hide" } as const;
-const DOCS = "/docs/services/sync/";
+const DOCS = "/docs/features/cloud-sync/";
 const PENDING = { wp: "U-05" } as const;
 const PER_PERSON = CLOUD_SYNC_CEILINGS.perPerson;
 

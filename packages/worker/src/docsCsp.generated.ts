@@ -12,6 +12,7 @@
 /** CSP source expressions (e.g. `'sha256-…'`) for every inline <script> the docs build emits. */
 export const DOCS_SCRIPT_HASHES: readonly string[] = [
   "'sha256-7eCV4jtsr4t4knb3c4FCRPeu7GGZeOUGE3XvWix0XOQ='",
+  "'sha256-G2mC5cR7/XhAM4cH/GAX+rcfI0qabK81PCFIFqkaNlE='",
   "'sha256-GkZBRnvSuhtx/cvzvukVkX2JJZW+DdPlVr7BX8Tefqo='",
   "'sha256-OizSKqsU+f0G4vojbxNt0Lao3kUpTmCLQSv3y6P7qhQ='",
   "'sha256-VWo5Wp4aqSj6nSgMpeAp9cKieaoIfwFUAunAVugI5gA='",

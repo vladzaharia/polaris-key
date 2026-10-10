@@ -49,7 +49,7 @@ import { setting } from "../../core/settings/define.js";
 import type { SettingDef } from "../../core/settings/types.js";
 
 const VISIBLE = { service: "license", offBehaviour: "hide" } as const;
-const DOCS = "/docs/services/license/model/";
+const DOCS = "/docs/features/licensing/model/";
 /** License → Settings renders exactly this area (the console's `license/settings` page). */
 export const LICENSING_AREA = "license.licensing";
 /** Who reads the values until ST-04's resolver: the typed reader below and Core's row store. */

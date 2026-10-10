@@ -625,7 +625,7 @@ describe("Identity → Sign-in", () => {
     // The phrase itself is the link, to the policy page's Auto-issue section.
     const docs = within(line).getByRole("link", { name: /^autoIssue block/ });
     expect(docs.getAttribute("href")).toMatch(
-      /\/docs\/services\/license\/policy\/#auto-issue$/,
+      /\/docs\/features\/licensing\/access\/#auto-issue$/,
     );
   });
 

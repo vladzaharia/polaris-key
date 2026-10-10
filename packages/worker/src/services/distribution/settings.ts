@@ -20,7 +20,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Who may download each deliverable's bytes: anyone, a registered device, a licensed one, or an entitled one. Loosening it gives the files away.",
       keywords: ["artifacts", "downloads", "licensed", "public"],
-      docs: "/docs/services/distribution/delivery/",
+      docs: "/docs/features/ship-builds/channels/delivery/",
       value: { kind: "json", schema: "dist_access rows (access.ts)" },
       defaultValue: null,
       allowUnset: true,
@@ -47,7 +47,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it.",
       keywords: ["codeUpdates", "downloadedScripts", "commerce", "outlets"],
-      docs: "/docs/services/distribution/",
+      docs: "/docs/features/ship-builds/channels/",
       value: {
         kind: "json",
         schema: "CapabilitySet per outlet (capabilities.ts)",
@@ -73,7 +73,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it.",
       keywords: ["stores", "appleId", "bundleId", "packageName"],
-      docs: "/docs/services/distribution/",
+      docs: "/docs/features/ship-builds/channels/",
       value: { kind: "json", schema: "outlets (distribution.schema.json)" },
       defaultValue: null,
       allowUnset: true,
@@ -97,7 +97,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
       keywords: ["pkey-cdn", "embedded", "play-pad", "apple-ba", "steam-depot"],
-      docs: "/docs/services/distribution/delivery/",
+      docs: "/docs/features/ship-builds/channels/delivery/",
       value: { kind: "json", schema: "transports (distribution.schema.json)" },
       defaultValue: null,
       allowUnset: true,
@@ -124,7 +124,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
       keywords: ["purchases", "iap", "steam", "sandbox"],
-      docs: "/docs/services/distribution/commerce/",
+      docs: "/docs/features/ship-builds/commerce/",
       value: {
         kind: "json",
         schema: "commerce settings (commerce/settings.ts)",

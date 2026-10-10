@@ -1,3 +1,5 @@
 # Generated reference pages: formatting authority is scripts/gen-reference.mjs, and the
 # freshness test byte-compares them — prettier must not rewrite what the generator emits.
 src/content/docs/reference/*.mdx
+src/content/docs/reference/protocol/*.mdx
+src/content/docs/contribute/data-model.mdx

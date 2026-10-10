@@ -1,0 +1,26 @@
+---
+/**
+ * One message entry of a Help messages page (docs plan §7.1, §7.5). The heading is the catalog
+ * title, character for character; its anchor is the message id, set here and never slugified.
+ * The message follows as the app shows it, then Why you see this and What to do from
+ * `help-messages.json`. A copy change reaches Help on the next build.
+ */
+import { CATALOG_ENTRIES, HELP_MESSAGES } from "../../lib/helpMessages";
+
+export interface Props {
+  /** A message id: a `codes` key, `gate.<key>`, `activation.<key>` or `fallback`. */
+  id: string;
+}
+
+const { id } = Astro.props;
+const entry = CATALOG_ENTRIES.get(id);
+if (entry === undefined)
+  throw new Error(`<HelpMessage id="${id}">: no such key in conformance/parity/copy.en.json`);
+const extra = HELP_MESSAGES.messages[id];
+---
+
+<h2 id={id}>{entry.title}</h2>
+<p class="pk-help-message__text">{entry.message}</p>
+{extra?.why && <p><strong>Why you see this.</strong> {extra.why}</p>}
+{extra?.fix && <p><strong>What to do.</strong> {extra.fix}</p>}
+{extra?.article && <p><a href={`/docs/help/${extra.article}/`}>More about this</a></p>}

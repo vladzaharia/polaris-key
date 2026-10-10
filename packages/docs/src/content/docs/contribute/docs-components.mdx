@@ -1,0 +1,119 @@
+---
+title: "Docs components"
+description: "The MDX components every docs page uses, with their props and a live example of each."
+type: "reference"
+lastReviewed: "2026-10-09"
+---
+
+import { DOCS_COMPONENTS } from "../../../components/docs/index";
+import SdkPicker from "../../../components/docs/SdkPicker.astro";
+import Lanes from "../../../components/docs/Lanes.astro";
+import InstallSteps from "../../../components/docs/InstallSteps.astro";
+import StatesToHandle from "../../../components/docs/StatesToHandle.astro";
+import Callout from "../../../components/docs/Callout.astro";
+import Pill from "../../../components/docs/Pill.astro";
+import Status from "../../../components/docs/Status.astro";
+import FeatureCard from "../../../components/docs/FeatureCard.astro";
+import CardGrid from "../../../components/docs/CardGrid.astro";
+import PortalShot from "../../../components/docs/PortalShot.astro";
+import HelpMessage from "../../../components/docs/HelpMessage.astro";
+import UiLabel from "../../../components/docs/UiLabel.astro";
+import ConsoleLink from "../../../components/docs/ConsoleLink.astro";
+import PortalLink from "../../../components/docs/PortalLink.astro";
+import Requires from "../../../components/docs/Requires.astro";
+import RunbookSection from "../../../components/docs/RunbookSection.astro";
+
+Import a component at the top of the page that uses it. Props are the contract; the console's `ui/` styles them.
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>What it renders</th>
+      <th>Props</th>
+    </tr>
+  </thead>
+  <tbody>
+    {DOCS_COMPONENTS.map((c) => (
+      <tr key={c.name}>
+        <td>
+          <code>{c.name}</code>
+        </td>
+        <td>{c.summary}</td>
+        <td>{c.props.join(", ")}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+## Choose an SDK
+
+<SdkPicker sdks={["node", "python", "swift"]} />
+
+## Show both lanes
+
+<Lanes intro="The drop-in kit renders the screens. Your own UI calls the client and draws its own.">
+  <Fragment slot="kit">Use the kit's gate component.</Fragment>
+  <Fragment slot="library">Call the client and handle each state.</Fragment>
+</Lanes>
+
+## Install an SDK
+
+<InstallSteps sdk="node" />
+
+## List the states to handle
+
+<StatesToHandle
+  states={[
+    { state: "Device limit reached", copyKey: "activation.device-limit" },
+    { state: "Not signed in", copyKey: "unauthorized", helpId: "unauthorized" },
+  ]}
+/>
+
+## Callouts, pills and status
+
+<Callout type="note" title="The key is shown once">
+  Copy it before you close the dialog.
+</Callout>
+
+<Pill tone="success">Verified</Pill> <Pill tone="signed">Signed</Pill>
+<Status state="shipped" /> <Status state="not-built" />
+
+<Requires
+  features={["licensing"]}
+  role="Product admin"
+  sdk={["Node 22.13 or later"]}
+/>
+
+## Cards
+
+<CardGrid>
+  <FeatureCard feature="licensing" description="Gate your app on a license." />
+  <FeatureCard
+    feature="sign-in"
+    description="Sign people in with a Polaris Key account."
+  />
+</CardGrid>
+
+## Link into the console and the portal
+
+<ConsoleLink to="products">Open Products</ConsoleLink>
+<PortalLink to="library">Open your library</PortalLink>
+
+Name a label exactly as the screen shows it: select <UiLabel name="portal.activate.title">Activate license</UiLabel>.
+
+## Quote a portal screen
+
+<PortalShot
+  id="activate-enter"
+  caption="The Activate license dialog"
+  alt="The Activate license dialog with a field for the license key"
+/>
+
+## Quote a Help message
+
+<HelpMessage id="device_limit" />
+
+## Render a runbook section
+
+<RunbookSection file="RUNBOOK" heading="Production shape" />

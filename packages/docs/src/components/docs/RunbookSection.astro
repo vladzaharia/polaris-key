@@ -1,0 +1,26 @@
+---
+/**
+ * One H2 section of a repo operator file, rendered as its own page (docs plan §5, DOC-11b). The
+ * file stays whole at its canonical home; a page shows one section, so each runbook page can
+ * carry Verify and Roll back. Sections come from the `runbook` collection in `content.config.ts`.
+ */
+import { getEntry } from "astro:content";
+import type { RunbookFile } from "../../lib/docs";
+import { slugifyHeading } from "../../lib/runbook";
+
+export interface Props {
+  file: RunbookFile;
+  /** The H2 text, exactly as in the file. */
+  heading: string;
+}
+
+const { file, heading } = Astro.props;
+const entry = await getEntry("runbook", `${file}/${slugifyHeading(heading)}`);
+if (entry === undefined)
+  throw new Error(`<RunbookSection file="${file}" heading="${heading}">: no such H2 in docs/${file}.md`);
+---
+
+<section class="pk-runbook-section" data-file={file}>
+  <h2 id={slugifyHeading(heading)}>{entry.data.heading}</h2>
+  <Fragment set:html={entry.rendered?.html ?? ""} />
+</section>

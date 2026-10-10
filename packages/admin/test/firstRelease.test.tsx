@@ -176,7 +176,7 @@ describe("Releases → guided first release (UX-23)", () => {
     expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /Release docs/ }).getAttribute("href"),
-    ).toBe("/docs/build/ci/");
+    ).toBe("/docs/features/ship-builds/ci/");
   });
 
   it("allows the workflow inline, through Keys & secrets' own publisher drawer", async () => {

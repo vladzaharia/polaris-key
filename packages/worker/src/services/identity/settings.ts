@@ -51,7 +51,7 @@ const SYNC_TIER_ON_SIGN_IN: SettingDef = setting({
   description:
     "Whether a sign-in may move a licence to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
   keywords: ["groupRoleMap", "tier", "upgrade"],
-  docs: "/docs/services/identity/oidc/",
+  docs: "/docs/features/sign-in/oidc/",
   value: { kind: "enum", values: OIDC_SYNC_TIER_ON_SIGN_IN_VALUES },
   defaultValue: "off",
   merge: "cascade",
@@ -82,7 +82,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
       keywords: ["key entry", "key_entry_limit", "activations"],
-      docs: "/docs/services/identity/",
+      docs: "/docs/features/sign-in/",
       value: {
         kind: "integer",
         unit: "count",
@@ -115,7 +115,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "The identity provider products sign users in with: issuer, client and group-to-role map. Changing the issuer moves who can sign in, so it is manifest-only and passes the issuer allowlist.",
       keywords: ["sso", "issuer", "groupRoleMap"],
-      docs: "/docs/services/identity/oidc/",
+      docs: "/docs/features/sign-in/oidc/",
       value: { kind: "json", schema: "oidc (product.schema.json)" },
       defaultValue: null,
       allowUnset: true,
@@ -144,7 +144,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
       keywords: ["claims", "entitlements", "provisioning_config"],
-      docs: "/docs/services/identity/oidc/",
+      docs: "/docs/features/sign-in/oidc/",
       value: { kind: "json", schema: "provisioning (product.schema.json)" },
       defaultValue: [],
       merge: "cascade",
@@ -169,7 +169,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "How long a product sign-in in the browser lasts. A product may shorten it, never lengthen it past the platform's 30 days.",
       keywords: ["session", "sign out", "cookie"],
-      docs: "/docs/services/identity/sessions/",
+      docs: "/docs/features/sign-in/sessions/",
       value: {
         kind: "integer",
         unit: "days",
@@ -199,7 +199,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
       keywords: ["reserved", "display name", "reserved_display_name"],
-      docs: "/docs/build/manifest/authoring/",
+      docs: "/docs/build/manifest/product/",
       value: { kind: "boolean" },
       defaultValue: false,
       merge: "cascade",
