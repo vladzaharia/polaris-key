@@ -1,49 +1,29 @@
 # Polaris Key sign-in: the canonical experience
 
-**Status:** canonical, 2026-10-05. A critique pass the same day aligned it with the approved
-`plans/I-04.md` amendment "Owner decision (2026-10-05): licence choice at sign-in" (merged in
-`5f0820126`), and a reconciliation pass settled every remaining difference in one place
-(`plans/I-04.md` §F, mirrored in §6.2 here), applied the drift list to briefs and plans (§8) and
-added the owner's license vocabulary (O-11); the owner then settled D-53: sign-in licenses stay
-device-limited, and operators change the numbers, and dropped the "Account-wide" label (O-17: every
-license is account-bound; its origin shows in plain words). A desktop pass the same day (O-12) made desktop
-apps a first-class surface: the browser hand-off, the waiting sheet, the desktop ReturnStep, the
-in-app license choice, sign-out and expiry on macOS, Windows, Linux, Godot desktop and terminals
-(§3.17, §4.15, the desktop table in §5.1, §6.4, D-60–D-77). A consolidation pass the same day (O-13–O-17)
-put every in-app step into **one sign-in form** whose body morphs in place, made its presentation
-configurable, moved the license choice into the app through a short-lived grant (`plans/I-04.md`
-§G), and defined the two ways to integrate (§2.4), the integrated web flow (§4.16) and the motion
-system (§3.18). It records the owner's decisions and the lead's
-delegated choices (§7). **Scope:** every way a person signs in to Polaris Key, or to an app through Polaris
-Key. That covers the hosted login card (portal and console), the Worker's no-JS pages, the sign-in
-emails, and the sign-in screens of every UI kit. **Mockups:** [sign-in/](sign-in/): frames 01–22 at
-desktop and phone, and frames 23–41 as desktop-only scenes (app windows, the desktop browser and
-terminals), each in dark and light, rendered by `sign-in/render.cjs`, plus an animated, clickable
-prototype of the integrated web flow in [sign-in/prototype/](sign-in/prototype/) (§9).
+**Status:** canonical. **Scope:** every way a person signs in to Polaris Key, or to an app through
+Polaris Key. That covers the hosted login card (portal and console), the Worker's no-JS pages, the
+sign-in emails, and the sign-in screens of every UI kit. The owner's decisions are §0 and the
+lead's delegated choices are §7. **Mockups:** [sign-in/](sign-in/): frames 01–22 and 48 at desktop
+and phone, frames 23–46 as desktop-only scenes (app windows, the desktop browser and terminals) and
+frame 47 at phone width, each in dark and light, rendered by `sign-in/render.cjs`, plus an animated,
+clickable prototype of the integrated web flow in [sign-in/prototype/](sign-in/prototype/) (§9).
 
 > **This document is the single source of truth for sign-in.** [PORTAL.md](PORTAL.md) §3.3–§3.4
 > and §4.1–§4.11, §4.18–§4.19, §4.23–§4.25 and §4.29; [EXPERIENCE.md](EXPERIENCE.md) §0.6 P1, §8 and
 > §11.1; [ADMIN.md](ADMIN.md) §2.7 (Sign in row), T8 (Session expired) and §6.10.1; and
 > [UI-KITS.md](UI-KITS.md) §4.3 (Welcome and Activate, SignIn and SignInHandoff, DeviceLimit) point
-> here. **Where they differ from this document, this document wins.** Measures, colours and type
-> stay [BRAND.md](BRAND.md)'s and EXPERIENCE.md §8's. The approved plans in
-> `docs/research/2026-09-29-godot-omniplatform/program/plans/` stay the wire authority; for license
-> choice and Replace a device that is `plans/I-04.md`, "Owner decision (2026-10-05)". Where this
-> document asks for a wire change no approved plan carries, §6.2 lists it as a delta and the drift
-> list (§8) names the owner.
-
-> **Amended by S-24 (2026-10-06): licence holders and activation without an account.** [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md)
-> adds O-18, the Done step after a key with its recommendation and **Add your name and email**
-> (§3.17), D13's **Continue without an account** (§3.9), the key-ownership states (§3.9), the
-> sign-in hints on the identity request (§6.6, PX-W18 plan mode), copy keys (§5.2), the drift row
-> (§8) and frames 42–48 (§9). Where this document and the note differ on those, the note wins.
+> here. Measures, colours and type stay [BRAND.md](BRAND.md)'s and EXPERIENCE.md §8's. The wire is
+> the approved plans' in `docs/research/2026-09-29-godot-omniplatform/program/plans/`:
+> `plans/I-27.md` §2.1 for the authorization server (`authorize`, `token`, `request`), and
+> `plans/I-04.md` §A–§G, as `plans/I-27.md` amends them, for license choice, Replace a device and
+> the one sign-in form (§6). A change no approved plan carries is a plan-mode change (CLAUDE.md).
 
 **Owner request (verbatim, 2026-10-05):** "Let's ensure all our UX systems are aligned on what this
 will all look like as we're making several UX changes around the login flow."
 
 **Naming.** The product is **Polaris Key**, never "Polaris Key Portal", "the portal" or "PK" in UI
 copy or email. UI copy uses **license** (US spelling; glossary, AGENTS.md rule 4), so the owner's
-"Choose a licence for this device" ships as **"Choose a license for this device"** (§7 D-01).
+"Choose a licence for this device" reads **"Choose a license for this device"** (D-01).
 Banned UI words: claim, redeem, merge, OIDC, deauthorize, activation (for an entry), portal.
 
 ## Contents
@@ -64,26 +44,26 @@ Banned UI words: claim, redeem, merge, OIDC, deauthorize, activation (for an ent
 
 ## 0. Owner decisions (binding)
 
-| #    | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Where it lands                                                                                           |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| O-1  | **License choice at sign-in.** "It should probably ask the user to confirm using one of the available license slots and then authenticating. If a license doesn't exist, it will generate one. If license(s) do exist, the user will choose which and associate the installation with that license." A **Choose a license for this device** step follows authentication on every sign-in that binds an installation. It shows even for one license (a one-tap confirm). The rank-first rule only preselects; the person's **Use this license and continue** binds. Full licenses show, disabled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | §3.6 LicenseChoiceStep                                                                                   |
-| O-2  | **Replace device in the card.** "Can we free a device from within the modal? Something like 'Replace device'." A full license offers an inline **Replace a device**: its seat-holding devices with the least recent preselected, one confirm that names the device ("Replace Work laptop?"), and this installation bound into the freed seat. It follows the same rules, limits, audit and email as the portal's Remove. **Free a device** (the portal page) is the fallback.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | §3.7 ReplaceDevice                                                                                       |
-| O-3  | **No silent second auto-issued license.** While the account holds a usable license for the product, sign-in never mints another by itself. The only way to a second free license is the explicit, never-preselected row **Create a new free license**, offered when every license is full and the product auto-issues (I-04 delegated decision 1).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | §3.6 rules 4–5                                                                                           |
-| O-4  | **One Polaris Key account** across every product. **Identity** is a per-product service around passthrough sign-in.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | §2, §4.12                                                                                                |
-| O-5  | **One login card** shared by the portal and the console. The console is identifier-first (EXPERIENCE §8).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | §3.1, §3.12                                                                                              |
-| O-6  | **Logo-only provider row**: Apple, Google, Steam, in that order, one equal-width row. No Discord.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | §3.2                                                                                                     |
-| O-7  | A persistent **"<App> wants you to sign in"** header on every step of an app's sign-in.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | §3.1                                                                                                     |
-| O-8  | A **provider-verified email needs no code**; otherwise the **email gate** asks for a code. **Profile import** (name, picture). **Sign-in methods connect and disconnect any time.**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | §3.5, §3.16, §4.6                                                                                        |
-| O-9  | The **license-key flow** is a bounded on-ramp: key-entry limits, then an account and the portal.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | §3.9, §4.5                                                                                               |
-| O-10 | **UI kits look like Polaris Key by default, with the product as the hero**, in three layers: drop-in, styled components and headless.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | §5 (UI-KITS.md §1.2–1.3 hold)                                                                            |
-| O-11 | **License vocabulary** (2026-10-05). **Owner decision (2026-10-05): no "Account-wide" label; origin shown as plain words** (O-17). Verbatim: "Maybe not even 'Account-wide' since all licenses are going to be inevitably account-bound." and "If the key came from Steam/storefront, we should include that." Every license is account-bound, so none is labelled by type. The tier ("Standard") is a neutral pill with "{used} of {limit} devices" beside it for every license; the meta line says how it came to be and its term: "From signing in", "Key ending 3WPLDA", "Steam key ending 3WPLDA" (the store named with the key when the key came from a store purchase), "From Steam", "Gift", "Included with <org>", then "Lifetime", "Renews 3 Mar" or "Expires 24 Dec". Sign-in licenses keep a device limit like any other (D-53), and operators change the numbers. "For life" becomes **Lifetime**. When an account holds both a key or seat license and a sign-in license for one product, the key license hides its device counter and meter (D-54). The device list with **Remove** shows for every license. | §3.6, §5.2, PORTAL §5.3, §4.20, O-17                                                                     |
-| O-12 | **Desktop sign-in** (2026-10-05). "Sign in spec should also include desktop sign in, not just mobile." Desktop apps on macOS, Windows and Linux, Godot desktop exports and terminals are a first-class surface: how the app starts sign-in, what its window shows while the browser is open, how the tab ends, the in-app license choice, Replace a device, sign-out and session expiry. The owner delegated the details to the lead (D-60–D-77).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | §3.17, §4.15, §5.1, §6.4                                                                                 |
-| O-13 | **One consolidated sign-in form** (2026-10-05). "Let's make 'Finish in your browser' not a popup and instead just replace the login part. We should also try and integrate the 'Choose a license' and such into that login form as well. Just have a very consolidated system." One in-app form whose body morphs through Sign in → Finish in your browser (or the code) → Choose a license (→ Replace a device) → Done. Nothing stacks on it, and the license is chosen in the app when the app can show it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | §3.17, §4.15, I-04 §G                                                                                    |
-| O-14 | **Native and configurable** (2026-10-05). "I do like the native elements still, so you know, make it reasonable and configurable." `presentation: "inline"` (default), `"sheet"` or `"browser"`, the same in every kit; native controls inside the form; the system confirmation for a destructive Replace where the platform expects one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | §3.17, D-79, D-80                                                                                        |
-| O-15 | **Two ways to integrate** (2026-10-05). "We should have a completely integrated sign in/license activation web system, but also the UI kit and primitives necessary for doing it natively instead." Path A is the hosted card; path B is the kit's form and the headless primitives. Both have the same steps, states, copy and server contract, and an app can mix them per step.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | §2.4, UI-KITS §1.3                                                                                       |
-| O-16 | **The integrated web flow, and motion** (2026-10-05). "And for the web-based experience, let's see what it looks like for it to be fully integrated into the sign in flow instead of being disparate. Also, animations are going to be key here. I want this experience to feel modern, especially the web one." One continuous card where the key, the choice, Replace, consent and the return are steps; the motion system, with reduced motion and the strict CSP; an animated prototype.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | §4.16, §3.18, prototype                                                                                  |
-| O-17 | **License vocabulary, revised** (2026-10-05). Every license is account-bound and device-limited, never "unlimited", and the "Account-wide" label is dropped. Every row shows the tier pill and "{used} of {limit} devices"; the origin is plain words on the meta line ("From signing in", "Key ending 3WPLDA", "From the App Store"); the portal picker reads "Standard · Sign-in" and "Standard · Key …3WPLDA"; a key license hides its counter when a sign-in license is also held. `fix/drop-account-wide-label` carried it into O-11, §3.6, §5.2, the copy keys and the code, and named the store with the key ("Steam key ending 3WPLDA"); §2.4, §3.17, §3.18, §4.15, §4.16 and the new frames already use it.                                                                                                                                                                                                                                                                                                                                                                                                        | D-90, frames 18, 22, 30, 36–41, prototype                                                                |
-| O-18 | **Licence holders** (2026-10-06). "We should allow users to continue with activation without an account, but recommend adding a name and email to enable things like Cloud Sync." Corrected the same day: "'No account' is the same as continuing to be a 'Floating license' -- a floating license is still a license, with devices, expiry, etc. It just isn't associated to an account and therefore doesn't have Cloud Sync or any other account-based features." A license is **floating** or **assigned**. A key activation without signing in keeps it floating; **Continue without an account** says so; the Done step after a key recommends **Add your name and email**, which assigns the same license in place (same seats, same devices).                                                                                                                                                                                                                                                                                                                                                                       | §3.9, §3.17, §6.6, [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) |
+| #    | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Where it lands                                                                                           |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| O-1  | **License choice at sign-in.** "It should probably ask the user to confirm using one of the available license slots and then authenticating. If a license doesn't exist, it will generate one. If license(s) do exist, the user will choose which and associate the installation with that license." A **Choose a license for this device** step follows authentication on every sign-in that binds an installation and has a license to choose. It shows even for one license (a one-tap confirm). The rank-first rule only preselects; the person's **Use this license and continue** binds. Full licenses show without a radio and offer **Replace a device**. When the account has no license and the product issues one automatically, the step is skipped: Consent shows the license and Continue creates it (D-95).                                                                                                      | §3.6 LicenseChoiceStep                                                                                   |
+| O-2  | **Replace device in the card.** "Can we free a device from within the modal? Something like 'Replace device'." A full license offers an inline **Replace a device**: its seat-holding devices with the least recent preselected, one confirm that names the device ("Replace Work laptop?"), and this installation bound into the freed seat. It follows the same rules, limits, audit and email as the portal's Remove. **Free a device** (the portal page) is the fallback.                                                                                                                                                                                                                                                                                                                                                                                                                                                   | §3.7 ReplaceDevice                                                                                       |
+| O-3  | **No silent second auto-issued license.** While the account holds a usable license for the product, sign-in never mints another by itself. The only way to a second free license is the explicit, never-preselected row **Create a new free license**, offered when every license is full and the product auto-issues (I-04 delegated decision 1).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | §3.6 rules 4–5                                                                                           |
+| O-4  | **One Polaris Key account** across every product. **Identity** is a per-product service around passthrough sign-in.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | §2, §4.12                                                                                                |
+| O-5  | **One login card** shared by the portal and the console. The console is identifier-first (EXPERIENCE §8).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | §3.1, §3.12                                                                                              |
+| O-6  | **Logo-only provider row**: Apple, Google, Steam, in that order, one equal-width row. No Discord.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | §3.2                                                                                                     |
+| O-7  | A persistent **"<App> wants you to sign in"** header on every step of an app's sign-in.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | §3.1                                                                                                     |
+| O-8  | A **provider-verified email needs no code**; otherwise the **email gate** asks for a code. **Profile import** (name, picture). **Sign-in methods connect and disconnect any time.**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | §3.5, §3.16, §4.6                                                                                        |
+| O-9  | The **license-key flow** is a bounded on-ramp: key-entry limits, then an account and the portal.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | §3.9, §4.5                                                                                               |
+| O-10 | **UI kits look like Polaris Key by default, with the product as the hero**, in three layers: drop-in, styled components and headless.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | §5 (UI-KITS.md §1.2–1.3 hold)                                                                            |
+| O-11 | **License vocabulary** (2026-10-05). Verbatim: "Maybe not even 'Account-wide' since all licenses are going to be inevitably account-bound." and "If the key came from Steam/storefront, we should include that." The tier ("Standard") is a neutral pill with "{used} of {limit} devices" beside it for every license; the meta line says how it came to be and its term: "From signing in", "Key ending 3WPLDA", "Steam key ending 3WPLDA" (the store named with the key when the key came from a store purchase), "From Steam", "Gift", "Included with <org>", then "Lifetime", "Renews 3 Mar" or "Expires 24 Dec". Sign-in licenses keep a device limit like any other (D-53), and operators change the numbers. When an account holds both a key or seat license and a sign-in license for one product, the key license hides its device counter and meter (D-54). The device list with **Remove** shows for every license. | §3.6, §5.2, PORTAL §5.3, §4.20, O-17                                                                     |
+| O-12 | **Desktop sign-in** (2026-10-05). "Sign in spec should also include desktop sign in, not just mobile." Desktop apps on macOS, Windows and Linux, Godot desktop exports and terminals are a first-class surface: how the app starts sign-in, what its window shows while the browser is open, how the tab ends, the in-app license choice, Replace a device, sign-out and session expiry. The owner delegated the details to the lead (D-60–D-77).                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | §3.17, §4.15, §5.1, §6.4                                                                                 |
+| O-13 | **One consolidated sign-in form** (2026-10-05). "Let's make 'Finish in your browser' not a popup and instead just replace the login part. We should also try and integrate the 'Choose a license' and such into that login form as well. Just have a very consolidated system." One in-app form whose body morphs through Sign in → Finish in your browser (or the code) → Choose a license (→ Replace a device) → Done. Nothing stacks on it, and the license is chosen in the app when the app can show it.                                                                                                                                                                                                                                                                                                                                                                                                                   | §3.17, §4.15, I-04 §G                                                                                    |
+| O-14 | **Native and configurable** (2026-10-05). "I do like the native elements still, so you know, make it reasonable and configurable." `presentation: "inline"` (default), `"sheet"` or `"browser"`, the same in every kit; native controls inside the form; the system confirmation for a destructive Replace where the platform expects one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | §3.17, D-79, D-80                                                                                        |
+| O-15 | **Two ways to integrate** (2026-10-05). "We should have a completely integrated sign in/license activation web system, but also the UI kit and primitives necessary for doing it natively instead." Path A is the hosted card; path B is the kit's form and the headless primitives. Both have the same steps, states, copy and server contract, and an app can mix them per step.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | §2.4, UI-KITS §1.3                                                                                       |
+| O-16 | **The integrated web flow, and motion** (2026-10-05). "And for the web-based experience, let's see what it looks like for it to be fully integrated into the sign in flow instead of being disparate. Also, animations are going to be key here. I want this experience to feel modern, especially the web one." One continuous card where the key, the choice, Replace, consent and the return are steps; the motion system, with reduced motion and the strict CSP; an animated prototype.                                                                                                                                                                                                                                                                                                                                                                                                                                    | §4.16, §3.18, prototype                                                                                  |
+| O-17 | **No license type labels** (2026-10-05). Every license is account-bound and device-limited, never "unlimited", so none is labelled by type (no "Account-wide"). The origin is plain words on the meta line ("From signing in", "Key ending 3WPLDA", "From the App Store"), and a key names its store ("Steam key ending 3WPLDA"). The portal picker reads "Standard · Sign-in" and "Standard · Key …3WPLDA". Frames 05–09, 18–22, 30, 36–41 and the prototype show it.                                                                                                                                                                                                                                                                                                                                                                                                                                                          | D-90, D-53–D-55                                                                                          |
+| O-18 | **Licence holders** (2026-10-06). "We should allow users to continue with activation without an account, but recommend adding a name and email to enable things like Cloud Sync." Corrected the same day: "'No account' is the same as continuing to be a 'Floating license' -- a floating license is still a license, with devices, expiry, etc. It just isn't associated to an account and therefore doesn't have Cloud Sync or any other account-based features." A license is **floating** or **assigned**. A key activation without signing in keeps it floating; **Continue without an account** says so; the Done step after a key recommends **Add your name and email**, which assigns the same license in place (same seats, same devices).                                                                                                                                                                           | §3.9, §3.17, §6.6, [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) |
 
 ## 1. Principles
 
@@ -140,7 +120,7 @@ product gets a 303 to `/signin?product=<slug>&error=identity_disabled` and the f
 One server-held flow record per sign-in (I-07's flow, PX-W13's request handle for passthrough). It
 holds the context, `returnTo`, the app request handle and binder cookie (`__Host-pk_req`), the
 device label and user code, the email-gate state (G31), and, after LicenseChoiceStep, the **chosen
-binding** (§6.3). Display data never comes from a query parameter (PX-W13 §2.2).
+binding** (§6.2). Display data never comes from a query parameter (PX-W13 §2.2).
 
 ### 2.3 Bindings: what "associate the installation" means
 
@@ -163,8 +143,8 @@ The owner asked for two complete, equal paths over one contract (O-15). Every st
 
 - **Path A, hosted.** The card at `key.plrs.im` runs the whole flow in one continuous card:
   sign-in, the license key, the license choice, Replace a device, consent and the return (§4.16).
-  An app needs no UI code. It opens a URL (the pushed request's `authorizeUrl`, or the web
-  `authorize` redirect) or shows a device code, and receives an activation. The kits'
+  An app needs no UI code. It opens the `authorize` URL (for a desktop or mobile app, built from the pushed
+  request's `request_uri`; for a web app, the redirect) or shows a device code, and receives an activation. The kits'
   `presentation: "browser"` and the terminals use this path.
 - **Path B, native.** The app runs the flow in its own window. The card still authenticates (D17:
   credentials only on the card or a platform sheet) and asks consent when it is due. Everything
@@ -175,9 +155,9 @@ The owner asked for two complete, equal paths over one contract (O-15). Every st
 
 | Step or capability                                                      | Path A: hosted card                                                    | Path B: kit form (layers a and b)                               | Path B: headless (layer c and the SDK)                               | Server                                         |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
-| Start                                                                   | Open `authorizeUrl` or `authorize`, or show a device code              | Step 1: **Continue in browser** and the provider shortcuts      | `signIn.start({channel, licenseChoice})`                             | `request`, `authorize`, `device/start`         |
+| Start                                                                   | Open the `authorize` URL, or show a device code                        | Step 1: **Continue in browser** and the provider shortcuts      | `signIn.start({channel, licenseChoice})`                             | `request`, `authorize`, `auth/device/start`    |
 | Email code, passkey, Apple, Google or Steam on the web                  | MethodsStep, HintStep, CodeStep, RegisterStep                          | The card (hand-off)                                             | The card (hand-off)                                                  | I-06, I-07                                     |
-| Native platform sign-in (Apple, Google, Game Center, Play Games, Steam) | —                                                                      | Provider shortcuts in step 1                                    | `exchange({kind, token, licenseChoice})`                             | `token` (I-13, I-14)                           |
+| Native platform sign-in (Apple, Google, Game Center, Play Games, Steam) | —                                                                      | Provider shortcuts in step 1                                    | `exchange({kind, token, licenseChoice})`                             | `token` exchange grant (I-13, I-14)            |
 | Waiting and the code view                                               | The code panel (device code)                                           | Step 2 in place: Open browser again, Cancel, Use a code instead | `session.wait()`, `session.reopen()`, `session.cancel()`, `userCode` | loopback, device-code poll                     |
 | Email gate, profile import                                              | EmailGateStep                                                          | The card                                                        | The card                                                             | I-07                                           |
 | License key                                                             | KeyStep (the on-ramp, Use a license key instead, the no-license state) | The key field in place (`Activate`), also from step 3           | `activate(key)`; `choice.complete({kind: "key", key})`               | `license/activate`; `choice/complete`          |
@@ -269,27 +249,26 @@ steps of the same card.
 
 ### 3.2 Step catalogue
 
-| Step                 | Shown when                                                                                               | Surfaces (§5.1)                                          | Frame                             |
-| -------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------- |
-| `MethodsStep`        | First step of every browser sign-in                                                                      | Card; kit `SignIn` (native; desktop chooser)             | 01, 02, 16, 23, 25                |
-| `HintStep`           | After Continue, when this browser's `pk_last_method` cookie matches the typed address                    | Card                                                     | PORTAL 03                         |
-| `CodeStep`           | After an email: one email with a 6-digit code and a link                                                 | Card, email, Worker                                      | 03                                |
-| `RegisterStep`       | New account after a verified email code                                                                  | Card                                                     | PORTAL 11                         |
-| `EmailGateStep`      | First provider sign-in of an account (Apple, Google, Steam, Game Center, Play Games)                     | Card                                                     | 04                                |
-| `LicenseChoiceStep`  | An app sign-in that will bind this installation, on a product with the License service (§3.6)            | Card; Worker (I-26 legacy); the kit form (path B, §3.17) | 05, 08, 09, 18–22, 36, 39, 40     |
-| `ReplaceDevice`      | From LicenseChoiceStep, on a full license; it replaces the list in place (§3.7)                          | Card; the kit form                                       | 06, 30, 37                        |
-| `ConsentStep`        | First sign-in to an app, and whenever its claims or services change (PX-W13 Q5); always after the choice | Card                                                     | 07 (04 and 07 are superseded, §9) |
-| `DeviceConfirm`      | Device code, when neither LicenseChoiceStep nor ConsentStep runs (§4.2)                                  | Card                                                     | —                                 |
-| `KeyStep`            | "Have a license key?", "Use a license key instead", or no license without auto-issue (§3.6 rule 6)       | Card; kit `Activate`                                     | 10, 20                            |
-| `ReturnStep`         | Native passthrough done (phone and desktop variants); device-code done                                   | Card                                                     | 11, 12, 26                        |
-| `SignInHandoff`      | Step 2 of the kit form: waiting on the browser, and the code view (§3.17)                                | The kit form (inline or sheet); terminal                 | 24, 28, 29, 31, 32, 35, 38        |
-| `SignIn` (the form)  | Every in-app sign-in: one form whose body morphs through steps 1–4 (§3.17)                               | Every kit                                                | 18, 23–31, 35–41                  |
-| `DeviceApproval`     | "Sign in with another device" (the new side) and Account → Approve a new device (the approver)           | Card; portal dialog                                      | 17                                |
-| `ConsoleMethodsStep` | Console sign-in, sign-out and session expiry                                                             | Console card, Worker twin                                | 13, 14                            |
-| Worker pages         | Expired or used code or link; link opened on another device; device-code entry without JS; admin errors  | Worker (`renderAuthCard()`)                              | 15                                |
+| Step                 | Shown when                                                                                                                                                                           | Surfaces (§5.1)                                          | Frame                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- | -------------------------- |
+| `MethodsStep`        | First step of every browser sign-in                                                                                                                                                  | Card; kit `SignIn` (native; desktop chooser)             | 01, 02, 16, 23, 25         |
+| `HintStep`           | After Continue, when this browser's `pk_last_method` cookie matches the typed address                                                                                                | Card                                                     | PORTAL 03                  |
+| `CodeStep`           | After an email: one email with a 6-digit code and a link                                                                                                                             | Card, email, Worker                                      | 03                         |
+| `FinishStep`         | A new account: after an email code (RegisterStep, §3.4) or on the first provider sign-in of an account (EmailGateStep, §3.5)                                                         | Card                                                     | 04, PORTAL 11              |
+| `LicenseChoiceStep`  | An app sign-in that will bind this installation, on a product with the License service, when the account has a license to choose or the product does not issue one (§3.6)            | Card; Worker (I-26 legacy); the kit form (path B, §3.17) | 05, 09, 18–22, 36, 39, 40  |
+| `ReplaceDevice`      | From LicenseChoiceStep, on a full license; it replaces the list in place (§3.7)                                                                                                      | Card; the kit form                                       | 06, 30, 37                 |
+| `ConsentStep`        | First sign-in to an app, and whenever its claims or services change (PX-W13 Q5); always after the choice, and always when the card creates the first automatic license (§3.6 rule 4) | Card                                                     | 07, 08                     |
+| `DeviceConfirm`      | Device code, when neither LicenseChoiceStep nor ConsentStep runs (§4.2)                                                                                                              | Card                                                     | —                          |
+| `KeyStep`            | "Have a license key?", "Use a license key instead", or no license without auto-issue (§3.6 rule 6)                                                                                   | Card; kit `Activate`                                     | 10, 20                     |
+| `ReturnStep`         | Native passthrough done (phone and desktop variants); device-code done                                                                                                               | Card                                                     | 11, 12, 26                 |
+| `SignInHandoff`      | Step 2 of the kit form: waiting on the browser, and the code view (§3.17)                                                                                                            | The kit form (inline or sheet); terminal                 | 24, 28, 29, 31, 32, 35, 38 |
+| `SignIn` (the form)  | Every in-app sign-in: one form whose body morphs through steps 1–4 (§3.17)                                                                                                           | Every kit                                                | 18, 23–31, 35–41           |
+| `DeviceApproval`     | "Sign in with another device" (the new side) and Account → Approve a new device (the approver)                                                                                       | Card; portal dialog                                      | 17                         |
+| `ConsoleMethodsStep` | Console sign-in, sign-out and session expiry                                                                                                                                         | Console card, Worker twin                                | 13, 14                     |
+| Worker pages         | Expired or used code or link; link opened on another device; device-code entry without JS; admin errors                                                                              | Worker (`renderAuthCard()`)                              | 15                         |
 
-**Order inside one flow:** Methods → (Hint) → Code or provider → (Register | EmailGate) →
-LicenseChoice (with Replace a device) → (Consent) → Return. KeyStep can come before authentication
+**Order inside one flow:** Methods → (Hint) → Code or provider → (Finish) → LicenseChoice (with
+Replace a device) → (Consent) → Return. KeyStep can come before authentication
 (the on-ramp, §3.9), inside the no-license state (§3.6 rule 6), or from "Use a license key instead";
 its confirm is the choice. **Consent is always its own step after the choice** (frame 07) and shows
 the chosen license with **Change**: one decision per screen (D-07). Nothing is written until the
@@ -297,7 +276,7 @@ flow's final primary: **Use this license and continue** when no Consent follows,
 <App>** on Consent.
 
 **In the app's form (path B)** the order is Sign in → Finish in your browser (on the card: Methods
-→ Code or provider → (EmailGate) → (Consent)) → Choose a license (→ Replace a device, or the key)
+→ Code or provider → (Finish) → (Consent)) → Choose a license (→ Replace a device, or the key)
 → Done (§3.17). The final primary is the app's **Use this license and continue** (or **Replace and
 continue**, or **Add and use on this device**).
 
@@ -312,7 +291,7 @@ license key?** and **Sign in with another device**.
 The device-code variant has h1 "Sign in to finish on <device label>", lede "Use your phone or
 computer here. <device label> continues by itself when you're done.", and "Didn't start this
 yourself? Cancel it. Someone may be trying to use your account." It has no "Sign in with another
-device" link.
+device" link. A `loginHint` (§6.6) prefills **Email**.
 
 **Provider row** (O-6): one row of equal-width, logo-only buttons, 52 px tall with 24 px marks, in
 the order Apple, Google, Steam. Accessible names are "Continue with Apple/Google/Steam" (repeated as
@@ -334,7 +313,7 @@ Center and Play Games are never buttons on the web.
 
 ### 3.4 CodeStep (and HintStep, RegisterStep)
 
-**HintStep** (PORTAL §4.3, unchanged): identity chip (no picture before authentication), "Welcome
+**HintStep** (PORTAL §4.3): identity chip (no picture before authentication), "Welcome
 back, Mara", a hint card "You usually sign in with Steam" with that method as the labelled primary,
 **Email me a code**, **Use a passkey** and **Other ways to sign in**. The hint comes only from the
 first-party `pk_last_method` cookie. Apple stays one tap away for iOS products.
@@ -364,15 +343,30 @@ sign-in, requested at {time} from {place}", with "The device that asked signs in
 **Confirm**, then "Sign-in confirmed. Go back to the device where you started. It signs in by
 itself."
 
-**RegisterStep** (new account after an email code): "Create your account". A success line reads
-"{email} is verified". **Your name** has the help "Shown to you and in emails. Developers see it only
-when you continue to their app." Then the opt-in "Add a passkey after this, so next time is one tap",
-**Create account and continue**, and the terms line naming Polaris Key's terms (and the developer's
-in passthrough).
+**RegisterStep** (a new account after an email code) is FinishStep (§3.5) with the email already
+verified: "Create your account". A success line reads "{email} is verified". **Screen name** has the
+help "Shown to you and in emails. Developers see it only when you continue to their app." Then the
+other finish stages that apply (§3.5), the opt-in "Add a passkey after this, so next time is one
+tap", **Create account and continue**, and the terms line when terms are set.
 
-### 3.5 EmailGateStep (first provider sign-in) and profile import
+### 3.5 FinishStep: a new account, EmailGateStep and profile import
 
-PORTAL §4.29 stands, with these rules made explicit (O-8):
+A new account finishes in one step, **FinishStep** (I-27 §2.4; API I-33, screens PX-21). One finish
+API serves both entries: **RegisterStep** (after an email code, §3.4) and **EmailGateStep** (the
+first provider sign-in of an account). It asks, in this order, only what the account lacks:
+
+1. **Email**, with a code unless the provider or connection vouches for the address (below).
+2. **Screen name** (`accounts.display_name`), with a chip for each source that offered one. An
+   account has one public name, and it is not unique; apps receive it as `name`.
+3. **Picture**.
+4. **Birth date**, only when a source offered one. It is stored only when the person accepts it
+   here, can be changed or removed in the account profile, and never reaches an app, a consent
+   item or any export but the person's own.
+5. **Terms**: the product's (`identity.terms`, with its privacy notice linked and not accepted) and
+   Polaris Key's (`identity.platformTerms`). The platform step shows only once the owner has
+   published reviewed terms; the setting is unset until then.
+
+**EmailGateStep** is step 1 for a provider sign-in (PORTAL §4.29, O-8):
 
 - **Required, once per account.** No skip path. **Cancel sign-in** abandons the sign-in. No token,
   session or binding is issued before the gate passes.
@@ -392,12 +386,14 @@ PORTAL §4.29 stands, with these rules made explicit (O-8):
   one so you can get back in without Steam." The primary is **Send code** (frame 04).
 - **Email already in another account** (known only after proof): **Join into one account** (PORTAL
   §4.11, proof of both in this session, 72 h undo) or **Use a different email**. Never joined
-  silently, never by email match.
+  silently and never by email match, with one exception: a platform connection on a DNS-verified
+  domain links an address verified on exactly one account; the person is emailed and the link is
+  audited (I-27 Q1).
 - **ProfileImport:** Google gives name and picture. Apple gives the name on first consent only, and
   no picture ("Apple doesn't share a picture. Add one"). Steam gives persona and avatar. Game Center
   gives an alias. Imported values follow their source until the person chooses. Explicit choices
   stick. Pictures are copied, re-encoded and served from the same origin (G33).
-- **After the gate**, a first platform sign-in shows the **Add another way to sign in** nudge (PORTAL
+- **After FinishStep**, a first platform sign-in shows the **Add another way to sign in** nudge (PORTAL
   §4.10) once. It shows again after 30 days only if the account still has a single method. In
   passthrough the nudge waits until the next portal visit; it never stands between a person and the
   app.
@@ -408,9 +404,10 @@ PORTAL §4.29 stands, with these rules made explicit (O-8):
 product with the License service on, whose completion will **bind or re-bind this installation**.
 It shows on **every** such sign-in, even with one license. It is skipped only for silent
 re-authentication of an installation already bound to this account on a usable license (token
-refresh, an I-13 exchange after the grant exists, a device-code re-poll), and after a KeyStep
-confirm in the same flow, because the key's license is the choice (I-04 delegated decision 10).
-Portal direct and console sign-ins never show it: no installation is involved.
+refresh, an I-13 exchange after the grant exists, a device-code re-poll), after a KeyStep confirm
+in the same flow, because the key's license is the choice (I-04 delegated decision 10), and when
+the first automatic license is due (rule 4). Portal direct and console sign-ins never show it: no
+installation is involved.
 
 **Layout (frame 05).** The person row (avatar, name, email, **Not you?**, which ends this account's
 part of the flow and returns to MethodsStep with the app header intact). h1 "Choose a license for
@@ -428,9 +425,9 @@ returns `access_denied` to the app on every surface (on device code it denies th
    license is account-bound (owner decision, 2026-10-05; O-17);
 3. the **meta**: "{origin} · {term}". The origin says in plain words how the license came to be:
    "From signing in" (issued at sign-in, `access: "account"`, §6.2), "Key ending 3WPLDA" (the key's
-   last six characters, when kept; G7) else "Added with a key", "Steam key ending 3WPLDA" (or
-   "Steam key") when the key came from a store purchase, "From Steam" for a store-bound license
-   with no key, "From {developer}", "Free", "Gift" or "Included with {org}". Only the store's name
+   last six characters, when kept; G7) else "Added with a key", "{store} key ending 3WPLDA" (or
+   "{store} key") when the key came from a store purchase, "From {store}" for a store-bound
+   license with no key, "From {developer}", "Free", "Gift" or "Included with {org}" (`LicenseChoice.origin`, `signin.choice.origin.*`). Only the store's name
    is shown, never an order id. The term is "Lifetime", "Until 12 Jun 2027", "Renews 3 Mar" or
    "Yearly, until 2 Feb 2027" (never "For life").
 
@@ -451,13 +448,9 @@ told apart by the pill, origin and term.
 | Keep           | The device runs on a usable license that is not one of this account's rows (key-entered or anonymous) | "Keep the license this device uses", meta "<Product> keeps running as it does now." It never names that license or its tier (P1-07: a code holder must not learn it). After the sign-in the device still offers to add it to the account (P1-07)                 | Yes                                       |
 | Full           | A usable license with no free seat                                                                    | No radio (a seat glyph in its place), the tag **No free devices** as a neutral pill (text, no colour), the meter's used segments in `text-muted`, then **Replace a device** (secondary, §3.7); **Free a device** (link) only where Replace is not offered (D-87) | No; its button and link stay in Tab order |
 | Blocked        | A license that fails for another reason (platform, version, fingerprint rules)                        | No radio; the reason ends the meta ("Not for this platform")                                                                                                                                                                                                     | No                                        |
-| New            | No usable license, and the product auto-issues to this person                                         | The product name, tag **New**, the pill and "1 of {limit} devices", meta "Created when you continue", no meter, preselected; lede "You don't have a <Product> license yet. <Developer> gives you this one." (frame 08)                                           | Yes                                       |
 | Create         | Every usable license is full, and the product auto-issues to this person                              | "Create a new free license", tag **New**, the pill and "1 of {limit} devices", meta "A separate license · created when you continue", no meter, **never preselected** (frame 19)                                                                                 | Yes                                       |
 
-Ended licenses (expired, refunded, disabled) are not listed (I-04 delegated decision 6). Origins
-read "From signing in", "Key ending {last6}", "Added with a key", "{store} key ending {last6}",
-"{store} key", "From {store}", "From {developer}", "Free", "Gift" or "Included with {org}"
-(`LicenseChoice.origin`, `signin.choice.origin.*`).
+Ended licenses (expired, refunded, disabled) are not listed (I-04 delegated decision 6).
 
 **Rules.**
 
@@ -467,14 +460,18 @@ read "From signing in", "Key ending {last6}", "Added with a key", "{store} key e
    sits under the list.
 2. **Preselection**, first match wins: (a) **On this device** or **Keep**; (b) the first free row in
    **rank-first** order (`tiers.rank` desc, no expiry first, latest `expires_at`, earliest
-   `activated_at`, `id`); (c) **New**. Rank-first only orders and preselects (O-1). A higher rank
+   `activated_at`, `id`). With every row full (rule 5) nothing is preselected. Rank-first only
+   orders and preselects (O-1). A higher rank
    is never preselected over (a) (I-04 §F.2), so pressing the primary without changing the
    selection never moves an installation off a license it already runs on (D-04). A
    sign-in row takes its place in the same order; it is not preferred for its origin.
 3. **One license:** the same step with one row preselected: a one-tap confirm (O-1).
-4. **No usable license, the product auto-issues** (frame 08): one **New** row. It is minted only
-   when the person presses the primary, never before and never silently (O-3). New and Create are
-   never shown together.
+4. **No usable license, the product auto-issues** (frame 08; D-95, I-27 §2.2): the card skips
+   LicenseChoiceStep. ConsentStep is always shown. Its license line reads "New: <Tier> license,
+   created when you continue", and its primary is the explicit **Continue to <App>** that device
+   code requires (D-22). That press creates the license and then binds this installation, never
+   before and never silently (O-3). In app mode (path B) no choice is due, so the completion is the
+   token response and the form goes to Done (§3.17). Frame 08 draws the same license as a row.
 5. **Every license full** (frames 09, 19): a neutral callout on `surface-sunken` (UI-KITS DL6: a
    refusal the person can resolve has no warning colour or glyph), "Your licenses are on all their
    devices. Replace a device to use one here." (with a Create row: "…Replace a device, or create a
@@ -504,8 +501,8 @@ read "From signing in", "Key ending {last6}", "Added with a key", "{store} key e
 | Portal off for the product                | Full rows say "<Developer> manages devices for this license." and offer no Replace and no Free a device |
 | Network                                   | "Can't reach Polaris Key" with **Try again**                                                            |
 
-The attach refusals (`license_owned`, `license_email_bound`) are no longer shown here. They belong
-to the device-side attach after **Keep** and to KeyStep, and keep their `core.copy` strings.
+The attach refusals (`license_owned`, `license_email_bound`) are not shown here. They belong to the
+device-side attach after **Keep** and to KeyStep, and keep their `core.copy` strings.
 
 ### 3.7 ReplaceDevice
 
@@ -538,7 +535,7 @@ the system confirmation where the platform expects one (D-80).
   Remove operation (account ownership, `portal_enabled`, the `portalDeviceDisconnect` budget
   shared with the portal, audit `portal.device.disconnect` with "to sign in <new label>", the
   device-removed email), then binds this installation into the freed seat with
-  `bound_by = 'signin'`. The free and the bind should commit in one batch (§6.2 delta 3).
+  `bound_by = 'signin'`. The free and the bind commit in one batch where the claim can join it (I-04 §F.3).
 - **Safety.** The fresh sign-in (under 5 minutes) is the step-up. In the device-code context the
   code panel stays on screen and the confirm names both devices, so a phished code cannot quietly
   trade one of the person's devices for the attacker's. A Replace never counts as a key entry (I-04
@@ -568,15 +565,21 @@ decision 3):
 
 - Person row, h1 "Continue to <App> as <first name>?".
 - **License for this device**: the chosen license ("Tidewater Studio Pro · Lifetime · this Mac
-  becomes device 3 of 3", "Storytime Standard · Lifetime · this iPad becomes device 3 of 3", "…· replaces Work laptop", "A new
-  Saltwind Free license" or "Keep the license this device uses"), with **Change**, which goes back
-  to LicenseChoiceStep with the selection kept.
-- "<App> will also get": **Cloud Sync** (only when the product has it on, with what it syncs), and
-  **Your profile and email**. The pairwise line: "It gets its own id for you, and won't see your other
-  products or how you sign in."
+  becomes device 3 of 3", "Storytime Standard · Lifetime · this iPad becomes device 3 of 3", "…·
+  replaces Work laptop" or "Keep the license this device uses"), with **Change**, which goes back
+  to LicenseChoiceStep with the selection kept. The automatic license reads "New: Saltwind Free
+  license, created when you continue" and has no **Change**: no choice precedes it (§3.6 rule 4).
+- "<App> will also get": the items inside the requested scope (`identity.claims {required,
+optional}` over name, picture, email and Cloud Sync; I-27 §2.4). Required items are plain lines.
+  Each optional item is a toggle, on by default. **Cloud Sync** shows only when the product has it
+  on, with what it syncs. The pairwise line: "It gets its own id for you, and won't see your other
+  products or how you sign in." A declined item is not asked again and never reaches the app
+  (S-16 D19); declining Cloud Sync leaves sync off for that app.
 - **Continue to <App>** and **Cancel**, the same width and height, listed after what the app gets
-  (scopes come before the buttons); on phones they stack full width with the primary last. Continue
-  applies the choice, any Replace and the grant together.
+  (scopes come before the buttons); on phones they stack full width with the primary last.
+  Continue posts the granted subset and applies the choice, any Replace and the grant together.
+  Under the items: "Continue only if you started this connection. <App> never gets your sign-in
+  credentials."
 - Shown on the first sign-in to each app and whenever its claims or services change (PX-W13 Q5). A
   license-only change never re-asks consent, but LicenseChoiceStep still shows by its own rule.
 
@@ -612,7 +615,7 @@ One component, three entries.
   account", the segmented meter (used segments in `text-muted`, "This will be entry {n}" in the accent
   foreground; never amber) with "{left} of {limit} key entries left · This will be entry
   {n}", email with **Create account**, the product's providers, and "Already have an account? Sign
-  in". **Continue without an account** (S-24 D13; it was **Skip for now**) appears only when an app sent
+  in". **Continue without an account** (S-24 D13) appears only when an app sent
   the person (it returns to the app with the key accepted and the license floating), with "<Product>
   works the same. Add it to an account any time." under it; the standalone portal has no skip. Under
   the h1 the body lists the reasons the product has (Cloud Sync only when Cloud Sync is on; getting
@@ -766,9 +769,7 @@ disconnect, and "the last method can't be removed". Sign-in adds three rules (O-
 
 ### 3.17 Apps: the one sign-in form (desktop, mobile, Godot and terminals)
 
-> **Consolidated 2026-10-05 (O-13, O-14).** This section replaces the waiting sheet and the
-> separate in-app LicenseChoice dialog of the first desktop pass. Every in-app step now happens
-> inside one form whose content morphs in place. D-66 and D-70 are superseded by D-78–D-84.
+Every in-app step happens inside one form whose content morphs in place (O-13, O-14).
 
 **The form.** Each kit has one sign-in component that owns every in-app step: `SignIn` in React,
 `<pk-sign-in>` in the elements, `SignInView` in SwiftUI, `SignIn(state)` in Compose, `PKeySignIn`
@@ -808,9 +809,9 @@ progress indicator, `SignInWithAppleButton`, Credential Manager, the passkey she
 confirmation for a destructive Replace. Only the layout, the copy and the order are Polaris Key's
 (UI-KITS §1.4).
 
-**Start** (D-62). The app pushes the request (`POST /<p>/identity/request`, PX-W13 §2.5) with the
-computer's label (D-73) and `licenseChoice` (I-04 §G.2), then opens the returned `authorizeUrl` in
-the default browser (`NSWorkspace.open`, `Desktop.browse` or `xdg-open`, `shell.openExternal`,
+**Start** (D-62). The app pushes the request (`POST /<p>/identity/request`, RFC 9126; I-15) with
+the computer's label (D-73) and `licenseChoice` (I-04 §G.2), and gets a `request_uri`. It opens
+`authorize` with it in the default browser (`NSWorkspace.open`, `Desktop.browse` or `xdg-open`, `shell.openExternal`,
 Tauri's opener, `OS.shell_open`; a CLI uses `open`, `start` or `xdg-open`). The redirect is, in
 this order:
 
@@ -855,7 +856,7 @@ body below the app header becomes:
   the code. It is a polite live region. Native kits show the platform's indeterminate progress; the
   web kits show a breathing dot, never a spinner (§3.18);
 - **Open browser again**, the primary, last on macOS and GNOME ("Open Browser Again") and first on
-  Windows. It reopens the same `authorizeUrl` and never starts a second request;
+  Windows. It reopens the same sign-in and never starts a second request;
 - **Cancel** (secondary) and the quiet **Use a code instead**, which morphs the body into the code
   view.
 
@@ -891,12 +892,14 @@ sets the urgency hint, and posts one system notification. In path B that notific
 a license · <App> is ready to finish signing in." (`signin.desktop.notifyChoose`); otherwise "You're
 signed in · <App> is ready.".
 
-**Step 3, Choose a license** (frames 36, 18, 39, 40; D-82). The redemption answers `choose` with a
-grant (I-04 §G.4), and the body morphs from "Finishing sign-in…" into the choice: the person row
+**Step 3, Choose a license** (frames 36, 18, 39, 40; D-82). The completion (`token`) answers
+`choose` with a grant (I-04 §G.4), and the body morphs from "Finishing sign-in…" into the choice: the person row
 "Signed in as Mara Fennick · Not you?" (with the provider when native: "Signed in with Apple as…"),
 h1 "Choose a license for this device", the lede with the computer's label, the rows of §3.6 (the
 rows stagger in, §3.18), **Use a license key instead** and **Cancel** as quiet links, and the
 primary **Use this license and continue** (macOS title case). The rules are §3.6's, row for row.
+The step shows only when a choice is due: with no license and auto-issue (§3.6 rule 4) the
+completion is the token response and the form goes to Done.
 
 - **Not you?** cancels the grant (`choice.cancel`) and returns to step 1.
 - **Use a license key instead** morphs the body into the key field; its confirm **Add and use on
@@ -947,8 +950,7 @@ Motion explains **where you are in the flow**: what stayed, what changed, and wh
 It never decorates. The patterns are the shared motion system's (S-23,
 `notes/S-23-motion-system.md` §5–§6), applied to sign-in. **The canonical tokens live in
 `packages/brand`** (`tokens.json`, the generated `--pk-*` custom properties and
-`src/generated/kit.ts` `motion`, MO-01). S-23 wins on every token name and value; this section
-follows it.
+`src/generated/kit.ts` `motion`, MO-01); token names and values are S-23's.
 
 **Tokens** (S-23 §5). Durations: `--pk-duration-instant` (0), `--pk-duration-micro` (80 ms),
 `--pk-duration-fast` (120 ms, exits), `--pk-duration-base` (200 ms), `--pk-duration-moderate`
@@ -1002,8 +1004,8 @@ sheets keep `slow`.
   DeviceConfirm, Replace, sign-out or Disconnect. The passport and brand row never animate beyond
   the shared-element morph. Under reduced motion the check is static.
 
-**In the kits** (UI-KITS §4.8 maps each platform; the kits' native motion wins over these web
-numbers):
+**In the kits** (UI-KITS §4.8 maps each platform; a kit uses its platform's native motion, and the
+web numbers above apply to the web):
 
 | Pattern        | SwiftUI (iOS, macOS)                                           | Compose (Android, desktop)                             | Godot                                          | Qt Quick                        | Windows and GNOME variants                  | Terminal                  |
 | -------------- | -------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------- | ------------------------------- | ------------------------------------------- | ------------------------- |
@@ -1290,7 +1292,7 @@ loop on that browser; the form closes and the app shows the toast.
 SSH session without one.
 
 - `tidewater login` prints the product chip and "Opening Polaris Key in your browser…", then "If it
-  didn't open, go to <link>" (an OSC 8 link to the same `authorizeUrl`).
+  didn't open, go to <link>" (an OSC 8 link to the same sign-in URL).
 - A braille spinner shows "Waiting for your browser" with the keys **Enter** open again, **c** use a
   code and **Esc** cancel.
 - On success it prints "✓ Signed in as Mara Fennick (mara@fennick.studio)", then "Tidewater Studio
