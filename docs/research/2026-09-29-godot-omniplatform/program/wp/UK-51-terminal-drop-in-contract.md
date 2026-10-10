@@ -96,7 +96,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [x] Node's `EXIT.licenseRequired === 4` and the Python exit table are tested now; a refused gate fixture exits 4 once UK-46 lands.
 - [x] No refusal fixture carries ✗; each carries ▲ and its fix.
 - [x] The acceptance in "Design language v2 (2026-10-08)" above holds.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
