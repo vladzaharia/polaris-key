@@ -59,13 +59,16 @@ pnpm add @polaris-key/react react react-dom
 The Polaris Key look, in your product's accent, with no layout code (UI-KITS.md §4.2):
 
 ```tsx
-import { PolarisKeyProvider, PolarisKeyGate } from "@polaris-key/react";
+import type { ReactNode } from "react";
+import { PolarisKeyGate, PolarisKeyProvider } from "@polaris-key/react";
 
-<PolarisKeyProvider productSlug="acme">
-  <PolarisKeyGate>
-    <App />
-  </PolarisKeyGate>
-</PolarisKeyProvider>;
+export function Gated({ app }: { app: ReactNode }) {
+  return (
+    <PolarisKeyProvider productSlug="acme">
+      <PolarisKeyGate>{app}</PolarisKeyGate>
+    </PolarisKeyProvider>
+  );
+}
 ```
 
 `<PolarisKeyGate>` starts itself from the provider: it never shows sign-in before the first state,
