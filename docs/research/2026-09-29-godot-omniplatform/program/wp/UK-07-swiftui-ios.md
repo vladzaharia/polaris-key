@@ -235,16 +235,21 @@ from here.
   its major ones are fixed (banners, progress, paywall, sign-in error, alignment, the pinned
   header, button heights, the iOS 18 and `native` grounds and contrast, selection corners, key
   truncation, release notes, Activate done, device removal, browser-mode devices, the empty
-  Updates group, CJK weights). After it: the `native` tint goes through the contrast resolver, the
-  prominent glass is tinted 15 % darker under a white label (the glass lightens its tint), and
-  banners inset the app's bottom safe area.
+  Updates group, CJK weights). After it: the `native` tint goes through the contrast resolver.
 - Evidence (scratch, not committed): the iPhone matrix passes `performAccessibilityAudit` on every
   render (two Dynamic Type exemptions scoped to reflowing states, each with its reason; an
   element below the fold is noted, not judged); a compare run against the baselines passes. The
   iPad Air 11 (split in landscape) and iPhone SE runs of four states were clean but for the store
-  banner and one split contrast, fixed after and not yet re-run there.
+  banner and one split contrast, whose fix is item 0 below.
 
 **Remaining** (continue in this order):
+
+0. Re-apply `ca57805e7`'s kit changes (held back in `e00053a7a`: `KitStyle.swift`,
+   `KitButtons.swift`, `PolarisKeyGate.swift`, `PolarisKeyPreview.swift`): the prominent glass
+   tinted 15 % toward black under a white label (it measured 4.47:1 on the iPad in both schemes;
+   the glass lightens its tint) and banners in `safeAreaInset(edge: .bottom)` so they never cover
+   the app's last rows (the SE's store banner did). Then re-record every baseline with
+   `PKEY_KIT_RECORD=1` (wrap `run.sh` in `_lead/heavy.sh`) and commit them with that reason.
 
 1. The rest of the UX review, then a second review: Settings' typed controls (toggle, stepper,
    picker from the schema) and its provenance groups; AccountAndLicense's Cloud Sync value, the
