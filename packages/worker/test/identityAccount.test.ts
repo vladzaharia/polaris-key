@@ -623,12 +623,17 @@ describe("subject and sign-out (§12.3)", () => {
     expect(await (await subjectOf(token, DEV_A)).json()).toEqual({
       subject: null,
     });
+    const before = await licenseDocument(token);
+    // A counted key entry by another device changes nothing this device verifies.
+    expect((await activate(key, DEV_B)).status).toBe(200);
+    expect(await licenseDocument(token)).toBe(before);
     const ada = await account("ada@example.com");
     await signIn(DEV_A, ada.subject);
     expect(await (await subjectOf(token, DEV_A)).json()).toEqual({
       subject: ada.subject,
     });
-    const before = await licenseDocument(token);
+    // Nor does the sign-in binding.
+    expect(await licenseDocument(token)).toBe(before);
     const out = await signOut(token, DEV_A);
     expect(out.status).toBe(200);
     expect(await out.json()).toEqual({ released: false });
