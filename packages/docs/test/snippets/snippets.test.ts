@@ -153,7 +153,8 @@ describe("covered pages", () => {
         .map((s) => runSnippet(s, python))
         .filter((r) => !r.ok)
         .map(
-          (r) => `${r.snippet.file}:${r.snippet.line} ${r.output.slice(0, 600)}`,
+          (r) =>
+            `${r.snippet.file}:${r.snippet.line} ${r.output.slice(0, 600)}`,
         );
       expect(bad).toEqual([]);
     },

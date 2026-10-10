@@ -23,6 +23,10 @@ const PY_PASCAL = /^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+$/;
 
 const PLANNED = /planned|coming in/i;
 
+/** Names that are the reader's own or a host global, not exports: the generated config, the
+ *  placeholders of ambient.d.ts, and `window.polarisKey`. */
+const NOT_EXPORTS = new Set(["YourApp", "polarisConfig", "polarisKey"]);
+
 /** The names a page's prose claims, minus the lines that label them planned. */
 export function mentions(
   prose: { line: number; text: string }[],
@@ -41,7 +45,7 @@ export function mentions(
         continue;
       }
       const name = raw.replace(/\(.*$/s, "").split(".").pop() ?? "";
-      if (TS_SHAPES.some((re) => re.test(name)))
+      if (!NOT_EXPORTS.has(name) && TS_SHAPES.some((re) => re.test(name)))
         out.push({ name, line, text: raw });
     }
   }
