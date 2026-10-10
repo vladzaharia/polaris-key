@@ -80,6 +80,8 @@ from .models import (
     DocProfile,
     LicenseDoc,
     ManagedEntry,
+    SignedInUser,
+    license_user,
 )
 from .semver import (
     ParsedSemver,
@@ -259,6 +261,8 @@ __all__ = [
     "BlockedState",
     "ManagedEntry",
     "DocProfile",
+    "SignedInUser",
+    "license_user",
     "DocClaims",
     "LicenseDoc",
     "ConfigDoc",

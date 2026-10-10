@@ -8,6 +8,8 @@ deprecated aliases).
 
 Key-custody and offline-bundle fixes (wire contract v4). Each **breaking** line names what to change.
 
+- **Signed-in user (`license.signedinuser`).** `licenseUser(...)`, `LicenseClient.licenseUser()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is null.
+
 - **Pin two keys.** A verified manifest signed by one usable pinned key can revoke another pinned
   key; the revocation is permanent on that install, kept as the signed manifest in the cache's
   `pinRevocations` and re-verified on every load. A manifest that revokes its own signer is refused.

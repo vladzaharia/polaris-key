@@ -359,6 +359,22 @@
       "allowedNa": []
     },
     {
+      "id": "license.signedinuser",
+      "family": "license",
+      "title": "Signed-in user: profile.user.subject read beside the claims",
+      "service": "license",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "licenseUserCases",
+          "wp": "SP-54"
+        }
+      ],
+      "allowedNa": [],
+      "note": "WIRE-CONTRACT-V4 §2.1, §3.2: a total reader over a verified licence document; the subject must wholly match PAIRWISE_SUBJECT_PATTERN, otherwise none. client-core licenseUserOf is the reference (SP-54); the native readers are SP-54b."
+    },
+    {
       "id": "license.activate",
       "family": "license",
       "title": "Activate with a key (+ fingerprint)",

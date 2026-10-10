@@ -14,6 +14,9 @@ extends RefCounted
 ##   get_entitlements()      {name: value} off the verified licence document
 ##   get_profile()           the signed greeting block {name?, firstName?, email?,
 ##                           activatedAt?}, or null
+##   get_license_user()      the account signed in on this device, {subject}, or null: the
+##                           verified document's `profile.user` (SP-54). A key-activated device
+##                           has the holder's email and no user, so it reads null
 ##   get_license_id()        the verified document's licence id, or ""
 ##   entitled_channels()     the `channels` entitlement's string values in order, as granted
 ##                           (raw: not de-duplicated, `staging` not rewritten), or ["stable"]
@@ -133,6 +136,27 @@ func get_entitlements() -> Dictionary:
 func get_profile() -> Variant:
 	var doc = _doc()
 	return doc["profile"].duplicate(true) if doc is Dictionary and doc.get("profile") is Dictionary else null
+
+
+## SP-54: the signed-in subject of the verified licence document, or null. See `license_user_of`.
+func get_license_user() -> Variant:
+	return license_user_of(_doc())
+
+
+## Port of client-core `licenseUserOf` (WIRE-CONTRACT-V4 §3.2). `{subject}` only when `doc.profile`
+## is an object, its `user` is an object and that object's `subject` is a String that WHOLLY
+## matches PAIRWISE_SUBJECT_PATTERN (PKeyClaims.matches_whole: no trailing newline, ASCII classes).
+## Anything else is null; unknown members of `user` are ignored. Total: never errors on any value.
+static func license_user_of(doc: Variant) -> Variant:
+	if not (doc is Dictionary) or not (doc.get("profile") is Dictionary):
+		return null
+	var user = doc["profile"].get("user")
+	if not (user is Dictionary):
+		return null
+	var subject = user.get("subject")
+	if subject is String and PKeyClaims.matches_whole(PKeyConstants.PAIRWISE_SUBJECT_PATTERN, subject):
+		return {"subject": subject}
+	return null
 
 
 func get_license_id() -> String:

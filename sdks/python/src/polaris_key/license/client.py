@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, 
 
 from ..core.cache import CacheManager
 from ..core.context import CoreContext, now_sec
-from ..core.models import ActivationSource, DocProfile, LicenseDoc
+from ..core.models import ActivationSource, DocProfile, LicenseDoc, SignedInUser, license_user
 from ..core.token import TokenManager
 from .endpoints import (
     ActivationOk,
@@ -205,6 +205,13 @@ class LicenseClient:
         locally."""
         doc = self.doc
         return doc.profile if doc is not None else None
+
+    def get_license_user(self) -> Optional[SignedInUser]:
+        """The account signed in on this device (``profile.user``, SP-54), or ``None``.
+
+        Read from the verified licence document, so a key-activated device (a holder email,
+        no ``user``) is ``None``. Total: never raises."""
+        return license_user(self.doc)
 
     def get_license_id(self) -> Optional[str]:
         doc = self.doc

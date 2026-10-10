@@ -23,8 +23,11 @@ shape rule the contract states.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
+
+from ..constants_generated import PAIRWISE_SUBJECT_PATTERN
 
 __all__ = [
     "PROTOCOL_VERSION",
@@ -269,6 +272,29 @@ def _managed_map(raw: Any) -> Dict[str, ManagedEntry]:
     return {k: ManagedEntry.from_any(v) for k, v in raw.items()}
 
 
+# The pairwise subject shape (WIRE-CONTRACT-V4 §3.2), compiled from the generated constant.
+# ``fullmatch`` so a trailing newline never matches (§3.3 rule 1); the classes are ASCII.
+_SUBJECT_RE = re.compile(PAIRWISE_SUBJECT_PATTERN, re.ASCII)
+
+
+@dataclass(frozen=True)
+class SignedInUser:
+    """The person signed in on this device: ``profile.user`` (§2.1, plans/SP-54.md)."""
+
+    subject: str
+
+    @staticmethod
+    def from_any(v: Any) -> Optional["SignedInUser"]:
+        """Total decoder: ``None`` unless ``v`` is an object whose ``subject`` wholly matches
+        :data:`PAIRWISE_SUBJECT_PATTERN`. Unknown members are ignored; never raises."""
+        if not isinstance(v, dict):
+            return None
+        subject = v.get("subject")
+        if isinstance(subject, str) and _SUBJECT_RE.fullmatch(subject):
+            return SignedInUser(subject=subject)
+        return None
+
+
 @dataclass(frozen=True)
 class DocProfile:
     """The signed profile block for the client's offline, tamper-proof greeting."""
@@ -277,6 +303,8 @@ class DocProfile:
     firstName: str = ""
     email: str = ""
     activatedAt: int = 0
+    #: ``profile.user``: set only when an account signed in on this device (SP-54).
+    user: Optional[SignedInUser] = None
 
     @staticmethod
     def from_any(v: Any) -> Optional["DocProfile"]:
@@ -295,15 +323,35 @@ class DocProfile:
             firstName=s("firstName"),
             email=s("email"),
             activatedAt=activated if activated is not None else 0,
+            user=SignedInUser.from_any(v.get("user")),
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        out: Dict[str, Any] = {
             "name": self.name,
             "firstName": self.firstName,
             "email": self.email,
             "activatedAt": self.activatedAt,
         }
+        if self.user is not None:
+            out["user"] = {"subject": self.user.subject}
+        return out
+
+
+def license_user(doc: Any) -> Optional[SignedInUser]:
+    """Port of client-core ``licenseUserOf``: the signed-in subject of a VERIFIED licence
+    document, or ``None``. Total: takes a raw payload (``dict``), a :class:`LicenseDoc`, a
+    :class:`DocProfile` or anything else, and never raises."""
+    try:
+        if isinstance(doc, dict):
+            profile = doc.get("profile")
+            return SignedInUser.from_any(profile.get("user")) if isinstance(profile, dict) else None
+        if isinstance(doc, DocProfile):
+            return doc.user
+        profile = getattr(doc, "profile", None)
+        return profile.user if isinstance(profile, DocProfile) else None
+    except Exception:
+        return None
 
 
 @dataclass(frozen=True)

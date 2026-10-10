@@ -120,6 +120,7 @@ __all__ = [
     "DEVICE_LABEL_MAX_CODEPOINTS",
     "REQUEST_HANDLE_PATTERN",
     "REQUEST_HANDLE_TTL_SECONDS",
+    "PAIRWISE_SUBJECT_PATTERN",
     "PRESENTATION_TEXT_MAX_BYTES",
     "PRESENTATION_URL_MAX_BYTES",
     "PRESENTATION_MAX_ICON_SIZES",
@@ -662,6 +663,7 @@ class Feature:
     CORE_COPY: Final = "core.copy"
     CORE_BACKEND: Final = "core.backend"
     LICENSE_GATE: Final = "license.gate"
+    LICENSE_SIGNEDINUSER: Final = "license.signedinuser"
     LICENSE_ACTIVATE: Final = "license.activate"
     LICENSE_ENROLL: Final = "license.enroll"
     LICENSE_DEACTIVATE: Final = "license.deactivate"
@@ -775,6 +777,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "core.copy",
     "core.backend",
     "license.gate",
+    "license.signedinuser",
     "license.activate",
     "license.enroll",
     "license.deactivate",
@@ -1688,6 +1691,10 @@ REQUEST_HANDLE_PATTERN: Final[str] = "^rq_[A-Za-z0-9_-]{22}$"
 REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
 
 
+#: Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
+PAIRWISE_SUBJECT_PATTERN: Final[str] = "^ps_[A-Za-z0-9_-]{22}$"
+
+
 #: Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
 PRESENTATION_TEXT_MAX_BYTES: Final[int] = 1024
 
@@ -1848,6 +1855,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.copy": CapabilityRow("implemented", "sdk", ()),
         "core.backend": CapabilityRow("planned", "license", ()),
         "license.gate": CapabilityRow("implemented", "license", ()),
+        "license.signedinuser": CapabilityRow("implemented", "license", ()),
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
         "license.deactivate": CapabilityRow("implemented", "license", ()),
@@ -1947,4 +1955,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "c00eee481737af0b49d831c99a5ca4826c33f7fa313243498aa7f7a349846e84"
+CAPABILITY_DIGEST: Final[str] = "5a0593ddac6906398f3c999186fbbcda2aa418ba1fdfba487f34d483de82310d"

@@ -970,6 +970,7 @@ export function defineCorpusSuites({
 
   // @pkey-feature core.verify
   describe(`conformance corpus v${corpus.corpusVersion} — the signed-in subject (V4 §2.1, §3.2, plans/SP-54.md)`, () => {
+    // @pkey-feature license.signedinuser
     it("has every licenseUserCases vector and the three profile.user licence cases", () => {
       expect(corpus.licenseUserCases.length).toBe(14);
       const ids = new Set(corpus.licenseDocCases.map((c) => c.id));

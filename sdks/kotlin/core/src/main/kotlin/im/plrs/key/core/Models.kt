@@ -110,8 +110,34 @@ public interface DocClaims {
     public val graceUntil: Long
 }
 
-/** The signed profile block. */
-public data class DocProfile(val name: String, val firstName: String, val email: String, val activatedAt: Long) {
+/**
+ * The person signed in on this device: `profile.user` (V4 §2.1, plans/SP-54.md). The pairwise
+ * subject only: no name, email or account id.
+ */
+public data class SignedInUser(val subject: String) {
+    public companion object {
+        private val SUBJECT = Regex(PAIRWISE_SUBJECT_PATTERN)
+
+        /** Total over any value: an object whose `subject` wholly matches the pattern, else null.
+         *  Unknown members are ignored. */
+        public fun from(element: JsonElement?): SignedInUser? {
+            val subject = element.objectValue?.get("subject").stringValue ?: return null
+            return if (SUBJECT.matches(subject)) SignedInUser(subject) else null
+        }
+    }
+}
+
+/**
+ * The signed profile block. [user] is set only when an account signed in on this device
+ * (SP-54); a key-activated device has the holder's [email] and no [user].
+ */
+public data class DocProfile(
+    val name: String,
+    val firstName: String,
+    val email: String,
+    val activatedAt: Long,
+    val user: SignedInUser? = null,
+) {
     public companion object {
         /** Total over the members; only a non-object refuses (the licence). */
         public fun from(element: JsonElement?): DocProfile? {
@@ -121,10 +147,20 @@ public data class DocProfile(val name: String, val firstName: String, val email:
                 firstName = o["firstName"].stringValue ?: "",
                 email = o["email"].stringValue ?: "",
                 activatedAt = o["activatedAt"].longValue ?: 0,
+                user = SignedInUser.from(o["user"]),
             )
         }
     }
 }
+
+/**
+ * Port of client-core `licenseUserOf`: the signed-in subject of a VERIFIED licence document, or
+ * null. Total: a malformed or absent member is null, never an error.
+ */
+public fun licenseUser(doc: LicenseDoc?): SignedInUser? = doc?.profile?.user
+
+/** The same reader over a decoded profile. */
+public fun licenseUser(profile: DocProfile?): SignedInUser? = profile?.user
 
 /** The license document (`pkey-license+jws`, §2.1) — the only carrier of grant data (D-20). */
 public data class LicenseDoc(

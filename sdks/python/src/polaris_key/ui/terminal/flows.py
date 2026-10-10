@@ -22,6 +22,7 @@ from dataclasses import dataclass, field, replace
 from typing import IO, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ...core.errors import PolarisError
+from ...core.models import license_user
 from ..core.identity import ProductIdentity, presentation_source
 from ..core.models import (
     BootView,
@@ -170,6 +171,9 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
         signed_in = bool(ident is not None and ident.current())
     except Exception:
         signed_in = False
+    # The signed fact (profile.user, SP-54), never the holder's email: a key-activated device
+    # carries an email too.
+    signed_in = signed_in or license_user(profile) is not None
     ar = getattr(st, "allowedRange", None)
     core = getattr(client, "core", None)
     # The tier the licence carries ("Pro"), as the Node kit reads it: its label, else its id.
@@ -186,7 +190,7 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
         allowed_max=getattr(ar, "max", None) if ar else None,
         holder=(getattr(profile, "name", None) or None) if profile else None,
         email=(getattr(profile, "email", None) or None) if profile else None,
-        signed_in=signed_in or bool(profile and getattr(profile, "email", None)),
+        signed_in=signed_in,
         tier=tier or None,
         version=getattr(core, "version", None),
         channel=getattr(core, "channel", None),
