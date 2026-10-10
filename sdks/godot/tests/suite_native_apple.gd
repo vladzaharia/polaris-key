@@ -279,7 +279,7 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("export: the mark names the App Group from the bundle id", E.plist_content(true, "gg.vlad.diceroll") == "<key>PKeyAppleBackgroundAssets</key>\n<true/>\n<key>PKeyAppleAppGroup</key>\n<string>group.gg.vlad.diceroll</string>\n")
 	t.check("export: a sideload mark is false with no group", E.plist_content(false, "gg.vlad.diceroll") == "<key>PKeyAppleBackgroundAssets</key>\n<false/>\n")
 	t.check("export: on for a sideload outlet warns", E.mode_warning("on", "altstore") != "" and E.mode_warning("auto", "altstore") == "" and E.mode_warning("sometimes", "app-store") != "")
-	t.check("export: a preset below iOS 17.0 warns", E.min_ios_warning("15.0") != "" and E.min_ios_warning("17.0") == "" and E.min_ios_warning("26.4") == "" and E.min_ios_warning("") == "")
+	t.check("export: a preset below iOS 18.0 warns", E.min_ios_warning("17.0") != "" and E.min_ios_warning("18.0") == "" and E.min_ios_warning("26.4") == "" and E.min_ios_warning("") == "")
 
 
 ## A file store whose first clear_token() fails (a locked or read-only file).

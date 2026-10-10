@@ -1555,18 +1555,18 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.keyentry": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.kit.account": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
-    "ui.gate": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.activate": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.signin": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.devicelimit": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.devices": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.update": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.settings": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.paywall": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.theme": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "ui.i18n": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.gate": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.activate": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.signin": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.devicelimit": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.devices": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.update": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.settings": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.paywall": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.theme": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.i18n": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f3e8ce85fe7354f862859e8900327a92a4a65d2272a197a8a23098141ab59162"
+public let CAPABILITY_DIGEST = "5456cd8df2d518d07c7fd76552630e46d9d7031098f1e196d93ba72ba852bb27"

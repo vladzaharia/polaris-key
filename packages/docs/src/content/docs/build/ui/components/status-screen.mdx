@@ -50,4 +50,14 @@ The blocking states, each with its primary fix: revoked, expired, version too ol
     `--json` contract and the fallbacks.
 
   </TabItem>
+  <TabItem label="SwiftUI">
+    **Drop-in.** Inside `.polarisKeyGate`: each refusal its own screen with its fix as the only primary (Use a different key, Use another license, Sign out); a fix the kit cannot reach is named, and Try again stays.
+
+    **Styled part.** `StatusScreenView(screen:available:onFix:onTryAgain:)` and `.statusScreenStyle(_:)`.
+
+    **Headless.** `KitStates.statusScreen(_:)`.
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
 </Tabs>

@@ -52,4 +52,14 @@ The one sign-in form. Its body morphs in place through the sign-in methods, the 
     `--json` contract and the fallbacks.
 
   </TabItem>
+  <TabItem label="SwiftUI">
+    **Drop-in.** The one sign-in form inside `.polarisKeyGate` (inline, the default) or `.polarisKeySignIn(isPresented:model:)` (`presentation: "sheet"`): its body morphs in place with `.push(from: .trailing)`, an instant swap under Reduce Motion.
+
+    **Styled part.** `SignInView(model:providers:)`, with the steps `SignInMethodsView`, `SignInHandoffView`, `LicenseChoiceView` and `ReplaceDeviceView`; `.signInStyle(_:)`.
+
+    **Headless.** `KitStates.signIn(_:)`; `PolarisKeyGateModel.beginSignIn()`, `reopenBrowser()`, `useCode()` (the same request's code) and `cancelSignIn()`. Until the SDK's grant API (I-10a) lands, a sign-in ends on Done or the toast; the in-app choice renders when the inputs carry it.
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
 </Tabs>

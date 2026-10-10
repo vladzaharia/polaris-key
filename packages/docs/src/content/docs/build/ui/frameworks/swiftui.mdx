@@ -1,0 +1,144 @@
+---
+title: "SwiftUI"
+description: "PolarisKeyUI and PolarisKeyUICore: the Swift SDK's SwiftUI kit for iOS and iPadOS 18 and later, Liquid Glass on 26, with a SwiftUI-free presentation core for a UI of your own."
+sidebar:
+  order: 5
+---
+
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+
+The Swift SDK's SwiftUI kit. One modifier gates an iPhone or iPad app and runs every screen the
+license needs: Welcome, the one sign-in form, the key field with its live verdict, Replace a
+device, the blocking states with their fixes, offline grace and the toast. On iOS and iPadOS 26
+the controls are Liquid Glass; on 18 the same layout runs on system materials. Every screen is
+drawn from **PolarisKeyUICore**, a SwiftUI-free presentation core that runs the shared
+[UI state matrix](/docs/reference/corpus/) for every component, so a UIKit app or a UI of your
+own gets the same states, copy and actions. The rest of the Swift SDK is on the
+[Swift](/docs/build/sdks/swift/) page; the Mac pass of the kit is UK-08.
+
+<KitFacts kit="swiftui" />
+
+## Install
+
+The kit is two products of the `polaris-key.PolarisKey` package in Polaris Key's Swift registry
+([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)). The package's floors are
+iOS 18, macOS 15, tvOS 18 and visionOS 2.
+
+```swift
+dependencies: [
+    .package(id: "polaris-key.PolarisKey", from: "0.1.0")
+],
+targets: [
+    .target(name: "MyApp", dependencies: [
+        .product(name: "PolarisKeyUI", package: "polaris-key.PolarisKey"),      // the views
+        .product(name: "PolarisKeyUICore", package: "polaris-key.PolarisKey"),  // no SwiftUI
+    ])
+]
+```
+
+The kit bundles Rubik and JetBrains Mono (both OFL) and registers them itself.
+
+## The one-line flow
+
+```swift
+import PolarisKeyUI
+
+WindowGroup { ContentView().polarisKeyGate(client) }
+```
+
+`.polarisKeyGate` starts the client, shows the product's icon until the first check answers (never
+the sign-in screen during a cached-session check), re-renders on `client.events` and refreshes when
+the scene becomes active. It takes `KitGateOptions` for what the build offers (key entry, offline
+activation, a trial) and how sign-in presents (`signInPresentation: .inline`, the default, or
+`.sheet`; `replace: .inline` or `.browser`). An app that opens sign-in from its own menu uses the
+sheet:
+
+```swift
+.polarisKeySignIn(isPresented: $signingIn, model: model)
+```
+
+## Piecemeal
+
+Every screen and part is public and takes the core's `KitScreen` for its component, so it can sit
+anywhere inside `PolarisKeyScope(model:)`, which puts the resolved theme, copy and product icon in
+the environment:
+
+- screens: `BootView`, `WelcomeView`, `ActivateView`, `SignInView` (with its steps
+  `SignInMethodsView`, `SignInHandoffView`, `LicenseChoiceView`, `ReplaceDeviceView`),
+  `DeviceLimitView`, `StatusScreenView`, `GraceBannerView`, `UpdatePromptView`,
+  `UpdateProgressView`, `ReleaseNotesView`, `PaywallView`, `EntitlementGate` and `ToastView`;
+- panes for your own settings `Form`: `AccountAndLicenseSection`, `DevicesSection` and
+  `SettingsSection`;
+- parts: `ProductIcon`, `MonogramIcon`, `ProductHeader`, `KeyField`, `CodeDisplay`,
+  `CountdownRing`, `SeatMeter`, `DeviceRow`, `StatusPill`, `LoadingIndicator`, `ProgressBar` and
+  `PoweredBy`.
+
+A `PolarisKeyStyle` replaces or wraps one component's body the way a `ButtonStyle` does, with the
+component's state, copy lines and actions in its configuration:
+
+```swift
+struct MyWelcome: PolarisKeyStyle {
+    func makeBody(configuration: PolarisKeyStyleConfiguration) -> some View {
+        VStack {
+            Text(configuration.text("welcome.title") ?? "")
+            configuration.content   // the kit's own Welcome, below your header
+        }
+    }
+}
+
+ContentView().polarisKeyGate(client).welcomeStyle(MyWelcome())
+```
+
+## Headless
+
+`PolarisKeyUICore` imports no SwiftUI. `PolarisKeyGateModel` is an `@Observable` view of the client
+as `KitInputs`, with the actions every screen needs (`submitKey()`, `beginSignIn()`,
+`reopenBrowser()`, `useCode()`, `cancelSignIn()`, `useDifferentKey()`, `signOut()`, `refresh()`).
+`KitStates` holds one pure function per component from `KitInputs` to a `KitScreen` (its state, its
+copy lines with their arguments, and its actions); `KitCopy` formats a line in any launch locale.
+A UI of your own binds to the model, or fills `KitInputs` from its own state and calls `KitStates`.
+
+```swift
+let screen = KitStates.activate(model.inputs)
+switch screen.state {
+case .parsed: Text(KitCopy.bundled.format(screen.line("part.keyField.forProduct")!, locale: "en"))
+case .deviceLimit: /* the neutral callout, and Replace a device */
+default: EmptyView()
+}
+```
+
+`PolarisKeyPreviewState.all` names a fixture input for every state, for `#Preview`s and your own
+tests: `PolarisKeyPreview(.named(.welcome, "default")!)` draws one; `PolarisKeyGallery()` lists
+them all.
+
+The product's identity comes from your theme, then the product's registered presentation through
+the SDK's presentation source, then the app bundle; with no icon the kit draws a monogram, never a
+Polaris Key mark.
+
+## Theming
+
+`.polarisKeyTheme(PolarisKeyTheme(…))` sets every field of the [theme](/docs/build/ui/theming/):
+`preset` (`.polarisKey`, or `.native` for the system fonts, the app's tint and the system grounds),
+`colorScheme`, `accent` (`.product`, `.core` or `.color("#…")`, always through the contrast
+resolver), `radius`, `typography` (Rubik by default, `.system`, or a family you register),
+`density`, `motion`, `ambient`, `product`, `copy`, `locale` and `poweredBy`.
+
+## Localisation
+
+The kit reads the generated catalog in nine locales from `PolarisKeyUICore`'s `kit-copy.json`,
+formatted by the core (plurals, the form factor's word: "this iPhone", "this iPad"). `copy` in the
+theme overrides a key per locale, falling back key by key: the locale's override, the locale's
+table, the English override, then English.
+
+## Baselines
+
+<KitCoverage kit="swiftui" />
+
+## Sample
+
+`examples/ui/swiftui/` is Tidewater Studio as an XcodeGen app: with no arguments it lists every
+preview state; `-pkeyState Welcome.default` draws one; `--live` gates a list of sessions with
+`.polarisKeyGate` against a real Worker (`PKEY_PRODUCT`, `PKEY_BASE_URL` and the pins in
+`PKEY_PINS`). Its `run.sh` renders every state on the iOS simulator, runs
+`performAccessibilityAudit` on each render and compares it with the committed baselines.

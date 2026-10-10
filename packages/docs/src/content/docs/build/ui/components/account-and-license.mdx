@@ -51,4 +51,14 @@ The account and license settings pane: product and tier, the holder, Manage, dev
     `--json` contract and the fallbacks.
 
   </TabItem>
+  <TabItem label="SwiftUI">
+    **Drop-in.** Sections a host drops into its own `Form` or `List`: the product row, Manage (external link), Devices, Cloud Sync, Updates and Sign out in its own group, confirmed in the system dialog.
+
+    **Styled part.** `AccountAndLicenseSection(screen:tier:holder:version:devices:autoUpdate:onManage:onSignOut:onCheckNow:)`.
+
+    **Headless.** `KitStates.accountAndLicense(_:)`: with no one signed in it is `key-only`, never another account's holder.
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
 </Tabs>

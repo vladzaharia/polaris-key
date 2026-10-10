@@ -22,7 +22,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Node | `node` | 70 | 9 | 24 | 0 |
 | React | `web`, `desktop-bridge` | 66 | 12 | 25 | 0 |
 | Python | `python` | 70 | 9 | 24 | 0 |
-| Swift | `macos`, `ios` | 72 | 6 | 25 | 0 |
+| Swift | `macos`, `ios` | 82 | 6 | 15 | 0 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 77 | 2 | 24 | 0 |
 | Kotlin | `android`, `jvm` | 73 | 6 | 24 | 0 |
 
@@ -157,16 +157,16 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.kit.keyentry` | Key entries: the entries-left line after a key activation, and the key-entry-limit screen (Add it in Polaris Key as a button, or a QR on TV and console) | snapshot tests | N/A (headless: runtime) | planned (PX-W9b) | N/A (headless: runtime) | planned (PX-W9b) | planned (PX-W9b) | planned (PX-W9b) | headless: runtime |
 | `ui.kit.account` | Account screens: License in another account with Sign in, Add to your Library (attach) and Sign out | snapshot tests | N/A (headless: runtime) | planned (I-10a) | N/A (headless: runtime) | planned (I-10b) | planned (I-10b) | planned (I-10b) | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
-| `ui.gate` | Kit states: gate, boot, status screen, grace banner and toasts | `ui-matrix.json` `gate` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.activate` | Kit states: welcome, license key activation and offline activation | `ui-matrix.json` `activate` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | ios, android: outlet |
-| `ui.signin` | Kit states: the one sign-in form, with its license choice and Replace a device | `ui-matrix.json` `signIn` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.devicelimit` | Kit states: the device-limit screen, in the app or in the browser | `ui-matrix.json` `deviceLimit` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.devices` | Kit states: the device list, rename and remove | `ui-matrix.json` `devices` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.update` | Kit states: update prompt, update progress and release notes | `ui-matrix.json` `update` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.settings` | Kit states: the account and license pane and settings | `ui-matrix.json` `settings` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.paywall` | Kit states: paywall and entitlement gate | `ui-matrix.json` `paywall` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.theme` | Theme resolution: name, accent source, colour scheme, icon and preset | `ui-matrix.json` `theme` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
-| `ui.i18n` | Catalog lookup and the ICU-subset formatter in the launch locales | `ui-matrix.json` `i18n` + snapshot tests + `pnpm gen brand --check` | planned (UK-06) | planned (UK-05) | planned (UK-12) | planned (UK-07) | planned (UK-11) | planned (UK-09) | — |
+| `ui.gate` | Kit states: gate, boot, status screen, grace banner and toasts | `ui-matrix.json` `gate` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.activate` | Kit states: welcome, license key activation and offline activation | `ui-matrix.json` `activate` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | ios, android: outlet |
+| `ui.signin` | Kit states: the one sign-in form, with its license choice and Replace a device | `ui-matrix.json` `signIn` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.devicelimit` | Kit states: the device-limit screen, in the app or in the browser | `ui-matrix.json` `deviceLimit` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.devices` | Kit states: the device list, rename and remove | `ui-matrix.json` `devices` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.update` | Kit states: update prompt, update progress and release notes | `ui-matrix.json` `update` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.settings` | Kit states: the account and license pane and settings | `ui-matrix.json` `settings` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.paywall` | Kit states: paywall and entitlement gate | `ui-matrix.json` `paywall` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.theme` | Theme resolution: name, accent source, colour scheme, icon and preset | `ui-matrix.json` `theme` + snapshot tests | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
+| `ui.i18n` | Catalog lookup and the ICU-subset formatter in the launch locales | `ui-matrix.json` `i18n` + snapshot tests + `pnpm gen brand --check` | planned (UK-06) | planned (UK-05) | planned (UK-12) | ✓ | planned (UK-11) | planned (UK-09) | — |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Unowned gaps

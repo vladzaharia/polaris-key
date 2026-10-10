@@ -1,0 +1,84 @@
+# The SwiftUI kit's sample (UI-KITS §6.1): Tidewater Studio gated by `.polarisKeyGate`, a gallery
+# of every preview state, and the UI tests that render each state on the iOS simulator, run
+# `performAccessibilityAudit` and record the VoiceOver names. Generated with XcodeGen by run.sh
+# into build/ (never committed). No Apple developer account: simulator builds are ad hoc signed.
+name: TidewaterKit
+options:
+  bundleIdPrefix: dev.polariskey.kitsample
+  deploymentTarget:
+    iOS: "18.0"
+packages:
+  PolarisKey:
+    path: ../../../sdks/swift
+  # The baselines' comparison (UI-KITS §7.1): swift-snapshot-testing's image diffing, used by the
+  # render tests only; the app never links it. 1.15: later lines import Swift Testing, which a UI
+  # test bundle cannot load ("cannot load module 'Testing'").
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    exactVersion: 1.15.4
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+targets:
+  TidewaterKit:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: PolarisKey
+        product: PolarisKey
+      - package: PolarisKey
+        product: PolarisKeyUI
+      - package: PolarisKey
+        product: PolarisKeyUICore
+    info:
+      path: build/generated/Info.plist
+      properties:
+        CFBundleDisplayName: Tidewater Studio
+        UILaunchScreen: {}
+        CFBundleShortVersionString: "2.4.1"
+        CFBundleVersion: "241"
+        UISupportedInterfaceOrientations:
+          [
+            UIInterfaceOrientationPortrait,
+            UIInterfaceOrientationLandscapeLeft,
+            UIInterfaceOrientationLandscapeRight,
+          ]
+        UISupportedInterfaceOrientations~ipad:
+          [
+            UIInterfaceOrientationPortrait,
+            UIInterfaceOrientationPortraitUpsideDown,
+            UIInterfaceOrientationLandscapeLeft,
+            UIInterfaceOrientationLandscapeRight,
+          ]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.kitsample
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+  TidewaterKitUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: TidewaterKit
+      - package: SnapshotTesting
+        product: SnapshotTesting
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: TidewaterKit
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.kitsample.uitests
+schemes:
+  TidewaterKit:
+    build:
+      targets:
+        TidewaterKit: all
+        TidewaterKitUITests: [test]
+    test:
+      config: Debug
+      targets: [TidewaterKitUITests]
