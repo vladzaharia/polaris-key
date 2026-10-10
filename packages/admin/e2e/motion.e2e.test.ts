@@ -1160,7 +1160,7 @@ describe("motion on: the portal under the Worker's CSP", () => {
       // The tile's art has loaded (the media proxy answers the fixtures' art).
       await page
         .locator(
-          "article[aria-labelledby='tile-nightfall'] > [data-art='image'] img",
+          "article[aria-labelledby='tile-nightfall'] > [data-art='image'] img:not([data-blur])",
         )
         .waitFor();
       await installProbe(page);

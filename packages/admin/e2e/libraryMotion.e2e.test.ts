@@ -181,7 +181,9 @@ function probe(dataMotion: boolean): void {
           const pseudo = (anim.effect as KeyframeEffect | null)?.pseudoElement;
           if (!pseudo?.startsWith("::view-transition")) continue;
           const tt = anim.effect!.getTiming();
-          w.__m.pseudo[pseudo] = {
+          // Keyed by the animation too: every `match-element` row shares one pseudo selector,
+          // so a bare selector key kept only whichever row the browser listed last.
+          w.__m.pseudo[`${pseudo}|${(anim as CSSAnimation).animationName}`] = {
             name: (anim as CSSAnimation).animationName,
             duration: Number(tt.duration),
             delay: Number(tt.delay ?? 0),
@@ -470,7 +472,7 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
         [...document.querySelectorAll("article div[data-art='image']")].map(
           (el) => {
             const r = el.getBoundingClientRect();
-            const img = el.querySelector("img")!;
+            const img = el.querySelector("img:not([data-blur])")!;
             return {
               box: [r.x, r.y, r.width, r.height].map(Math.round),
               opacity: getComputedStyle(img).opacity,
