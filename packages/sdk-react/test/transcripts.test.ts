@@ -625,10 +625,14 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // transcript; React's port is I-10a) and identity.keyentry (PX-W9's three keyentry-*
     // transcripts; React's port is PX-W9b). commerce.receipt is SP-16's, telemetry.updates SP-14's.
     // core.presentation is HA-12's discovery-presentation transcript; React's port is HA-13.
+    // identity.attach and identity.account are I-09's attach, subject and sign-out transcripts
+    // (and discovery-identity); React's port is I-10a.
     const plannedHere = [
       "identity.toggle",
       "identity.keyentry",
       "core.presentation",
+      "identity.attach",
+      "identity.account",
     ];
     const expected = TRANSCRIPTS.filter(
       (t) => !t.features.some((f) => plannedHere.includes(f)),
