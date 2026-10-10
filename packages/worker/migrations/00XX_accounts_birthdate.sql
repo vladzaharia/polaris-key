@@ -1,0 +1,18 @@
+-- I-33 (plans/I-27.md §2.4, §6): the account's optional birth date, `YYYY-MM-DD`.
+--
+-- Written only when the person accepts it: in FinishStep, when a connection's mapped `birthdate`
+-- claim offered one (the claim rides only in the sign-in's gate record, never on a link), or in
+-- Account → Profile, which can add, change or remove it. NULL: none. Its source is the next
+-- migration's `birthdate_source`.
+--
+-- It never leaves the person's own account routes: no consent item, device response, developer
+-- API, Users page, developer export or `id_token` carries it, and nothing logs or audits its
+-- value (docs/PRIVACY.md). Age booleans and `minimumAge` are not built until a product gates
+-- content. Deleting the account clears it; a join fills it on the survivor only when the survivor
+-- has none. Identity owns the table.
+--
+-- Expand only: the Worker deployed before I-33 never names it. Rollback:
+-- scripts/rollback/00XX_accounts_birthdate.down.sql.
+--
+-- ONE statement per file (R11-04).
+ALTER TABLE accounts ADD COLUMN birthdate TEXT;

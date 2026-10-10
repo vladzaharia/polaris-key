@@ -1003,6 +1003,13 @@ export interface Delivery {
    * product presentation (name, developer, tint, website, art URLs, support links) reads this.
    */
   listing(): Promise<ManifestListing | null>;
+  /**
+   * I-33: the listing model's legal URLs (`dist_listings.urls_json`'s `eula` and `privacy`, the
+   * model's `eulaUrl` and `privacyUrl`, `core/storefront/listingModel.ts`), each `null` when unset
+   * or not https. A product's terms URL defaults to `eulaUrl`, and `privacyUrl` is linked beside
+   * it (plans/I-27.md §2.4). Optional: a provider without it reads as both unset.
+   */
+  legalUrls?(): Promise<{ eulaUrl: string | null; privacyUrl: string | null }>;
   /** The rollout on one outlet's channel for a deliverable, or `null` when there is none. */
   rollout(q: {
     deliverable: string;

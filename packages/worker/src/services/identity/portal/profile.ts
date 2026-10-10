@@ -6,9 +6,12 @@
  * `X-PKey-Portal-CSRF` header, which `handlePortalApi` checks before dispatching here.
  *
  *   GET   /api/me/profile          the profile: name and picture with their sources and explicit
- *                                  flags, the locale, and what each sign-in method supplied
+ *                                  flags, the locale, what each sign-in method supplied, and the
+ *                                  person's own birth date with its source (I-33: the one route
+ *                                  that ever answers it)
  *   PATCH /api/me/profile          an explicit choice: a typed name or a method's name; Initials,
- *                                  a method's picture or an upload
+ *                                  a method's picture or an upload; a birth date, or `null` to
+ *                                  remove it
  *   POST  /api/me/profile/picture  an upload (PNG or JPEG, at most 5 MB), re-encoded and kept
  *                                  for a day until a PATCH puts it to use
  *
@@ -64,6 +67,14 @@ const CHANGE_REFUSALS: Record<
       error: "bad_request",
       reason: "invalid_name",
       message: "Enter a name.",
+    },
+  },
+  invalid_birthdate: {
+    status: 400,
+    body: {
+      error: "bad_request",
+      reason: "invalid_birthdate",
+      message: "Enter a real date, no later than today.",
     },
   },
   unknown_source: {
@@ -132,7 +143,8 @@ export function parseProfileChange(
     return { ok: false, message: "Send a JSON object." };
   const b = body as Record<string, unknown>;
   const unknown = Object.keys(b).filter(
-    (k) => k !== "name" && k !== "nameFrom" && k !== "picture",
+    (k) =>
+      k !== "name" && k !== "nameFrom" && k !== "picture" && k !== "birthdate",
   );
   if (unknown.length > 0)
     return { ok: false, message: `Unknown field: ${unknown[0]}.` };
@@ -171,7 +183,16 @@ export function parseProfileChange(
           'picture must be "initials", {"from": <method id>} or {"upload": <asset>}.',
       };
   }
-  if (!change.name && !change.picture)
+  if (b.birthdate !== undefined) {
+    // The date itself is checked against the clock in `updateProfile` (`invalid_birthdate`).
+    if (b.birthdate !== null && typeof b.birthdate !== "string")
+      return {
+        ok: false,
+        message: 'birthdate must be "YYYY-MM-DD" or null.',
+      };
+    change.birthdate = b.birthdate;
+  }
+  if (!change.name && !change.picture && change.birthdate === undefined)
     return { ok: false, message: "Nothing to change." };
   return { ok: true, change };
 }
@@ -223,9 +244,11 @@ async function handlePatch(
     accountId: session.accountId,
     action: "portal.profile.update",
     targetKind: "account",
+    // Which values changed, never what they are (a birth date is never audited, I-33).
     summary: [
       parsed.change.name ? "name" : null,
       parsed.change.picture ? "picture" : null,
+      parsed.change.birthdate !== undefined ? "birth date" : null,
     ]
       .filter(Boolean)
       .join(" and "),

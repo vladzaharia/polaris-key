@@ -204,7 +204,9 @@ export async function deleteAccount(
   if (!row) return { ok: false };
   await db.batch([
     {
-      sql: `UPDATE accounts SET status = 'deleted', deleted_at = COALESCE(deleted_at, ?), modified_at = ?
+      // The birth date (I-33) goes at once: nothing the erasure still has to do reads it.
+      sql: `UPDATE accounts SET status = 'deleted', deleted_at = COALESCE(deleted_at, ?), modified_at = ?,
+                                birthdate = NULL, birthdate_source = NULL
              WHERE id = ?`,
       params: [now, now, accountId],
     },

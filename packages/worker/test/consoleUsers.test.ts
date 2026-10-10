@@ -420,6 +420,62 @@ describe("Users list and row", () => {
     }
   });
 
+  it("no admin response carries a birth date, even with every claim consented (I-33)", async () => {
+    const w = await world();
+    const f = await fixture(w);
+    for (const [who, date] of [
+      [f.ada.accountId, "1987-02-28"],
+      [f.bob.accountId, "1991-11-09"],
+    ] as const)
+      await w.db.run(
+        "UPDATE accounts SET birthdate = ?, birthdate_source = 'user' WHERE id = ?",
+        date,
+        who,
+      );
+    // The widest consent there is: every claim an app may ask for, plus one that is not one.
+    for (const who of [f.ada.accountId, f.bob.accountId])
+      await w.db.run(
+        `INSERT OR REPLACE INTO account_product_grants (account_id, product, claims_json, granted_at, modified_at)
+         VALUES (?, 'alpha', '["email","name","picture","birthdate"]', ?, ?)`,
+        who,
+        NOW,
+        NOW,
+      );
+    // Negative control: the dates are stored, so their absence below means something.
+    expect(
+      await w.db.all(
+        "SELECT birthdate FROM accounts WHERE birthdate IS NOT NULL ORDER BY birthdate",
+      ),
+    ).toEqual([{ birthdate: "1987-02-28" }, { birthdate: "1991-11-09" }]);
+    w.bodies.length = 0;
+    await w.call("GET", "/alpha/users");
+    await w.call("GET", "/beta/users");
+    await w.call("GET", "/alpha/users?q=1987");
+    await w.call("GET", `/alpha/users/${f.adaAlpha}`);
+    await w.call("GET", `/alpha/users/${f.bobAlpha}`);
+    await w.call("GET", `/beta/users/${f.adaBeta}`);
+    await w.call("GET", `/alpha/users/${f.adaAlpha}/export`);
+    await w.call("GET", `/alpha/users/${f.bobAlpha}/export`);
+    await w.call("GET", "/alpha/users/events");
+    await w.call("GET", "/alpha/license/licenses");
+    await w.call("GET", "/alpha/license/licenses/lic-alpha-ada");
+    await w.call("GET", "/alpha/devices");
+    await w.call("GET", "/alpha/devices/dev-ada-1");
+    await w.call("GET", "/alpha/activity");
+    const named = await w.json<{ user: { name: unknown } }>(
+      "GET",
+      `/alpha/users/${f.adaAlpha}`,
+    );
+    // The consent reached the page (the name shows), and the birth date still did not.
+    expect(named.body.user.name).not.toBeNull();
+    expect(w.bodies.length).toBeGreaterThanOrEqual(14);
+    for (const body of w.bodies) {
+      expect(body).not.toContain("1987-02-28");
+      expect(body).not.toContain("1991-11-09");
+      expect(body).not.toMatch(/birth_?date/i);
+    }
+  });
+
   it("shows the account email only with consent, and the consented name", async () => {
     const w = await world();
     const f = await fixture(w);
