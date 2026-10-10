@@ -36,7 +36,8 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError } = await import("../src/api.js");
-const { ActivityPage } = await import("../src/console/pages/core/Activity.js");
+const { ActivityPage } =
+  await import("../src/console/sections/core/pages/Activity.js");
 
 const NOW = Math.floor(Date.now() / 1000);
 

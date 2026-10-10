@@ -19,7 +19,7 @@
 
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { api, type AdminApi, type FeedScope } from "../../api.js";
-import { SYSTEM_PRODUCT_SLUG } from "../areas/feeds/model.js";
+import { SYSTEM_PRODUCT_SLUG } from "../sections/feeds/model/model.js";
 import { qk } from "./queries.js";
 
 /** One invalidation target: a key prefix, or one exact key. */

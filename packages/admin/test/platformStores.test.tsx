@@ -7,7 +7,7 @@ import { confirmFor } from "../src/lib/actions.js";
 import {
   appStatusLines,
   credentialHealth,
-} from "../src/console/pages/platformStores.js";
+} from "../src/console/sections/platform/pages/platformStores.js";
 import type { PlatformStoreApp, PlatformStoreCredential } from "../src/api.js";
 
 /**

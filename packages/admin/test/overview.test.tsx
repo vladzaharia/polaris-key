@@ -35,7 +35,8 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError } = await import("../src/api.js");
-const { OverviewPage } = await import("../src/console/pages/core/Overview.js");
+const { OverviewPage } =
+  await import("../src/console/sections/core/pages/Overview.js");
 
 const NOW = Math.floor(Date.now() / 1000);
 const ALL: ServiceSlug[] = [

@@ -14,7 +14,7 @@ import { Button } from "../src/ui/Button.js";
 import { ConfirmDialog } from "../src/ui/ConfirmDialog.js";
 import { ThemeProvider, useTheme } from "../src/components/theme.js";
 import { Logo } from "../src/components/brand/Logo.js";
-import { Home } from "../src/console/pages/global/Home.js";
+import { Home } from "../src/console/sections/global/pages/Home.js";
 import { resetConsole, mockFetch, productRow } from "./consoleHarness.js";
 
 // Foundation-level smoke tests: the primitive layer and brand compile, render, and behave.

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
 import { Textarea } from "../../ui/Textarea.js";
-import { intentOf } from "../pages/core/confirmGate.js";
+import { intentOf } from "../sections/core/pages/confirmGate.js";
 
 /** The Worker's limit (`core/settingsClaims.ts` `BREAK_GLASS_REASON_MAX`). */
 export const BREAK_GLASS_REASON_MAX = 500;

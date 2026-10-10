@@ -16,7 +16,7 @@ import {
 import { docsFor, navItems, SECTIONS, type ServiceState } from "../../nav.js";
 import { r } from "../../routes.js";
 import { THEME_OPTIONS } from "../ThemeMenu.js";
-import { SDK_QUICK_START_ID } from "../../pages/core/sdkQuickStart.js";
+import { SDK_QUICK_START_ID } from "../../sections/core/model/sdkQuickStart.js";
 import { focusWhenReady } from "./focus.js";
 import type {
   PaletteContext,
@@ -27,9 +27,11 @@ import type {
 
 /** The License area's create dialog, loaded with its chunk only when the action runs. */
 const CreateLicenseDialog = React.lazy(() =>
-  import("../../pages/license/CreateLicenseDialog.js").then((m) => ({
-    default: m.CreateLicenseDialog,
-  })),
+  import("../../sections/license/components/CreateLicenseDialog.js").then(
+    (m) => ({
+      default: m.CreateLicenseDialog,
+    }),
+  ),
 );
 
 /** The DOM id of a service's switch on the Services page (`pages/core/Services.tsx`). */

@@ -67,9 +67,10 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { PortalPage } = await import("../src/console/pages/identity/Portal.js");
+const { PortalPage } =
+  await import("../src/console/sections/identity/pages/Portal.js");
 const { SignInPage, parseGroupMap } =
-  await import("../src/console/pages/identity/SignIn.js");
+  await import("../src/console/sections/identity/pages/SignIn.js");
 
 const axe = configureAxe({
   rules: {

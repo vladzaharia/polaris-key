@@ -26,7 +26,7 @@ import type {
 import {
   reasonLine,
   whoLines,
-} from "../src/console/areas/storefronts/polarisKeyCopy.js";
+} from "../src/console/sections/storefronts/model/polarisKeyCopy.js";
 
 const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },

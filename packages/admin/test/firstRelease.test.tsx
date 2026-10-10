@@ -46,9 +46,9 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ReleasesPage } =
-  await import("../src/console/pages/release/ReleasesPage.js");
+  await import("../src/console/sections/release/pages/ReleasesPage.js");
 const { FIRST_RELEASE_POLL_MS, workflowStep } =
-  await import("../src/console/pages/release/FirstReleasePanel.js");
+  await import("../src/console/sections/release/components/FirstReleasePanel.js");
 
 const NOW = Math.floor(Date.now() / 1000);
 

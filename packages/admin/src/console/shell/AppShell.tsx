@@ -32,9 +32,9 @@ import {
 import { PREF_KEYS, readPref, writePref } from "../storage.js";
 import { useGlobalShortcuts } from "../shortcuts.js";
 import { prefetchSection, sectionPages } from "../pages/index.js";
-import { Home } from "../pages/global/Home.js";
-import { ProductNew } from "../pages/global/ProductNew.js";
-import { Products } from "../pages/global/Products.js";
+import { Home } from "../sections/global/pages/Home.js";
+import { ProductNew } from "../sections/global/pages/ProductNew.js";
+import { Products } from "../sections/global/pages/Products.js";
 import { LiveRegion } from "../../ui/LiveRegion.js";
 import type { ProductLike } from "./bits.js";
 import { CommandPalette } from "./CommandPalette.js";
@@ -52,7 +52,7 @@ import { TopBar } from "./TopBar.js";
 import { mutate } from "../../console/data/mutations.js";
 
 /** The Platform section's pages: one lazy chunk (notes/S-13 §9.1). */
-const PlatformPages = React.lazy(() => import("../pages/platform.js"));
+const PlatformPages = React.lazy(() => import("../sections/platform/index.js"));
 
 /** Where the sidebar is part of the layout and the mobile drawer has no place. */
 export const DESKTOP_QUERY = "(min-width: 1024px)";

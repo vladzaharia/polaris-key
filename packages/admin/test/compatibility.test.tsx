@@ -64,9 +64,9 @@ vi.mock("../src/api.js", async (importOriginal) => ({
 }));
 
 const { CompatibilityPage } =
-  await import("../src/console/pages/release/CompatibilityPage.js");
+  await import("../src/console/sections/release/pages/CompatibilityPage.js");
 const { SimulatorPage } =
-  await import("../src/console/pages/release/SimulatorPage.js");
+  await import("../src/console/sections/release/pages/SimulatorPage.js");
 
 const SLUG = "diceroll";
 const FOES = "diceroll.foes";

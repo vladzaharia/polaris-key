@@ -8,8 +8,8 @@ import {
   slugFromName,
   slugVerdict,
   suggestSlug,
-} from "../src/console/pages/global/ProductNew.js";
-import { WELCOME_KEY } from "../src/console/pages/core/Welcome.js";
+} from "../src/console/sections/global/pages/ProductNew.js";
+import { WELCOME_KEY } from "../src/console/sections/core/pages/Welcome.js";
 import type { Me } from "../src/api.js";
 import {
   ALL_ON,

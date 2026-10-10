@@ -56,9 +56,10 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError } = await import("../src/api.js");
-const { UsersPage } = await import("../src/console/pages/core/Users.js");
+const { UsersPage } =
+  await import("../src/console/sections/core/pages/Users.js");
 const { isSteppedUp, stepUpHref } =
-  await import("../src/console/pages/core/UserRelink.js");
+  await import("../src/console/sections/core/pages/UserRelink.js");
 const { useRoute } = await import("../src/console/router.js");
 
 function meWith(authAt: number | null): Me {

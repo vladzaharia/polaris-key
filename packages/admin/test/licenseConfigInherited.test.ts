@@ -14,7 +14,7 @@ import type {
 import {
   resolveInherited,
   type PayloadLayer,
-} from "../src/console/pages/license/LicenseConfig.js";
+} from "../src/console/sections/license/pages/LicenseConfig.js";
 import { CATALOG } from "./licenseFixture.js";
 
 const ent = (value: unknown, state: ManagementState): ManagedEntry => ({

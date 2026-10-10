@@ -22,7 +22,7 @@ import {
   configOverridesOf,
   entitlementsOnly,
   licenseEditorCatalog,
-} from "../src/console/pages/license/LicenseConfig.js";
+} from "../src/console/sections/license/pages/LicenseConfig.js";
 import { upcomingRunDate } from "../src/console/data/overrideMigration.js";
 import { formatDate, fromSeconds } from "../src/lib/format.js";
 

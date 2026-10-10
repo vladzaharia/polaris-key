@@ -5,7 +5,7 @@ import {
   sdkInit,
   sdkInstall,
   trustPins,
-} from "../src/console/pages/core/sdkQuickStart.js";
+} from "../src/console/sections/core/model/sdkQuickStart.js";
 
 const key = (kid: string, status: string): SigningKeyDto => ({
   kid,
