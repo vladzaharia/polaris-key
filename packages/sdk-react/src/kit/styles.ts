@@ -4,7 +4,7 @@
 // `@polaris-key/react/styles.css` instead, so the first paint is already styled; adopting the same
 // rules again changes nothing.
 
-import { lightDomCss } from "@polaris-key/elements/contract";
+import { lightDomCss } from "./contract.js";
 
 let css: string | null = null;
 let sheet: CSSStyleSheet | null = null;

@@ -29,8 +29,11 @@ import {
 } from "@polaris-key/ui-core";
 import {
   resolveProductIdentity,
+  type BundleProduct,
   type ResolvedIdentity,
+  type ThemeOptions,
 } from "@polaris-key/ui-core/theme";
+import type { PresentationSource } from "@polaris-key/client-core/presentation";
 import {
   actionOf,
   copyFor,
@@ -41,8 +44,7 @@ import {
   resolveFor,
   themeVars,
   watchProductIdentity,
-  type ElementsTheme,
-} from "@polaris-key/elements/contract";
+} from "./contract.js";
 
 import { text, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
@@ -51,7 +53,21 @@ import { renderView } from "./views.js";
 
 /** UI-KITS.md §3.1, as the React kit takes it: every field optional; an empty theme is the
  *  Polaris Key look in the product's accent. The same value `<pk-provider theme>` takes. */
-export type KitTheme = ElementsTheme;
+export interface KitTheme extends ThemeOptions {
+  /** `theme.copy`'s locale: a BCP 47 tag; absent: the document's `lang`, then the browser's. */
+  locale?: string;
+  /** `theme.copy`'s overrides, per locale (`{ en: { "welcome.title": "…" } }`). */
+  copy?: Partial<Record<string, Readonly<Record<string, string>>>>;
+  /** `sm` = 6/10, `md` = 12/22, `lg` = 16/28 (control/card), or the control radius in px. */
+  radius?: "sm" | "md" | "lg" | number;
+  /** The integrator's icon, as a URL the page may load. */
+  iconSrc?: string;
+  /** The SDK's presentation seam (HA-12's `PresentationSource`): the product's accent and icon
+   *  with no integrator code. */
+  presentation?: PresentationSource | null;
+  /** What the app bundle knows about the product. */
+  bundle?: BundleProduct;
+}
 
 /** What `onAction` receives: the control's copy key and the vocabulary action it performs. */
 export interface KitAction {
@@ -72,6 +88,9 @@ export interface KitProps {
   bare?: boolean;
   /** Take focus on mount, as a screen the person opened does (DL9). */
   autoFocus?: boolean;
+  /** Own the window (DL2): a blocking screen drawn on its own, at least the window's height. The
+   *  drop-in gate always does. */
+  fill?: boolean;
   /** A control was pressed. */
   onAction?: (action: KitAction) => void;
   /** The person typed in a field (`key`, `rename`). */
@@ -276,29 +295,43 @@ function useKit(
     // The model lives as long as the component.
   }, []);
 
-  // DL1: the arrangement follows the box, measured after layout.
+  // DL1: the arrangement follows the box, measured after layout. A root that owns the window
+  // (`fill`) is the window's shape: its own height grows with content that does not fit, which
+  // would read a short landscape window as portrait.
   const [shape, setShape] = useState<Shape>("portrait");
+  const fill = props.fill === true;
   useIsoLayoutEffect(() => {
     const el = rootRef.current;
     if (!el || typeof ResizeObserver !== "function") return;
     let frame = 0;
-    const ro = new ResizeObserver(([entry]) => {
-      if (!entry) return;
-      const box = entry.contentBoxSize?.[0];
-      const next = shapeOf(
-        box?.inlineSize ?? entry.contentRect.width,
-        box?.blockSize ?? entry.contentRect.height,
-      );
+    const measure = (w: number, h: number) => {
+      const next = fill
+        ? shapeOf(w, Math.min(h, window.innerHeight))
+        : shapeOf(w, h);
       cancelAnimationFrame(frame);
       // After this frame's layout: a shape change never re-enters the observer's loop.
       frame = requestAnimationFrame(() => setShape(next));
+    };
+    const ro = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const box = entry.contentBoxSize?.[0];
+      measure(
+        box?.inlineSize ?? entry.contentRect.width,
+        box?.blockSize ?? entry.contentRect.height,
+      );
     });
     ro.observe(el);
+    const onWindow = () => {
+      const r = el.getBoundingClientRect();
+      measure(r.width, r.height);
+    };
+    if (fill) window.addEventListener("resize", onWindow);
     return () => {
       cancelAnimationFrame(frame);
       ro.disconnect();
+      window.removeEventListener("resize", onWindow);
     };
-  }, []);
+  }, [fill]);
 
   const kb = useSyncExternalStore(
     subscribeKeyboard,
@@ -381,6 +414,8 @@ function KitRoot(props: {
   className?: string;
   /** Escape backs out of the step (DL9), where there is one to back out of. */
   onEscape?: () => void;
+  /** The blocking gate owns the window (DL2) with no layout code from the host (DL18). */
+  fill?: boolean;
   children: ReactNode;
 }): ReactNode {
   const { view, resolved: r, copy, rootRef, shape, kb } = props.kit;
@@ -399,6 +434,7 @@ function KitRoot(props: {
       data-pk-platform={r.theme.platform ?? "web"}
       data-keyboard={kb ? "" : undefined}
       data-bare={props.bare ? "" : undefined}
+      data-fill={props.fill ? "" : undefined}
       lang={copy.locale}
       style={themeVars(r) as CSSProperties}
       onKeyDown={
@@ -423,7 +459,12 @@ export function kitComponent(component: ComponentName) {
     const kit = useKit(component, props);
     if (kit.view.state === "hidden") return null;
     return (
-      <KitRoot kit={kit} bare={props.bare} className={props.className}>
+      <KitRoot
+        kit={kit}
+        bare={props.bare}
+        fill={props.fill}
+        className={props.className}
+      >
         {renderView(kit.ctxFor(kit.view))}
       </KitRoot>
     );
@@ -484,6 +525,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       ...props,
       ...(theme ? { theme } : {}),
       input: driven ? sdk.input : props.input,
+      fill: true,
       onAction: (a) => {
         if (driven) sdk.act(a.key);
         props.onAction?.(a);
@@ -545,6 +587,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     <KitRoot
       kit={kit}
       className={props.className}
+      fill
       onEscape={
         driven && step !== "home" ? () => sdk.act("common.back") : undefined
       }

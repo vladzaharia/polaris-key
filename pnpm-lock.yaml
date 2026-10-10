@@ -488,9 +488,6 @@ importers:
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
-      '@polaris-key/elements':
-        specifier: workspace:*
-        version: link:../elements
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
@@ -504,6 +501,9 @@ importers:
         specifier: ^4.12.0
         version: 4.12.0
     devDependencies:
+      '@polaris-key/elements':
+        specifier: workspace:*
+        version: link:../elements
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws

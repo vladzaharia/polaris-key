@@ -29,7 +29,10 @@
       "extensions": [".ts"]
     },
     "react": {
-      "roots": ["packages/sdk-react/src/components"],
+      "roots": [
+        "packages/sdk-react/src/components",
+        "packages/sdk-react/src/kit"
+      ],
       "extensions": [".ts", ".tsx"]
     }
   },

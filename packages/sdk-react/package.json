@@ -4,7 +4,8 @@
   "license": "MIT",
   "type": "module",
   "sideEffects": [
-    "./dist/styles.css"
+    "./dist/styles.css",
+    "./dist/fonts/fonts.css"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -53,7 +54,8 @@
       "types": "./dist/kit/index.d.ts",
       "default": "./dist/kit/index.js"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./fonts.css": "./dist/fonts/fonts.css"
   },
   "files": [
     "dist",
@@ -63,7 +65,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && node scripts/copy-styles.mjs",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node scripts/bundle-contract.mjs && node scripts/copy-styles.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "vitest run -c vitest.browser.config.ts",
@@ -75,7 +77,6 @@
     "@polaris-key/brand": "workspace:*",
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
-    "@polaris-key/elements": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "@polaris-key/ui-core": "workspace:*",
     "@polaris-key/zstd-wasm": "workspace:*",
@@ -86,6 +87,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
+    "@polaris-key/elements": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.0",

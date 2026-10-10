@@ -5,7 +5,7 @@
 
 import { Fragment, type KeyboardEvent, type ReactNode } from "react";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
-import { encodeQr, OPENS, type Resolved } from "@polaris-key/elements/contract";
+import { encodeQr, OPENS, type Resolved } from "./contract.js";
 
 /** What a part needs to draw one view. */
 export interface KitCtx {
@@ -465,6 +465,10 @@ export function codeDisplay(c: KitCtx): ReactNode {
   );
 }
 
+// DL14: a QR is black modules on a white tile in every theme and preset, so a scanner reads it.
+const QR_TILE = "#ffffff"; // ui-lint: allow react-colour-literal (DL14 white tile)
+const QR_INK = "#000000"; // ui-lint: allow react-colour-literal (DL14 black modules)
+
 /** QrCode (DL14): only where the device cannot browse or for an offline request; black on a
  *  white tile with a quiet zone, the modules scaled by a whole factor, beside the text it encodes. */
 export function qrCode(c: KitCtx, data: string | null): ReactNode {
@@ -486,8 +490,8 @@ export function qrCode(c: KitCtx, data: string | null): ReactNode {
         aria-label={plain(c, "a11y.qr")}
         shapeRendering="crispEdges"
       >
-        <rect width={n} height={n} fill="#ffffff" />
-        <path d={d} fill="#000000" />
+        <rect width={n} height={n} fill={QR_TILE} />
+        <path d={d} fill={QR_INK} />
       </svg>
     </figure>
   );

@@ -5,11 +5,7 @@
 
 import type { ReactNode } from "react";
 import type { View } from "@polaris-key/ui-core";
-import {
-  LAYOUTS,
-  placeKeys,
-  type Layout,
-} from "@polaris-key/elements/contract";
+import { LAYOUTS, placeKeys, type Layout } from "./contract.js";
 
 import {
   a11yOnly,
