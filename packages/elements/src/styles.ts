@@ -511,7 +511,8 @@ bdi {
   color: var(--pk-text-strong);
   font: inherit;
 }
-.field input:focus {
+.field input:focus-visible,
+.field textarea:focus-visible {
   box-shadow: none;
   outline: var(--pk-kit-focus-width) solid var(--pk-ring);
   outline-offset: 0;
@@ -1030,7 +1031,7 @@ dialog.sheet .passport {
     color: LinkText;
   }
   .pk-root[data-keyboard] :focus-visible,
-  .field input:focus {
+  .field input:focus-visible {
     outline-color: Highlight;
   }
   .seat-bar span[data-used],
