@@ -26,11 +26,16 @@ final class KitRenderTests: XCTestCase {
     }
 
     /// Audit findings the spec asks for, each with its reason; everything else fails the run.
-    static let exempt: [(audit: String, element: String, reason: String)] = [
+    /// `element` matches the element's type, and `contains` a substring of its label.
+    static let exempt: [(audit: String, element: String, contains: String, reason: String)] = [
         (
-            "Text clipped", "'License key'",
+            "Text clipped", "field", "",
             "A license key gives way in the middle at rest, keeping the prefix and the last six (UI-KITS §4.3, DL11); VoiceOver reads the whole key."
-        )
+        ),
+        (
+            "Label not human-readable", "text", "key.plrs.im",
+            "The address is the content (DL14: the link in text beside the code); VoiceOver reads it."
+        ),
     ]
 
     /// The states the matrix renders in full; the rest render at the default row only.
@@ -145,8 +150,8 @@ final class KitRenderTests: XCTestCase {
         if let locale { args += ["-pkeyLocale", locale] }
         let category: String
         switch type {
-        case "AX3": category = "UICTContentSizeCategoryAccessibilityExtraLarge"
-        case "AX5": category = "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge"
+        case "AX3": category = "UICTContentSizeCategoryAccessibilityXL"
+        case "AX5": category = "UICTContentSizeCategoryAccessibilityXXXL"
         default: category = "UICTContentSizeCategoryL"
         }
         args += ["-UIPreferredContentSizeCategoryName", category]
@@ -165,29 +170,33 @@ final class KitRenderTests: XCTestCase {
         let orientationName = orientation == .portrait ? "portrait" : "landscape"
         let name =
             "\(device)-\(orientationName)-\(type)-\(preset)\(locale.map { "-\($0)" } ?? "")-\(scheme)"
-        let shot = XCUIScreen.main.screenshot()
-        let attachment = XCTAttachment(screenshot: shot)
+        let raw = XCUIScreen.main.screenshot()
+        // A landscape screenshot comes back in the panel's portrait orientation: turn it upright.
+        let upright = orientation == .portrait ? raw.image : Self.turnedUpright(raw.image)
+        let attachment = XCTAttachment(image: upright)
         attachment.name = "\(state) \(name)"
         attachment.lifetime = .keepAlways
         add(attachment)
         if let out {
             let dir = out.appendingPathComponent(state)
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            try shot.pngRepresentation.write(to: dir.appendingPathComponent("\(name).png"))
+            try upright.pngData()?.write(to: dir.appendingPathComponent("\(name).png"))
         }
         try baseline(
-            shot.image, state: state, name: name,
+            upright, state: state, name: name,
             isDefault: locale == nil && isDefaultRow(type, orientation, preset))
 
         var issues: [String] = []
-        let pixels = shot.image.cgImage
-        let scale = shot.image.scale
+        // The audit's frames are in the app's coordinates, the upright render's.
+        let pixels = upright.cgImage
+        let scale = upright.scale
         try app.performAccessibilityAudit(for: .all) { issue in
             let label = issue.element.map { "'\($0.label)'" } ?? "-"
-            let exempt = Self.exempt.contains {
-                issue.compactDescription.contains($0.audit) && $0.element == label
-            }
             let type = issue.element.map { Self.typeName($0.elementType) } ?? "-"
+            let exempt = Self.exempt.contains {
+                issue.compactDescription.contains($0.audit) && $0.element == type
+                    && ($0.contains.isEmpty || label.contains($0.contains))
+            }
             // The audit's contrast check misreads wrapped text (it flags 12:1 body copy); measure
             // the render itself, and keep the finding only when the pixels fail too (BRAND §9:
             // contrast is measured on the render).
@@ -276,6 +285,22 @@ final class KitRenderTests: XCTestCase {
         let diffing = Diffing<UIImage>.image(precision: 0.995, perceptualPrecision: 0.98, scale: 1)
         if let (message, _) = diffing.diff(reference, small) {
             baselineFailures.append("\(base)/\(name): \(message)")
+        }
+    }
+
+    /// `image` turned a quarter counter-clockwise (a landscape-left screenshot, upright).
+    static func turnedUpright(_ image: UIImage) -> UIImage {
+        let size = CGSize(width: image.size.height, height: image.size.width)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        return UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+            let c = ctx.cgContext
+            c.translateBy(x: size.width / 2, y: size.height / 2)
+            c.rotate(by: -.pi / 2)
+            image.draw(
+                in: CGRect(
+                    x: -image.size.width / 2, y: -image.size.height / 2, width: image.size.width,
+                    height: image.size.height))
         }
     }
 

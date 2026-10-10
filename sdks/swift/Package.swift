@@ -213,8 +213,8 @@ let package = Package(
             name: "PolarisKeyTests",
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
-                "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUpdate", "PolarisKeyRelease",
-                "PolarisKeyPacks", "PolarisKeyPlatform",
+                "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUICore", "PolarisKeyUpdate",
+                "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform",
                 .product(name: "libzstd", package: "zstd"),
             ],
             // No resources: the tests read the SAME cross-language corpus the Node and Python

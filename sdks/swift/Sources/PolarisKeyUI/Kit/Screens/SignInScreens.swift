@@ -570,6 +570,7 @@ public struct LicenseChoiceView: View {
                             )
                             .font(style.font(.footnote))
                             .foregroundStyle(style.palette.textMuted)
+                            .fixedSize()
                         }
                         if choice.isFull {
                             KitText("signin.choice.tag.full", [:], .footnote, color: .muted)
@@ -597,6 +598,7 @@ public struct LicenseChoiceView: View {
                     )
                     .font(style.font(.meta))
                     .foregroundStyle(style.palette.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 if isSelected {

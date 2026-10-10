@@ -80,10 +80,17 @@ public struct ProductHeader: View {
         kitStyle { style in
             HStack(spacing: style.space(.xs)) {
                 if showsIcon { ProductIcon(size: min(iconSize, 48)) }
-                (Text(style.identity.name).foregroundStyle(style.palette.textStrong)
-                    + Text(tier.map { " · \($0)" } ?? "").foregroundStyle(style.palette.textMuted))
-                    .font(style.font(.label))
-                    .lineLimit(2)
+                Group {
+                    if let tier {
+                        Text(style.identity.name).foregroundStyle(style.palette.textStrong)
+                            + Text(" · \(tier)").foregroundStyle(style.palette.textMuted)
+                    } else {
+                        Text(style.identity.name).foregroundStyle(style.palette.textStrong)
+                    }
+                }
+                .font(style.font(.label))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
         }

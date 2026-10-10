@@ -32,7 +32,7 @@ struct PaneText: View {
     var body: some View {
         kitStyle { style in
             Text(strings.string(line))
-                .font(role == .footnote || role == .meta ? .footnote : nil)
+                .font(role == .footnote || role == .meta ? .footnote : .body)
                 .foregroundStyle(
                     color == .default
                         ? AnyShapeStyle(.primary) : AnyShapeStyle(color.resolve(style.palette)))
