@@ -88,7 +88,7 @@ function useChannels(slug: string): string[] {
 
 const FEED_RULES = (
   <div className="max-w-sm space-y-2 text-sm">
-    <p className="font-bold text-fg-strong">Which releases a feed lists</p>
+    <p className="font-medium text-fg-strong">Which releases a feed lists</p>
     <ol className="list-decimal space-y-1 pl-5 text-fg-muted">
       <li>
         The channel serves them (beta includes stable; yanked ones drop out).
@@ -127,7 +127,7 @@ function FeedLinks({
         const url = publicUrl(slug, `distribution/${feed.path(c)}`);
         return (
           <li key={c} className="flex items-center gap-2">
-            <span className="w-16 shrink-0 text-xs font-bold text-fg-muted">
+            <span className="w-16 shrink-0 text-xs font-medium text-fg-muted">
               {c}
             </span>
             <code className="min-w-0 flex-1 truncate rounded-sm bg-surface-sunken px-2 py-1 font-mono text-xs">
@@ -380,7 +380,9 @@ function OutletDrawer({
           ) : (
             <>
               <section className="space-y-2" aria-label="Identity">
-                <h3 className="text-sm font-bold text-fg-strong">Identity</h3>
+                <h3 className="text-sm font-semibold text-fg-strong">
+                  Identity
+                </h3>
                 {identity.length ? (
                   <DescriptionList
                     columns={2}
@@ -407,7 +409,7 @@ function OutletDrawer({
               <section className="space-y-3" aria-label="Capabilities">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-fg-strong">
+                    <h3 className="text-sm font-semibold text-fg-strong">
                       Capabilities
                     </h3>
                     <SourceBadge
@@ -457,7 +459,9 @@ function OutletDrawer({
               </section>
 
               <section className="space-y-2" aria-label="Transports">
-                <h3 className="text-sm font-bold text-fg-strong">Transports</h3>
+                <h3 className="text-sm font-semibold text-fg-strong">
+                  Transports
+                </h3>
                 {outlet.transports.length ? (
                   <ul className="space-y-1 text-sm">
                     {outlet.transports.map((t) => (
@@ -483,7 +487,7 @@ function OutletDrawer({
               {FEED_KINDS[outlet.kind] ? (
                 <section className="space-y-2" aria-label="Feeds">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-bold text-fg-strong">
+                    <h3 className="text-sm font-semibold text-fg-strong">
                       {FEED_KINDS[outlet.kind]!.label}
                     </h3>
                     <Popover

@@ -262,7 +262,7 @@ export function ReassignDialog({
         <div className="space-y-1">
           <label
             htmlFor="reassign-email"
-            className="text-sm font-bold text-fg-strong"
+            className="text-sm font-medium text-fg-strong"
           >
             New email
           </label>
@@ -288,7 +288,7 @@ export function ReassignDialog({
         <div className="space-y-1">
           <label
             htmlFor="reassign-name"
-            className="text-sm font-bold text-fg-strong"
+            className="text-sm font-medium text-fg-strong"
           >
             Name <span className="font-normal text-fg-muted">(optional)</span>
           </label>

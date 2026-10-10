@@ -80,7 +80,7 @@ export function ProductSwitcher({
           title={`${p.name} (${p.slug})`}
           className={cn(
             "min-w-0 flex-1 truncate",
-            p.slug === current.slug && "font-bold text-fg-strong",
+            p.slug === current.slug && "font-medium text-fg-strong",
           )}
         >
           {p.name}{" "}
@@ -90,7 +90,7 @@ export function ProductSwitcher({
         </span>
         {attention > 0 ? (
           <span
-            className="rounded-full bg-warning-subtle px-1.5 text-xs font-bold text-warning"
+            className="rounded-full bg-warning-subtle px-1.5 text-xs font-medium text-warning"
             aria-label={`${attention} need attention`}
           >
             {attention}
@@ -122,7 +122,7 @@ export function ProductSwitcher({
               slug and service dots join it only from lg, where the bar has room for them: at
               768–1023 px they squeezed the name to 0 px and the dots spilled out of the button. */}
           <span
-            className="min-w-[4ch] truncate font-bold text-fg-strong"
+            className="min-w-[4ch] truncate font-medium text-fg-strong"
             title={current.name}
           >
             {current.name}

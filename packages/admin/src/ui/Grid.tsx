@@ -134,7 +134,7 @@ export function Grid<R, C>({
             <th
               scope="col"
               className={cn(
-                "border-b border-border bg-surface-raised px-3 py-2 text-left text-xs font-bold text-fg-muted",
+                "border-b border-border bg-surface-raised px-3 py-2 text-left text-xs font-medium text-fg-muted",
                 stickyColumnHeader && "sticky top-0 z-[2]",
                 stickyRowHeader && "sticky left-0 z-[3]",
               )}
@@ -146,7 +146,7 @@ export function Grid<R, C>({
                 key={getColumnId(col)}
                 scope="col"
                 className={cn(
-                  "border-b border-border bg-surface-raised px-3 py-2 text-left text-xs font-bold text-fg-muted",
+                  "border-b border-border bg-surface-raised px-3 py-2 text-left text-xs font-medium text-fg-muted",
                   stickyColumnHeader && "sticky top-0 z-[1]",
                 )}
               >

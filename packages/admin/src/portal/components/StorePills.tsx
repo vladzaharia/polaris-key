@@ -5,7 +5,7 @@ import { GET_IT_COPY as C } from "../copy/getIt.js";
 
 /** The outlined pill every store and install-source link in the portal uses (P0-48: one look). */
 export const PILL_CLASS =
-  "inline-flex h-11 items-center gap-2 rounded-full border border-border-strong px-4 text-sm font-bold text-fg-strong hover:bg-hover";
+  "inline-flex h-11 items-center gap-2 rounded-full border border-border-strong px-4 text-sm font-medium text-fg-strong hover:bg-hover";
 
 /** The live stores with a page, as {@link StorePillList} shows them. */
 export function liveStores(

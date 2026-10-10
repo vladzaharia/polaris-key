@@ -65,7 +65,7 @@ export const stories: Story[] = [
       <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
         {DOMAINS.map((domain) => (
           <div key={domain} className="contents">
-            <dt className="text-sm font-bold text-fg-strong">{domain}</dt>
+            <dt className="text-sm font-medium text-fg-strong">{domain}</dt>
             <dd className="flex flex-wrap gap-2">
               {Object.keys(STATUS[domain]).map((state) => (
                 <StatusPill key={state} domain={domain} state={state} />

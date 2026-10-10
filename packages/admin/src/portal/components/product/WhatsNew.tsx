@@ -61,7 +61,7 @@ export function WhatsNew({
                 aria-expanded={full}
                 aria-controls={restId}
                 onClick={() => setFull((v) => !v)}
-                className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-accent-fg hover:underline"
+                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
               >
                 {full ? "Show less" : "Show full notes"}
                 <ChevronDown
@@ -80,7 +80,7 @@ export function WhatsNew({
       {earlier.length ? (
         <div className="mt-6">
           <div className="flex items-center justify-between border-b border-border pb-2">
-            <h3 className="text-md font-bold text-fg-strong">
+            <h3 className="text-md font-semibold text-fg-strong">
               Earlier versions
             </h3>
             {earlier.length > 3 ? (
@@ -88,7 +88,7 @@ export function WhatsNew({
                 type="button"
                 aria-expanded={all}
                 onClick={() => setAll((v) => !v)}
-                className="inline-flex items-center gap-1 text-sm font-bold text-accent-fg hover:underline"
+                className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
               >
                 {all ? "Show fewer" : `Show all ${earlier.length}`}
                 <ChevronDown

@@ -147,7 +147,7 @@ function DownloadBody({
       headerUrl={pres.headerUrl}
     >
       <div className="mt-2 space-y-5">
-        <h1 className="text-headline font-bold leading-tight text-fg-strong desk:text-headline-lg">
+        <h1 className="text-headline font-semibold leading-tight text-fg-strong desk:text-headline-lg">
           {where
             ? `Download ${product.name} for ${where}`
             : `Download ${product.name}`}
@@ -160,7 +160,7 @@ function DownloadBody({
                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
               >
                 <span className="min-w-0">
-                  <span className="block font-bold text-fg-strong">
+                  <span className="block font-medium text-fg-strong">
                     {r.title}
                   </span>
                   <span className="block font-mono text-sm text-fg-muted">
@@ -214,7 +214,7 @@ function DownloadBody({
         <p className="text-sm">
           <a
             href={href.product(product.product, "get")}
-            className="font-bold text-accent-fg hover:underline"
+            className="font-medium text-accent-fg hover:underline"
           >
             {others.length
               ? `Other platforms: ${others.map((k) => osName(k)).join(", ")}`

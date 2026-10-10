@@ -75,7 +75,7 @@ export function Stepper({
               key={isCurrent ? "current" : "step"}
               aria-hidden
               className={cn(
-                "inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold tabular-nums",
+                "inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium tabular-nums",
                 isCurrent && "border-accent bg-accent text-accent-on",
                 isCurrent && moved && "pk-pop-in",
                 isDone && "border-accent text-accent-fg",
@@ -98,7 +98,7 @@ export function Stepper({
               {isCurrent ? (
                 <span
                   aria-current="step"
-                  className="inline-flex items-center gap-2 text-sm font-bold text-fg-strong"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-fg-strong"
                 >
                   {marker}
                   {step.label}

@@ -245,7 +245,7 @@ function AccessSection({
             <Skeleton className="h-5 w-40" />
           ) : access.data ? (
             <span className="flex flex-wrap items-center gap-2">
-              <span className="font-bold text-fg-strong">
+              <span className="font-medium text-fg-strong">
                 {ACCESS_LABELS[access.data.app.mode] ?? access.data.app.mode}
               </span>
               <Link
@@ -599,7 +599,7 @@ function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
                 key={row.path}
                 className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
               >
-                <span className="w-full shrink-0 text-xs font-bold text-fg-muted sm:w-44">
+                <span className="w-full shrink-0 text-xs font-medium text-fg-muted sm:w-44">
                   {row.label}
                 </span>
                 <code className="min-w-0 flex-1 truncate rounded-sm bg-surface-sunken px-2 py-1 font-mono text-xs">

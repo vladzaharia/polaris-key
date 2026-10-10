@@ -172,16 +172,16 @@ function SyncDataBody({
                 <caption className="sr-only">User settings</caption>
                 <thead className="text-xs text-fg-muted">
                   <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       Key
                     </th>
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       Syncs
                     </th>
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       When devices disagree
                     </th>
-                    <th scope="col" className="py-2 font-bold">
+                    <th scope="col" className="py-2 font-medium">
                       In settings panels
                     </th>
                   </tr>
@@ -226,16 +226,16 @@ function SyncDataBody({
                 <caption className="sr-only">Collections</caption>
                 <thead className="text-xs text-fg-muted">
                   <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       Name
                     </th>
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       Written by
                     </th>
-                    <th scope="col" className="py-2 pr-4 font-bold">
+                    <th scope="col" className="py-2 pr-4 font-medium">
                       Conflicts
                     </th>
-                    <th scope="col" className="py-2 font-bold">
+                    <th scope="col" className="py-2 font-medium">
                       At first sign-in
                     </th>
                   </tr>
@@ -298,7 +298,7 @@ function SyncDataBody({
             <ul className="space-y-2 text-sm">
               {migrations.map((m) => (
                 <li key={m.toSchemaVersion}>
-                  <span className="font-bold text-fg-strong">
+                  <span className="font-medium text-fg-strong">
                     Catalog v{m.toSchemaVersion}
                   </span>
                   {": "}
