@@ -45,7 +45,9 @@
  *     first attach only, never an owned licence, never a custom-issuer product's.
  */
 
-import { normalizeEmail, type Db, type Env } from "../../../core/platform.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   portalIdentityIssuerKey,
   recordLinkGroups,

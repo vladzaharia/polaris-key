@@ -91,7 +91,7 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
 - [Setup](https://key.plrs.im/docs/contribute/setup/) — this page's content, with more
   toolchain detail.
 - [Monorepo layout](https://key.plrs.im/docs/contribute/layout/) — the full map, the Worker's
-  `core/` + `services/<slug>/` split, `boundaries.test.ts`, and `mount.ts` as the composition
+  layers (`platform/`, `core/`, `services/<slug>/`, `console/`), `boundaries.test.ts`, and `mount.ts` as the composition
   root.
 - [The contract-first wave model](https://key.plrs.im/docs/contribute/waves/) — contract →
   catalog → corpus → SDKs, the six-language walkthrough for a wire-visible field, and the full

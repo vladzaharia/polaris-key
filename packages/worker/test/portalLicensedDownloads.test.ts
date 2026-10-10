@@ -17,7 +17,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { blobKey } from "../src/core/blobs.js";
+import { blobKey } from "../src/core/assets/blobs.js";
 import {
   DOWNLOAD_TICKET_LABEL,
   DOWNLOAD_TICKET_TTL_SECONDS,
@@ -34,7 +34,7 @@ import {
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import type { PortalDownloads } from "../src/services/identity/portal/downloads.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import {
   handlePortalApi,

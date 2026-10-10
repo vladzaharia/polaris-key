@@ -22,7 +22,7 @@ import {
 import { setAssetHosting, setProductAssetSetting } from "./hostedFixture.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { SETTINGS } from "../src/mount.js";
 import { deniedCategories, checkRegistry } from "../src/core/settings/rules.js";
 import {
@@ -33,21 +33,21 @@ import { platformSettingDef } from "../src/core/platformSettings.js";
 import {
   assetHostingEnabled,
   ASSET_HOSTING_KEY,
-} from "../src/core/assetHosting.js";
+} from "../src/core/assets/assetHosting.js";
 import {
   ASSET_PRODUCT_KEYS,
   assetSettingsRegistry,
   inheritedValue,
   productAssetSettings,
-} from "../src/core/assetSettings.js";
+} from "../src/core/assets/assetSettings.js";
 import { writeSetting } from "../src/core/settings/write.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import type { AssetUsageDto } from "../src/admin/handlers/hostedAssets.js";
+} from "../src/core/console/session.js";
+import type { AssetUsageDto } from "../src/console/handlers/hostedAssets.js";
 
 let db: SqliteDb;
 let env: Env;

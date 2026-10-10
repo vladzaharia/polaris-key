@@ -1,6 +1,6 @@
 /**
  * Realm-tagged HMAC-SHA-256 tokens: the signed-cookie format of the console session
- * (`admin/session.ts`) and the customer-portal session (`services/identity/portal/session.ts`).
+ * (`core/console/session.ts`) and the customer-portal session (`services/identity/portal/session.ts`).
  *
  * ── FORMAT (frozen: changing a byte signs every operator and customer out) ─────────────────
  *

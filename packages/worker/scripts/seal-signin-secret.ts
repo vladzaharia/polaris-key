@@ -18,8 +18,8 @@
  * KEK.
  */
 import { fileURLToPath } from "node:url";
-import { seal } from "../src/keyvault.js";
-import type { Env } from "../src/env.js";
+import { seal } from "../src/platform/keyvault.js";
+import type { Env } from "../src/platform/env.js";
 import {
   isSignInProviderKind,
   SIGNIN_ENV,

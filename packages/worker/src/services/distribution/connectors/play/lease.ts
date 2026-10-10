@@ -37,7 +37,7 @@
  * `purpose` and `actor` columns name a caller kind and an admin `sub`, never a credential.
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
 
 /** The storefront the lease table row belongs to (the adapter id). */
 export const PLAY_LEASE_STORE = "google-play";

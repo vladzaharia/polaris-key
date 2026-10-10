@@ -10,14 +10,14 @@ import { KvMock } from "./kvMock.js";
 import { NOW, TEST_KEK, seedProduct } from "./seed.js";
 import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { ensureSystemProduct } from "../src/admin/systemProduct.js";
+} from "../src/core/console/session.js";
+import { ensureSystemProduct } from "../src/console/systemProduct.js";
 import { getPublisherPolicy } from "../src/core/publisher.js";
 
 let db: Db;

@@ -47,9 +47,9 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { SERVICES } from "../src/mount.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 
 const GOLDEN = JSON.parse(
   readFileSync(

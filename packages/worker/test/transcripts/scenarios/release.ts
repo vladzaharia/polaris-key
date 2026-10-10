@@ -27,7 +27,7 @@
 // SHA-256), and checked against the size and SHA-256 its release record pins. The fixture is
 // `deliveryWorld` (distribution.ts): release 1.0.0's payloads are in R2, so no GitHub call is made.
 // An unentitled device (its licence disabled) is refused `401 download_auth_required`, the
-// licensed mode's flat refusal (`core/entitledAccess.ts` `accessRefusal`).
+// licensed mode's flat refusal (`core/licensing/entitledAccess.ts` `accessRefusal`).
 
 import { vi, expect } from "vitest";
 import {

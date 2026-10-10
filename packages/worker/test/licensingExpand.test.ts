@@ -32,10 +32,10 @@ import {
   oidcGrantStatements,
   planProvisionedMove,
   storeGrantDrift,
-} from "../src/core/grants.js";
-import { runLicensingCatchUp } from "../src/core/licensingCatchUp.js";
-import { resolveMergedPayload } from "../src/core/payload.js";
-import { getLicense } from "../src/core/data.js";
+} from "../src/core/licensing/grants.js";
+import { runLicensingCatchUp } from "../src/core/licensing/licensingCatchUp.js";
+import { resolveMergedPayload } from "../src/core/licensing/payload.js";
+import { getLicense } from "../src/core/repo.js";
 import { SERVICES } from "../src/mount.js";
 import {
   activateFromIdentity,
@@ -44,11 +44,11 @@ import {
   type OidcIdentity,
 } from "../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
-import { licenseDeleteFor } from "../src/core/licenseDelete.js";
-import { deleteProduct } from "../src/admin/repo.js";
-import { entitlementEventStore } from "../src/core/entitlementEvents.js";
-import { subjectStores } from "../src/core/subjectHooks.js";
-import type { Env } from "../src/env.js";
+import { licenseDeleteFor } from "../src/core/licensing/licenseDelete.js";
+import { deleteProduct } from "../src/core/console/repo.js";
+import { entitlementEventStore } from "../src/core/licensing/entitlementEvents.js";
+import { subjectStores } from "../src/core/accounts/subjectHooks.js";
+import type { Env } from "../src/platform/env.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIR = join(HERE, "..", "migrations");

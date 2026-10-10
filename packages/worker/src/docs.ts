@@ -5,7 +5,7 @@
  * N7) was to publish that behind the existing admin OIDC gate rather than scrub it.
  *
  * Why the gate is just "a session exists": admin sessions are only ever issued to identities
- * whose groups pass `hasAnyAdminGrant` (`admin/auth.ts` callback) — `admin/session.ts` states
+ * whose groups pass `hasAnyAdminGrant` (`console/auth.ts` callback) — `core/console/session.ts` states
  * the invariant as "a session either carries full platform authority or it was never issued".
  * So `sessionFromRequest` returning non-null IS the platform-admin check; there is no weaker
  * session to 403.
@@ -15,21 +15,21 @@
  * the gate needs no path co-location with `/manage`.
  *
  * Unauthenticated requests 302 into the normal admin sign-in with a `returnTo` back to the
- * page they wanted (validated by `admin/auth.ts`; anything suspicious falls back to
+ * page they wanted (validated by `console/auth.ts`; anything suspicious falls back to
  * `/manage/`). Deep links and bookmarks therefore survive the login round-trip.
  *
- * Serving mirrors `serveAdminAsset` (`admin/index.ts`): extension-less paths resolve to the
+ * Serving mirrors `serveAdminAsset` (`console/index.ts`): extension-less paths resolve to the
  * directory's `index.html` (Starlight builds with `format: "directory"`), unsafe paths are
  * refused before they reach `URL.pathname` (R1-06), HTML is `no-store`, and the
  * content-hashed `/_astro/` + `/pagefind/` assets are cached `private` (browser-cacheable,
  * never shared-cacheable — they sit behind an auth gate).
  */
 
-import type { Env } from "./env.js";
-import { isPlatformAdmin } from "./admin/authz.js";
-import { sessionFromRequest } from "./admin/session.js";
-import { isSafeAssetPath } from "./http.js";
-import { staticHtmlSecurityHeaders } from "./securityHeaders.js";
+import type { Env } from "./platform/env.js";
+import { isPlatformAdmin } from "./console/authz.js";
+import { sessionFromRequest } from "./core/console/session.js";
+import { isSafeAssetPath } from "./platform/http.js";
+import { staticHtmlSecurityHeaders } from "./core/securityHeaders.js";
 import {
   DOCS_SCRIPT_HASHES,
   DOCS_STYLE_ATTR_HASHES,

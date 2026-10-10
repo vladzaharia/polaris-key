@@ -42,7 +42,10 @@ import type {
   SignOutResponse,
   SubjectResponse,
 } from "@polaris-key/protocol/identity";
-import { bearer, randomId, type Db, type Env } from "../../core/platform.js";
+import { bearer } from "../../platform/http.js";
+import { randomId } from "../../platform/crypto.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import type { Product } from "../../core/products.js";
 import {
   ErrorCode,
@@ -65,10 +68,10 @@ import {
   accountForSubject,
   PAIRWISE_SUBJECT_PATTERN,
   resolveSubject,
-} from "../../core/accountSubjects.js";
-import { clearDeviceSubjects } from "../../core/subjectHooks.js";
-import { appendAudit, type LicenseRow } from "../../core/data.js";
-import { portalOriginOf } from "../../core/manageUrl.js";
+} from "../../core/accounts/accountSubjects.js";
+import { clearDeviceSubjects } from "../../core/accounts/subjectHooks.js";
+import { appendAudit, type LicenseRow } from "../../core/repo.js";
+import { portalOriginOf } from "../../core/licensing/manageUrl.js";
 import { readBodyJson } from "../../core/cappedBody.js";
 import { attachLicense, evaluateAttach } from "./accounts/claim.js";
 import { getAccountRow } from "./accounts/repo.js";

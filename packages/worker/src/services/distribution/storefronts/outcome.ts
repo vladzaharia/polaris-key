@@ -14,7 +14,7 @@ import {
   fitReport,
   type FitReportRow,
 } from "../../../core/storefront/projection.js";
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import { readListing } from "../listing/store.js";
 import type { FlowRefusal, RunOutcome } from "./runtime.js";
 

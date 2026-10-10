@@ -10,7 +10,7 @@ const SRC = join(__dirname, "..", "src");
 // address with a /24 and /48 network bucket), and Turnstile (the remote IP is sent to Cloudflare).
 const ALLOWED = new Set([
   join("core", "rateLimit.ts"),
-  join("core", "emailLimits.ts"),
+  join("core", "notify", "emailLimits.ts"),
   join("services", "identity", "card", "turnstile.ts"),
 ]);
 

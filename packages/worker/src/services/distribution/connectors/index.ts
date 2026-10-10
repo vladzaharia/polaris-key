@@ -22,7 +22,8 @@
  * audited) and `core/outletTokens.ts` (cached store tokens). No connector writes a credential.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import type { ProductPublic } from "../../../core/products.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { ServiceContext } from "../../../core/registry.js";

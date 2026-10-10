@@ -87,14 +87,14 @@ tags:
       The registry host, `pkg.plrs.im` (F-02): package feeds for registry clients (npm, PyPI,
       SwiftPM, Maven and Gradle, OCI, Godot). Same Worker, third custom domain; every path here
       carries a `servers` override. No cookies, no CORS, GET and HEAD only, a sandbox CSP on
-      every answer and an explicit type allowlist (`core/registryHost.ts`).
+      every answer and an explicit type allowlist (`core/registry/registryHost.ts`).
   - name: img
     description: >
       The image host, `img.plrs.im` (HA-02): a product's public hosted images, content-addressed
       and immutable, plus stable aliases for the current icon, header and screenshots. Same
       Worker, fourth custom domain; every path here carries a `servers` override. GET and HEAD
       only, no cookies, `Access-Control-Allow-Origin: *`, a sandbox CSP and raster image types
-      only (`core/imgHost.ts`).
+      only (`core/assets/imgHost.ts`).
   - name: portal
     description: >
       The customer portal's library, product and media routes (PX-W1): root paths on the console
@@ -12383,7 +12383,7 @@ paths:
   # Pre-authentication routes of the Polaris Key account, root paths on the console host, never
   # CORS. The card's state lives in host-only `__Host-` cookies (`__Host-pkey_signin` for an email
   # sign-in, `__Host-pkey_gate` for the email gate) naming server-held records in the single-use
-  # store; no product route ever receives or sets them, or the account session (`core/accountCookies.ts`).
+  # store; no product route ever receives or sets them, or the account session (`core/accounts/accountCookies.ts`).
   # Pinned in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS).
   /api/signin/email/start:
     post:
@@ -16855,7 +16855,7 @@ paths:
   #
   # HA-02 (notes/S-20 §6.5). The image host is the same Worker on a fourth custom domain, so its
   # paths carry a path-level `servers` override and tag `img`. The routes are Core's own
-  # (`core/imgHost.ts`), not a service's; `test/routeCoverage.test.ts` pins this section against
+  # (`core/assets/imgHost.ts`), not a service's; `test/routeCoverage.test.ts` pins this section against
   # `matchImgPath` (its `IMG_PATHS` table). Every answer, errors included, carries `nosniff`,
   # `Content-Security-Policy: default-src 'none'; sandbox`, `Access-Control-Allow-Origin: *`,
   # `Cross-Origin-Resource-Policy: cross-origin` and `Referrer-Policy: no-referrer`, and never a
@@ -16869,7 +16869,7 @@ paths:
       tags: [img]
       summary: A hosted image, content-addressed (image host only)
       description: >
-        HA-02. The original bytes of a product's hosted image (`core/hostedAssets.ts`), named by
+        HA-02. The original bytes of a product's hosted image (`core/assets/hostedAssets.ts`), named by
         their SHA-256. Served only when `{product}` holds a `hosted-asset` ref to the object
         through an image slot (`presentation.icon`, `listing.header`, `listing.screenshot:<n>`,
         an A-18 listing image, a notes image) whose sniffed type is PNG, JPEG, WebP, GIF or AVIF.
@@ -17911,7 +17911,7 @@ components:
     AdminError:
       type: object
       description: >
-        The admin API's error body (`admin/lib/respond.ts` `err`): `error` is an object carrying
+        The admin API's error body (`core/console/respond.ts` `err`): `error` is an object carrying
         `code`, `message` and the extras, which are repeated at the top level (`reason`,
         `fields`, `errors`).
       required: [error, code]
@@ -18075,7 +18075,7 @@ components:
     AdminProduct:
       type: object
       description: >
-        One registry row (`admin/lib/shape.ts` `productView`). Only the members the console's Home
+        One registry row (`console/lib/shape.ts` `productView`). Only the members the console's Home
         and Products pages read are listed; the row carries more.
       required:
         [slug, name, services, setup, presentation, createdAt, modifiedAt]
@@ -18139,7 +18139,7 @@ components:
     AdminProductSetting:
       type: object
       description: >
-        One row-backed product setting (LX-06, `admin/handlers/productSettings.ts`): the registry
+        One row-backed product setting (LX-06, `console/handlers/productSettings.ts`): the registry
         entry's description and the value in force for this product.
       required:
         [

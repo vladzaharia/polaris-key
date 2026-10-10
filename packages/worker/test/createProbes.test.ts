@@ -14,7 +14,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
   checkSlug,
@@ -22,15 +22,15 @@ import {
   prepareCreate,
   slugFromName,
 } from "../src/services/release/linkRepo.js";
-import { stmtInsertReleaseConfig } from "../src/core/ingest.js";
-import { getProduct } from "../src/repo.js";
-import { handleAdmin } from "../src/admin/index.js";
-import { resetGithubRepositoryCache } from "../src/admin/handlers/github.js";
+import { stmtInsertReleaseConfig } from "../src/core/repo.js";
+import { getProduct } from "../src/core/repo.js";
+import { handleAdmin } from "../src/console/index.js";
+import { resetGithubRepositoryCache } from "../src/console/handlers/github.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);

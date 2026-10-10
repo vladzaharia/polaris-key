@@ -22,9 +22,9 @@ import {
   seedProduct,
   seedProductSecret,
 } from "../seed.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
-import { open } from "../../src/keyvault.js";
+import { open } from "../../src/platform/keyvault.js";
 import {
   loadProduct,
   openProductSecret,
@@ -36,7 +36,7 @@ import {
 } from "../../src/core/outletCredentials.js";
 import { handleMintToken } from "../../src/services/config/mint.js";
 import { handleActivate } from "../../src/services/license/activation.js";
-import { upsertProductSecret } from "../../src/repo.js";
+import { upsertProductSecret } from "../../src/core/repo.js";
 
 const P8 = (
   generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({

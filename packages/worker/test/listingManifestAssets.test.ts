@@ -11,17 +11,17 @@ import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
 import { seedHosted } from "./hostedFixture.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import {
   screenshotClass,
   syncManifestListingAssets,
 } from "../src/services/distribution/listing/manifestAssets.js";
 import { stmtUpsertAsset } from "../src/services/distribution/listing/store.js";
-import { syncHostedAssets } from "../src/core/hostedAssetPulls.js";
-import type { AssetPullMessage } from "../src/core/hostedAssetPulls.js";
+import { syncHostedAssets } from "../src/core/assets/hostedAssetPulls.js";
+import type { AssetPullMessage } from "../src/core/assets/hostedAssetPulls.js";
 import { handleAssetQueue } from "../src/assetQueue.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
 

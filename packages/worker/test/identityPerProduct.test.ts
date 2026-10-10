@@ -16,16 +16,16 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { dispatchWith } from "../src/dispatch.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { getDevice, setServices } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { getDevice, setServices } from "../src/core/repo.js";
 import {
   DEFAULT_SERVICES,
   serializeServices,
@@ -36,7 +36,7 @@ import {
   PAIRWISE_SUBJECT_PATTERN,
   setDeviceSubject,
   subjectFor,
-} from "../src/core/accountSubjects.js";
+} from "../src/core/accounts/accountSubjects.js";
 import { registerDeviceBinding } from "../src/core/devices.js";
 import {
   IDENTITY_NAVIGATION_ENTRIES,
@@ -44,13 +44,13 @@ import {
   identityDisabledResponse,
   identityEnabled,
   isNavigation,
-} from "../src/core/identityGate.js";
+} from "../src/core/accounts/identityGate.js";
 import {
   applyServiceTransitions,
   MANIFEST_RESYNC_ACTOR,
 } from "../src/core/servicesTransitions.js";
-import { getTokenRecord } from "../src/kv.js";
-import { hashKey } from "../src/crypto.js";
+import { getTokenRecord } from "../src/platform/kv.js";
+import { hashKey } from "../src/platform/crypto.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
 

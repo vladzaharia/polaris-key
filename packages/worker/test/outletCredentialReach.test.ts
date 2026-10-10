@@ -7,11 +7,11 @@
  *
  *   1. **Importers.** Only the Distribution service (`src/services/distribution/**`), the token
  *      helpers (`src/core/outletTokens.ts`) and the Core admin handler
- *      (`src/admin/handlers/outletCredentials.ts`) may import `core/outletCredentials`. Config —
+ *      (`src/console/handlers/outletCredentials.ts`) may import `core/outletCredentials`. Config —
  *      edge-mint's home — may not, nor may `core/products.ts`, home of `openProductSecret`.
  *   2. **The table name.** No file outside the owner, the KEK re-seal sweep
- *      (`src/admin/handlers/products.ts`, `SEALED_TABLES`) and `deleteProduct`
- *      (`src/admin/repo.ts`) names `outlet_credentials` — so no manifest ingest, resync or
+ *      (`src/console/handlers/products.ts`, `SEALED_TABLES`) and `deleteProduct`
+ *      (`src/core/console/repo.ts`) names `outlet_credentials` — so no manifest ingest, resync or
  *      service hook can write it, and nothing can read the sealed column around the audited
  *      accessor.
  *   3. **The AAD kind.** No file outside the vault, the owner, the token helpers and the sweep
@@ -25,7 +25,7 @@
  *   5. **The token helpers.** `core/outletTokens.ts` hands out a cached store bearer token on a
  *      cache hit WITHOUT an audited open, so it is a custody boundary of its own: only the
  *      Distribution service (`src/services/distribution/**`) and Core's device attestation
- *      (`src/core/attestation.ts`, P6-02) may import it.
+ *      (`src/core/trust/attestation.ts`, P6-02) may import it.
  *
  * A-16 adds the platform's TEAM-level store credentials (`core/platformCredentials.ts`, tables
  * `platform_credentials` and `platform_credential_pins`, seal kind `"platform-credential"`) and
@@ -78,19 +78,19 @@ const TOKENS_TARGET = "src/core/outletTokens";
 const IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
 const IMPORT_ALLOW_FILES = [
   "src/core/outletTokens.ts",
-  "src/admin/handlers/outletCredentials.ts",
+  "src/console/handlers/outletCredentials.ts",
   // A-16 (reviewed): validators and pin specs only; neither file writes or opens a product key.
   "src/core/platformCredentials.ts",
-  "src/admin/handlers/platformStoreConnections.ts",
+  "src/console/handlers/platformStoreConnections.ts",
 ];
 const TABLE_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
-  "src/admin/handlers/products.ts",
-  "src/admin/repo.ts",
+  "src/console/handlers/products.ts",
+  "src/core/console/repo.ts",
 ];
 const WRITER_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
-  "src/admin/handlers/outletCredentials.ts",
+  "src/console/handlers/outletCredentials.ts",
 ];
 const TOKENS_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
 /**
@@ -102,12 +102,12 @@ const TOKENS_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
  * attest route is device-authenticated and rate-limited per device BEFORE the token is asked for,
  * so an unauthenticated caller cannot make it open (and audit) the credential.
  */
-const TOKENS_IMPORT_ALLOW_FILES = ["src/core/attestation.ts"];
+const TOKENS_IMPORT_ALLOW_FILES = ["src/core/trust/attestation.ts"];
 const KIND_ALLOW_FILES = [
-  "src/keyvault.ts",
+  "src/platform/keyvault.ts",
   "src/core/outletCredentials.ts",
   "src/core/outletTokens.ts",
-  "src/admin/handlers/products.ts",
+  "src/console/handlers/products.ts",
 ];
 
 // ── A-16: the platform's team-level store credentials ─────────────────────────────────────────
@@ -115,22 +115,22 @@ const PLATFORM_TARGET = "src/core/platformCredentials";
 const PLATFORM_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
 const PLATFORM_IMPORT_ALLOW_FILES = [
   "src/core/outletTokens.ts",
-  "src/admin/handlers/platformStoreConnections.ts",
-  "src/admin/handlers/outletCredentials.ts",
+  "src/console/handlers/platformStoreConnections.ts",
+  "src/console/handlers/outletCredentials.ts",
 ];
 const PLATFORM_TABLE_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
-  "src/admin/handlers/products.ts",
-  "src/admin/repo.ts",
+  "src/console/handlers/products.ts",
+  "src/core/console/repo.ts",
 ];
 const PLATFORM_KIND_ALLOW_FILES = [
-  "src/keyvault.ts",
+  "src/platform/keyvault.ts",
   "src/core/platformCredentials.ts",
-  "src/admin/handlers/products.ts",
+  "src/console/handlers/products.ts",
 ];
 const PLATFORM_WRITER_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
-  "src/admin/handlers/platformStoreConnections.ts",
+  "src/console/handlers/platformStoreConnections.ts",
 ];
 /** Where a TEAM-WIDE purpose (`{ team: actor }`, no product, no pin) may be built: the platform
  *  apps listers only. Everywhere else a platform credential is used for a product and its pin. */
@@ -154,7 +154,7 @@ const PLATFORM_OPENER_ALLOW_FILES = [
 // ── UX-69: the transient path ─────────────────────────────────────────────────────────────────
 const TRANSIENT_MAKER_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
-  "src/admin/handlers/platformStoreConnections.ts",
+  "src/console/handlers/platformStoreConnections.ts",
 ];
 const REVEAL_ALLOW_PREFIXES = ["src/services/distribution/"];
 const REVEAL_ALLOW_FILES = [
@@ -356,12 +356,12 @@ describe("outlet-credential reach", () => {
     expect(
       reachViolations([
         {
-          file: "src/core/attestation.ts",
-          text: 'import { openOutletCredential } from "./outletCredentials.js";\n',
+          file: "src/core/trust/attestation.ts",
+          text: 'import { openOutletCredential } from "../outletCredentials.js";\n',
         },
         {
-          file: "src/core/deviceTrust.ts",
-          text: 'import { googleAccessToken } from "./outletTokens.js";\n',
+          file: "src/core/trust/deviceTrust.ts",
+          text: 'import { googleAccessToken } from "../outletTokens.js";\n',
         },
         {
           file: "src/services/config/mint.ts",
@@ -369,8 +369,8 @@ describe("outlet-credential reach", () => {
         },
       ]),
     ).toEqual([
-      "src/core/attestation.ts imports core/outletCredentials",
-      "src/core/deviceTrust.ts imports core/outletTokens",
+      "src/core/trust/attestation.ts imports core/outletCredentials",
+      "src/core/trust/deviceTrust.ts imports core/outletTokens",
       "src/services/config/mint.ts imports core/outletTokens",
     ]);
   });
@@ -424,7 +424,7 @@ describe("outlet-credential reach", () => {
           text: 'import { googleAccessToken } from "../../core/outletTokens.js";',
         },
         {
-          file: "src/admin/handlers/outletCredentials.ts",
+          file: "src/console/handlers/outletCredentials.ts",
           text: 'import { ascToken } from "../../core/outletTokens.js";',
         },
         {
@@ -434,7 +434,7 @@ describe("outlet-credential reach", () => {
       ]),
     ).toEqual([
       "src/services/config/mint.ts imports core/outletTokens",
-      "src/admin/handlers/outletCredentials.ts imports core/outletTokens",
+      "src/console/handlers/outletCredentials.ts imports core/outletTokens",
     ]);
   });
 
@@ -504,15 +504,15 @@ describe("outlet-credential reach", () => {
     expect(
       reachViolations([
         {
-          file: "src/admin/handlers/outletCredentials.ts",
+          file: "src/console/handlers/outletCredentials.ts",
           text: 'const t = await transientOutletCredential("asc-api-key", raw);',
         },
         {
-          file: "src/admin/handlers/platformStoreConnections.ts",
+          file: "src/console/handlers/platformStoreConnections.ts",
           text: "const key = t.credential.reveal().p8;",
         },
         {
-          file: "src/core/attestation.ts",
+          file: "src/core/trust/attestation.ts",
           text: "await transientGoogleAccessToken(cred, scopes, now);",
         },
         {
@@ -521,9 +521,9 @@ describe("outlet-credential reach", () => {
         },
       ]),
     ).toEqual([
-      "src/admin/handlers/outletCredentials.ts makes a transient credential",
-      "src/admin/handlers/platformStoreConnections.ts reveals a transient credential",
-      "src/core/attestation.ts reveals a transient credential",
+      "src/console/handlers/outletCredentials.ts makes a transient credential",
+      "src/console/handlers/platformStoreConnections.ts reveals a transient credential",
+      "src/core/trust/attestation.ts reveals a transient credential",
     ]);
   });
 });

@@ -16,7 +16,7 @@
  * product-less, no outbound call.
  */
 
-import type { Db } from "./platform.js";
+import type { Db } from "../db/types.js";
 
 /** The registry key, which is also the `platform_settings` row key (no `storedAs` alias). */
 export const STOREFRONT_ENABLED_KEY = "storefront.polarisKey.enabled";

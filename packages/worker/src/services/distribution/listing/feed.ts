@@ -10,7 +10,8 @@
  * One D1 read: the listing row, the default locale and the feed's overrides together.
  */
 
-import { parseJsonColumn, type Db } from "../../../core/platform.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
 import type { RenderListing } from "../feeds/render.js";
 
 /** The feeds that read the model, as override store ids. */

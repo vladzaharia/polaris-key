@@ -4,8 +4,8 @@ import {
   evaluateEmailDns,
   parseTags,
   type EmailDnsRecords,
-} from "../src/core/emailDns.js";
-import { AUTH_EMAIL_DOMAIN } from "../src/core/emailSender.js";
+} from "../src/core/notify/emailDns.js";
+import { AUTH_EMAIL_DOMAIN } from "../src/core/notify/emailSender.js";
 
 // I-18: the SPF/DKIM/DMARC check for the auth sending subdomain, on fixture records (no network).
 // The "good" fixture is what Cloudflare Email Sending publishes on onboarding, as resolved for

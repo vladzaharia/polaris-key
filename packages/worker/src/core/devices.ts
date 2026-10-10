@@ -50,7 +50,7 @@ import {
   normalizeSdkHeader,
 } from "./clientMetadata.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import { parseJsonStringList } from "../platform/json.js";
 import type { Product, ProductPublic } from "./products.js";
@@ -59,7 +59,7 @@ import {
   isDeviceToken,
   mintDeviceToken,
   randomId,
-} from "../crypto.js";
+} from "../platform/crypto.js";
 import {
   appendAudit,
   findFingerprintByHwid,
@@ -81,7 +81,7 @@ import {
   type DeviceRow,
   type FingerprintRow,
   type LicenseRow,
-} from "../repo.js";
+} from "./repo.js";
 import {
   computeHwid,
   matchFingerprint,
@@ -90,14 +90,14 @@ import {
   type ComponentMap,
   type PresentedFingerprint,
   type StoredFingerprint,
-} from "../fingerprint.js";
+} from "./fingerprint.js";
 import {
   deleteTokenRecord,
   getTokenRecord,
   putTokenRecord,
   type TokenRecord,
-} from "../kv.js";
-import { bearer } from "../http.js";
+} from "../platform/kv.js";
+import { bearer } from "../platform/http.js";
 import { errorResponse, ErrorCode, json, methodNotAllowed } from "./errors.js";
 import {
   boundedUpdates,
@@ -106,8 +106,11 @@ import {
   updateScope,
 } from "./updateHealth.js";
 import type { ServiceHooks } from "./hooks.js";
-import { assertIdentityBindable } from "./identityGate.js";
-import { boundedPackInstalls, recordPackInstalls } from "./deltaDemand.js";
+import { assertIdentityBindable } from "./accounts/identityGate.js";
+import {
+  boundedPackInstalls,
+  recordPackInstalls,
+} from "./assets/deltaDemand.js";
 import { BodyTooLargeError, readBodyJson, readBodyText } from "./cappedBody.js";
 
 /**
@@ -764,7 +767,7 @@ export async function registerDeviceBinding(
 
 /**
  * I-05: write the device binding (`devices.subject`). The one statement every setter shares; the
- * public entry points are `setDeviceSubject` and the clearing hook in `core/accountSubjects.ts`.
+ * public entry points are `setDeviceSubject` and the clearing hook in `core/accounts/accountSubjects.ts`.
  */
 export async function writeDeviceSubject(
   db: Db,
@@ -1180,7 +1183,7 @@ export async function handleDevices(
 // plans/P4-01.md §2.11) carries the active pack set's id; `updates` (P6-03) carries update
 // outcome events, validated strictly and counted by `core/updateHealth.ts`; `packInstalls`
 // (P4-17) carries recent pack installs (pair, strategy, size), bounded and counted as lazy-delta
-// demand by `core/deltaDemand.ts` for products that opted in.
+// demand by `core/assets/deltaDemand.ts` for products that opted in.
 // `caps` (P1b-10) is the SDK's capability list: the parity feature ids its `supports()` answers
 // Supported for right now (PARITY §2.2), bounded below.
 export const REPORT_KEYS = [
@@ -1323,7 +1326,7 @@ function boundedReport(input: unknown): Record<string, unknown> {
     else out.caps = caps;
   }
   // `packInstalls` (P4-17): at most 8 validated entries; malformed ones dropped, unknown fields
-  // stripped (`core/deltaDemand.ts` `boundedPackInstalls`).
+  // stripped (`core/assets/deltaDemand.ts` `boundedPackInstalls`).
   if (out.packInstalls !== undefined) {
     const installs = boundedPackInstalls(out.packInstalls);
     if (installs === undefined) delete out.packInstalls;

@@ -19,7 +19,7 @@
  * always (S-09). Turn them on only for a staging product.
  */
 
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import {
   readConnectorSettings,
   writeConnectorSettings,

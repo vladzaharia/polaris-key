@@ -17,8 +17,8 @@ import { makeTestDb } from "./helpers.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
-import { seal } from "../src/keyvault.js";
+import type { Env } from "../src/platform/env.js";
+import { seal } from "../src/platform/keyvault.js";
 import {
   SIGNIN_SECRET_IDS,
   signInSecretContext,
@@ -27,7 +27,7 @@ import {
 import { resetProviderCaches } from "../src/services/identity/providers/discovery.js";
 import { handlePortal } from "../src/services/identity/portal/index.js";
 import { SIGNIN_BIND_COOKIE } from "../src/services/identity/providers/flow.js";
-import { EMAIL_GATE_COOKIE } from "../src/core/accountCookies.js";
+import { EMAIL_GATE_COOKIE } from "../src/core/accounts/accountCookies.js";
 import { SETTINGS } from "../src/mount.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

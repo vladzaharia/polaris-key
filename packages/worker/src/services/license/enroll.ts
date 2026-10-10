@@ -10,7 +10,8 @@
 // Moved verbatim from `src/enroll.ts` under the v3 namespace (§R1). It stays in its own module
 // rather than joining `activation.ts`, which owns the key-redemption hot path.
 
-import type { Env, Db } from "../../core/platform.js";
+import type { Env } from "../../platform/env.js";
+import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import {
   errorResponse,
@@ -18,7 +19,7 @@ import {
   json,
   methodNotAllowed,
 } from "../../core/errors.js";
-import { randomId } from "../../core/platform.js";
+import { randomId } from "../../platform/crypto.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   allowsAnonymousEnroll,
@@ -32,7 +33,7 @@ import {
   insertLicense,
   type LicenseRow,
   type TierRow,
-} from "../../core/data.js";
+} from "../../core/repo.js";
 import {
   authorizationError,
   refusalManageUrl,
@@ -44,8 +45,8 @@ import {
   readFingerprint,
   shapeDevice,
 } from "../../core/devices.js";
-import { authorizeDevice, tierExpiresAt } from "./authz.js";
-import type { WaitUntil } from "../../core/refusals.js";
+import { authorizeDevice, tierExpiresAt } from "../../core/licensing/authz.js";
+import type { WaitUntil } from "../../core/licensing/refusals.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 
 /**

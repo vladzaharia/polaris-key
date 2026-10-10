@@ -6,7 +6,7 @@
  * with its last-method guard (I-05). Each change is audited on the account.
  */
 
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 import { findLink } from "../accounts/repo.js";
 import { portalAudit } from "../portal/repo.js";
 import { APPLE_ISSUER_KEY } from "./apple.js";

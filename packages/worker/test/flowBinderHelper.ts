@@ -1,6 +1,6 @@
-import type { Env } from "../src/env.js";
-import { hashKey } from "../src/crypto.js";
-import { adminFlowKey } from "../src/admin/auth.js";
+import type { Env } from "../src/platform/env.js";
+import { hashKey } from "../src/platform/crypto.js";
+import { adminFlowKey } from "../src/console/auth.js";
 import { flowKey } from "../src/services/identity/oidc.js";
 import { artefacts } from "./singleUseMock.js";
 

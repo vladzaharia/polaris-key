@@ -13,25 +13,28 @@ import {
   seedProduct,
   TEST_KID,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { loadProduct } from "../src/core/products.js";
-import { handleTrustManifest } from "../src/core/trust.js";
+import { handleTrustManifest } from "../src/core/trust/trust.js";
 import { REVOKED_KEY_LISTING_SECONDS } from "@polaris-key/protocol/trust";
-import { insertProductKey } from "../src/repo.js";
-import { seal } from "../src/keyvault.js";
+import { insertProductKey } from "../src/core/repo.js";
+import { seal } from "../src/platform/keyvault.js";
 import { b64urlDecodeStrict, b64urlEncode } from "../src/platform/bytes.js";
 import {
   mintDownloadTicket,
   verifyDownloadTicket,
 } from "../src/core/downloadTicket.js";
-import { signPullToken, verifyPullToken } from "../src/core/registryTokens.js";
-import { handleAdmin } from "../src/admin/index.js";
+import {
+  signPullToken,
+  verifyPullToken,
+} from "../src/core/registry/registryTokens.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 const SLUG = "djdl";
 

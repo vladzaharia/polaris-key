@@ -8,9 +8,9 @@
 
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { inertDocumentPolicy } from "../src/core/bytesHost.js";
-import { landingCsp } from "../src/core/bytesLanding.js";
-import { REGISTRY_CSP } from "../src/core/registryHost.js";
+import { inertDocumentPolicy } from "../src/core/assets/bytesHost.js";
+import { landingCsp } from "../src/core/assets/bytesLanding.js";
+import { REGISTRY_CSP } from "../src/core/registry/registryHost.js";
 
 function hex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)]

@@ -22,13 +22,13 @@ import {
   REGISTRY_CSP,
   REGISTRY_HOST_TYPES,
   dispatchRegistryHost,
-} from "../../src/core/registryHost.js";
-import { blobKey, recordObject } from "../../src/core/blobs.js";
+} from "../../src/core/registry/registryHost.js";
+import { blobKey, recordObject } from "../../src/core/assets/blobs.js";
 import {
   serializeServices,
   type ServicesMap,
 } from "../../src/core/services.js";
-import { setServices } from "../../src/repo.js";
+import { setServices } from "../../src/core/repo.js";
 import { stmtUpsertDeliverable } from "../../src/services/release/model.js";
 import { ingestPackageDescriptor } from "../../src/services/release/packages/ingest.js";
 import {
@@ -54,7 +54,7 @@ import {
 } from "../../src/services/distribution/registry/maven/render.js";
 import { MAVEN_RENDERER } from "../../src/services/distribution/registry/maven/index.js";
 import type { Db } from "../../src/db/types.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { R2Mock, asR2 } from "../r2Mock.js";

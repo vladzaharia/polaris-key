@@ -26,8 +26,8 @@
  * audited, but the key open behind them is (`platform_credential.use`, A-16).
  */
 
-import type { Db } from "./platform.js";
-import type { AdminSession } from "./adminApi.js";
+import type { Db } from "../db/types.js";
+import type { AdminSession } from "./console/session.js";
 import {
   ascPath,
   attr,

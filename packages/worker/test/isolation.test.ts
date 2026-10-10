@@ -11,7 +11,7 @@ import {
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 // Multi-tenant isolation, proven by DRIVING THE WORKER — not by inspecting the harness.

@@ -19,7 +19,7 @@
  *
  * Owns: the endpoint's semantics — which documents ride inside under which enablement, the
  * grace arithmetic, the import window, the refusals, and the audit row. The session, CSRF,
- * rate-limit and platform-admin gates run in `admin/api.ts` before any of this and are
+ * rate-limit and platform-admin gates run in `console/api.ts` before any of this and are
  * `admin.test.ts`'s; the two cases at the bottom assert only that this route is INSIDE them,
  * which is the thing a new route can get wrong by being registered in the wrong place.
  */
@@ -39,18 +39,18 @@ import {
   TEST_KID,
   TEST_PUB,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { listAudit, setServices } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { listAudit, setServices } from "../src/core/repo.js";
 import { transitionLicense } from "../src/core/licensing/lifecycleWrites.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { BUNDLE_IMPORT_WINDOW_SECONDS } from "../src/core/bundles.js";
+import { BUNDLE_IMPORT_WINDOW_SECONDS } from "../src/console/handlers/bundles.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";

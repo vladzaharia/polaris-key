@@ -178,7 +178,7 @@ public actor LicenseClient {
 
     /// The channels this licence grants: the `channels` entitlement's string values, in order,
     /// as granted — or `["stable"]` when the entitlement is absent or not an array. This is the
-    /// Worker's own answer (`entitledChannels` in core/entitlements.ts) and the same list every
+    /// Worker's own answer (`entitledChannels` in core/licensing/entitlements.ts) and the same list every
     /// SDK returns for the same document; before P1b-07 this SDK answered `[]` for an absent
     /// entitlement, which disagreed with the Worker it gates against.
     ///

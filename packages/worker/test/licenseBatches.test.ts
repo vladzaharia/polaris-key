@@ -16,16 +16,16 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { listAudit, type LicenseRow } from "../src/repo.js";
-import { isFloatingLicense } from "../src/core/accountSubjects.js";
-import { licenseHolder } from "../src/core/licenseHolders.js";
+} from "../src/core/console/session.js";
+import { listAudit, type LicenseRow } from "../src/core/repo.js";
+import { isFloatingLicense } from "../src/core/accounts/accountSubjects.js";
+import { licenseHolder } from "../src/core/licensing/licenseHolders.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import {
@@ -33,7 +33,7 @@ import {
   MAX_BATCH_COUNT,
   unusedCountIs,
 } from "../src/services/license/batches.js";
-import { auditStatementFor } from "../src/admin/audit.js";
+import { auditStatementFor } from "../src/core/console/audit.js";
 import type { DbStatement } from "../src/db/types.js";
 
 const SLUG = "tonebox";

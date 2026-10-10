@@ -30,8 +30,8 @@ import { gzipSync } from "node:zlib";
 import { getPlatformProxy } from "wrangler";
 import { cargoMetadata } from "../../../../cli/src/package/cargo.js";
 import { D1Db } from "../../../src/db/d1.js";
-import type { Env } from "../../../src/env.js";
-import { blobKey, recordObject } from "../../../src/core/blobs.js";
+import type { Env } from "../../../src/platform/env.js";
+import { blobKey, recordObject } from "../../../src/core/assets/blobs.js";
 import {
   stmtUpsertDeliverable,
   stmtYankRelease,

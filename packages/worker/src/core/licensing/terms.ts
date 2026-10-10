@@ -56,7 +56,7 @@ export interface LicenseTermsInput {
   /** A `deviceLimit` entitlement merged from a profile, store grant or override. */
   entitlementDeviceLimit?: number | null;
   product: LicenseTermsProduct;
-  /** The tighter (higher) minimum, as `core/entitlements.ts` `tighterMin`. */
+  /** The tighter (higher) minimum, as `core/licensing/entitlements.ts` `tighterMin`. */
   minOf: (a?: string, b?: string) => string | undefined;
   /** The tighter (lower) maximum, as `tighterMax`. */
   maxOf: (a?: string, b?: string) => string | undefined;

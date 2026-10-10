@@ -16,7 +16,8 @@
  * are absent (the owner's rule); A-18f's functions for them are the seams.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import { parsePlatformCredentialHandle } from "../../../core/platformCredentials.js";
 import type { StoreWriteResult } from "../../../core/storefront/ledger.js";
 import type { FetchImpl } from "../connectors/msstore/client.js";

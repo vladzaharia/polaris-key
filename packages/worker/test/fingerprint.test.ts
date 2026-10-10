@@ -12,7 +12,7 @@ import {
   resolveFingerprintMode,
   type ComponentMap,
   type StoredFingerprint,
-} from "../src/fingerprint.js";
+} from "../src/core/fingerprint.js";
 
 /** A syntactically valid component digest, distinguishable by its leading char. */
 function hash(seed: string): string {

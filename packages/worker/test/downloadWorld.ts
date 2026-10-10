@@ -21,12 +21,12 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { enableServices } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import { ingestReleaseDescriptor } from "../src/services/release/descriptor.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { yankRelease } from "../src/services/release/model.js";
-import { blobKey, recordObject } from "../src/core/blobs.js";
+import { blobKey, recordObject } from "../src/core/assets/blobs.js";
 import type { DownloadModel } from "../src/services/distribution/page/model.js";
 
 export const HERE = dirname(fileURLToPath(import.meta.url));

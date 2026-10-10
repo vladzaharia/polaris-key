@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 
 // Abuse protection on the credential-minting hot paths (activate/token/mint) and admin login.
 // Backed by an atomic per-product Durable Object (`../rateLimitDo.ts`) so concurrent bursts
@@ -142,7 +142,7 @@ const FAIL_MODE: Record<string, FailMode> = {
   // the limiter gone, one device could spend the whole product's daily quota.
   attestChallenge: "closed",
   attest: "closed",
-  // I-02: the email send limits (`core/emailLimits.ts`). A refused send is answered exactly
+  // I-02: the email send limits (`core/notify/emailLimits.ts`). A refused send is answered exactly
   // like a sent one by the caller (enumeration safety, I-08), so failing closed costs a real
   // user one resend and an outage can never become an unlimited mail cannon at a victim's
   // inbox or the shared sender quota.
@@ -264,7 +264,7 @@ export const SHARDED_LIMITERS: ReadonlySet<string> = new Set([
 
 /**
  * Buckets sharded in EVERY limiter, whatever the product: the email send and verify limits
- * (`core/emailLimits.ts`). They are keyed by recipient, network or device, so a busy product's
+ * (`core/notify/emailLimits.ts`). They are keyed by recipient, network or device, so a busy product's
  * sign-in mail does not pile onto that product's one limiter object either.
  */
 export const SHARDED_BUCKET_PREFIX = "email";

@@ -23,7 +23,7 @@
 import { createHash } from "node:crypto";
 import { PACKAGE_METADATA_KEYS } from "@polaris-key/manifest";
 import { json } from "../../../../core/errors.js";
-import type { RegistryRoute } from "../../../../core/registryHost.js";
+import type { RegistryRoute } from "../../../../core/registry/registryHost.js";
 import { readCappedBody } from "./body.js";
 import { parseNpmPublishBody } from "./npmBody.js";
 import {
@@ -37,7 +37,8 @@ import {
   type NativeFile,
 } from "./publish.js";
 import { publishRoute, refusalResponse } from "./route.js";
-import { randomId, sha256Hex } from "../../../../core/platform.js";
+import { randomId } from "../../../../platform/crypto.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 
 const OWNER = "([a-z0-9][a-z0-9-]{0,63})";
 const ESCAPED = new RegExp(`^/npm/${OWNER}/(@[^/]+%2[fF][^/]+)$`);

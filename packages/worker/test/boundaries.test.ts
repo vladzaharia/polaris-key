@@ -1,12 +1,30 @@
 /**
- * Service boundary enforcement (design spec §5.1 "Boundary enforcement", D-02).
+ * Layer and service boundary enforcement (design spec §5.1 "Boundary enforcement", D-02; the
+ * layering of P0-17).
  *
- * ── THE RULE ────────────────────────────────────────────────────────────────────────────────
+ * ── THE LAYERS ──────────────────────────────────────────────────────────────────────────────
+ *
+ * `src/` is layered, lowest first. A layer imports only itself and the layers below it:
+ *
+ *   platform/, db/   primitives with no domain knowledge and no package imports (env, crypto,
+ *                    KV, the key vault, HTTP helpers, encodings; the `Db` interface and its
+ *                    adapters)
+ *   core/            the always-on substrate (products, devices, licensing, accounts, trust,
+ *                    assets, the package registry, ops, and `core/console/`, what Core lends
+ *                    the console and every service's admin handlers)
+ *   services/<slug>/ one opt-in service each (the rule below)
+ *   console/         the operator console's handlers; it reads a service only through that
+ *                    service's `public.ts`
+ *   src/*.ts         the entry and composition modules (`index.ts`, `dispatch.ts`, `router.ts`,
+ *                    `mount.ts`, `scheduled.ts`, the Durable Objects, the webhooks)
+ *
+ * Type-only imports count: a layer that names a higher layer's type is still coupled to it.
+ *
+ * ── THE SERVICE RULE ────────────────────────────────────────────────────────────────────────
  *
  * A file under `src/services/<slug>/` may import:
  *
- *   1. `../../core/…`         — the always-on substrate (products, devices, trust, signing,
- *                               discovery, rate limiting, errors, audit, registry).
+ *   1. `../../core/…`, `../../platform/…` and `../../db/…` — the substrate and the primitives.
  *   2. anything within its own service directory (`./x`, `./sub/y`).
  *   3. a package: `@polaris-key/*` shared packages, plus the worker's other declared runtime
  *      dependencies. A bare specifier cannot name a worker-internal module, so it can never be
@@ -22,33 +40,36 @@
  *     core-mediated interface — for Distribution and Update reading one another's state, the
  *     descriptor hooks in `core/hooks.ts` (P2b-01). Distribution is NOT an exception: it reads
  *     Release only through `hooks.releaseCatalog()`.
- *   - reaching back into legacy top-level modules (`../../repo.js`, `../../licensing.js`, …).
- *     That is the seam the whole re-organisation exists to remove, and it is exactly the
- *     import a hurried move would leave behind.
+ *   - reaching up into the console or the composition modules (`../../console/…`,
+ *     `../../router.js`, …). That is the seam the re-organisation exists to remove, and it is
+ *     exactly the import a hurried move would leave behind.
+ *
+ * ── TRANSITIVELY ────────────────────────────────────────────────────────────────────────────
+ *
+ * The direct rules are checked hop by hop, and the runtime import graph is then walked from
+ * every file: no service reaches another (but `update → release`), and nothing under
+ * `platform/`, `db/` or `core/` reaches a service, the console or a composition module. P0-48
+ * seeded that walk report-only (Core's admin seam then pulled Release, Distribution, Identity
+ * and Config into every service); P0-17 made it blocking.
  *
  * ── WHY A TEST AND NOT A LINT RULE ──────────────────────────────────────────────────────────
  *
  * This repo has no ESLint installed — `pnpm lint` is Prettier. Standing up a whole flat-config
- * toolchain (and its dependency tree) to express one `no-restricted-imports` zone would be a
- * larger change than the rule it enforces, and it would not run in the place that already
- * gates every commit. A test runs on the same gate, needs no new dependencies, and can say
- * *why* in its failure message.
+ * toolchain (and its dependency tree) to express these zones would be a larger change than the
+ * rules it enforces, and it would not run in the place that already gates every commit. A test
+ * runs on the same gate, needs no new dependencies, and can say *why* in its failure message.
  *
- * `src/services/` now holds all six: `license/`, `config/`, `release/`, `distribution/`,
- * `update/` and `identity/`. The last case in this file is the one that does the work — it walks every file
- * actually present — so the rule is exhaustive rather than hypothetical.
- *
- * The identity carve (P3) is the one that exercised the rule hardest, because identity genuinely
- * needs licence-shaped answers: its OIDC sign-in mints and claims licences, its browser session
- * authorizes a device and enforces the build gate. None of that became an
- * `identity -> license` import. It became `core/authz.ts` and `core/gate.ts`, with License
- * re-exporting them — the same move `injectAdminPolicy` and the semver algebra made in P2. That
- * is what "everything else crosses via core-mediated interfaces" means in practice, and this
- * suite is what stops the cheaper answer from being taken next time.
+ * The identity carve (P3) is the one that exercised the service rule hardest, because identity
+ * genuinely needs licence-shaped answers: its OIDC sign-in mints and claims licences, its browser
+ * session authorizes a device and enforces the build gate. None of that became an
+ * `identity -> license` import. It became `core/licensing/authz.ts` and `core/licensing/gate.ts`
+ * — the same move `injectAdminPolicy` and the semver algebra made in P2. That is what "everything
+ * else crosses via core-mediated interfaces" means in practice, and this suite is what stops the
+ * cheaper answer from being taken next time.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, posix, relative } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SERVICE_SLUGS } from "../src/core/services.js";
@@ -159,7 +180,12 @@ function violation(site: ImportSite): string | null {
   );
   const segments = resolved.split(/[\\/]/);
 
-  if (segments[0] === "core") return null;
+  if (
+    segments[0] === "core" ||
+    segments[0] === "platform" ||
+    segments[0] === "db"
+  )
+    return null;
 
   if (segments[0] === "services") {
     const target = segments[1];
@@ -169,7 +195,7 @@ function violation(site: ImportSite): string | null {
     return `imports service "${target}" from service "${service}"; the only sanctioned cross-service edge is update -> release (D-05). Route it through core/ instead`;
   }
 
-  return `imports "${specifier}" (resolves to src/${resolved}); a service may only reach core/, its own directory, and shared packages`;
+  return `imports "${specifier}" (resolves to src/${resolved}); a service may only reach core/, platform/, db/, its own directory, and shared packages`;
 }
 
 describe("service boundaries", () => {
@@ -214,7 +240,7 @@ describe("service boundaries", () => {
   it("refuses identity -> license, the edge the carve was most likely to introduce", () => {
     // Identity mints licences, claims enrolled ones and runs the build gate, so `../license/…`
     // is the import a hurried carve leaves behind. It is not a sanctioned edge: those answers
-    // come from `core/authz.ts` and `core/gate.ts`, which License re-exports.
+    // come from `core/licensing/authz.ts` and `core/licensing/gate.ts`.
     for (const specifier of [
       "../license/authz.js",
       "../license/gate.js",
@@ -258,7 +284,7 @@ describe("service boundaries", () => {
         `${service} -> ${specifier} should be refused`,
       ).not.toBeNull();
     }
-    // …and the live tree honours it: distribution imports only core/ and itself. The specifier
+    // …and the live tree honours it: distribution imports only the lower layers and itself. The specifier
     // is resolved against its file, so a sub-directory (`connectors/asc/`, P5-02) reaching its
     // own service's files is not a crossing and one reaching another service still is.
     const crossings = collectImportSites().filter((s) => {
@@ -269,7 +295,9 @@ describe("service boundaries", () => {
       );
       return (
         !target.startsWith("src/services/distribution/") &&
-        !target.startsWith("src/core/")
+        !target.startsWith("src/core/") &&
+        !target.startsWith("src/platform/") &&
+        !target.startsWith("src/db/")
       );
     });
     expect(crossings).toEqual([]);
@@ -303,6 +331,8 @@ describe("service boundaries", () => {
     const allowed = [
       "../../core/services.js",
       "../../core/devices.js",
+      "../../platform/crypto.js",
+      "../../db/types.js",
       "./document.js",
       "./admin/handlers.js",
       "@polaris-key/protocol",
@@ -327,6 +357,10 @@ describe("service boundaries", () => {
       ["../../services/identity/oidc.js", "cross-service"],
       ["../release/store.js", "cross-service"],
       ["../../repo.js", "legacy module"],
+      ["../../console/api.js", "the console"],
+      ["../../console/lib/shape.js", "the console"],
+      ["../../router.js", "a composition module"],
+      ["../../services/release/public.js", "another service's public surface"],
       ["../../licensing.js", "legacy module"],
       ["../../admin/repo.js", "legacy module"],
       ["some-undeclared-package", "undeclared package"],
@@ -421,7 +455,7 @@ describe("the adapter layer (A-18a)", () => {
       for (const s of importsOf(readFileSync(file, "utf8"))) {
         if (!s.startsWith(".")) continue;
         const seg = resolveFrom(file, s);
-        if (seg[0] === "services" || seg[0] === "admin")
+        if (seg[0] === "services" || seg[0] === "console")
           bad.push(`${relative(WORKER_ROOT, file)}: ${s}`);
       }
     expect(bad).toEqual([]);
@@ -454,5 +488,247 @@ describe("the adapter layer (A-18a)", () => {
       }
     }
     expect(bad).toEqual([]);
+  });
+});
+
+// ── The layers (P0-17) ───────────────────────────────────────────────────────────────────────
+
+const SRC = join(WORKER_ROOT, "src");
+const srcRel = (abs: string) => relative(SRC, abs).split("\\").join("/");
+
+/** The layer a `src/`-relative path belongs to. */
+function layerOf(path: string): string {
+  const [head, next] = path.split("/");
+  if (next === undefined) return "root"; // a composition module: `src/<name>.ts`
+  return head === "services" ? "services" : head!;
+}
+
+/** What each layer may import, by target layer (services/ is policed by `violation` above). */
+const LAYER_ALLOWS: Record<string, readonly string[]> = {
+  platform: ["platform", "db"],
+  db: ["platform", "db"],
+  core: ["core", "platform", "db"],
+};
+
+/**
+ * Why `file` (a `src/`-relative path) may not import `specifier`, or `null`. The layers below
+ * `services/` import only themselves and lower layers; the console reads a service only through
+ * its `public.ts`; the composition modules are unrestricted.
+ */
+function layerViolation(file: string, specifier: string): string | null {
+  if (!specifier.startsWith(".")) return null; // packages are the service rule's concern
+  const target = posix.normalize(posix.join(posix.dirname(file), specifier));
+  if (target.startsWith("..")) return `imports "${specifier}", outside src/`;
+  const from = layerOf(file);
+  const to = layerOf(target);
+  const allows = LAYER_ALLOWS[from];
+  if (allows && !allows.includes(to))
+    return `src/${from}/ imports src/${target} ("${specifier}"); ${from}/ may import only ${allows.join("/, ")}/`;
+  if (from === "console" && to === "services") {
+    const [, slug, ...rest] = target.split("/");
+    const file = rest.join("/").replace(/\.js$/, ".ts");
+    if (file !== "public.ts")
+      return `the console imports src/${target} ("${specifier}"); it reads a service only through services/${slug}/public.ts`;
+  }
+  return null;
+}
+
+function layerSites(): Array<{ file: string; specifier: string }> {
+  const out: Array<{ file: string; specifier: string }> = [];
+  for (const dir of ["platform", "db", "core", "console"])
+    for (const abs of walkTs(join(SRC, dir)))
+      for (const specifier of importsOf(readFileSync(abs, "utf8")))
+        out.push({ file: srcRel(abs), specifier });
+  return out;
+}
+
+describe("the layers (P0-17)", () => {
+  it("holds for every file under src/platform, src/db, src/core and src/console", () => {
+    const sites = layerSites();
+    // Not a no-op: every layer is walked.
+    for (const dir of ["platform/", "db/", "core/", "console/"])
+      expect(
+        sites.some((s) => s.file.startsWith(dir)),
+        `${dir} should be walked`,
+      ).toBe(true);
+    const bad = sites
+      .map((s) => {
+        const why = layerViolation(s.file, s.specifier);
+        return why ? `${s.file}: ${why}` : null;
+      })
+      .filter((v): v is string => v !== null);
+    expect(bad).toEqual([]);
+  });
+
+  it("refuses an import into a higher layer (negative control)", () => {
+    const refused: Array<[string, string]> = [
+      ["platform/crypto.ts", "../core/repo.js"],
+      ["platform/env.ts", "../router.js"],
+      ["db/d1.ts", "../core/errors.js"],
+      ["core/devices.ts", "../console/api.js"],
+      ["core/devices.ts", "../services/release/store.js"],
+      ["core/cors.ts", "../router.js"],
+      ["core/licensing/payload.ts", "../../console/lib/shape.js"],
+      ["core/console/audit.ts", "../../services/license/index.js"],
+      ["core/assets/blobGc.ts", "../../mount.js"],
+      ["console/handlers/feeds.ts", "../../services/release/packages/prune.js"],
+      ["console/lib/shape.ts", "../../services/config/mint.js"],
+    ];
+    for (const [file, specifier] of refused)
+      expect(
+        layerViolation(file, specifier),
+        `${file} -> ${specifier} should be refused`,
+      ).not.toBeNull();
+  });
+
+  it("allows the lower layers and a service's public.ts", () => {
+    const allowed: Array<[string, string]> = [
+      ["platform/keyvault.ts", "./bytes.js"],
+      ["platform/kv.ts", "../db/types.js"],
+      ["core/devices.ts", "../platform/crypto.js"],
+      ["core/licensing/payload.ts", "../repo.js"],
+      ["core/console/audit.ts", "../../db/types.js"],
+      ["console/handlers/feeds.ts", "../../services/release/public.js"],
+      ["console/handlers/feeds.ts", "../../core/console/respond.js"],
+      ["console/api.ts", "../mount.js"],
+      ["dispatch.ts", "./services/release/routes.js"],
+    ];
+    for (const [file, specifier] of allowed)
+      expect(
+        layerViolation(file, specifier),
+        `${file} -> ${specifier} should be allowed`,
+      ).toBeNull();
+  });
+});
+
+// ── Transitively (P0-48 seeded it report-only; P0-17 made it blocking) ──────────────────────
+
+/** Runtime module specifiers: `import type` and `export type … from` are erased, so skipped. */
+const RUNTIME_RE =
+  /(?:^|[\s;}])(?:import|export)\s+(type\s+)?(?:[^'"()]*?\sfrom\s+)?["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+
+/** The runtime import graph over `src/`, keyed and valued by `src/`-relative paths. */
+function runtimeGraph(): Map<string, string[]> {
+  const graph = new Map<string, string[]>();
+  for (const abs of walkTs(SRC)) {
+    const edges: string[] = [];
+    for (const m of readFileSync(abs, "utf8").matchAll(RUNTIME_RE)) {
+      if (m[1]) continue;
+      const specifier = m[2] ?? m[3];
+      if (!specifier?.startsWith(".")) continue;
+      const base = resolve(dirname(abs), specifier).replace(/\.js$/, "");
+      const target = [`${base}.ts`, join(base, "index.ts")].find((f) =>
+        existsSync(f),
+      );
+      if (target) edges.push(srcRel(target));
+    }
+    graph.set(srcRel(abs), edges);
+  }
+  return graph;
+}
+
+/** Every file reachable from `root`, each with the path that first reached it. */
+function reachFrom(
+  graph: ReadonlyMap<string, readonly string[]>,
+  root: string,
+): Map<string, string> {
+  const path = new Map<string, string>([[root, root]]);
+  const queue = [root];
+  for (let i = 0; i < queue.length; i++)
+    for (const next of graph.get(queue[i]!) ?? [])
+      if (!path.has(next)) {
+        path.set(next, `${path.get(queue[i]!)} → ${next}`);
+        queue.push(next);
+      }
+  return path;
+}
+
+const serviceOf = (path: string): string | null => {
+  const [head, slug] = path.split("/");
+  return head === "services" ? (slug ?? null) : null;
+};
+
+/**
+ * The transitive violations in `graph`: a service file reaching another service (but the
+ * sanctioned `update → release`), and a platform/, db/ or core/ file reaching a service, the
+ * console or a composition module. One example path each.
+ */
+function reachViolations(
+  graph: ReadonlyMap<string, readonly string[]>,
+): string[] {
+  const out: string[] = [];
+  for (const file of graph.keys()) {
+    const layer = layerOf(file);
+    const own = serviceOf(file);
+    if (!own && !LAYER_ALLOWS[layer]) continue; // console/ and composition modules
+    const seen = new Set<string>(); // one example per root and reached service or layer
+    for (const [reached, path] of reachFrom(graph, file)) {
+      const other = serviceOf(reached);
+      const to = layerOf(reached);
+      let what: string | null = null;
+      if (own)
+        what =
+          other &&
+          other !== own &&
+          !CROSS_SERVICE_EXCEPTIONS[own]?.includes(other)
+            ? `service ${own} reaches service ${other}`
+            : null;
+      else if (other) what = `${layer}/ reaches service ${other}`;
+      else if (!LAYER_ALLOWS[layer]!.includes(to))
+        what = `${layer}/ reaches ${to === "root" ? "a composition module" : `${to}/`}`;
+      if (what && !seen.has(what)) {
+        seen.add(what);
+        out.push(`${what}: ${path}`);
+      }
+    }
+  }
+  return out.sort();
+}
+
+describe("transitive reach (blocking)", () => {
+  const graph = runtimeGraph();
+
+  it("no service reaches another (but update → release), and no lower layer reaches up", () => {
+    expect(graph.size).toBeGreaterThan(100);
+    expect(reachViolations(graph)).toEqual([]);
+  });
+
+  it("sees the sanctioned edge, so the walk is live", () => {
+    const fromUpdate = [...graph.keys()]
+      .filter((f) => serviceOf(f) === "update")
+      .flatMap((f) => [...reachFrom(graph, f).keys()]);
+    expect(fromUpdate.some((f) => serviceOf(f) === "release")).toBe(true);
+  });
+
+  it("catches a reach that is legal hop by hop (negative control)", () => {
+    // The shape P0-48 measured: a service → Core's admin seam → the console's shaping module →
+    // another service. Each hop passed the one-hop rule; the walk must not.
+    const indirect = new Map<string, string[]>([
+      ["services/license/admin/batches.ts", ["core/adminSeam.ts"]],
+      ["core/adminSeam.ts", ["console/lib/shape.ts"]],
+      ["console/lib/shape.ts", ["services/release/store.ts"]],
+      ["services/release/store.ts", []],
+    ]);
+    expect(reachViolations(indirect)).toEqual([
+      "core/ reaches console/: core/adminSeam.ts → console/lib/shape.ts",
+      "core/ reaches service release: core/adminSeam.ts → console/lib/shape.ts → services/release/store.ts",
+      "service license reaches service release: services/license/admin/batches.ts → core/adminSeam.ts → console/lib/shape.ts → services/release/store.ts",
+    ]);
+    // …while the sanctioned edge, and a type-only import, are not reach.
+    expect(
+      reachViolations(
+        new Map([
+          ["services/update/appcast.ts", ["services/release/channels.ts"]],
+          ["services/release/channels.ts", ["core/hooks.ts"]],
+          ["core/hooks.ts", []],
+        ]),
+      ),
+    ).toEqual([]);
+    const kinds = [
+      ...'import type { A } from "./a.js";\nexport type { B } from "./b.js";\nimport { c } from "./c.js";'.matchAll(
+        RUNTIME_RE,
+      ),
+    ].map((m) => (m[1] ? `type ${m[2]}` : (m[2] ?? m[3])));
+    expect(kinds).toEqual(["type ./a.js", "type ./b.js", "./c.js"]);
   });
 });

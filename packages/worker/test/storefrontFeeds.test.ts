@@ -17,7 +17,7 @@
  * 1.1.1 never appears. The rendered documents are compared against golden files under
  * `test/fixtures/feeds/` (`UPDATE_FEED_GOLDENS=1` rewrites them).
  *
- * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the other CI-route suites.
+ * The `pkeyci_` lookup (`lookupCiToken` in `core/publisher.ts`) is mocked, as in the other CI-route suites.
  *
  * HA-07: with an image host and hosted copies, the AltStore sources name the copies
  * (`altstore-stable-hosted.json`); the golden files above have no image host, so they hold the
@@ -43,7 +43,8 @@ const tokens = vi.hoisted(
       }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));
@@ -56,7 +57,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { enableServices } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import { ingestReleaseDescriptor } from "../src/services/release/descriptor.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
@@ -70,7 +71,7 @@ import {
   recordObject,
   recordRef,
   stagingKey,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import { issueUploadTicket } from "../src/core/publisher.js";
 import { feedFileType } from "../src/services/distribution/feeds/fdroid.js";
 import {

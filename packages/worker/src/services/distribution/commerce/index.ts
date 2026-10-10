@@ -11,7 +11,7 @@
  *
  * **Hidden unless set up.** Every route answers Core's not-found (`null`) when the product cannot
  * honour it: License off (no grant could land — the coherence rule "commerce needs License
- * enabled", `core/storeGrants.ts`), or, for a claim or a hook, the store not configured (no
+ * enabled", `core/licensing/storeGrants.ts`), or, for a claim or a hook, the store not configured (no
  * settings block, or no credential pinned to the configured app). A product without commerce
  * looks exactly like one without Distribution.
  *
@@ -32,14 +32,15 @@
 
 import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, json, wireError } from "../../../core/errors.js";
-import { bearer, parseJsonObject } from "../../../core/platform.js";
+import { bearer } from "../../../platform/http.js";
+import { parseJsonObject } from "../../../platform/json.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
-import { trustRefusal } from "../../../core/deviceTrust.js";
-import type { DeviceRow } from "../../../core/data.js";
-import { sha256Hex } from "../../../core/platform.js";
+import { trustRefusal } from "../../../core/trust/deviceTrust.js";
+import type { DeviceRow } from "../../../core/repo.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
-import { isStore, type Store } from "../../../core/storeGrants.js";
+import { isStore, type Store } from "../../../core/licensing/storeGrants.js";
 import {
   eventSeen,
   recordEvent,
@@ -389,7 +390,7 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
   )
     return errorResponse(429, "rate_limited", "too many claims");
   // P6-02 — the operator's device-trust policy. Log-only unless enforced: a basic device the
-  // policy would refuse is audited and its claim proceeds (`core/deviceTrust.ts`).
+  // policy would refuse is audited and its claim proceeds (`core/trust/deviceTrust.ts`).
   const untrusted = await trustRefusal(
     env,
     db,

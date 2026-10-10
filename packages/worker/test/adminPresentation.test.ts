@@ -8,11 +8,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db, DbParam } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/admin/session.js";
-import { cspImageOrigin } from "../src/securityHeaders.js";
+import { handleAdmin } from "../src/console/index.js";
+import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { cspImageOrigin } from "../src/core/securityHeaders.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";

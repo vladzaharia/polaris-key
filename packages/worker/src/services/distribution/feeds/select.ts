@@ -35,7 +35,9 @@
  * Reads Release only through the catalog hook, and Distribution's own tables directly.
  */
 
-import { parseJsonColumn, type Db, type Env } from "../../../core/platform.js";
+import { parseJsonColumn } from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import {
   DEFAULT_TRANSPORT,

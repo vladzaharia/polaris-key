@@ -16,10 +16,10 @@ import {
   buildManageUrl,
   manageForLabel,
   portalOriginOf,
-} from "../src/core/manageUrl.js";
+} from "../src/core/licensing/manageUrl.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleBrowserSessionLicense } from "../src/services/identity/browserSession.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 const LIMIT_ONE = {

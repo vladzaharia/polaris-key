@@ -15,9 +15,9 @@
  * are load-bearing here:
  *
  *   1. authentication is `core.validateDeviceToken` — token → device, no licence involved
- *      (`services/license/auth.ts` documents the split) — and the licence is asked about only
+ *      (`requireLicensedDevice` in `core/licensing/authz.ts` is the licence half) — and the licence is asked about only
  *      when the product runs License (R1, below);
- *   2. the payload merge tolerates a null licence (`core/payload.ts` — the tier, licence
+ *   2. the payload merge tolerates a null licence (`core/licensing/payload.ts` — the tier, licence
  *      profiles and licence overrides simply contribute no layer);
  *   3. NO BUILD GATE. Version/channel enforcement is a licence grant (D-20) and lives on
  *      `/license/document`; a product with no licence service has no window to be outside of,
@@ -27,7 +27,7 @@
  * from the product default when there is not — the offline window is a property of the
  * DOCUMENT, and a config-only install is entitled to one. For a device R1 (below) binds to its
  * licence, the window also ends no later than the licence's expiry when the product clamps grace
- * (LX-07, `core/graceClamp.ts`): its secrets stop with the licence offline as well as online.
+ * (LX-07, `core/licensing/graceClamp.ts`): its secrets stop with the licence offline as well as online.
  *
  * ── R1: A LICENSED PRODUCT'S SECRETS STOP WITH THE LICENCE ─────────────────────────────────
  *
@@ -59,8 +59,9 @@
 
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { sha256Base64Url } from "@polaris-key/jws";
-import type { Env, Db } from "../../core/platform.js";
-import { bearer } from "../../core/platform.js";
+import type { Env } from "../../platform/env.js";
+import type { Db } from "../../db/types.js";
+import { bearer } from "../../platform/http.js";
 import type { Product } from "../../core/products.js";
 import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
 import {
@@ -85,8 +86,8 @@ export {
   type ConfigPayload,
 } from "../../core/documents.js";
 import { buildConfigDoc, resolveConfigPayload } from "../../core/documents.js";
-import { graceClampFor } from "../../core/graceClamp.js";
-import { licenseOfflineDays } from "../../core/entitlements.js";
+import { graceClampFor } from "../../core/licensing/graceClamp.js";
+import { licenseOfflineDays } from "../../core/licensing/entitlements.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 
 /** A strong ETag over the config content, excluding the per-request timestamps. Independent of

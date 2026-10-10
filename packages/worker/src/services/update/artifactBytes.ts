@@ -31,8 +31,11 @@ import type {
   CatalogSourceArtifact,
   ReleaseCatalog,
 } from "../../core/hooks.js";
-import { kvKey, sha256Hex, type Db, type Env } from "../../core/platform.js";
-import { hasRef, parseKey } from "../../core/blobs.js";
+import { pk as kvKey } from "../../platform/kv.js";
+import { sha256Hex } from "../../platform/hash.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
+import { hasRef, parseKey } from "../../core/assets/blobs.js";
 import { verifyEd25519OverBytes } from "../release/sparkle.js";
 
 export interface ArtifactReadContext {

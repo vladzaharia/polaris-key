@@ -47,7 +47,7 @@
 // THE ERROR REGISTRY IS CHECKED AGAINST SOURCE. Loading the sources scans the Worker the way
 // packages/docs/scripts/gen-reference.mjs does — `PolarisErrorCode`, the Worker's `ErrorCode`
 // object, and every `errorResponse(…)` / `wireError(…)` call site and `error:` / `code:` literal
-// under packages/worker/src (the console API in src/admin/ is not an SDK surface and is not
+// under packages/worker/src (the console API in src/console/ is not an SDK surface and is not
 // scanned) — and refuses to generate when errors.json lacks a code the Worker emits, or lists a
 // `wire` code the Worker no longer emits. The boot stage machine's own error codes are checked
 // the same way, from the `error` emits pinned in conformance/corpus/v2/stage-matrix.json (a code
@@ -537,7 +537,7 @@ function walkTs(dir: string): string[] {
   return out;
 }
 
-/** The scan inputs from a checkout. `src/admin/` (the console API) is not an SDK surface. */
+/** The scan inputs from a checkout. `src/console/` (the console API) is not an SDK surface. */
 export function readWorkerSource(root = ROOT): WorkerSource {
   const src = join(root, "packages", "worker", "src");
   const errorsPath = join(src, "core", "errors.ts");
@@ -548,7 +548,7 @@ export function readWorkerSource(root = ROOT): WorkerSource {
     ),
     workerErrors: readFileSync(errorsPath, "utf8"),
     files: walkTs(src)
-      .filter((abs) => !relative(src, abs).startsWith("admin/"))
+      .filter((abs) => !relative(src, abs).startsWith("console/"))
       .map((abs) => ({
         path: relative(root, abs),
         text: readFileSync(abs, "utf8"),

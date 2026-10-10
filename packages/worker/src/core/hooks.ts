@@ -61,11 +61,11 @@
 import type { ManifestListing } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { FeedDelta } from "@polaris-key/protocol/update";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceSlug, ServicesMap } from "./services.js";
-import type { EntitledSelector } from "./entitledAccess.js";
+import type { EntitledSelector } from "./licensing/entitledAccess.js";
 
 // ── releaseCatalog (Release) ────────────────────────────────────────────────────────────────
 
@@ -660,7 +660,7 @@ export interface ReleaseCatalog {
    * one. Null when the release, the variant, its `chunks` or its readable index does not exist.
    *
    * Release implements it (`services/release/packs/catalog.ts`, P4-22). It stays optional in the
-   * type so the collector (`core/blobGc.ts`) still fails closed against a catalog without it: it
+   * type so the collector (`core/assets/blobGc.ts`) still fails closed against a catalog without it: it
    * then KEEPS every ref to a key under `bundles/` and the bundle live-data ratio reads `null`.
    */
   packChunks?(
@@ -1293,7 +1293,7 @@ export type PurchaseSourceKind = "store" | "developer" | "sign_in" | "free";
 
 /** One store purchase's effect on a licence: one flag, from one store. Never the purchase key. */
 export interface StoreGrantRecord {
-  /** `app-store` | `play` | `steam` (`STORES` in `core/storeGrants.ts`). */
+  /** `app-store` | `play` | `steam` (`STORES` in `core/licensing/storeGrants.ts`). */
   store: string;
   /** The licence flag it grants (an `entitlements` key; the consumer decides what is shown). */
   flag: string;

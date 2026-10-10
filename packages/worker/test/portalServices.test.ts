@@ -18,9 +18,9 @@ import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { handlePortalApi, seedRepositoryVisibility } from "./portalHarness.js";
 import {

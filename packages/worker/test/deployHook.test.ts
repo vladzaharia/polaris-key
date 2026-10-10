@@ -34,7 +34,7 @@ import { asR2, R2Mock } from "./r2Mock.js";
 import { NOW, TEST_KEK } from "./seed.js";
 import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { matchRoute } from "../src/router.js";
 import {
@@ -46,13 +46,13 @@ import {
   getPublisherPolicy,
   GITHUB_OIDC_ISSUER,
 } from "../src/core/publisher.js";
-import { getProduct } from "../src/repo.js";
+import { getProduct } from "../src/core/repo.js";
 import { parseServices, serializeServices } from "../src/core/services.js";
 import {
   DEPLOY_HOOK_PATH,
   setDeployHookJwksFetcherForTests,
 } from "../src/platformDeploy.js";
-import { ensureSystemProduct } from "../src/admin/systemProduct.js";
+import { ensureSystemProduct } from "../src/console/systemProduct.js";
 import {
   getManifestSnapshot,
   manifestFilesSha256,

@@ -10,11 +10,8 @@ import type {
   CatalogPackageVersion,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
-import {
-  parseJsonArray,
-  parseJsonObject,
-  type Db,
-} from "../../../core/platform.js";
+import { parseJsonArray, parseJsonObject } from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
 import { parseManualChannels } from "../channels.js";
 import { getReleaseConfig } from "../config.js";
 import {

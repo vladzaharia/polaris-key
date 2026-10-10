@@ -80,18 +80,18 @@
 import { ErrorCode } from "../../../core/errors.js";
 import {
   adminJson,
-  adminNotFound,
-  audit,
+  notFound as adminNotFound,
   err,
   readBody,
-} from "../../../core/adminApi.js";
+} from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
 import { getProductSecretUsage } from "../../../core/products.js";
-import { parseJsonColumn } from "../../../core/platform.js";
+import { parseJsonColumn } from "../../../platform/json.js";
 import {
   allowsAnonymousEnroll,
   allowsOidcDefault,
 } from "../../../core/fingerprint.js";
-import type { IdentityIssuance } from "../../../core/identityTrust.js";
+import type { IdentityIssuance } from "../../../core/accounts/identityTrust.js";
 import {
   approvalMismatch,
   differingRecipeFields,

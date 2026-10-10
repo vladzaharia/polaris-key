@@ -10,7 +10,7 @@
 
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { blobKey, putVerified } from "../src/core/blobs.js";
+import { blobKey, putVerified } from "../src/core/assets/blobs.js";
 import {
   HOSTED_ASSET_REF,
   getHostedAsset,
@@ -18,7 +18,7 @@ import {
   parseVariants,
   rebuildLadder,
   type IngestContext,
-} from "../src/core/hostedAssets.js";
+} from "../src/core/assets/hostedAssets.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
 import { D1Db } from "../src/db/d1.js";
 import { NOW, seedProduct } from "./seed.js";

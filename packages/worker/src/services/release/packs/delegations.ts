@@ -67,13 +67,10 @@ import type { CatalogRevocation } from "../../../core/hooks.js";
 import { errorResponse, ErrorCode, json } from "../../../core/errors.js";
 import { ciActor } from "../../../core/ciScope.js";
 import type { CiTokenRecord } from "../../../core/publisher.js";
-import { appendAudit } from "../../../core/data.js";
-import {
-  randomId,
-  sha256Hex,
-  type Db,
-  type DbStatement,
-} from "../../../core/platform.js";
+import { appendAudit } from "../../../core/repo.js";
+import { randomId } from "../../../platform/crypto.js";
+import { sha256Hex } from "../../../platform/hash.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import { bumpReleaseGeneration } from "../ghCache.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "../config.js";
 import {

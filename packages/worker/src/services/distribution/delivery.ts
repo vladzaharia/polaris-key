@@ -41,7 +41,8 @@
  * Read-only by contract: a hook never writes.
  */
 
-import { parseJsonColumn, type Env } from "../../core/platform.js";
+import { parseJsonColumn } from "../../platform/json.js";
+import type { Env } from "../../platform/env.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import {
   DEFAULT_TRANSPORT,
@@ -50,7 +51,7 @@ import {
   type FeedSelectionQuery,
   type HookContext,
 } from "../../core/hooks.js";
-import { bytesHostname } from "../../core/bytesHost.js";
+import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { accessModeOf, entitlementOf, openAccessOf } from "./access.js";
 import { getRollout, listRollouts, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
@@ -60,7 +61,7 @@ import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
 import { packageFeedOf } from "./registryFeeds.js";
 import { feedAdapter } from "./registry/index.js";
-import { registryOrigin } from "../../core/registryHostname.js";
+import { registryOrigin } from "../../core/registry/registryHostname.js";
 import { resolvePlaySetup } from "./connectors/play/setup.js";
 import { customerDownloads } from "./page/customer.js";
 import { listingLegalUrls } from "./listing/store.js";

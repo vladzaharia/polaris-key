@@ -22,11 +22,11 @@ import {
 } from "../src/services/identity/portal/auth.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { artefacts } from "./singleUseMock.js";
-import { hashKey } from "../src/crypto.js";
+import { hashKey } from "../src/platform/crypto.js";
 import {
   PORTAL_SSO_COOKIE,
   clearAccountRealmCookie,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 
 const idp = vi.hoisted(() => ({ jwks: { keys: [] as unknown[] } }));
 

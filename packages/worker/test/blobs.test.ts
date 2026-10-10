@@ -22,7 +22,7 @@ import {
   storedKeys,
   streamSha256,
   verifyStaged,
-} from "../src/core/blobs.js";
+} from "../src/core/assets/blobs.js";
 import type { Db } from "../src/db/types.js";
 import { makeTestDb } from "./helpers.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";

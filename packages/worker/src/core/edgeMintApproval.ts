@@ -10,7 +10,7 @@
  * is written by the manifest ingest (`services/release/{linkRepo,resync}.ts`), and a service may
  * not import another service (`test/boundaries.test.ts`). The ingest has to run this rule on the
  * state it just wrote (see `invalidateWidenedEdgeMintApprovals`), so the rule is Core's, and
- * `services/config/mint.ts` re-exports it — the same move `core/authz.ts` made for License.
+ * `services/config/mint.ts` re-exports it — the same move `core/licensing/authz.ts` made for License.
  *
  * ── WHAT AN APPROVAL COVERS ────────────────────────────────────────────────────────────────
  *
@@ -26,8 +26,8 @@
  */
 
 import type { Db, DbStatement } from "../db/types.js";
-import { randomId } from "../crypto.js";
-import { getProduct } from "../repo.js";
+import { randomId } from "../platform/crypto.js";
+import { getProduct } from "./repo.js";
 import {
   allowsAnonymousEnroll,
   allowsOidcDefault,
@@ -38,7 +38,7 @@ import {
   readIdentityIssuance,
   sameGroupRoleMap,
   type IdentityIssuance,
-} from "./identityTrust.js";
+} from "./accounts/identityTrust.js";
 import {
   serviceStateOf,
   type RegistrationPolicy,
@@ -143,7 +143,7 @@ export interface MintApprovalBasis {
   publicMint: boolean;
   /** The License service is on, so the mint requires a usable licence. */
   licenseEnabled: boolean;
-  /** The product's current identity issuance inputs (`core/identityTrust.ts`). */
+  /** The product's current identity issuance inputs (`core/accounts/identityTrust.ts`). */
   identity: IdentityIssuance;
 }
 
@@ -272,7 +272,7 @@ const WIDENING_TEXT: Record<MintWidening, string> = {
  * revert the recipe is `pending`, and only an operator's re-approval makes it mint again.
  * The call before the first write catches a widening the previous ingest's sweep missed.
  *
- * The console calls it too, before every write of an approval input (`core/servicesAdmin.ts`
+ * The console calls it too, before every write of an approval input (`console/handlers/servicesAdmin.ts`
  * for `services_json`, `services/license/admin/policy.ts` for `auto_issue_json`; `oidc_config`
  * is written only by the ingest). The guarantee rests on THAT pre-write sweep, not on the
  * ingest's `finally`: a `finally` covers a throw, not a Worker killed after the push's

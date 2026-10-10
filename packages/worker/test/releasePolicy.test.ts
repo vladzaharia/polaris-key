@@ -6,7 +6,7 @@
  * `/release/builds/stable/…` serve the pinned release.
  *
  * The `pkeyci_` credential store is P2-02's; until it lands `lookupCiToken` knows no token, so
- * this suite mocks that one seam (`core/ciTokens.ts`) and nothing else.
+ * this suite mocks that one function (`lookupCiToken` in `core/publisher.ts`) and nothing else.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,14 +18,15 @@ const tokens = vi.hoisted(
       { product: string; subject: string; scopes: readonly string[] }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));
 
 import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   getChannelPolicy,
   setChannelPolicy,

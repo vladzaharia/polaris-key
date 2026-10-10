@@ -26,7 +26,10 @@
 import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
 import { themedLockup } from "../../../core/brandHtml.js";
-import type { DetectedPlatform, PagePlatform } from "./detect.js";
+import type {
+  DetectedPlatform,
+  PagePlatform,
+} from "../../../core/platformDetect.js";
 import {
   pickBuild,
   type DownloadModel,
@@ -35,7 +38,7 @@ import {
   type PagePlatformGroup,
 } from "./model.js";
 import { qrSvg } from "../../../core/qr.js";
-import { escapeHtmlDecimalApostrophe as esc } from "../../../core/platform.js";
+import { escapeHtmlDecimalApostrophe as esc } from "../../../platform/html.js";
 
 /** The deep-link schemes the Worker builds (`model.ts`). Nothing else but `https:` is linked. */
 export const DEEP_LINK_SCHEMES = [

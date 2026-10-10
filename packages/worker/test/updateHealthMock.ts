@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "../src/env.js";
-import { UpdateHealthDO } from "../src/updateHealthDo.js";
+import type { Env } from "../src/platform/env.js";
+import { UpdateHealthDO } from "../src/core/updateHealthDo.js";
 
 // An in-memory DurableObjectNamespace that runs the REAL UpdateHealthDO class (like `rlMock.ts`
 // does for the limiter) against a storage map with the subset of the Durable Object storage API

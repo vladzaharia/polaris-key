@@ -1,5 +1,5 @@
 /**
- * Package feeds (F-11) API bodies, as the worker's `admin/handlers/feeds.ts` answers them: the
+ * Package feeds (F-11) API bodies, as the worker's `console/handlers/feeds.ts` answers them: the
  * platform scope (the system product `polaris-key`, our SDKs) and a product scope (`djdl`). The
  * unit suite, the CSP e2e and the screenshot run share them.
  */

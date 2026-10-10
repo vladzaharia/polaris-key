@@ -20,11 +20,9 @@
  */
 
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
-import {
-  isPublicSpaAssetPath,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { isPublicSpaAssetPath } from "../../../platform/http.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   handleMagicVerify,
   handlePortalCallback,
@@ -36,9 +34,9 @@ import {
   handlePortalDownload,
   type PortalHooksFor,
 } from "./api.js";
-import { portalSecurityHeaders } from "./headers.js";
+import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { handlePortalMedia } from "./media.js";
-import { hostedImageOrigin } from "../../../core/hostedImages.js";
+import { hostedImageOrigin } from "../../../core/assets/hostedImages.js";
 import { serveAvatar } from "../card/avatars.js";
 import { handleProviderSignInPath } from "../providers/flow.js";
 

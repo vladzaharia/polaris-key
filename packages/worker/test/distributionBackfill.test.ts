@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SqliteDb } from "../src/db/sqlite.js";
 import { parseServices, validateServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { NOW, seedProduct } from "./seed.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

@@ -14,7 +14,7 @@ import {
   storefrontDay,
 } from "../src/services/identity/portal/store/analytics.js";
 import { D1Db } from "../src/db/d1.js";
-import type { Env as WorkerEnv } from "../src/env.js";
+import type { Env as WorkerEnv } from "../src/platform/env.js";
 import { NOW } from "./seed.js";
 
 const LANE = { timeout: 60_000 };

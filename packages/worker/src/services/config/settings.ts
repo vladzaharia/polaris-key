@@ -33,7 +33,7 @@ export const CONFIG_SETTINGS_SLICE: ServiceSettingsSlice = {
       manifest: { path: "schema:entries" },
       confirm: { change: "L1" },
       visibleWhen: VISIBLE,
-      readers: ["core/data.ts"],
+      readers: ["core/repo.ts"],
       storage: { kind: "rich", adapter: "product_schema" },
     }),
     setting({

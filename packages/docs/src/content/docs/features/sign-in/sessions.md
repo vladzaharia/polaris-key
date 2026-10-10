@@ -82,7 +82,7 @@ behind the SDK/keyring path native clients use.
 Wire contract v3 §5 names **two** enforcement points for version and channel blocking: this
 route, and `/license/document`. Both read `X-PKey-Version` / `X-PKey-Channel` and must refuse
 exactly the same builds — a browser tab and a native client are held to one gate, computed once
-in `core/gate.ts` and imported by both, not reimplemented per surface. See
+in `core/licensing/gate.ts` and imported by both, not reimplemented per surface. See
 [License](/docs/services/license/) for the document-route half of the same enforcement.
 
 `csrfToken` is returned specifically so a page has it on hand for the one mutating call it is

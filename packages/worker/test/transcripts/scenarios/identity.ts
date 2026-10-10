@@ -34,7 +34,7 @@ import {
   type Scenario,
 } from "../world.js";
 import { signIn } from "../../../src/services/identity/accounts/signIn.js";
-import { attachLicenseAccount } from "../../../src/core/accountSubjects.js";
+import { attachLicenseAccount } from "../../../src/core/accounts/accountSubjects.js";
 import type { ServicesMap } from "../../../src/core/services.js";
 import { seedTier } from "../../seed.js";
 import {

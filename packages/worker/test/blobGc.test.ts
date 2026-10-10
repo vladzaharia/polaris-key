@@ -1,5 +1,5 @@
 /**
- * P4-14 — the blob collector against real published packs (`core/blobGc.ts`): it never deletes a
+ * P4-14 — the blob collector against real published packs (`core/assets/blobGc.ts`): it never deletes a
  * live object — a set member, the previous release, the recent ones, an app release's artifacts —
  * and deletes a dead pack release's objects only past grace and lock; a revoked release is no live
  * reference; and it stays safe across concurrent publishes: a promote racing the sweep's claim is
@@ -25,12 +25,12 @@ import {
   livePackReleases,
   planProductGc,
   GC_INDEX_READS_PER_TICK,
-} from "../src/core/blobGc.js";
+} from "../src/core/assets/blobGc.js";
 import { runBlobGc, type MaintenanceReport } from "../src/scheduled.js";
-import { promote, stagingKey } from "../src/core/blobs.js";
-import { ingest } from "../src/core/hostedAssets.js";
+import { promote, stagingKey } from "../src/core/assets/blobs.js";
+import { ingest } from "../src/core/assets/hostedAssets.js";
 import { asR2 } from "./r2Mock.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { seedProduct } from "./seed.js";
 
 afterEach(() => vi.useRealTimers());

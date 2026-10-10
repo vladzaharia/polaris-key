@@ -12,14 +12,9 @@
  * with no network. The only ambient dependency is WebCrypto, which workerd provides.
  */
 
-import {
-  ghInstallationTokenKey,
-  open,
-  seal,
-  secret,
-  type Env,
-  type SealContext,
-} from "../../core/platform.js";
+import { ghInstallationTokenKey } from "../../platform/kv.js";
+import { open, seal, type SealContext } from "../../platform/keyvault.js";
+import { secret, type Env } from "../../platform/env.js";
 import { signJwtRs256 } from "../../core/jwt.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 

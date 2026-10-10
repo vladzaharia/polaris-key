@@ -23,18 +23,18 @@ import type { Db, DbStatement } from "../src/db/types.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
-import { parseManifest } from "../src/services/release/manifest.js";
+import { parseManifest } from "@polaris-key/manifest";
 import { MAX_REPO_FILE_BYTES } from "../src/services/release/github.js";
 import {
   ensureSystemProduct,
   linkSystemProduct,
-} from "../src/admin/systemProduct.js";
+} from "../src/console/systemProduct.js";
 import {
   getManifestSnapshot,
   manifestFilesSha256,
   manifestSnapshotStatement,
 } from "../src/core/manifestSnapshot.js";
-import { getProduct } from "../src/repo.js";
+import { getProduct } from "../src/core/repo.js";
 
 const SLUG = "snap";
 const SNAPSHOT_INSERT = /INSERT INTO product_manifest_snapshot/;

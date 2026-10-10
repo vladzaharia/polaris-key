@@ -27,8 +27,8 @@
  * `ProductCatalog`), so the admin surface now says so.
  */
 
-import { parseAccountOverridePayload } from "../../../core/accountOverrides.js";
-import { licenseConfigOverridesRetired } from "../../../core/overrideMigration.js";
+import { parseAccountOverridePayload } from "../../../core/accounts/accountOverrides.js";
+import { licenseConfigOverridesRetired } from "../../../core/ops/overrideMigration.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
   catalogDeliveryIssues,
@@ -36,14 +36,21 @@ import {
 } from "../../../core/configDelivery.js";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
-import { getActiveSchema } from "../../../core/data.js";
+import { getActiveSchema } from "../../../core/repo.js";
 import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,
+  reservedNamesResponse,
+} from "../../../core/console/writeChecks.js";
+import {
   adminJson,
-  adminNotFound,
-  audit,
+  notFound as adminNotFound,
   err,
+  readBody,
+  settingRefused,
+} from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
+import {
   getSchemaVersion,
   listLicenses,
   listProfiles,
@@ -51,12 +58,9 @@ import {
   listSchemaVersions,
   listTiers,
   nextSchemaVersion,
-  parsePayload,
-  readBody,
-  reservedNamesResponse,
-  settingRefused,
-} from "../../../core/adminApi.js";
-import { reservedNamesMode } from "../../../core/reservedNames.js";
+} from "../../../core/console/repo.js";
+import { parsePayload } from "../../../core/console/redact.js";
+import { reservedNamesMode } from "../../../core/licensing/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";
 
 /** At most this many keys per usage request (a review of a large removal batches its keys). */

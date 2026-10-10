@@ -21,13 +21,13 @@ import {
   mintIsPublic,
 } from "../src/services/config/mint.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { linkRepo, parseRepoUrl } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { parseManualChannels } from "../src/services/release/channels.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
-import { open } from "../src/keyvault.js";
+import { open } from "../src/platform/keyvault.js";
 import {
   getActiveProductKey,
   getActiveSchema,
@@ -35,14 +35,14 @@ import {
   getProduct,
   setAutoIssuePolicy,
   setServices,
-} from "../src/repo.js";
+} from "../src/core/repo.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 
 // A throwaway 2048-bit RSA private key (PKCS#8 PEM) so the App-JWT signer actually runs; the

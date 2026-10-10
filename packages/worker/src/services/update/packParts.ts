@@ -54,7 +54,7 @@ import {
   compareVersions,
   parseVersion,
 } from "@polaris-key/client-core/version";
-import type { Db } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
 import type {
   CatalogRevocation,
   DeliveryOutlet,

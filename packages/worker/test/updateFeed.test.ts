@@ -8,7 +8,7 @@
  * DMG behind it, because the release surface authenticated at most the DEVICE and never
  * consulted the grant. `licensed` asks "is there a usable licence"; `entitled` asks "is this
  * licence allowed THIS channel, at THIS version" — the same question `GET /<p>/license/document`
- * already asks, over the same rows, through the same merge (`core/entitledAccess.ts`).
+ * already asks, over the same rows, through the same merge (`core/licensing/entitledAccess.ts`).
  *
  * It is opt-in per product and `public` stays the default, so the first assertions here are the
  * ones that matter most: an existing product's feed is unchanged.
@@ -26,7 +26,7 @@ import {
   seedTier,
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Product } from "../src/core/products.js";
 import { loadProduct } from "../src/core/products.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";

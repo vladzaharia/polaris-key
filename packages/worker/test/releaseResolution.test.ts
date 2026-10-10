@@ -12,12 +12,12 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Product } from "../src/core/products.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
-} from "../src/fingerprint.js";
+} from "../src/core/fingerprint.js";
 import { DEFAULT_SERVICES } from "../src/core/services.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
@@ -42,12 +42,12 @@ import {
   listReleaseMetadata,
 } from "../src/services/release/store.js";
 import { handleReleaseSurface } from "./releaseSurface.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 

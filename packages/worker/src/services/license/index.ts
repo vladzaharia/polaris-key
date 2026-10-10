@@ -53,9 +53,9 @@ export const licenseService: ServiceDescriptor = {
   }),
   /** P6-01: a verified store purchase's flag on the buyer's licence (`storeGrants.ts`). */
   applyStoreGrant,
-  /** LX-03: a retired licence's store grants move to the survivor (`core/licenseMerge.ts`). */
+  /** LX-03: a retired licence's store grants move to the survivor (`core/licensing/licenseMerge.ts`). */
   licenseMerge: storeGrantMergeStatements,
-  /** Licence deletion (`core/licenseDelete.ts`): store grants refuse it (and are never deleted);
+  /** Licence deletion (`core/licensing/licenseDelete.ts`): store grants refuse it (and are never deleted);
    *  otherwise the licence row, its keys and its profile stack go (`deletion.ts`). */
   licenseDelete: licenseDeleteContribution,
   /** PX-W6 (G8): where each licence came from — store grants and origin (`provenance.ts`). */
@@ -63,7 +63,12 @@ export const licenseService: ServiceDescriptor = {
 };
 
 // ── Compat surface for the not-yet-carved modules ────────────────────────────────────────────
-export { requireLicensedDevice, type LicensedDeviceToken } from "./auth.js";
-export { authorizeDevice, docProfile, tierExpiresAt } from "./authz.js";
-export type { AuthzError } from "./authz.js";
+export { requireLicensedDevice } from "../../core/licensing/authz.js";
+export type { LicensedDeviceToken } from "../../core/devices.js";
+export {
+  authorizeDevice,
+  docProfile,
+  tierExpiresAt,
+} from "../../core/licensing/authz.js";
+export type { AuthzError } from "../../core/licensing/authz.js";
 export { authorizationError, shapeLicense } from "./activation.js";

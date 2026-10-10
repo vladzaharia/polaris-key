@@ -28,8 +28,10 @@
 //      it (`invalidateWidenedEdgeMintApprovals`, core/edgeMintApproval.ts). No approval, or one
 //      that no longer applies, answers exactly like an unknown recipe (404).
 
-import type { Env, Db } from "../../core/platform.js";
-import { bearer, staticHtmlSecurityHeaders } from "../../core/platform.js";
+import type { Env } from "../../platform/env.js";
+import type { Db } from "../../db/types.js";
+import { bearer } from "../../platform/http.js";
+import { staticHtmlSecurityHeaders } from "../../core/securityHeaders.js";
 import { type Product, openProductSecret } from "../../core/products.js";
 import {
   approvalMismatch,
@@ -41,7 +43,7 @@ import { errorResponse } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws, StrictJsonError } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
-import { trustRefusal } from "../../core/deviceTrust.js";
+import { trustRefusal } from "../../core/trust/deviceTrust.js";
 import { signJwtEs256, signJwtRs256 } from "../../core/jwt.js";
 
 export interface EdgeMintRow {
@@ -179,7 +181,7 @@ export async function handleMintToken(
   // is not worth spending on a two-line check.
   //
   // For a licensed product this is byte-identical to what `validateDeviceToken` used to apply on
-  // this handler's behalf before the split (`services/license/auth.ts`). The scope — "iff the
+  // this handler's behalf before the split (`requireLicensedDevice`, `core/licensing/authz.ts`). The scope — "iff the
   // License service is enabled", the same rule Core's own `/devices` and `/devices/report` use —
   // is what makes edge minting reachable at all for a config-only product (D-08): its devices
   // register, hold real `pkeyt_` tokens, and have no licence to be licensed by. Edge minting is
@@ -228,7 +230,7 @@ export async function handleMintToken(
   }
 
   // P6-02 — the operator's device-trust policy. Log-only unless the policy enforces: a basic
-  // device that the policy would refuse is audited and still mints (`core/deviceTrust.ts`).
+  // device that the policy would refuse is audited and still mints (`core/trust/deviceTrust.ts`).
   const untrusted = await trustRefusal(
     env,
     db,

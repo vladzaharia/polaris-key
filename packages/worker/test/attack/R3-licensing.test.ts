@@ -42,20 +42,20 @@ import {
   checkBuildGate,
   tighterMax,
   tighterMin,
-} from "../../src/core/gate.js";
-import { resolveEffective } from "../../src/core/authz.js";
+} from "../../src/core/licensing/gate.js";
+import { resolveEffective } from "../../src/core/licensing/authz.js";
 import {
   isSealedEnvelope,
   sealManagedValue,
-} from "../../src/admin/lib/managedSecrets.js";
+} from "../../src/core/managedSecrets.js";
 import {
   countActiveDevices,
   findFingerprintByHwid,
   getFingerprint,
   getLicense,
   listDevicesByLicense,
-} from "../../src/repo.js";
-import type { Env } from "../../src/env.js";
+} from "../../src/core/repo.js";
+import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
@@ -423,7 +423,7 @@ describe("R3-01 build gate is attacker-controlled", () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // R12-02 read half — `resolveEffective` must OPEN the envelopes that
-// admin/lib/overrides.ts now seals, or a managed secret silently stops being
+// core/console/overrides.ts now seals, or a managed secret silently stops being
 // delivered. Not an R3 attack: a cross-lane regression guard.
 // ─────────────────────────────────────────────────────────────────────────────
 describe("R12-02 sealed managed secrets survive the read path", () => {
@@ -814,7 +814,7 @@ describe("R3-05 fingerprint is activation-only", () => {
 describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
   it("a stored deviceLimit entitlement overrides the product cap when no tier policy exists", async () => {
     const h = await harness();
-    // No tier → injectAdminPolicy (services/license/entitlements.ts) never overwrites
+    // No tier → injectAdminPolicy (core/licensing/entitlements.ts) never overwrites
     // deviceLimit, so the merged override is authoritative for the seat check.
     const { licenseId, key } = await seedLicenseWithKey(h.db, "djdl", {
       entitlements: {
@@ -866,7 +866,7 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
       await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
     );
 
-    // core/payload.ts validatePayload — config is pruned against the catalog, entitlements are
+    // core/licensing/payload.ts validatePayload — config is pruned against the catalog, entitlements are
     // not.
     expect(cfg.config).not.toHaveProperty("not.in.catalog");
     expect(cfg.config["quality.floor"]).toBeTruthy();
@@ -892,13 +892,13 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
       }),
     );
 
-    // The license document merges the device layer (core/payload.ts) and reports a limit of 1...
+    // The license document merges the device layer (core/licensing/payload.ts) and reports a limit of 1...
     const doc = await docOf(
       await licenseDoc(h, token, { "x-pkey-version": "1.0.0" }),
     );
     expect(doc.entitlements.deviceLimit).toMatchObject({ value: 1 });
 
-    // ...while the seat check resolves with device = null (services/license/authz.ts) and lets
+    // ...while the seat check resolves with device = null (core/licensing/authz.ts) and lets
     // more devices on.
     await activate(h, key, "layer-2");
     expect(await countActiveDevices(h.db, "djdl", licenseId)).toBe(2);

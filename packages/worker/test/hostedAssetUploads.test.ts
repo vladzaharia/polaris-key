@@ -1,5 +1,5 @@
 /**
- * HA-06 — files that are not on the web (`core/hostedAssetUploads.ts`, `admin/handlers/
+ * HA-06 — files that are not on the web (`core/assets/hostedAssetUploads.ts`, `console/handlers/
  * hostedAssets.ts`, `services/distribution/listing/hostedMirror.ts`; notes/S-20 §6.3, owner
  * decision 11).
  *
@@ -26,7 +26,8 @@ const tokens = vi.hoisted(
       }
     >(),
 );
-vi.mock("../src/core/ciTokens.js", () => ({
+vi.mock("../src/core/publisher.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/core/publisher.js")>()),
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));
@@ -38,29 +39,29 @@ import {
   type AssetPullMessage,
   type ManifestAssetSource,
   type RepoSourceResolver,
-} from "../src/core/hostedAssetPulls.js";
+} from "../src/core/assets/hostedAssetPulls.js";
 import {
   getHostedAsset,
   HOSTED_ASSET_REF,
   ingest,
   type IngestContext,
-} from "../src/core/hostedAssets.js";
+} from "../src/core/assets/hostedAssets.js";
 import {
   imageHeaderInfo,
   isListingModelSlot,
   isUploadSlot,
   releaseHostedAsset,
   uploadSlotMaxBytes,
-} from "../src/core/hostedAssetUploads.js";
-import { blobKey, putVerified, stagingKey } from "../src/core/blobs.js";
+} from "../src/core/assets/hostedAssetUploads.js";
+import { blobKey, putVerified, stagingKey } from "../src/core/assets/blobs.js";
 import { issueUploadTicket } from "../src/core/publisher.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
 import type { Db, DbStatement } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
-import { handleAdmin } from "../src/admin/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/admin/session.js";
+import { handleAdmin } from "../src/console/index.js";
+import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";

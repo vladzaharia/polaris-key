@@ -1,15 +1,15 @@
 // A-13: the platform settings store (`src/core/platformSettings.ts`), its admin API
-// (`src/admin/handlers/platformSettings.ts`) and the four settings' readers.
+// (`src/console/handlers/platformSettings.ts`) and the four settings' readers.
 
 import { describe, expect, it } from "vitest";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   invalidatePlatformSettings,
   LAZY_DELTA_MAX_BYTES_CEILING,
@@ -26,9 +26,9 @@ import {
   validateSettingValue,
   type PlatformSettingDef,
 } from "../src/core/platformSettings.js";
-import { lazyDeltasOn } from "../src/core/deltaDemand.js";
-import { effectiveBlobGcSettings } from "../src/core/blobGc.js";
-import { listPlatformAudit } from "../src/repo.js";
+import { lazyDeltasOn } from "../src/core/assets/deltaDemand.js";
+import { effectiveBlobGcSettings } from "../src/core/assets/blobGc.js";
+import { listPlatformAudit } from "../src/core/repo.js";
 import { makeTestDb } from "./helpers.js";
 import { PLATFORM_INVENTORY } from "../src/platformInventory.generated.js";
 import { KvMock } from "./kvMock.js";

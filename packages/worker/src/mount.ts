@@ -2,7 +2,7 @@
  * The composition root's service table — which services this worker mounts.
  *
  * ONE map, built once at module scope, shared by the two dispatchers that need it: the public
- * router (`index.ts`) and the admin API (`admin/api.ts`, for `adminHandle`). It lives in its own
+ * router (`index.ts`) and the admin API (`console/api.ts`, for `adminHandle`). It lives in its own
  * module rather than in `index.ts` because `admin/` is reachable FROM `index.ts`, so importing
  * the table out of there would close a cycle.
  *
@@ -23,11 +23,11 @@ import {
   settingsRegistryFor,
   type SettingsRegistry,
 } from "./core/settings/registry.js";
-import type { ByteRoute } from "./core/bytesHost.js";
+import type { ByteRoute } from "./core/assets/bytesHost.js";
 import type {
   OwnerlessRegistryRoute,
   RegistryRoute,
-} from "./core/registryHost.js";
+} from "./core/registry/registryHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
 import {
@@ -65,7 +65,7 @@ export const SERVICES: ServiceRegistry = new Map([
 export const SETTINGS: SettingsRegistry = settingsRegistryFor(SERVICES);
 
 /**
- * The bytes-host allowlist (P2-01, `core/bytesHost.ts`): the only routes that can answer on
+ * The bytes-host allowlist (P2-01, `core/assets/bytesHost.ts`): the only routes that can answer on
  * `BLOB_ORIGIN` (`dl.plrs.im`). A route not listed here does not exist on that host.
  *
  * It lives here, beside `SERVICES`, for the same reason: byte routes are service code, and Core
@@ -79,7 +79,7 @@ export const SETTINGS: SettingsRegistry = settingsRegistryFor(SERVICES);
  *
  * P2b-06 added the one DOCUMENT route, the public download page (`/<p>/distribution/download`
  * and `/<p>`): HTML, admitted by the dispatcher only under the sandboxed, script-free policy it
- * checks (`core/bytesHost.ts` `inertDocumentPolicy`).
+ * checks (`core/assets/bytesHost.ts` `inertDocumentPolicy`).
  */
 export const BYTE_ROUTES: readonly ByteRoute[] = [
   ...DISTRIBUTION_BYTE_ROUTES,
@@ -87,7 +87,7 @@ export const BYTE_ROUTES: readonly ByteRoute[] = [
 ];
 
 /**
- * The registry-host allowlist (F-02, `core/registryHost.ts`, plans/F-01.md §6.1): the only routes
+ * The registry-host allowlist (F-02, `core/registry/registryHost.ts`, plans/F-01.md §6.1): the only routes
  * that can answer on `PKG_ORIGIN` (`pkg.plrs.im`), beside the host's landing page and OCI's
  * `/v2/` root. A route not listed here does not exist on that host. Each belongs to one
  * ecosystem. The reads and credential routes are Distribution's (`service: "distribution"`;

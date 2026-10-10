@@ -12,19 +12,20 @@
  *
  * `linkRepo.ts` and `resync.ts` keep their own files (they are ~900 lines of manifest ingestion
  * between them, and folding that in would make this module unreviewable). What lives here is the
- * boundary: `admin/handlers/products.ts` and `githubWebhook.ts` import from `sync.js` and know
+ * boundary: `console/handlers/products.ts` and `githubWebhook.ts` import from `sync.js` and know
  * nothing about the layout behind it.
  *
  * ── WHY INGESTION LIVES IN THE SERVICE AT ALL ───────────────────────────────────────────────
  *
  * A repo link IS Release's front door — the coordinates, the installation token, the
  * `.pkey/` read. But what it WRITES is the whole product (catalog, tiers, profiles, OIDC,
- * edge-mint), almost none of which is Release's data. Since a service may only import `core/`,
- * those writers are reached through `core/ingest.ts`, a core-owned COUNTABLE re-export — the
- * same shape `core/data.ts` gives License and Config. See that file's header.
+ * edge-mint), almost none of which is Release's data. Since a service may not import another
+ * service or the console, those writers are Core's (`core/repo.ts`, `core/console/repo.ts`,
+ * `core/settingsClaims.ts`), imported directly.
  */
 
-import type { Db, DbStatement, Env } from "../../core/platform.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import type { FetchImpl } from "./githubApp.js";
 import { listReleasePages, RELEASE_PAGE_CAP, type Release } from "./github.js";
 import {
@@ -59,7 +60,7 @@ export {
   MANIFEST_FILES,
 } from "./manifestFiles.js";
 export type { ManifestFileName } from "./manifestFiles.js";
-export { MAX_MANIFEST_BYTES, parseManifest } from "./manifest.js";
+export { MAX_MANIFEST_BYTES, parseManifest } from "@polaris-key/manifest";
 export type { FetchImpl } from "./githubApp.js";
 export { checkReleaseHealth } from "./health.js";
 export type { ReleaseHealth } from "./health.js";

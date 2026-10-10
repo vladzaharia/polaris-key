@@ -15,10 +15,10 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import type { ParsedManifest } from "@polaris-key/manifest";
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Product, ProductPublic } from "./products.js";
 import type { Db, DbStatement } from "../db/types.js";
-import type { AdminSession } from "../admin/session.js";
+import type { AdminSession } from "./console/session.js";
 import { ErrorCode, json } from "./errors.js";
 import {
   SERVICE_SLUGS,
@@ -30,16 +30,16 @@ import {
   type DescriptorHooks,
   type ServiceHooks,
 } from "./hooks.js";
-import type { QueuedRender } from "./registryQueue.js";
+import type { QueuedRender } from "./registry/registryQueue.js";
 import {
   licenseMergeFor,
   type LicenseMerge,
   type LicenseMergeContributor,
-} from "./licenseMerge.js";
+} from "./licensing/licenseMerge.js";
 import type {
   LicenseDelete,
   LicenseDeleteContributor,
-} from "./licenseDelete.js";
+} from "./licensing/licenseDelete.js";
 import type { ServiceSettingsSlice } from "./settings/types.js";
 import {
   settingsRegistryFor,
@@ -50,7 +50,7 @@ import type {
   StoreGrantContext,
   StoreGrantOutcome,
   StoreGrantWriter,
-} from "./storeGrants.js";
+} from "./licensing/storeGrants.js";
 
 /** Everything a service handler is given. `rest` is the path AFTER `/<product>/<service>`,
  *  already split — the service owns its own sub-routing from there.
@@ -100,14 +100,14 @@ export interface ServiceContext {
    */
   waitUntil?: (promise: Promise<unknown>) => void;
   /**
-   * P6-01: Core's `applyStoreGrant`, bound to this product and request (`core/storeGrants.ts`) —
+   * P6-01: Core's `applyStoreGrant`, bound to this product and request (`core/licensing/storeGrants.ts`) —
    * the one way Distribution's commerce bridge changes a licence's store grants, implemented by
    * License. Built by `dispatchService`; absent on a context built by hand, which the commerce
    * code treats exactly as License off (fail closed).
    */
   storeGrants?: StoreGrantWriter;
   /**
-   * LX-03: Core's licence-merge collector, bound to the registry (`core/licenseMerge.ts`) — every
+   * LX-03: Core's licence-merge collector, bound to the registry (`core/licensing/licenseMerge.ts`) — every
    * service's statements re-keying its rows from a retired licence to the survivor, for the one
    * flow that retires a licence into another (Identity's migrate). Built by `dispatchService`;
    * absent on a context built by hand, where that flow refuses to merge rather than strand what
@@ -115,7 +115,7 @@ export interface ServiceContext {
    */
   licenseMerge?: LicenseMerge;
   /**
-   * Core's licence-deletion collector, bound to the registry (`core/licenseDelete.ts`) — every
+   * Core's licence-deletion collector, bound to the registry (`core/licensing/licenseDelete.ts`) — every
    * owner's blockers and DELETE statements for the console's licence deletion. Built by the
    * admin dispatcher for `adminHandle`; absent elsewhere, where License refuses to delete rather
    * than strand another owner's rows.
@@ -251,7 +251,7 @@ export interface ServiceDescriptor extends DescriptorHooks {
    *
    * The narrow exception to "enabled services only", for a record that must already be right
    * the moment an operator turns the service on — because turning a service on runs no ingest
-   * (`core/servicesAdmin.ts`), and the record governs access the instant the service answers. A
+   * (`console/handlers/servicesAdmin.ts`), and the record governs access the instant the service answers. A
    * missing record would have to read fail-closed (refusing every caller until the next push) and
    * a stale one would govern with the manifest's old answer. Distribution's `app` delivery-access
    * row (`dist_access`) is the one user: the manifest's `release.access.artifacts` reaches it
@@ -284,7 +284,7 @@ export interface ServiceDescriptor extends DescriptorHooks {
   authorizeRegistration?(ctx: RegistrationAuthContext): Promise<boolean>;
   /**
    * Grant or revoke one licence flag on behalf of a verified store purchase (P6-01,
-   * `core/storeGrants.ts`). The second place Core delegates a decision to a service on the
+   * `core/licensing/storeGrants.ts`). The second place Core delegates a decision to a service on the
    * `authorizeRegistration` pattern, and the only cross-service WRITE: Distribution verifies the
    * purchase with the store, License owns the licence, and Core — which may import neither —
    * declares the method and routes the call. Implemented by License alone; Core asks it only
@@ -296,20 +296,20 @@ export interface ServiceDescriptor extends DescriptorHooks {
     change: StoreGrantChange,
   ): Promise<StoreGrantOutcome>;
   /**
-   * LX-03 (`core/licenseMerge.ts`): the statements re-keying this service's rows from a licence
+   * LX-03 (`core/licensing/licenseMerge.ts`): the statements re-keying this service's rows from a licence
    * being retired into another (`change.fromLicenseId` → `change.toLicenseId`). Run by Core for
    * every registered service WHATEVER its enablement, like `manifestIngestAlways`, and only into
    * the merge's own batch: statements only, idempotent, touching this service's own tables.
    */
   licenseMerge?: LicenseMergeContributor;
   /**
-   * `core/licenseDelete.ts`: why this service refuses to delete a licence (reads only) and the
+   * `core/licensing/licenseDelete.ts`: why this service refuses to delete a licence (reads only) and the
    * statements deleting this service's rows keyed by it. Run by Core for every registered service
    * WHATEVER its enablement, like `licenseMerge`, and only into the deletion's own batch.
    */
   licenseDelete?: LicenseDeleteContributor;
   /**
-   * LX-08 (`core/licensingCatchUp.ts`, S-19 §7.14 steps 2–3): the statements re-projecting this
+   * LX-08 (`core/licensing/licensingCatchUp.ts`, S-19 §7.14 steps 2–3): the statements re-projecting this
    * service's rows of the licensing model from the legacy rows they mirror, for one product.
    * Idempotent upserts that change nothing once the rows agree. Run by Core for every registered
    * service WHATEVER its enablement, like `licenseMerge`, after a deploy (the deploy hook) and
@@ -325,7 +325,7 @@ export interface ServiceDescriptor extends DescriptorHooks {
    */
   scheduled?(ctx: ScheduledServiceContext): Promise<Record<string, unknown>>;
   /**
-   * The package-feed render queue's consumer (plans/F-01.md §6.5; `core/registryQueue.ts`).
+   * The package-feed render queue's consumer (plans/F-01.md §6.5; `core/registry/registryQueue.ts`).
    * Release and the feed settings enqueue into the Core-owned `registry_render_queue`; Core reads
    * it (`drainRenderQueue`, after a request that enqueued and on every cron tick) and hands each
    * owner's rows to the one ENABLED service implementing this — Distribution, whose renderers

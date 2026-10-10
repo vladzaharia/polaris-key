@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { PNG } from "pngjs";
 import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
+import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/media.js";
 import {
   FIXTURE_NOW,

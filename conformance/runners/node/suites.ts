@@ -728,7 +728,7 @@ const docOpts = (c: DocCase): VerifyOptions => ({
   checkFreshness: c.checkFreshness,
 });
 
-// ── The build-gate port (mirrors packages/worker/src/core/gate.ts `checkBuildGate`) ─────
+// ── The build-gate port (mirrors packages/worker/src/core/licensing/gate.ts `checkBuildGate`) ─────
 // Rebuilt here from client-core's exported semver/channel primitives and the protocol's
 // channel constants rather than imported: that surface is exactly what every SDK must keep in
 // lockstep, and the fixture is the oracle (the Worker replays the same rows through the real

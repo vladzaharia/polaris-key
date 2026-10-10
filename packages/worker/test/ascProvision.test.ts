@@ -15,12 +15,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AscResource } from "../src/core/asc/client.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { setPlatformPin } from "../src/core/platformCredentials.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { APP_STORE_EVENTS } from "../src/services/distribution/commerce/index.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
 import {

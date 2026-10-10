@@ -128,11 +128,11 @@ uploads. Its write paths, and nothing else:
 
 1. **CI → `staging/` only**, with R2 temporary credentials scoped to that prefix (P2-02). CI can
    never write a locked prefix.
-2. **The Worker's `BLOBS` binding → locked prefixes**, only through `core/blobs.ts`
+2. **The Worker's `BLOBS` binding → locked prefixes**, only through `core/assets/blobs.ts`
    `putVerified`/`promote`. The operator's account token can also write, and is out of the
    Worker's control (as it is for D1).
 
-**Invariants** (code: `packages/worker/src/core/blobs.ts`; tests: `test/blobs.test.ts`,
+**Invariants** (code: `packages/worker/src/core/assets/blobs.ts`; tests: `test/blobs.test.ts`,
 `test-workerd/blobs.test.ts`):
 
 - **Verify before lock.** A wrong object stored under a hash name would be locked in place, so
@@ -191,7 +191,7 @@ published bytes — it is not permanent immutability. `staging/` is unlocked wit
 
 **Boundary: the bytes host.** The same Worker answers on `dl.plrs.im` (`dl-staging`, `dl-dev`),
 named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allowlist
-(`mount.ts` `BYTE_ROUTES`, dispatched by `core/bytesHost.ts`; the build, file and blob routes,
+(`mount.ts` `BYTE_ROUTES`, dispatched by `core/assets/bytesHost.ts`; the build, file and blob routes,
 registered by Release in P2-05 and by Distribution since P2b-04, each matching its canonical
 `/<p>/distribution/…` path and its `/<p>/release/…` alias);
 `/manage`, `/docs`, the portal, discovery and every product route answer not-found there
@@ -280,7 +280,7 @@ and could try to toss `Domain=plrs.im` cookies at it. The compensations, each te
   `allow-scripts` or `allow-same-origin` (so the page still runs no script and has an opaque
   origin) with `default-src 'none'` and nothing but hashed styles;
   the host's landing page is the second and last HTML answer: `GET /` (and `HEAD /`), exactly
-  that path, on the bytes host only (`core/bytesLanding.ts`, BRAND §8). It is a static document:
+  that path, on the bytes host only (`core/assets/bytesLanding.ts`, BRAND §8). It is a static document:
   the Polaris Key Delivery lockup (the Star Cut service mark) as inline SVG, one sentence on what the host is, and links to the
   console and the docs. It is built from the brand package and two validated deployment variables
   (`CONSOLE_ORIGIN`, `BLOB_ORIGIN`), so no request input, product, release, file, token or key
@@ -324,7 +324,7 @@ GitHub Actions OIDC token (exchanged once, at `POST /<p>/release/publish/token`,
 `pkeyci_` token), or an operator-issued static `pkeyci_` token (≤ 90 days, for a CI that is not
 GitHub). Bytes never cross the Worker: with `release:publish` the job gets an upload ticket and R2
 temporary credentials, PUTs to `staging/<product>/<ticketId>/`, and submits a descriptor; the
-Worker verifies and promotes (`core/blobs.ts`) and ingests (`descriptor.ts`). Code:
+Worker verifies and promotes (`core/assets/blobs.ts`) and ingests (`descriptor.ts`). Code:
 `core/publisher.ts`, `services/release/publish.ts`; tests: `test/publisher.test.ts`,
 `test/publishRoutes.test.ts`.
 
@@ -611,7 +611,7 @@ and `/<p>/install.sh` are router aliases that rewrite to the same `{kind:"servic
 canonical route (`test/distributionDelivery.test.ts` compares status, headers and bytes on both
 hosts). Every P2-05 guarantee is preserved in the moved code (`services/distribution/bytes.ts`):
 the `fixedVersion` rule (a file's release is checked by its stored version as one fixed, pinned
-version, now `core/entitledAccess.ts` `fixedReleaseSelector`, shared with Release), the
+version, now `core/licensing/entitledAccess.ts` `fixedReleaseSelector`, shared with Release), the
 non-semver refusal under a bounded window (`accessRefusal`, shared), the per-release check on
 the blob route under `entitled`, `hasRef` tenancy, the `gated/` fail-closed, the opt-in
 redirect for public artifacts of public repositories only, the same rate-limit buckets, and the
@@ -657,7 +657,7 @@ the old column.
   gate, which can only refuse a publish that differs, so no push gates, un-gates or re-flags a
   pack. `update/settings` refuses `artifactsAccess` by name.
 - **Turning Distribution on cannot loosen access.** Enabling a service in the console
-  (`core/servicesAdmin.ts`) runs no ingest, so the `app` row must already be right at that
+  (`console/handlers/servicesAdmin.ts`) runs no ingest, so the `app` row must already be right at that
   moment. Distribution writes it through `manifestIngestAlways` (`core/registry.ts`), the one
   ingest hook Core runs WHATEVER the service's enablement: every link and resync of a
   Release-only product keeps the row equal to its manifest's release block, so a `licensed` manifest is
@@ -672,7 +672,7 @@ the old column.
   whose releases carry the digest; a pack's objects follow the pack (below).
 - **The portal asks the same question of licences.** A portal account has no device token, so
   `licensed` needs a usable linked licence and `entitled` one whose own grant
-  (`core/entitledAccess.ts` `licenseEntitled`, the device decision without the device layer)
+  (`core/licensing/entitledAccess.ts` `licenseEntitled`, the device decision without the device layer)
   holds the release's stored channel (stable when GitHub-derived) and window. This is stricter
   than the byte routes' fixed-release check, which still reads a fixed release as the stable
   channel (the residual in §5 stands for them). With Distribution off the portal offers and
@@ -724,7 +724,7 @@ the object's HOLDERS in this product are:
 - **No byte under `gated/` without the current gate's flag while the pack is gated.** The flag is
   the `entitlement` of the pack's own `dist_access` row, read at each request through
   `delivery.entitlement` — never the manifest's assertion and never a record's `entitlement`,
-  which is a publish-time snapshot — and checked by `core/entitledAccess.ts`
+  which is a publish-time snapshot — and checked by `core/licensing/entitledAccess.ts`
   `entitlementFlagRefusal` against the grant the licence document would carry
   (`resolveMergedPayload` + `injectAdminPolicy`): `401 unauthorized` without a usable licence,
   `403 not_entitled` without the flag. Renaming the flag moves who may download at once. Every
@@ -1036,7 +1036,7 @@ writer can push.
   nothing there).
 - **Inert on the bytes host.** The bytes host admits HTML only from a `document` route and only
   under a policy the dispatcher checks itself before the answer leaves (`inertDocumentPolicy`,
-  `core/bytesHost.ts`): directives limited to `sandbox` (with at most `allow-downloads` and
+  `core/assets/bytesHost.ts`): directives limited to `sandbox` (with at most `allow-downloads` and
   `allow-top-navigation-to-custom-protocols`, so a click can download a file or open an
   `altstore://`/`obtainium://` link; never `allow-scripts`, `allow-same-origin`, `allow-forms`
   or `allow-popups`), `default-src 'none'`, `style-src` hash sources, `img-src` naming only
@@ -1093,7 +1093,7 @@ writer can push.
 **What it is.** `pkg.plrs.im` (with `pkg-staging` and `pkg-dev`) is the same Worker on a third
 custom domain, beside the console (`key.plrs.im`) and the bytes host (`dl.plrs.im`). It serves
 package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot, Cargo and Go
-(plans/F-01.md §6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
+(plans/F-01.md §6). `PKG_ORIGIN` names it, and `core/registry/registryHost.ts` confines it to `mount.ts`
 `REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
 and the framework, F-03 the tables and ingest, F-04 to F-09 one feed each (npm, PyPI, Swift,
 Maven, OCI, Godot), F-11 the console's Feeds pages, F-30 the Cargo feed and F-31 the Go module proxy (tier 3); each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
@@ -1485,7 +1485,7 @@ go.sum's trust-on-first-use, the same as any private GOPROXY. The go command sen
 credentials over https only. The host never serves a `go-import` `<meta>` page.
 
 **The Feeds console and its admin API (F-11).** `/manage/api/platform/feeds/*` and
-`/manage/api/products/<slug>/distribution/feeds/*` (`admin/handlers/feeds.ts`) sit behind the
+`/manage/api/products/<slug>/distribution/feeds/*` (`console/handlers/feeds.ts`) sit behind the
 same session, CSRF, limiter and platform-admin gates as every admin route (403 otherwise; there
 is no per-product admin). Every write is audited with the verified actor: `feed.settings.update`,
 `feed.rebuild` and `package.version.{yank,unyank,deprecate,undeprecate}` under the owning
@@ -1593,7 +1593,7 @@ install-from-feeds page tells adopters to pin stable or beta releases. Tests:
 
 ### Registry credentials (F-20, F-21)
 
-**What it is.** Registry tokens (`pkeyr_`, `core/registryTokens.ts`) are the credential a client of
+**What it is.** Registry tokens (`pkeyr_`, `core/registry/registryTokens.ts`) are the credential a client of
 a non-public package feed presents on `pkg.plrs.im` (plans/F-20.md, approved 2026-10-04). They
 are minted by an operator in the console (owner-bound, or bound to one licence) or by a licensee
 in the portal (licence-bound, read-only, Q3), and judged by the feed access ladder
@@ -1716,7 +1716,7 @@ that property for CI and bounds it everywhere else:
 path the bytes transit the Worker: each request is capped at 32 MiB (`Content-Length` first, then
 counted), held once in memory, hashed and staged by the Worker itself under
 `staging/<owner>/<session>/` with R2 checking the SHA-256 (no client ever gets a staging
-credential), then promoted through `core/blobs.ts` `promote`. npm's `dist.integrity`/`shasum`,
+credential), then promoted through `core/assets/blobs.ts` `promote`. npm's `dist.integrity`/`shasum`,
 twine's `sha256_digest`/`md5_digest` and Maven's checksum sidecars must match the bytes received,
 so a corrupted upload is refused rather than served. The `registryPublish` budget (per token, 600
 a minute, fail closed) bounds storage writes.
@@ -1923,7 +1923,7 @@ accessor.
   (`test/attack/R12-outlet-credentials.test.ts`).
 - **One accessor, reachable from one service.** `core/outletCredentials.ts` is imported only by
   `src/services/distribution/**`, `core/outletTokens.ts` and the Core admin handler
-  (`admin/handlers/outletCredentials.ts`); only the owner, the KEK re-seal sweep and
+  (`console/handlers/outletCredentials.ts`); only the owner, the KEK re-seal sweep and
   `deleteProduct` name the table; only the vault, the owner, the token helpers and the sweep spell
   the AAD kind; and only the owner and the Core admin handler name the writers
   `putOutletCredential` / `pinOutletCredential` / `deleteOutletCredential`
@@ -2389,7 +2389,7 @@ on the same group key until the window ends (by design: the alternative is the I
 **What it is.** Distribution → Storefronts (Add to storefronts), Distribution → Listing and Store
 connections' Set up (`services/distribution/storefronts/`, `packages/admin/src/console/areas/
 storefronts/`). Admin routes under `…/distribution/storefronts`, platform admins only, behind the
-session, CSRF and rate-limit gates of `admin/api.ts`.
+session, CSRF and rate-limit gates of `console/api.ts`.
 
 **Controls**, each pinned by `test/storefrontFlow.test.ts` and `test/storefrontSlots.test.ts`:
 
@@ -2620,7 +2620,7 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   product's flow cannot starve every other product's poller.
 
 **Team provisioning (A-17b).** `core/ascProvisioning.ts` and
-`admin/handlers/platformStoreProvisioning.ts` (`/manage/api/platform/store-connections/app-store/…`,
+`console/handlers/platformStoreProvisioning.ts` (`/manage/api/platform/store-connections/app-store/…`,
 platform admins only) are the New-app wizard's team-scope operations: register a bundle id, enable
 the wizard's capability types (a subset of the gate's), look an app up by bundle id, and read
 certificate and profile expiry. Each write is one ledger step through the gated team client and one
@@ -3213,7 +3213,7 @@ candidate — harmless, because a candidate still needs an admin to confirm it.
 
 **What it changes.** A verified App Store, Google Play or Steam purchase of a product the
 operator mapped (`dist_store_products`) puts a licence flag on the buyer's licence
-(`license_store_grants`), which `core/payload.ts` merges into every licence document after the
+(`license_store_grants`), which `core/licensing/payload.ts` merges into every licence document after the
 licence profiles and before the licence's own overrides. The asset is therefore the same as
 AT-1's: a flag that unlocks paid content. The new inputs are a device's claim
 (`POST /<p>/distribution/commerce/claim`, device token), the binding read
@@ -3222,7 +3222,7 @@ AT-1's: a flag that unlocks paid content. The new inputs are a device's claim
 flag was always a licence entitlement.
 
 **Who writes a grant.** Only License, through Core's `applyStoreGrant` descriptor method
-(`core/storeGrants.ts`, `core/registry.ts`), and only on a purchase Distribution has verified
+(`core/licensing/storeGrants.ts`, `core/registry.ts`), and only on a purchase Distribution has verified
 with its store. Core asks License only while License is enabled for the product
 (`license_disabled` otherwise, before any License code runs), so the coherence rule "commerce
 needs License" is structural; the admin API also refuses commerce settings and product mappings
@@ -3234,7 +3234,7 @@ the flag and the store, never a token.
 **Forged purchases and notifications.**
 
 - **App Store.** A StoreKit JWS, a Notifications V2 `signedPayload` and its
-  `signedTransactionInfo` are verified by `core/x509.ts` + `commerce/apple.ts`: exactly three
+  `signedTransactionInfo` are verified by `core/trust/x509.ts` + `commerce/apple.ts`: exactly three
   certificates, the last byte-identical to Apple Root CA - G3 pinned in code (`appleRoot.ts`,
   fingerprint pinned by a test), each link's issuer name, CA bit, keyUsage and signature checked,
   Apple's intermediate (`1.2.840.113635.100.6.2.1`) and leaf (`1.2.840.113635.100.6.11.1`)
@@ -3506,7 +3506,7 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   `idx_devices_seat` arbitrates a concurrent activation (the merge batch then fails whole and is
   planned again). The offer is no longer the only guard.
 - **What the migrate carries (LX-03).** The same batch moves the starter's store purchases onto
-  the victim's license (`core/licenseMerge.ts`: License re-keys `license_store_grants`,
+  the victim's license (`core/licensing/licenseMerge.ts`: License re-keys `license_store_grants`,
   Distribution re-keys `dist_purchases` and records the starter's purchase binding in
   `dist_purchase_binding_aliases`, so it resolves to the victim's license). This gives the
   starter nothing it did not already have: its devices are already on the victim's license and
@@ -3665,7 +3665,7 @@ capped reader (`core/cappedBody.ts`), which counts bytes while streaming and can
 the cap, chunked or not; a lint forbids a bare `req.text()`, `.json()`, `.arrayBuffer()`,
 `.formData()` or `.blob()` in route code.
 
-**Email limits (S-16 §5.4 item 4), primitives only.** `src/core/emailLimits.ts` holds the send
+**Email limits (S-16 §5.4 item 4), primitives only.** `src/core/notify/emailLimits.ts` holds the send
 and verify limits as named constants: per recipient (peppered hash) 5 an hour and 20 a day, per
 client address 10 an hour, per network (IPv4 /24, IPv6 /48) 30 an hour, per device 3 starts an
 hour; codes of 6
@@ -3683,7 +3683,7 @@ send choke point (below). Today's portal `/api/magic/start` keeps its per-IP lim
 **Shared-sender email delivery (S-16 §5.4 items 4 and 7, §9 risk 9; I-18).** Every sign-in and
 account email leaves one sender address on the dedicated auth sending subdomain
 (`noreply@auth.plrs.im`), so one tenant's abuse, or one bad list, would damage every product's
-delivery. All mail goes through one choke point, `deliverEmail` (`src/core/emailDelivery.ts`):
+delivery. All mail goes through one choke point, `deliverEmail` (`src/core/notify/emailDelivery.ts`):
 
 - _Sender spoofing by a tenant._ The display name is either exactly `Polaris Key` (platform mail)
   or `<App> via Polaris Key` with a fixed suffix. `<App>` is the product's display name only if
@@ -4051,7 +4051,7 @@ Residuals, stated rather than defended (`plans/P4-19.md` §8.2):
 
 P4-14 adds Distribution's outlet readiness (`dist_readiness`), per-outlet pack gates in the signed
 feed (`packSets.outlets.<id>.gates`, a member P4-13 froze), and Core's blob collector
-(`core/blobGc.ts`, run nightly from `scheduled.ts`). It adds no route outside the console's admin
+(`core/assets/blobGc.ts`, run nightly from `scheduled.ts`). It adds no route outside the console's admin
 API and no wire member.
 
 - **The collector deletes only what nothing can serve.** Every read of the blob store is gated on
@@ -4190,7 +4190,7 @@ Residuals, stated rather than defended:
 
 The console's Platform section (notes/S-13) starts with two read surfaces, both behind the
 existing admin dispatcher (session, `PLATFORM_ADMIN_GROUP`, the per-subject limiter, CSRF on
-mutations) and a second platform-admin check in `admin/handlers/platform.ts`:
+mutations) and a second platform-admin check in `console/handlers/platform.ts`:
 `GET /manage/api/platform/{version,deployment}` (A-11) and `/activity` (A-12). There is no new
 privilege level.
 
@@ -4219,7 +4219,7 @@ privilege level.
   log still shows the sweep.
 - **Console sign-ins leave rows.** `admin.signin`, `admin.signin.refused` (not in the platform
   group) and `admin.signin.failed` name the operator by IdP subject only, never an email
-  (`core/securityEvents.ts`: a summary loses addresses and long tokens and is capped at 300
+  (`core/ops/securityEvents.ts`: a summary loses addresses and long tokens and is capped at 300
   characters, and the writer never throws).
 
 ### Platform settings and operations: the runtime settings store (A-13)
@@ -4247,7 +4247,7 @@ is no new privilege level and no outbound call.
   catalog flag that declares a reserved entitlement name (`channels`, `deviceLimit`, `app.*`,
   `license.*`, `pkey.*`) with an incompatible type is accepted with a warning or refused at link,
   resync, the platform deploy hook and the console catalog writes. A hostile session that sets
-  `warn` gains nothing: the policy injection in `core/entitlements.ts` overwrites every system
+  `warn` gains nothing: the policy injection in `core/licensing/entitlements.ts` overwrites every system
   key after the profile and override merge in both modes, so no declaration can change a seat
   limit, a channel set or a version window a device is signed. Setting `error` can only make a
   product's next resync fail (an availability nuisance the operator sees on Platform → Settings
@@ -4390,7 +4390,7 @@ credential and no outbound host.**
   dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
   `metrics()`; Cloudflare offers no read-only queue binding. A source check
   (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
-  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`), the
+  that only `env.ts`, `core/ops/operations.ts` (which hands it straight to `queueStatus`), the
   binding-presence list and the generated platform inventory (ST-02, one data row) name it. The residual risk, accepted: code running in the request Worker
   could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
   It reaches no device and no signed document.
@@ -4402,7 +4402,7 @@ credential and no outbound host.**
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
 `GET …/update/simulate`. Both sit behind the platform-admin session, CSRF and rate-limit gates of
-`admin/api.ts`, write nothing and audit nothing, and add no wire member.
+`console/api.ts`, write nothing and audit nothing, and add no wire member.
 
 - **No product-key use.** To run client-core's own update check (no second implementation),
   `simulate` must hand the device a signed feed. It signs the document `documentFor` composes with
@@ -5245,8 +5245,8 @@ Key never served. The store is a byte mover, not a trust anchor.
 
 A device is `basic` or `attested` (`devices.trust_level`). `attested` means the device passed Apple
 App Attest or Google Play Integrity against a challenge the Worker issued to it
-(`core/attestation.ts`); an operator's trust policy can require it for edge-mint, gated delivery
-and the commerce claim (`core/deviceTrust.ts`). What it buys: under open registration a script can
+(`core/trust/attestation.ts`); an operator's trust policy can require it for edge-mint, gated delivery
+and the commerce claim (`core/trust/deviceTrust.ts`). What it buys: under open registration a script can
 mint any number of device tokens, but it cannot cheaply produce a Secure-Enclave-backed attestation
 for the product's App ID or a Play verdict for its package on a device meeting device integrity.
 What it does not buy: protection of the client itself (report §12), or anything on web, desktop or
@@ -5279,7 +5279,7 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   `basic` (`resetDeviceTrust`); otherwise anyone who learned an attested, licence-free device's id
   could re-register it and inherit `attested`. A token rotation, which presents the old token,
   keeps the level.
-- **Custody.** `core/attestation.ts` is the one Core file on the token-helper allowlist
+- **Custody.** `core/trust/attestation.ts` is the one Core file on the token-helper allowlist
   (`test/outletCredentialReach.test.ts`, `TOKENS_IMPORT_ALLOW_FILES`): it calls `googleAccessToken`
   at the Play Integrity scope for the pinned credential, never `openOutletCredential`, and only after
   the device token and the per-device limit (`attest`, 4/hour, fail-closed) have passed, so an
@@ -5287,7 +5287,7 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   integrity tokens are never stored or logged; `attestation_json` keeps a verdict summary and the App
   Attest public key (for future assertions).
 - **Parser surface.** The attestation object is attacker-supplied CBOR wrapping DER certificates.
-  `core/cbor.ts` (definite lengths, bounded depth, item count and sizes) and the Worker's one X.509 verifier, P6-01's `core/x509.ts` (strict DER, ECDSA P-256/P-384 only, the root pinned by bytes, an unknown critical extension fails the chain beyond the App Attest nonce OID, validity checked at the request time, the leaf's keyUsage allowing digitalSignature when present) are strict subsets, run identically in workerd
+  `core/trust/cbor.ts` (definite lengths, bounded depth, item count and sizes) and the Worker's one X.509 verifier, P6-01's `core/trust/x509.ts` (strict DER, ECDSA P-256/P-384 only, the root pinned by bytes, an unknown critical extension fails the chain beyond the App Attest nonce OID, validity checked at the request time, the leaf's keyUsage allowing digitalSignature when present) are strict subsets, run identically in workerd
   (`test-workerd/attest.test.ts`), and evaluate no code.
 - **Residuals.** (1) KV has no compare-and-delete, so two simultaneous redemptions of one challenge
   can both read it; both still need a genuine attestation bound to the same device and challenge,
@@ -5347,11 +5347,11 @@ group-assignment mistake on that client crossed from customer to operator (notes
 and a stolen cookie lived 8 hours; "stepped up" meant any sign-in in the last 5 minutes; and
 several irreversible or personal-data routes had no step-up at all.
 
-**Control.** `admin/sessionRevocation.ts`: logout writes a per-operator mark (`admin-revoked`,
+**Control.** `core/console/sessionRevocation.ts`: logout writes a per-operator mark (`admin-revoked`,
 single-use store) and `sessionFromRequest` refuses any session minted at or before it, so
 replaying an old cookie is a 401 and sign-out ends every cookie that operator holds. `/docs` and
 `slug-check` re-read the current `PLATFORM_ADMIN_GROUP`. `session.stepUpAt` is set only by a
-`stepUp=1` flow whose ID token carries `auth_time`. `admin/stepUp.ts` lists the gated routes
+`stepUp=1` flow whose ID token carries `auth_time`. `console/stepUp.ts` lists the gated routes
 (user export, user data delete, licence detach, product delete, break-glass key activation, KEK
 re-seal, relink and holder moves); the portal gates `DELETE /api/me`, licence removal and
 registry-token mint on a sign-in from the last 5 minutes (`portal/stepUpGate.ts`). The console's
@@ -5737,7 +5737,7 @@ the claim rules), so A7 and, through the claim, the buyer's account (A6).
 ### Key-entry counting and the signed-out key preview (PX-W9)
 
 On a product with Identity on, every licence counts its key entries in `license_key_entries`
-(`core/keyEntries.ts`; WIRE-CONTRACT-V4 §12.2): a new device activating by key, a browser key
+(`core/licensing/keyEntries.ts`; WIRE-CONTRACT-V4 §12.2): a new device activating by key, a browser key
 session, and a portal claim that adds the key to an account. Past the product's limit (1 to 100,
 default 10), and only while the platform switch `identity.keyEntryRefusals` is on, a new device is
 refused `403 key_entry_limit` with `keyEntries` and a `manageUrl` to the portal's activate page.
@@ -6269,7 +6269,7 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
 ### The console's Users page and the relink tool (I-12)
 
 Every product's console has a Users page (`/manage/api/products/<slug>/users…`,
-`admin/handlers/users.ts`, queries in `services/identity/accounts/productUsers.ts`). It is Core,
+`console/handlers/users.ts`, queries in `services/identity/accounts/productUsers.ts`). It is Core,
 not Identity: the account is platform-level, so a product with Identity off lists its licence
 owners too. S-16 §5.4 items 9 (no recovery desk: the developer's relink is the recovery path)
 and 12 (cross-tenant correlation) are the deltas.
@@ -6346,7 +6346,7 @@ cross-account or cross-tenant leak (S-17 §7.1 risk 1). U-02 adds Core's answer 
 keeps every subject-keyed store honest (plans/U-01.md §6.1).
 
 - **The principal is the binding, never the licence owner.** `resolveSyncPrincipal(device)`
-  (`core/accountSubjects.ts`) reads `devices.subject` from the D1 row `validateDeviceToken`
+  (`core/accounts/accountSubjects.ts`) reads `devices.subject` from the D1 row `validateDeviceToken`
   returned, never the KV mirror or anything the request carried, and checks it once against
   `account_product_subjects`: an alias resolves to the survivor (D21), a deleted or malformed
   subject and a device that is not authorized resolve to no principal (`account_required`). Owning
@@ -6360,8 +6360,8 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   of a License-off product, and equally a keyless device registered on a License-on product whose
   `registration` is `"open"`. Cloud
   Sync code may not call `subjectFor`, `licenseOwnerSubject` or read an account id (a test scans
-  `core/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
-- **One module for the licence question.** `syncAccess` (`core/syncAccess.ts`) answers
+  `core/accounts/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
+- **One module for the licence question.** `syncAccess` (`core/accounts/syncAccess.ts`) answers
   `requireLicense`, `requiresFlag` and the `byTier` tier from the anchor licence alone (`legacy`
   mode) until LX-09 replaces its body with `resolveDeviceEntitlements`; it never reads the owner
   pointer and its answer carries the pairwise subject only. A licence-less or unusable anchor
@@ -6406,10 +6406,10 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
 Operators' managed config for one account on one product (`account_overrides`, keyed by the
 product's pairwise subject) replaces the licence's config and secret overrides on every product
 (notes/S-17 §5.12, owner decisions 3, 4, 20 and 21). Core merges it after the licence overrides
-and before the device's (`core/payload.ts`); a one-time, owner-run migration moves owned licences'
+and before the device's (`core/licensing/payload.ts`); a one-time, owner-run migration moves owned licences'
 values onto it and drops unowned licences'.
 
-- **Whose layer (S-17 T16, intended).** `overrideSubject` (`core/accountOverrides.ts`) is the
+- **Whose layer (S-17 T16, intended).** `overrideSubject` (`core/accounts/accountOverrides.ts`) is the
   Cloud Sync principal (`resolveSyncPrincipal`, with all of its checks: an authorized device, a
   live or aliased subject, never a floating licence, never a licence the bound account removed
   from its library) and, failing that, the licence owner's existing subject. The owner line is
@@ -6478,7 +6478,7 @@ the model's full threat-model rows (T1–T10, P1–P3) once reads switch in LX-0
   change it:
   - the sign-in writer (`services/identity/oidc.ts`). It writes only the keys the product's
     provisioning declares, from a verified claim, as LX-02's rewrite did.
-  - the catch-up move (`core/grants.ts`). It copies only what the column already held.
+  - the catch-up move (`core/licensing/grants.ts`). It copies only what the column already held.
 
   An operator's override of a provisioned key still beats the grant. Revocation on claim loss is
   preserved: a declared key whose claim disappears leaves the grant at the next sign-in. Moving a
@@ -6622,8 +6622,8 @@ The storefront counts impressions, adds and first activations per product, UTC d
 
 Distribution → Storefronts → Polaris Key (`packages/admin/src/console/areas/storefronts/
 PolarisKeyPanel.tsx`) over three admin routes, `GET|POST /manage/api/products/<p>/storefronts/
-polaris-key[/preview|/analytics]` (`admin/handlers/polarisKeyStorefront.ts`), platform admins only,
-behind the session, CSRF and rate-limit gates of `admin/api.ts` (notes/S-21 §6.6). Pinned by
+polaris-key[/preview|/analytics]` (`console/handlers/polarisKeyStorefront.ts`), platform admins only,
+behind the session, CSRF and rate-limit gates of `console/api.ts` (notes/S-21 §6.6). Pinned by
 `test/polarisKeyPanel.test.ts` and the console's `test/polarisKey.test.tsx`.
 
 - **The preview never identifies a person** (S-21 owner decision 11, the S-21 §10.2 Q12
@@ -6792,7 +6792,7 @@ the account holder into approving it ("read me the code", "scan this to claim yo
 ### The outbound fetcher and hosted-asset ingest (HA-01)
 
 `core/safeFetch.ts` is the one guarded fetcher for URLs someone other than Polaris Key wrote, and
-`core/hostedAssets.ts` is the one ingest that turns such a URL, an upload or a CI push into a copy
+`core/assets/hostedAssets.ts` is the one ingest that turns such a URL, an upload or a CI push into a copy
 in the blob store (notes/S-20 §6.3, §6.12). HA-01 adds no route: the pulls are started by later
 packages (HA-05 register and resync, HA-06 uploads, HA-08 release mirroring), and the portal media
 proxy now fetches through the same guard.
@@ -6828,7 +6828,7 @@ proxy now fetches through the same guard.
   names. **Residual:** the issuer's JWKS is still fetched by `jose` itself, outside the guard.
 - **Content risk.** The type comes from the magic number, never from the source's
   `Content-Type`: image slots take PNG, JPEG, WebP, GIF or AVIF; video slots MP4; nothing ever
-  sniffs as SVG or HTML (`core/sniff.ts` has no branch that could answer either). Per-slot caps
+  sniffs as SVG or HTML (`core/assets/sniff.ts` has no branch that could answer either). Per-slot caps
   are code constants (icon 10 MiB, header and screenshots 20 MiB, notes images 5 MiB, video
   512 MiB, release files R2's 4.995 GiB single-put limit), not settings (S-18 §5.6).
 - **Possession, unchanged (§3, "The blob store").** A product earns a `hosted-asset` ref only to
@@ -6868,7 +6868,7 @@ proxy now fetches through the same guard.
 
 **What it is.** `img.plrs.im` (with `img-staging` and `img-dev`) is the same Worker on a fourth
 custom domain, beside the console, the bytes host and the registry host (notes/S-20 §6.5, owner
-decision 2). `IMG_ORIGIN` names it, and `core/imgHost.ts` confines it to five path shapes, all
+decision 2). `IMG_ORIGIN` names it, and `core/assets/imgHost.ts` confines it to five path shapes, all
 Core's own: `/<p>/a/<sha256>` (an original), `/<p>/a/<sha256>/<w>.webp` (a width variant) and the
 stable aliases `/<p>/icon`, `/<p>/header` and `/<p>/screenshots/<n>`, which 302 to the current
 content-addressed URL. Everything else, the console, the portal, `/docs`, discovery, every byte
@@ -6923,7 +6923,7 @@ The operator terms apply, and HA-06's delete-a-copy (below) takes effect at the 
 **What changed.** Home's product cards and the Products table show each product's hosted icon
 (owner request 2026-10-06). The registry read (`GET /manage/api/products`) carries
 `presentation.icon`: image-host URLs of the product's hosted `presentation.icon` copy, else its
-`listing.icon` copy, built by `imgUrl` (`admin/lib/presentation.ts`). The console shell's
+`listing.icon` copy, built by `imgUrl` (`console/lib/presentation.ts`). The console shell's
 `Content-Security-Policy` therefore adds **exactly one** source to `img-src`: the image host's
 origin, `imgOrigin(env)` from `IMG_ORIGIN` (`img.plrs.im`, `img-staging`, `img-dev`).
 
@@ -6956,7 +6956,7 @@ Key's hosted copy on the image host (notes/S-20 §6.8): the portal's library, pr
 Discover; the portal's `/media/<p>/{icon,header}`; the AltStore and SideStore sources; the
 download page's header; and the PR plane's screenshot URLs (Flathub MetaInfo). Manifest art also
 reaches the store-facing listing model as `source = 'manifest'` rows. Which slot a copy serves,
-and whether it counts, is decided in one place (`core/hostedImages.ts`): exactly the image host's
+and whether it counts, is decided in one place (`core/assets/hostedImages.ts`): exactly the image host's
 own tenancy check (an image slot's stored copy, the product's `hosted-asset` ref to it, a type on
 `IMG_HOST_TYPES`), so no surface names a URL the host would refuse.
 
@@ -6997,7 +6997,7 @@ own tenancy check (an image slot's stored copy, the product's `hosted-asset` ref
   (`SERVES_NOTHING_REF_KINDS`), which makes "Listing asset derivation (A-18d)"'s "No route serves
   these objects" true. Pre-release screenshots are no longer fetchable by digest from the app's
   delivery mode; they are public only on the image host, and only once ingested into an image slot.
-- **The kill switch is not a security gate.** `assetHostingEnabled` (`core/assetHosting.ts`, the
+- **The kill switch is not a security gate.** `assetHostingEnabled` (`core/assets/assetHosting.ts`, the
   platform setting `assets.hosting.enabled` since HA-10: the A-13 `ASSET_HOSTING` row, see
   "Platform settings and operations") and a missing `IMG_ORIGIN` restore every surface's
   pre-HA-07 behaviour, the GitHub-only proxy included; the blob-route fix does not follow it. The
@@ -7062,8 +7062,8 @@ member present, then gone).
 
 A link or resync now plans pulls for the manifest's asset refs (`presentation.icon`, the
 listing's `icon`, `header` and `screenshots[]`) and sends them to the queue `pkey-assets-<env>`,
-which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAssetPulls.ts`,
-`src/assetQueue.ts`, `services/release/assetSource.ts`, `admin/handlers/hostedAssets.ts`; tests:
+which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/assets/hostedAssetPulls.ts`,
+`src/assetQueue.ts`, `services/release/assetSource.ts`, `console/handlers/hostedAssets.ts`; tests:
 `test/hostedAssetPulls.test.ts`.
 
 - **Who names a source, unchanged.** Only a manifest author (a push to `.pkey/` on the default
@@ -7128,8 +7128,8 @@ which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAsse
 ### Uploads and CI pushes into hosted-asset slots (HA-06)
 
 Two more ways in to the HA-01 ingest, for files that are not on the web (notes/S-20 §6.3, owner
-decision 11), plus the console's Revert and delete-a-copy. Code: `core/hostedAssetUploads.ts`,
-`admin/handlers/hostedAssets.ts`, `services/distribution/listing/hostedMirror.ts`, the CLI's
+decision 11), plus the console's Revert and delete-a-copy. Code: `core/assets/hostedAssetUploads.ts`,
+`console/handlers/hostedAssets.ts`, `services/distribution/listing/hostedMirror.ts`, the CLI's
 `assets.ts`; tests: `test/hostedAssetUploads.test.ts`.
 
 - **Who can write a slot.** The console (`POST|DELETE /manage/api/products/<slug>/assets/<slot>`):
@@ -7202,7 +7202,7 @@ with none) or at an `external` URL now gets a copy in the blob store and an `r2`
 to its `locations_json`, so `serveArtifact` serves our bytes first and GitHub stays the fallback
 (notes/S-20 §4.3, §6.3, §6.8, owner decision 6). Code: `services/release/mirror.ts`,
 `services/release/mirrorSwitch.ts`, the legacy download in `services/release/source.ts`,
-`src/assetQueue.ts`, `admin/handlers/hostedAssets.ts`, migration `release_mirrors`; tests:
+`src/assetQueue.ts`, `console/handlers/hostedAssets.ts`, migration `release_mirrors`; tests:
 `test/releaseMirror.test.ts`, `test-workerd/releaseMirror.test.ts`.
 
 - **No wire change.** The signed release record carries names, roles, hashes and sizes, never
@@ -7362,7 +7362,7 @@ profiles held, kept as long as the product's other rows (products are never hard
 **What is new.** Three read-only routes back the New Product wizard (FLOWS.md §3.11 W22 to W24):
 `GET /manage/api/github/repositories` (the repositories the GitHub App can read), the create dry
 run `POST /manage/api/products/link-repo?dryRun=1`, and `GET /manage/api/products/slug-check`.
-None of them writes to D1 or KV. Code: `admin/handlers/github.ts`, `services/release/githubApp.ts`
+None of them writes to D1 or KV. Code: `console/handlers/github.ts`, `services/release/githubApp.ts`
 (the listing and probe half), `services/release/linkRepo.ts` (`prepareCreate`, `checkSlug`);
 tests: `test/createProbes.test.ts`.
 
@@ -7396,8 +7396,8 @@ two indexed prefix reads of the registry and sits behind the session-keyed `admi
 
 ### The refusal log (UX-15)
 
-`authorizeDevice` (`core/authz.ts`) now records each refused activation in `license_refusals`
-(`core/refusals.ts`): product, licence, time, reason, a device label and a SHA-256 prefix of the
+`authorizeDevice` (`core/licensing/authz.ts`) now records each refused activation in `license_refusals`
+(`core/licensing/refusals.ts`): product, licence, time, reason, a device label and a SHA-256 prefix of the
 device id. Only the platform-admin session reads it (`GET /manage/api/products/<slug>/refusals`).
 
 - **The label is customer-influenced text.** It is the device's stored name, else the reported
@@ -7423,7 +7423,7 @@ device id. Only the platform-admin session reads it (`GET /manage/api/products/<
 `licenses.device_limit` (0084) lets an operator set one licence's seat limit, seat or
 Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/<id>`
 `deviceLimit`. It beats the tier's limit, any `deviceLimit` entitlement and the product default
-(`core/authz.ts` `licenseDeviceLimitInfo`, `core/entitlements.ts` `injectAdminPolicy`).
+(`core/licensing/authz.ts` `licenseDeviceLimitInfo`, `core/licensing/entitlements.ts` `injectAdminPolicy`).
 
 - **An operator with licence write can raise one licence's seats past its tier.** That is the
   feature (SIGN-IN.md D-53); it needs the same product-admin session as a tier change or an
@@ -7505,7 +7505,7 @@ not_removable` (`reason` `no_active_key` or `key_claim_off`) before the rate lim
 ### Make floating and Reassign: the relink tool's holder moves (LX-30)
 
 `POST /manage/api/products/<slug>/users/licenses/<id>/make-floating` and `…/reassign`
-(`admin/handlers/users.ts`, `services/identity/accounts/productUsers.ts`; notes/S-24 §5.5, D20)
+(`console/handlers/users.ts`, `services/identity/accounts/productUsers.ts`; notes/S-24 §5.5, D20)
 change who holds a licence: Make floating takes it out of its account and clears its own name and
 email; Reassign gives it to another email address, which it then waits for or joins (D3). They are
 the I-12 relink tool keyed by the licence, so they also reach a licence waiting for its email.
@@ -7665,7 +7665,7 @@ closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed de
 
 A platform admin can delete a licence outright (`DELETE /manage/api/products/<slug>/license/licenses/<id>`,
 bulk `POST …/license/deletions`, the cleanup list `GET …/license/deletions/candidates`;
-`services/license/admin/deletion.ts`, `core/licenseDelete.ts`). Before this a licence could only
+`services/license/admin/deletion.ts`, `core/licensing/licenseDelete.ts`). Before this a licence could only
 be disabled.
 
 - **Only behind the platform-admin session, CSRF and a typed confirmation.** The routes sit on
@@ -7758,7 +7758,7 @@ and the console's `e2e/portalAvatar.e2e.test.ts`.
   never fetched (tests: an off-list host is refused without being dialled, and an allowlisted host
   redirecting elsewhere is refused at the hop).
 - **Image-parser bugs and active content.** Bytes a provider or a person supplied are never
-  parsed by the Worker beyond a magic-number sniff (`core/sniff.ts`, which cannot answer SVG or
+  parsed by the Worker beyond a magic-number sniff (`core/assets/sniff.ts`, which cannot answer SVG or
   HTML): provider pictures must be PNG, JPEG, WebP or GIF, uploads PNG or JPEG. They are decoded
   and re-encoded by the Cloudflare Images binding, outside the isolate, into WebP and PNG at 256
   and 96 px (`fit: cover`, one frame), and only the encoder's output is stored; the original is
@@ -7807,7 +7807,7 @@ and the console's `e2e/portalAvatar.e2e.test.ts`.
 
 ### The platform KEK keyring and the legacy open-only key (R2-09)
 
-A1 is a keyring, not a single key (`src/keyvault.ts`). `PLATFORM_KEK_KEYS` maps kids to 32-byte
+A1 is a keyring, not a single key (`src/platform/keyvault.ts`). `PLATFORM_KEK_KEYS` maps kids to 32-byte
 AES-256-GCM keys, `PLATFORM_KEK_ACTIVE` names the one every new seal uses, and each blob carries
 the kid it was sealed under: `open` uses exactly that kid's key and refuses an unknown one. The
 AAD (`pkey:v2:<product>:<kind>:<id>`) leaves the kid out, so a re-seal keeps the slot binding.
@@ -7868,7 +7868,7 @@ a year. For an offline install the grace bound is the only revocation lever (WIR
 
 - **The clamp.** While the product's `licensing.clampGraceToExpiry` is on (the registry default),
   every document a licence grants is stamped `graceUntil = min(window, max(expires_at,
-expiresAt))` (`core/graceClamp.ts`, `core/documents.ts` `clampGraceUntil`): the licence
+expiresAt))` (`core/licensing/graceClamp.ts`, `core/documents.ts` `clampGraceUntil`): the licence
   document, the config document of a device R1 binds to its licence (its secrets stop with the
   licence offline as well as online), both inner documents of an offline bundle, and Identity's
   fused browser-session document. One function computes it for all four, so no path can drift.
@@ -8656,7 +8656,7 @@ possession, or widens its window beyond `maxAgeSeconds + 300` s.
 
 **What arrived.** One assets root holds the admin and portal SPA (`/assets/*`, `/manage.html`,
 `/index.html`) and the gated docs site (`/docs/**`). The unauthenticated SPA proxies (`/manage/*`
-in `admin/index.ts`, the portal in `services/identity/portal/index.ts`) used to fetch any
+in `console/index.ts`, the portal in `services/identity/portal/index.ts`) used to fetch any
 dotted path from that root, so `GET /manage/docs/<file>` served gated docs with no session.
 
 **Control.** `isPublicSpaAssetPath` (`http.ts`) is an allowlist: the proxies fetch only

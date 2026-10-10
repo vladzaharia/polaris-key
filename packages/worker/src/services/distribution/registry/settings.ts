@@ -21,7 +21,8 @@
  */
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import { parseJsonObject, type Db } from "../../../core/platform.js";
+import { parseJsonObject } from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
 import { accessModeOf, entitlementOf, isAccessMode } from "../access.js";
 
 /** How long an isolate keeps a settings answer, in seconds. */

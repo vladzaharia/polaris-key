@@ -34,7 +34,7 @@ import { packRecord, sha, treeVariant } from "./packFixture.js";
 import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
 import { call } from "./releaseRoutesFixture.js";
 import { loadProduct } from "../src/core/products.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
 import { compatView, revokedBy } from "../src/services/release/packs/compat.js";
 import {

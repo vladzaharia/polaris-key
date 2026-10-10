@@ -13,15 +13,15 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { upsertBuild } from "../src/services/release/model.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { makeTestDb } from "./helpers.js";
 import {

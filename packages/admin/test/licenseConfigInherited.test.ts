@@ -1,6 +1,6 @@
 /**
  * The licence Config tab's inherited column (`resolveInherited`) agrees with the Worker's merge
- * (`packages/worker/src/merge.ts` `mergeMap`, pinned by `packages/worker/test/merge.test.ts`): a
+ * (`packages/worker/src/core/licensing/merge.ts` `mergeMap`, pinned by `packages/worker/test/merge.test.ts`): a
  * lower `enforced`/`hidden` entry is not demoted by a higher `default` one, and it keeps its own
  * value and source (P0-47, the lock bug). Devices receive the locked value, so the console shows it.
  */

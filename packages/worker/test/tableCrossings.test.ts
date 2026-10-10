@@ -10,7 +10,7 @@
  * substrate and not a crossing.
  *
  * `BASELINE` is the audit's list of the 17 crossings on 2026-10-07 (cq-worker-services §2.6).
- * Two of them are permanent seams: Identity writing `licenses` (declared in `core/data.ts`) and
+ * Two of them are permanent seams: Identity writing `licenses` (through `core/repo.ts`) and
  * Update reading Release's pack tables inside the sanctioned `update → release` edge. The report
  * marks any crossing outside the baseline as NEW and any baseline entry no longer found as GONE.
  * It does not fail on either: P0-18 moves the ownership map into the worker, adds the declared

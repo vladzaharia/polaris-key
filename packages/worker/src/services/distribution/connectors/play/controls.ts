@@ -36,9 +36,11 @@
  * their own confirmations (`confirmRollback`) and are not typed by the storefront gate.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
-import { audit, type AdminSession } from "../../../../core/adminApi.js";
+import { audit } from "../../../../core/console/audit.js";
+import type { AdminSession } from "../../../../core/console/session.js";
 import { getRollout, rolloutRecord } from "../../rollouts.js";
 import type { ConnectorControl } from "../index.js";
 import { auditConnector } from "../state.js";

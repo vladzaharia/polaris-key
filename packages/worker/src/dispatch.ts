@@ -7,7 +7,7 @@
  * lane with an in-memory `Db`; `index.ts` keeps only the Worker entry points and the
  * origin-wide `secureResponse` backstop it wraps around this function.
  */
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import { matchRoute, type Route } from "./router.js";
 import {
@@ -18,9 +18,9 @@ import {
 import { buildHooks, type ServiceHooks } from "./core/hooks.js";
 import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
-import { handleJwks, handleTrustManifest } from "./core/trust.js";
+import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
 import { dispatchService } from "./core/registry.js";
-import { identityNavigationRedirect } from "./core/identityGate.js";
+import { identityNavigationRedirect } from "./core/accounts/identityGate.js";
 import {
   BYTE_ROUTES,
   REGISTRY_OWNERLESS_ROUTES,
@@ -28,7 +28,7 @@ import {
   SERVICES,
   SETTINGS,
 } from "./mount.js";
-import { handleAdmin } from "./admin/index.js";
+import { handleAdmin } from "./console/index.js";
 import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
 // account spans every tenant, so there is no product slug to namespace it under and its routes
@@ -37,21 +37,30 @@ import { handlePortal } from "./services/identity/index.js";
 import {
   withoutAccountCookies,
   withoutAccountSetCookies,
-} from "./core/accountCookies.js";
+} from "./core/accounts/accountCookies.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { handleDeployHook } from "./platformDeploy.js";
 import { notFound } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
-import { handleAttest, handleAttestChallenge } from "./core/attestation.js";
-import { handleAssetsPush } from "./core/hostedAssetUploads.js";
+import {
+  handleAttest,
+  handleAttestChallenge,
+} from "./core/trust/attestation.js";
+import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
 import { listingSlotMirror } from "./services/distribution/listing/hostedMirror.js";
-import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
-import { dispatchRegistryHost, isRegistryHost } from "./core/registryHost.js";
-import { dispatchImgHost, isImgHost } from "./core/imgHost.js";
-import { drainRenderQueue, watchRenderEnqueues } from "./core/registryQueue.js";
+import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
+import {
+  dispatchRegistryHost,
+  isRegistryHost,
+} from "./core/registry/registryHost.js";
+import { dispatchImgHost, isImgHost } from "./core/assets/imgHost.js";
+import {
+  drainRenderQueue,
+  watchRenderEnqueues,
+} from "./core/registry/registryQueue.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "discovery",
@@ -128,7 +137,7 @@ export async function dispatchWith(
       exec,
       REGISTRY_OWNERLESS_ROUTES,
     );
-  // The image host (HA-02) reaches ONLY the hosted-image routes (`core/imgHost.ts`). With
+  // The image host (HA-02) reaches ONLY the hosted-image routes (`core/assets/imgHost.ts`). With
   // `IMG_ORIGIN` unset (or equal to the bytes or registry host, checked above) this is always
   // false, and routing is exactly what it was before the image host existed.
   if (isImgHost(url, env)) return dispatchImgHost(req, env, db, now, exec);
@@ -146,7 +155,7 @@ export async function dispatchWith(
     // I-07 (S-16 §5.4 item 7): no product route receives or sets the account realm's cookies.
     // The browser sends the host-only account session to every path on this host; it is removed
     // here, before any product handler runs, and any `Set-Cookie` for it is dropped on the way
-    // out (`core/accountCookies.ts`).
+    // out (`core/accounts/accountCookies.ts`).
     return withoutAccountSetCookies(
       await dispatchProduct(
         withoutAccountCookies(req),

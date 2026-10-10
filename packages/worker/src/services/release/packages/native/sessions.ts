@@ -31,10 +31,12 @@
  */
 
 import type { PackageEcosystem } from "@polaris-key/manifest";
-import { parseJsonOr, randomId, type Db } from "../../../../core/platform.js";
-import type { RegistryRouteContext } from "../../../../core/registryHost.js";
-import type { PublishPrincipal } from "../../../../core/registryPublish.js";
-import { appendAudit } from "../../../../core/data.js";
+import { parseJsonOr } from "../../../../platform/json.js";
+import { randomId } from "../../../../platform/crypto.js";
+import type { Db } from "../../../../db/types.js";
+import type { RegistryRouteContext } from "../../../../core/registry/registryHost.js";
+import type { PublishPrincipal } from "../../../../core/registry/registryPublish.js";
+import { appendAudit } from "../../../../core/repo.js";
 import {
   answeringFeed,
   commitNative,

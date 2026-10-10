@@ -812,7 +812,7 @@ page.
    and **Open Mossgarden** (the product page; focus lands on its `h1`).
 
 **The license key and its field.** Polaris Key license keys are **not** grouped codes. The real
-format (`packages/worker/src/crypto.ts`, `mintLicenseKey` and `productFromKey`) is
+format (`packages/worker/src/platform/crypto.ts`, `mintLicenseKey` and `productFromKey`) is
 
 ```text
 pkey_<product-slug>_<22 characters of base64url>

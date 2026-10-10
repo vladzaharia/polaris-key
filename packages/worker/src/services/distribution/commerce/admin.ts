@@ -18,7 +18,7 @@
  *                                                            hash, whatever the map says now)
  *
  * Narrative-only like the rest of the console API; platform-admin session, CSRF and rate limit
- * run in `admin/api.ts` first. Every write is audited with the session's subject.
+ * run in `console/api.ts` first. Every write is audited with the session's subject.
  *
  * **Commerce needs License.** A write is refused `409` (reason `commerce_requires_license`) while
  * License is off for the product: a purchase could be verified but never granted, and the store
@@ -29,15 +29,15 @@
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../core/adminApi.js";
+import type { AdminSession } from "../../../core/console/session.js";
+import { adminJson, err, readBody } from "../../../core/console/respond.js";
+import { audit } from "../../../core/console/audit.js";
+import { readActiveCatalog } from "../../../core/activeCatalog.js";
 import {
-  adminJson,
-  audit,
-  err,
-  readActiveCatalog,
-  readBody,
-} from "../../../core/adminApi.js";
-import { isStore, STORES, type Store } from "../../../core/storeGrants.js";
+  isStore,
+  STORES,
+  type Store,
+} from "../../../core/licensing/storeGrants.js";
 import { entitlementOf } from "../access.js";
 import { listEvents } from "../connectors/state.js";
 import {
@@ -162,7 +162,7 @@ const licenseOff = () =>
  *
  * - the deliverable's delivery gate (`dist_access.entitlement`, `entitlementOf`): a pack sold as
  *   DLC is mapped to the very flag that gates its download, and that gate is an entitlement name
- *   the catalog need not declare (policy-only gates pass through unpruned, `core/payload.ts`);
+ *   the catalog need not declare (policy-only gates pass through unpruned, `core/licensing/payload.ts`);
  * - a `flag` entry of the product's active catalog, which the app reads.
  *
  * With no catalog, or one that cannot be read, only the gate is accepted, and the refusal says

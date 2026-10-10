@@ -2,7 +2,7 @@
 # freshness suite), so prettier must never rewrite them.
 packages/worker/src/docsCsp.generated.ts
 # The SPA shells: their inline pre-paint theme script is allowed by a CSP hash
-# (packages/worker/src/adminCsp.ts), so a reformat would break the page. Hash-checked by
+# (packages/worker/src/core/adminCsp.ts), so a reformat would break the page. Hash-checked by
 # packages/admin/test/theme.test.tsx and packages/worker/test/adminCspParity.test.ts.
 packages/admin/index.html
 packages/admin/manage.html

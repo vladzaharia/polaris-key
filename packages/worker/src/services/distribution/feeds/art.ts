@@ -26,12 +26,10 @@
  */
 
 import { assetRefUrl, normalizeAssetRef } from "@polaris-key/manifest";
-import {
-  hexEncode,
-  sha256,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { hexEncode } from "../../../platform/bytes.js";
+import { sha256 } from "../../../platform/hash.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   HOSTED_REF_HELD,
   hostedImageOrigin,
@@ -39,8 +37,8 @@ import {
   hostedImages,
   listingScreenshotSlots,
   type HostedImage,
-} from "../../../core/hostedImages.js";
-import { wantedRefOf } from "../../../core/hostedAssetPulls.js";
+} from "../../../core/assets/hostedImages.js";
+import { wantedRefOf } from "../../../core/assets/hostedAssetPulls.js";
 import type { ListingArt, RenderListing } from "./render.js";
 
 /** The canonical form (`wantedRefOf`) of a stored listing ref, or `null` when it is none. */

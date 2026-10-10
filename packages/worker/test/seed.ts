@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   insertKey,
   insertLicense,
@@ -12,11 +12,11 @@ import {
   insertProductKey,
   insertSchema,
   upsertProductSecret,
-} from "../src/repo.js";
-import { hashKey, mintLicenseKey } from "../src/crypto.js";
-import { seal } from "../src/keyvault.js";
+} from "../src/core/repo.js";
+import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
+import { seal } from "../src/platform/keyvault.js";
 import { parseServices } from "../src/core/services.js";
-import { readIdentityIssuance } from "../src/core/identityTrust.js";
+import { readIdentityIssuance } from "../src/core/accounts/identityTrust.js";
 import { IDENTITY_COLUMN_ADAPTERS } from "../src/services/identity/settingsColumns.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";

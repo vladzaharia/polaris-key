@@ -17,7 +17,7 @@
  */
 
 import type { ScheduledServiceContext } from "../../../core/registry.js";
-import { kvKey } from "../../../core/platform.js";
+import { pk as kvKey } from "../../../platform/kv.js";
 import { readCommerceSettings } from "./settings.js";
 import {
   acknowledgeOnce,

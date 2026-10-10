@@ -25,8 +25,8 @@ import {
   seedLicense,
   type Scenario,
 } from "../world.js";
-import { insertProductKey } from "../../../src/repo.js";
-import { seal } from "../../../src/keyvault.js";
+import { insertProductKey } from "../../../src/core/repo.js";
+import { seal } from "../../../src/platform/keyvault.js";
 import { TEST_KID, TEST_PUB } from "../../seed.js";
 
 /** The corpus's second committed TEST key (`tools/corpus/common.ts`), the app's only pin in

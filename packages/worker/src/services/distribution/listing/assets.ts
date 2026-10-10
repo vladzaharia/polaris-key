@@ -33,8 +33,9 @@
  *   - Audited as `distribution.listing.assets`.
  */
 
-import type { Db, DbStatement, Env } from "../../../core/platform.js";
-import { randomId } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
+import { randomId } from "../../../platform/crypto.js";
 import { errorResponse, ErrorCode, json } from "../../../core/errors.js";
 import {
   blobKey,
@@ -43,7 +44,7 @@ import {
   stmtRecordRef,
   storedObjects,
   verifyStaged,
-} from "../../../core/blobs.js";
+} from "../../../core/assets/blobs.js";
 import {
   claimUploadTicket,
   findUploadTicket,
@@ -51,7 +52,7 @@ import {
   type CiTokenRecord,
 } from "../../../core/publisher.js";
 import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
-import { appendAudit } from "../../../core/data.js";
+import { appendAudit } from "../../../core/repo.js";
 import {
   assetProblems,
   TEXT_ALLOWED,

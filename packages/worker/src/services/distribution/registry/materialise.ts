@@ -15,7 +15,7 @@
  *     keys) carries it too. The cron's self-check compares that record's stamp with D1.
  *   - ATOMICITY AND RECOVERY: a render writes every object, then its record. A drain deletes
  *     the queue rows it consumed only after that, and only while each row's `generation` is still
- *     the one it read (`core/registryQueue.ts` `stmtConsumeRender`), so an enqueue that lands
+ *     the one it read (`core/registry/registryQueue.ts` `stmtConsumeRender`), so an enqueue that lands
  *     mid-render is never lost and a crash leaves the rows queued for the next drain
  *     (`drainRegistry`). A row whose render fails stays queued with its attempt counted, behind
  *     fresh rows, so it cannot block the head of the queue.
@@ -24,7 +24,7 @@
  *
  * THE TRIGGER: Release enqueues into the Core-owned `registry_render_queue` in the same D1 batch
  * as each publish, yank or channel move (F-03), and so do the feed settings writes. The drain is
- * wired (feed-adapter contract): `core/registryQueue.ts` `drainRenderQueue` reads the queue and
+ * wired (feed-adapter contract): `core/registry/registryQueue.ts` `drainRenderQueue` reads the queue and
  * hands each owner's rows to Distribution's `registryMaterialiser` descriptor member
  * (`../registryMaterialiser.ts`), which runs `drainRegistry` below. `dispatch.ts` runs it after
  * every request that enqueued a render (`watchRenderEnqueues`, in `waitUntil`) and `scheduled.ts`
@@ -34,11 +34,11 @@
  * the drain.
  */
 
-import { sha256Hex } from "../../../core/platform.js";
+import { sha256Hex } from "../../../platform/hash.js";
 import type {
   RegistryEcosystem,
   RegistryRoute,
-} from "../../../core/registryHost.js";
+} from "../../../core/registry/registryHost.js";
 
 /** The R2 prefix every rendered object lives under. */
 export const REGISTRY_PREFIX = "registry/";
@@ -429,14 +429,14 @@ export interface RegistryQueueItem {
   /** One package deliverable, or `RENDER_ALL_PACKAGES` for every package of the owner. */
   readonly deliverableId: string;
   readonly enqueuedAt: number;
-  /** Core's coalescing counter (`core/registryQueue.ts`): consumed only while unchanged. */
+  /** Core's coalescing counter (`core/registry/registryQueue.ts`): consumed only while unchanged. */
   readonly generation?: number;
 }
 
-/** The queue's "every package of the owner" row (`core/registryQueue.ts` `RENDER_ALL`). */
+/** The queue's "every package of the owner" row (`core/registry/registryQueue.ts` `RENDER_ALL`). */
 export const RENDER_ALL_PACKAGES = "*";
 
-/** The queue as the drain sees it. F-03 implements it over `core/registryQueue.ts`. */
+/** The queue as the drain sees it. F-03 implements it over `core/registry/registryQueue.ts`. */
 export interface RegistryQueue {
   /** Up to `limit` queued rows, oldest first. */
   pending(limit: number): Promise<RegistryQueueItem[]>;

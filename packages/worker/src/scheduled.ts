@@ -32,13 +32,16 @@
 //    at the very end, so the invocation is still recorded as failed.
 
 import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
-import { purgeRegistryTokens } from "./core/registryTokens.js";
+import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
 import { runScheduledServices } from "./core/registry.js";
-import { drainRenderQueue, selfCheckRenders } from "./core/registryQueue.js";
+import {
+  drainRenderQueue,
+  selfCheckRenders,
+} from "./core/registry/registryQueue.js";
 import { SERVICES } from "./mount.js";
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import { D1Db } from "./db/d1.js";
 import {
@@ -47,7 +50,7 @@ import {
   pruneAudit,
   prunePlatformAudit,
   releaseDormantSeats,
-} from "./repo.js";
+} from "./core/repo.js";
 import {
   prunePortalAudit,
   purgeDownloadTokensForProduct,
@@ -63,15 +66,18 @@ import {
   stuckErasures,
   sweepErasures,
 } from "./services/identity/accounts/deletion.js";
-import { overrideMigrationNightly } from "./core/overrideMigration.js";
-import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
+import { overrideMigrationNightly } from "./core/ops/overrideMigration.js";
+import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
-import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
-import { lazyDeltaProducts } from "./core/deltaDemand.js";
+import {
+  REFUSAL_RETENTION_SECONDS,
+  pruneRefusals,
+} from "./core/licensing/refusals.js";
+import { lazyDeltaProducts } from "./core/assets/deltaDemand.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
-import { recheckHostedAssets } from "./core/hostedAssetPulls.js";
+import { recheckHostedAssets } from "./core/assets/hostedAssetPulls.js";
 import { backfillReleaseMirrors } from "./services/release/mirror.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
@@ -81,7 +87,7 @@ import {
   writeHeartbeat,
   type JobName,
   type StepTiming,
-} from "./core/platformOps.js";
+} from "./core/ops/platformOps.js";
 import { purgePrivacyResidue } from "./privacyResidue.js";
 import {
   GC_INDEX_READS_PER_TICK,
@@ -91,7 +97,7 @@ import {
   planProductGc,
   pruneGcLog,
   sweepObjects,
-} from "./core/blobGc.js";
+} from "./core/assets/blobGc.js";
 
 /**
  * How long an audit record is kept before the sweep deletes it.
@@ -248,7 +254,7 @@ async function drain(
 }
 
 /**
- * The blob collector's nightly pass (P4-14, `core/blobGc.ts`), after the retention steps:
+ * The blob collector's nightly pass (P4-14, `core/assets/blobGc.ts`), after the retention steps:
  *
  *   1. per LIVE product, fault-isolated (`blobRefs:<slug>`): drop the refs no live release needs,
  *      deciding liveness through that product's own hooks (so a product with Release off, or a
@@ -368,7 +374,7 @@ export async function runScheduledMaintenance(
     await step(report, `connectorEvents:${product}`, () =>
       drain((limit) => pruneConnectorEvents(db, product, now, limit)),
     );
-    // UX-15: the refusal log past `REFUSAL_RETENTION_SECONDS` (30 days, `core/refusals.ts`).
+    // UX-15: the refusal log past `REFUSAL_RETENTION_SECONDS` (30 days, `core/licensing/refusals.ts`).
     await step(report, `refusals:${product}`, () =>
       drain((limit) =>
         pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
@@ -392,7 +398,7 @@ export async function runScheduledMaintenance(
     drain((limit) => prunePlatformAudit(db, cutoff, limit)),
   );
 
-  // A-14: the Operations page's own rows, 30 days (`core/platformOps.ts`). Product-less by
+  // A-14: the Operations page's own rows, 30 days (`core/ops/platformOps.ts`). Product-less by
   // construction like `platformAudit`: by age alone, bounded per pass.
   await step(report, "jobRuns", () =>
     drain((limit) => pruneJobRuns(db, now - JOB_RUN_RETENTION_SECONDS, limit)),
@@ -405,7 +411,7 @@ export async function runScheduledMaintenance(
   // email; merge tombstones and subject events past the audit retention are deleted.
   await step(report, "privacyResidue", () => purgePrivacyResidue(db, now));
 
-  // F-21: registry tokens 90 days past their expiry or revocation (`core/registryTokens.ts`).
+  // F-21: registry tokens 90 days past their expiry or revocation (`core/registry/registryTokens.ts`).
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
 
   // I-05: portal rows a pre-I-05 Worker wrote during the deploy window join the account model,
@@ -420,14 +426,14 @@ export async function runScheduledMaintenance(
   if (env) await runErasureSweep(report, env, db, now, true);
   // U-03: the licence-override migration's daily inventory (until the run), its report past 90
   // days and, once the report window has passed, the licences' emptied config and secrets columns
-  // (`core/overrideMigration.ts`). The run itself is never started here: it is the owner's.
+  // (`core/ops/overrideMigration.ts`). The run itself is never started here: it is the owner's.
   await step(report, "overrideMigration", () =>
     overrideMigrationNightly(db, now),
   );
   // LX-08: the licensing model's rows catch up with what a pre-LX-08 Worker wrote between the
   // migration and the deploy (store grants, purchases, mappings), and the OIDC-provisioned keys
   // of licences that have not signed in since move to their `oidc` grant
-  // (`core/licensingCatchUp.ts`). A no-op once both are done; it changes no document.
+  // (`core/licensing/licensingCatchUp.ts`). A no-op once both are done; it changes no document.
   await step(report, "licensingCatchUp", async () => {
     const r = await runLicensingCatchUp(db, SERVICES, now);
     const failed = Object.entries(r.failures);
@@ -609,7 +615,7 @@ export const REGISTRY_STEP = "registry";
 
 /**
  * The package-feed renders, on EVERY cron tick (plans/F-01.md §6.5): drain the render queue
- * (`core/registryQueue.ts` `drainRenderQueue`, into Distribution's `registryMaterialiser`), then
+ * (`core/registry/registryQueue.ts` `drainRenderQueue`, into Distribution's `registryMaterialiser`), then
  * the self-check, which re-renders up to `SELF_CHECK_BUDGET` packages whose stored render stamp
  * differs from D1, across every live product. Both are idempotent and fault-isolated: a failure
  * is recorded under the `registry` step (`registry`, `registry:selfCheck:<slug>`) and the tick's
@@ -617,7 +623,7 @@ export const REGISTRY_STEP = "registry";
  * `registry:failed` and `registry:selfCheck`.
  *
  * A failed render is not lost: its row stays queued with its attempt counted, behind fresh rows
- * (`core/registryQueue.ts`), and the next tick retries it. `handleScheduled` therefore never fails
+ * (`core/registry/registryQueue.ts`), and the next tick retries it. `handleScheduled` therefore never fails
  * a connector-poll tick for the `registry` step; the nightly maintenance tick reports it.
  */
 export async function runRegistryRenders(
@@ -656,7 +662,7 @@ export async function runRegistryRenders(
 
 /**
  * A-14: persist the tick for the Operations page — its `platform_job_runs` rows and the `main`
- * heartbeat (`core/platformOps.ts`). Recording is not the job: a failure to record is added to
+ * heartbeat (`core/ops/platformOps.ts`). Recording is not the job: a failure to record is added to
  * the report as the `opsRecord` step, so it surfaces in the thrown aggregate like any other step,
  * but it never hides or replaces the tick's own outcome. Exported for the tests.
  */

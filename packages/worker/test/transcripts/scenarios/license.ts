@@ -10,11 +10,11 @@
 // is faked (plans/SP-00.md §8):
 //
 //   * `license_expired`: an expired licence's key is answered `401 unauthorized`
-//     (`core/authz.ts` `authorizeDevice` refuses every unusable licence alike, deliberately). The
+//     (`core/licensing/authz.ts` `authorizeDevice` refuses every unusable licence alike, deliberately). The
 //     step records that answer as it is: when the Worker starts answering `license_expired`, the
 //     regenerated transcript shows which SDKs must follow.
 //   * `attestation_required`: activation and enrolment are not trust operations
-//     (`core/deviceTrust.ts` `TrustOperation` is mint, gatedDelivery and commerceClaim), so no
+//     (`core/trust/deviceTrust.ts` `TrustOperation` is mint, gatedDelivery and commerceClaim), so no
 //     attesting product makes them answer it. The step is dropped.
 //
 // The 429 carries no `Retry-After` today (`errorResponse` sets none), so nothing about a retry
@@ -48,7 +48,7 @@ import {
 } from "../world.js";
 import { BASE_URL } from "../recorder.js";
 import { retireDeviceBinding } from "../../../src/core/devices.js";
-import { hashKey } from "../../../src/crypto.js";
+import { hashKey } from "../../../src/platform/crypto.js";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { seedLicenseWithKey } from "../../seed.js";
 import type { World } from "../recorder.js";

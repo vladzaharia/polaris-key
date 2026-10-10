@@ -16,10 +16,10 @@ import {
   tierDeviceLimit,
   tighterMax,
   tighterMin,
-} from "../src/core/entitlements.js";
+} from "../src/core/licensing/entitlements.js";
 import { resolveLicenseTerms } from "../src/core/licensing/terms.js";
-import type { LicenseRow, TierRow } from "../src/core/data.js";
-import type { ManagedPayload } from "../src/core/payload.js";
+import type { LicenseRow, TierRow } from "../src/core/repo.js";
+import type { ManagedPayload } from "../src/core/licensing/payload.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");

@@ -19,9 +19,10 @@
  * `card/profile.ts` and `card/avatars.ts`.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
-import { sniffContentType, SNIFF_BYTES } from "../../../core/sniff.js";
+import { sniffContentType, SNIFF_BYTES } from "../../../core/assets/sniff.js";
 import {
   AVATAR_ASSET_PATTERN,
   AVATAR_UPLOAD_MAX_BYTES,

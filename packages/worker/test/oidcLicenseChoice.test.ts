@@ -59,12 +59,12 @@ import {
 } from "../src/services/identity/portal/session.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { rateLimitOk } from "../src/core/rateLimit.js";
-import { hashKey } from "../src/crypto.js";
-import type { Env } from "../src/env.js";
+import { hashKey } from "../src/platform/crypto.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { artefacts } from "./singleUseMock.js";
 import { handlePortalApi } from "./portalHarness.js";
-import { secureResponse } from "../src/securityHeaders.js";
+import { secureResponse } from "../src/core/securityHeaders.js";
 import { brandPageStyleSource } from "../src/core/brandHtml.js";
 
 const idpKey = vi.hoisted(() => ({

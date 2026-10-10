@@ -19,9 +19,9 @@ import {
   seedProduct,
   setClaimByKey,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { getDevice, insertLicense, setServices } from "../src/repo.js";
+import { getDevice, insertLicense, setServices } from "../src/core/repo.js";
 import { MERGE_UNDO_SECONDS } from "../src/services/identity/accounts/mergeUndo.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct } from "../src/core/products.js";
@@ -32,15 +32,15 @@ import {
   resolveSubject,
   setDeviceSubject,
   subjectFor,
-} from "../src/core/accountSubjects.js";
+} from "../src/core/accounts/accountSubjects.js";
 import {
   clearDeviceSubjects,
   registerSubjectStore,
   unregisterSubjectStore,
-} from "../src/core/subjectHooks.js";
+} from "../src/core/accounts/subjectHooks.js";
 import { registerDeviceBinding } from "../src/core/devices.js";
-import { getTokenRecord } from "../src/kv.js";
-import { hashKey } from "../src/crypto.js";
+import { getTokenRecord } from "../src/platform/kv.js";
+import { hashKey } from "../src/platform/crypto.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import {

@@ -4,8 +4,8 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { certificateKey, X509Error } from "../src/core/x509.js";
-import { storeGrantDrift } from "../src/core/grants.js";
+import { certificateKey, X509Error } from "../src/core/trust/x509.js";
+import { storeGrantDrift } from "../src/core/licensing/grants.js";
 import { NOW } from "./seed.js";
 import { SLUG } from "./releaseRoutesFixture.js";
 import { PLAY_SKU, STEAM_DLC } from "./commerceFake.js";

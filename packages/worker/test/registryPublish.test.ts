@@ -26,18 +26,18 @@ import { NOW, seedLicenseWithKey } from "./seed.js";
 import { asR2, installDigestStream, R2Mock } from "./r2Mock.js";
 import { envFor, seedReleaseProduct, SLUG } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
-import { dispatchRegistryHost } from "../src/core/registryHost.js";
+import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import { REGISTRY_ROUTES, SERVICES } from "../src/mount.js";
 import { forgetRegistrySettings } from "../src/services/distribution/registry/settings.js";
 import {
   forgetRegistryTokens,
   mintRegistryToken,
   revokeRegistryToken,
-} from "../src/core/registryTokens.js";
-import { authorizeRegistryPublish } from "../src/core/registryPublish.js";
+} from "../src/core/registry/registryTokens.js";
+import { authorizeRegistryPublish } from "../src/core/registry/registryPublish.js";
 import {
   multipartBoundary,
   parseMultipart,

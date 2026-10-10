@@ -28,27 +28,31 @@ import {
   seedProduct,
   TEST_PEM,
 } from "../seed.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { Db } from "../../src/db/types.js";
-import { handleAdmin } from "../../src/admin/index.js";
+import { handleAdmin } from "../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
   type SessionIdentity,
-} from "../../src/admin/session.js";
-import { redactPayload, parsePayload } from "../../src/admin/lib/redact.js";
-import { loadCatalog } from "../../src/admin/lib/shape.js";
+} from "../../src/core/console/session.js";
+import { redactPayload, parsePayload } from "../../src/core/console/redact.js";
+import { loadCatalog } from "../../src/core/activeCatalog.js";
 import {
   openManagedPayload,
   openManagedValue,
-} from "../../src/admin/lib/managedSecrets.js";
-import { hashKey, mintLicenseKey, randomId } from "../../src/crypto.js";
+} from "../../src/core/managedSecrets.js";
+import {
+  hashKey,
+  mintLicenseKey,
+  randomId,
+} from "../../src/platform/crypto.js";
 import {
   getInstallationToken,
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
-import { open } from "../../src/keyvault.js";
+import { open } from "../../src/platform/keyvault.js";
 import {
   handleMagicStart,
   handleMagicVerify,
@@ -64,8 +68,8 @@ import {
 } from "../../src/services/identity/oidc.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
 import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
-import { insertSchema, upsertDevice } from "../../src/repo.js";
-import { deactivateSchemas } from "../../src/admin/repo.js";
+import { insertSchema, upsertDevice } from "../../src/core/repo.js";
+import { deactivateSchemas } from "../../src/core/console/repo.js";
 import { verifyJws, signJws } from "@polaris-key/jws";
 
 // Swap ONLY jose's remote key getter (the R12-04 sign-in flows below need a test IdP); the

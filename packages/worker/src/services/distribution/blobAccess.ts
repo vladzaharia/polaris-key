@@ -62,7 +62,7 @@
 import { APP_DELIVERABLE_ID, isDeliverableId } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { ReleaseCatalog } from "../../core/hooks.js";
-import { bearer } from "../../core/platform.js";
+import { bearer } from "../../platform/http.js";
 import { notFound, wireError } from "../../core/errors.js";
 import {
   blobKey,
@@ -73,16 +73,16 @@ import {
   parseKey,
   refHolders,
   type RefHolder,
-} from "../../core/blobs.js";
-import { lazyDeltasEnabled } from "../../core/deltaDemand.js";
-import { HOSTED_ASSET_REF } from "../../core/hostedAssets.js";
+} from "../../core/assets/blobs.js";
+import { lazyDeltasEnabled } from "../../core/assets/deltaDemand.js";
+import { HOSTED_ASSET_REF } from "../../core/assets/hostedAssets.js";
 import { LISTING_ASSET_REF } from "./listing/assets.js";
 import {
   accessRefusal,
   entitlementFlagRefusal,
   fixedReleaseSelector,
-} from "../../core/entitledAccess.js";
-import type { Db } from "../../core/platform.js";
+} from "../../core/licensing/entitledAccess.js";
+import type { Db } from "../../db/types.js";
 import { readAccessTable, stricter, type AccessTable } from "./access.js";
 import type { ByteContext } from "./bytes.js";
 
@@ -112,7 +112,7 @@ type Requirement =
 /**
  * Holders that authorise NOTHING on this route (HA-07; notes/S-20 §4.6 #2): store listing art
  * (`listing-asset`, A-18d) and Polaris Key's hosted copies (`hosted-asset`, HA-01). They are public
- * images served from the image host (`core/imgHost.ts`), or bytes pushed to a store, never app
+ * images served from the image host (`core/assets/imgHost.ts`), or bytes pushed to a store, never app
  * bytes: before HA-07 they counted as "app-side" here, so a `public` app served them to anyone
  * holding the digest, which the THREAT-MODEL said no route did. An object such a ref alone holds
  * is the plain not-found; one an artifact, feed file or pack also holds is served under THAT

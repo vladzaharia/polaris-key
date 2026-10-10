@@ -17,15 +17,13 @@
  * list filters on it (`?batch=`). Batches themselves are `batches.ts`.
  */
 
+import { deleteTokenRecord } from "../../../platform/kv.js";
+import { hashKey, mintLicenseKey, randomId } from "../../../platform/crypto.js";
 import {
-  deleteTokenRecord,
-  hashKey,
-  mintLicenseKey,
   parseJsonColumn,
   parseJsonStringList,
-  randomId,
-  type Db,
-} from "../../../core/platform.js";
+} from "../../../platform/json.js";
+import type { Db } from "../../../db/types.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
   countActiveDevices,
@@ -40,55 +38,68 @@ import {
   listKeysByLicense,
   listLicenseProfiles,
   setLicenseProfiles,
-} from "../../../core/data.js";
+} from "../../../core/repo.js";
 import {
   adminJson,
-  adminNotFound,
-  applyOverrides,
-  audit,
+  notFound as adminNotFound,
   err,
+  readBody,
+} from "../../../core/console/respond.js";
+import {
+  applyOverrides,
+  type OverrideUpdate,
+} from "../../../core/console/overrides.js";
+import { audit } from "../../../core/console/audit.js";
+import {
   keyEntryListContext,
   licenseSummary,
   type KeyEntryListContext,
+} from "../../../core/licensing/summary.js";
+import {
   listLicenses,
   listProfiles,
   listTiers,
-  loadCatalog,
-  parsePayload,
   patchLicense,
-  readBody,
-  redactPayload,
+} from "../../../core/console/repo.js";
+import { loadCatalog } from "../../../core/activeCatalog.js";
+import { parsePayload, redactPayload } from "../../../core/console/redact.js";
+import {
   shapeFacts,
   shapeFingerprint,
-  type OverrideUpdate,
-  WriteChecks,
-} from "../../../core/adminApi.js";
-import { tierExpiresAt } from "../authz.js";
+} from "../../../core/console/deviceShape.js";
+import { WriteChecks } from "../../../core/console/writeChecks.js";
+import { tierExpiresAt } from "../../../core/licensing/authz.js";
 import {
   licenseEmail,
   subjectForOrNull,
-} from "../../../core/accountSubjects.js";
+} from "../../../core/accounts/accountSubjects.js";
 import {
   LICENSE_CONFIG_WRITABLE_SQL,
   licenseConfigFrozen,
   licenseConfigRetired,
   readOverrideMigrationState,
-} from "../../../core/overrideMigration.js";
-import { portalEnabled, portalOriginOf } from "../../../core/manageUrl.js";
+} from "../../../core/ops/overrideMigration.js";
+import {
+  portalEnabled,
+  portalOriginOf,
+} from "../../../core/licensing/manageUrl.js";
 import {
   associateLicenseHolder,
   HOLDER_FILTERS,
   isHolderFilter,
   licenseHolder,
   type HolderFilter,
-} from "../../../core/licenseHolders.js";
-import { licenseDeviceLimit, licenseTerms } from "../../../core/authz.js";
+} from "../../../core/licensing/licenseHolders.js";
+import {
+  licenseDeviceLimit,
+  licenseTerms,
+} from "../../../core/licensing/authz.js";
 import {
   licenseEndedReasonOf,
   licenseStatusOf,
 } from "../../../core/licensing/lifecycle.js";
 import { transitionLicense } from "../../../core/licensing/lifecycleWrites.js";
-import type { LicenseRow } from "../../../core/data.js";
+import type { LicenseRow } from "../../../core/repo.js";
 import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";

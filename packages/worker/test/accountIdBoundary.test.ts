@@ -17,15 +17,18 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { setServices } from "../src/repo.js";
+} from "../src/core/console/session.js";
+import { setServices } from "../src/core/repo.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
-import { setDeviceSubject, subjectFor } from "../src/core/accountSubjects.js";
+import {
+  setDeviceSubject,
+  subjectFor,
+} from "../src/core/accounts/accountSubjects.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
 import { removeProductData } from "../src/services/identity/accounts/deletion.js";

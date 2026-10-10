@@ -18,12 +18,12 @@ import {
   deviceMetadata,
   touchDeviceMetadata,
 } from "../src/core/devices.js";
-import { listAudit, type DeviceRow } from "../src/repo.js";
-import { handleActivity } from "../src/admin/handlers/activity.js";
+import { listAudit, type DeviceRow } from "../src/core/repo.js";
+import { handleActivity } from "../src/console/handlers/activity.js";
 import { RateLimitDO } from "../src/rateLimitDo.js";
 import { SingleUseDO } from "../src/singleUseDo.js";
 import { jsonList, jsonListArg } from "../src/core/sqlIn.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -229,7 +229,7 @@ describe("recurrence lint: no bare body reads in route code", () => {
     "core/cappedBody.ts",
     "rateLimitDo.ts",
     "singleUseDo.ts",
-    "updateHealthDo.ts",
+    "core/updateHealthDo.ts",
   ]);
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((n) => {

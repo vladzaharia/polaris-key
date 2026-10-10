@@ -9,9 +9,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import {
   getOrCreateAccountByEmail,
@@ -25,7 +25,7 @@ import {
 import {
   forgetRegistryTokens,
   lookupRegistryCredential,
-} from "../src/core/registryTokens.js";
+} from "../src/core/registry/registryTokens.js";
 import { handlePortalApi } from "./portalHarness.js";
 
 const SLUG = "acme";

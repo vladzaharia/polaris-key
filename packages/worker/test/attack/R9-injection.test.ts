@@ -25,14 +25,14 @@ import {
   seedProductSecret,
 } from "../seed.js";
 import type { Db } from "../../src/db/types.js";
-import { setServices } from "../../src/repo.js";
-import type { Env } from "../../src/env.js";
+import { setServices } from "../../src/core/repo.js";
+import type { Env } from "../../src/platform/env.js";
 import type { Product } from "../../src/core/products.js";
 import { loadProduct } from "../../src/core/products.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
-} from "../../src/fingerprint.js";
+} from "../../src/core/fingerprint.js";
 import {
   DEFAULT_SERVICES,
   serializeServices,
@@ -52,7 +52,7 @@ import {
   type FetchImpl,
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
-import { seal } from "../../src/keyvault.js";
+import { seal } from "../../src/platform/keyvault.js";
 import { escapeHtmlKeepApostrophe } from "../../src/platform/html.js";
 import { linkRepo, parseRepoUrl } from "../../src/services/release/linkRepo.js";
 import { resyncRepo } from "../../src/services/release/resync.js";
@@ -60,16 +60,13 @@ import {
   fetchRepoFile,
   MAX_REPO_FILE_BYTES,
 } from "../../src/services/release/github.js";
-import {
-  MAX_MANIFEST_BYTES,
-  parseManifest,
-} from "../../src/services/release/manifest.js";
+import { MAX_MANIFEST_BYTES, parseManifest } from "@polaris-key/manifest";
 import { extractSummary } from "../../src/services/release/changelog.js";
 import {
   proseToHtml,
   renderAppcast,
 } from "../../src/services/update/appcast.js";
-import { applyOverrides } from "../../src/admin/lib/overrides.js";
+import { applyOverrides } from "../../src/core/console/overrides.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
   handlePortalApi,
@@ -1649,7 +1646,7 @@ describe("R9-11 edge-mint auth page", () => {
 
   it("REFUTED (today): no code path writes auth_page_template", () => {
     const repoSrc = readFileSync(
-      join(HERE, "..", "..", "src", "repo.ts"),
+      join(HERE, "..", "..", "src", "core", "repo.ts"),
       "utf8",
     );
     // The only INSERT that touches the column hardcodes NULL.
@@ -1763,7 +1760,8 @@ describe("R9-12 escapeHtml coverage", () => {
     // `secureResponse`, which supplies a CSP to any HTML response that lacks one. That
     // apostrophe is why `style-src 'unsafe-inline'` is the only inline allowance in the
     // static policy — scripts stay fully blocked by `default-src 'none'`.
-    const { secureResponse } = await import("../../src/securityHeaders.js");
+    const { secureResponse } =
+      await import("../../src/core/securityHeaders.js");
     const served = secureResponse(
       new Response(html, {
         status: 200,
@@ -1783,7 +1781,7 @@ describe("R9-12 escapeHtml coverage", () => {
 describe("R9-13 dynamic `SET ${col} = ?` builders", () => {
   it("REFUTED: every key reaching updateProduct/patchLicense is a hardcoded literal", () => {
     const products = readFileSync(
-      join(HERE, "..", "..", "src", "admin", "handlers", "products.ts"),
+      join(HERE, "..", "..", "src", "console", "handlers", "products.ts"),
       "utf8",
     );
     // §R1 moved the licence admin handler under the service that owns it

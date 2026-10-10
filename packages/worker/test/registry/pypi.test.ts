@@ -14,14 +14,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseManifest } from "@polaris-key/manifest";
-import { inertDocumentPolicy } from "../../src/core/bytesHost.js";
+import { inertDocumentPolicy } from "../../src/core/assets/bytesHost.js";
 import {
   dispatchRegistryHost,
   REGISTRY_HOST_TYPES,
-} from "../../src/core/registryHost.js";
+} from "../../src/core/registry/registryHost.js";
 import { issueStaticCiToken } from "../../src/core/publisher.js";
 import type { Db } from "../../src/db/types.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import { REGISTRY_ROUTES, SERVICES } from "../../src/mount.js";
 import { RENDERERS } from "../../src/services/distribution/registry/index.js";
 import {

@@ -1,7 +1,7 @@
 // The channel vocabulary (WIRE-CONTRACT-V3 §5.1), once, for every enforcement point.
 //
 // Two parsers read channel names and they stay apart because their grammars differ (P0-04 D15):
-// the licence build gate (`core/gate.ts`) reads the client-declared `X-PKey-Channel` header
+// the licence build gate (`core/licensing/gate.ts`) reads the client-declared `X-PKey-Channel` header
 // through `normalizeChannelHeader` below, and Release's `services/release/channels.ts` classifies
 // URL selectors. Both reach the same entitlement predicate, `channelEntitled`, and the same alias
 // table, `CHANNEL_ALIASES`, so a grant means one thing at the gate and on the `entitled` feed.

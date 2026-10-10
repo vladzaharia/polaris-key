@@ -29,7 +29,7 @@ describe("landing page artwork is lazy", () => {
         },
       };
     });
-    const mod = await import("../src/core/bytesLanding.js");
+    const mod = await import("../src/core/assets/bytesLanding.js");
     const env = { BLOB_ORIGIN: "https://dl.plrs.im" } as Parameters<
       typeof mod.renderLandingPage
     >[0];

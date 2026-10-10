@@ -39,11 +39,11 @@
  * `KINDS` with a validator and its metadata projection.
  */
 
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
-import { open, seal, type SealContext } from "../keyvault.js";
-import { appendAudit } from "../repo.js";
-import { randomId } from "../crypto.js";
+import { open, seal, type SealContext } from "../platform/keyvault.js";
+import { appendAudit } from "./repo.js";
+import { randomId } from "../platform/crypto.js";
 import { sha256Hex } from "../platform/hash.js";
 import { importEs256PrivateKey, importRs256PrivateKey } from "./jwt.js";
 

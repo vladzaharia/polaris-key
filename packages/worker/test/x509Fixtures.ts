@@ -1,5 +1,5 @@
 /**
- * Test certificate chains for `core/x509.ts` and the App Store verification (P6-01).
+ * Test certificate chains for `core/trust/x509.ts` and the App Store verification (P6-01).
  *
  * Pure TypeScript over WebCrypto — no Node import — so the workerd lane builds the same chains
  * at runtime. A chain is shaped like Apple's: a self-signed P-384 root, a P-384 intermediate

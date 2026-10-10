@@ -7,7 +7,7 @@ import {
   SECONDS_PER_DAY,
   type DocProfile,
 } from "@polaris-key/protocol";
-import type { ManagedPayload } from "../src/core/payload.js";
+import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import {
   buildDoc,
   computeETag,
@@ -16,7 +16,7 @@ import {
 // The catalog prune is the last gate before signing on all three document paths, so it lives in
 // Core; `services/identity/doc.ts` stopped re-exporting it when the fused builder moved into the
 // service (P3).
-import { validatePayload } from "../src/core/payload.js";
+import { validatePayload } from "../src/core/licensing/payload.js";
 import { signDoc } from "../src/core/signing.js";
 import { TEST_KID, TEST_PEM, TEST_PUB, NOW } from "./seed.js";
 

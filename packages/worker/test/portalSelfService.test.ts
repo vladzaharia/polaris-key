@@ -15,13 +15,13 @@ import {
   seedProduct,
   setClaimByKey,
 } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
-import { hashKey, mintLicenseKey } from "../src/crypto.js";
-import { getTokenRecord } from "../src/kv.js";
-import { getDevice, getKey } from "../src/repo.js";
+import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
+import { getTokenRecord } from "../src/platform/kv.js";
+import { getDevice, getKey } from "../src/core/repo.js";
 import {
   getOrCreateAccountByEmail,
   upsertPortalProductSettings,

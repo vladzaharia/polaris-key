@@ -38,7 +38,7 @@ import type {
   ServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
+import type { AdminSession } from "../../core/console/session.js";
 import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
@@ -48,9 +48,12 @@ import {
   manifestClaimByKeyStatements,
 } from "./settings.js";
 import type { IdentityDiscovery } from "@polaris-key/protocol/identity";
-import { keyEntryLimit } from "../../core/keyEntries.js";
-import { accountPortalUrl, portalEnabled } from "../../core/manageUrl.js";
-// LX-26: registers Identity's licence-holder hooks with Core (`core/licenseHolders.ts`) at load,
+import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
+import {
+  accountPortalUrl,
+  portalEnabled,
+} from "../../core/licensing/manageUrl.js";
+// LX-26: registers Identity's licence-holder hooks with Core (`core/licensing/licenseHolders.ts`) at load,
 // so License's creation path and every account-email verification reach them.
 import "./accounts/holders.js";
 
@@ -75,7 +78,7 @@ export const identityService: ServiceDescriptor = {
   authorizeRegistration: (ctx: RegistrationAuthContext) =>
     authorizeRegistration(ctx),
   /**
-   * Licence deletion (`core/licenseDelete.ts`): the portal's links to the deleted licence go, so
+   * Licence deletion (`core/licensing/licenseDelete.ts`): the portal's links to the deleted licence go, so
    * no account's library keeps a card for a licence that no longer exists, and so do its I-12
    * relink rows (nothing is left to undo; the `audit` rows keep the history).
    */
@@ -109,7 +112,7 @@ export const identityService: ServiceDescriptor = {
    *
    * I-09 (WIRE-CONTRACT-V4 §12.6): `account: true` says the account routes are served, and
    * `keyEntryLimit` is the product's `identity.keyEntry.limit` read through the same resolver
-   * the key-entry routes enforce it with (`core/keyEntries.ts`), so the value published is the
+   * the key-entry routes enforce it with (`core/licensing/keyEntries.ts`), so the value published is the
    * value enforced (discovery's 300 s cache may lag; the refusal carries the live value).
    * `accountPortal` is the product's page in the customer portal, for `openAccount()`, present
    * while the product's portal is on. A client uses each endpoint only when it is present.

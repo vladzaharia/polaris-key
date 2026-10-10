@@ -15,12 +15,12 @@ import {
   EMAIL_SEND_PER_IP_HOUR,
   EMAIL_SEND_PER_RECIPIENT_DAY,
   EMAIL_SEND_PER_RECIPIENT_HOUR,
-} from "../src/core/emailLimits.js";
+} from "../src/core/notify/emailLimits.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   SIGNIN_FLOW_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import { TURNSTILE_VERIFY_URL } from "../src/services/identity/card/turnstile.js";
 import { EMAIL_RESEND_AFTER_SECONDS } from "../src/services/identity/card/emailSignIn.js";
 import { disableAccount } from "../src/services/identity/accounts/deletion.js";

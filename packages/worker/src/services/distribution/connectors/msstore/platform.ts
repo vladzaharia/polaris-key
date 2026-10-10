@@ -12,12 +12,13 @@
  *   - **Tokens.** From `platformMsStoreToken` for a TEAM-WIDE purpose, on behalf of the admin.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   recordPlatformCredentialResult,
   resolvePlatformCredential,
 } from "../../../../core/platformCredentials.js";
-import type { PlatformEventActor } from "../../../../core/platformEvents.js";
+import type { PlatformEventActor } from "../../../../core/ops/platformEvents.js";
 import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
 import {
   MAX_RESPONSE_BYTES,

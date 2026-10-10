@@ -11,7 +11,7 @@ import {
   type ServiceSlug,
   type ServicesMap,
 } from "../../src/core/services.js";
-import { setServices } from "../../src/repo.js";
+import { setServices } from "../../src/core/repo.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { makeEnv, seedLicenseWithKey, seedProduct, seedTier } from "../seed.js";
@@ -72,7 +72,7 @@ export function emptyWorld(): World {
  * The transcripts' catalog: one config key, declared WITHOUT a catalog default.
  *
  * Not the real djdl catalog, deliberately. The Worker stamps every catalog DEFAULT with the
- * request time (`catalogDefaultPayload` in core/payload.ts sets `updatedAt: now`), and the config
+ * request time (`catalogDefaultPayload` in core/licensing/payload.ts sets `updatedAt: now`), and the config
  * document's ETag hashes those entries, so for a catalog that declares any default the config
  * ETag changes every second and the document never answers 304. That is a Worker defect, not
  * the contract (P1b-03 reports it); recording it here would pin a config document that cannot be

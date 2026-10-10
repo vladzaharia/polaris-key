@@ -14,7 +14,7 @@ import {
   updateArtefact,
 } from "../src/core/singleUse.js";
 import { SingleUseDO } from "../src/singleUseDo.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { makeTestDb } from "./helpers.js";

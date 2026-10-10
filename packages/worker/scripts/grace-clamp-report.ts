@@ -8,7 +8,7 @@
  *
  * `--sql` is a `wrangler d1 export` dump (the owner takes it; agents never run wrangler against a
  * remote), `--sqlite` a database file. Either is loaded into MEMORY, so the copy on disk is never
- * opened for writing. `graceClampReport` (`src/core/graceClamp.ts`) then lists, per product, every
+ * opened for writing. `graceClampReport` (`src/core/licensing/graceClamp.ts`) then lists, per product, every
  * usable licence whose offline window the clamp shortens for a document issued at `--now`
  * (default: the current time), with the product's `licensing.clampGraceToExpiry` state resolved
  * through the real settings registry. The tool asserts the report changed nothing (SQLite's
@@ -25,7 +25,7 @@ import {
   graceClampReport,
   graceClampReportCsv,
   type GraceClampReport,
-} from "../src/core/graceClamp.js";
+} from "../src/core/licensing/graceClamp.js";
 import { SETTINGS } from "../src/mount.js";
 
 export interface CopyReport {

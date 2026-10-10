@@ -1177,7 +1177,7 @@ func _header_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
 # ── gate-matrix (§5, §5.1): the build-gate port and the licence gate ─────────────────────
 #
 # Each row pairs build-gate inputs (`gate`) with licence inputs (`license`). The build gate is
-# the SERVER's (packages/worker/src/core/gate.ts `checkBuildGate`, replayed against these same
+# the SERVER's (packages/worker/src/core/licensing/gate.ts `checkBuildGate`, replayed against these same
 # rows by packages/worker/test/gateMatrixCorpus.test.ts), ported here from the SDK's own
 # PKeySemver and PKeyChannel; clients never compute it, they record the Worker's 403. Its
 # verdict feeds PKeyGate.license_state as the `blocked` hint. `expect.reason` describes the

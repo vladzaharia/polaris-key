@@ -9,8 +9,8 @@
 
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { HOSTED_ASSET_REF, ingest } from "../src/core/hostedAssets.js";
-import { IMG_CSP, IMG_IMMUTABLE } from "../src/core/imgHost.js";
+import { HOSTED_ASSET_REF, ingest } from "../src/core/assets/hostedAssets.js";
+import { IMG_CSP, IMG_IMMUTABLE } from "../src/core/assets/imgHost.js";
 import { D1Db } from "../src/db/d1.js";
 import { NOW, seedProduct } from "./seed.js";
 

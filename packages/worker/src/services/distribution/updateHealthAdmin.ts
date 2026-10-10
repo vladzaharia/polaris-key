@@ -3,7 +3,7 @@
 /**
  * The console's update-health surface (P6-03) — `/manage/api/products/<slug>/distribution/
  * update-health…`. Narrative-only, like the rest of the console API; the session, CSRF,
- * rate-limit and platform-admin gates run in `admin/api.ts` before this is reached.
+ * rate-limit and platform-admin gates run in `console/api.ts` before this is reached.
  *
  *     GET  …/update-health[?windowHours=N]        the funnel per rollout (offered → downloaded →
  *                                                 applied → confirmed / reverted, plus pack
@@ -24,8 +24,9 @@
 
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
-import type { AdminSession } from "../../core/adminApi.js";
-import { adminJson, audit, err, readBody } from "../../core/adminApi.js";
+import type { AdminSession } from "../../core/console/session.js";
+import { adminJson, err, readBody } from "../../core/console/respond.js";
+import { audit } from "../../core/console/audit.js";
 import {
   countsFor,
   readUpdateHealth,

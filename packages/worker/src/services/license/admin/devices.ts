@@ -8,20 +8,22 @@ import { ErrorCode } from "../../../core/errors.js";
 import {
   deauthorizeDeviceAsAdmin,
   resetDeviceFingerprintAsAdmin,
-} from "../../../core/deviceAdmin.js";
+} from "../../../core/console/deviceAdmin.js";
 import {
   getDevice,
   getDeviceFacts,
   getFingerprint,
   listDevicesByLicense,
-} from "../../../core/data.js";
+} from "../../../core/repo.js";
 import {
   adminJson,
-  adminNotFound,
+  notFound as adminNotFound,
   err,
+} from "../../../core/console/respond.js";
+import {
   shapeFacts,
   shapeFingerprint,
-} from "../../../core/adminApi.js";
+} from "../../../core/console/deviceShape.js";
 import type { LicenseAdminContext } from "./index.js";
 
 export async function handleAdminDevices(

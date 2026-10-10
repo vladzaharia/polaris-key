@@ -15,11 +15,11 @@
  * note: no new `PolarisErrorCode`, which would be a `shared-protocol` change).
  */
 
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
-import { bearer } from "../http.js";
+import { bearer } from "../platform/http.js";
 import { errorResponse, ErrorCode } from "./errors.js";
-import { lookupCiToken } from "./ciTokens.js";
+import { lookupCiToken } from "./publisher.js";
 import {
   CI_TOKEN_PREFIX,
   type CiPrincipal,

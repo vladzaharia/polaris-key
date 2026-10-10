@@ -7,16 +7,16 @@
 // two lanes is a divergence in the runtime, not in the fixtures.
 
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   insertKey,
   insertLicense,
   insertProduct,
   insertProductKey,
   insertSchema,
-} from "../src/repo.js";
-import { hashKey, mintLicenseKey } from "../src/crypto.js";
-import { seal } from "../src/keyvault.js";
+} from "../src/core/repo.js";
+import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
+import { seal } from "../src/platform/keyvault.js";
 
 /** The committed Polaris Key test signing key (pkey-test-prod-2026), as in `test/seed.ts`. */
 export const TEST_KID = "pkey-test-prod-2026";

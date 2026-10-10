@@ -38,8 +38,8 @@ import {
   registryOrigin,
   type RegistryRoute,
   type RegistryRouteContext,
-} from "../../../../core/registryHost.js";
-import { blobKey, blobResponse } from "../../../../core/blobs.js";
+} from "../../../../core/registry/registryHost.js";
+import { blobKey, blobResponse } from "../../../../core/assets/blobs.js";
 import { registryCacheHeaders } from "../cache.js";
 import { registryPackageOf } from "../catalogSource.js";
 import {

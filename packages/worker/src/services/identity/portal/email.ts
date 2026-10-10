@@ -17,13 +17,15 @@
  *   - every dynamic value escaped; links are only the ones the Worker built.
  *
  * Every message is platform mail, sent as "Polaris Key" through Core's one send choke point
- * (`core/emailDelivery.ts`, I-18), which applies the suppression list, the Apple private-relay
+ * (`core/notify/emailDelivery.ts`, I-18), which applies the suppression list, the Apple private-relay
  * gate and the provider-error handling; platform mail is never counted against a product cap.
  */
 
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import { escapeHtml, type Db, type Env } from "../../../core/platform.js";
-import { deliverEmail } from "../../../core/emailDelivery.js";
+import { escapeHtml } from "../../../platform/html.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
+import { deliverEmail } from "../../../core/notify/emailDelivery.js";
 import type { NoticeMessage } from "./notices.js";
 import { listVerifiedAccountEmails, portalAudit } from "./repo.js";
 

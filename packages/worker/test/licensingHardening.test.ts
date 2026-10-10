@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { versionInWindow } from "../src/core/entitlements.js";
-import { WriteChecks } from "../src/admin/lib/writeChecks.js";
+import { versionInWindow } from "../src/core/licensing/entitlements.js";
+import { WriteChecks } from "../src/core/console/writeChecks.js";
 
 describe("licensing hardening", () => {
   it("a bounded window refuses an unparseable version; an open one admits it", () => {

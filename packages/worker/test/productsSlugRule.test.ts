@@ -13,15 +13,15 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import { checkSlug } from "../src/services/release/linkRepo.js";
-import { getProduct } from "../src/repo.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { getProduct } from "../src/core/repo.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);

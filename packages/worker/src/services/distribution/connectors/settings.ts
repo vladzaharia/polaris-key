@@ -8,7 +8,7 @@
  * manifest field reaches this table: a repo push must never switch on an automatic action.
  */
 
-import type { Db } from "../../../core/platform.js";
+import type { Db } from "../../../db/types.js";
 
 export interface ConnectorSettingsRow {
   product: string;

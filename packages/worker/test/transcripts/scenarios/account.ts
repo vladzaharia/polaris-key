@@ -33,14 +33,14 @@ import {
   servicesOn,
   type Scenario,
 } from "../world.js";
-import { setServices } from "../../../src/repo.js";
+import { setServices } from "../../../src/core/repo.js";
 import { serializeServices } from "../../../src/core/services.js";
 import { loadProduct } from "../../../src/core/products.js";
 import {
   setDeviceSubject,
   subjectFor,
-} from "../../../src/core/accountSubjects.js";
-import { bindSignedInDevice } from "../../../src/core/anchor.js";
+} from "../../../src/core/accounts/accountSubjects.js";
+import { bindSignedInDevice } from "../../../src/core/licensing/anchor.js";
 import { getOrCreateAccountByEmail } from "../../../src/services/identity/portal/repo.js";
 
 /** The product's services: License, Config and Identity. */

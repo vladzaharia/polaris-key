@@ -49,19 +49,16 @@ import {
   type ManifestAppDeliverable,
   type ReleaseDescriptor,
 } from "@polaris-key/manifest";
-import {
-  sha256Hex,
-  type Db,
-  type DbStatement,
-  type Env,
-} from "../../core/platform.js";
+import { sha256Hex } from "../../platform/hash.js";
+import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
   referencedKeys,
   stmtRecordRef,
   storedObjects,
   type BlobRef,
-} from "../../core/blobs.js";
+} from "../../core/assets/blobs.js";
 import { parseManualChannels } from "./channels.js";
 import {
   artifactPolicy,

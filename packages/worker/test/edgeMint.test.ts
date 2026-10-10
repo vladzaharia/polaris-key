@@ -29,17 +29,17 @@ import {
 } from "../src/services/config/mint.js";
 import { handleEnroll } from "../src/services/license/enroll.js";
 import { configService } from "../src/services/config/index.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import { seal } from "../src/keyvault.js";
+} from "../src/core/console/session.js";
+import { seal } from "../src/platform/keyvault.js";
 import { SqliteDb } from "../src/db/sqlite.js";
-import { listAudit } from "../src/repo.js";
+import { listAudit } from "../src/core/repo.js";
 import { invalidateWidenedEdgeMintApprovals } from "../src/core/edgeMintApproval.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 
 // A throwaway ES256 (P-256 PKCS#8) private key for tests only.
 const ES_PEM =

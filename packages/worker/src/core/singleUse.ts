@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 import { shardIndex } from "./rateLimit.js";
 
 // The client half of the atomic single-use store (I-02). The object itself is

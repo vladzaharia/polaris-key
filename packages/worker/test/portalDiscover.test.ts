@@ -17,12 +17,15 @@ import { writeListing } from "./listingWrites.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
-import { getLicense, getLicenseBySub } from "../src/core/data.js";
-import { licenseDeviceLimit, resolveEntitlements } from "../src/core/authz.js";
+import { setServices } from "../src/core/repo.js";
+import { getLicense, getLicenseBySub } from "../src/core/repo.js";
+import {
+  licenseDeviceLimit,
+  resolveEntitlements,
+} from "../src/core/licensing/authz.js";
 import { loadProductPublic } from "../src/core/products.js";
 import {
   activateFromIdentity,

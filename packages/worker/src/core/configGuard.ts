@@ -7,7 +7,7 @@
  * Unit-test and unset environments are exempt: `hashKey`'s unpeppered fallback is reachable there
  * only.
  */
-import type { Env } from "../env.js";
+import type { Env } from "../platform/env.js";
 
 /** Minimum length of an HMAC / pepper secret (32 random bytes encode to 43+ characters). */
 export const MIN_SECRET_LENGTH = 32;

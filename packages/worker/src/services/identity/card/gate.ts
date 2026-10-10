@@ -58,15 +58,11 @@
  *     creates the account. Polaris Key's are asked only while `identity.platformTerms` is set.
  */
 
-import {
-  hashKey,
-  normalizeEmail,
-  randomId,
-  randomToken,
-  type Db,
-  type DbStatement,
-  type Env,
-} from "../../../core/platform.js";
+import { hashKey, randomId } from "../../../platform/crypto.js";
+import { normalizeEmail } from "../../../platform/email.js";
+import { randomToken } from "../../../platform/random.js";
+import type { Db, DbStatement } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -83,14 +79,14 @@ import {
   EMAIL_CODE_TTL_SECONDS,
   issueEmailCode,
   verifyEmailCode,
-} from "../../../core/emailLimits.js";
-import { isApplePrivateRelay } from "../../../core/emailDelivery.js";
+} from "../../../core/notify/emailLimits.js";
+import { isApplePrivateRelay } from "../../../core/notify/emailDelivery.js";
 import {
   EMAIL_GATE_COOKIE,
   accountRealmCookie,
   clearAccountRealmCookie,
   readCookie,
-} from "../../../core/accountCookies.js";
+} from "../../../core/accounts/accountCookies.js";
 import { portalAudit } from "../portal/repo.js";
 import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
 import { checkAccountSession } from "../portal/accountSessions.js";

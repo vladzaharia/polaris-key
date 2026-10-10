@@ -27,7 +27,7 @@ import {
 } from "../seed.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
 import { SETTINGS } from "../../src/mount.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 import { Catalog } from "@polaris-key/catalog";
@@ -62,15 +62,18 @@ import {
   type ReleaseAsset,
 } from "../../src/services/release/github.js";
 import type { FetchImpl } from "../../src/services/release/githubApp.js";
-import type { AdminSession } from "../../src/admin/session.js";
-import { getDevice, upsertDevice } from "../../src/repo.js";
-import { hashKey } from "../../src/crypto.js";
-import { getTokenRecord, TOKEN_RECORD_TTL_SECONDS } from "../../src/kv.js";
+import type { AdminSession } from "../../src/core/console/session.js";
+import { getDevice, upsertDevice } from "../../src/core/repo.js";
+import { hashKey } from "../../src/platform/crypto.js";
+import {
+  getTokenRecord,
+  TOKEN_RECORD_TTL_SECONDS,
+} from "../../src/platform/kv.js";
 import { validateDeviceToken } from "../../src/core/devices.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
-} from "../../src/fingerprint.js";
+} from "../../src/core/fingerprint.js";
 import { DEFAULT_SERVICES } from "../../src/core/services.js";
 
 // ── workerd codegen emulation ────────────────────────────────────────────────

@@ -17,10 +17,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { open } from "../src/keyvault.js";
-import { listAudit } from "../src/repo.js";
+import { open } from "../src/platform/keyvault.js";
+import { listAudit } from "../src/core/repo.js";
 import {
   GOOGLE_TOKEN_URI,
   listOutletCredentials,

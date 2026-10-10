@@ -40,7 +40,7 @@ import { EMAIL_GATE_LANDING } from "../src/services/identity/card/gate.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
-} from "../src/core/accountCookies.js";
+} from "../src/core/accounts/accountCookies.js";
 import {
   EMAIL_ISSUER,
   insertAccount,
@@ -57,7 +57,7 @@ import {
 import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import {
   parseSunsetDate,
   platformMigrationReport,
@@ -65,13 +65,13 @@ import {
   platformSignInPolicy,
   RECENT_USE_SECONDS,
 } from "../src/services/identity/accounts/platformMigration.js";
-import { handleAdmin } from "../src/admin/index.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
-import type { Env } from "../src/env.js";
+} from "../src/core/console/session.js";
+import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 
 const idpKey = vi.hoisted(() => ({

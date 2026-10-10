@@ -733,7 +733,7 @@ plate, never a glow. The console masthead uses the 48 px tile only on feature la
 
 The bytes host (`https://dl.plrs.im`, with `dl-staging` and `dl-dev`) serves release artifacts and
 packs. Its root (`GET /`) answers a static landing page built to this contract
-(`packages/worker/src/core/bytesLanding.ts`). Where the page departs from the contract below is
+(`packages/worker/src/core/assets/bytesLanding.ts`). Where the page departs from the contract below is
 recorded under [What the page omits, and why](#what-the-page-omits-and-why).
 
 **Identity**
@@ -774,7 +774,7 @@ files, and the update social card.
 ### What the page omits, and why
 
 The shipped page follows this section except where the bytes host's own guarantees win
-(`core/bytesHost.ts`, THREAT-MODEL §3: nothing on this host may run as script, and it serves no
+(`core/assets/bytesHost.ts`, THREAT-MODEL §3: nothing on this host may run as script, and it serves no
 route that is not a byte route):
 
 - **Type: the system font stack, not Rubik.** Body text uses `FONT.sans` (Rubik first, then the
@@ -797,7 +797,7 @@ route that is not a byte route):
 
 The registry host (`https://pkg.plrs.im`, with `pkg-staging` and `pkg-dev`, F-02) serves package
 feeds and is Distribution's, as the bytes host is. Its root answers the same page under the same
-contract and the same omissions (`packages/worker/src/core/registryLanding.ts`): the Polaris Key
+contract and the same omissions (`packages/worker/src/core/registry/registryLanding.ts`): the Polaris Key
 Delivery lockup, the delivery green, the title "Polaris Key Delivery", the console and docs
 links, and the environment named on staging and dev. Only its two sentences differ: "The package
 registry for libraries and tools published through Polaris Key." and a short paragraph saying that

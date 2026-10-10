@@ -1,13 +1,13 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from "./env.js";
+import type { Env } from "./platform/env.js";
 import { D1Db } from "./db/d1.js";
 import { dispatch } from "./dispatch.js";
-import { secureResponse } from "./securityHeaders.js";
+import { secureResponse } from "./core/securityHeaders.js";
 import { handleScheduled } from "./scheduled.js";
 import { handleAssetQueue } from "./assetQueue.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
-export { UpdateHealthDO } from "./updateHealthDo.js";
+export { UpdateHealthDO } from "./core/updateHealthDo.js";
 export { SingleUseDO } from "./singleUseDo.js";
 
 /**

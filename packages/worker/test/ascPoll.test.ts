@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setServices } from "../src/repo.js";
+import { setServices } from "../src/core/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { listOutletCredentials } from "../src/core/outletCredentials.js";
 import {

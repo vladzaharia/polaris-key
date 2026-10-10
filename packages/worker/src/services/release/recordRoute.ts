@@ -29,8 +29,9 @@
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, notFound } from "../../core/errors.js";
-import { appSecurityHeaders, bearer } from "../../core/platform.js";
-import { accessRefusal } from "../../core/entitledAccess.js";
+import { appSecurityHeaders } from "../../core/securityHeaders.js";
+import { bearer } from "../../platform/http.js";
+import { accessRefusal } from "../../core/licensing/entitledAccess.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { enforceReleaseAccess, entitledSelectorFor } from "./access.js";
 import { accessModeFor, artifactPolicy, getReleaseConfig } from "./config.js";

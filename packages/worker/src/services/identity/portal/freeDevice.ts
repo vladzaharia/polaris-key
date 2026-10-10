@@ -19,17 +19,15 @@
  * goes here, so both surfaces apply it.
  */
 
-import {
-  deleteTokenRecord,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
+import { deleteTokenRecord } from "../../../platform/kv.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   getDevice,
   getProduct,
   setDeviceStatus,
   type DeviceRow,
-} from "../../../core/data.js";
+} from "../../../core/repo.js";
 import {
   clientNetwork,
   rateLimitOk,

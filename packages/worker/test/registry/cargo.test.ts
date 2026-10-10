@@ -15,10 +15,10 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../src/db/types.js";
-import type { Env } from "../../src/env.js";
+import type { Env } from "../../src/platform/env.js";
 import { REGISTRY_ROUTES, SERVICES } from "../../src/mount.js";
-import { dispatchRegistryHost } from "../../src/core/registryHost.js";
-import { blobKey, recordObject } from "../../src/core/blobs.js";
+import { dispatchRegistryHost } from "../../src/core/registry/registryHost.js";
+import { blobKey, recordObject } from "../../src/core/assets/blobs.js";
 import {
   stmtUpsertDeliverable,
   stmtYankRelease,
@@ -29,7 +29,7 @@ import { forgetRegistrySettings } from "../../src/services/distribution/registry
 import {
   forgetRegistryTokens,
   mintRegistryToken,
-} from "../../src/core/registryTokens.js";
+} from "../../src/core/registry/registryTokens.js";
 import { registryCounters } from "../../src/services/distribution/registry/materialise.js";
 import {
   CRATES_IO_INDEX,

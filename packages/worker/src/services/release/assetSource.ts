@@ -17,12 +17,13 @@
  *     carries the token anywhere.
  */
 
-import type { Db, Env } from "../../core/platform.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import { gitShaOrNull } from "../../core/manifestSnapshot.js";
 import type {
   RepoBlobLookup,
   RepoPullSource,
-} from "../../core/hostedAssetPulls.js";
+} from "../../core/assets/hostedAssetPulls.js";
 import { readCappedText } from "../../core/readCapped.js";
 import { getReleaseConfig } from "./config.js";
 import {

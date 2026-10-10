@@ -12,10 +12,10 @@
 
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { blobKey, checksumHex } from "../src/core/blobs.js";
+import { blobKey, checksumHex } from "../src/core/assets/blobs.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
 import { D1Db } from "../src/db/d1.js";
-import type { Env } from "../src/env.js";
+import type { Env } from "../src/platform/env.js";
 import {
   processReleaseMirror,
   RELEASE_ARTIFACT_REF,

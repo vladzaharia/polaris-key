@@ -7,7 +7,7 @@ import {
   type KeyLike,
   SignJWT,
 } from "jose";
-import type { ManagedPayload } from "../src/core/payload.js";
+import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
@@ -29,8 +29,8 @@ import {
   USER_CODE_ALPHABET,
   type OidcIdentity,
 } from "../src/services/identity/oidc.js";
-import { getLicense, getLicenseBySub } from "../src/repo.js";
-import type { Env } from "../src/env.js";
+import { getLicense, getLicenseBySub } from "../src/core/repo.js";
+import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { artefacts, singleUseMock } from "./singleUseMock.js";
 

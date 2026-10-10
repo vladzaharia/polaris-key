@@ -26,7 +26,7 @@ import {
   putOutletCredential,
   validateOutletCredentialPin,
 } from "../src/core/outletCredentials.js";
-import { open } from "../src/keyvault.js";
+import { open } from "../src/platform/keyvault.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { resolveAscSetup } from "../src/services/distribution/connectors/asc/setup.js";
 import { ASC_CONTROLS } from "../src/services/distribution/connectors/asc/controls.js";

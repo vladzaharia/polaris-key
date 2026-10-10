@@ -16,8 +16,8 @@ import {
   versionIdFrom,
   type DeployRowFields,
 } from "../scripts/record-deploy.mjs";
-import { LATEST_MIGRATION } from "../src/core/deployIdentity.js";
-import { listPlatformDeploys } from "../src/repo.js";
+import { LATEST_MIGRATION } from "../src/core/ops/deployIdentity.js";
+import { listPlatformDeploys } from "../src/core/repo.js";
 import { makeTestDb } from "./helpers.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

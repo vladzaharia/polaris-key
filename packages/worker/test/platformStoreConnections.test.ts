@@ -22,13 +22,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/env.js";
-import { handleAdmin } from "../src/admin/index.js";
+import type { Env } from "../src/platform/env.js";
+import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   issueSession,
-} from "../src/admin/session.js";
+} from "../src/core/console/session.js";
 import {
   openPlatformCredential,
   platformPin,
@@ -41,8 +41,8 @@ import {
 } from "../src/core/outletTokens.js";
 import { platformAppleTeamId } from "../src/core/platformStoreSettings.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
-import { appendPlatformEvent } from "../src/core/platformEvents.js";
-import { deleteProduct } from "../src/admin/repo.js";
+import { appendPlatformEvent } from "../src/core/ops/platformEvents.js";
+import { deleteProduct } from "../src/core/console/repo.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { resolveAscSetup } from "../src/services/distribution/connectors/asc/setup.js";
 import { seedProduct } from "./seed.js";

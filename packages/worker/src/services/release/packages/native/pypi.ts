@@ -21,7 +21,7 @@
 import { createHash } from "node:crypto";
 import { packageNameNorm } from "@polaris-key/manifest";
 import { json } from "../../../../core/errors.js";
-import type { RegistryRoute } from "../../../../core/registryHost.js";
+import type { RegistryRoute } from "../../../../core/registry/registryHost.js";
 import { readCappedBody } from "./body.js";
 import { field, multipartBoundary, parseMultipart, part } from "./multipart.js";
 import {
@@ -33,7 +33,7 @@ import {
   undeclared,
   type NativeFile,
 } from "./publish.js";
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import { publishRoute, refusalResponse } from "./route.js";
 import {
   openSession,

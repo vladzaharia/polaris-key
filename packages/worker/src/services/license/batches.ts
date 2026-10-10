@@ -9,7 +9,7 @@
  * audit row go in ONE D1 batch. Two statements per licence would be over 1,000 statements at 500
  * licences, and D1 bounds the queries one invocation may run (1,000 on the paid plan, 50 on the
  * free one). So the licences and the keys are each ONE `INSERT … SELECT … FROM json_each(?)`
- * over a JSON array bound as a single parameter (the pattern `core/blobGc.ts` uses for its id
+ * over a JSON array bound as a single parameter (the pattern `core/assets/blobGc.ts` uses for its id
  * lists): the batch is four statements whatever the count, each well inside D1's 100 bound
  * parameters, and the arrays well inside its 2 MB value limit (about 45 KB at 500 licences).
  *
@@ -32,7 +32,7 @@
  * was bound before it runs is never disabled.
  */
 
-import type { Db, DbParam, DbStatement } from "../../core/platform.js";
+import type { Db, DbParam, DbStatement } from "../../db/types.js";
 import {
   licenseEventSourceSql,
   licenseTargetSetSql,

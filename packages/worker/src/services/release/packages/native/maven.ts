@@ -29,7 +29,7 @@
 
 import { createHash } from "node:crypto";
 import { packageNameNorm } from "@polaris-key/manifest";
-import type { RegistryRoute } from "../../../../core/registryHost.js";
+import type { RegistryRoute } from "../../../../core/registry/registryHost.js";
 import { readCappedBody } from "./body.js";
 import {
   nativeDescriptor,
@@ -38,7 +38,7 @@ import {
   stageFile,
   type StagedFile,
 } from "./publish.js";
-import { sha256Hex } from "../../../../core/platform.js";
+import { sha256Hex } from "../../../../platform/hash.js";
 import { publishRoute, refusalResponse, type PublishCall } from "./route.js";
 import {
   finalizeSession,

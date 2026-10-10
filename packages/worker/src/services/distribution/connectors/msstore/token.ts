@@ -36,7 +36,8 @@
  * client secret anywhere else.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   openOutletCredential,
   outletCredentialVersion,

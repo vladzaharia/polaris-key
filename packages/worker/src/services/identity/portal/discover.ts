@@ -32,7 +32,7 @@
  * `previewIdentityIssue` (the same policy function, `identityTier`, plus the read-only
  * provisioning step, and nothing written) and the claim through `activateFromIdentity` itself.
  * No other service's internals are read (rule 6): tiers, licences and seats come from Core
- * (`core/data.ts`, `core/authz.ts`), presentation, platforms and `openAccess` through the
+ * (`core/repo.ts`, `core/licensing/authz.ts`), presentation, platforms and `openAccess` through the
  * descriptor hooks. License's own auto-issue (`POST /<p>/license/enroll`, the `anonymous` mode) is
  * per MACHINE and keyed by a hardware id, so it is not an account's offer and is never listed.
  *
@@ -67,7 +67,9 @@
  * the deployment's `storefront.polarisKey.enabled` is off.
  */
 
-import { randomId, type Db, type Env } from "../../../core/platform.js";
+import { randomId } from "../../../platform/crypto.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import type { ProductPublic } from "../../../core/products.js";
 import {
   appendAudit,
@@ -75,8 +77,8 @@ import {
   getLicenseBySub,
   getTier,
   type LicenseRow,
-} from "../../../core/data.js";
-import { licenseDeviceLimit } from "../../../core/authz.js";
+} from "../../../core/repo.js";
+import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   isObtainPathKind,
