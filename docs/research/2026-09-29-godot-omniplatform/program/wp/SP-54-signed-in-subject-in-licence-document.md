@@ -70,7 +70,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 - [x] A `pkey-wire-planner` has written and the lead has approved `plans/SP-54.md` (2026-10-09), amending `plans/I-24.md` §2.1, §2.2, §2.4 and §4.
 - [x] `profile.user` appears for every subject-bound device and for no other; a Worker property test shows every other document is byte-identical. (`packages/worker/test/licenseDocUser.test.ts`: `docProfile` over a grid of licences and stored values, the route for a signed-in, key-entry, malformed and signed-out device, and every recorded transcript document; `pnpm gen transcripts` writes no difference.)
 - [x] Old v4 verifiers ignore the member (V4 §3.2); `PROTOCOL_VERSION` unchanged. (`licenseDocCases` `license-profile-user-*`, accepted by every runner's existing licence-document replay; `PROTOCOL_VERSION` 4, `corpusVersion` 2.)
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header. (Lead gate, `GATE_SCOPE=full`, 2026-10-10: green but for two failures inherited from `main`, both because UK-04's public `packages/elements` is not yet counted: `tools/sdk-version.test.ts` (11 public packages) and `packages/cli/test/releaseWorkflows.test.ts` (`publish-sdks.yml`). The worker suite, 7 205 tests, passes on its own. Kotlin `:conformance:test` and the Chromium runner's licence sections pass too.)
 
 ## Verify
 
