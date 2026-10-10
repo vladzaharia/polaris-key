@@ -35,6 +35,8 @@ import {
   resolveProductSetting,
 } from "../src/core/settings/resolve.js";
 
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
+import type { Principal } from "../src/core/rbac/can.js";
 const ACTOR = { sub: "u1", name: "Una", email: "una@example.test" };
 
 /** A registry with live row-backed entries in License's namespace, and a platform bound. */
@@ -148,6 +150,8 @@ async function world(opts: { linked?: boolean; system?: boolean } = {}) {
 const opts = (over: Partial<WriteOptions> = {}): WriteOptions => ({
   actor: ACTOR,
   origin: "console",
+  // ST-29: an operator write carries the console caller's principal.
+  principal: ROOT_PRINCIPAL,
   now: NOW,
   product: "acme",
   ...over,
@@ -675,6 +679,7 @@ describe("writeSetting: a platform write", () => {
       {
         actor: ACTOR,
         origin: "console",
+        principal: ROOT_PRINCIPAL,
         now: NOW,
         confirm: "storefront.polarisKey.enabled",
       },
@@ -712,6 +717,7 @@ describe("writeSetting: a platform write", () => {
       {
         actor: ACTOR,
         origin: "console",
+        principal: ROOT_PRINCIPAL,
         now: NOW,
         confirm: "storefront.polarisKey.enabled",
       },
@@ -735,9 +741,160 @@ describe("writeSetting: a platform write", () => {
       await writeSetting(
         real,
         { key: "storefront.polarisKey.enabled", op: "reset" },
-        { actor: ACTOR, origin: "console", now: NOW, strict: false },
+        {
+          actor: ACTOR,
+          origin: "console",
+          principal: ROOT_PRINCIPAL,
+          now: NOW,
+          strict: false,
+        },
       ),
     ).toMatchObject({ ok: false, reason: "nothing_stored" });
+  });
+});
+
+describe("writeSettings: the area check (ST-29)", () => {
+  // `license.test.limit` is License's, so its area is `license`; the product is `acme`.
+  const write = (over: Partial<WriteOptions>) =>
+    world({}).then(({ db, ctx }) =>
+      writeSetting(
+        ctx,
+        { key: "license.test.limit", value: 5, expectedVersion: 0 },
+        opts({ strict: false, ...over }),
+      ).then(async (res) => ({ res, rows: await rows(db), db })),
+    );
+
+  it("refuses an operator write with no principal, writing nothing (fail closed)", async () => {
+    for (const origin of ["console", "revert"] as const) {
+      const {
+        res,
+        rows: stored,
+        db,
+      } = await write({
+        origin,
+        principal: undefined,
+      });
+      expect(res).toMatchObject({
+        ok: false,
+        status: 403,
+        reason: "no_access",
+        key: "license.test.limit",
+        details: { scope: "product:acme", area: "license" },
+      });
+      expect(stored).toEqual([]);
+      expect(await audits(db)).toEqual([]);
+    }
+  });
+
+  it("refuses a principal that lacks the key's area, even on a product it holds", async () => {
+    const denied: Principal[] = [
+      { memberId: "m", grants: [] },
+      {
+        memberId: "m",
+        grants: [
+          {
+            role: "product_admin",
+            scope: "product:acme",
+            areas: ["ship"],
+            source: "grant",
+          },
+        ],
+      },
+      {
+        memberId: "m",
+        grants: [
+          {
+            role: "product_admin",
+            scope: "product:other",
+            areas: null,
+            source: "grant",
+          },
+        ],
+      },
+      {
+        memberId: "m",
+        grants: [
+          {
+            role: "platform_admin",
+            scope: "platform",
+            areas: null,
+            source: "grant",
+          },
+        ],
+      },
+    ];
+    for (const principal of denied) {
+      const { res, rows: stored } = await write({ principal });
+      expect(res, JSON.stringify(principal.grants)).toMatchObject({
+        ok: false,
+        status: 403,
+        reason: "no_access",
+      });
+      expect(stored).toEqual([]);
+    }
+  });
+
+  it("lets a principal holding the area write", async () => {
+    const { res } = await write({
+      principal: {
+        memberId: "m",
+        grants: [
+          {
+            role: "product_admin",
+            scope: "product:acme",
+            areas: ["license"],
+            source: "grant",
+          },
+        ],
+      },
+    });
+    expect(res.ok).toBe(true);
+  });
+
+  it("leaves the platform's own writes (resync, manifest push, deploy, CI) to the platform", async () => {
+    for (const origin of ["resync", "manifest-push", "system", "ci"] as const) {
+      const { res } = await write({ origin, principal: undefined });
+      expect(res.ok, origin).toBe(true);
+    }
+  });
+
+  it("checks a platform write against the platform area", async () => {
+    const { db, real } = await world({});
+    const res = await writeSetting(
+      real,
+      {
+        key: "storefront.polarisKey.enabled",
+        value: false,
+        expectedVersion: 0,
+        reason: "incident",
+      },
+      {
+        actor: ACTOR,
+        origin: "console",
+        principal: {
+          memberId: "m",
+          grants: [
+            {
+              role: "product_admin",
+              scope: "products:*",
+              areas: null,
+              source: "grant",
+            },
+          ],
+        },
+        now: NOW,
+        strict: false,
+      },
+    );
+    expect(res).toMatchObject({
+      ok: false,
+      status: 403,
+      reason: "no_access",
+      details: { scope: "platform", area: "platform" },
+    });
+    expect(await db.first("SELECT COUNT(*) AS n FROM platform_audit")).toEqual({
+      n: 0,
+    });
   });
 });
 

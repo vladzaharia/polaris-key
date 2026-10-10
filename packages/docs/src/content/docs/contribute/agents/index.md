@@ -33,11 +33,12 @@ this section and fix it here.
 The usual answer for "make a docs site legible to agents" is to publish `llms.txt` and a set of
 flat markdown mirrors at a stable public URL. That is the wrong shape for this site.
 
-`key.plrs.im/docs` is served by the same worker as the console, **behind the same platform-admin
-session gate**. There is no public docs origin. That is a deliberate trade: because the site is
-gated, it can carry the real runbook, the real deployment procedure, and real operational values
-instead of a sanitised public subset. An `llms.txt` at a gated origin fetches a login page, and a
-public one would either be empty or would leak exactly the material the gate exists to protect.
+`key.plrs.im/docs` is served by the same worker as the console, **in tiers**: the developer
+sections are public, while Operate and Contribute stay behind the console's session gate. That
+is a deliberate trade: because Operate → Platform is gated, it can carry the real runbook, the
+real deployment procedure, and real operational values instead of a sanitised public subset. An
+`llms.txt` for the public developer door is possible now and is planned separately; one that
+reached the gated pages would leak exactly the material the gate exists to protect.
 
 So the agent-readable source of truth is **the repository**, not the deployed site:
 

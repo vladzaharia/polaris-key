@@ -7,6 +7,11 @@
  * (`/manage/*`, the portal) serve only `/assets/<file>`, the content-hashed bundle directory;
  * everything else is the SPA shell. Docs are served only by `handleDocs`, after the session check.
  *
+ * Since ST-29 the site is tiered (`docsTierOf`, docs plan §3.1): a public-tier file (the landing
+ * page, the developer sections, the shared site assets) is served at `/docs` with no session; a
+ * gated one never is; and no route but `/docs` serves either. A "leak" below is gated bytes
+ * reaching an anonymous reader, by any route.
+ *
  * The fake ASSETS binding below enumerates the REAL assembled tree when it has been built
  * (`pnpm --filter @polaris-key/worker assemble`) and a fixture tree otherwise; each file answers
  * `ASSET:<path>`, so a leak is detectable from the body alone.
@@ -22,6 +27,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 import { makeTestDb } from "./helpers.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { docsTierOf } from "../src/docs.js";
 
 const DB = makeTestDb();
 const here = dirname(fileURLToPath(import.meta.url));
@@ -110,7 +116,10 @@ async function send(
   return { status: res.status, body: await res.text() };
 }
 
-const leaks = (r: { body: string }) => r.body.startsWith("ASSET:/docs/");
+/** Gated docs bytes: a docs file whose tier is not public. */
+const leaks = (r: { body: string }) =>
+  r.body.startsWith("ASSET:/docs/") &&
+  docsTierOf(r.body.slice("ASSET:".length)) !== "public";
 
 /** Every way to name a docs file through a route other than `/docs`. */
 function bypassVariants(p: string): string[] {
@@ -138,7 +147,7 @@ function bypassVariants(p: string): string[] {
   ];
 }
 
-describe("SEC-WEB-1: docs are unreachable without the admin session", () => {
+describe("SEC-WEB-1: gated docs are unreachable without a session", () => {
   it("tests the real assembled tree when it is built (CI assembles before testing)", () => {
     expect(TREE.length).toBeGreaterThan(5);
     expect(DOCS_FILES.length).toBeGreaterThan(5);
@@ -197,10 +206,12 @@ describe("SEC-WEB-1: docs are unreachable without the admin session", () => {
       }
     }
     for (const p of [
-      "/docs",
-      "/docs/",
       "/docs/admin/kek/",
       "/docs/admin/kek",
+      "/docs/operate/",
+      "/docs/operate/platform/runbook/",
+      "/docs/contribute/",
+      "/docs/pagefind/pagefind.js",
     ]) {
       const res = await dispatchWith(
         new Request(`https://key.plrs.im${p}`),
@@ -211,6 +222,28 @@ describe("SEC-WEB-1: docs are unreachable without the admin session", () => {
       expect(res.status, p).toBe(302);
       expect(res.headers.get("location")).toContain("/manage/login");
     }
+  }, 120_000);
+
+  it("serves exactly the public tier anonymously at /docs, and only there", async () => {
+    const e = env();
+    let publicFiles = 0;
+    for (const p of DOCS_FILES) {
+      const r = await send(e, p);
+      if (docsTierOf(p) === "public") {
+        publicFiles++;
+        expect(r.status, p).toBe(200);
+        expect(r.body, p).toBe(`ASSET:${p}`);
+        // A public file is still a docs file: the SPA proxies never serve it.
+        expect(
+          (await send(e, `/manage${p}`)).body.startsWith("ASSET:/docs"),
+          p,
+        ).toBe(false);
+      } else {
+        expect(r.status, p).toBe(302);
+      }
+    }
+    expect(publicFiles).toBeGreaterThan(0);
+    expect((await send(e, "/docs/")).body).toBe("ASSET:/docs/index.html");
   }, 120_000);
 
   it("legitimate SPA bundle files stay public", async () => {

@@ -26,6 +26,10 @@
  *      is registered at product scope with exactly that `systemLock` value (ST-20:
  *      `core.manifest.authoritative` is on for the system product, S-18 §4.5 item 8), and only
  *      product entries declare one.
+ *   7. **Areas** (ST-29, ST-28 plan §3): every entry's `rbacArea` is an `AREAS` id that fits its
+ *      scope (platform entries `platform`, product entries a product area), and a
+ *      security-widening product key is in `keys` or `settings`, exactly as
+ *      `SECURITY_WIDENING_AREAS` maps it, never its service's area.
  *
  * Plus the structural rules every consumer relies on: unique keys per scope, unique aliases,
  * slices owning only their own namespaces (rule 6), defaults that fit their value spec, confirm
@@ -35,6 +39,7 @@
  * Adding an entry is a THREAT-MODEL §9 review trigger even when these rules pass.
  */
 
+import { isAreaId, PRODUCT_AREAS } from "../rbac/areas.js";
 import type { RegisteredSlice, SettingsRegistry } from "./registry.js";
 import type {
   ConfirmLevel,
@@ -158,6 +163,35 @@ export const SECURITY_WIDENING_KEYS: readonly string[] = [
 ];
 
 /**
+ * Rule 7 (ST-29, ST-28 plan §3): the area of every security-widening product key. Credentials and
+ * trust anchors are `keys`; access policy is `settings`. Never the owning service's area, so an
+ * admin narrowed to (say) Sign-in cannot widen Sign-in's trust. A widening key missing here, or
+ * declaring another area, fails the registry test; the mapping is pinned there too.
+ */
+export const SECURITY_WIDENING_AREAS: Readonly<
+  Record<string, "keys" | "settings">
+> = {
+  "core.trustPolicy": "keys",
+  "core.web.origins": "keys",
+  "identity.oidc": "keys",
+  "identity.oidc.syncTierOnSignIn": "keys",
+  "identity.issuer.clients": "keys",
+  "identity.redirectPaths": "keys",
+  "identity.exchange.oidc": "keys",
+  "identity.exchange.firebase": "keys",
+  "release.keys": "keys",
+  "release.sparkleEd25519Pub": "keys",
+  "release.publishing.trustedPublisher": "keys",
+  "release.github": "keys",
+  "core.registration": "settings",
+  "core.adminGroup": "settings",
+  "identity.provisioning": "settings",
+  "identity.keyEntry.claimByKey": "settings",
+  "distribution.access": "settings",
+  "update.metadataAccess": "settings",
+};
+
+/**
  * Product keys whose value is fixed for the system product (`system = 1`) by a registry rule (the
  * system-lock rule). ST-20 (S-18 §4.5 item 8, owner decision D2): the system product is
  * manifest-authoritative, so two environments deployed from the same commit have the same
@@ -176,7 +210,6 @@ const MANIFEST_PATH_RE =
   /^(product|release|schema|distribution):[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)*$/;
 // A work-package id: `ST-04`, `I-10a`, and the portal's Worker additions `PX-W13`, `PX-W13b`.
 const WP_RE = /^(?:[A-Z]+[0-9]*-[0-9]+[a-z]?|PX-W[0-9]{1,2}[a-z]?)$/;
-const CAPABILITY_RE = /^settings\.(platform|product|entity)\.[a-zA-Z]+\.write$/;
 const LEVELS: readonly ConfirmLevel[] = ["L0", "L1", "L2", "L3"];
 
 function words(name: string): string[] {
@@ -406,14 +439,33 @@ function checkEntry(def: SettingDef, out: string[]): void {
       );
   }
 
-  // Liveness, capability.
+  // Liveness.
   if (def.pending) {
     if (!WP_RE.test(def.pending.wp))
       out.push(`${at}: pending.wp must be a work-package id`);
   } else if (def.readers.length === 0)
     out.push(`${at}: a live entry names at least one reader (or is pending)`);
-  if (!CAPABILITY_RE.test(def.capability))
-    out.push(`${at}: capability must be settings.<scope>.<owner>.write`);
+
+  // Rule 7: areas.
+  if (!isAreaId(def.rbacArea))
+    out.push(`${at}: rbacArea must be one of AREAS (rule 7)`);
+  else if (def.scope === "platform" && def.rbacArea !== "platform")
+    out.push(`${at}: a platform entry's rbacArea is platform (rule 7)`);
+  else if (def.scope !== "platform" && !PRODUCT_AREAS.includes(def.rbacArea))
+    out.push(`${at}: a product entry's rbacArea is a product area (rule 7)`);
+  if (def.scope !== "platform") {
+    const pinned = SECURITY_WIDENING_AREAS[def.key];
+    if (
+      def.securityWidening &&
+      def.rbacArea !== "keys" &&
+      def.rbacArea !== "settings"
+    )
+      out.push(
+        `${at}: a security-widening key's rbacArea is keys or settings, never its service's area (rule 7)`,
+      );
+    else if (pinned && def.rbacArea !== pinned)
+      out.push(`${at}: rbacArea must be ${pinned} (rule 7)`);
+  }
   if (def.visibleWhen?.service && def.visibleWhen.service !== def.service)
     out.push(`${at}: visibleWhen.service must be the owning service`);
 

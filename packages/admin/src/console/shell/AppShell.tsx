@@ -17,6 +17,7 @@ import {
   sectionOf,
   type GlobalPageId,
   type NavFeatures,
+  type PageId,
   type ProductPageId,
   type ServiceState,
 } from "../nav.js";
@@ -50,6 +51,9 @@ import {
 } from "./StatePages.js";
 import { TopBar } from "./TopBar.js";
 import { mutate } from "../../console/data/mutations.js";
+import { areaOfPage, canIn, canOpenHref, canOpenPage } from "../access/can.js";
+import { NoAccessPage } from "../access/NoAccessPage.js";
+import { HrefAccess } from "../access/context.js";
 
 /** The Platform section's pages: one lazy chunk (notes/S-13 §9.1). */
 const PlatformPages = React.lazy(() => import("../sections/platform/index.js"));
@@ -235,7 +239,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
   const { expanded, toggle } = useNavCollapse(group);
-  const version = usePlatformVersion();
+  const version = usePlatformVersion(canIn(me, "platform"));
 
   const key = viewKey(route);
   React.useEffect(() => {
@@ -272,11 +276,21 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
       }
       if (!slug) return false;
       const target = PRODUCT_PAGES.find((p) => p.shortcut === k);
-      if (!target || !isPageEnabled(target.page as ProductPageId, services))
+      if (
+        !target ||
+        !isPageEnabled(target.page as ProductPageId, services) ||
+        !canOpenPage(me, target.page, slug)
+      )
         return false;
       return navigate(productPage(slug, target.page as ProductPageId));
     },
   });
+
+  // ST-29: what the member's role opens, for the lists below the shell (attention).
+  const canOpenHrefForMe = React.useCallback(
+    (href: string) => canOpenHref(me, href),
+    [me],
+  );
 
   const signOut = (): void => {
     void mutate("logout").finally(() => {
@@ -298,117 +312,123 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     expanded,
     onToggleSection: toggle,
     onPrefetch: prefetchSection,
+    // ST-29: what the member cannot open is absent from the sidebar, not disabled.
+    canOpen: (id: PageId) => canOpenPage(me, id, slug),
   };
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <>
-        <div
-          data-service={accent}
-          style={
-            { "--sidebar-w": rail ? "3.5rem" : "15rem" } as React.CSSProperties
-          }
-          className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-surface-page text-fg lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
-        >
-          <a
-            href="#content"
-            onClick={(e) => {
-              e.preventDefault();
-              document.getElementById("content")?.focus();
-            }}
-            className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:ring-2 focus:ring-focus"
+    <HrefAccess.Provider value={canOpenHrefForMe}>
+      <TooltipProvider delayDuration={300}>
+        <>
+          <div
+            data-service={accent}
+            style={
+              {
+                "--sidebar-w": rail ? "3.5rem" : "15rem",
+              } as React.CSSProperties
+            }
+            className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-surface-page text-fg lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
           >
-            Skip to content
-          </a>
-          <TopBar
-            className="lg:col-span-2"
-            me={me}
-            section={accent}
-            product={slug ? product : null}
-            products={productList}
-            page={switcherPage}
-            switcherOpen={switcherOpen}
-            onSwitcherOpenChange={setSwitcherOpen}
-            docsHref={page ? docsFor(page) : "/docs/admin/"}
-            onOpenPalette={() => openPalette()}
-            onOpenNav={() => setNavOpen(true)}
-            onShortcuts={() => setSheetOpen(true)}
-            onSignOut={signOut}
-            version={version.data ?? null}
-          />
-          <aside className="hidden min-h-0 flex-col border-r border-border bg-surface-page lg:flex">
-            <Sidebar
-              {...sidebarProps}
-              rail={rail}
-              onToggleRail={toggleRail}
-              idPrefix="sidebar"
-            />
-          </aside>
-          <main
-            id="content"
-            tabIndex={-1}
-            className="relative min-h-0 overflow-y-auto outline-hidden pk-scroll"
-          >
-            <div
-              data-service={accent}
-              className="mx-auto w-full max-w-[110rem] px-4 py-6 sm:px-6 lg:px-8"
-            >
-              <PageContent
-                key={key}
-                route={route}
-                me={me}
-                knownProduct={knownProduct}
-                services={services}
-                productName={productName ?? routeSlug ?? ""}
-                onOpenPalette={openPalette}
-              />
-            </div>
-          </main>
-        </div>
-
-        <DialogPrimitive.Root open={navOpen} onOpenChange={setNavOpen}>
-          <DialogPrimitive.Portal>
-            <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 animate-pk-overlay-in lg:hidden" />
-            <DialogPrimitive.Content
-              aria-describedby={undefined}
-              onCloseAutoFocus={(e) => {
-                // The drawer is opened from the top bar, not a Radix trigger: hand focus back.
+            <a
+              href="#content"
+              onClick={(e) => {
                 e.preventDefault();
-                document.getElementById(NAV_BUTTON_ID)?.focus();
+                document.getElementById("content")?.focus();
               }}
-              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
+              className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:ring-2 focus:ring-focus"
             >
-              <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-                <DialogPrimitive.Title className="text-sm font-semibold text-fg-strong">
-                  Navigation
-                </DialogPrimitive.Title>
-                <DialogPrimitive.Close
-                  aria-label="Close navigation"
-                  className="rounded-md p-1.5 text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  <X aria-hidden className="size-4" />
-                </DialogPrimitive.Close>
-              </div>
+              Skip to content
+            </a>
+            <TopBar
+              className="lg:col-span-2"
+              me={me}
+              section={accent}
+              product={slug ? product : null}
+              products={productList}
+              page={switcherPage}
+              switcherOpen={switcherOpen}
+              onSwitcherOpenChange={setSwitcherOpen}
+              docsHref={page ? docsFor(page) : "/docs/admin/"}
+              onOpenPalette={() => openPalette()}
+              onOpenNav={() => setNavOpen(true)}
+              onShortcuts={() => setSheetOpen(true)}
+              onSignOut={signOut}
+              version={version.data ?? null}
+            />
+            <aside className="hidden min-h-0 flex-col border-r border-border bg-surface-page lg:flex">
               <Sidebar
                 {...sidebarProps}
-                idPrefix="drawer"
-                onNavigate={() => setNavOpen(false)}
+                rail={rail}
+                onToggleRail={toggleRail}
+                idPrefix="sidebar"
               />
-            </DialogPrimitive.Content>
-          </DialogPrimitive.Portal>
-        </DialogPrimitive.Root>
+            </aside>
+            <main
+              id="content"
+              tabIndex={-1}
+              className="relative min-h-0 overflow-y-auto outline-hidden pk-scroll"
+            >
+              <div
+                data-service={accent}
+                className="mx-auto w-full max-w-[110rem] px-4 py-6 sm:px-6 lg:px-8"
+              >
+                <PageContent
+                  key={key}
+                  route={route}
+                  me={me}
+                  knownProduct={knownProduct}
+                  services={services}
+                  productName={productName ?? routeSlug ?? ""}
+                  onOpenPalette={openPalette}
+                />
+              </div>
+            </main>
+          </div>
 
-        <CommandPalette
-          me={me}
-          open={paletteOpen}
-          onOpenChange={setPaletteOpen}
-          initialQuery={paletteQuery}
-          items={paletteItems}
-        />
-        <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
-        <LiveRegion message={announcement} id="route-announcer" />
-      </>
-    </TooltipProvider>
+          <DialogPrimitive.Root open={navOpen} onOpenChange={setNavOpen}>
+            <DialogPrimitive.Portal>
+              <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 animate-pk-overlay-in lg:hidden" />
+              <DialogPrimitive.Content
+                aria-describedby={undefined}
+                onCloseAutoFocus={(e) => {
+                  // The drawer is opened from the top bar, not a Radix trigger: hand focus back.
+                  e.preventDefault();
+                  document.getElementById(NAV_BUTTON_ID)?.focus();
+                }}
+                className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
+              >
+                <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
+                  <DialogPrimitive.Title className="text-sm font-semibold text-fg-strong">
+                    Navigation
+                  </DialogPrimitive.Title>
+                  <DialogPrimitive.Close
+                    aria-label="Close navigation"
+                    className="rounded-md p-1.5 text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                  >
+                    <X aria-hidden className="size-4" />
+                  </DialogPrimitive.Close>
+                </div>
+                <Sidebar
+                  {...sidebarProps}
+                  idPrefix="drawer"
+                  onNavigate={() => setNavOpen(false)}
+                />
+              </DialogPrimitive.Content>
+            </DialogPrimitive.Portal>
+          </DialogPrimitive.Root>
+
+          <CommandPalette
+            me={me}
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            initialQuery={paletteQuery}
+            items={paletteItems}
+          />
+          <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+          <LiveRegion message={announcement} id="route-announcer" />
+        </>
+      </TooltipProvider>
+    </HrefAccess.Provider>
   );
 }
 
@@ -505,10 +525,20 @@ function PageContent({
     );
   }
   if (route.kind === "global") {
+    // ST-29: a member who holds no product yet (and not the platform) gets Home's no-access
+    // state; any other page the member lacks the area of is NoAccessPage.
+    if (
+      route.page === "home" &&
+      me.products.length === 0 &&
+      !canIn(me, "platform")
+    )
+      return <NoAccessPage me={me} area="console" slug={null} home />;
+    if (!canOpenPage(me, route.page, null))
+      return <NoAccessPage me={me} area={areaOfPage(route.page)} slug={null} />;
     return <PageErrorBoundary>{globalPageFor(route)}</PageErrorBoundary>;
   }
-  // `/me` lists every product the session administers (authority is platform-wide), so a slug
-  // outside it does not exist; it is not an authorization failure.
+  // `/me` lists every product the member holds an area of, so a slug outside it is unknown here:
+  // the console never says whether a product it does not show exists.
   if (!knownProduct) {
     return <UnknownProductPage slug={route.slug} products={me.products} />;
   }
@@ -518,6 +548,18 @@ function PageContent({
         path={route.page}
         slug={route.slug}
         onOpenPalette={onOpenPalette}
+      />
+    );
+  }
+  // ST-29: a product the member holds, but not this page's area. The worker refuses the page's
+  // routes whatever this shows; NoAccessPage says who can help instead of a failed load.
+  if (!canOpenPage(me, route.page, route.slug)) {
+    return (
+      <NoAccessPage
+        me={me}
+        area={areaOfPage(route.page)}
+        slug={route.slug}
+        productName={productName}
       />
     );
   }

@@ -41,13 +41,11 @@ import {
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { getProduct } from "../../core/repo.js";
 import { audit } from "../../core/console/audit.js";
-import { isPlatformAdmin } from "../authz.js";
 import { forgetRegistryTokens } from "../../core/registry/registryTokens.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   err,
-  forbidden,
   notFound,
   readBody,
 } from "../../core/console/respond.js";
@@ -162,7 +160,7 @@ export async function handleCiPublisher(
   id: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session)) return forbidden("platform admin only");
+  // ST-29: the dispatcher checked the `keys` area on this product before routing here.
   if (id !== undefined) return notFound();
   if (req.method === "GET")
     return adminJson({ ok: true, policy: await getPublisherPolicy(db, slug) });
@@ -203,7 +201,7 @@ export async function handleCiTokens(
   id: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session)) return forbidden("platform admin only");
+  // ST-29: the dispatcher checked the `keys` area on this product before routing here.
 
   if (id === undefined) {
     if (req.method === "GET")

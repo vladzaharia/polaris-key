@@ -52,7 +52,11 @@ export function settingRefused(
   refusal: WriteRefusal,
   fields?: readonly string[],
 ): Response {
-  return err(refusal.status, ErrorCode.BadRequest, refusal.message, {
+  // ST-29: an area refusal is the dispatcher's 403 (`forbidden`, reason `no_access`, its scope and
+  // area), so the console renders one denial whichever layer caught it.
+  const code =
+    refusal.status === 403 ? ErrorCode.Forbidden : ErrorCode.BadRequest;
+  return err(refusal.status, code, refusal.message, {
     reason: refusal.reason,
     ...(refusal.key ? { key: refusal.key } : {}),
     ...(fields ? { fields } : {}),

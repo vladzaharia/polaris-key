@@ -1,8 +1,10 @@
 /**
- * The one table of admin routes that need a fresh step-up, and the gate
- * that reads it. A route that is irreversible, exports personal data, or forces a key change
- * is listed here and calls `requireStepUp`; `test/adminStepUp.test.ts` walks this table so a
- * listed route cannot lose its gate and an unlisted one is visibly a decision.
+ * Why each step-up route needs one, and the gate that reads it. A route that is irreversible,
+ * exports personal data, or forces a key change is listed here. Since ST-29 the route table
+ * (`./routes.ts`, `stepUp: true`) is what the dispatcher enforces, before the handler runs. The
+ * one row whose step-up depends on the request body (a break-glass key activation) keeps its own
+ * `requireStepUp` in the handler, and `(a|b)` spells two table rows. `test/rbacRouteMatrix.test.ts`
+ * keeps this list and the table's step-up rows in step.
  *
  * A step-up is `session.stepUpAt` (see ./session.ts): set only by a `prompt=login` flow the IdP
  * proved with `auth_time`, never by an ordinary sign-in.
@@ -60,6 +62,11 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     method: "POST",
     path: "/products/:slug/users/licenses/:id/(make-floating|reassign)",
     why: "changes who holds a licence",
+  },
+  {
+    method: "POST",
+    path: "/platform/override-migration/run",
+    why: "rewrites every product's licence overrides",
   },
 ];
 

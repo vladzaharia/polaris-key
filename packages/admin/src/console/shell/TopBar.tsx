@@ -11,6 +11,7 @@ import { ThemeMenu } from "./ThemeMenu.js";
 import { UserMenu } from "./UserMenu.js";
 import { Kbd } from "../../ui/Kbd.js";
 import type { ProductLike } from "./bits.js";
+import { canIn } from "../access/can.js";
 
 /**
  * The top bar (ADMIN.md §2.1–2.2, components.md §1.2): the global tier of navigation. Brand block
@@ -83,6 +84,7 @@ export function TopBar({
           page={page}
           open={switcherOpen}
           onOpenChange={onSwitcherOpenChange}
+          platform={canIn(me, "platform")}
         />
       ) : null}
       <EnvironmentBadge environment={me.environment} />

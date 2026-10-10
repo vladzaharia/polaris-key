@@ -79,6 +79,8 @@ export interface SidebarProps {
   /** Warm a section's code on hover or focus (React.lazy per section). */
   onPrefetch?: (key: SectionKey) => void;
   idPrefix: string;
+  /** ST-29: may the member open this page? Pages it may not are left out. Default: every page. */
+  canOpen?: (page: PageId) => boolean;
 }
 
 /**
@@ -109,8 +111,13 @@ export function Sidebar({
   onNavigate,
   onPrefetch,
   idPrefix,
+  canOpen = () => true,
 }: SidebarProps): React.ReactElement {
   const sections = slug ? visibleSections(services) : [];
+  // ST-29: what the member cannot open is absent, not disabled (ADMIN.md §5.10, hidden vs
+  // disabled). A section with nothing left to show goes too.
+  const links = platformLinks().filter((p) => canOpen(p.page));
+  const platform = platformItems().filter((p) => canOpen(p.page));
   const swapped = useRailSwap(rail);
   return (
     <nav
@@ -122,7 +129,7 @@ export function Sidebar({
       )}
     >
       <ul className="flex flex-col gap-0.5" data-service="core">
-        {platformLinks().map((p) => (
+        {links.map((p) => (
           <li key={p.page}>
             <SidebarItem
               page={p}
@@ -137,12 +144,12 @@ export function Sidebar({
       {/* Off a product only (owner, 2026-10-04): inside a product the Platform section confused
           the product's own nav. From there it stays one step away: the product switcher's
           "Platform" entry, the account menu's version chip (Deployment) and ⌘K. */}
-      {slug === null && platformItems().length > 0 ? (
+      {slug === null && platform.length > 0 ? (
         <SidebarGroup
           groupKey={PLATFORM_GROUP.key}
           label={PLATFORM_GROUP.label}
           accent={PLATFORM_GROUP.accent}
-          items={platformItems().map((p) => ({
+          items={platform.map((p) => ({
             page: p,
             to: globalPage(p.page as GlobalPageId),
           }))}
@@ -158,27 +165,33 @@ export function Sidebar({
           contentId={`${idPrefix}-section-${PLATFORM_GROUP.key}`}
         />
       ) : null}
-      {sections.map((section) => (
-        <SidebarGroup
-          key={section.key}
-          groupKey={section.key}
-          label={section.label}
-          accent={section.accent}
-          glyph={section.glyph}
-          items={navItems(section, features).map((p) => ({
-            page: p,
-            to: productPage(slug!, p.page as ProductPageId),
-          }))}
-          activePage={activePage}
-          active={section.key === activeSection}
-          open={section.key === activeSection || expanded.has(section.key)}
-          onToggle={() => onToggleSection(section.key)}
-          rail={rail}
-          onNavigate={onNavigate}
-          onPrefetch={() => onPrefetch?.(section.key)}
-          contentId={`${idPrefix}-section-${section.key}`}
-        />
-      ))}
+      {sections
+        .map((section) => ({
+          section,
+          items: navItems(section, features).filter((p) => canOpen(p.page)),
+        }))
+        .filter(({ items }) => items.length > 0)
+        .map(({ section, items }) => (
+          <SidebarGroup
+            key={section.key}
+            groupKey={section.key}
+            label={section.label}
+            accent={section.accent}
+            glyph={section.glyph}
+            items={items.map((p) => ({
+              page: p,
+              to: productPage(slug!, p.page as ProductPageId),
+            }))}
+            activePage={activePage}
+            active={section.key === activeSection}
+            open={section.key === activeSection || expanded.has(section.key)}
+            onToggle={() => onToggleSection(section.key)}
+            rail={rail}
+            onNavigate={onNavigate}
+            onPrefetch={() => onPrefetch?.(section.key)}
+            contentId={`${idPrefix}-section-${section.key}`}
+          />
+        ))}
       {onToggleRail ? (
         <div className="mt-auto pt-2">
           <button

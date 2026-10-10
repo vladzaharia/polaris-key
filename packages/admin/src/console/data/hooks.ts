@@ -98,11 +98,15 @@ export function fetchPlatformVersion(): Promise<PlatformIdentity> {
  * The running build (A-11), for the account menu's version chip. It changes only on a deploy, so
  * it is not refetched on every focus; a failure hides the chip rather than reporting anything.
  */
-export function usePlatformVersion(): UseQueryResult<PlatformIdentity> {
+export function usePlatformVersion(
+  enabled = true,
+): UseQueryResult<PlatformIdentity> {
   return useQuery({
     queryKey: qk.platformVersion(),
     queryFn: fetchPlatformVersion,
     staleTime: 5 * 60_000,
     retry: false,
+    // ST-29: the build identity is the Platform area's; a member without it never asks.
+    enabled,
   });
 }

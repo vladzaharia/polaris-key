@@ -38,6 +38,7 @@ import {
   type SettingsEnv,
 } from "../platformSettings.js";
 import type { SettingsRegistry } from "./registry.js";
+import { can, PLATFORM, type Principal, type Scope } from "../rbac/can.js";
 import {
   followsManifest,
   isSettingValue,
@@ -120,6 +121,13 @@ function summaryOf(
 export interface WriteOptions {
   actor: AuditActor;
   origin: SettingOrigin;
+  /**
+   * ST-29: the console caller's principal (`AdminSession.principal`, set by the dispatcher). Every
+   * key is checked with `can(principal, scope, def.rbacArea, "edit")` before anything is written,
+   * so a route cannot write a key outside its caller's areas. A `console` or `revert` write (the
+   * operator's own) without one is refused: the check fails closed rather than being skipped.
+   */
+  principal?: Principal;
   /** Epoch seconds: one value for every timestamp the write records. */
   now: number;
   /** The product (a slug, or the `products` row the caller holds) for a product-scope write. */
@@ -196,11 +204,12 @@ export type WriteRefusalReason =
   | "confirm_required"
   | "nothing_stored"
   | "version_conflict"
-  | "invalid_origin";
+  | "invalid_origin"
+  | "no_access";
 
 export interface WriteRefusal {
   ok: false;
-  status: 400 | 404 | 409 | 422;
+  status: 400 | 403 | 404 | 409 | 422;
   reason: WriteRefusalReason;
   /** The key the refusal is about. */
   key?: string;
@@ -227,6 +236,33 @@ function refuse(
     ...(key ? { key } : {}),
     ...(details ? { details } : {}),
   };
+}
+
+/** The operator's own write origins: these never run without a principal (fail closed). */
+const OPERATOR_ORIGINS: readonly SettingOrigin[] = ["console", "revert"];
+
+/**
+ * ST-29: the area check for one key, or `null` when the write may proceed. A write with no
+ * principal and a non-operator origin (a resync, a manifest push, the deploy hook, CI) is the
+ * platform's own and is not an operator's to authorize.
+ */
+function areaRefusal(
+  def: SettingDef,
+  scope: Scope,
+  opts: WriteOptions,
+): WriteRefusal | null {
+  if (!opts.principal && !OPERATOR_ORIGINS.includes(opts.origin)) return null;
+  if (can(opts.principal, scope, def.rbacArea, "edit")) return null;
+  return refuse(
+    403,
+    "no_access",
+    `writing ${def.key} needs the ${def.rbacArea} area`,
+    def.key,
+    {
+      scope: scope.kind === "product" ? `product:${scope.slug}` : "platform",
+      area: def.rbacArea,
+    },
+  );
 }
 
 // ── Confirm levels ───────────────────────────────────────────────────────────────────────────
@@ -606,6 +642,8 @@ async function writeProduct(
         `${w.key} is not a product setting`,
         w.key,
       );
+    const denied = areaRefusal(def, { kind: "product", slug, system }, opts);
+    if (denied) return denied;
     if (def.pending)
       return refuse(
         409,
@@ -971,6 +1009,8 @@ async function writePlatform(
         `${w.key} is not a platform setting`,
         w.key,
       );
+    const denied = areaRefusal(def, PLATFORM, opts);
+    if (denied) return denied;
     if (def.pending)
       return refuse(
         409,

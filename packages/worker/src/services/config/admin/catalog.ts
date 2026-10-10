@@ -236,6 +236,7 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
           email: session.email ?? null,
         },
         origin: "console",
+        principal: session.principal,
         now,
         product: slug,
         strict: false,

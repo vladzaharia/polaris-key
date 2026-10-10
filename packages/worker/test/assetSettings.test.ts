@@ -47,6 +47,7 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import type { AssetUsageDto } from "../src/console/handlers/hostedAssets.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 let db: SqliteDb;
 let env: Env;
@@ -190,6 +191,7 @@ describe("a product's settings", () => {
       {
         actor: { sub: "admin-1", name: "Ops", email: null },
         origin: "console",
+        principal: ROOT_PRINCIPAL,
         now: NOW,
         strict: false,
       },

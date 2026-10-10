@@ -15,6 +15,8 @@ export interface SettingsIndexEntry {
   service: string;
   /** The settings-hub section the row lives in. */
   area: string;
+  /** The console area a write needs (`can()`, ST-29): what `useCan` checks for this row. */
+  rbacArea: string;
   label: string;
   description: string;
   keywords: readonly string[];
@@ -49,6 +51,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "background-jobs",
+    rbacArea: "platform",
     label: "Lazy deltas",
     description:
       "Lets products opted in to lazy hot-pair deltas count demand and generate deltas. Off stops the subsystem in both Worker scripts.",
@@ -67,6 +70,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "background-jobs",
+    rbacArea: "platform",
     label: "Lazy delta size cap",
     description:
       "The largest payload, on either side of a pair, the delta consumer will encode. It can only be lowered below the measured 32 MiB ceiling.",
@@ -85,6 +89,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "background-jobs",
+    rbacArea: "platform",
     label: "Blob collector",
     description:
       "Runs the nightly collector that deletes blob-store objects nothing has referenced for the grace period. Off only costs storage.",
@@ -103,6 +108,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "background-jobs",
+    rbacArea: "platform",
     label: "Blob collector grace period",
     description:
       "How long an object stays unreferenced before the collector may delete it. The bucket's 180-day age lock still bounds every deletion.",
@@ -121,6 +127,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "licensing",
+    rbacArea: "platform",
     label: "Reserved entitlement names",
     description:
       "How a product catalog flag that declares a system key (channels, deviceLimit, app.*, license.*, pkey.*) with an incompatible type is treated: warn and accept it, or refuse the manifest or catalog.",
@@ -139,6 +146,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "identity",
+    rbacArea: "platform",
     label: "Reserved display names",
     description:
       "How a product name or listing name that uses a platform or store name (Polaris Key, Apple, Google Play, Steam and others) is treated: warn and accept it, or refuse the manifest or listing.",
@@ -157,6 +165,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "identity",
+    rbacArea: "platform",
     label: "Extra reserved display terms",
     description:
       "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
@@ -175,6 +184,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "identity",
+    rbacArea: "platform",
     label: "Polaris Key terms",
     description:
       "The version and URLs of Polaris Key's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
@@ -193,6 +203,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "identity",
+    rbacArea: "platform",
     label: "Key-entry refusals",
     description:
       "Lets Identity products refuse key entry past the per-licence limit and on owned licences. Counting runs either way; turn it on once the SDKs that show the refusals are released.",
@@ -211,6 +222,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "product-defaults",
+    rbacArea: "platform",
     label: "Key-entry limit ceiling",
     description:
       "The most key entries any product may allow per licence that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
@@ -229,6 +241,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "storefront",
+    rbacArea: "platform",
     label: "Polaris Key storefront",
     description:
       "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
@@ -247,6 +260,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "delivery",
+    rbacArea: "platform",
     label: "Hosted assets",
     description:
       "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files. Off returns every image surface to the developer's own URLs and copies no new release file; release files already copied keep serving from their copies, and every stored copy stays.",
@@ -265,6 +279,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "product-defaults",
+    rbacArea: "platform",
     label: "Default media quota",
     description:
       "How many bytes of hosted images (originals and their sizes, not release files) a product may hold when it sets no quota of its own. Past it, a new image is refused and the current copy keeps serving.",
@@ -283,6 +298,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "product-defaults",
+    rbacArea: "platform",
     label: "Default release-file quota",
     description:
       "How many bytes of mirrored release files a product may hold when it sets no quota of its own. Past it, mirroring stops and GitHub keeps serving the files.",
@@ -301,6 +317,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "cloudSync",
+    rbacArea: "platform",
     label: "Pause Cloud Sync writes",
     description:
       "Pauses every Cloud Sync write on this deployment. Reads keep working, devices keep their unsynced changes and retry after the pause, and nothing is deleted.",
@@ -319,6 +336,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "cloudSync",
+    rbacArea: "platform",
     label: "Default Cloud Sync quota",
     description:
       "How many bytes of Cloud Sync data one person may keep on a product when no tier, licence or add-on sets pkey.cloudSync.bytes. A change reaches every product with Cloud Sync on; lowering it deletes nothing.",
@@ -337,6 +355,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "product-defaults",
+    rbacArea: "platform",
     label: "Default device limit",
     description:
       "The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it.",
@@ -355,6 +374,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "platform",
     area: "product-defaults",
+    rbacArea: "platform",
     label: "Default offline window",
     description:
       "How many days a device may run offline when its product sets no window of its own. A change reaches every product that inherits it.",
@@ -373,6 +393,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "general",
+    rbacArea: "core",
     label: "Product name",
     description:
       "The display name shown in the console, the portal and the discovery document.",
@@ -391,6 +412,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "access",
+    rbacArea: "settings",
     label: "Admin group",
     description:
       "The identity-provider group named by the manifest as this product's administrators. Not enforced: console access is platform-wide. Manifest-only (owner decision 1).",
@@ -409,6 +431,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "access",
+    rbacArea: "keys",
     label: "Web origins",
     description:
       "Browser origins allowed to call this product's endpoints (the CORS allow-list). Adding one lets that site's scripts call the product.",
@@ -427,6 +450,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "general",
+    rbacArea: "settings",
     label: "Manifest-authoritative",
     description:
       "The product's .pkey/ is the only writer of its display name, licence defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
@@ -445,6 +469,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "services",
+    rbacArea: "core",
     label: "Services",
     description:
       "Which opt-in services this product runs. A service that is off does not exist from outside.",
@@ -463,6 +488,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "services",
+    rbacArea: "settings",
     label: "Device registration",
     description:
       "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
@@ -481,6 +507,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "keys",
+    rbacArea: "keys",
     label: "Required secrets",
     description:
       "The names of the sealed secrets this product needs an operator to set (a custom OIDC client's secret, an edge-mint signing key). The manifest names them, never their values; each value is set on Keys & secrets and only its presence is ever shown.",
@@ -504,6 +531,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "general",
+    rbacArea: "core",
     label: "Icon and accent",
     description:
       "The product's icon and accent colours (light and dark), declared in .pkey/product and shown by the console, the portal and the SDK UI kits. Manifest-only.",
@@ -522,6 +550,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "access",
+    rbacArea: "keys",
     label: "Device trust policy",
     description:
       "Which attestation a device must present to enrol (App Attest, Play Integrity) and whether it is enforced. Relaxing it lets unattested clients enrol.",
@@ -540,6 +569,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "storefront",
+    rbacArea: "commerce",
     label: "Listing",
     description:
       "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in the portal while every policy keeps working.",
@@ -558,6 +588,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "storefront",
+    rbacArea: "commerce",
     label: "Audience",
     description:
       "Who sees the listing. Eligible shows it only to a person who can obtain it now; Everyone shows it to every signed-in person, the one exception to never revealing a product a person cannot get.",
@@ -576,6 +607,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "storefront",
+    rbacArea: "commerce",
     label: "Ways to obtain",
     description:
       "Which reasons may list the product for a person (a mapped group, auto-issue, an open product, store ownership, the product's own sign-in, an email domain). Unset offers every one, including ways added later.",
@@ -594,6 +626,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "storefront",
+    rbacArea: "commerce",
     label: "Group labels",
     description:
       'How an identity-provider group is named on the listing ("Included with Aperture Seven"), at most 40 characters. A group without a label shows as "For members of <group>".',
@@ -612,6 +645,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "assets",
+    rbacArea: "core",
     label: "Mirror release files",
     description:
       "Keeps Polaris Key's own copy of every app release file the product publishes on GitHub or at a URL, and serves it first. Off copies no new release file for this product, so GitHub serves the files without a copy; the copies already made keep serving.",
@@ -630,6 +664,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "assets",
+    rbacArea: "core",
     label: "Media quota",
     description:
       "How many bytes of hosted images (originals and their sizes, not release files) this product may hold. Past it, a new image is refused and the current copy keeps serving. Unset follows the platform default.",
@@ -648,6 +683,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "core",
     area: "assets",
+    rbacArea: "core",
     label: "Release-file quota",
     description:
       "How many bytes of mirrored release files this product may hold. Past it, mirroring stops and GitHub keeps serving the files. Unset follows the platform default.",
@@ -666,6 +702,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.policy",
+    rbacArea: "license",
     label: "Default device limit",
     description:
       "How many devices a licence may activate when neither its tier nor the licence sets a limit.",
@@ -684,6 +721,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.policy",
+    rbacArea: "license",
     label: "Default offline window",
     description:
       "How many days a device may run without reaching the server when neither its tier nor the licence sets a window.",
@@ -702,6 +740,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.policy",
+    rbacArea: "license",
     label: "Fingerprint policy",
     description:
       "Which hashed hardware components identify a device, and how many may change before it counts as a new device.",
@@ -720,6 +759,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.autoIssue",
+    rbacArea: "license",
     label: "Auto-issue",
     description:
       "Mints a licence on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier.",
@@ -738,6 +778,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.tiers",
+    rbacArea: "license",
     label: "Tiers",
     description:
       "The product's tiers: device limit, expiry, channels, version window and profile per tier. Each row is claimed on its own (S-18 D3).",
@@ -756,6 +797,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.licensing",
+    rbacArea: "license",
     label: "Entitlement model",
     description:
       "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
@@ -774,6 +816,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.licensing",
+    rbacArea: "license",
     label: "Entitlement holder",
     description:
       "Whose entitlements a device sees: the account signed in on that device (device), or the licence owner's whole set (owner). Owner lets anyone with a shared key reach everything the owner holds.",
@@ -792,6 +835,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.licensing",
+    rbacArea: "license",
     label: "Clamp offline grace to expiry",
     description:
       "Ends a device's offline grace no later than its licence's expiry, so an expired licence cannot keep running offline.",
@@ -810,6 +854,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.licensing",
+    rbacArea: "license",
     label: "Anchor licence choice",
     description:
       "Which of a holder's licences a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
@@ -828,6 +873,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.licensing",
+    rbacArea: "license",
     label: "Re-anchor",
     description:
       "When a device may move to a better anchor licence: never, or on activation. Moving on every refresh is not available yet.",
@@ -846,6 +892,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.licensing",
+    rbacArea: "license",
     label: "Refund grace",
     description:
       "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
@@ -864,6 +911,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "license",
     area: "license.licensing",
+    rbacArea: "license",
     label: "Billing-retry grace",
     description:
       "Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
@@ -882,6 +930,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "config",
     area: "config.catalog",
+    rbacArea: "config",
     label: "Config catalog",
     description:
       "The product's catalog of config keys, flags and secrets, claimed as one unit: a console edit claims the whole catalog.",
@@ -900,6 +949,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "config",
     area: "config.profiles",
+    rbacArea: "config",
     label: "Profiles",
     description:
       "Reusable managed-payload baselines tiers point at. Each row is claimed on its own (S-18 D3).",
@@ -918,6 +968,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "config",
     area: "config.edgeMint",
+    rbacArea: "config",
     label: "Edge-mint recipes",
     description:
       "Recipes that mint short-lived third-party credentials at the edge for licensed devices. Each recipe still needs an operator approval.",
@@ -936,6 +987,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.compatibility",
+    rbacArea: "ship",
     label: "Compatibility window",
     description:
       "The oldest and newest app versions a licence document admits. Builds outside it are refused at activation and refresh.",
@@ -954,6 +1006,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.sync",
+    rbacArea: "keys",
     label: "GitHub repository",
     description:
       "The GitHub repository releases are read from. Linking the product (Settings → Repository) sets it, with the repository's GitHub App installation. .pkey/release names it as provider: { type: github, owner, repo }, which is validated and, for the platform's own product, must match the platform repository. Changing it changes whose releases are served and who can publish.",
@@ -972,6 +1025,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.sync",
+    rbacArea: "ship",
     label: "Binary name",
     description:
       "The executable's name in artifact file names and in the install script users pipe into sh. Unset means the repository's name.",
@@ -990,6 +1044,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.channels",
+    rbacArea: "ship",
     label: "Channel workflow",
     description:
       "The GitHub Actions workflow (a file name or numeric id) whose successful runs make the beta and pr-<n> channels: beta is the newest tag a run built from the beta branch, pr-<n> the newest from that pull request. Unset, both fall back to prerelease tags.",
@@ -1008,6 +1063,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.channels",
+    rbacArea: "ship",
     label: "Beta branch",
     description:
       "The branch whose channel-workflow runs make the beta channel. Used only with a channel workflow.",
@@ -1026,6 +1082,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.sync",
+    rbacArea: "ship",
     label: "Summary marker",
     description:
       "The HTML-comment marker that fences a release's summary in its GitHub release notes (<!-- pkey:summary --> … <!-- /pkey:summary -->). The changelog route and the appcast show the fenced text, else the first paragraph above the first ## heading.",
@@ -1044,6 +1101,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.channels",
+    rbacArea: "ship",
     label: "Manual channels",
     description:
       "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licences grant them and SDKs request them like any other channel.",
@@ -1062,6 +1120,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.deliverables",
+    rbacArea: "ship",
     label: "Deliverables",
     description:
       "What the product releases: its app (versioning, channels and artifact map), its packs and its packages. Unset means one implicit app deliverable whose files are classified by name.",
@@ -1080,6 +1139,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.channels",
+    rbacArea: "ship",
     label: "Channel policy",
     description:
       "Per deliverable and channel: the pointer, the pin, the channels it includes, the device floor and the critical flag. The manifest declares includes; a promote, pin or floor change from the console or CI claims that row until Revert.",
@@ -1098,6 +1158,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.publishing",
+    rbacArea: "keys",
     label: "Trusted publisher",
     description:
       "Which GitHub Actions workflow and environment may exchange their OIDC token for a short-lived pkeyci_ token, and with which scopes. Pointing it at another workflow or environment changes who can publish.",
@@ -1116,6 +1177,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.signing",
+    rbacArea: "keys",
     label: "Release keys",
     description:
       "The Ed25519 public keys CI signs release records with (pkey-release+jws), one to four. A record is accepted only when signed by one of them, and a release without one is never a feed target, so whoever holds a matching private key can publish releases devices are offered. Public keys only.",
@@ -1134,6 +1196,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.sync",
+    rbacArea: "ship",
     label: "Artifact policy",
     description:
       "Which channels, architectures and installers a GitHub release must carry before it is accepted.",
@@ -1152,6 +1215,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.signing",
+    rbacArea: "keys",
     label: "Sparkle update key",
     description:
       "The Ed25519 public key appcast signatures are checked against. Whoever holds the matching private key can sign updates.",
@@ -1170,6 +1234,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "release",
     area: "release.packages",
+    rbacArea: "ship",
     label: "Prune builds of main",
     description:
       "Feed retention: when a package version is published on stable, delete that package's builds of main below it (X-main.N, PyPI X.devN) from every feed. Stable and beta versions are never touched; the bytes are reclaimed once nothing else references them. Off by default: a product opts in. Always on for the platform's own feeds.",
@@ -1195,6 +1260,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "distribution",
     area: "distribution.access",
+    rbacArea: "settings",
     label: "Download access",
     description:
       "Who may download each deliverable's bytes: anyone, a registered device, a licensed one, or an entitled one. Loosening it gives the files away.",
@@ -1213,6 +1279,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "distribution",
     area: "distribution.outlets",
+    rbacArea: "ship",
     label: "Outlet capabilities",
     description:
       "What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it.",
@@ -1231,6 +1298,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "distribution",
     area: "distribution.outlets",
+    rbacArea: "ship",
     label: "Outlets",
     description:
       "The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it.",
@@ -1249,6 +1317,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "distribution",
     area: "distribution.outlets",
+    rbacArea: "ship",
     label: "Transports",
     description:
       "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
@@ -1267,6 +1336,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "distribution",
     area: "distribution.commerce",
+    rbacArea: "commerce",
     label: "Commerce",
     description:
       "Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
@@ -1285,6 +1355,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "update",
     area: "update.access",
+    rbacArea: "settings",
     label: "Release metadata access",
     description:
       "Who may read release metadata and update feeds: anyone, a registered device, or a licensed one. Loosening it exposes what the product ships.",
@@ -1303,6 +1374,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "update",
     area: "update.policy",
+    rbacArea: "ship",
     label: "Operator update policy",
     description:
       "Operator-owned update requirements no manifest can loosen: a required Sparkle signature and the minimum OS.",
@@ -1321,6 +1393,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.keyEntry",
+    rbacArea: "signin",
     label: "Key-entry limit",
     description:
       "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
@@ -1339,6 +1412,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.keyEntry",
+    rbacArea: "settings",
     label: "Add by key without the purchase email",
     description:
       "Whether a licence that carries a buyer email may join an account by its key alone, without that email verified on the account. On, anyone holding a leaked key can add an email-bound licence to their own account. A licence already in an account never moves by its key either way.",
@@ -1357,6 +1431,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.signIn",
+    rbacArea: "signin",
     label: "Terms",
     description:
       "The product's terms: a version and an https URL. A person signing in through the product accepts each version once; a new version asks again.",
@@ -1375,6 +1450,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.signIn",
+    rbacArea: "keys",
     label: "Redirect paths",
     description:
       "The paths a web app's sign-in may return to. A redirect URI is one of the product's web origins plus one of these paths, matched exactly.",
@@ -1393,6 +1469,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.signIn",
+    rbacArea: "keys",
     label: "OIDC sign-in",
     description:
       "The identity provider products sign users in with: issuer, client and group-to-role map. Changing the issuer moves who can sign in, so it is manifest-only and passes the issuer allowlist.",
@@ -1411,6 +1488,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.signIn",
+    rbacArea: "settings",
     label: "Provisioning hooks",
     description:
       "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
@@ -1429,6 +1507,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.signIn",
+    rbacArea: "signin",
     label: "Browser session length",
     description:
       "How long a product sign-in in the browser lasts. A product may shorten it, never lengthen it past the platform's 30 days.",
@@ -1447,6 +1526,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.signIn",
+    rbacArea: "signin",
     label: "Approved display name",
     description:
       "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
@@ -1465,6 +1545,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "identity",
     area: "identity.signIn",
+    rbacArea: "keys",
     label: "Sync tier on sign-in",
     description:
       "Whether a sign-in may move a licence to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
@@ -1483,6 +1564,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     entity: null,
     service: "sync",
     area: "cloudSync.limits",
+    rbacArea: "sync",
     label: "Product storage ceiling",
     description:
       "The most Cloud Sync data all people on the product may keep together: settings, records and files. Past it, a write that grows usage is refused; reads, clears and deletes keep working, and nothing is deleted.",

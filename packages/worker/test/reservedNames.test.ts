@@ -32,6 +32,7 @@ import { SETTINGS } from "../src/mount.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -190,6 +191,7 @@ describe("LICENSING_RESERVED_NAMES resolution", () => {
       {
         actor: { sub: "u1", name: null, email: null },
         origin: "console",
+        principal: ROOT_PRINCIPAL,
         now: NOW,
       },
     );

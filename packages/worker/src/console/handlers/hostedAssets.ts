@@ -291,6 +291,7 @@ async function handleAssetSettings(
         email: session.email ?? null,
       },
       origin: "console",
+      principal: session.principal,
       now,
       product: slug,
     },

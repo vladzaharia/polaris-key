@@ -95,6 +95,7 @@ export async function handleServicesAdmin(
       email: session.email ?? null,
     },
     origin,
+    principal: session.principal,
     now,
     product: row,
     strict: false,

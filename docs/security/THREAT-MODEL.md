@@ -5335,8 +5335,9 @@ group-assignment mistake on that client crossed from customer to operator (notes
   shows `console_oidc_shared`, naming the admin variables still unset. Until the owner sets them
   the pre-I-03 exposure stands: the residual this package closes only once the secrets are set
   and `/manage/callback` is removed from the platform client (DEPLOYMENT §2).
-- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` in the ID
-  token's `groups` (§5); a product's `adminGroup` grants no console access. A separate client narrows who can obtain a token
+- **Authorisation is unchanged.** Console access is a role `can()` resolves (ST-29, AT-2); today
+  the only source of one is `PLATFORM_ADMIN_GROUP` in the ID token's `groups` (the root rule,
+  §5); a product's `adminGroup` grants no console access. A separate client narrows who can obtain a token
   for the console's audience; it does not change what the token grants. Where Pocket ID can
   restrict a client to user groups, allowing only the admin group on the console client adds a
   second check at the IdP.
@@ -8526,8 +8527,48 @@ Obtain admin authority
 ├── Forge the session cookie ─────────────► needs ADMIN_SESSION_SECRET
 ├── Plant your own session in an operator's browser (login CSRF — no state↔browser binding)
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
-└── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
+├── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
+├── Reach an unguarded route ─────────────► deny-by-default route table; route × principal matrix test (ST-29)
+├── Write a key outside your area ────────► writeSettings() checks can() on the key's rbacArea (ST-29)
+└── Read operator docs without a session ─► the docs tiers: Operate and Contribute stay gated (ST-29)
 ```
+
+**AT-2 amended (ST-29; ST-28 plan §5.3).** Console authority is now a role, and one predicate,
+`can(principal, scope, area, level)` (`core/rbac/can.ts`), decides every admin request. The root
+of it is unchanged: the deploy-time `PLATFORM_ADMIN_GROUP` at the console IdP, read from the
+verified session on every request and stored nowhere, makes the holder a Superadmin (the root
+rule, `core/rbac/principal.ts`). Until ST-30 to ST-32 add bindings and SSO rules it is the only
+source of a role, so every session the callback can mint holds exactly the authority it held
+before. What ST-29 adds:
+
+- **One route table, deny by default.** Every `/manage/api` route is a row of `console/routes.ts`
+  with an area, a level and its step-up. The dispatcher (`console/api.ts`) reads the session
+  (the only caller of `sessionFromRequest`, pinned by `consoleSessionReader.test.ts`), resolves
+  the principal, then runs the limiter, the membership check (a principal with no grant is
+  refused every route before any is matched), CSRF, the match (404, or 405 with `Allow`), one
+  product load, `can()` (a 403 `no_access` naming the scope and area, with the budgeted
+  `access.denied` row on a product) and the step-up, before any handler. The handlers' own
+  "platform admin only" re-checks are gone; `rbacRouteMatrix.test.ts` drives every row with eight
+  principals against a hand-written oracle, with negative controls for no session, no role, the
+  wrong area, a missing or expired step-up and a missing CSRF token.
+- **Areas are stored values.** The thirteen ids are append-only (`rbacAreas.test.ts`), and a
+  route that changes area fails `rbacRouteAreas.test.ts` unless `AREA_MOVES` lists it; a move
+  that rewrites bindings into an existing area is refused (it would widen every holder).
+- **Settings writes check their own area.** Every registry entry declares `rbacArea`, and a
+  security-widening product key is in `keys` (credentials and trust anchors) or `settings`
+  (access policy), never its service's area, so an admin narrowed to one area cannot widen that
+  area's trust through any route. `writeSettings()` refuses a console or revert write that has no
+  principal (fail closed).
+- **The console only reads the answer.** `/me.permissions` is `can()`'s output; `useCan`, the
+  sidebar, the palette and NoAccessPage hide and explain, and decide nothing. `GET
+/access/admins` names up to three people who can give access (name, role, address; never a
+  subject), the same answer for a product that does not exist.
+- **Four product routes were "platform admin only".** `trust-policy`, `outlet-credentials` and
+  `ci-publisher` (and `ci-tokens`) are now product area `keys` (ST-28 Q5, security checklist
+  item 18): a Product admin holding `keys` on that product may write them. Moot while the root
+  rule is the only grant.
+- **Step-up precedes the handler.** A step-up row answers `step_up_required` before the handler's
+  own refusals (deleting the system product asks for the step-up before its 409).
 
 Holding the admin plane must not let the session widen itself or every product at once through a
 setting: the settings registry keeps every widening knob deploy-time at platform scope, and product
@@ -8756,6 +8797,15 @@ possession, or widens its window beyond `maxAgeSeconds + 300` s; or the licence 
 `profile.user` (SP-54) carries anything about the account beyond its pairwise subject, is written
 for a device without a binding or into an offline bundle, or a reader of it refuses a document.
 
+For console authority (ST-29): a route is served outside the admin route table, or
+`sessionFromRequest` gains a caller beside the dispatcher; a role or an area is added, or a role
+is added to `can()`'s rules; a route changes area through an `AREA_MOVES` entry that rewrites
+bindings, or any move into an existing area; `products:*` starts covering the system product; a
+security-widening key's `rbacArea` leaves `keys` or `settings`; `writeSettings()` accepts a
+console write without a principal; a docs path under `operate/` or `contribute/`, or the search
+index, becomes public; `GET /access/admins` names a Platform admin, an account id or a product's
+admins to someone without an area of that product.
+
 ### The shared assets root and the docs gate (SEC-WEB-1)
 
 **What arrived.** One assets root holds the admin and portal SPA (`/assets/*`, `/manage.html`,
@@ -8765,11 +8815,17 @@ dotted path from that root, so `GET /manage/docs/<file>` served gated docs with 
 
 **Control.** `isPublicSpaAssetPath` (`http.ts`) is an allowlist: the proxies fetch only
 `/assets/<literal file>`, and every other path is the SPA shell. Docs are served only by
-`handleDocs`, which checks the admin session first for every path under `/docs`. Tests:
+`handleDocs`. Since ST-29 it serves by tier (`DOCS_TIERS`, docs plan §3.1 and D2): the landing
+page, the developer sections and the site's shared assets need no session; Operate → Console (and
+Help, until the owner's support address exists, D4) need a console member; Operate → Platform,
+Contribute, the search index (one bundle holds every tier's text until DOC-03b splits it) and
+every path no row names need `can(platform, docs)`. The gate runs before anything is fetched. Tests:
 `test/docsGateBypass.test.ts` walks every file in the assembled tree through encoded, cased,
-doubled-slash, traversal, HEAD and Range variants, anonymously (denied) and with an admin
-session (served at `/docs` only).
+doubled-slash, traversal, HEAD and Range variants: a gated file is denied anonymously by every
+route, a public one is served at `/docs` only, and with an admin session every file is served at
+`/docs` only; `test/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES`.
 
 **Residual.** Anything placed under `/assets/` in the admin build is public by design. The
-developer docs become public with DOC-03b; that change flips the gate in `docs.ts`, not this
-allowlist.
+developer door is public since ST-29, and a file under `/docs/_astro/` that only a gated page
+uses (an imported image) is public with it until DOC-03b gives assets their pages' tier; the
+repository that builds them is public too.

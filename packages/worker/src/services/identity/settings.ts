@@ -68,6 +68,7 @@ const VISIBLE = { service: "identity", offBehaviour: "hide" } as const;
  */
 const SYNC_TIER_ON_SIGN_IN: SettingDef = setting({
   key: "identity.oidc.syncTierOnSignIn",
+  rbacArea: "keys",
   scope: "product",
   service: "identity",
   area: "identity.signIn",
@@ -132,6 +133,7 @@ export const CLAIM_BY_KEY_SETTING = "identity.keyEntry.claimByKey";
  */
 const CLAIM_BY_KEY: SettingDef = setting({
   key: CLAIM_BY_KEY_SETTING,
+  rbacArea: "settings",
   scope: "product",
   service: "identity",
   area: "identity.keyEntry",
@@ -193,6 +195,7 @@ const TERMS: SettingDef = setting({
  */
 const REDIRECT_PATHS: SettingDef = setting({
   key: "identity.redirectPaths",
+  rbacArea: "keys",
   scope: "product",
   service: "identity",
   area: "identity.signIn",
@@ -237,6 +240,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     REDIRECT_PATHS,
     setting({
       key: "identity.oidc",
+      rbacArea: "keys",
       scope: "product",
       service: "identity",
       area: "identity.signIn",
@@ -266,6 +270,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     // security-widening, like the OIDC block it extends. The entitlement reaches the document.
     setting({
       key: "identity.provisioning",
+      rbacArea: "settings",
       scope: "product",
       service: "identity",
       area: "identity.signIn",

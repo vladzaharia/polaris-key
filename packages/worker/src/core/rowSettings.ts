@@ -43,6 +43,7 @@ import {
 } from "./settingsClaims.js";
 import { fitsValueSpec } from "./settings/rules.js";
 import type { SettingDef } from "./settings/types.js";
+import type { Principal } from "./rbac/can.js";
 import {
   writeSetting,
   type SettingsWriteContext,
@@ -326,7 +327,7 @@ export async function liveRowClaimKeys(
 
 export type RowSettingRefusal = {
   ok: false;
-  status: 404 | 409 | 422;
+  status: 403 | 404 | 409 | 422;
   /** `writeSetting()`'s reasons, plus the two that are this route's own state checks. */
   reason: WriteRefusal["reason"] | "not_claimed" | "invalid_manifest_value";
   message: string;
@@ -394,6 +395,7 @@ export async function writeRowSetting(
   input: RowSettingWriteInput,
   actor: AuditActor,
   now: number,
+  principal?: Principal,
 ): Promise<RowSettingWriteResult> {
   const { view } = await readOne(ctx.db, product, def, now);
 
@@ -418,6 +420,7 @@ export async function writeRowSetting(
     {
       actor,
       origin: "console",
+      principal,
       now,
       product,
       // No typed confirmation on this route; the version and a critical key's reason are
@@ -451,6 +454,7 @@ export async function revertRowSetting(
   input: { expectedVersion: unknown },
   actor: AuditActor,
   now: number,
+  principal?: Principal,
 ): Promise<RowSettingRevertResult> {
   const { row, view } = await readOne(ctx.db, product, def, now);
   if (!row || row.source !== "console")
@@ -511,6 +515,7 @@ export async function revertRowSetting(
     {
       actor,
       origin: "revert",
+      principal,
       now,
       product,
       strict: false,

@@ -32,7 +32,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, GitBranch, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowRight, GitBranch, RefreshCw } from "lucide-react";
 import {
   api,
   type BlobGcDryRun,
@@ -69,7 +69,7 @@ import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
 import { BreakGlassDialog } from "../../../components/BreakGlassDialog.js";
-import { DeleteProductDialog } from "../../../components/DeleteProductDialog.js";
+import { DeleteProductAction } from "../../../components/DeleteProductDialog.js";
 import {
   ResyncDialog,
   ResyncResultPanel,
@@ -82,7 +82,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
-import { Link, navigate } from "../../../router.js";
+import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import {
   DangerAction,
@@ -403,7 +403,7 @@ function SettingsBody({
         <DangerAction
           title="Delete product"
           consequence={`Tombstones ${product.name}: every license is disabled and every device token is evicted. Audit history is kept and the slug stays reserved.`}
-          action={<DeleteProduct slug={slug} product={product} />}
+          action={<DeleteProductAction slug={slug} product={product} />}
         />
       </DangerZone>
       <ConfirmDialog
@@ -697,35 +697,6 @@ function StorageFacts({ dry }: { dry: BlobGcDryRun }): React.ReactElement {
           <span className="text-fg-muted">None scheduled</span>
         )}
       </SettingsRow>
-    </>
-  );
-}
-
-function DeleteProduct({
-  slug,
-  product,
-}: {
-  slug: string;
-  product: ProductDetail;
-}): React.ReactElement {
-  const [open, setOpen] = React.useState(false);
-  return (
-    <>
-      <Button
-        variant="danger"
-        iconStart={<Trash2 aria-hidden />}
-        onClick={() => setOpen(true)}
-      >
-        Delete product…
-      </Button>
-      {/* Chunk 4's shared L3 dialog: one wording and one guard for Delete product, here and in
-          the Products registry. It sends the typed slug as `confirmSlug`. */}
-      <DeleteProductDialog
-        product={product}
-        open={open}
-        onOpenChange={setOpen}
-        onDeleted={() => navigate(r.home())}
-      />
     </>
   );
 }

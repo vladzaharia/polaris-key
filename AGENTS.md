@@ -302,9 +302,12 @@ route and the four permanent aliases exist with the right methods, and the spec 
 outside the expected set (documenting a route that does not exist is drift too). Add a route ⇒
 update the spec **and** the `routeCoverage` table.
 
-**11. The docs site is gated; the repo is the agent-readable source.** `key.plrs.im/docs` sits
-behind the platform-admin session (`packages/worker/src/docs.ts`) — there is no public docs
-origin and no `llms.txt`. An agent reads this file and the repo, not the deployed site.
+**11. The docs site is tiered; the repo is the agent-readable source.** `key.plrs.im/docs`
+serves its landing page and the developer sections (`start/`, `build/`, `features/`,
+`reference/`) with no session; Help and Operate → Console need a console session; Operate →
+Platform (the runbook included), Contribute and the search index need `can(platform, docs)`
+(`packages/worker/src/docs.ts`, `DOCS_TIERS`). There is no `llms.txt`. An agent reads this file
+and the repo, not the deployed site.
 
 ## Where docs live, and how to build the site
 

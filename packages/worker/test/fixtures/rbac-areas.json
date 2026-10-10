@@ -1,0 +1,67 @@
+[
+  {
+    "id": "console",
+    "name": "Console",
+    "scope": "membership"
+  },
+  {
+    "id": "platform",
+    "name": "Platform",
+    "scope": "platform"
+  },
+  {
+    "id": "members",
+    "name": "Members",
+    "scope": "both"
+  },
+  {
+    "id": "docs",
+    "name": "Docs",
+    "scope": "platform"
+  },
+  {
+    "id": "core",
+    "name": "Core",
+    "scope": "product"
+  },
+  {
+    "id": "license",
+    "name": "Licensing",
+    "scope": "product"
+  },
+  {
+    "id": "config",
+    "name": "Managed config",
+    "scope": "product"
+  },
+  {
+    "id": "ship",
+    "name": "Ship builds",
+    "scope": "product"
+  },
+  {
+    "id": "signin",
+    "name": "Sign-in",
+    "scope": "product"
+  },
+  {
+    "id": "sync",
+    "name": "Cloud Sync",
+    "scope": "product"
+  },
+  {
+    "id": "commerce",
+    "name": "Commerce",
+    "scope": "product"
+  },
+  {
+    "id": "keys",
+    "name": "Keys & secrets",
+    "scope": "product"
+  },
+  {
+    "id": "settings",
+    "name": "Settings",
+    "scope": "product"
+  }
+]

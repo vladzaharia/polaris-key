@@ -52,6 +52,7 @@ import {
 import { stmtSetChannelPolicy } from "../src/services/release/model.js";
 import { markUnreferenced } from "../src/core/assets/blobGc.js";
 import { SETTINGS } from "../src/mount.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 const P = "acme";
 const hex = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -344,6 +345,7 @@ async function setRetention(
       enabled,
       expectedVersion,
       actor: { sub: by, name: null, email: null },
+      principal: ROOT_PRINCIPAL,
       now: NOW,
     },
   );
