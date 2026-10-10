@@ -24,6 +24,7 @@
 // override one scheme only.
 
 import { FONT, RADIUS, THEME_TOKENS } from "@polaris-key/brand";
+import { resolveKitColors } from "@polaris-key/ui-core/theme";
 
 /** The persisted theme choice (BRAND.md §3). "system" follows `prefers-color-scheme`. */
 export type PolarisColorScheme = "system" | "dark" | "light";
@@ -36,7 +37,12 @@ export type PolarisResolvedScheme = "dark" | "light";
 
 /** The visual tokens. Each maps to a `--pk-<token>` CSS custom property. */
 export interface PolarisThemeTokens {
-  /** Brand accent (primary button bg). */
+  /**
+   * The product's accent: the primary button's fill. A `#rrggbb` (or `#rgb`) an integrator sets
+   * runs through the accent resolver (`@polaris-key/brand`'s `resolveAccent`, via ui-core) against
+   * the theme's own grounds, so the fill, `accentText` on it and the focus `ring` keep their
+   * contrast in both schemes (UI-KITS.md §3.3, DL13). A `var(…)` is the host's to keep readable.
+   */
   accent: string;
   /** Brand accent, hover/active state. */
   accentHover: string;
@@ -592,10 +598,53 @@ export function mergeTheme(
   return {
     branding,
     scheme,
-    tokens: { ...base.tokens, ...partial.tokens, ...perScheme },
+    tokens: resolveProductAccent(
+      { ...base.tokens, ...partial.tokens, ...perScheme },
+      { ...partial.tokens, ...perScheme },
+      scheme,
+    ),
     copy: { ...base.copy, ...partial.copy },
     logo: partial.logo,
     poweredBy: partial.poweredBy ?? base.poweredBy,
+  };
+}
+
+const HEX_COLOUR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/**
+ * Run an integrator's product accent through the accent resolver (UI-KITS.md §3.3, DL13): the
+ * fill becomes the accent's `solid` for this scheme, its label `on`, and the focus ring the
+ * accent's `focus`, each resolved against the grounds the kit draws on (the theme's background,
+ * surface and sunken surface). A pink, a navy or a yellow can no longer give an unreadable
+ * primary, and the ring follows the product's accent instead of a fixed violet or grey. A value
+ * the integrator set beside the accent wins: an explicit `accentText` keeps the accent as given
+ * (the integrator owns that pair), an explicit `ring` or `accentHover` stays. Tokens that are not
+ * hex colours (`var(--app-accent)`) are the host's to keep readable and pass through.
+ */
+function resolveProductAccent(
+  merged: PolarisThemeTokens,
+  explicit: Partial<PolarisThemeTokens>,
+  scheme: PolarisResolvedScheme,
+): PolarisThemeTokens {
+  const accent = explicit.accent;
+  if (accent === undefined || !HEX_COLOUR.test(accent)) return merged;
+  const grounds = [
+    merged.background,
+    merged.surface,
+    merged.surfaceSunken,
+  ].filter((g) => HEX_COLOUR.test(g));
+  const c = resolveKitColors(
+    accent,
+    scheme,
+    grounds.length > 0 ? grounds : undefined,
+  );
+  const ownsPair = explicit.accentText !== undefined;
+  return {
+    ...merged,
+    accent: ownsPair ? merged.accent : c.primary,
+    accentHover: explicit.accentHover ?? (ownsPair ? merged.accent : c.primary),
+    accentText: ownsPair ? merged.accentText : c.onPrimary,
+    ring: explicit.ring ?? c.focus,
   };
 }
 

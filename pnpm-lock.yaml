@@ -427,6 +427,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
+      '@polaris-key/ui-core':
+        specifier: workspace:*
+        version: link:../ui-core
       '@polaris-key/zstd-wasm':
         specifier: workspace:*
         version: link:../zstd-wasm
