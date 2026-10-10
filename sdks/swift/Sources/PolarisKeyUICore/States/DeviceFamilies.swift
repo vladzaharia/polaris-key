@@ -145,7 +145,7 @@ extension KitStates {
 
 extension Ctx {
     /// The device a Replace preselects: the one seen longest ago.
-    var leastRecentDevice: DeviceInput? {
+    var leastRecentDevice: KitDevice? {
         (i.devices ?? []).filter { !$0.current }.max { $0.lastSeenDays < $1.lastSeenDays }
     }
 }

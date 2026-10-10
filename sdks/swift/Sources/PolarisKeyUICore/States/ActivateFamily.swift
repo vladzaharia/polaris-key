@@ -177,7 +177,7 @@ extension KitStates {
     }
 
     static func activationOutcome(
-        _ a: ActivationInput, verdict: KeyVerdict, _ c: Ctx
+        _ a: KitActivation, verdict: KeyVerdict, _ c: Ctx
     ) -> KitScreen<ActivateState> {
         switch a.result {
         case "ok":
@@ -223,7 +223,7 @@ extension KitStates {
     public static func offlineActivation(_ i: KitInputs) -> KitScreen<OfflineActivationState> {
         let c = Ctx(i)
         guard i.isOn(.license), i.capabilities.offlineActivation else { return .hidden }
-        let o = i.offline ?? OfflineInput()
+        let o = i.offline ?? KitOffline()
         let submitted = o.submitted ?? false
         let file = o.file ?? false
         if submitted && file {

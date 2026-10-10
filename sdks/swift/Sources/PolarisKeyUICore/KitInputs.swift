@@ -83,7 +83,7 @@ public struct KitPlatform: Sendable, Codable, Equatable, Hashable {
 // MARK: - Identity
 
 /// The integrator's theme identity (UI-KITS §1.2, §3.1 `product`): it wins field by field.
-public struct IntegratorIdentity: Sendable, Codable, Equatable, Hashable {
+public struct KitIntegrator: Sendable, Codable, Equatable, Hashable {
     public var name: String?
     public var shortName: String?
     public var developer: String?
@@ -114,7 +114,7 @@ public struct IntegratorIdentity: Sendable, Codable, Equatable, Hashable {
 
 /// Discovery's `core.presentation` through the SDK's presentation source (HA-12): `icon` is true
 /// when verified icon bytes arrived.
-public struct PresentationInput: Sendable, Codable, Equatable, Hashable {
+public struct KitPresentation: Sendable, Codable, Equatable, Hashable {
     public var name: String
     public var developerName: String?
     public var accent: String?
@@ -134,7 +134,7 @@ public struct PresentationInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// The app bundle's identity, the kit's last identity source.
-public struct BundleIdentity: Sendable, Codable, Equatable, Hashable {
+public struct KitBundle: Sendable, Codable, Equatable, Hashable {
     public var slug: String
     public var name: String?
     /// Whether the bundle has an app icon (not a matrix member: the runner never sets it).
@@ -150,14 +150,14 @@ public struct BundleIdentity: Sendable, Codable, Equatable, Hashable {
 // MARK: - Product and gate
 
 /// Discovery's `core.registration`.
-public enum Registration: String, Sendable, Codable, CaseIterable {
+public enum KitRegistration: String, Sendable, Codable, CaseIterable {
     case open
     case requiresIdentity = "requires-identity"
     case requiresLicense = "requires-license"
 }
 
 /// What the build offers. A member left out takes the default.
-public struct Capabilities: Sendable, Codable, Equatable, Hashable {
+public struct KitCapabilities: Sendable, Codable, Equatable, Hashable {
     public var signIn: Bool
     public var keyEntry: Bool
     public var deviceCode: Bool
@@ -188,7 +188,7 @@ public struct Capabilities: Sendable, Codable, Equatable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let d = Capabilities()
+        let d = KitCapabilities()
         signIn = try c.decodeIfPresent(Bool.self, forKey: .signIn) ?? d.signIn
         keyEntry = try c.decodeIfPresent(Bool.self, forKey: .keyEntry) ?? d.keyEntry
         deviceCode = try c.decodeIfPresent(Bool.self, forKey: .deviceCode) ?? d.deviceCode
@@ -217,12 +217,12 @@ public enum KitService: String, Sendable, Codable, CaseIterable {
 }
 
 /// The boot stage machine's view (stage-matrix.json): the stage, its outcome and the emit.
-public struct StageInput: Sendable, Codable, Equatable, Hashable {
+public struct KitStage: Sendable, Codable, Equatable, Hashable {
     public var stage: String
     public var outcome: String
-    public var emit: StageEmit?
+    public var emit: KitStageEmit?
 
-    public init(stage: String, outcome: String, emit: StageEmit? = nil) {
+    public init(stage: String, outcome: String, emit: KitStageEmit? = nil) {
         self.stage = stage
         self.outcome = outcome
         self.emit = emit
@@ -230,7 +230,7 @@ public struct StageInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// One emit object of the stage machine.
-public struct StageEmit: Sendable, Codable, Equatable, Hashable {
+public struct KitStageEmit: Sendable, Codable, Equatable, Hashable {
     public var type: String
     public var code: String?
     public var bytes: Int?
@@ -274,7 +274,7 @@ public enum KitLicenseStatus: String, Sendable, Codable, CaseIterable {
 }
 
 /// The license's allowed versions, when the server said.
-public struct AllowedVersions: Sendable, Codable, Equatable, Hashable {
+public struct KitAllowedVersions: Sendable, Codable, Equatable, Hashable {
     public var min: String?
     public var max: String?
 
@@ -285,18 +285,18 @@ public struct AllowedVersions: Sendable, Codable, Equatable, Hashable {
 }
 
 /// The gate's view.
-public struct GateInput: Sendable, Codable, Equatable, Hashable {
+public struct KitGate: Sendable, Codable, Equatable, Hashable {
     public var status: KitLicenseStatus?
     /// No status yet: the first check runs.
     public var checking: Bool?
     /// A cached license is being re-checked.
     public var cached: Bool?
     public var graceDaysLeft: Int?
-    public var allowed: AllowedVersions?
+    public var allowed: KitAllowedVersions?
 
     public init(
         status: KitLicenseStatus? = nil, checking: Bool? = nil, cached: Bool? = nil,
-        graceDaysLeft: Int? = nil, allowed: AllowedVersions? = nil
+        graceDaysLeft: Int? = nil, allowed: KitAllowedVersions? = nil
     ) {
         self.status = status
         self.checking = checking
@@ -315,7 +315,7 @@ public enum KitPending: String, Sendable, Codable, CaseIterable {
 // MARK: - Activation
 
 /// The license key field.
-public struct KeyFieldInput: Sendable, Codable, Equatable, Hashable {
+public struct KitKeyField: Sendable, Codable, Equatable, Hashable {
     public var text: String
     public var submitted: Bool?
 
@@ -326,7 +326,7 @@ public struct KeyFieldInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// An activation result (`enums.json` `activationResult`) with what the refusal carried.
-public struct ActivationInput: Sendable, Codable, Equatable, Hashable {
+public struct KitActivation: Sendable, Codable, Equatable, Hashable {
     public var result: String
     public var code: String?
     public var limit: Int?
@@ -346,7 +346,7 @@ public struct ActivationInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// Offline activation's progress.
-public struct OfflineInput: Sendable, Codable, Equatable, Hashable {
+public struct KitOffline: Sendable, Codable, Equatable, Hashable {
     public var copied: Bool?
     public var file: Bool?
     public var submitted: Bool?
@@ -365,28 +365,28 @@ public struct OfflineInput: Sendable, Codable, Equatable, Hashable {
 // MARK: - Sign-in
 
 /// The one sign-in form's presentation (UI-KITS owner decisions; SIGN-IN.md D-79).
-public enum SignInPresentation: String, Sendable, Codable, CaseIterable {
+public enum KitSignInPresentation: String, Sendable, Codable, CaseIterable {
     case inline, sheet, browser
 }
 
 /// Where Replace a device runs during sign-in.
-public enum ReplaceMode: String, Sendable, Codable, CaseIterable {
+public enum KitReplaceMode: String, Sendable, Codable, CaseIterable {
     case inline, browser
 }
 
 /// How the sign-in reaches the card.
-public enum SignInChannel: String, Sendable, Codable, CaseIterable {
+public enum KitSignInChannel: String, Sendable, Codable, CaseIterable {
     case browser
     case deviceCode = "device-code"
 }
 
 /// `session.wait()`'s outcomes (plans/I-04.md §G.9).
-public enum SignInOutcome: String, Sendable, Codable, CaseIterable {
+public enum KitSignInOutcome: String, Sendable, Codable, CaseIterable {
     case pending, choose, signedIn, cancelled, expired
 }
 
 /// The kit events of the sign-in form.
-public enum SignInEvent: String, Sendable, Codable, CaseIterable {
+public enum KitSignInEvent: String, Sendable, Codable, CaseIterable {
     case useCode = "use-code"
     case copyLink = "copy-link"
     case haveKey = "have-key"
@@ -396,23 +396,23 @@ public enum SignInEvent: String, Sendable, Codable, CaseIterable {
 }
 
 /// The sign-in session.
-public struct SignInInput: Sendable, Codable, Equatable, Hashable {
-    public var presentation: SignInPresentation
-    public var replace: ReplaceMode
-    public var channel: SignInChannel
-    public var outcome: SignInOutcome?
+public struct KitSignIn: Sendable, Codable, Equatable, Hashable {
+    public var presentation: KitSignInPresentation
+    public var replace: KitReplaceMode
+    public var channel: KitSignInChannel
+    public var outcome: KitSignInOutcome?
     public var browserOpened: Bool?
     public var redeeming: Bool?
-    public var event: SignInEvent?
+    public var event: KitSignInEvent?
     /// True when this sign-in added or issued the license.
     public var issuedNow: Bool?
     public var raced: Bool?
     public var grantExpired: Bool?
 
     public init(
-        presentation: SignInPresentation = .inline, replace: ReplaceMode = .inline,
-        channel: SignInChannel = .browser, outcome: SignInOutcome? = nil,
-        browserOpened: Bool? = nil, redeeming: Bool? = nil, event: SignInEvent? = nil,
+        presentation: KitSignInPresentation = .inline, replace: KitReplaceMode = .inline,
+        channel: KitSignInChannel = .browser, outcome: KitSignInOutcome? = nil,
+        browserOpened: Bool? = nil, redeeming: Bool? = nil, event: KitSignInEvent? = nil,
         issuedNow: Bool? = nil, raced: Bool? = nil, grantExpired: Bool? = nil
     ) {
         self.presentation = presentation
@@ -429,25 +429,25 @@ public struct SignInInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// The device-code poll's phase.
-public enum DeviceCodePhase: String, Sendable, Codable, CaseIterable {
+public enum KitDeviceCodePhase: String, Sendable, Codable, CaseIterable {
     case starting, waiting
     case slowDown = "slow-down"
     case ok, denied, expired, cancelled
 }
 
 /// The device-code poll.
-public struct DeviceCodeInput: Sendable, Codable, Equatable, Hashable {
-    public var phase: DeviceCodePhase
+public struct KitDeviceCode: Sendable, Codable, Equatable, Hashable {
+    public var phase: KitDeviceCodePhase
     public var secondsLeft: Int?
 
-    public init(phase: DeviceCodePhase, secondsLeft: Int? = nil) {
+    public init(phase: KitDeviceCodePhase, secondsLeft: Int? = nil) {
         self.phase = phase
         self.secondsLeft = secondsLeft
     }
 }
 
 /// A device count against a limit.
-public struct Seats: Sendable, Codable, Equatable, Hashable {
+public struct KitSeats: Sendable, Codable, Equatable, Hashable {
     public var used: Int
     public var limit: Int
 
@@ -458,7 +458,7 @@ public struct Seats: Sendable, Codable, Equatable, Hashable {
 }
 
 /// Whether a full license can replace a device now.
-public struct ReplaceAllowance: Sendable, Codable, Equatable, Hashable {
+public struct KitReplaceAllowance: Sendable, Codable, Equatable, Hashable {
     public var allowed: Bool
     public var retryAfter: Int?
 
@@ -469,7 +469,7 @@ public struct ReplaceAllowance: Sendable, Codable, Equatable, Hashable {
 }
 
 /// One license of plans/I-04.md's `LicenseChoiceView`, field for field.
-public struct LicenseChoice: Sendable, Codable, Equatable, Hashable, Identifiable {
+public struct KitLicenseChoice: Sendable, Codable, Equatable, Hashable, Identifiable {
     public var id: String
     public var tierName: String
     public var name: String?
@@ -477,18 +477,18 @@ public struct LicenseChoice: Sendable, Codable, Equatable, Hashable, Identifiabl
     public var origin: String
     /// `seats` or `account`.
     public var access: String
-    public var seats: Seats?
+    public var seats: KitSeats?
     public var current: Bool
     public var expiresAt: Int?
     /// `free` or `full`.
     public var state: String
-    public var replace: ReplaceAllowance?
+    public var replace: KitReplaceAllowance?
     public var freeDeviceUrl: String?
 
     public init(
         id: String, tierName: String, name: String? = nil, origin: String,
-        access: String = "seats", seats: Seats? = nil, current: Bool = false,
-        expiresAt: Int? = nil, state: String = "free", replace: ReplaceAllowance? = nil,
+        access: String = "seats", seats: KitSeats? = nil, current: Bool = false,
+        expiresAt: Int? = nil, state: String = "free", replace: KitReplaceAllowance? = nil,
         freeDeviceUrl: String? = nil
     ) {
         self.id = id
@@ -508,7 +508,7 @@ public struct LicenseChoice: Sendable, Codable, Equatable, Hashable, Identifiabl
 }
 
 /// The offer to create a license during sign-in.
-public struct LicenseCreateOffer: Sendable, Codable, Equatable, Hashable {
+public struct KitLicenseCreateOffer: Sendable, Codable, Equatable, Hashable {
     public var tierName: String
     public var access: String
 
@@ -519,7 +519,7 @@ public struct LicenseCreateOffer: Sendable, Codable, Equatable, Hashable {
 }
 
 /// Where to get a license when the account has none.
-public struct GetLicense: Sendable, Codable, Equatable, Hashable {
+public struct KitGetLicense: Sendable, Codable, Equatable, Hashable {
     public var activateUrl: String?
     public var purchaseUrl: String?
     public var keyEntry: Bool
@@ -532,20 +532,20 @@ public struct GetLicense: Sendable, Codable, Equatable, Hashable {
 }
 
 /// plans/I-04.md's `LicenseChoiceView`.
-public struct LicenseChoiceView: Sendable, Codable, Equatable, Hashable {
+public struct KitLicenseChoices: Sendable, Codable, Equatable, Hashable {
     /// `choose`, `none` or `autoIssue`.
     public var state: String
-    public var choices: [LicenseChoice]
+    public var choices: [KitLicenseChoice]
     public var keep: Bool
     /// A license id, `keep`, or nil.
     public var preselected: String?
-    public var create: LicenseCreateOffer?
-    public var getLicense: GetLicense?
+    public var create: KitLicenseCreateOffer?
+    public var getLicense: KitGetLicense?
 
     public init(
-        state: String = "choose", choices: [LicenseChoice] = [], keep: Bool = false,
-        preselected: String? = nil, create: LicenseCreateOffer? = nil,
-        getLicense: GetLicense? = nil
+        state: String = "choose", choices: [KitLicenseChoice] = [], keep: Bool = false,
+        preselected: String? = nil, create: KitLicenseCreateOffer? = nil,
+        getLicense: KitGetLicense? = nil
     ) {
         self.state = state
         self.choices = choices
@@ -557,7 +557,7 @@ public struct LicenseChoiceView: Sendable, Codable, Equatable, Hashable {
 }
 
 /// One device of plans/I-04.md's `ReplaceView`.
-public struct ReplaceDevice: Sendable, Codable, Equatable, Hashable, Identifiable {
+public struct KitReplaceDevice: Sendable, Codable, Equatable, Hashable, Identifiable {
     public var id: String
     public var label: String?
     public var platform: String
@@ -583,14 +583,14 @@ public struct ReplaceDevice: Sendable, Codable, Equatable, Hashable, Identifiabl
 }
 
 /// plans/I-04.md's `ReplaceView`.
-public struct ReplaceView: Sendable, Codable, Equatable, Hashable {
+public struct KitReplaceView: Sendable, Codable, Equatable, Hashable {
     public var licenseId: String
-    public var seats: Seats
-    public var devices: [ReplaceDevice]
-    public var replace: ReplaceAllowance
+    public var seats: KitSeats
+    public var devices: [KitReplaceDevice]
+    public var replace: KitReplaceAllowance
 
     public init(
-        licenseId: String, seats: Seats, devices: [ReplaceDevice], replace: ReplaceAllowance
+        licenseId: String, seats: KitSeats, devices: [KitReplaceDevice], replace: KitReplaceAllowance
     ) {
         self.licenseId = licenseId
         self.seats = seats
@@ -602,7 +602,7 @@ public struct ReplaceView: Sendable, Codable, Equatable, Hashable {
 // MARK: - Devices
 
 /// One device of the license (the roster, or the device-limit refusal's list).
-public struct DeviceInput: Sendable, Codable, Equatable, Hashable {
+public struct KitDevice: Sendable, Codable, Equatable, Hashable {
     public var name: String?
     /// `enums.json` `platform`.
     public var platform: String
@@ -624,7 +624,7 @@ public struct DeviceInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// An inline edit the person opened.
-public struct EditInput: Sendable, Codable, Equatable, Hashable {
+public struct KitEdit: Sendable, Codable, Equatable, Hashable {
     /// `rename`, `remove` or `value`.
     public var kind: String
     public var device: String?
@@ -636,7 +636,7 @@ public struct EditInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// A Replace a device on the key path.
-public struct ReplacementInput: Sendable, Codable, Equatable, Hashable {
+public struct KitReplacement: Sendable, Codable, Equatable, Hashable {
     public var device: String
     /// `done` or `failed`.
     public var outcome: String
@@ -650,7 +650,7 @@ public struct ReplacementInput: Sendable, Codable, Equatable, Hashable {
 // MARK: - Update
 
 /// A download's progress.
-public struct UpdateProgressInput: Sendable, Codable, Equatable, Hashable {
+public struct KitUpdateProgress: Sendable, Codable, Equatable, Hashable {
     /// `queued`, `download`, `verify`, `paused`, `install`, `failed` or `done`.
     public var phase: String
     public var fraction: Double?
@@ -662,7 +662,7 @@ public struct UpdateProgressInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// The update decision and its download.
-public struct UpdateInput: Sendable, Codable, Equatable, Hashable {
+public struct KitUpdate: Sendable, Codable, Equatable, Hashable {
     /// `enums.json` `updateAction`.
     public var action: String
     /// `enums.json` `outletKind`.
@@ -671,11 +671,11 @@ public struct UpdateInput: Sendable, Codable, Equatable, Hashable {
     public var version: String?
     public var mandatory: Bool?
     public var critical: Bool?
-    public var progress: UpdateProgressInput?
+    public var progress: KitUpdateProgress?
 
     public init(
         action: String, outlet: String? = nil, reason: String? = nil, version: String? = nil,
-        mandatory: Bool? = nil, critical: Bool? = nil, progress: UpdateProgressInput? = nil
+        mandatory: Bool? = nil, critical: Bool? = nil, progress: KitUpdateProgress? = nil
     ) {
         self.action = action
         self.outlet = outlet
@@ -688,7 +688,7 @@ public struct UpdateInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// One release's notes. `notes` is plain text: markup in it is shown, never run.
-public struct ReleaseNoteInput: Sendable, Codable, Equatable, Hashable {
+public struct KitReleaseNote: Sendable, Codable, Equatable, Hashable {
     public var version: String
     public var date: String
     public var notes: String
@@ -703,7 +703,7 @@ public struct ReleaseNoteInput: Sendable, Codable, Equatable, Hashable {
 // MARK: - Settings, account, paywall
 
 /// One `config.list` row.
-public struct ConfigRowInput: Sendable, Codable, Equatable, Hashable {
+public struct KitConfigRow: Sendable, Codable, Equatable, Hashable {
     public var key: String
     /// `boolean`, `number`, `select` or `string`.
     public var type: String
@@ -711,14 +711,14 @@ public struct ConfigRowInput: Sendable, Codable, Equatable, Hashable {
     public var source: String
     public var locked: Bool
     public var org: String?
-    public var value: ConfigValue?
+    public var value: KitConfigValue?
     public var min: Double?
     public var max: Double?
     public var advanced: Bool?
 
     public init(
         key: String, type: String, source: String, locked: Bool = false, org: String? = nil,
-        value: ConfigValue? = nil, min: Double? = nil, max: Double? = nil, advanced: Bool? = nil
+        value: KitConfigValue? = nil, min: Double? = nil, max: Double? = nil, advanced: Bool? = nil
     ) {
         self.key = key
         self.type = type
@@ -733,7 +733,7 @@ public struct ConfigRowInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// A setting's value.
-public enum ConfigValue: Sendable, Codable, Equatable, Hashable {
+public enum KitConfigValue: Sendable, Codable, Equatable, Hashable {
     case bool(Bool)
     case number(Double)
     case string(String)
@@ -760,7 +760,7 @@ public enum ConfigValue: Sendable, Codable, Equatable, Hashable {
 }
 
 /// The account signed in on this device.
-public struct AccountInput: Sendable, Codable, Equatable, Hashable {
+public struct KitAccount: Sendable, Codable, Equatable, Hashable {
     public var signedIn: Bool
     /// `account` when the holder is the account signed in here (S-19); absent otherwise.
     public var holder: String?
@@ -772,7 +772,7 @@ public struct AccountInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// An entitlement and whether it holds.
-public struct EntitlementInput: Sendable, Codable, Equatable, Hashable {
+public struct KitEntitlement: Sendable, Codable, Equatable, Hashable {
     public var name: String
     public var entitled: Bool
 
@@ -783,7 +783,7 @@ public struct EntitlementInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// The store's offers.
-public struct OffersInput: Sendable, Codable, Equatable, Hashable {
+public struct KitOffers: Sendable, Codable, Equatable, Hashable {
     public var available: Bool
     public var purchased: Bool?
 
@@ -794,14 +794,14 @@ public struct OffersInput: Sendable, Codable, Equatable, Hashable {
 }
 
 /// The toast being shown: `update`, `copied`, `warning`, `error` or `progress`.
-public struct ToastInput: Sendable, Codable, Equatable, Hashable {
+public struct KitToast: Sendable, Codable, Equatable, Hashable {
     public var kind: String
 
     public init(kind: String) { self.kind = kind }
 }
 
 /// A `core.codes` code a step failed with.
-public struct ErrorInput: Sendable, Codable, Equatable, Hashable {
+public struct KitError: Sendable, Codable, Equatable, Hashable {
     public var code: String
 
     public init(code: String) { self.code = code }
@@ -812,56 +812,56 @@ public struct ErrorInput: Sendable, Codable, Equatable, Hashable {
 /// Everything a kit screen is drawn from. Every member is optional in the matrix; the defaults
 /// here are the runtime's (this device, every service on, the Polaris Key preset).
 public struct KitInputs: Sendable, Codable, Equatable, Hashable {
-    public var integrator: IntegratorIdentity?
+    public var integrator: KitIntegrator?
     /// nil: discovery carries no presentation (or the SDK has no accessor yet).
-    public var presentation: PresentationInput?
-    public var bundle: BundleIdentity
+    public var presentation: KitPresentation?
+    public var bundle: KitBundle
     public var platform: KitPlatform
     /// The enabled services; nil means all on.
     public var services: Set<KitService>?
-    public var registration: Registration
-    public var capabilities: Capabilities
-    public var stage: StageInput?
-    public var gate: GateInput?
+    public var registration: KitRegistration
+    public var capabilities: KitCapabilities
+    public var stage: KitStage?
+    public var gate: KitGate?
     public var pending: KitPending?
     public var loading: Bool?
-    public var keyField: KeyFieldInput?
-    public var activation: ActivationInput?
-    public var offline: OfflineInput?
-    public var signIn: SignInInput?
-    public var deviceCode: DeviceCodeInput?
-    public var choices: LicenseChoiceView?
-    public var replaceView: ReplaceView?
+    public var keyField: KitKeyField?
+    public var activation: KitActivation?
+    public var offline: KitOffline?
+    public var signIn: KitSignIn?
+    public var deviceCode: KitDeviceCode?
+    public var choices: KitLicenseChoices?
+    public var replaceView: KitReplaceView?
     public var selected: String?
-    public var devices: [DeviceInput]?
+    public var devices: [KitDevice]?
     public var browserMode: Bool?
-    public var edit: EditInput?
+    public var edit: KitEdit?
     public var saved: Bool?
-    public var replacement: ReplacementInput?
-    public var update: UpdateInput?
-    public var releaseNotes: [ReleaseNoteInput]?
-    public var config: [ConfigRowInput]?
-    public var account: AccountInput?
-    public var entitlement: EntitlementInput?
-    public var offers: OffersInput?
-    public var toast: ToastInput?
-    public var error: ErrorInput?
+    public var replacement: KitReplacement?
+    public var update: KitUpdate?
+    public var releaseNotes: [KitReleaseNote]?
+    public var config: [KitConfigRow]?
+    public var account: KitAccount?
+    public var entitlement: KitEntitlement?
+    public var offers: KitOffers?
+    public var toast: KitToast?
+    public var error: KitError?
 
     public init(
-        integrator: IntegratorIdentity? = nil, presentation: PresentationInput? = nil,
-        bundle: BundleIdentity = BundleIdentity(slug: ""), platform: KitPlatform = .current,
-        services: Set<KitService>? = nil, registration: Registration = .requiresLicense,
-        capabilities: Capabilities = Capabilities(), stage: StageInput? = nil,
-        gate: GateInput? = nil, pending: KitPending? = nil, loading: Bool? = nil,
-        keyField: KeyFieldInput? = nil, activation: ActivationInput? = nil,
-        offline: OfflineInput? = nil, signIn: SignInInput? = nil,
-        deviceCode: DeviceCodeInput? = nil, choices: LicenseChoiceView? = nil,
-        replaceView: ReplaceView? = nil, selected: String? = nil, devices: [DeviceInput]? = nil,
-        browserMode: Bool? = nil, edit: EditInput? = nil, saved: Bool? = nil,
-        replacement: ReplacementInput? = nil, update: UpdateInput? = nil,
-        releaseNotes: [ReleaseNoteInput]? = nil, config: [ConfigRowInput]? = nil,
-        account: AccountInput? = nil, entitlement: EntitlementInput? = nil,
-        offers: OffersInput? = nil, toast: ToastInput? = nil, error: ErrorInput? = nil
+        integrator: KitIntegrator? = nil, presentation: KitPresentation? = nil,
+        bundle: KitBundle = KitBundle(slug: ""), platform: KitPlatform = .current,
+        services: Set<KitService>? = nil, registration: KitRegistration = .requiresLicense,
+        capabilities: KitCapabilities = KitCapabilities(), stage: KitStage? = nil,
+        gate: KitGate? = nil, pending: KitPending? = nil, loading: Bool? = nil,
+        keyField: KitKeyField? = nil, activation: KitActivation? = nil,
+        offline: KitOffline? = nil, signIn: KitSignIn? = nil,
+        deviceCode: KitDeviceCode? = nil, choices: KitLicenseChoices? = nil,
+        replaceView: KitReplaceView? = nil, selected: String? = nil, devices: [KitDevice]? = nil,
+        browserMode: Bool? = nil, edit: KitEdit? = nil, saved: Bool? = nil,
+        replacement: KitReplacement? = nil, update: KitUpdate? = nil,
+        releaseNotes: [KitReleaseNote]? = nil, config: [KitConfigRow]? = nil,
+        account: KitAccount? = nil, entitlement: KitEntitlement? = nil,
+        offers: KitOffers? = nil, toast: KitToast? = nil, error: KitError? = nil
     ) {
         self.integrator = integrator
         self.presentation = presentation

@@ -10,7 +10,7 @@ public enum GateState: String, KitStateID {
     public static let component = KitComponent.gate
 }
 
-public enum BootState: String, KitStateID {
+public enum BootScreenState: String, KitStateID {
     case progress, consent, fetching, offline, blocked, declined
     case rolledBack = "rolled-back"
     case error
@@ -77,7 +77,7 @@ extension KitStates {
 
     /// First paint while the stage machine runs. Progress is never invented: the counted line and
     /// its meter appear only once the fetch reports bytes.
-    public static func boot(_ i: KitInputs) -> KitScreen<BootState> {
+    public static func boot(_ i: KitInputs) -> KitScreen<BootScreenState> {
         let c = Ctx(i)
         guard let stage = i.stage else {
             return KitScreen(.progress, [c.line("boot.starting"), c.line("a11y.busy")])

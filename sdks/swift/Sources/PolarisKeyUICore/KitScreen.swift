@@ -15,7 +15,7 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case activate = "Activate"
     case offlineActivation = "OfflineActivation"
     case deviceLimit = "DeviceLimit"
-    case licenseChoice = "LicenseChoice"
+    case licenseChoice = "KitLicenseChoice"
     case devices = "Devices"
     case updatePrompt = "UpdatePrompt"
     case updateProgress = "UpdateProgress"

@@ -1,6 +1,6 @@
 // @pkey-feature ui.signin
 // The signIn family of ui-matrix.json: the one sign-in form (SIGN-IN.md §3.17) as SignIn, its
-// step 2 SignInHandoff and its step 3 LicenseChoice (with Replace a device in place).
+// step 2 SignInHandoff and its step 3 KitLicenseChoice (with Replace a device in place).
 //
 // The form's body morphs in place; nothing stacks on it except the system confirm for Replace where
 // the platform expects one (D-80). Device-code sign-ins never choose a license in the app (D4):
@@ -46,7 +46,7 @@ extension KitStates {
     public static func signIn(_ i: KitInputs) -> KitScreen<SignInState> {
         let c = Ctx(i)
         guard i.isOn(.identity) else { return .hidden }
-        let s = i.signIn ?? SignInInput()
+        let s = i.signIn ?? KitSignIn()
         let keyPath = i.isOn(.license) && i.capabilities.keyEntry
         let deviceCode = s.channel == .deviceCode ? i.deviceCode : nil
 
@@ -162,7 +162,7 @@ extension KitStates {
     public static func signInHandoff(_ i: KitInputs) -> KitScreen<SignInHandoffState> {
         let c = Ctx(i)
         guard i.isOn(.identity) else { return .hidden }
-        let s = i.signIn ?? SignInInput()
+        let s = i.signIn ?? KitSignIn()
         if s.channel == .deviceCode {
             switch i.deviceCode?.phase ?? .starting {
             case .starting:
@@ -257,7 +257,7 @@ extension KitStates {
     public static func licenseChoice(_ i: KitInputs) -> KitScreen<LicenseChoiceState> {
         let c = Ctx(i)
         guard i.isOn(.identity), i.isOn(.license) else { return .hidden }
-        let s = i.signIn ?? SignInInput()
+        let s = i.signIn ?? KitSignIn()
         let title = c.line("signin.choice.title")
         if i.loading == true { return KitScreen(.loading, [title, c.line("common.loading")]) }
         if s.grantExpired == true {
@@ -372,7 +372,7 @@ extension KitStates {
 
     /// The origin line in plain words (SIGN-IN.md §3.6, O-17). The view carries no key's last six
     /// characters, so a key or a purchase reads "Added with a key".
-    public static func originKey(_ choice: LicenseChoice) -> String {
+    public static func originKey(_ choice: KitLicenseChoice) -> String {
         switch choice.origin {
         case "signin": return "signin.choice.origin.signIn"
         case "store": return "signin.choice.origin.store"

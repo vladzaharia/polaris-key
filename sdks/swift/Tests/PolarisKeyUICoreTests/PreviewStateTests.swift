@@ -115,14 +115,14 @@ final class PreviewStateTests: XCTestCase {
         XCTAssertEqual(KitLinks.display("https://key.plrs.im/device/"), "key.plrs.im/device")
         let id = KitIdentity.resolve(
             PolarisKeyPreviewState.base {
-                $0.integrator = IntegratorIdentity(deviceCodeUrl: "https://driftkart.gg/tv")
+                $0.integrator = KitIntegrator(deviceCodeUrl: "https://driftkart.gg/tv")
             })
         XCTAssertEqual(
             KitLinks.deviceCodePage(id, platform: PolarisKeyPreviewState.iPhone),
             "https://driftkart.gg/tv")
         let bad = KitIdentity.resolve(
             PolarisKeyPreviewState.base {
-                $0.integrator = IntegratorIdentity(deviceCodeUrl: "ftp://driftkart.gg/tv")
+                $0.integrator = KitIntegrator(deviceCodeUrl: "ftp://driftkart.gg/tv")
             })
         XCTAssertEqual(
             KitLinks.deviceCodePage(bad, platform: PolarisKeyPreviewState.iPhone),
