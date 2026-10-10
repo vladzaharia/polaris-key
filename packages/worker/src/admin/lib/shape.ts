@@ -1,19 +1,14 @@
 /**
- * Output shaping for the admin surface: license summaries, the product-registry view, and
- * the active-catalog loader used for value validation + redaction.
+ * Output shaping for the console: the product-registry view and the secrets inventory. The licence
+ * summary and the active-catalog loader are Core's (`core/licensing/summary.ts`,
+ * `core/activeCatalog.ts`), because services' admin handlers use them too.
  */
 
-import { licenseAccess } from "../../core/anchor.js";
 import { claimsView } from "../../core/settingsClaims.js";
-import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
 import {
-  listDevicesByLicense,
-  getActiveSchema,
-  listLicenseProfiles,
   getProductSyncState,
-  type LicenseRow,
   type ProductRow,
   type ProductSyncStateRow,
 } from "../../repo.js";
@@ -28,16 +23,6 @@ import { packageFeedsOf } from "../../services/distribution/registryFeeds.js";
 import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
-import { countKeysByLicense } from "../repo.js";
-import { licenseHolder } from "../../core/licenseHolders.js";
-import { licenseEndedReason } from "../../core/licensing/lifecycle.js";
-import {
-  countKeyEntries,
-  keyEntriesApply,
-  keyEntryLimit,
-  type KeyEntrySettings,
-} from "../../core/keyEntries.js";
-import { subjectForOrNull } from "../../core/accountSubjects.js";
 import {
   approvalMismatch,
   listEdgeMintRecipesWithApprovals,
@@ -95,122 +80,6 @@ function syncStateView(
     updated: parseJsonStringList(row.updated_json),
     errors: parseJsonStringList(row.errors_json),
     message: row.message,
-  };
-}
-
-/** Load + compile a product's active catalog (for value validation). Null if none/invalid. */
-export async function loadCatalog(
-  db: Db,
-  product: string,
-): Promise<Catalog | null> {
-  const active = await readActiveCatalog(db, product);
-  return active.state === "ok" ? active.catalog : null;
-}
-
-/**
- * A product's active catalog, or why there is none: `missing` (no catalog published) or
- * `unreadable` (the stored JSON does not parse or compile). For a refusal that must say which
- * (P0-48, a commerce mapping's flag); `loadCatalog` folds both into `null`.
- */
-export type ActiveCatalog =
-  | { state: "ok"; catalog: Catalog }
-  | { state: "missing" }
-  | { state: "unreadable" };
-
-export async function readActiveCatalog(
-  db: Db,
-  product: string,
-): Promise<ActiveCatalog> {
-  const row = await getActiveSchema(db, product);
-  if (!row) return { state: "missing" };
-  try {
-    return { state: "ok", catalog: new Catalog(JSON.parse(row.catalog_json)) };
-  } catch {
-    return { state: "unreadable" };
-  }
-}
-
-/**
- * PX-W9: what a licence list shares across its rows for `keyEntries` — the product's limit, or
- * `null` when its Identity toggle is off — so a list reads the toggle and the limit once.
- */
-export interface KeyEntryListContext {
-  limit: number | null;
-}
-
-/** The {@link KeyEntryListContext} of one product, its limit resolved through ST-04's resolver. */
-export async function keyEntryListContext(
-  settings: KeyEntrySettings,
-  product: string,
-): Promise<KeyEntryListContext> {
-  return {
-    limit: (await keyEntriesApply(settings.db, product))
-      ? await keyEntryLimit(settings, product)
-      : null,
-  };
-}
-
-/** The list/detail summary projection of a license row (with derived key + device counts). */
-export async function licenseSummary(
-  db: Db,
-  product: string,
-  row: LicenseRow,
-  keyEntryContext?: KeyEntryListContext,
-): Promise<Record<string, unknown>> {
-  const keyCounts = await countKeysByLicense(db, product, row.id);
-  const devices = await listDevicesByLicense(db, product, row.id);
-  const profiles = await listLicenseProfiles(db, product, row.id);
-  // PX-W17: the owner as this product sees them — the pairwise subject, never the account id
-  // (S-16 §5.1). Subjects are platform-wide, so this is set for every product whatever its
-  // Identity toggle; `null` for a floating licence.
-  const ownerSubject = row.account_id
-    ? await subjectForOrNull(
-        db,
-        row.account_id,
-        product,
-        Math.floor(Date.now() / 1000),
-      )
-    : null;
-  return {
-    id: row.id,
-    name: row.name ?? "",
-    email: row.email ?? "",
-    status: row.status,
-    // LX-12: why a disabled licence ended (`revoked`, `superseded`, `refunded`, `chargeback`);
-    // `null` while active and for a licence disabled before the reason was recorded.
-    endedReason: licenseEndedReason(row),
-    // The licence that replaced this one (a merge's survivor), else `null`.
-    supersededBy: row.superseded_by ?? null,
-    activatedAt: row.activated_at,
-    expiresAt: row.expires_at,
-    keyCount: keyCounts.total,
-    activeKeyCount: keyCounts.active,
-    deviceCount: devices.filter((m) => m.status === "authorized").length,
-    profile: profiles[0]?.profile_id ?? null,
-    profiles: profiles.map((p) => p.profile_id),
-    tier: row.tier_id,
-    // R11-06: guarded — a single corrupt channels_json must not 500 the whole license list.
-    channels: parseJsonStringList(row.channels_json),
-    minVersion: row.min_version,
-    maxVersion: row.max_version,
-    ownerSubject,
-    // LX-26 (S-24 D1): floating or assigned, derived from the owner pointer and the licence's own
-    // email; never the account's details.
-    holder: licenseHolder(row),
-    // LX-28: the batch the licence was created in, `null` for a licence created on its own.
-    batchId: row.batch_id ?? null,
-    // I-09 (plans/I-04.md §F.6): `account` for a sign-in licence (held by an account, no key ever
-    // issued), else `seats`. Display only: a sign-in licence is device-limited like any other.
-    access: await licenseAccess(db, row),
-    // PX-W9 (WIRE-CONTRACT-V4 §12.2): the licence's key entries, `null` with Identity off. LX-30
-    // renders the "Key entries 3 of 10" row from it.
-    keyEntries: await licenseKeyEntries(db, product, row.id, keyEntryContext),
-    identityProvider: row.sub ? "oidc" : "manual",
-    // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
-    origin: row.origin ?? "admin",
-    oidcSubject: row.sub ?? undefined,
-    modifiedBy: row.modified_by ?? undefined,
-    modifiedAt: row.modified_at,
   };
 }
 
@@ -673,18 +542,4 @@ async function productSetupView(
     sync,
     nextActions,
   };
-}
-
-/** `keyEntries` for one licence of the console's record (`null` with Identity off). */
-async function licenseKeyEntries(
-  db: Db,
-  product: string,
-  licenseId: string,
-  context?: KeyEntryListContext,
-): Promise<{ used: number; limit: number } | null> {
-  // Without a context (a call built by hand) the limit is the stored row's (`keyEntryLimit`).
-  const { limit } =
-    context ?? (await keyEntryListContext({ env: {}, db }, product));
-  if (limit === null) return null;
-  return { used: await countKeyEntries(db, product, licenseId), limit };
 }

@@ -26,7 +26,7 @@ import {
 } from "../../src/repo.js";
 import { D1Db } from "../../src/db/d1.js";
 import { deleteProfile, deleteTier } from "../../src/admin/repo.js";
-import { licenseSummary } from "../../src/admin/lib/shape.js";
+import { licenseSummary } from "../../src/core/licensing/summary.js";
 import {
   getOrCreateAccountByEmail,
   linkLicense,

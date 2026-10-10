@@ -91,6 +91,5 @@ export {
   keyEntryListContext,
   licenseSummary,
   type KeyEntryListContext,
-  loadCatalog,
-  readActiveCatalog,
-} from "../admin/lib/shape.js";
+} from "./licensing/summary.js";
+export { loadCatalog, readActiveCatalog } from "./activeCatalog.js";

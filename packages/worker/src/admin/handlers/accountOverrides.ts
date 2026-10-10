@@ -29,7 +29,7 @@ import {
 import { readOverrideMigrationState } from "../../core/overrideMigration.js";
 import { applyOverrides, type OverrideUpdate } from "../lib/overrides.js";
 import { redactPayload } from "../lib/redact.js";
-import { loadCatalog } from "../lib/shape.js";
+import { loadCatalog } from "../../core/activeCatalog.js";
 import { adminJson, err, readBody } from "../lib/respond.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "../session.js";

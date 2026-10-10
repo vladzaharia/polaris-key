@@ -38,7 +38,7 @@ import {
   type SessionIdentity,
 } from "../../src/admin/session.js";
 import { redactPayload, parsePayload } from "../../src/admin/lib/redact.js";
-import { loadCatalog } from "../../src/admin/lib/shape.js";
+import { loadCatalog } from "../../src/core/activeCatalog.js";
 import {
   openManagedPayload,
   openManagedValue,
