@@ -1138,6 +1138,8 @@
     <string name="cli_help_lede">%1$s许可证与更新</string>
     <!-- Terminal help footer. {command} is a command line such as 'tidewater activate -help'. Arguments: 1=command. -->
     <string name="cli_help_more">运行%1$s查看单个命令的选项。</string>
+    <!-- Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings. -->
+    <string name="cli_help_group">许可证</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">添加许可证密钥（提示输入，或通过 stdin）</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->

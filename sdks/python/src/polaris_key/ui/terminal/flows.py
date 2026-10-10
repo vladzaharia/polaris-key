@@ -45,6 +45,7 @@ from ..core.theme import Theme
 from . import fmt, screens
 from .device import Device, Worker, run_in_thread
 from .env import TermEnv, detect
+from .exit import EXIT
 from .parts import Kit
 from .text import Line, Span, plain
 
@@ -151,7 +152,15 @@ def _error_outcome(t: Terminal, code: str, verb: str) -> Outcome:
     k = t.kit
     title, message = screens._code_title_message(k, code)
     lines = [k.header(verb)] + ([k.rail()] if k.decor else []) + k.step("fail", [title]) + k.body([message]) + k.end()
-    return Outcome(1, lines, {"error": code})
+    return Outcome(EXIT.failed, lines, {"error": code})
+
+
+def _cancelled(t: Terminal, lines: List[Line], data: Dict[str, Any]) -> Outcome:
+    """A step the person left: Esc exits 1; Ctrl-C exits 130 with ``"error": "interrupted"``, as
+    the Node kit's (the ``cli`` family's ``interrupt`` row)."""
+    if t.interrupted:
+        return Outcome(EXIT.interrupted, lines, {**data, "error": "interrupted"})
+    return Outcome(EXIT.failed, lines, data)
 
 
 # ── license ──────────────────────────────────────────────────────────────────────────────────
@@ -213,7 +222,7 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
         "version": view.version,
         "channel": view.channel,
     }
-    return Outcome(0 if usable else 1, lines, data)
+    return Outcome(EXIT.ok if usable else EXIT.failed, lines, data)
 
 
 def _activation_data(result: Any) -> Dict[str, Any]:
@@ -291,7 +300,7 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
         if key is None:
             # Nothing changed: the header, the step and the line saying so (never a blank screen).
             lines = screens._frame(k, verb, k.step("done", [k.t("part.keyField.label")]), [k.t("cli.nothingChanged", "muted")])
-            return Outcome(130 if t.interrupted else 1, lines, {"kind": "cancelled"})
+            return _cancelled(t, lines, {"kind": "cancelled"})
     verdict = parse_key(key, final=True)
     while True:
         result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f))
@@ -302,14 +311,14 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
                 data["status"] = client.status().status
             except Exception:
                 pass
-            return Outcome(0, screens.activate(k, view, verb), data)
+            return Outcome(EXIT.ok, screens.activate(k, view, verb), data)
         if view.component == "DeviceLimit" and view.manage_url and t.env.interactive:
             if not _replace_in_browser(t, view, verb):
                 # The hints give way to the line that says what to run: nothing live-looking is
                 # left above the shell prompt.
-                return Outcome(130 if t.interrupted else 1, screens.device_limit(k, view, verb, ended=True), data)
+                return _cancelled(t, screens.device_limit(k, view, verb, ended=True), data)
             continue
-        return Outcome(1, screens.activate(k, view, verb), data)
+        return Outcome(EXIT.failed, screens.activate(k, view, verb), data)
 
 
 def _replace_in_browser(t: Terminal, view: Any, verb: str) -> bool:
@@ -345,7 +354,7 @@ def enroll(client: Any, t: Terminal) -> Outcome:
         except Exception:
             pass
     lines = screens.activate(k, view, t.verb or "enroll")
-    return Outcome(0 if view.state == "done" else 1, lines, data)
+    return Outcome(EXIT.ok if view.state == "done" else EXIT.failed, lines, data)
 
 
 def deactivate(client: Any, t: Terminal) -> Outcome:
@@ -356,7 +365,7 @@ def deactivate(client: Any, t: Terminal) -> Outcome:
 def _signed_out(t: Terminal) -> Outcome:
     k = t.kit
     lines = [k.header(t.verb or "sign-out")] + ([k.rail()] if k.decor else []) + k.step("ok", [k.t("core.gate.revoked.title", "strong")]) + k.end()
-    return Outcome(0, lines, {"signedOut": True})
+    return Outcome(EXIT.ok, lines, {"signedOut": True})
 
 
 # ── identity ─────────────────────────────────────────────────────────────────────────────────
@@ -389,7 +398,7 @@ def sign_in(
         prompt = _busy(t, lambda: client.identity.begin_sign_in(device_name, confirm_identity=bool(attach)), lambda f: screens.sign_in(k, model.view, verb, frame=f))
     except PolarisError as e:
         model.failed(e.code)
-        return Outcome(1, screens.sign_in(k, model.view, verb), {"state": "error", "error": e.code})
+        return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": e.code})
     view = model.prompted(prompt, _now())
     t.emit(
         "pending",
@@ -446,11 +455,11 @@ def sign_in(
         worker.join()
     if cancelled or (isinstance(worker.error, PolarisError) and worker.error.code == "cancelled"):
         model.cancelled()
-        return Outcome(130 if t.interrupted else 1, screens.sign_in(k, model.view, verb), {"state": "cancelled"})
+        return _cancelled(t, screens.sign_in(k, model.view, verb), {"state": "cancelled"})
     if worker.error is not None:
         code = getattr(worker.error, "code", "sign-in-failed")
         model.failed(code if isinstance(code, str) else "sign-in-failed")
-        return Outcome(1, screens.sign_in(k, model.view, verb), {"state": "error", "error": model.view.code})
+        return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": model.view.code})
     result = worker.result
     final = model.finished(result)
     data: Dict[str, Any] = {"state": "signedIn" if final.state == "done" else final.state}
@@ -460,9 +469,9 @@ def sign_in(
             data["status"] = client.status().status
         except Exception:
             pass
-        return Outcome(0, screens.sign_in(k, final, verb), data)
+        return Outcome(EXIT.ok, screens.sign_in(k, final, verb), data)
     data["error"] = final.code
-    return Outcome(1, screens.sign_in(k, final, verb), data)
+    return Outcome(EXIT.failed, screens.sign_in(k, final, verb), data)
 
 
 def sign_out(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
@@ -475,7 +484,7 @@ def sign_out(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
         with t.device.keys() as keys:
             key = keys.read(None)
         if key not in ("y", "Y"):
-            return Outcome(1, [], {"signedOut": False, "state": "cancelled"})
+            return Outcome(EXIT.failed, [], {"signedOut": False, "state": "cancelled"})
     client.identity.sign_out()
     return _signed_out(t)
 
@@ -504,30 +513,30 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
             rows = _rows(client, k.copy.locale)
             view = DevicesView("Devices", "list" if rows else "empty", rows)
             data = {"devices": [{"id": r.id, "label": r.label, "platform": r.platform, "current": r.current} for r in rows]}
-            return Outcome(0, screens.devices(k, view, verb), data)
+            return Outcome(EXIT.ok, screens.devices(k, view, verb), data)
         if action == "rename" and len(words) >= 2:
             label = " ".join(words[2:]) or None
             client.rename_device(words[1], label)
             done = DevicesView("Devices", "done", target=DeviceRow(words[1], label, None))
-            return Outcome(0, screens.devices(k, done, verb), {"renamed": words[1], "label": label})
+            return Outcome(EXIT.ok, screens.devices(k, done, verb), {"renamed": words[1], "label": label})
         if action == "deauthorize" and len(words) == 2:
             if t.env.interactive and not yes:
                 target = next((r for r in _rows(client) if r.id == words[1]), DeviceRow(words[1], None, None))
                 t.device.print(screens.devices(k, DevicesView("Devices", "confirming", target=target), verb))
                 with t.device.keys() as keys:
                     if keys.read(None) not in ("y", "Y"):
-                        return Outcome(1, [], {"deauthorized": None, "state": "cancelled"})
+                        return Outcome(EXIT.failed, [], {"deauthorized": None, "state": "cancelled"})
             client.deauthorize_device(words[1])
             done = DevicesView("Devices", "done", target=DeviceRow(words[1], None, None))
-            return Outcome(0, screens.devices(k, done, verb), {"deauthorized": words[1]})
+            return Outcome(EXIT.ok, screens.devices(k, done, verb), {"deauthorized": words[1]})
     except PolarisError as e:
         if e.code == "device-management-unsupported":
-            return Outcome(1, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": e.code})
+            return Outcome(EXIT.failed, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": e.code})
         return _error_outcome(t, e.code, verb)
     except Exception as e:  # DeviceManagementUnsupportedError
         code = getattr(e, "code", None)
         if code == "device-management-unsupported" or type(e).__name__.startswith("DeviceManagementUnsupported"):
-            return Outcome(1, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": "device-management-unsupported"})
+            return Outcome(EXIT.failed, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": "device-management-unsupported"})
         raise
     return usage(t, "devices [list | rename <id> <label> | deauthorize <id>]")
 
@@ -535,7 +544,7 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
 def usage(t: Terminal, text: str) -> Outcome:
     k = t.kit
     lines = screens.diagnostic(k, t.verb, [("usage:", f"{k.prog} {text}")])
-    return Outcome(2, lines, {"error": "usage", "usage": f"{k.prog} {text}"})
+    return Outcome(EXIT.usage, lines, {"error": "usage", "usage": f"{k.prog} {text}"})
 
 
 # ── config ───────────────────────────────────────────────────────────────────────────────────
@@ -558,7 +567,7 @@ def config(client: Any, t: Terminal, words: Sequence[str], *, fallback: Optional
             local = client.config.local_values() if hasattr(client.config, "local_values") else {}
             view = settings_view(entries, local)
             data = {"settings": [{"key": r.key, "value": r.value, "source": r.source} for r in view.rows]}
-            return Outcome(0, screens.settings(k, view, verb), data)
+            return Outcome(EXIT.ok, screens.settings(k, view, verb), data)
         if action == "set" and len(words) >= 3:
             client.config.set(words[1], _parse_value(" ".join(words[2:])))
             return _one_setting(client, t, words[1], saved=True)
@@ -581,7 +590,7 @@ def _one_setting(client: Any, t: Terminal, key: str, *, saved: bool = False, fal
     from ..core.models import SettingRow
 
     view = SettingsView("Settings", "saved" if saved else "list", (SettingRow(key, value, src),))
-    return Outcome(0, screens.settings(t.kit, view, t.verb or "config"), {"key": key, "value": value, "source": source})
+    return Outcome(EXIT.ok, screens.settings(t.kit, view, t.verb or "config"), {"key": key, "value": value, "source": source})
 
 
 # ``secret`` and ``mint`` say whether a value is there and when a token expires; they never print
@@ -597,7 +606,7 @@ def secret(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
         return usage(t, "secret <key>")
     present = client.config.get_secret(words[0]) is not None
     lines = screens.diagnostic(t.kit, t.verb, [(words[0], ("present" if present else "absent") + " (values are never printed)")])
-    return Outcome(0 if present else 1, lines, {"key": words[0], "present": present})
+    return Outcome(EXIT.ok if present else EXIT.failed, lines, {"key": words[0], "present": present})
 
 
 def mint(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
@@ -608,7 +617,7 @@ def mint(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
     except PolarisError as e:
         return _error_outcome(t, e.code, t.verb or "mint")
     lines = screens.diagnostic(t.kit, t.verb, [(words[0], f"expires at {tok.expiresAt} (the token is never printed)")])
-    return Outcome(0, lines, {"recipe": words[0], "expiresAt": tok.expiresAt})
+    return Outcome(EXIT.ok, lines, {"recipe": words[0], "expiresAt": tok.expiresAt})
 
 
 # ── release / update ─────────────────────────────────────────────────────────────────────────
@@ -710,16 +719,16 @@ def _fetch(
             out = run(bar)
     except KeyboardInterrupt:
         t.interrupted = True
-        return Outcome(130, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
+        return Outcome(EXIT.interrupted, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled", "error": "interrupted"})
     except PolarisError as e:
         if e.code == "cancelled":
-            return Outcome(1, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
-        return Outcome(1, screens.update(k, replace(base, state="failed", code=e.code), verb), {**data, "state": "error", "error": e.code})
+            return Outcome(EXIT.failed, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
+        return Outcome(EXIT.failed, screens.update(k, replace(base, state="failed", code=e.code), verb), {**data, "state": "error", "error": e.code})
     if unsupported_check and getattr(out, "kind", None) == "unsupported":
         return _error_outcome(t, "unsupported", verb)
     size = fmt.size(bar.total, k.copy.locale) if bar.total else None
     done = replace(base, state="ready", size=size)
-    return Outcome(0, screens.update(k, done, verb), {**data, **extra(out)})
+    return Outcome(EXIT.ok, screens.update(k, done, verb), {**data, **extra(out)})
 
 
 def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[str] = None, to: Optional[str] = None) -> Outcome:
@@ -731,11 +740,11 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
     try:
         if client.update._configured is None:
             if action != "check":
-                return Outcome(1, screens.diagnostic(k, verb, [("", "This build configures no signed updates (UpdateClientOptions).")], ok=False), {"error": "not-configured"})
+                return Outcome(EXIT.failed, screens.diagnostic(k, verb, [("", "This build configures no signed updates (UpdateClientOptions).")], ok=False), {"error": "not-configured"})
             vc = client.update.check(channel=channel)
             state = "available" if vc.updateAvailable else "up-to-date"
             view = UpdateView("UpdatePrompt", state, vc.version if vc.updateAvailable else None, current, notes_url=vc.url or None, installable=False)
-            return Outcome(0, screens.update(k, view, verb), {"state": state, "version": vc.version, "updateAvailable": vc.updateAvailable})
+            return Outcome(EXIT.ok, screens.update(k, view, verb), {"state": state, "version": vc.version, "updateAvailable": vc.updateAvailable})
         check = client.update.decide(channel=channel)
         d = check.decision
         # The download's size, as the release gave it ("61 MB"), for "2.5.0 is available · 61 MB".
@@ -744,7 +753,7 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
         view = update_view(d, current=current, size=size)
         data: Dict[str, Any] = {"state": view.state, "decision": d.to_dict(), "channel": check.channel}
         if action == "check":
-            return Outcome(0, screens.update(k, view, verb), data)
+            return Outcome(EXIT.ok, screens.update(k, view, verb), data)
         if action == "download":
             if not to:
                 return usage(t, "update download --to <path>")
@@ -769,12 +778,12 @@ def changelog(client: Any, t: Terminal, *, limit: Optional[int] = None) -> Outco
         entries = client.release.changelog()
     except PolarisError as e:
         view = release_notes_view(None, error=True)
-        return Outcome(1, screens.release_notes(t.kit, view, t.verb or "changelog"), {"error": e.code})
+        return Outcome(EXIT.failed, screens.release_notes(t.kit, view, t.verb or "changelog"), {"error": e.code})
     if isinstance(limit, int) and limit > 0:
         entries = entries[:limit]
     view = release_notes_view(entries)
     data = {"entries": [{"version": e.version, "date": e.date, "summary": e.summary, "url": e.url} for e in entries]}
-    return Outcome(0, screens.release_notes(t.kit, view, t.verb or "changelog"), data)
+    return Outcome(EXIT.ok, screens.release_notes(t.kit, view, t.verb or "changelog"), data)
 
 
 def packs(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
@@ -782,7 +791,7 @@ def packs(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
     verb = t.verb or "packs"
     p = client.update.packs
     if not p.configured:
-        return Outcome(1, screens.diagnostic(k, verb, [("", "This build has no content stamp (UpdateClientOptions.packs).")], ok=False), {"error": "not-configured"})
+        return Outcome(EXIT.failed, screens.diagnostic(k, verb, [("", "This build has no content stamp (UpdateClientOptions.packs).")], ok=False), {"error": "not-configured"})
     action = words[0] if words else "status"
     try:
         if action == "status":
@@ -790,9 +799,9 @@ def packs(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
             rows = [(pid, f"{i.get('version')} · {i.get('type')}") for pid, i in sorted(st.active.items())]
             if not rows:
                 view = ProgressView("UpdateProgress", "queued")
-                return Outcome(0, screens.update_progress(k, view, verb), {"packs": []})
+                return Outcome(EXIT.ok, screens.update_progress(k, view, verb), {"packs": []})
             lines = screens.diagnostic(k, verb, rows)
-            return Outcome(0, lines, {"packs": [{"pack": pid, **i} for pid, i in sorted(st.active.items())]})
+            return Outcome(EXIT.ok, lines, {"packs": [{"pack": pid, **i} for pid, i in sorted(st.active.items())]})
         if action == "ensure" and len(words) >= 2:
             name = ", ".join(words[1:])
             draw = lambda f, a, b, e: screens.update_progress(k, ProgressView("UpdateProgress", "downloading", name, f, a, b, e), verb)  # noqa: E731
@@ -803,10 +812,10 @@ def packs(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
                 finally:
                     off()
             view = ProgressView("UpdateProgress", "done", name)
-            return Outcome(0, screens.update_progress(k, view, verb), {"packs": [{"pack": i["packId"], "version": i["version"]} for i in done]})
+            return Outcome(EXIT.ok, screens.update_progress(k, view, verb), {"packs": [{"pack": i["packId"], "version": i["version"]} for i in done]})
     except PolarisError as e:
         view = ProgressView("UpdateProgress", "failed", ", ".join(words[1:]) or None, code=e.code)
-        return Outcome(1, screens.update_progress(k, view, verb), {"error": e.code})
+        return Outcome(EXIT.failed, screens.update_progress(k, view, verb), {"error": e.code})
     return usage(t, "packs [status | ensure <pack…>]")
 
 
@@ -855,14 +864,14 @@ def boot(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
         live.__exit__(None, None, None)
     view = boot_view(out)
     data = {"outcome": out.outcome, "stage": out.stage, "status": out.status, "updateAvailable": out.update_available, "error": out.error}
-    code = 0 if out.ready else 1
+    code = EXIT.ok if out.ready else EXIT.failed
     return Outcome(code, screens.boot(k, view, verb), data)
 
 
 def offline_request(client: Any, t: Terminal) -> Outcome:
     device = client.core.device_id
     view = OfflineView("OfflineActivation", "default", request_code=device)
-    return Outcome(0, screens.offline_activation(t.kit, view, t.verb or "offline-request"), {"product": client.product, "requestCode": device})
+    return Outcome(EXIT.ok, screens.offline_activation(t.kit, view, t.verb or "offline-request"), {"product": client.product, "requestCode": device})
 
 
 def import_bundle(client: Any, t: Terminal, jws: str) -> Outcome:
@@ -871,13 +880,13 @@ def import_bundle(client: Any, t: Terminal, jws: str) -> Outcome:
         r = client.import_bundle(jws)
     except PolarisError as e:
         view = OfflineView("OfflineActivation", "rejected-signature" if e.code == "bundle-jws-rejected" else "rejected", code=e.code)
-        return Outcome(1, screens.offline_activation(t.kit, view, verb), {"error": e.code, "message": e.message})
+        return Outcome(EXIT.failed, screens.offline_activation(t.kit, view, verb), {"error": e.code, "message": e.message})
     view = OfflineView("OfflineActivation", "done", imported=tuple(r.imported))
     try:
         st = client.status().status
     except Exception:
         st = None
-    return Outcome(0, screens.offline_activation(t.kit, view, verb), {"bundleId": r.bundleId, "imported": list(r.imported), "status": st})
+    return Outcome(EXIT.ok, screens.offline_activation(t.kit, view, verb), {"bundleId": r.bundleId, "imported": list(r.imported), "status": st})
 
 
 def register(client: Any, t: Terminal) -> Outcome:
@@ -894,7 +903,7 @@ def register(client: Any, t: Terminal) -> Outcome:
         lines += k.step("ok", [k.t(f"core.gate.{st.status}.title", "strong")])
         lines += k.body([k.d(r.deviceId, "id", "muted", nobreak=True)])
         lines += k.end()
-        return Outcome(0, lines, {"deviceId": r.deviceId, "status": st.status})
+        return Outcome(EXIT.ok, lines, {"deviceId": r.deviceId, "status": st.status})
     code = {"registration-closed": "registration_closed", "rate-limited": "rate_limited", "not-configured": "not-configured"}.get(kind, getattr(r, "code", None) or "server-error")
     out = _error_outcome(t, code, verb)
     out.data["kind"] = kind

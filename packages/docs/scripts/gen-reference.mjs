@@ -820,6 +820,42 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
             "",
           ]
         : []),
+      ...(uiMatrix.cli
+        ? [
+            "### The terminal contract (`cli`)",
+            "",
+            "Not a component family: one object with typed sections (`plans/UK-51.md`), the same for every terminal kit. A refusal is drawn as a triangle with its fix, never a cross; a refused gate exits " +
+              `${uiMatrix.cli.exit?.licenseRequired ?? "?"}. The terminal kits run \`exit\`, \`capabilities\`, \`stdin\` and \`outcomes\`; the framework adapters run \`mount\`, \`help\` and \`gate\`.`,
+            "",
+            table(
+              ["Section", "Rows"],
+              [
+                [
+                  "`verbs`",
+                  `${uiMatrix.cli.verbs?.endUser?.length ?? "?"} end-user, ${uiMatrix.cli.verbs?.developer?.length ?? "?"} developer, ${Object.keys(uiMatrix.cli.verbs?.aliases ?? {}).length} aliases`,
+                ],
+                ...[
+                  "mount",
+                  "help",
+                  "gate",
+                  "outcomes",
+                  "stdin",
+                  "capabilities",
+                ].map((s) => [
+                  `\`${s}\``,
+                  String((uiMatrix.cli[s] ?? []).length),
+                ]),
+                [
+                  "`exit`",
+                  Object.entries(uiMatrix.cli.exit ?? {})
+                    .map(([k, v]) => `\`${k}\` ${v}`)
+                    .join(", "),
+                ],
+              ],
+            ),
+            "",
+          ]
+        : []),
       "### States to handle",
       "",
       "Every state a kit, or an app drawing its own UI, handles, with the copy keys the rows show for it (kit keys from `packages/brand/kit-copy/`, `core.*` keys from `conformance/parity/copy.<locale>.json`).",

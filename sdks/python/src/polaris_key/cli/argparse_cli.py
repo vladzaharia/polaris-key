@@ -113,11 +113,12 @@ def json_usage_error(command: str, message: str, out: Any = None) -> int:
     """With ``--json``, a usage error still ends with a result line (exit 2)."""
     import json
 
+    from ..ui.terminal.exit import EXIT
     from ..ui.terminal.flows import JSON_VERSION
 
-    obj = {"v": JSON_VERSION, "command": command, "event": "result", "ok": False, "exit": 2, "error": "usage", "message": message}
+    obj = {"v": JSON_VERSION, "command": command, "event": "result", "ok": False, "exit": EXIT.usage, "error": "usage", "message": message}
     (out or sys.stdout).write(json.dumps(obj, ensure_ascii=True) + "\n")
-    return 2
+    return EXIT.usage
 
 
 def _verb(factory: core.ClientFactory, verb: "verbs.Verb", theme: Any, prog: str):
@@ -303,7 +304,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         return int(args.func(args))
     except KeyboardInterrupt:
-        return 130
+        from ..ui.terminal.exit import EXIT
+
+        return EXIT.interrupted
 
 
 if __name__ == "__main__":

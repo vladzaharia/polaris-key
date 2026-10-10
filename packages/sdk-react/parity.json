@@ -422,6 +422,12 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal drop-ins are the headless SDKs' expectation."
     },
+    "ui.cli.contract": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit's contract is the headless SDKs'."
+    },
     "ui.gate": {
       "status": "planned",
       "wp": "UK-05",

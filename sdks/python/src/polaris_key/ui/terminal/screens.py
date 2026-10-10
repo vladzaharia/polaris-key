@@ -168,7 +168,8 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         body += _gap(k)
         body += _fixes(k, [("status", "common.reconnect")])
     elif v.component == "StatusScreen":
-        body += k.step("fail", [k.t(f"core.gate.{v.state}.title", "strong")])
+        # A refusal, never a failure: the triangle, then what resolves it (DL6, UK-51).
+        body += k.step("warn", [k.t(f"core.gate.{v.state}.title", "strong")])
         body += k.body([k.t(f"core.gate.{v.state}.message")])
         if v.state in ("version-too-old", "version-too-new") and (v.allowed_min or v.allowed_max):
             if v.allowed_min and v.allowed_max:
@@ -178,11 +179,12 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
             else:
                 rng = k.t("status.allowedMax", "muted", max=v.allowed_max)
             body += k.body([rng])
+        # The fix rows name the cli family's verbs, as the Node kit's do (ui-matrix.json, UK-51).
         fixes = {
             # A revoked device cannot be fixed by signing out: use another key, or the account's license.
             "revoked": [("activate", "signin.key.differentKey"), ("login", "cli.fix.signIn")],
-            "expired": [("activate", "status.renew")],
-            "version-too-old": [("update", "status.update")],
+            "expired": [("activate", "signin.key.differentKey"), ("login", "cli.fix.signIn")],
+            "version-too-old": [("update apply", "status.update")],
             "version-too-new": [],
             "channel-not-entitled": [("update --channel <name>", "status.switchChannel")],
         }[v.state]
@@ -275,13 +277,14 @@ def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:
         body += k.step("ok", [k.t("core.activation.ok.title", "strong")])
         body += k.body([k.t("core.activation.ok.message")])
     elif v.kind == "key-entry-limit":
-        body += k.step("fail", [k.t("core.activation.key-entry-limit.title", "strong")])
+        body += k.step("warn", [k.t("core.activation.key-entry-limit.title", "strong")])
         body += k.body([k.t("signin.key.noEntries", product=k.inline_product)])
         body += _gap(k)
         body += _fixes(k, [("login", "welcome.signIn")])
     else:
         kind = v.kind if k.copy.has(f"core.activation.{v.kind}.title") else "error"
-        body += k.step("fail", [k.t(f"core.activation.{kind}.title", "strong")])
+        # A refused key is a refusal with its fix (DL6); any other outcome is a failure (DL7).
+        body += k.step("warn" if kind == "unauthorized" else "fail", [k.t(f"core.activation.{kind}.title", "strong")])
         body += k.body([k.t(f"core.activation.{kind}.message", code=v.code or kind)])
         if kind == "unauthorized":
             body += _gap(k)

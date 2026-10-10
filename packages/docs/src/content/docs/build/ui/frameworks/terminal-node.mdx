@@ -386,12 +386,17 @@ with `"error": "internal"` and exit 1.
 an `import-bundle` failure. A refusal from the server is `ok: false` with its `kind` and `code`,
 and an unusable license is `ok: false` with its `status`.
 
-| Exit code | Meaning                                                                                                                 |
-| --------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 0         | Done; for `status`, the license is usable                                                                               |
-| 1         | A refusal, an unusable license, a device limit, a cancelled or declined step, an unreachable service, any other failure |
-| 2         | Usage: a missing argument, an option the verb does not take, no key to read                                             |
-| 130       | Interrupted (Ctrl-C)                                                                                                    |
+| Exit code | Meaning                                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 0         | Done; for `status`, the license is usable                                                                                |
+| 1         | A refusal, an unusable license, a device limit, a cancelled or declined step, an unreachable service, any other failure  |
+| 2         | Usage: a missing argument, an option the verb does not take, no key to read                                              |
+| 4         | A gate in a host CLI refused the host's command: `"error"` is `license_required` or `not_entitled` (the gate is planned) |
+| 130       | Interrupted (Ctrl-C)                                                                                                     |
+
+`EXIT` holds these codes (`EXIT.licenseRequired` is 4), the same table as the `cli` family of the
+corpus's `ui-matrix.json`, which both terminal kits run. A refusal the person can resolve is drawn as
+▲ with its fix; a failure, an unreachable service included, as ✗.
 
 Under `--json`, `login` never opens a browser: it prints a `pending` line first, with the code and
 the page for the script to show, then the result line.

@@ -548,9 +548,12 @@ included, as a `\u` escape). Each line on stdout is one JSON object (NDJSON) wit
   `network`), `"usage"` for an argument error, `"internal"` for an unexpected exception and
   `"interrupted"` for Ctrl-C. **`"message"`** appears only with a usage error and an
   import-bundle failure.
-- **Exit codes:** 0 success; 1 a refusal, an unusable license, a cancelled or declined step or any
-  other failure; 2 a usage error; 130 Ctrl-C. A refused gate in a host CLI exits 4 (UK-51);
-  `status` and a network failure stay 1.
+- **Exit codes:** the `cli` family's `exit` table in `conformance/corpus/v2/ui-matrix.json`
+  (Node's `EXIT`, Python's `polaris_key.ui.terminal.exit.EXIT`): 0 success; 1 a refusal, an
+  unusable license, a cancelled or declined step or any other failure; 2 a usage error; 4 a gate in
+  a host CLI that refused the host's command (`license_required` or `not_entitled`, the `gate`
+  rows); 130 Ctrl-C. `status` and a network failure stay 1. A refusal the person can resolve is ▲
+  with its fix and a failure is ✗ (the `outcomes` rows).
 - **Never on a `--json` line:** a license key, a device token, a sign-in poll credential, a
   secret's value or a minted token.
 - **Off `--json`,** the Node kit's `secret` and `mint` print the value alone on stdout for a script
@@ -562,12 +565,13 @@ included, as a `\u` escape). Each line on stdout is one JSON object (NDJSON) wit
   alters the value to defuse it.
 
 **Terminal capability table.** One table (environment × streams × flags → colour, unicode,
-interactive, animate, links) in the UK-51 `cli` rows runs in both kits' tests. Python must match
+interactive, animate, links), the `cli` family's `capabilities` rows, runs in both kits' tests. Python must match
 Node: CI is truthy over `CI`, `GITHUB_ACTIONS` and `BUILDKITE` (`CI=0` is not CI); `FORCE_COLOR`
 forces colour on a pipe but never OSC 8 (links only on a TTY stdout); animation follows a TTY
 stdout, not stdin; no OSC 11 query under `NO_COLOR`. `activate` with no key reads piped stdin only
 when it is a file, FIFO or socket (a Node parent's pipe is a socket), stops at the first non-empty line and gives up after about 2 s (exit 2,
-`cli.activate.noKey`), so a headless server never waits on a hidden prompt. `NO_COLOR` and
+`cli.activate.noKeyPiped`; a terminal that cannot prompt says `cli.activate.noKey`), so a headless
+server never waits on a hidden prompt (the `stdin` rows). `NO_COLOR` and
 `--no-color` drop colour; on a terminal bold, reverse video and OSC 8 links stay.
 
 **Desktop model** (revised 2026-10-05, SIGN-IN.md §3.17). Sign-in and activation are steps of

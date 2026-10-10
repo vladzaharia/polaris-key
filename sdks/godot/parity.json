@@ -483,6 +483,12 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal drop-ins are the headless SDKs' expectation."
     },
+    "ui.cli.contract": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit's contract is the headless SDKs'."
+    },
     "ui.gate": {
       "status": "implemented",
       "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): PolarisKeyGate, Boot, StatusScreen, GraceBanner and Toast. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."

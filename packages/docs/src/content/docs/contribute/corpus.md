@@ -93,7 +93,7 @@ Fourteen files and the content corpus, one directory, so a runner can point at `
 | `sync-scenarios.json`      | WIRE-CONTRACT-V4 §11.5 (U-18): the Cloud Sync client scenarios, literal data written by hand in `tools/sync-scenarios.ts` (see below).                                                                                                                                                                                                      |
 | `device-label.json`        | WIRE-CONTRACT-V4 §12.7.1 (PX-W13): raw device labels and their normalised form, or none. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped; no row holds U+0000, which a Godot `String` cannot.                                                           |
 | `presentation-matrix.json` | WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's `core.presentation` parsed field by field (`parseCases`), the icon size chosen for a pixel size, scale and decodable set (`pickCases`), and icon bytes checked against their SHA-256 (`verifyCases`, base64 bytes). ASCII only.                                                                  |
-| `ui-matrix.json`           | The UI kits' layer-(c) state matrix (`plans/UK-02b.md` §4): for each of the eight component families an input and the component, state, copy keys and actions every kit's headless model answers; the `theme` resolution and the `i18n` lookup and formatter. Generated, unsigned, ASCII only.                                              |
+| `ui-matrix.json`           | The UI kits' layer-(c) state matrix (`plans/UK-02b.md` §4): for each of the eight component families an input and the component, state, copy keys and actions every kit's headless model answers; the `theme` resolution and the `i18n` lookup and formatter; and `cli`, the terminal drop-in contract. Generated, unsigned, ASCII only.    |
 | `backend-matrix.json`      | WIRE-CONTRACT-V4 §14: product backends. `verdict` (the verdict on `X-PKey-License`, signed licence documents inside), `problem` (the refusal body, its challenge and its locale, written from the copy catalog) and `client` (the refresh-and-retry rule). Server cores replay `verdict` and `problem`, client halves `client`. ASCII only. |
 | `content/`                 | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                                                                       |
 
@@ -103,7 +103,7 @@ files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerpr
 `stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
 `feedUrlMatrixVersion` **1**, `syncScenariosVersion` **2**, `deviceLabelVersion` **1**,
-`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **2** — and case counts, generated
+`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **3** — and case counts, generated
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
@@ -284,7 +284,7 @@ is checked against the file like any other SDK, by its own test
 the implementation it checks cannot catch a bug in it.
 
 `ui-matrix.json` (`plans/UK-02.md` §4, `plans/UK-02b.md` §4) is generated from rows authored in
-`tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 2: a new row keeps
+`tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 3: a new row keeps
 the version; a changed row, input member or rule bumps it, and each runner checks the generated
 `UI_MATRIX_VERSION`. There is no reference state machine: the generator checks structure (every
 must state has a row and the rows' copy covers its `components.json` list, every component has a
@@ -303,6 +303,22 @@ Version 2 (UK-03) closed the one it held, DL7's delayed response: the `elapsedMs
 `vocabulary.loadingDelay` (`min` 250, `max` 300, and the loading states it applies to) pin a
 loading state that shows nothing before the delay and its usual copy after it, with no row inside
 the window, so each kit's model timer may wait anywhere in it. UK-15 renders the variant.
+
+Version 3 adds the `cli` family, the terminal drop-in contract. It has no component, so it
+is one object with typed sections rather than component rows: `verbs` (the end-user set a mount
+offers by default, the developer verbs it offers only by name, the aliases), `mount` and `help`
+(what registering into a host CLI mounts, refuses with `polaris-verb-collision`, skips, hides and
+lists under the `cli.help.group` heading), `gate` (every `licenseStatus` × TTY × `--json` ×
+entitlement: run, the inline flow, or a refusal drawn as ▲ with its fix that exits 4), `outcomes`
+(a kit verb in a named situation: its mark, exit, result fields, stdout and fix verbs), `stdin`
+(what `activate` with no key reads, per kind of stdin), `capabilities` (the terminal capability
+table) and `exit` (the exit table). `vocabulary.cli` holds the rules. The mount, help, gate and
+capability expectations are computed by references in `tools/ui-matrix.ts` that import nothing they
+check, and `checkCli` refuses a refusal drawn as ✗, a refused gate that does not exit 4 and a
+missing gate cell. The two terminal kits run `exit`, `capabilities`, `stdin` and `outcomes`
+(`packages/sdk-node/test/cli/cliContract.test.ts`, `sdks/python/tests/cli/test_cli_contract.py`, the
+second with strict xfails for the rows its kit does not pass yet, each with its owner); the framework
+adapters run `mount`, `help` and `gate`.
 
 `backend-matrix.json` is generated from rows authored in
 `tools/corpus/backend.ts`, ASCII only and **append-only** within `backendMatrixVersion` 1. Every

@@ -117,8 +117,6 @@ function errorCode(e: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
-const NETWORK = new Set(["network", "network-error", "transport", "timeout"]);
-
 /** Ctrl-C: exit 130 with `"error": "interrupted"` (the Python kit's). */
 function interrupted(fields: Record<string, unknown> = {}): FlowResult {
   return {
@@ -129,7 +127,8 @@ function interrupted(fields: Record<string, unknown> = {}): FlowResult {
   };
 }
 
-/** Draw a thrown error and return its result. */
+/** Draw a thrown error and return its result: a failure, a network one included, is a cross
+ *  with what happened (DL7); only a refusal the person can resolve is a triangle (DL6). */
 function failed(
   ctx: KitContext,
   e: unknown,
@@ -137,10 +136,9 @@ function failed(
 ): FlowResult {
   const code = errorCode(e);
   const error = codeError(ctx, code);
-  const network = code !== null && NETWORK.has(code);
   show(ctx, [
     ...lead,
-    ...problemRows(network ? "warn" : "fail", error.title, error.message),
+    ...problemRows("fail", error.title, error.message),
     endRow(),
   ]);
   return {
@@ -508,15 +506,16 @@ export async function statusFlow(
       const shown = view.fixes.filter((f) => f.verb !== null);
       // A device activated with a key alone was never "signed out": its key stopped working.
       const keyOnly = st.status === "revoked" && identity === null;
+      // A refusal, never a failure: the triangle, then what resolves it (DL6, UK-51).
       rows.push(
         ...(keyOnly
           ? problemRows(
-              "fail",
+              "warn",
               t("cli.status.keyRevoked.title"),
               t("cli.status.keyRevoked.message"),
             )
           : problemRows(
-              "fail",
+              "warn",
               t(`core.gate.${view.state}.title`),
               t(`core.gate.${view.state}.message`),
             )),
@@ -637,7 +636,7 @@ function outcomeRows(
   if (o.kind === "key-entry-limit")
     return [
       ...problemRows(
-        "fail",
+        "warn",
         t("core.activation.key-entry-limit.title"),
         t("signin.key.noEntries", { product: ctx.product.name }),
       ),
@@ -654,8 +653,10 @@ function outcomeRows(
           : t(`core.activation.${o.kind}.message`),
       ]
     : [ctx.copy.code(o.code, "title"), ctx.copy.code(o.code, "message")];
+  // A refused key is a refusal with its fix (the page where the license is checked); any other
+  // outcome, the network's included, is a failure (DL6, DL7).
   return [
-    ...problemRows(NETWORK.has(o.code) ? "warn" : "fail", title, message),
+    ...problemRows(o.kind === "unauthorized" ? "warn" : "fail", title, message),
     ...(o.kind === "unauthorized" ? [linkRow(portal)] : []),
   ];
 }

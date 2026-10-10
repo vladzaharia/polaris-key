@@ -604,6 +604,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "Options",
     "cli.help.lede": "{product} license and updates",
     "cli.help.more": "Run {command} for one command's options.",
+    "cli.help.group": "License",
     "cli.verb.activate": "Add a license key (prompted, or piped on stdin)",
     "cli.verb.enroll": "Get the free license, when {product} offers one",
     "cli.verb.deactivate":
@@ -1889,6 +1890,7 @@ export const KIT_COPY: Readonly<
     "cli.help.lede": "Lizenz und Updates für {product}",
     "cli.help.more":
       "Führen Sie {command} aus, um die Optionen eines Befehls zu sehen.",
+    "cli.help.group": "Lizenz",
     "cli.verb.activate": "Lizenzschlüssel hinzufügen (Eingabe oder über stdin)",
     "cli.verb.enroll":
       "Kostenlose Lizenz erhalten, falls {product} eine anbietet",
@@ -3198,6 +3200,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "Options",
     "cli.help.lede": "Licence et mises à jour de {product}",
     "cli.help.more": "Exécutez {command} pour voir les options d’une commande.",
+    "cli.help.group": "Licence",
     "cli.verb.activate": "Ajouter une clé de licence (saisie, ou via stdin)",
     "cli.verb.enroll":
       "Obtenir la licence gratuite, si {product} en propose une",
@@ -4474,6 +4477,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "Opciones",
     "cli.help.lede": "Licencia y actualizaciones de {product}",
     "cli.help.more": "Ejecuta {command} para ver las opciones de un comando.",
+    "cli.help.group": "Licencia",
     "cli.verb.activate": "Añadir una clave de licencia (se pide, o por stdin)",
     "cli.verb.enroll": "Obtener la licencia gratuita, si {product} ofrece una",
     "cli.verb.deactivate":
@@ -5767,6 +5771,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "Opções",
     "cli.help.lede": "Licença e atualizações de {product}",
     "cli.help.more": "Execute {command} para ver as opções de um comando.",
+    "cli.help.group": "Licença",
     "cli.verb.activate":
       "Adicionar uma chave de licença (digitada ou via stdin)",
     "cli.verb.enroll": "Obter a licença gratuita, se {product} oferecer uma",
@@ -7049,6 +7054,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "Opzioni",
     "cli.help.lede": "Licenza e aggiornamenti di {product}",
     "cli.help.more": "Esegui {command} per le opzioni di un comando.",
+    "cli.help.group": "Licenza",
     "cli.verb.activate":
       "Aggiungi una chiave di licenza (richiesta, o da stdin)",
     "cli.verb.enroll": "Ottieni la licenza gratuita, se {product} ne offre una",
@@ -8344,6 +8350,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "オプション",
     "cli.help.lede": "{product}のライセンスとアップデート",
     "cli.help.more": "コマンドごとのオプションは{command}で確認できます。",
+    "cli.help.group": "ライセンス",
     "cli.verb.activate": "ライセンスキーを追加（入力、または stdin から）",
     "cli.verb.enroll": "無料ライセンスを取得（{product}が提供している場合）",
     "cli.verb.deactivate": "このデバイスでのライセンス使用を停止し、枠を解放",
@@ -9623,6 +9630,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "옵션",
     "cli.help.lede": "{product} 라이선스 및 업데이트",
     "cli.help.more": "명령별 옵션을 보려면 다음을 실행하세요: {command}",
+    "cli.help.group": "라이선스",
     "cli.verb.activate": "라이선스 키 추가 (입력하거나 stdin으로)",
     "cli.verb.enroll": "무료 라이선스 받기 ({product}에서 제공하는 경우)",
     "cli.verb.deactivate": "이 기기에서 라이선스 사용을 중지하고 자리 비우기",
@@ -10823,6 +10831,7 @@ export const KIT_COPY: Readonly<
     "cli.help.options": "选项",
     "cli.help.lede": "{product}许可证与更新",
     "cli.help.more": "运行{command}查看单个命令的选项。",
+    "cli.help.group": "许可证",
     "cli.verb.activate": "添加许可证密钥（提示输入，或通过 stdin）",
     "cli.verb.enroll": "获取免费许可证（如果{product}提供）",
     "cli.verb.deactivate": "停止在此设备上使用你的许可证并释放席位",

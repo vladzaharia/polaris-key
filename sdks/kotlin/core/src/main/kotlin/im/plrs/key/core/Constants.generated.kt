@@ -600,6 +600,7 @@ public object Feature {
     public const val uiKitAccount: String = "ui.kit.account"
     public const val uiCli: String = "ui.cli"
     public const val uiCliMount: String = "ui.cli.mount"
+    public const val uiCliContract: String = "ui.cli.contract"
     public const val uiGate: String = "ui.gate"
     public const val uiActivate: String = "ui.activate"
     public const val uiSignin: String = "ui.signin"
@@ -714,6 +715,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.kit.account",
     "ui.cli",
     "ui.cli.mount",
+    "ui.cli.contract",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1320,7 +1322,7 @@ public const val DEVICE_LABEL_VERSION: Int = 1
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-public const val UI_MATRIX_VERSION: Int = 2
+public const val UI_MATRIX_VERSION: Int = 3
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 public const val BACKEND_MATRIX_VERSION: Int = 1
@@ -1622,6 +1624,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.kit.account" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.cli.mount" to CapabilityRow("planned", "sdk", listOf(CapabilityNa("android", "runtime"))),
+    "ui.cli.contract" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.gate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.activate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.signin" to CapabilityRow("planned", "sdk", listOf()),
@@ -1640,4 +1643,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "6de83308edc564a53221650e0a6129b74910e42e579341835911ce64e5517f20"
+public const val CAPABILITY_DIGEST: String = "fc00ce79414b1b71e9fb53c20a06f9bd0f277ba397cdb9b2607038e5ee5ad85c"

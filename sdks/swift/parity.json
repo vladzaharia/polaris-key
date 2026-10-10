@@ -372,6 +372,12 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal drop-ins are the headless SDKs' expectation."
     },
+    "ui.cli.contract": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit's contract is the headless SDKs'."
+    },
     "ui.gate": {
       "status": "implemented",
       "note": "PolarisKeyUICore runs the gate family of ui-matrix.json (UIMatrixTests); PolarisKeyUI's .polarisKeyGate draws PolarisKeyGate, Boot (the first paint), StatusScreen, GraceBanner and the toast, rendered on the iOS 26 simulator in both schemes with performAccessibilityAudit (examples/ui/swiftui KitRenderTests; baselines in Tests/PolarisKeyUISnapshotTests/__Snapshots__). iOS and iPadOS; the Mac pass is UK-08."

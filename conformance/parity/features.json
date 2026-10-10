@@ -2148,6 +2148,77 @@
       "note": "Framework drop-ins plan §7 and §9.3: UK-51 pins the `cli` family; the headless SDKs follow (Node UK-46, Python UK-48) and the JVM kit with it (UK-54)."
     },
     {
+      "id": "ui.cli.contract",
+      "family": "ui",
+      "title": "Terminal kit contract: exit codes, refusal marks, piped stdin and the capability table",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "ui-matrix.json",
+          "family": "cli"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "dotnet",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "unity",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "tauri",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        }
+      ],
+      "note": "The `cli` family of ui-matrix.json (plans/UK-51.md): each terminal kit runs its exit, capabilities, stdin and outcomes rows (exit 4 for a refused gate, a refusal drawn as a triangle with its fix, never a cross); the mount, help and gate rows are ui.cli.mount's (UK-46, UK-48, UK-52 to UK-54). Required on node and python; UK-54 makes it required on jvm."
+    },
+    {
       "id": "ui.gate",
       "family": "ui",
       "title": "Kit states: gate, boot, status screen, grace banner and toasts",

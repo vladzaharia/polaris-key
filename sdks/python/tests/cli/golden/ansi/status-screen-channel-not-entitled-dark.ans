@@ -1,7 +1,7 @@
 ── truecolor · 80 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[31m✗[0m  [1mChannel not included[0m
+[33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
 [2m│[0m
 [2m│[0m  To keep using Tidewater Studio:
@@ -10,7 +10,7 @@
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[31m✗[0m  [1mChannel not included[0m
+[33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
 [2m│[0m
 [2m│[0m  To keep using Tidewater Studio:
@@ -19,7 +19,7 @@
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · status
 │
-✗  [1mChannel not included[0m
+▲  [1mChannel not included[0m
 │  Your license doesn't include this release channel.
 │
 │  To keep using Tidewater Studio:
@@ -28,7 +28,7 @@
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
-[31mx[0m  [1mChannel not included[0m
+[33m![0m  [1mChannel not included[0m
 [2m|[0m  Your license doesn't include this release channel.
 [2m|[0m
 [2m|[0m  To keep using Tidewater Studio:
@@ -37,7 +37,7 @@
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[31m✗[0m  [1mChannel not included[0m
+[33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
 [2m│[0m
 [2m│[0m  To keep using Tidewater Studio:
@@ -46,7 +46,7 @@
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[31m✗[0m  [1mChannel not included[0m
+[33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
 [2m│[0m
 [2m│[0m  To keep using Tidewater Studio:
@@ -55,7 +55,7 @@
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · status
 │
-✗  [1mChannel not included[0m
+▲  [1mChannel not included[0m
 │  Your license doesn't include this release channel.
 │
 │  To keep using Tidewater Studio:
@@ -64,7 +64,7 @@
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
-[31mx[0m  [1mChannel not included[0m
+[33m![0m  [1mChannel not included[0m
 [2m|[0m  Your license doesn't include this release channel.
 [2m|[0m
 [2m|[0m  To keep using Tidewater Studio:

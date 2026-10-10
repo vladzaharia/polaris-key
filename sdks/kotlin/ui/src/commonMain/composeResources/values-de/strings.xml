@@ -1148,6 +1148,8 @@
     <string name="cli_help_lede">Lizenz und Updates für %1$s</string>
     <!-- Terminal help footer. {command} is a command line such as 'tidewater activate -help'. Arguments: 1=command. -->
     <string name="cli_help_more">Führen Sie %1$s aus, um die Optionen eines Befehls zu sehen.</string>
+    <!-- Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings. -->
+    <string name="cli_help_group">Lizenz</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">Lizenzschlüssel hinzufügen (Eingabe oder über stdin)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->

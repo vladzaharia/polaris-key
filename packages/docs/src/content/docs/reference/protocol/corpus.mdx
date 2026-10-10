@@ -22,7 +22,7 @@ only corpus. `corpusVersion 2`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
 `planMatrixVersion 2`, `deviceLabelVersion 1`,
-`presentationMatrixVersion 1`, `uiMatrixVersion 2`,
+`presentationMatrixVersion 1`, `uiMatrixVersion 3`,
 `backendMatrixVersion 1`,
 `contentCorpusVersion 2`, `syncScenariosVersion 2`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
@@ -121,6 +121,21 @@ None: every variant of the verification recipe is pinned (`vocabulary.gaps` is e
 ### The loading delay
 
 DL7: a loading state shows nothing until 250-300 ms after its request started, then its usual copy. The rows give `elapsedMs` below 250 or from 300, never inside the window, so each kit's model timer may wait anywhere in it. The delayed states: `PolarisKeyGate.booting`, `LicenseChoice.loading`, `Devices.loading`, `ReleaseNotes.loading`, `AccountAndLicense.loading`, `Settings.loading`, `Paywall.loading`, `EntitlementGate.loading`.
+
+### The terminal contract (`cli`)
+
+Not a component family: one object with typed sections (`plans/UK-51.md`), the same for every terminal kit. A refusal is drawn as a triangle with its fix, never a cross; a refused gate exits 4. The terminal kits run `exit`, `capabilities`, `stdin` and `outcomes`; the framework adapters run `mount`, `help` and `gate`.
+
+| Section | Rows |
+| --- | --- |
+| `verbs` | 10 end-user, 16 developer, 2 aliases |
+| `mount` | 13 |
+| `help` | 6 |
+| `gate` | 72 |
+| `outcomes` | 22 |
+| `stdin` | 10 |
+| `capabilities` | 14 |
+| `exit` | `ok` 0, `failed` 1, `usage` 2, `licenseRequired` 4, `interrupted` 130 |
 
 ### States to handle
 

@@ -355,6 +355,10 @@
       "status": "planned",
       "wp": "UK-48"
     },
+    "ui.cli.contract": {
+      "status": "implemented",
+      "note": "tests/cli/test_cli_contract.py runs the cli family's exit, capabilities, stdin and outcomes rows of ui-matrix.json against polaris_key.ui.terminal (polaris_key.ui.terminal.exit is the exit table). The rows the kit does not pass yet are strict xfails owned by UK-48 (CI truthiness, links and animation in the capability table; reading a piped key; --reveal); the mount, help and gate rows are ui.cli.mount's (UK-48)."
+    },
     "ui.gate": {
       "status": "planned",
       "wp": "UK-12",

@@ -598,6 +598,7 @@ public enum Feature {
     public static let uiKitAccount = "ui.kit.account"
     public static let uiCli = "ui.cli"
     public static let uiCliMount = "ui.cli.mount"
+    public static let uiCliContract = "ui.cli.contract"
     public static let uiGate = "ui.gate"
     public static let uiActivate = "ui.activate"
     public static let uiSignin = "ui.signin"
@@ -712,6 +713,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.kit.account",
     "ui.cli",
     "ui.cli.mount",
+    "ui.cli.contract",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1280,7 +1282,7 @@ public let DEVICE_LABEL_VERSION = 1
 public let PRESENTATION_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 2
+public let UI_MATRIX_VERSION = 3
 
 /// `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 public let BACKEND_MATRIX_VERSION = 1
@@ -1600,6 +1602,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.account": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "ui.cli.contract": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.gate": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.activate": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.signin": CapabilityRow(status: "implemented", service: "sdk", na: []),
@@ -1618,4 +1621,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "8efec48e2e0d46ecb98085820b1eef63497ab47658cedee4f8735b464e50ef1b"
+public let CAPABILITY_DIGEST = "1d3e59237b393c0b6fd39a45042bb4ef0b09477ce9ab5b070efbf0a4ca765c66"
