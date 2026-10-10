@@ -72,7 +72,8 @@ stops working.
 Every license's page lists the devices using it and lets you disconnect any of them — handy for
 a machine that's gone, sold, or otherwise out of reach. See [Devices](/docs/users/devices/) for
 what disconnecting actually does, and how it compares to disconnecting from inside the app
-itself.
+itself. Disconnecting a device leaves your [Cloud Sync](/docs/users/sync/) data alone: your synced
+settings and saves stay until you delete them.
 
 ## Deleting your account
 
@@ -80,5 +81,7 @@ Your portal account can be deleted on request. Doing so removes your portal prof
 address linked to it, and the links connecting your account to your licenses. It does **not**
 delete the licenses themselves — those remain the product's own records, so if you sign back in
 the same way later, the portal can reconnect them on its own. If you want a license itself
-erased, that's a request for the product's own support, not the portal. Because deleting the
-account removes your email address, you're sent one last confirmation to it as it happens.
+erased, that's a request for the product's own support, not the portal. Deleting the account also
+deletes your [Cloud Sync](/docs/users/sync/) data: the settings and saves synced for you. Because
+deleting the account removes your email address, you're sent one last confirmation to it as it
+happens.
