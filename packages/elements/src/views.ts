@@ -199,6 +199,10 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
   const heroTitle = layout.header === "hero";
   const ambient = c.resolved.theme.ambient;
   const showIdentity = layout.header !== "none";
+  // DL5: the product's name appears once: in the title when the title names it.
+  const name = c.resolved.identity.name || c.resolved.theme.name;
+  const titleNames =
+    p.titles.length > 0 && name !== "" && plain(c, p.titles[0]!).includes(name);
   const loading = isLoading(view);
   // Refusals (DL6) and errors (DL7) whose message is the screen: the title reads as the message.
   return html`<section
@@ -226,6 +230,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
       <div class="split passport">
         ${showIdentity
           ? productHeader(c, layout.header, {
+              name: !titleNames,
               developer: view.copy.includes("common.byDeveloper"),
             })
           : nothing}
@@ -502,6 +507,9 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
           ? html`<span
               >${text(c, "deviceLimit.consequence", {
                 device: pick.name ?? "",
+                thisDevice: plain(c, "part.thisDevice", {
+                  formFactor: c.input.platform?.formFactor ?? "computer",
+                }),
               })}</span
             >`
           : nothing}

@@ -169,10 +169,13 @@ export abstract class PkElement extends LitElement {
             : w / rem >= 52.5 && h > 0 && w / h >= 1.4
               ? "landscape"
               : "portrait";
-        if (next !== this.shape) {
-          this.shape = next;
-          this.requestUpdate();
-        }
+        if (next !== this.shape)
+          // After this frame's layout: a shape change never re-enters the observer's loop.
+          requestAnimationFrame(() => {
+            if (next === this.shape) return;
+            this.shape = next;
+            this.requestUpdate();
+          });
       });
       this.resize.observe(this);
     }

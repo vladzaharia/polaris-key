@@ -309,9 +309,15 @@ export function seatMeter(
 /** ProgressBar: determinate only for counted bytes (DL7). */
 export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
   const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
+  // Named by a11y.progress, else by the state's own line (paused, queued).
+  const own = c.view.copy.find(
+    (k) => !k.startsWith("a11y.") && !k.startsWith("common."),
+  );
   const label = c.view.copy.includes("a11y.progress")
     ? plain(c, "a11y.progress")
-    : undefined;
+    : own
+      ? plain(c, own)
+      : undefined;
   return html`<div
     class="progress"
     part="progress"
@@ -409,28 +415,30 @@ export function codeDisplay(c: RenderCtx): TemplateResult | typeof nothing {
     ${keys.has("part.code.label")
       ? html`<span class="label">${text(c, "part.code.label")}</span>`
       : nothing}
-    <span
-      class="code"
-      role="text"
-      data-key="a11y.code"
-      aria-label=${keys.has("a11y.code")
-        ? plain(c, "a11y.code", { code })
-        : code}
-      >${code}</span
-    >
-    ${keys.has("a11y.copyCode")
-      ? html`<button
-          type="button"
-          class="btn"
-          data-variant="secondary"
-          data-part="copy"
-          data-key="a11y.copyCode"
-          aria-label=${plain(c, "a11y.copyCode")}
-          @click=${() => c.act("a11y.copyCode")}
-        >
-          ${GLYPHS.copy()}
-        </button>`
-      : nothing}
+    <span class="code-row">
+      <span
+        class="code"
+        role="text"
+        data-key="a11y.code"
+        aria-label=${keys.has("a11y.code")
+          ? plain(c, "a11y.code", { code })
+          : code}
+        >${code}</span
+      >
+      ${keys.has("a11y.copyCode")
+        ? html`<button
+            type="button"
+            class="btn"
+            data-variant="secondary"
+            data-part="copy"
+            data-key="a11y.copyCode"
+            aria-label=${plain(c, "a11y.copyCode")}
+            @click=${() => c.act("a11y.copyCode")}
+          >
+            ${GLYPHS.copy()}
+          </button>`
+        : nothing}
+    </span>
   </div>`;
 }
 
@@ -514,7 +522,12 @@ function ordered(keys: string[], layout: Layout): string[] {
 export function placeKeys(view: View, layout: Layout) {
   const all = view.copy.filter((k) => !k.startsWith("a11y."));
   const content = new Set(layout.content ?? []);
-  const controls = layout.controls.filter((k) => all.includes(k));
+  // The view's primary is the one filled control (DL4), drawn even where the state's copy leaves
+  // it out (a busy control keeps its label; a capability-limited Welcome keeps its one path).
+  const primary = view.decisions.primary;
+  const controls = layout.controls.filter(
+    (k) => all.includes(k) || (k === primary && !content.has(k)),
+  );
   const links = (layout.links ?? []).filter((k) => all.includes(k));
   const placed = new Set([...controls, ...links, ...content]);
   const rest = all.filter((k) => !placed.has(k));

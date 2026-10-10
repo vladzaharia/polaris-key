@@ -104,11 +104,11 @@ const KIT_CSS = String.raw`
 }
 [data-theme="dark"] .ambient img {
   position: absolute;
-  inset-block-start: 8%;
+  inset-block-start: 0;
   inset-inline-start: 50%;
-  inline-size: min(70cqi, 56rem);
+  inline-size: min(60cqi, 40rem);
   aspect-ratio: 1;
-  translate: -50% 0;
+  translate: -50% -20%;
   filter: blur(100px);
   opacity: 0.4;
 }
@@ -152,7 +152,13 @@ const KIT_CSS = String.raw`
     align-content: start;
   }
   .stage[data-kind="screen"] .card {
-    grid-template-rows: auto 1fr auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--pk-space-6);
+  }
+  /* The actions dock at the bottom of a full-bleed screen (§1.4 Web). */
+  .stage[data-kind="screen"] .card > .actions {
+    margin-block-start: auto;
   }
 }
 
@@ -177,7 +183,13 @@ const KIT_CSS = String.raw`
   background: var(--pk-accent-subtle, var(--pk-surface-sunken));
 }
 .pk-root[data-shape="landscape"][data-theme="dark"] .stage[data-split] .passport {
-  background: var(--pk-surface-sunken);
+  background: radial-gradient(closest-side, var(--pk-accent-subtle, var(--pk-surface-sunken)), var(--pk-surface-sunken));
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .passport .icon {
+  --pk-icon-size: 7.5rem;
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .passport .identity {
+  display: grid;
 }
 .pk-root[data-shape="landscape"] .stage[data-split] .passport .name,
 .pk-root[data-shape="landscape"] .stage[data-split] .passport .by {
@@ -491,6 +503,17 @@ bdi {
   letter-spacing: var(--pk-kit-type-code-tracking);
   color: var(--pk-text-strong);
   overflow-wrap: anywhere;
+}
+.code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pk-space-3);
+}
+.code-row .btn,
+.body .btn {
+  min-inline-size: var(--pk-kit-control-height);
+  padding-inline: var(--pk-space-3);
 }
 .url {
   color: var(--pk-accent-fg, var(--pk-text-strong));

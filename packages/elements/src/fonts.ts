@@ -18,7 +18,7 @@ export function installFonts(): void {
   installed = true;
   const href = new URL(
     "fonts.css",
-    base ?? new URL("./fonts/", import.meta.url).href,
+    new URL(base ?? "./fonts/", base ? document.baseURI : import.meta.url),
   ).href;
   if (document.querySelector(`link[data-pk-fonts]`)) return;
   const link = document.createElement("link");
