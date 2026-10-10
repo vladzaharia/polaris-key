@@ -21,13 +21,13 @@
 //     resolution is the config SERVICE's job, and a product that disabled it never has to think
 //     about `envPrefix`/`env`/`localOverrides` at all (they ride `ConfigClientOptions`);
 //   * the document is `pkey-config+jws` with `config`/`secrets` at the TOP LEVEL — v2's
-//     `payload: {config, secrets, entitlements}` is gone, and entitlements moved to the licence
+//     `payload: {config, secrets, entitlements}` is gone, and entitlements moved to the license
 //     document (D-20);
 //   * the env prefix stays `PKEY_CONFIG_` (§8) — the interim `PLRS_CONFIG_` spelling was
 //     withdrawn by Amendment A1 and is NOT read, which is the kind of thing that fails
 //     silently (a stale var simply stops being honored), so it gets its own pin below;
 //   * the cache record is `{v:3, docs:{config}, etags:{config}}`: per-service slices, because
-//     licence and config are now independently fetched and independently ETagged.
+//     license and config are now independently fetched and independently ETagged.
 
 import { describe, expect, it } from "vitest";
 import { signJws } from "@polaris-key/jws";
@@ -357,7 +357,7 @@ describe("D-08 — a product with the config service DISABLED", () => {
       ...base,
       store,
       fetchImpl: exploding,
-      // The D-21 offline capability fallback: this build knows it runs licence only.
+      // The D-21 offline capability fallback: this build knows it runs license only.
       expectedServices: ["license"],
       config: { localOverrides: {}, env: {} },
     });
@@ -401,7 +401,7 @@ describe("D-08 — a product with the config service DISABLED", () => {
 
 describe("D4 — doc-less getters return fallbacks without throwing", () => {
   it("a blocked first sync leaves a doc-less cache; every getter is safe", async () => {
-    // The latent crash this pins: activation succeeds, the licence document comes back 403
+    // The latent crash this pins: activation succeeds, the license document comes back 403
     // BLOCKED and the config document errors, so the cache carries a block and no documents at
     // all. Every accessor has to survive that state — a gate that renders "version-too-old"
     // and then throws on the first `getConfig` is a worse outcome than no gate.
@@ -417,7 +417,7 @@ describe("D4 — doc-less getters return fallbacks without throwing", () => {
         );
       }
       if (path === "/djdl/license/document" && activated) {
-        // The build gate answers on the LICENCE route (D-20).
+        // The build gate answers on the LICENSE route (D-20).
         return new Response(
           JSON.stringify({
             error: { code: "version_blocked", reason: "version-too-old" },
@@ -449,7 +449,7 @@ describe("D4 — doc-less getters return fallbacks without throwing", () => {
     expect(client.config.listUserConfig()).toEqual([]);
     expect(client.config.getSecret("any")).toBeNull();
     expect(client.config.schemaVersion()).toBeNull();
-    // The licence-side reads are doc-less too — entitlements ride that document (D-20).
+    // The license-side reads are doc-less too — entitlements ride that document (D-20).
     expect(client.license.isEntitled("any")).toBe(false);
     expect(client.license.getEntitlements()).toEqual({});
     expect(client.license.getProfile()).toBeNull();

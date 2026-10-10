@@ -388,7 +388,7 @@ describe("sync — the ETag/304 half-life rule, per document (R2-11)", () => {
     expect(served).toEqual({ license: 2, config: 1 });
     expect(client.getSyncState().doc?.issuedAt).toBe(t0 + 2000);
 
-    // ── Past BOTH: the licence's new window (t0+2000 … t0+5600) is half-spent at t0+3800 and
+    // ── Past BOTH: the license's new window (t0+2000 … t0+5600) is half-spent at t0+3800 and
     //    the config's original window (t0 … t0+7200) at t0+5400.
     vi.setSystemTime((t0 + 5500) * 1000);
     const both = await client.sync();
@@ -396,7 +396,7 @@ describe("sync — the ETag/304 half-life rule, per document (R2-11)", () => {
     expect(both.documents.config?.kind).toBe("applied");
     expect(served).toEqual({ license: 3, config: 2 });
 
-    // The whole point: t0+5500 is well past the FIRST licence document's `expiresAt` (t0+3600).
+    // The whole point: t0+5500 is well past the FIRST license document's `expiresAt` (t0+3600).
     // Without the escalation this client would be sitting in `grace` right now, online and
     // authenticated the entire time.
     expect(client.status().status).toBe("ok");
@@ -571,7 +571,7 @@ describe("sync — per-service parallel fetch (D-08 / D-21)", () => {
   it("with only the config service enabled, /license/document is never requested and the gate is not-applicable + usable", async () => {
     // D-08: a config-only product's installs get an identity and a credential from
     // `POST /devices/register`, keylessly, and must boot USABLE rather than sitting on
-    // `needs-activation` forever waiting for a licence that does not exist.
+    // `needs-activation` forever waiting for a license that does not exist.
     const store = new InMemoryStore(PRODUCT);
     const m = await serviceMock(store);
     const client = await PolarisKeyClient.create({
@@ -594,7 +594,7 @@ describe("sync — per-service parallel fetch (D-08 / D-21)", () => {
     expect(client.status().status).toBe("not-applicable");
     expect(client.isLicensed()).toBe(true);
     expect(client.getConfig("quality.floor", "x")).toBe("flac");
-    // No licence document ⇒ no grants, and nothing pretends otherwise.
+    // No license document ⇒ no grants, and nothing pretends otherwise.
     expect(client.license.getEntitlements()).toEqual({});
     client.close();
   });

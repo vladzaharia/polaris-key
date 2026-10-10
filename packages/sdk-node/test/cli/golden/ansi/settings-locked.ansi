@@ -2,68 +2,68 @@
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
 [2m│[22m
 [38;2;114;202;190m◆[39m  [1mSettings[22m
-[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m│[22m  telemetry.enabled   [1mOff[22m[2m  · Locked[22m
 [2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### truecolor-80-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
 [2m│[22m
 [38;2;20;121;111m◆[39m  [1mSettings[22m
-[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m│[22m  telemetry.enabled   [1mOff[22m[2m  · Locked[22m
 [2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### ansi16-80
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · config list[22m
 [2m│[22m
 [36m◆[39m  [1mSettings[22m
-[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m│[22m  telemetry.enabled   [1mOff[22m[2m  · Locked[22m
 [2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### no-color-80
 ┌  [7m Tidewater Studio [27m · config list
 │
 ◆  [1mSettings[22m
-│  telemetry.enabled   [1mfalse[22m  · Locked
+│  telemetry.enabled   [1mOff[22m  · Locked
 └  ui.theme            [1mdark[22m  · Default
 
 #### ascii-80
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - config list[22m
 [2m|[22m
 [36m*[39m  [1mSettings[22m
-[2m|[22m  telemetry.enabled   [1mfalse[22m[2m  - Locked[22m
+[2m|[22m  telemetry.enabled   [1mOff[22m[2m  - Locked[22m
 [2m`[22m  ui.theme            [1mdark[22m[2m  - Default[22m
 
 #### truecolor-60-dark
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
 [2m│[22m
 [38;2;114;202;190m◆[39m  [1mSettings[22m
-[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m│[22m  telemetry.enabled   [1mOff[22m[2m  · Locked[22m
 [2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### truecolor-60-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
 [2m│[22m
 [38;2;20;121;111m◆[39m  [1mSettings[22m
-[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m│[22m  telemetry.enabled   [1mOff[22m[2m  · Locked[22m
 [2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### ansi16-60
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · config list[22m
 [2m│[22m
 [36m◆[39m  [1mSettings[22m
-[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m│[22m  telemetry.enabled   [1mOff[22m[2m  · Locked[22m
 [2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### no-color-60
 ┌  [7m Tidewater Studio [27m · config list
 │
 ◆  [1mSettings[22m
-│  telemetry.enabled   [1mfalse[22m  · Locked
+│  telemetry.enabled   [1mOff[22m  · Locked
 └  ui.theme            [1mdark[22m  · Default
 
 #### ascii-60
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - config list[22m
 [2m|[22m
 [36m*[39m  [1mSettings[22m
-[2m|[22m  telemetry.enabled   [1mfalse[22m[2m  - Locked[22m
+[2m|[22m  telemetry.enabled   [1mOff[22m[2m  - Locked[22m
 [2m`[22m  ui.theme            [1mdark[22m[2m  - Default[22m

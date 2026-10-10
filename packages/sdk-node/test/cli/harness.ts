@@ -328,6 +328,12 @@ export function stubClient(
         identity: { name: "Mara Fennick", email: "mara@fennick.studio" },
       }),
       signOut: async () => undefined,
+      // Who this device is signed in as (`identity.current()`); null for a key only device.
+      current: async () => ({
+        name: "Mara Fennick",
+        email: "mara@fennick.studio",
+        signedInAt: NOW / 1000 - 86_400,
+      }),
       ...over.identity,
     },
     update: {

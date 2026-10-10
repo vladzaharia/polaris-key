@@ -476,7 +476,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
       reason: "version-too-old",
       allowedRange: { min: "2.0.0" },
     });
-    // …and the CONFIG service is untouched by a licence block (§2.2, D-08).
+    // …and the CONFIG service is untouched by a license block (§2.2, D-08).
     expect(client.getConfig("quality.floor", "x")).toBe("flac");
   });
 
@@ -500,7 +500,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     expect(client.isLicensed()).toBe(false);
   });
 
-  it("304 keeps the cached documents; a 200 after a block restores the licence", async () => {
+  it("304 keeps the cached documents; a 200 after a block restores the license", async () => {
     const m = mockFetch();
     const client = await PolarisKeyClient.create({
       ...base,
@@ -519,8 +519,8 @@ describe("PolarisKeyClient — sync / persistence", () => {
     await client.sync({ force: true });
     expect(client.status().status).toBe("version-too-old");
 
-    // The block deleted the licence document in the same write (D3), so the hint is display
-    // state and a 304 has nothing to renew: the licence needs a 200 to come back. The config
+    // The block deleted the license document in the same write (D3), so the hint is display
+    // state and a 304 has nothing to renew: the license needs a 200 to come back. The config
     // slice was not blocked and survives.
     expect(client.getSyncState().doc).toBeNull();
     m.opts.licenseBlocked = false;

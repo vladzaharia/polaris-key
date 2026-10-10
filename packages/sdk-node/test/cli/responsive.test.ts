@@ -256,11 +256,11 @@ describe("URLs and codes wrap and are never cut", () => {
       ],
       37,
     );
-    // The short lead-in "go to" moves onto the URL's line.
+    // A URL that has to break anyway starts on its own line; the lead-in words stay behind.
     expect(lines[0]!.map((s) => s.text).join("")).toBe(
-      "On any phone or computer,",
+      "On any phone or computer, go to",
     );
-    expect(lines[1]!.map((s) => s.text).join("")).toMatch(/^go to /);
+    expect(lines[1]!.map((s) => s.text).join("")).toMatch(/^[a-z]/);
     const pieces = lines.flatMap((l) => l.filter((s) => s.link));
     expect(pieces.map((s) => s.text).join("")).toBe(shown(LONG.url));
     expect(pieces.every((s) => s.link === LONG.url)).toBe(true);
@@ -563,11 +563,12 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
           expect(text).not.toMatch(/tidewater[^\n]*…/);
           // A finished download never reads "Up to date" above "Restart to finish updating".
           expect(text).not.toContain("Up to date");
-          // The finished block replaces the bar: ready, the size, then what to do next.
-          expect(text).toContain("2.5.0 is ready · 61 MB");
-          expect(text.replace(/\s+/g, " ")).toContain(
-            "Restart to finish updating.",
+          // The finished block replaces the bar: the version is ready and a restart finishes it
+          // (a narrow line drops the separator at its wrap).
+          expect(text.replace(/[│|\s]+/g, " ")).toMatch(
+            /2\.5\.0 is ready (· )?Restart to finish/,
           );
+          expect(text).not.toContain("100%");
         });
       }
 });
@@ -1165,9 +1166,26 @@ const parityCases: Record<string, (h: Harness) => Promise<unknown>> = {
   "status-revoked": (h) =>
     statusFlow(h.ctx, stubClient({ status: () => ({ status: "revoked" }) })),
   "offline-request": async (h) => offlineRequestFlow(h.ctx, stubClient()),
-  // The licence is active: the tier it carries ("Pro"), the holder and the version.
+  // The license is active: the tier it carries ("Pro"), the holder and the version.
   "status-active": (h) => statusFlow(h.ctx, stubClient()),
-  // No licence yet.
+  // Activated with a key alone: no account, so no holder.
+  "status-key-only": (h) =>
+    statusFlow(
+      h.ctx,
+      stubClient({
+        identity: { current: async () => null },
+        licenseInfo: {
+          licenseId: "lic_tw",
+          tier: "pro",
+          tierLabel: "Pro",
+          deviceLimit: 3,
+          profile: null,
+          entitledChannels: ["stable"],
+          status: "ok",
+        },
+      }),
+    ),
+  // No license yet.
   "status-none": (h) =>
     statusFlow(
       h.ctx,

@@ -2,7 +2,7 @@
 // cache, monotonic clock floor, sync loop, telemetry, offline bundles, and the Node stores.
 //
 // A host that only wants Core (a headless daemon that ships settings and reports facts, with
-// no licence at all) imports this and never pulls a service module.
+// no license at all) imports this and never pulls a service module.
 
 export {
   CoreContext,

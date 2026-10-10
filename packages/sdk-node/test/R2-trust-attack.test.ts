@@ -122,7 +122,7 @@ function makeLicenseDoc(o: DocOverrides): LicenseDoc {
   };
 }
 
-/** §2.2 — config + secrets only, and no licence fields whatsoever. */
+/** §2.2 — config + secrets only, and no license fields whatsoever. */
 function makeConfigDoc(o: DocOverrides): ConfigDoc {
   const t = o.issuedAt ?? nowSec();
   return {
@@ -1191,7 +1191,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(stale.getSyncState().highWaterMark).toBe(0); // not even the clock floor moved
     stale.close();
 
-    // The control: one integer different, and the very same bytes are a licence.
+    // The control: one integer different, and the very same bytes are a license.
     writeFileSync(
       cachePath,
       JSON.stringify({ v: CACHE_VERSION, docs } satisfies CacheRecordV3),
@@ -1206,7 +1206,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
   // NEW (§2 / §4.1) — the v3 form of the typ-separation attack. Splitting one document into
   // two created a new place to swap them: the cache's own slices. `verifyLicenseDoc` demands
   // `typ: pkey-license+jws` with `requireTyp` on, so a config artifact filed under
-  // `docs.license` is not a licence — it is dropped, and dropped SLICE-WISE, so the honest
+  // `docs.license` is not a license — it is dropped, and dropped SLICE-WISE, so the honest
   // config slice beside it still loads. Fail-closed, not fail-empty.
   it("a valid config artifact planted in `docs.license` grants nothing, and the real config slice still loads", async () => {
     const { store, cachePath } = tempStore();
@@ -1236,7 +1236,7 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
       fetchImpl: (async () =>
         new Response("", { status: 503 })) as typeof fetch,
     });
-    // The licence slice is ABSENT — a config document is not a licence, whatever it is filed
+    // The license slice is ABSENT — a config document is not a license, whatever it is filed
     // under, so there are no entitlements and no gate.
     expect(client.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
@@ -1247,8 +1247,8 @@ describe("R2-12 · cache-version and document-type confusion through the cache",
     expect(client.config.getSecret("serviceA.oauth")).toBe("REAL-SECRET");
     client.close();
 
-    // The mirror image: a licence artifact planted in `docs.config` yields no config, while
-    // the licence slice beside it loads and gates normally.
+    // The mirror image: a license artifact planted in `docs.config` yields no config, while
+    // the license slice beside it loads and gates normally.
     const licenseJws = await signJws(
       makeLicenseDoc({ deviceId, issuedAt: t }),
       PINNED_PEM,

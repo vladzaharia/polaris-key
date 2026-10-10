@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="706" height="135" viewBox="0 0 706 135">
-<rect width="706" height="135" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="706" height="118" viewBox="0 0 706 118">
+<rect width="706" height="118" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
 <line x1="0" y1="34" x2="706" y2="34" stroke="#dcdee3"/>
 <circle cx="20" cy="17" r="6" fill="#ff5f57"/><circle cx="40" cy="17" r="6" fill="#febc2e"/><circle cx="60" cy="17" r="6" fill="#28c840"/>
 <text x="353" y="21" text-anchor="middle" font-family="Rubik, system-ui, sans-serif" font-size="12" font-weight="500" fill="#6e7781">tidewater — 80 × 24</text>
@@ -10,8 +10,6 @@
 <text x="201.6 218.4 226.8 235.2 243.6 252.0 260.4 277.2 285.6 294.0 302.4 310.8" y="63.4" fill="#7a7d81">·updateapply</text>
 <text x="16.8" y="80.2" fill="#7a7d81">│</text>
 <text x="16.8" y="97.0" fill="#1a7f37">✓</text>
-<text x="42.0 50.4 58.8 67.2 75.6 92.4 100.8 117.6 126.0 134.4 142.8 151.2 168.0 184.8 193.2 210.0 218.4" y="97.0" fill="#0b0d10" font-weight="600">2.5.0isready·61MB</text>
-<text x="16.8" y="113.8" fill="#7a7d81">└</text>
-<text x="42.0 50.4 58.8 67.2 75.6 84.0 92.4 109.2 117.6 134.4 142.8 151.2 159.6 168.0 176.4 193.2 201.6 210.0 218.4 226.8 235.2 243.6 252.0 260.4" y="113.8" fill="#24292f">Restarttofinishupdating.</text>
+<text x="42.0 50.4 58.8 67.2 75.6 92.4 100.8 117.6 126.0 134.4 142.8 151.2 168.0 184.8 193.2 201.6 210.0 218.4 226.8 235.2 252.0 260.4 277.2 285.6 294.0 302.4 310.8 319.2" y="97.0" fill="#0b0d10" font-weight="600">2.5.0isready·Restarttofinish</text>
 </g>
 </svg>

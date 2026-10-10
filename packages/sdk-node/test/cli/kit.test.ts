@@ -772,7 +772,13 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
     verb: "secret" | "mint",
     value: string,
     env: Record<string, string>,
-    opts: { extra?: string[]; tty?: boolean; json?: boolean } = {},
+    opts: {
+      extra?: string[];
+      tty?: boolean;
+      json?: boolean;
+      /** Leave `--reveal` off (the default adds it, so the value is asked for). */
+      hidden?: boolean;
+    } = {},
   ): Promise<{ out: string; err: string; code: number }> {
     const out = new Screen({ tty: opts.tty ?? false });
     const err = new Screen({ tty: false });
@@ -807,6 +813,7 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
       [
         verb,
         verb === "secret" ? "api.key" : "cdn",
+        ...(opts.hidden ? [] : ["--reveal"]),
         ...(opts.extra ?? []),
         ...(opts.json ? ["--json"] : []),
       ],
@@ -839,8 +846,9 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
           const what = `${verb} ${JSON.stringify(v)} ${JSON.stringify(env)}`;
           expect(r.out, what).toBe("");
           expect(r.code, what).toBe(1);
-          expect(r.err, what).toContain(
-            `${verb} ${verb === "secret" ? "api.key" : "cdn"} --allow-workflow-commands`,
+          // The line wraps at the terminal's width: read it as one.
+          expect(r.err.replace(/\s*\n[|│ ]*/g, " "), what).toContain(
+            `${verb} ${verb === "secret" ? "api.key" : "cdn"} --reveal --allow-workflow-commands`,
           );
           expect(r.err, what).toContain("would run a line of it as a command");
           expect(r.err, what).not.toContain(v.trim());
@@ -866,6 +874,48 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
         expect(r.err).toBe("");
       }
     }
+  });
+
+  it("prints no value without --reveal, and says how to ask for it", async () => {
+    const secretRun = await run("secret", "s3cr3t", {}, { hidden: true });
+    expect(secretRun.out).toBe("");
+    // As mint: a script that captured the value before must not read an empty one as success.
+    expect(secretRun.code).toBe(2);
+    expect(secretRun.err).toContain("api.key is set but not printed");
+    expect(secretRun.err).toContain("secret api.key --reveal");
+    expect(secretRun.err).not.toContain("s3cr3t");
+    // Minting prints a token and nothing else: without --reveal it mints none.
+    let minted = 0;
+    const out = new Screen({ tty: false });
+    const err = new Screen({ tty: false });
+    let code = -1;
+    const program = new Command();
+    program.exitOverride();
+    registerPolarisCommands(
+      program,
+      async () =>
+        stubClient({
+          config: {
+            mintToken: async () => {
+              minted++;
+              return { token: "tok_live", expiresAt: 1 };
+            },
+          },
+        }),
+      {
+        pinnedKeys: {},
+        productSlug: "tidewater",
+        io: { stdout: out, stderr: err, env: {}, ticker: frozenTicker },
+        setExitCode: (c) => {
+          code = c;
+        },
+      },
+    );
+    await program.parseAsync(["mint", "cdn"], { from: "user" });
+    expect(out.raw).toBe("");
+    expect(minted).toBe(0);
+    expect(code).toBe(2);
+    expect(err.text()).toContain("mint cdn --reveal");
   });
 
   it("--json never prints the value, so it never refuses", async () => {
@@ -909,13 +959,14 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
         },
       },
     );
-    await y.parseAsync(["polaris-key", "secret", "api.key"]);
+    await y.parseAsync(["polaris-key", "secret", "api.key", "--reveal"]);
     expect(out.raw).toBe("");
     expect(code).toBe(1);
     await y.parseAsync([
       "polaris-key",
       "secret",
       "api.key",
+      "--reveal",
       "--allow-workflow-commands",
     ]);
     expect(out.raw).toBe(`${HOSTILE[0]}\n`);

@@ -44,7 +44,7 @@ export type LocalOptions = Omit<
  * A client that never touches the network.
  *
  * Everything offline still works: `client.config.getConfig(...)` resolves over a cached or
- * imported config document, `client.license.status()` gates on a cached or imported licence,
+ * imported config document, `client.license.status()` gates on a cached or imported license,
  * and `client.importBundle(...)` provisions one. Anything that would dial — activation,
  * enrolment, registration, `sync()`, the changelog, the update check — rejects with
  * `PolarisError` code `local-only`.

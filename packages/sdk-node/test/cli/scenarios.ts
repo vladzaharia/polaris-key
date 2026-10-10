@@ -45,7 +45,12 @@ const COMMON = ["Tidewater Studio", "tidewater"];
 const statusScenario = (
   name: string,
   status: string,
-  extra: Partial<{ graceUntil: number; info: unknown }> = {},
+  extra: Partial<{
+    graceUntil: number;
+    info: unknown;
+    /** `identity.current()`; null is a key only device. */
+    identity: unknown;
+  }> = {},
 ): Scenario => ({
   name,
   data: [
@@ -70,6 +75,9 @@ const statusScenario = (
             : {}),
         }),
         ...(extra.info !== undefined ? { licenseInfo: extra.info } : {}),
+        ...(extra.identity !== undefined
+          ? { identity: { current: async () => extra.identity } }
+          : {}),
       }),
     ),
 });
@@ -193,7 +201,12 @@ export const SCENARIOS: Scenario[] = [
   {
     name: "activate-rejected-unauthorized",
     opts: { piped: `${KEY}\n` },
-    data: [...COMMON, "activate", "pkey_tidewater_"],
+    data: [
+      ...COMMON,
+      "activate",
+      "pkey_tidewater_",
+      "key.plrs.im/activate?product=tidewater",
+    ],
     run: (h) =>
       activateFlow(
         h.ctx,
@@ -310,6 +323,46 @@ export const SCENARIOS: Scenario[] = [
       await settle();
       h.snap();
       gate.resolve({ status: "expired" });
+      await done;
+    },
+  },
+  {
+    // A device that holds a key license is asked before that license goes to the account: the
+    // question replaces the wait, and the answer is No unless the person says yes.
+    name: "sign-in-handoff-finishing-attach",
+    opts: { interactive: true },
+    data: [...COMMON, "login", "Mara Fennick", "mara@fennick.studio"],
+    run: async (h) => {
+      const done = loginFlow(
+        h.ctx,
+        stubClient({
+          identity: {
+            waitForSignIn: async (
+              _p: unknown,
+              o: {
+                confirm: (
+                  who: { name: string; email: string },
+                  attachable: boolean,
+                ) => Promise<boolean>;
+              },
+            ) => {
+              const who = {
+                name: "Mara Fennick",
+                email: "mara@fennick.studio",
+              };
+              const attach = await o.confirm(who, true);
+              return {
+                status: "ready",
+                identity: who,
+                ...(attach ? { attached: "claimed" } : {}),
+              };
+            },
+          },
+        }),
+      );
+      await settle();
+      h.snap();
+      h.stdin.press("n");
       await done;
     },
   },
@@ -461,6 +514,7 @@ export const SCENARIOS: Scenario[] = [
     graceUntil: now + 14 * DAY,
   }),
   statusScenario("account-and-license-key-only", "ok", {
+    identity: null,
     graceUntil: now + 14 * DAY,
     info: {
       licenseId: "l",
@@ -468,6 +522,20 @@ export const SCENARIOS: Scenario[] = [
       tierLabel: "Pro",
       deviceLimit: 3,
       profile: null,
+      entitledChannels: [],
+      status: "ok",
+    },
+  }),
+  // A signed-in account whose profile has an empty name and email (a provider that shared
+  // neither): the row says it is signed in; it never ends in a dangling separator.
+  statusScenario("account-and-license-signed-in-empty-profile", "ok", {
+    graceUntil: now + 14 * DAY,
+    identity: { name: "", email: "", signedInAt: now - DAY },
+    info: {
+      licenseId: "l",
+      tier: "pro",
+      deviceLimit: 3,
+      profile: { name: "", email: "" },
       entitledChannels: [],
       status: "ok",
     },
@@ -693,6 +761,170 @@ export const SCENARIOS: Scenario[] = [
         }),
       ),
   },
+  // ── update apply: the next step when the kit cannot install the update itself ─────────────
+  ...(
+    [
+      ["npm", "npm install -g tidewater-cli@latest"],
+      ["pnpm", "pnpm add -g tidewater-cli@latest"],
+      ["homebrew", "brew upgrade tidewater"],
+      ["npx", "npx tidewater-cli@latest"],
+    ] as const
+  ).map(
+    ([subkind, command]): Scenario => ({
+      name: `update-prompt-platform-${subkind}`,
+      data: [...COMMON, "update apply", "2.5.0", command],
+      run: (h) =>
+        updateApplyFlow(
+          h.ctx,
+          stubClient({
+            update: {
+              outlet: { id: subkind, kind: "direct", subkind },
+              packageName: "tidewater-cli",
+              decide: async () => ({
+                decision: {
+                  action: "platform",
+                  release,
+                  mandatory: false,
+                  critical: false,
+                  discardStaged: false,
+                },
+              }),
+            },
+          }),
+        ),
+    }),
+  ),
+  {
+    // A direct build with no install driver: a download link, and a non-zero exit.
+    name: "update-prompt-blocked-no-driver",
+    data: [
+      ...COMMON,
+      "update apply",
+      "2.5.0",
+      "key.plrs.im/tidewater/download",
+    ],
+    run: (h) =>
+      updateApplyFlow(
+        h.ctx,
+        stubClient({
+          update: {
+            driver: null,
+            check: async () => ({
+              updateAvailable: true,
+              version: "2.5.0",
+              url: "https://key.plrs.im/tidewater/download",
+            }),
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+          },
+        }),
+      ),
+  },
+  {
+    // A build with no signed update feed: it says so and names the command that still works.
+    name: "update-prompt-blocked-not-configured",
+    data: [...COMMON, "update apply", "update check"],
+    run: (h) =>
+      updateApplyFlow(h.ctx, stubClient({ update: { decidable: false } })),
+  },
+  {
+    // Every byte is here and the build is being checked: a spinner, not a bar at 100 %.
+    name: "update-progress-installing-verifying",
+    opts: { interactive: true },
+    data: [...COMMON, "update apply", "2.5.0"],
+    run: async (h) => {
+      const gate = deferred<unknown>();
+      const done = updateApplyFlow(
+        h.ctx,
+        stubClient({
+          update: {
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+            install: async (
+              _d: unknown,
+              o: { onProgress(done: number, total: number): void },
+            ) => {
+              o.onProgress(61_000_000, 61_000_000);
+              return gate.promise;
+            },
+          },
+        }),
+      );
+      await settle();
+      h.snap();
+      gate.resolve({ kind: "restartRequired", version: "2.5.0" });
+      await done;
+    },
+  },
+  {
+    // Ready, with up to three lines of what is new when the release carries notes.
+    name: "update-prompt-ready-whats-new",
+    data: [
+      ...COMMON,
+      "update apply",
+      "2.5.0",
+      "Stem export in one click, with loudness matching.",
+      "Track freeze now works with every plug-in.",
+      "Faster project loading.",
+    ],
+    run: (h) =>
+      updateApplyFlow(
+        h.ctx,
+        stubClient({
+          release: {
+            changelog: async () => [
+              {
+                version: "2.5.0",
+                date: "2026-10-01T00:00:00Z",
+                summary:
+                  "- Stem export in one click, with loudness matching.\n- Track freeze now works with every plug-in.\n- Faster project loading.\n- A fourth line that is not shown.",
+              },
+            ],
+          },
+          update: {
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+            install: async (
+              _d: unknown,
+              o: { onProgress(done: number, total: number): void },
+            ) => {
+              o.onProgress(61_000_000, 61_000_000);
+              return { kind: "restartRequired", version: "2.5.0" };
+            },
+          },
+        }),
+      ),
+  },
   {
     name: "release-notes-list",
     data: [
@@ -754,9 +986,8 @@ export const SCENARIOS: Scenario[] = [
       "Work laptop",
       "Mara's iPad",
       "MacBook Pro",
-      "linux x64",
-      "iPadOS",
-      "macOS arm64",
+      "x64",
+      "arm64",
       "dev_9fK2Lw7QmZ",
       "dev_4hQ8",
       "dev_7tR1",
@@ -775,6 +1006,8 @@ export const SCENARIOS: Scenario[] = [
               status: "ok",
               label: "Mara's iPad",
               platform: "iPadOS",
+              // The roster's last-seen time is epoch seconds.
+              lastSeen: now - 3 * DAY,
             },
             {
               id: "dev_9fK2Lw7QmZ",
@@ -783,7 +1016,8 @@ export const SCENARIOS: Scenario[] = [
               label: "Work laptop",
               platform: "linux",
               arch: "x64",
-              lastVerifiedAt: NOW / 1000 - 3600,
+              // The real client reports this device's own last verification in epoch milliseconds.
+              lastVerifiedAt: NOW - 3_600_000,
             },
             {
               id: "dev_7tR1",
@@ -792,6 +1026,7 @@ export const SCENARIOS: Scenario[] = [
               label: "MacBook Pro",
               platform: "macOS",
               arch: "arm64",
+              lastSeen: now - DAY,
             },
           ],
         }),

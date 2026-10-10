@@ -13,7 +13,7 @@
 //   3. `trustJws` against the USABLE pins only, freshness off → the effective set;
 //   4. each entry of `docs` against THAT set, freshness off, full §3 claim validation
 //      including `aud` and `deviceId`;
-//   5. `bundle` (an offline activation) on the bundle RELOAD profile, and only when its licence
+//   5. `bundle` (an offline activation) on the bundle RELOAD profile, and only when its license
 //      document is byte-identical to the cached one does it count as `activation: "bundle"`;
 //   6. every derived counter — the per-type anti-replay floors, `lastVerifiedAt`, the
 //      monotonic clock floor — computed from what verified, never read from the file.
@@ -56,7 +56,7 @@ export interface LoadedCache {
   /**
    * The cached offline bundle (§7), when it re-verified on the reload profile; null otherwise.
    * `docs` is what it carried. `activates` is the signed fact behind `activation: "bundle"`
-   * (with no token held): it carried a licence document byte-identical to the cached one.
+   * (with no token held): it carried a license document byte-identical to the cached one.
    */
   bundle: {
     bundleId: string;
@@ -220,8 +220,8 @@ export class CacheManager {
   /**
    * §7 reload profile: the cached bundle's own signature and claims, without the import window,
    * against the usable pins; its inner documents against its own manifest's set with no floor.
-   * It activates only when its licence document is the cached one, byte for byte — otherwise a
-   * stale bundle could vouch for a licence it never carried.
+   * It activates only when its license document is the cached one, byte for byte — otherwise a
+   * stale bundle could vouch for a license it never carried.
    */
   private async reloadBundle(): Promise<LoadedCache["bundle"]> {
     const jws = this.record?.bundle;
@@ -283,7 +283,7 @@ export class CacheManager {
   }
 
   /**
-   * The server answered for this slice with a hard 401 (or, for the licence, a 403
+   * The server answered for this slice with a hard 401 (or, for the license, a 403
    * build block), so the document is no longer a grant. Removes it — payload, artifact and ETag
    * — from the derived state AND the record, so the `flush()` that persists the display hint
    * persists the removal in the same write. The token is untouched: the gate still reports

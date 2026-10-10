@@ -106,7 +106,7 @@ async function activatedStore(
 
 // @pkey-feature core.cache core.sync license.gate
 describe("a hard 401 / a build block deletes the document it answered for", () => {
-  it("401 on the licence deletes docs.license and its ETag; clearing the hint yields needs-activation, not ok", async () => {
+  it("401 on the license deletes docs.license and its ETag; clearing the hint yields needs-activation, not ok", async () => {
     const at = nowSec() - 60;
     const { store } = await activatedStore(at);
     const client = await PolarisKeyClient.create({
@@ -142,7 +142,7 @@ describe("a hard 401 / a build block deletes the document it answered for", () =
     expect(restarted.license.isEntitled("pro")).toBe(false);
   });
 
-  it("401 on the config deletes docs.config and leaves the licence alone", async () => {
+  it("401 on the config deletes docs.config and leaves the license alone", async () => {
     const at = nowSec() - 60;
     const { store } = await activatedStore(at);
     const client = await PolarisKeyClient.create({

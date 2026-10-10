@@ -729,6 +729,16 @@ def test_an_active_status_reads_the_same_in_both_kits(monkeypatch: pytest.Monkey
     assert _drawn(term) == PARITY["status-active"]
 
 
+def test_a_key_only_status_reads_the_same_in_both_kits(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(flows, "_now", lambda: _PARITY_NOW)
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="status", keys=[])
+    client = _status_client("ok")
+    client.license.get_profile = lambda: None  # activated with a key: no account, no holder
+    t.finish(flows.status(client, t))
+    assert _drawn(term) == PARITY["status-key-only"]
+
+
 def test_a_status_with_no_licence_reads_the_same_in_both_kits(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(flows, "_now", lambda: _PARITY_NOW)
     term = Term(80, 24)

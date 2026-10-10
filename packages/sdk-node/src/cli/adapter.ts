@@ -41,6 +41,7 @@ export interface ParsedVerbFlags {
   yes?: boolean;
   deviceCode?: boolean;
   allowWorkflowCommands?: boolean;
+  reveal?: boolean;
 }
 
 /** A stream that hands each complete line to `print` (the adapters' legacy sink). */
@@ -135,6 +136,7 @@ export async function runKitVerb(
     ...(flags.yes ? { yes: true } : {}),
     ...(flags.deviceCode ? { deviceCode: true } : {}),
     ...(flags.allowWorkflowCommands ? { allowWorkflowCommands: true } : {}),
+    ...(flags.reveal ? { reveal: true } : {}),
   };
   let r: FlowResult;
   try {

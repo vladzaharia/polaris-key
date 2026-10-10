@@ -1,4 +1,4 @@
-// Shared fixtures for the SDK parity pass tests: a client seeded with a signed licence document
+// Shared fixtures for the SDK parity pass tests: a client seeded with a signed license document
 // and a token, and a scriptable fake control plane.
 
 import { mkdtempSync } from "node:fs";
@@ -104,7 +104,7 @@ export function json(body: unknown, status = 200, headers = {}): Response {
   });
 }
 
-/** A client with a token and (optionally) a cached signed licence, no network unless routed. */
+/** A client with a token and (optionally) a cached signed license, no network unless routed. */
 export async function seededClient(
   opts: {
     license?: string;

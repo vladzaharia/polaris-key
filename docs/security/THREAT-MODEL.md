@@ -432,14 +432,15 @@ applies. The defusing knows GitHub's `::` and `##[` syntax only: Azure Pipelines
 vendor tools `pkey storefront` runs with inherited stdio (`storefronts/run.ts`) bypass the guard.
 
 **A secret or a minted token is never a CI log command (UK-14 follow-up).** The Node kit's `secret`
-and `mint` print the value alone on stdout when stdout is not a terminal, so a script's
-`$(tidewater secret api.key)` captures it, and the capture must stay byte-exact: defusing the value
+and `mint` print the value alone on stdout, and only with `--reveal` (without it both exit 2 and print
+nothing, and `mint` mints nothing), so a script's `$(tidewater secret api.key --reveal)`
+captures it, and the capture must stay byte-exact: defusing the value
 (a zero-width space, a `::stop-commands::` pair around it) would corrupt what the script receives.
 Where that stdout may instead reach a job log whose runner obeys commands written into it
 (`GITHUB_ACTIONS`, Azure Pipelines' `TF_BUILD` or `TEAMCITY_VERSION` set; `readsLogCommands`), a
 value with a line the runner would obey (`::` after leading whitespace, or `##[`, `##vso[` or
 `##teamcity[` anywhere in it, lines broken at CR, LF or CRLF; `hasLogCommand`) is withheld: nothing
-reaches stdout, stderr names the same command with `--allow-workflow-commands`, and the verb exits 1.
+reaches stdout, stderr names the same command with `--reveal --allow-workflow-commands`, and the verb exits 1.
 The flag is the script's statement that it captures the value. A terminal gets the cleaned value as
 before, `--json` never carries it, and the Python kit's `secret` and `mint` never print a value at
 all (`tests/test_cli_verbs.py` pins that). Residual: a minted token that is withheld was still

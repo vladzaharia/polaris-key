@@ -96,4 +96,34 @@ describe.skipIf(!ptyAvailable)("on a real pty", () => {
         await fresh.settle(150);
         expect(tidy(p)).toBe(tidy(fresh));
       }, 40_000);
+
+  // The key-held login question lives on the same live screen, so a resize lays it out again, and
+  // a window dragged back to its size reads as a fresh launch's.
+  it("the attach question survives a resize, and Enter keeps the key license", async () => {
+    const args = ["attach"];
+    const env = { PKEY_THEME: "dark" };
+    const p = start({ columns: 80, rows: 24, args, env });
+    expect(await p.waitFor("(y/N)")).toBe(true);
+    for (const [c, r] of [
+      [40, 12],
+      [80, 24],
+    ] as const) {
+      await p.resize(c, r);
+      await p.settle(350);
+    }
+    const fresh = start({ columns: 80, rows: 24, args, env });
+    expect(await fresh.waitFor("(y/N)")).toBe(true);
+    await fresh.settle(200);
+    expect(tidy(p)).toBe(tidy(fresh));
+    p.type("\r");
+    fresh.type("\r");
+    expect(await Promise.all([p.exited, fresh.exited])).toEqual([0, 0]);
+    await p.settle(150);
+    const text = p.screen
+      .all()
+      .map((r) => r.text)
+      .join("\n");
+    expect(text).toContain("Signed in as Mara Fennick");
+    expect(text).not.toContain("(y/N)");
+  }, 40_000);
 });

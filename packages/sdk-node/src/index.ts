@@ -197,7 +197,7 @@ export type {
   InstallOutcome,
   InstallableDecision,
 } from "./update/drivers/types.js";
-// Server-side licence verification and crash tags (§2.1, §3.14).
+// Server-side license verification and crash tags (§2.1, §3.14).
 export {
   crashTagsFor,
   verifyLicenseDocument,

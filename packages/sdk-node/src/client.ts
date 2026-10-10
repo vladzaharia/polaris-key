@@ -7,7 +7,7 @@
 // that genuinely need a whole-client view:
 //
 //   * `onLicenseAcquired` → `sync()`. Activation used to call refresh inline, so every mint
-//     path had to remember to, and a config-only product had no way to say "there is no licence
+//     path had to remember to, and a config-only product had no way to say "there is no license
 //     here, sync anyway". Now the license client — and the identity client, when a device-code
 //     sign-in completes — raises an EVENT and the facade decides.
 //   * `getSyncState()`, the React bridge contract — one snapshot of everything the UI layer
@@ -137,7 +137,11 @@ export interface DeviceInfo {
   status: LicenseState["status"];
   licenseId?: string;
   profile?: DocProfile;
+  /** When this device last verified its documents, in epoch MILLISECONDS (this device only). */
   lastVerifiedAt?: number;
+  /** When the server last heard from this device, in epoch SECONDS, from the roster (every
+   *  device on the license, this one included). */
+  lastSeen?: number;
   label?: string | null;
   platform?: string | null;
   arch?: string | null;
@@ -159,7 +163,7 @@ export class PolarisKeyClient {
   readonly events = new PolarisEventEmitter();
   /** The public download model (§3.8). */
   readonly distribution: DistributionClient;
-  /** Store purchases to licence flags (§3.9). */
+  /** Store purchases to license flags (§3.9). */
   readonly commerce: CommerceClient;
 
   private readonly cache: CacheManager;
@@ -456,7 +460,7 @@ export class PolarisKeyClient {
 
   /**
    * The §5 single re-acquire: `POST /<p>/license/token` for a licensed device, or
-   * `POST /<p>/devices/register` (keyless, no bearer) for a registered-without-licence device
+   * `POST /<p>/devices/register` (keyless, no bearer) for a registered-without-license device
    * or a product with License off. Null means the one attempt failed (403
    * `registration_closed`, 401, 404, 429 or transport) and the hard-401 path applies.
    */
@@ -612,6 +616,7 @@ export class PolarisKeyClient {
         device.licenseId ?? (device.current ? current.licenseId : undefined),
       profile: device.current ? current.profile : undefined,
       lastVerifiedAt: device.current ? current.lastVerifiedAt : undefined,
+      ...(device.lastSeen !== undefined ? { lastSeen: device.lastSeen } : {}),
       label: device.label,
       platform: device.platform,
       arch: device.arch,

@@ -1,5 +1,5 @@
 // The device label (WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §2.1): the human name of this device
-// the sign-in page shows ("Living room TV"), sent as `deviceName` on device-code sign-in, licence
+// the sign-in page shows ("Living room TV"), sent as `deviceName` on device-code sign-in, license
 // activation and registration. Display data only: no server decision reads it.
 //
 // Precedence: a per-call `deviceName`, else the client's `deviceName` option, else the platform

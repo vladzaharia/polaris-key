@@ -34,12 +34,14 @@ export const VERB_OPTIONS: Readonly<
   logout: [{ flags: "-y, --yes", key: "cli.option.yes" }],
   deactivate: [{ flags: "-y, --yes", key: "cli.option.yes" }],
   secret: [
+    { flags: "--reveal", key: "cli.option.reveal" },
     {
       flags: "--allow-workflow-commands",
       key: "cli.option.allowWorkflowCommands",
     },
   ],
   mint: [
+    { flags: "--reveal", key: "cli.option.reveal" },
     {
       flags: "--allow-workflow-commands",
       key: "cli.option.allowWorkflowCommands",

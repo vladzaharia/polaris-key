@@ -17,7 +17,7 @@ const START = {
 
 describe("device-code conveniences (§3.12)", () => {
   it("signInWithBrowser opens the complete URI, runs the attach opt-in, and stores the identity", async () => {
-    const licence = await signedLicense({ pro: true });
+    const license = await signedLicense({ pro: true });
     const polls: { body: Record<string, unknown>; auth: string | null }[] = [];
     const { client } = await seededClient({
       token: "pkeyt_anon",
@@ -41,7 +41,7 @@ describe("device-code conveniences (§3.12)", () => {
             attached: "claimed",
           });
         },
-        "GET /djdl/license/document": () => new Response(licence),
+        "GET /djdl/license/document": () => new Response(license),
         "GET /djdl/config/document": () => new Response("", { status: 404 }),
         "POST /djdl/devices/report": () => json({}),
         "POST /djdl/license/deauthorize": () => json({}),

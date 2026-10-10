@@ -425,7 +425,7 @@ describe("the cached bundle — a signed fact, not a marker (§4.1)", () => {
     expect(client.license.status(NOW).status).toBe("needs-activation");
   });
 
-  it("a bundle whose licence is not the cached one, byte for byte, activates nothing", async () => {
+  it("a bundle whose license is not the cached one, byte for byte, activates nothing", async () => {
     const store = await imported();
     const other = await signJws(
       licenseDoc({ licenseId: "lic-swapped" }),
@@ -551,7 +551,7 @@ describe("importBundle — a config-only bundle grants nothing (D-08, §7)", () 
     expect(result.imported).toEqual(["config"]);
 
     // §7: "`activation: \"bundle\"` arises only from a bundle whose license document verified."
-    // A cached bundle without a licence document is NOT activation.
+    // A cached bundle without a license document is NOT activation.
     expect(client.license.activation()).toBeNull();
     expect(client.getSyncState().activation).toBeNull();
     expect(client.license.status(NOW).status).toBe("needs-activation");
@@ -604,7 +604,7 @@ describe("importBundle — restart equivalence (§4.1)", () => {
 });
 
 describe("importBundle — the write REPLACES, it does not merge (§7 step 5)", () => {
-  it("drops a stale licence slice and invents no ETags for a config-only re-import", async () => {
+  it("drops a stale license slice and invents no ETags for a config-only re-import", async () => {
     const store = new FakeStore(DEVICE);
     store.cache = {
       v: CACHE_VERSION,
@@ -626,7 +626,7 @@ describe("importBundle — the write REPLACES, it does not merge (§7 step 5)", 
     await client.importBundle(await configOnlyBundle(), NOW);
 
     const record = await store.readCache();
-    // A re-import is a RE-PROVISIONING. A licence the operator deliberately replaced must not
+    // A re-import is a RE-PROVISIONING. A license the operator deliberately replaced must not
     // survive it, so the record is written wholesale rather than patched.
     expect(record?.docs).toEqual({ config: expect.any(String) });
     expect(record?.docs?.license).toBeUndefined();
@@ -657,7 +657,7 @@ describe("importBundle — the §4.2 clock floor rises from what was imported", 
   });
 
   it("counts the MANIFEST as a floor source, not just the documents (R4-04)", async () => {
-    // Derived from a licence alone the floor is provably inert — `issuedAt < graceUntil`
+    // Derived from a license alone the floor is provably inert — `issuedAt < graceUntil`
     // always holds, so it can never reach the end of grace. The manifest is what makes it
     // bite, so a bundle whose manifest is newer than its documents must lift the floor to the
     // manifest's own `issuedAt`.
@@ -682,7 +682,7 @@ describe("importBundle — the §4.2 clock floor rises from what was imported", 
     expect(licenseDoc().issuedAt).toBeLessThan(later);
     expect(client.getSyncState().highWaterMark).toBe(later);
     // …and the floor is what the gate evaluates at, so winding the clock back is inert. The
-    // manifest is dated PAST the licence's `expiresAt` (MINTED + 3600 < MINTED + 5000), so the
+    // manifest is dated PAST the license's `expiresAt` (MINTED + 3600 < MINTED + 5000), so the
     // honest answer at a wound-back clock is `grace` — the state the floor forces — rather
     // than the `ok` the rolled-back clock alone would have produced.
     expect(licenseDoc().expiresAt).toBeLessThan(later);
