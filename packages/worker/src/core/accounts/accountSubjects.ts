@@ -28,6 +28,7 @@
  * one are for Identity and for Core's own hooks; what a developer ever sees is a `ps_…` subject.
  */
 
+import { PAIRWISE_SUBJECT_PATTERN as PAIRWISE_SUBJECT_SOURCE } from "@polaris-key/protocol/core";
 import { mintPairwiseSubject } from "../../platform/crypto.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
@@ -35,8 +36,10 @@ import { getTokenRecord, putTokenRecord } from "../../platform/kv.js";
 import { NO_LICENSE_ID, writeDeviceSubject } from "../devices.js";
 import { assertIdentityBindable } from "./identityGate.js";
 
-/** `ps_` and 22 base64url characters (plans/I-04.md §2; I-09 publishes it in the protocol). */
-export const PAIRWISE_SUBJECT_PATTERN = /^ps_[A-Za-z0-9_-]{22}$/;
+/** `ps_` and 22 base64url characters (plans/I-04.md §2), matched whole. Compiled from the
+ *  protocol's one declaration (`@polaris-key/protocol/core`, SP-54), which the licence
+ *  document's `profile.user.subject` and every SDK reader share. */
+export const PAIRWISE_SUBJECT_PATTERN = new RegExp(PAIRWISE_SUBJECT_SOURCE);
 
 /** How long a merge tombstone redirects the absorbed account (S-16 §5.1: 30 days). */
 export const MERGE_REDIRECT_SECONDS = 30 * 24 * 60 * 60;
