@@ -21,6 +21,7 @@ each with a note.
 | `:update`      | JVM library (JAR)     | the version check, the signed channel feed and the v4 update decision (content included), the boot guard, the `InstallDriver` port                                        |
 | `:packs`       | JVM library (JAR)     | the pack engine: planner, full / file / chunk / delta appliers (zstd-jni), install state, `DirPackStorage`, revocations, delegation, handlers, provides, feed deltas      |
 | `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                     |
+| `:ui-core`     | JVM library (JAR)     | the Compose-free UI layer (UK-09): state holders and the presentation core of the Kotlin UI kits; no Compose or AndroidX; `:ui` exposes it (`api`)                        |
 | `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
 | `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
 | `:android`     | Android library (AAR) | the Android glue, the only module that sees both `:sdk` and `:platform`: Keystore store, device inputs, outlet readers, install drivers, the PAD transport (P6-12)        |
@@ -523,7 +524,7 @@ Its test drives every command against a scripted Worker, so it builds and runs w
 cd sdks/kotlin
 # JVM modules (JDK 17; no Android SDK needed with -Ppkey.jvmOnly=true)
 ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test \
-          :update:test :packs:test :sdk:test :conformance:test :sample-cli:test checkModuleBoundaries
+          :update:test :packs:test :sdk:test :ui-core:test :conformance:test :sample-cli:test checkModuleBoundaries
 python3 tools/check_16k_alignment.py   # zstd-jni's Android natives are 16 KB page aligned
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \
