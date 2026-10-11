@@ -12,9 +12,10 @@
 //   web     packages/brand/src/generated/kit-copy/<locale>.json + index.ts
 //   Node    packages/sdk-node/src/kitCopy.generated.ts
 //   Swift   sdks/swift/Sources/PolarisKeyUI/Resources/Localizable.xcstrings
-//           sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json (the presentation core's
-//           ICU tables, formatted by the core itself; UK-07)
-//   Kotlin  sdks/kotlin/ui/src/commonMain/composeResources/values{,-<q>}/strings.xml
+//           sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json (presentation-core ICU
+//           tables, formatted by the core itself; UK-07)
+//   Kotlin  sdks/kotlin/ui-core/src/main/resources/kit-copy.json (the same presentation-core
+//           ICU tables) + sdks/kotlin/ui/src/commonMain/composeResources/values{,-<q>}/strings.xml
 //   Godot   sdks/godot/addons/polaris_key/ui/locale/polaris_key_ui.pot + <locale>.po
 //   Python  sdks/python/src/polaris_key/ui/kit_copy_generated.py + ui/locale/polaris_key_ui.pot
 //           (ui/__init__.py is hand-written by the UI foundations work, not generated here)
@@ -1511,6 +1512,11 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
   },
   {
     path: "sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json",
+    render: () => swiftCoreJson(model()),
+    parser: "json",
+  },
+  {
+    path: "sdks/kotlin/ui-core/src/main/resources/kit-copy.json",
     render: () => swiftCoreJson(model()),
     parser: "json",
   },

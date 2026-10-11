@@ -29,6 +29,19 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
 }
 
+val repoRoot = rootProject.projectDir.resolve("../..").canonicalPath
+
+tasks.withType<Test>().configureEach {
+    // UIMatrixPresentationTest replays conformance/corpus/v2/ui-matrix.json in place; declaring it
+    // an input keeps a changed corpus from reusing a build-cache result.
+    systemProperty("pkey.repoRoot", repoRoot)
+    inputs.file("$repoRoot/conformance/corpus/v2/ui-matrix.json").withPropertyName("uiMatrix")
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
 publishing {
     publications {
         create<MavenPublication>("uiCore") {

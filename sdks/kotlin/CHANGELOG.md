@@ -20,6 +20,10 @@ deprecated aliases).
   are typed (`PolarisSettingsFailure`, `PolarisUpdateFailure`) and each renderer maps them to catalog
   copy; `PolarisSettingsUi.failed` is `PolarisSettingsUi.loadFailure`; `PolarisSettingsActions.set`
   and `reset` have no default body; `PolarisUpdateState.install` and `follow` take no `PolarisCopy`.
+  The presentation core runs `conformance/corpus/v2/ui-matrix.json`: `KitStates.resolve` answers the
+  state, the catalog copy lines and the actions of every UI-KITS component,
+  `KitIdentity` resolves the product identity and theme, and `KitCopy` formats the generated
+  launch-locale catalog (`kit-copy.json`, from `packages/brand/kit-copy`).
 
 Key-custody and offline-bundle fixes (wire contract v4). Each **breaking** line names what to change.
 

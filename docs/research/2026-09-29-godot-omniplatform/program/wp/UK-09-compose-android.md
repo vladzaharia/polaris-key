@@ -234,10 +234,25 @@ commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/chec
   (`PolarisCopy.settingsFailureMessage` and `updateFailureMessage`, which also draws an update failure
   on the banner and the prompt). `HeadlessWiringTest` is removed: its tests live in the holder tests
   and `PolarisGateStateTest`; `StateHoldersTest` keeps the `:ui` side (`bootScreen`, `updateBannerText`).
-- Verified with the command below under JDK 17 (no committed baseline changed):
+- Added the presentation core to `:ui-core`: `KitStates.resolve(component, inputs)` returns the state,
+  the catalog copy lines (key and arguments) and the actions of every UI-KITS component, `KitIdentity`
+  resolves the product identity and theme, and `KitCopy` formats the generated launch-locale ICU
+  tables (`ui-core/src/main/resources/kit-copy.json`, written by `pnpm gen brand`, whose generator
+  gained that target). `UIMatrixPresentationTest` replays every row of the ten `ui-matrix.json`
+  families (version 3; `hidden` rows assert that nothing renders) and `KitPresentationRulesTest` pins
+  what the matrix does not (the Worker's key shape, line arguments, service closure, platform
+  predicates). The Swift core is the answer key for the rules the corpus leaves open.
+  `:ui-core:test` now runs in the kotlin CI jobs.
+- Verified with the commands below under JDK 17 (no committed baseline changed), plus `pnpm gen brand --check` and `pnpm parity:check`:
 
   ```sh
   ( cd sdks/kotlin && ./gradlew --offline :ui-core:test :ui:compileDebugKotlin :ui:testDebugUnitTest :ui:verifyRoborazziDebug checkModuleBoundaries )
   ```
 
-- Next: add the full `ui-matrix.json` presentation core before the KMP source-set cutover.
+- Next, not started: the KMP source-set cutover (`:ui` to `commonMain` + `androidMain`, Compose
+  Multiplatform resources from the inert `composeResources/` tables), then `SignIn(state, presentation)`
+  and the other screens drawn from `KitStates` (Material 3 Expressive, the `PolarisKeyGate` one-liner,
+  navigation and deep links, Credential Manager), the ui-matrix Roborazzi baselines in both themes,
+  the Compose lint, `examples/ui/compose-android/`, the docs pages and kit README, the `ui.*` parity
+  rows (they stay `planned`) and the design and UX reviews. Every acceptance criterion above is still
+  open.
