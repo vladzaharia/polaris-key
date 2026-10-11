@@ -13,10 +13,25 @@
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "round": "multi-review",
+    "reviewer": "ResumeDocsWave.DocsMockupLensReview: one reviewer agent, consumer, developer and brand lenses in a single pass",
     "date": "2026-10-11",
-    "verdict": "Brand and consumer review passed: the empty state stays neutral, names the missing page and offers only return and search paths.",
-    "findings": []
+    "lenses": {
+      "consumer": "Walked in the combined pass; no finding raised for this screen.",
+      "developer": "Walked in the combined pass; no finding raised for this screen.",
+      "brand": "Walked in the combined pass; no finding raised for this screen."
+    },
+    "separatePasses": "not-run",
+    "verdict": "Combined three-lens pass raised no finding for this screen and ended PASS; the PR #65 fix round (below) is checked by the contract check only, not re-reviewed by a lens.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The page said the same fact twice: an h1 with a lede above, then an EmptyState h2 with a second muted line. Plan §8.4 specifies one strong line and one muted line.",
+        "resolution": "Dropped the page header and its lede; the EmptyState now carries the one strong line as the page h1 (“That page isn’t in the docs”) and one muted line (“The link may be old or the page may have moved.”).",
+        "decision": "accepted",
+        "raisedBy": ["PR #65 review (plan §8.4)"]
+      }
+    ],
+    "notRun": "Plan §8.4 and the DOC-01 brief ask for three separate pkey-ux-reviewer passes (consumer, developer, brand consistency). Those three separate passes were not run. One reviewer agent (ResumeDocsWave.DocsMockupLensReview) walked the three lenses as sections of a single pass over saved renders, then re-checked after fixes. The PR #65 fixes recorded above were verified with tools/mockups/check.mjs and shoot.mjs --check only; no lens re-review followed them."
   }
 }

@@ -13,26 +13,39 @@
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "round": "multi-review",
+    "reviewer": "ResumeDocsWave.DocsMockupLensReview: one reviewer agent, consumer, developer and brand lenses in a single pass",
     "date": "2026-10-11",
-    "verdict": "Developer lane review passed after the phone SDK picker, App/Console handoff and shared desktop chrome were corrected.",
+    "lenses": {
+      "consumer": "Walked in the combined pass; no finding raised for this screen.",
+      "developer": "Walked in the combined pass; 1 finding(s) raised, applied below.",
+      "brand": "Walked in the combined pass; 1 finding(s) raised, applied below."
+    },
+    "separatePasses": "not-run",
+    "verdict": "Combined three-lens pass ended PASS after its findings were applied; the PR #65 fix round (below) is checked by the contract check only, not re-reviewed by a lens.",
     "findings": [
       {
         "severity": "major",
         "issue": "Six SDK labels overflowed the phone picker.",
-        "resolution": "Phone now retains the selected Swift tab and exposes a compact “5 more” affordance; desktop and tablet retain all SDK labels."
+        "resolution": "Phone now retains the selected Swift tab and exposes a compact “5 more” affordance; desktop and tablet retain all SDK labels.",
+        "decision": "accepted",
+        "raisedBy": ["earlier DOC-01 review (lens not recorded)"]
       },
       {
         "severity": "major",
-        "issue": "The guide asserted Verified without showing the App and Console route to Integration.",
-        "resolution": "Added App and Console numbered steps that point from the licensing gate to Integration → Licensing → Verified on macOS; every state row now uses its exact message id in `/docs/help/code/<id>/`."
+        "issue": "The guide asserted Verified without showing the App and Console route to Integration, and the displayed Help URLs did not match the message-id redirector.",
+        "resolution": "Added App and Console numbered steps that point from the licensing gate to Integration → Licensing → Verified on macOS; every state row now uses its exact message id in `/docs/help/code/<id>/`.",
+        "decision": "accepted",
+        "raisedBy": ["developer"]
       },
       {
         "severity": "major",
         "issue": "The desktop header stopped at search and omitted shared Docs chrome.",
-        "resolution": "Restored Developer changelog, Console and Theme controls."
+        "resolution": "Restored Developer changelog, Console and Theme controls.",
+        "decision": "accepted",
+        "raisedBy": ["brand"]
       }
-    ]
+    ],
+    "notRun": "Plan §8.4 and the DOC-01 brief ask for three separate pkey-ux-reviewer passes (consumer, developer, brand consistency). Those three separate passes were not run. One reviewer agent (ResumeDocsWave.DocsMockupLensReview) walked the three lenses as sections of a single pass over saved renders, then re-checked after fixes. The PR #65 fixes recorded above were verified with tools/mockups/check.mjs and shoot.mjs --check only; no lens re-review followed them."
   }
 }

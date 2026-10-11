@@ -14028,6 +14028,19 @@ a.card:focus-visible {
 .docs-message.target {
   background: var(--pk-accent-subtle);
 }
+:is(.docs-message, .docs-section) > h3 {
+  font-size: var(--fs-body);
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--pk-text-strong);
+}
+.docs-message > h2 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--pk-text-strong);
+}
 .docs-quote {
   padding: var(--sp-4);
   border-left: 3px solid var(--pk-border-strong);
@@ -14092,6 +14105,7 @@ a.card:focus-visible {
 }
 .docs-palette-row small {
   display: block;
+  font-size: var(--fs-meta);
   overflow: hidden;
   color: var(--pk-text-muted);
   text-overflow: ellipsis;
@@ -25168,8 +25182,8 @@ dd .mono {
 :not(pre) > code {
   font-size: max(12px, 0.9em);
 }
-/* An empty state's heading at h2 takes the same step as its h3 (m6: never the UA's bold). */
-.empty h2 {
+/* An empty state's heading at h1 or h2 takes the same step as its h3 (m6: never the UA's bold). */
+.empty :is(h1, h2) {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
   font-weight: 600;

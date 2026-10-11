@@ -13,10 +13,25 @@
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "round": "multi-review",
+    "reviewer": "ResumeDocsWave.DocsMockupLensReview: one reviewer agent, consumer, developer and brand lenses in a single pass",
     "date": "2026-10-11",
-    "verdict": "Consumer and brand review passed: the full-screen phone palette keeps door-grouped results and keyboard cues without competing chrome.",
-    "findings": []
+    "lenses": {
+      "consumer": "Walked in the combined pass; no finding raised for this screen.",
+      "developer": "Walked in the combined pass; no finding raised for this screen.",
+      "brand": "Walked in the combined pass; no finding raised for this screen."
+    },
+    "separatePasses": "not-run",
+    "verdict": "Combined three-lens pass raised no finding for this screen and ended PASS; the PR #65 fix round (below) is checked by the contract check only, not re-reviewed by a lens.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The section path under each result (Help › Devices) rendered at 11.7px, under the 12px floor (B6).",
+        "resolution": "Set the result path to the 12px meta step in the shared kit.",
+        "decision": "accepted",
+        "raisedBy": ["PR #65 review (tools/mockups/check.mjs B6/B7)"]
+      }
+    ],
+    "notRun": "Plan §8.4 and the DOC-01 brief ask for three separate pkey-ux-reviewer passes (consumer, developer, brand consistency). Those three separate passes were not run. One reviewer agent (ResumeDocsWave.DocsMockupLensReview) walked the three lenses as sections of a single pass over saved renders, then re-checked after fixes. The PR #65 fixes recorded above were verified with tools/mockups/check.mjs and shoot.mjs --check only; no lens re-review followed them."
   }
 }
