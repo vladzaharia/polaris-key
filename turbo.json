@@ -3,14 +3,22 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "lint": {},
     "dev": {
@@ -19,6 +27,22 @@
     },
     "clean": {
       "cache": false
+    },
+    "@polaris-key/cli#build": {
+      "dependsOn": [
+        "^build",
+        "@polaris-key/brand#build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../worker/src/**",
+        "../worker/dev/**",
+        "../worker/migrations/**",
+        "../worker/test/*Mock.ts"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     }
   }
 }

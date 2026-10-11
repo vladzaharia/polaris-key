@@ -112,14 +112,16 @@ export function resolveDirs(
   productSlug: string,
   overrides: DirOverrides = {},
   host: DirsHost = {},
+  /** The directory name under each base; default the slug (`storeNamespace`). */
+  namespace: string = productSlug,
 ): ProductDirs {
   const path = pathFor(host.platform ?? process.platform);
   const bases = defaultDirBases(host);
   return {
-    config: path.join(overrides.configDir ?? bases.config, productSlug),
-    data: path.join(overrides.dataDir ?? bases.data, productSlug),
-    cache: path.join(overrides.cacheDir ?? bases.cache, productSlug),
-    state: path.join(overrides.stateDir ?? bases.state, productSlug),
+    config: path.join(overrides.configDir ?? bases.config, namespace),
+    data: path.join(overrides.dataDir ?? bases.data, namespace),
+    cache: path.join(overrides.cacheDir ?? bases.cache, namespace),
+    state: path.join(overrides.stateDir ?? bases.state, namespace),
   };
 }
 

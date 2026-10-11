@@ -762,7 +762,7 @@ export async function linkRepo(
 }
 
 /** Assemble + atomically insert all rows for a parsed manifest (GitHub coordinates supplied). */
-async function registerFromManifest(
+export async function registerFromManifest(
   env: Env,
   db: Db,
   manifest: ParsedManifest,

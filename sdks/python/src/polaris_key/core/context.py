@@ -55,7 +55,7 @@ from .models import (
     BlockReason,
 )
 from .semver import channel_for_version
-from .dirs import ProductDirs, default_dir_bases, resolve_dirs
+from .dirs import ProductDirs, default_dir_bases, resolve_dirs, store_namespace
 from .store import Store
 from .._version import SDK_NAME, SDK_VERSION
 from .headers import canonical_arch, canonical_platform
@@ -229,8 +229,10 @@ class CoreContext:
         self._explicit_state_dir = state_dir is not None
         #: This product's config, data, cache and state directories (P1b-09). Every option
         #: is a BASE with ``<product>`` appended; resolved, never created.
+        namespace = store_namespace(product_slug, base_url)
         self.dirs: ProductDirs = resolve_dirs(
             product_slug,
+            namespace=namespace,
             config_dir=config_dir,
             data_dir=data_dir,
             cache_dir=cache_dir,
@@ -257,7 +259,9 @@ class CoreContext:
             # import graph acyclic.
             from ..devices.store import KeyringStore
 
-            store = KeyringStore(product_slug, config_dir or _default_config_dir())
+            store = KeyringStore(
+                product_slug, config_dir or _default_config_dir(), namespace=namespace
+            )
         self.store: Store = store
 
         self._client = client

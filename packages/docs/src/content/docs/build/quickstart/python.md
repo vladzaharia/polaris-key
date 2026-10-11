@@ -41,8 +41,7 @@ docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
 
 It writes `polaris_config.py`: the slug, base URL, trust pins, advertised services and, when the
 product has release keys, `UpdateClientOptions(pinned_release_keys=…)`, all in `CONFIG`. Compare the
-printed pin fingerprints with the console before you ship. A local Polaris Key to run
-against is planned.
+printed pin fingerprints with the console before you ship. [Run Polaris Key locally](/docs/build/local/) to try this without a registered product.
 
 ## The client
 

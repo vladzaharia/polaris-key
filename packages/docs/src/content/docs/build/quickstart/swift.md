@@ -7,6 +7,8 @@ sidebar:
 
 For macOS, iOS and iPadOS. Swift 6.
 
+[Run Polaris Key locally](/docs/build/local/) to try this without a registered product.
+
 ```sh
 swift package-registry set --scope polaris-key https://pkg.plrs.im/swift/polaris-key
 pkey sdk --lang swift --write   # writes PolarisConfig.swift; add it to the app target

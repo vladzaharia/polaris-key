@@ -132,9 +132,11 @@ class FileStore:
     #: Persists to disk, so the SDK's local state files go to the state directory too.
     persistent = True
 
-    def __init__(self, product_slug: str, config_dir: str) -> None:
+    def __init__(
+        self, product_slug: str, config_dir: str, *, namespace: Optional[str] = None
+    ) -> None:
         self._product_slug = product_slug
-        self._dir = os.path.join(config_dir, product_slug)
+        self._dir = os.path.join(config_dir, namespace or product_slug)
         os.makedirs(self._dir, mode=0o700, exist_ok=True)
         self._token_path = os.path.join(self._dir, "token")
         self._cache_path = os.path.join(self._dir, "managed.json")
@@ -222,10 +224,12 @@ class KeyringStore:
         config_dir: str,
         *,
         load_keyring: Optional[Callable[[], Any]] = None,
+        namespace: Optional[str] = None,
     ) -> None:
-        self._files = FileStore(product_slug, config_dir)
-        self._token_path = os.path.join(config_dir, product_slug, "token")
-        self._service = f"{KEYRING_SERVICE_PREFIX}{product_slug}"
+        name = namespace or product_slug
+        self._files = FileStore(product_slug, config_dir, namespace=name)
+        self._token_path = os.path.join(config_dir, name, "token")
+        self._service = f"{KEYRING_SERVICE_PREFIX}{name}"
         self._account = "device-token"
         self._load = load_keyring or _load_keyring
 

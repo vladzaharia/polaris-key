@@ -46,7 +46,7 @@ import { ErrorCode, Feature, SdkId } from "../constants.generated.js";
 import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
 import { withRedirectPolicy } from "./redirect.js";
-import { assertProductSlug } from "./slug.js";
+import { assertProductSlug, storeNamespace } from "./slug.js";
 import { resolveAppVersion } from "./appVersion.js";
 import { bindDeviceId } from "./deviceBinding.js";
 import { classifyResponse, transportError } from "./http.js";
@@ -213,12 +213,14 @@ export class CoreContext {
     this.channel = opts.channel ?? channelForVersion(this.version);
     this.pinnedTrust = { ...opts.trust.pinnedKeys };
     this.trustRefreshEnabled = opts.trustRefresh !== false;
-    this.dirs = resolveDirs(opts.productSlug, opts);
+    const ns = storeNamespace(opts.productSlug, opts.baseUrl);
+    this.dirs = resolveDirs(opts.productSlug, opts, {}, ns);
     this.store =
       opts.store ??
       new KeyringStore(
         opts.productSlug,
         opts.configDir ?? defaultDirBases().config,
+        { namespace: ns },
       );
     this.fetchImpl = opts.fetchImpl;
     this.requestTimeoutMs = opts.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
