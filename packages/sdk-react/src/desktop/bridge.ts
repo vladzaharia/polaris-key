@@ -150,7 +150,7 @@ export type BridgeActivation =
  *     channel?, packSetId?, code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the
  *     renderer's update-health events, recorded in the host's journal with
  *     `client.update.journal.record(event, input)`, so its next report drains them).
- *   * `update.driver` and `update.bootguard` (SP-15), three more `invoke` verbs the host answers:
+ *   * `update.driver` and `update.bootguard` (SP-15), four more `invoke` verbs the host answers:
  *     `("update","install",{decision})` → the host's `client.update.install(decision)`, an
  *     `InstallOutcome` over IPC (`restartRequired` and `handedOff` carry a `version`,
  *     `storeOpened` a `url`, `unsupported` a `reason` and `detail`; a `restartRequired` has no
@@ -162,8 +162,16 @@ export type BridgeActivation =
  *     `client.update.confirmBoot()`. The host's `boot()` already runs the guard, so a renderer
  *     that boots through it never calls the last two; they are for a host that boots itself.
  *     The host adds all four to `DEFAULT_INVOKE_VERBS` (`update.install`, `update.restart`,
- *     `update.markBootAttempt`, `update.confirmBoot`) and its `client.boot()` answer carries the
- *     `BootAttempt` as `guard`.
+ *     `update.markBootAttempt`, `update.confirmBoot`).
+ *   * `("core","boot",opts)` (SP-12) → the host's `client.boot(opts)`; `autoConfirm` and `guard`
+ *     are what SP-15 adds to it. The renderer forwards every `BootRunOptions` member but
+ *     `onStage`, `answer` and `packs` (callbacks and the pack facet stay in the renderer, which
+ *     calls `onStage` once with the answer's `state` and `emits`): `consent`, `metered`,
+ *     `requiredPacks`, `allowOffline`, `allowGrace`, `registration` and `autoConfirm` (`false`:
+ *     the host leaves a `ready` launch for the renderer's `confirmBoot()` instead of confirming
+ *     it after `BOOT_OK_SECONDS`). The answer is `{outcome, state, license, decision, guard,
+ *     emits}`; `guard` is the `BootAttempt` the host's guard stage produced, which the renderer
+ *     passes on as `BootResult.guard` (`null` when the host sends none).
  *   * `config.local` (SP-13): `("config","set",{key,value})` and `("config","clear",{key})` →
  *     the host's `client.config.set`/`clear` (a refusal keeps its `managed_by_admin` or
  *     `bad_request` code), and `BridgeState.localConfig` = `client.config.localValues()` on

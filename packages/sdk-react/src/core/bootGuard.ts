@@ -11,15 +11,22 @@
 //   confirmBoot()       once the app is healthy (the boot reached `ready` for BOOT_OK_SECONDS,
 //                       or `waiting`/`blocked`/`offline`, per `bootConfirmation`). Resets the
 //                       count and reports `update_confirmed` for the first confirmed launch of
-//                       a new version.
+//                       a new version, then sends the journal (`flush`): nothing records that
+//                       event again, and this late in a boot no sync pass need follow.
 //
 // The slots live in browser storage under one key per product (`localStorage` by default, every
 // access in try/catch; a store that cannot be read or written falls back to memory, and
 // `persistent()` says so). The guard owns the DECISION and the bookkeeping; the actual rollback
 // is the host's: it passes `rollback(previousVersion)` when it can serve the previous build
 // (a page cannot, by itself: a service worker only moves forward). Without one, a rollback is
-// reported as `boot_rolled_back` with code `no-previous` and the failed version is remembered
-// as `skipVersion`, so `decideUpdate({ skipVersion })` never re-offers it automatically.
+// reported as `boot_rolled_back` with code `no-previous`. Either way the failed version is
+// remembered as `skipVersion`, the input `decideUpdate({ skipVersion })` takes, and the boot
+// passes it. What it does is the corpus's (plans/P3-01.md §2.8 rule 11, update-matrix.json rows
+// 15 and 16): it suppresses a self-updating outlet's `code-ready` and `sidecar-pck`, and a
+// skipped version is still offered as a download. A web outlet's decision is `platform` (rule 9,
+// which answers before the skipped version is read), so on a page the guard keeps the version
+// and the boot hands it on, but nothing is suppressed: a rolled-back release the feed still
+// offers is offered again.
 //
 // A "staged" update on a page is a waiting service worker: `staged()` answers it, so the guard
 // cases that carry `staged: true` (apply-staged, and a rollback taking precedence over it) mean
@@ -51,7 +58,8 @@ export interface BootSlots {
   failedBoots: number;
   /** Whether a launch of `current` was ever confirmed. */
   confirmed: boolean;
-  /** A version the guard rolled back from: never re-offered automatically. */
+  /** A version the guard rolled back from: `decideUpdate`'s `skipVersion` (see the file header
+   *  for what that suppresses). */
   skipVersion: string | null;
 }
 
@@ -89,6 +97,14 @@ export interface BootGuardOptions {
   rollback?: (previousVersion: string) => Promise<boolean>;
   /** Whether an update is staged (a waiting service worker). Default: none is. */
   staged?: () => boolean | Promise<boolean>;
+  /**
+   * Send the journal now (`adapter.report()` where the page holds one), best effort. Awaited
+   * once the guard has recorded an event it will not record again and saved its slots (a
+   * rollback, a launch's first confirmation), so a page that goes away right after (a
+   * rollback's reload, a closed tab) does not take the event with it. A failure is the
+   * journal's.
+   */
+  flush?: () => Promise<unknown>;
 }
 
 const EMPTY: BootSlots = {
@@ -204,6 +220,14 @@ export class BootGuard {
     }
   }
 
+  private async flush(): Promise<void> {
+    try {
+      await this.o.flush?.();
+    } catch {
+      // Best effort: a journal that cannot be sent never fails a launch either.
+    }
+  }
+
   /** Count this launch and decide (see the file header). */
   async markBootAttempt(): Promise<BootAttempt> {
     const version = this.o.version;
@@ -254,8 +278,11 @@ export class BootGuard {
           release: version,
           ...(s.previous ? { fromRelease: s.previous } : {}),
         });
-      // The failed build is never re-offered automatically, and the count starts over.
+      // The failed build is remembered as the skipVersion (see the file header), and the count
+      // starts over.
       this.o.store.write({ ...s, failedBoots: 1, skipVersion: version });
+      // Saved: nothing records these again, so send them before the page can go.
+      await this.flush();
       return {
         result: "rolled-back",
         action,
@@ -283,11 +310,15 @@ export class BootGuard {
     const version = this.o.version;
     const s = this.slots();
     if (s.current !== version) return;
-    if (!s.confirmed && s.previous !== null && s.previous !== version)
+    const first = !s.confirmed && s.previous !== null && s.previous !== version;
+    if (first)
       await this.emit(UpdateEvent.updateConfirmed, {
         release: version,
         fromRelease: s.previous,
       });
     this.o.store.write({ ...s, failedBoots: 0, confirmed: true });
+    // Saved as confirmed: nothing records `update_confirmed` again, and no sync pass need follow
+    // this late in the boot, so send it before the page can go.
+    if (first) await this.flush();
   }
 }

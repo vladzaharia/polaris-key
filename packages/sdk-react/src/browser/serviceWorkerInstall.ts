@@ -31,6 +31,12 @@ export interface ServiceWorkerInstallDeps {
   record?: (event: UpdateEvent, input: UpdateEventInput) => Promise<unknown>;
   /** The running build's version, for `fromRelease`. */
   currentVersion?: string | null;
+  /**
+   * Send the page's update-health journal (best effort: `adapter.report()` where the page holds
+   * one), awaited right before the reload so the events recorded for this install are not lost
+   * with the page. A failure is the journal's, never the install's.
+   */
+  flush?: () => Promise<unknown>;
 }
 
 const defaultReload = (): void => {
@@ -84,32 +90,52 @@ async function findWaiting(
   return state === "installed" ? (reg.waiting ?? installing) : null;
 }
 
-/** Ask `waiting` to skip waiting and resolve true once it controls the page (its own
- *  `activated`, or the container's `controllerchange`); false when it became redundant. */
+/** What became of the hand-off: the new worker took control, was discarded, or did neither in
+ *  time. */
+type HandOff = "took" | "redundant" | "timeout";
+
+/**
+ * How long the page waits for the worker it asked to skip waiting to take control: the 15 s every
+ * bearer request gets (`REQUEST_TIMEOUT_MS`). A worker that never answers `SKIP_WAITING` would
+ * otherwise leave the install pending until the caller aborts it.
+ */
+export const HAND_OFF_TIMEOUT_MS = 15_000;
+
+/** Why an install that was not handed off says so. */
+const NOT_TAKEN: Record<Exclude<HandOff, "took">, string> = {
+  redundant: "the waiting service worker became redundant before it took over.",
+  timeout: `the waiting service worker did not take control within ${HAND_OFF_TIMEOUT_MS / 1000} seconds: it must answer { type: "SKIP_WAITING" } with self.skipWaiting().`,
+};
+
+/** Ask `waiting` to skip waiting and say what came of it: `took` once it controls the page (its
+ *  own `activated`, or the container's `controllerchange`), `redundant` when it was discarded,
+ *  `timeout` when it did neither within `HAND_OFF_TIMEOUT_MS`. */
 function activate(
   waiting: SwWorker,
   container: SwContainer,
   signal: AbortSignal | undefined,
-): Promise<boolean> {
+): Promise<HandOff> {
   return new Promise((resolve, reject) => {
     const cleanup = (): void => {
+      clearTimeout(deadline);
       waiting.removeEventListener("statechange", check);
       container.removeEventListener("controllerchange", took);
       signal?.removeEventListener("abort", abort);
     };
-    const finish = (ok: boolean): void => {
+    const finish = (result: HandOff): void => {
       cleanup();
-      resolve(ok);
+      resolve(result);
     };
     const check = (): void => {
-      if (waiting.state === "activated") finish(true);
-      else if (waiting.state === "redundant") finish(false);
+      if (waiting.state === "activated") finish("took");
+      else if (waiting.state === "redundant") finish("redundant");
     };
-    const took = (): void => finish(true);
+    const took = (): void => finish("took");
     const abort = (): void => {
       cleanup();
       reject(signal?.reason);
     };
+    const deadline = setTimeout(() => finish("timeout"), HAND_OFF_TIMEOUT_MS);
     signal?.addEventListener("abort", abort);
     waiting.addEventListener("statechange", check);
     container.addEventListener("controllerchange", took);
@@ -174,31 +200,37 @@ export async function installViaServiceWorker(
       // A page holds no journal in every mode; an install never fails for it.
     }
   };
+  const flush = async (): Promise<void> => {
+    try {
+      await deps.flush?.();
+    } catch {
+      // Best effort: a journal that cannot be sent never fails the install either.
+    }
+  };
   await emit(UpdateEvent.updateDownloaded);
-  // false: the worker became redundant, so nothing was handed off.
-  const handOff = async (): Promise<boolean> => {
-    if (!(await activate(waiting, container, signal))) return false;
+  // Anything but `took` means nothing was handed off.
+  const handOff = async (): Promise<HandOff> => {
+    const result = await activate(waiting, container, signal);
+    if (result !== "took") return result;
     await emit(UpdateEvent.updateApplied);
+    // The reload takes the page, and the journal that only lives in it, away.
+    await flush();
     (deps.reload ?? defaultReload)();
-    return true;
+    return result;
   };
   if (opts.reload === false)
     return {
       kind: "restartRequired",
       version,
       restart: async () => {
-        if (!(await handOff()))
-          throw new PolarisError(
-            "unknown",
-            "the waiting service worker became redundant before it took over.",
-          );
+        const result = await handOff();
+        if (result !== "took")
+          throw new PolarisError("unknown", NOT_TAKEN[result]);
       },
     };
-  if (!(await handOff()))
-    return unsupportedOutcome(
-      "dependency",
-      "the waiting service worker became redundant before it took over.",
-    );
+  const result = await handOff();
+  if (result !== "took")
+    return unsupportedOutcome("dependency", NOT_TAKEN[result]);
   return {
     kind: "handedOff",
     version,

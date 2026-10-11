@@ -232,6 +232,9 @@ export const MINT_ID = /^[a-z0-9-]+$/;
 export const SLOW_DOWN_STEP_SECONDS = 5;
 /** Every request's deadline, as Node's `DEFAULT_REQUEST_TIMEOUT_MS`. */
 export const REQUEST_TIMEOUT_MS = 15_000;
+/** How long `flushUpdateEvents()` waits before it lets a page go on without having sent its
+ *  journal: a page about to reload must not sit behind a hung connection for the full 15 s. */
+export const FLUSH_WAIT_SECONDS = 3;
 /** Sync backoff (SP-R02): the first retry waits about this long after a 5xx, a 429 or a
  *  network failure, doubling per consecutive failure... */
 export const SYNC_BACKOFF_BASE_SECONDS = 30;
@@ -1269,7 +1272,12 @@ export class BearerSession {
     if (!token) return false;
     try {
       const body = await this.snapshot();
-      const carried = Array.isArray(body.updates) ? body.updates.length : 0;
+      const carried = new Set(
+        (Array.isArray(body.updates)
+          ? (body.updates as unknown as UpdateEventEntry[])
+          : []
+        ).map((u) => u.eventId),
+      );
       const res = await this.send("devices/report", {
         method: "POST",
         headers: this.headers({
@@ -1278,10 +1286,39 @@ export class BearerSession {
         }),
         body: JSON.stringify(body),
       });
-      if (res.ok && carried > 0) this.journal.splice(0, carried);
+      // By id, not by position: another report in flight (a flush that stopped waiting) may
+      // have taken some of these out already, and an event recorded since must stay.
+      if (res.ok && carried.size > 0)
+        for (let i = this.journal.length - 1; i >= 0; i -= 1)
+          if (carried.has(this.journal[i]!.eventId)) this.journal.splice(i, 1);
       return res.ok;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Send the journal now, for a page about to lose it: an install's reload, a rollback's
+   * restart, a confirmation no later sync follows. It reports until nothing is waiting or a
+   * report fails (each carries at most `MAX_REPORT_UPDATES`, oldest first), best effort, and
+   * stops waiting after `FLUSH_WAIT_SECONDS`: the report in flight keeps its own 15 s deadline
+   * and, if it lands, its events leave the journal. Does nothing when no event is waiting.
+   * Never throws.
+   */
+  async flushUpdateEvents(): Promise<void> {
+    if (this.journal.length === 0) return;
+    const patience = new AbortController();
+    const drain = async (): Promise<void> => {
+      let more = true;
+      while (more) more = (await this.report()) && this.journal.length > 0;
+    };
+    try {
+      await Promise.race([
+        drain().catch(() => undefined),
+        sleepFor(FLUSH_WAIT_SECONDS, patience.signal).catch(() => undefined),
+      ]);
+    } finally {
+      patience.abort();
     }
   }
 

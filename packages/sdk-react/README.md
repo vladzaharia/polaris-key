@@ -382,12 +382,16 @@ cannot be installed, so a prompt can render the refusal.
 - **Web.** A web outlet's decision is `platform` (a page has no binary to install), and its
   driver is the service worker. The page finds its registration's waiting worker (waiting out an
   installing one), posts `{ type: "SKIP_WAITING" }`, which your worker answers with
-  `self.skipWaiting()`, waits for it to take control, reloads and answers `handedOff`.
-  `reload: false` answers `restartRequired` and leaves the reload to `restart()`. No registration
-  or no waiting worker is `unsupported {dependency}`; no service worker support at all is
-  `unsupported {runtime}`; `binary` and `store` decisions are `unsupported {runtime}`. Pass
-  `serviceWorker: { container, reload }` to the adapter to control both (tests, a router).
-  `update_downloaded` and `update_applied` go through `recordUpdateEvent`.
+  `self.skipWaiting()`, waits for it to take control, reloads and answers `handedOff`. A worker
+  that has not taken control after 15 seconds (one that never answers the message, say) is
+  `unsupported {dependency}` rather than a pending install. `reload: false` answers
+  `restartRequired` and leaves the reload to `restart()`, which rejects in that case instead.
+  No registration or no waiting worker is `unsupported {dependency}`; no service worker support
+  at all is `unsupported {runtime}`; `binary` and `store` decisions are `unsupported {runtime}`.
+  Pass `serviceWorker: { container, reload }` to the adapter to control both (tests, a router).
+  `update_downloaded` and `update_applied` go through `recordUpdateEvent`; in bearer mode the
+  journal is then sent (`devices/report`, best effort, waiting at most 3 seconds) before the
+  reload, which would otherwise take it along.
 - **Desktop.** The renderer forwards `binary` and `store` decisions to the host's
   `client.update.install()` (`invoke("update", "install", {decision})`, which the host answers
   with its install driver); other decisions are answered as above, without crossing the bridge.
@@ -409,12 +413,16 @@ back for later crashes.
   that throws falls back to memory, which loses the count on reload). A waiting service worker
   counts as a staged update (`action: "apply-staged"`). A page cannot serve its previous build
   itself: pass `bootGuard: { rollback(previous) }` to do it, else the rollback is reported as
-  `boot_rolled_back` with code `no-previous` and the failed version is remembered as the
-  `skipVersion`, which the boot's `decideUpdate()` passes so the same release is not re-offered.
+  `boot_rolled_back` with code `no-previous`. Either way the failed version is remembered as the
+  `skipVersion`, which the boot's `decideUpdate()` passes. The update corpus gives that input one
+  job, suppressing a self-updating outlet's `code-ready` and `sidecar-pck` (a skipped version is
+  still offered as a download), and a web outlet's decision is `platform`, which answers before
+  it is read: on a page, a rolled-back release the feed still offers is offered again.
   It needs the adapter's `version`; without one `markBootAttempt()` throws `not-configured` and
   `boot()` skips the stage. `update_confirmed`, `update_reverted` and `boot_rolled_back` go
-  through `recordUpdateEvent` (bearer mode keeps the journal; a cookie page holds none, and the
-  guard never fails a launch for it).
+  through `recordUpdateEvent` (bearer mode keeps the journal and sends it as soon as a rollback
+  or a first confirmation is saved, since no later sync need follow; a cookie page holds none,
+  and the guard never fails a launch for it).
 - **Desktop.** The host's guard, over `invoke("update", "markBootAttempt")` and
   `invoke("update", "confirmBoot")`; the host's own `boot()` already runs it.
 

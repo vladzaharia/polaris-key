@@ -2141,7 +2141,8 @@ export class BrowserAdapter implements PolarisAdapter {
 
   /**
    * The update driver (update.driver): hand off to the waiting service worker and reload. See
-   * `serviceWorkerUpdate.ts`. Journals `update_downloaded` and `update_applied` in bearer mode.
+   * `serviceWorkerUpdate.ts`. Journals `update_downloaded` and `update_applied` in bearer mode
+   * and sends that journal before the reload, which would take it along.
    */
   async installUpdate(
     decision: UpdateDecision,
@@ -2154,6 +2155,7 @@ export class BrowserAdapter implements PolarisAdapter {
       {
         container: this.sw?.container,
         record: (event, input) => this.recordUpdateEvent(event, input),
+        flush: async () => this.bearer?.flushUpdateEvents(),
         currentVersion: this.version ?? null,
         ...(this.sw?.reload ? { reload: this.sw.reload } : {}),
       },
@@ -2187,6 +2189,7 @@ export class BrowserAdapter implements PolarisAdapter {
           storage: this.bootGuardOptions?.storage,
           container: this.sw?.container,
           record: (event, input) => this.recordUpdateEvent(event, input),
+          flush: async () => this.bearer?.flushUpdateEvents(),
           ...(this.bootGuardOptions?.rollback
             ? { rollback: this.bootGuardOptions.rollback }
             : {}),

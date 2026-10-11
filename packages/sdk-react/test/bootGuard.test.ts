@@ -96,6 +96,7 @@ function launch(
   o: {
     staged?: boolean;
     rollback?: (previous: string) => Promise<boolean>;
+    flush?: () => Promise<unknown>;
   } = {},
 ) {
   const events: Recorded[] = [];
@@ -105,6 +106,7 @@ function launch(
     record: async (event, input) => void events.push({ event, input }),
     staged: () => o.staged === true,
     ...(o.rollback ? { rollback: o.rollback } : {}),
+    ...(o.flush ? { flush: o.flush } : {}),
   });
   return { guard, events };
 }
@@ -232,6 +234,72 @@ describe("the guard across launches (persisted slots, rollback, confirmation)", 
       },
     ]);
     expect(slotsIn(s)).toMatchObject({ failedBoots: 0, confirmed: true });
+  });
+
+  it("sends the journal once the confirmation is saved, and only for a confirmation that recorded an event", async () => {
+    const s = storage();
+    const log: string[] = [];
+    const flush = async (): Promise<void> => {
+      // What the guard has saved by the time the page could be lost.
+      const slots = slotsIn(s);
+      log.push(`failedBoots=${slots.failedBoots} confirmed=${slots.confirmed}`);
+    };
+    // The first launch ever has no previous version: nothing is recorded, so nothing is sent.
+    const first = launch(s, "1.0.0", { flush });
+    await first.guard.markBootAttempt();
+    await first.guard.confirmBoot();
+    expect(log).toEqual([]);
+    // An update's first confirmation records update_confirmed: saved first, then sent.
+    const update = launch(s, "1.1.0", { flush });
+    await update.guard.markBootAttempt();
+    expect(log).toEqual([]);
+    await update.guard.confirmBoot();
+    expect(log).toEqual(["failedBoots=0 confirmed=true"]);
+    // Idempotent: nothing recorded, nothing sent.
+    await update.guard.confirmBoot();
+    expect(log).toHaveLength(1);
+  });
+
+  it("sends the journal once a rollback is saved, with its events already recorded, even when nothing could be rolled back", async () => {
+    for (const rollback of [async () => true, undefined]) {
+      const s = storage();
+      s.mem.set(
+        KEY,
+        JSON.stringify({
+          current: "1.1.0",
+          previous: "1.0.0",
+          failedBoots: MAX_FAILED_BOOTS,
+          confirmed: false,
+          skipVersion: null,
+        } satisfies BootSlots),
+      );
+      const log: string[] = [];
+      let recorded: Recorded[] = [];
+      const l = launch(s, "1.1.0", {
+        ...(rollback ? { rollback } : {}),
+        flush: async () =>
+          void log.push(
+            `${recorded.length} events, skip=${slotsIn(s).skipVersion}`,
+          ),
+      });
+      recorded = l.events;
+      await l.guard.markBootAttempt();
+      expect(log).toEqual([`${rollback ? 2 : 1} events, skip=1.1.0`]);
+    }
+  });
+
+  it("a journal that cannot be sent never fails a launch or a confirmation", async () => {
+    const s = storage();
+    await launch(s, "1.0.0").guard.markBootAttempt();
+    await launch(s, "1.0.0").guard.confirmBoot();
+    const flush = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    const l = launch(s, "1.1.0", { flush });
+    expect((await l.guard.markBootAttempt()).result).toBe("applied");
+    await expect(l.guard.confirmBoot()).resolves.toBeUndefined();
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect(slotsIn(s)).toMatchObject({ confirmed: true });
   });
 
   it("a version that was confirmed once is never rolled back for later crashes", async () => {
@@ -641,6 +709,43 @@ describe("update.bootguard on desktop-bridge: the host's guard over bridge v4", 
     const { bridge, attempt } = host();
     const a = desktopAdapter({ bridge, now: () => NOW_SEC });
     expect((await a.boot()).guard).toEqual(attempt);
+    a.dispose();
+  });
+
+  it("boot() sends the host the options bridge.ts lists (autoConfirm among them) and keeps its callbacks and pack facet", async () => {
+    const { bridge, calls } = host();
+    const a = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const onStage = vi.fn();
+    await a.boot({
+      onStage,
+      answer: async () => true,
+      packs: {
+        bootOptions: () => ({ requiredPacks: [], essentialPacks: [] }),
+        bootFetch: async () => undefined,
+      },
+      consent: "never",
+      metered: true,
+      requiredPacks: ["acme.l10n"],
+      allowOffline: false,
+      allowGrace: false,
+      registration: false,
+      autoConfirm: false,
+    });
+    expect(calls.find((c) => c.method === "boot")).toEqual({
+      service: "core",
+      method: "boot",
+      args: {
+        consent: "never",
+        metered: true,
+        requiredPacks: ["acme.l10n"],
+        allowOffline: false,
+        allowGrace: false,
+        registration: false,
+        autoConfirm: false,
+      },
+    });
+    // The boot ran in the host, so the renderer's stage callback is called once, at the end.
+    expect(onStage).toHaveBeenCalledTimes(1);
     a.dispose();
   });
 

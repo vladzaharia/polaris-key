@@ -13,7 +13,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
-import { installViaServiceWorker } from "../src/browser/serviceWorkerInstall.js";
+import {
+  HAND_OFF_TIMEOUT_MS,
+  installViaServiceWorker,
+} from "../src/browser/serviceWorkerInstall.js";
 import {
   SKIP_WAITING_MESSAGE,
   hasWaitingWorker,
@@ -23,6 +26,7 @@ import {
 } from "../src/browser/serviceWorkerUpdate.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import { PolarisError } from "../src/core/types.js";
+import type { InstallOutcome } from "../src/core/install.js";
 import {
   NOW_SEC,
   emptyBridgeState,
@@ -191,6 +195,207 @@ describe("update.driver on web: the service-worker hand-off", () => {
     );
     expect(out).toMatchObject({ kind: "unsupported", reason: "dependency" });
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("sends the journal after update_applied and before the reload, and waits for it", async () => {
+    const waiting = new FakeWorker("installed");
+    const order: string[] = [];
+    const reload = vi.fn(() => void order.push("reload"));
+    // A reporter that answers when the test says so.
+    let answer = (): void => undefined;
+    const answered = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    const install = installViaServiceWorker(
+      {
+        container: new FakeContainer({ waiting, installing: null }),
+        reload,
+        record: async (event) => void order.push(event),
+        flush: async () => {
+          order.push("flush sent");
+          await answered;
+          order.push("flush answered");
+        },
+      },
+      platform,
+    );
+    await vi.waitFor(() => expect(order).toContain("flush sent"));
+    expect(reload).not.toHaveBeenCalled();
+    answer();
+    expect((await install).kind).toBe("handedOff");
+    expect(order).toEqual([
+      "update_downloaded",
+      "update_applied",
+      "flush sent",
+      "flush answered",
+      "reload",
+    ]);
+  });
+
+  it("reload: false sends the journal in restart(), before it reloads", async () => {
+    const waiting = new FakeWorker("installed");
+    const order: string[] = [];
+    const out = await installViaServiceWorker(
+      {
+        container: new FakeContainer({ waiting, installing: null }),
+        reload: () => void order.push("reload"),
+        record: async (event) => void order.push(event),
+        flush: async () => void order.push("flush"),
+      },
+      platform,
+      { reload: false },
+    );
+    if (out.kind !== "restartRequired") throw new Error("unreachable");
+    await out.restart();
+    expect(order).toEqual([
+      "update_downloaded",
+      "update_applied",
+      "flush",
+      "reload",
+    ]);
+  });
+
+  it("a journal that cannot be sent never fails the install; a hand-off that did not happen sends nothing", async () => {
+    const reload = vi.fn();
+    const out = await installViaServiceWorker(
+      {
+        container: new FakeContainer({
+          waiting: new FakeWorker("installed"),
+          installing: null,
+        }),
+        reload,
+        flush: async () => {
+          throw new Error("offline");
+        },
+      },
+      platform,
+    );
+    expect(out.kind).toBe("handedOff");
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    const redundant = new FakeWorker("installed");
+    redundant.onSkip = () => redundant.become("redundant");
+    const flush = vi.fn(async () => undefined);
+    expect(
+      await installViaServiceWorker(
+        {
+          container: new FakeContainer({
+            waiting: redundant,
+            installing: null,
+          }),
+          reload: vi.fn(),
+          flush,
+        },
+        platform,
+      ),
+    ).toMatchObject({ kind: "unsupported", reason: "dependency" });
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("a worker that never takes control is unsupported{dependency} after HAND_OFF_TIMEOUT_MS, never a reload", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const waiting = new FakeWorker("installed");
+      waiting.onSkip = () => undefined; // never answers SKIP_WAITING
+      const container = new FakeContainer({ waiting, installing: null });
+      const reload = vi.fn();
+      const flush = vi.fn(async () => undefined);
+      const events: string[] = [];
+      let outcome: InstallOutcome | undefined;
+      const p = installViaServiceWorker(
+        {
+          container,
+          reload,
+          flush,
+          record: async (event) => void events.push(event),
+        },
+        platform,
+      ).then((o) => (outcome = o));
+      await vi.advanceTimersByTimeAsync(HAND_OFF_TIMEOUT_MS - 1);
+      expect(waiting.posted).toEqual([SKIP_WAITING_MESSAGE]);
+      expect(outcome).toBeUndefined();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(outcome).toMatchObject({
+        kind: "unsupported",
+        reason: "dependency",
+        detail: expect.stringContaining("15 seconds"),
+      });
+      await p;
+      expect(reload).not.toHaveBeenCalled();
+      expect(flush).not.toHaveBeenCalled();
+      // Downloaded, never applied.
+      expect(events).toEqual(["update_downloaded"]);
+      // Nothing is left listening, and no deadline is left running.
+      expect(waiting.listening).toBe(0);
+      expect(container.listeners.size).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reload: false: restart() rejects when the worker never takes control", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const waiting = new FakeWorker("installed");
+      waiting.onSkip = () => undefined;
+      const reload = vi.fn();
+      const out = await installViaServiceWorker(
+        { container: new FakeContainer({ waiting, installing: null }), reload },
+        platform,
+        { reload: false },
+      );
+      if (out.kind !== "restartRequired") throw new Error("unreachable");
+      let result: unknown;
+      const settled = out.restart().then(
+        () => (result = "restarted"),
+        (e: unknown) => (result = e),
+      );
+      await vi.advanceTimersByTimeAsync(HAND_OFF_TIMEOUT_MS);
+      expect(result).toMatchObject({
+        code: "unknown",
+        message: expect.stringContaining("15 seconds"),
+      });
+      await settled;
+      expect(reload).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a worker that takes control just before the deadline still hands off, and an abort leaves no deadline behind", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const waiting = new FakeWorker("installed");
+      waiting.onSkip = () => undefined;
+      const reload = vi.fn();
+      const p = installViaServiceWorker(
+        { container: new FakeContainer({ waiting, installing: null }), reload },
+        platform,
+      );
+      await vi.advanceTimersByTimeAsync(HAND_OFF_TIMEOUT_MS - 1);
+      expect(reload).not.toHaveBeenCalled();
+      waiting.become("activated");
+      expect(await p).toMatchObject({ kind: "handedOff" });
+      expect(reload).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+
+      const stuck = new FakeWorker("installed");
+      stuck.onSkip = () => undefined;
+      const abort = new AbortController();
+      const q = installViaServiceWorker(
+        { container: new FakeContainer({ waiting: stuck, installing: null }) },
+        platform,
+        { signal: abort.signal },
+      ).catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(stuck.posted).toEqual([SKIP_WAITING_MESSAGE]);
+      abort.abort(new Error("later"));
+      expect(await q).toMatchObject({ message: "later" });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("answers unsupported{reason} when there is nothing to hand off to", async () => {

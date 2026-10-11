@@ -6,10 +6,12 @@
 //   2. the page finds its registration's waiting worker (an installing one is waited for);
 //   3. it asks that worker to `skipWaiting()` by posting `{ type: "SKIP_WAITING" }`, the message
 //      every Workbox-style worker already answers (a page cannot call `skipWaiting` on another
-//      worker's behalf), and waits for it to take control;
+//      worker's behalf), and waits for it to take control, for at most `HAND_OFF_TIMEOUT_MS`
+//      (a worker that never answers is `unsupported{dependency}`, not a pending install);
 //   4. it reloads, so the page runs the new build, and answers `handedOff`. With `reload:
 //      false` it stops after step 2 and answers `restartRequired`, whose `restart()` is steps
-//      3 and 4: the host decides when the player loses their place.
+//      3 and 4: the host decides when the player loses their place. Before the reload the
+//      journal is sent (`flush`), because a reload takes an in-memory journal with it.
 //
 // Every refusal is an ANSWER, never a throw: a page with no service worker, no registration or no
 // waiting worker answers `unsupported` with the typed reason (PARITY §2.2). `binary` and `store`

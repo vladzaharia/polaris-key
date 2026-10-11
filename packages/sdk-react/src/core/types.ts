@@ -578,10 +578,11 @@ export interface PolarisAdapter {
    * Install what a decision offers (update.driver, SDK-PARITY-PASS §3.16): answers an
    * `InstallOutcome` and never throws for something that cannot be installed (it answers
    * `unsupported{reason}`). Browser: a decision whose build is a newer one this page already
-   * holds as a waiting service worker hands off to it (`skipWaiting`, then a reload) and answers
-   * `handedOff`, or `restartRequired` with `reload: false`. Desktop: the host's install driver,
-   * over bridge v4 (`invoke("update", "install", {decision})`), `unsupported{version}` on an
-   * older host. Local: `unsupported{runtime}`.
+   * holds as a waiting service worker hands off to it (`skipWaiting`, then a reload, after
+   * sending the bearer journal) and answers `handedOff`, or `restartRequired` with `reload:
+   * false`; a worker that has not taken control within 15 s is `unsupported{dependency}`.
+   * Desktop: the host's install driver, over bridge v4 (`invoke("update", "install",
+   * {decision})`), `unsupported{version}` on an older host. Local: `unsupported{runtime}`.
    */
   installUpdate(
     decision: UpdateDecision,
@@ -591,15 +592,16 @@ export interface PolarisAdapter {
    * Count this launch before the app does anything that could crash (update.bootguard, §3.15):
    * the first launch of a new version moves the slots, client-core's `bootGuardAction` decides,
    * and the launch is counted as unconfirmed. After `MAX_FAILED_BOOTS` unconfirmed launches of
-   * an unconfirmed version it rolls back (through the host's `rollback` when it passed one) and
-   * journals `boot_rolled_back`. `boot()` calls it as its guard stage: call it yourself only
-   * when you do not boot through `boot()`. Browser: slots in browser storage, keyed by the
-   * page's `version`. Desktop: the host's guard over bridge v4
+   * an unconfirmed version it rolls back (through the host's `rollback` when it passed one),
+   * journals `boot_rolled_back` and, in bearer mode, sends the journal. `boot()` calls it as its
+   * guard stage: call it yourself only when you do not boot through `boot()`. Browser: slots in
+   * browser storage, keyed by the page's `version`. Desktop: the host's guard over bridge v4
    * (`invoke("update", "markBootAttempt")`).
    */
   markBootAttempt(): Promise<BootAttempt>;
-  /** Mark this launch healthy: resets the count and journals `update_confirmed` once. `boot()`
-   *  confirms by the stage matrix's `confirmCases`; call it yourself for a boot you drive. */
+  /** Mark this launch healthy: resets the count and journals `update_confirmed` once (bearer
+   *  mode then sends the journal at once: nothing records it again). `boot()` confirms by the
+   *  stage matrix's `confirmCases`; call it yourself for a boot you drive. */
   confirmBoot(): Promise<void>;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
