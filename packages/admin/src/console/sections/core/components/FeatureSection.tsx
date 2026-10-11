@@ -60,8 +60,28 @@ export function FeatureSection({
   const blocked = !on && missing.length > 0;
   const sectionId = `feature-${feature.id}`;
   const requirementId = `${sectionId}-requirements`;
+  const errorId = `${sectionId}-error`;
+  const detailId = `${sectionId}-error-detail`;
   const fact = factFor(feature, facts);
   const errorMessages = codes.map(codeMessage);
+  const copy = error && !errorMessages.length ? errorCopy(error.error) : null;
+  // The switch that asked for the failed change: a service row when it requested only its own
+  // service, the feature switch otherwise.
+  const failedRow = error
+    ? feature.switches.find(
+        (row) =>
+          row.kind === "service" &&
+          error.change.requested.length === 1 &&
+          error.change.requested[0] === row.service,
+      )
+    : undefined;
+  const errorDescribedBy = error
+    ? describedBy(
+        errorId,
+        errorMessages.length || copy?.description ? detailId : undefined,
+      )
+    : undefined;
+  const primaryErrorDescribedBy = failedRow ? undefined : errorDescribedBy;
 
   return (
     <div data-service={feature.accent}>
@@ -73,18 +93,28 @@ export function FeatureSection({
           error ? (
             <div className="border-t border-border px-5 py-3">
               {errorMessages.length ? (
-                <Callout tone="danger" title="The server refused this change">
-                  <ul className="list-disc space-y-1 pl-5">
+                <Callout
+                  tone="danger"
+                  live
+                  title={
+                    <span id={errorId}>The server refused this change</span>
+                  }
+                >
+                  <ul id={detailId} className="list-disc space-y-1 pl-5">
                     {errorMessages.map((message) => (
                       <li key={message}>{message}</li>
                     ))}
                   </ul>
                 </Callout>
               ) : (
-                <Callout tone="danger" title={errorCopy(error.error).title}>
+                <Callout
+                  tone="danger"
+                  live
+                  title={<span id={errorId}>{copy!.title}</span>}
+                >
                   <div className="space-y-3">
-                    {errorCopy(error.error).description ? (
-                      <p>{errorCopy(error.error).description}</p>
+                    {copy!.description ? (
+                      <p id={detailId}>{copy!.description}</p>
                     ) : null}
                     <Button size="sm" variant="outline" onClick={onRetry}>
                       Retry
@@ -119,8 +149,11 @@ export function FeatureSection({
             checked={on}
             disabled={blocked}
             readOnly={busy}
-            aria-invalid={errorMessages.length ? true : undefined}
-            aria-describedby={blocked ? requirementId : undefined}
+            aria-invalid={primaryErrorDescribedBy ? true : undefined}
+            aria-describedby={describedBy(
+              blocked ? requirementId : undefined,
+              primaryErrorDescribedBy,
+            )}
             onCheckedChange={(next) =>
               onRequestChange(featureChange(feature, next))
             }
@@ -145,6 +178,7 @@ export function FeatureSection({
             enabled={enabled}
             featureOn={on}
             busy={busy}
+            errorDescribedBy={row === failedRow ? errorDescribedBy : undefined}
             onRequestChange={onRequestChange}
           />
         ))}
@@ -166,6 +200,7 @@ function FeatureSwitch({
   enabled,
   featureOn,
   busy,
+  errorDescribedBy,
   onRequestChange,
 }: {
   row: FeatureSwitchRow;
@@ -174,91 +209,100 @@ function FeatureSwitch({
   enabled: Enabled;
   featureOn: boolean;
   busy: boolean;
+  /** The ids describing a failure of this row's own change; undefined when it did not fail. */
+  errorDescribedBy: string | undefined;
   onRequestChange: (change: ServiceChange) => void;
 }): React.ReactElement {
-  if (row.kind === "service") {
-    const service = row.service!;
-    const on = enabled[service];
-    const missing = on ? [] : unmetRequirements([service], enabled);
-    const blocked = !on && missing.length > 0;
-    const id = `feature-${feature.id}-${row.id}`;
-    const requirementId = `${id}-requirements`;
-    return (
-      <div data-service={service}>
+  // A new `FeatureSwitchId` is a type error until it has a case here: `default` only accepts
+  // `never`.
+  switch (row.id) {
+    case "in-app-updates": {
+      const service = row.service!;
+      const on = enabled[service];
+      const missing = on ? [] : unmetRequirements([service], enabled);
+      const blocked = !on && missing.length > 0;
+      const id = `feature-${feature.id}-${row.id}`;
+      const requirementId = `${id}-requirements`;
+      return (
+        <div data-service={service}>
+          <SettingsRow
+            label={row.label}
+            htmlFor={id}
+            help={
+              blocked ? (
+                <span id={requirementId}>
+                  Needs {listOf(missing)} to be on first.
+                </span>
+              ) : (
+                "Controls this service independently of the feature switch."
+              )
+            }
+          >
+            <Switch
+              id={id}
+              checked={on}
+              disabled={blocked}
+              readOnly={busy}
+              aria-invalid={errorDescribedBy ? true : undefined}
+              aria-describedby={describedBy(
+                blocked ? requirementId : undefined,
+                errorDescribedBy,
+              )}
+              onCheckedChange={(next) =>
+                onRequestChange(serviceChange(feature, row, next))
+              }
+            />
+          </SettingsRow>
+        </div>
+      );
+    }
+    case "packages":
+      return (
+        <div data-service="distribution">
+          <PackageFeedsControl
+            slug={slug}
+            distributionOn={enabled.distribution}
+            featureOn={featureOn}
+          />
+        </div>
+      );
+    case "customer-portal":
+      return (
+        <div data-service="identity">
+          <CustomerPortalControl slug={slug} />
+        </div>
+      );
+    // Minted tokens have no separate mutable service state: recipes are declared in the release
+    // manifest and approved in Edge mint.
+    case "minted-tokens":
+      return (
         <SettingsRow
           label={row.label}
-          htmlFor={id}
           help={
-            blocked ? (
-              <span id={requirementId}>
-                Needs {listOf(missing)} to be on first.
-              </span>
-            ) : (
-              "Controls this service independently of the feature switch."
-            )
+            <>
+              Recipes are declared in <code>.pkey/release</code>. They mint only
+              after their signing secret is marked Edge mint and an operator
+              approves the recipe exactly as shown.
+            </>
           }
         >
-          <Switch
-            id={id}
-            checked={on}
-            disabled={blocked}
-            readOnly={busy}
-            aria-describedby={blocked ? requirementId : undefined}
-            onCheckedChange={(next) =>
-              onRequestChange(serviceChange(feature, row, next))
-            }
-          />
+          <Link
+            to={r.edgeMint(slug)}
+            className="text-sm text-accent-fg underline underline-offset-2"
+          >
+            Review recipe
+          </Link>
         </SettingsRow>
-      </div>
-    );
+      );
+    default:
+      row.id satisfies never;
+      return <></>;
   }
+}
 
-  if (row.id === "packages") {
-    return (
-      <div data-service="distribution">
-        <PackageFeedsControl
-          slug={slug}
-          distributionOn={enabled.distribution}
-          featureOn={featureOn}
-        />
-      </div>
-    );
-  }
-
-  if (row.id === "customer-portal") {
-    return (
-      <div data-service="identity">
-        <CustomerPortalControl slug={slug} />
-      </div>
-    );
-  }
-
-  // The generator makes a new fact id a type error until it lands here. Minted tokens have no
-  // separate mutable service state: recipes are declared in the release manifest and approved in
-  // Edge mint.
-  if (row.id === "minted-tokens") {
-    return (
-      <SettingsRow
-        label={row.label}
-        help={
-          <>
-            Recipes are declared in <code>.pkey/release</code>. They mint only
-            after their signing secret is marked Edge mint and an operator
-            approves the recipe exactly as shown.
-          </>
-        }
-      >
-        <Link
-          to={r.edgeMint(slug)}
-          className="text-sm text-accent-fg underline underline-offset-2"
-        >
-          Review recipe
-        </Link>
-      </SettingsRow>
-    );
-  }
-
-  return <></>;
+/** Space-separated `aria-describedby` from the ids that apply; undefined when none do. */
+function describedBy(...ids: (string | undefined)[]): string | undefined {
+  return ids.filter(Boolean).join(" ") || undefined;
 }
 
 function AdvancedFeatureState({

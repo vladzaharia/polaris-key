@@ -183,9 +183,10 @@ describe("Services feature groups", () => {
         },
       }),
     );
+    // Ship builds off asks for Release and Distribution only; the Worker cascades Update.
     servicesDryRun.mockResolvedValue({
       changes: [],
-      cascaded: ["distribution", "update"],
+      cascaded: ["update"],
       signedInDevicesToClear: 0,
     });
     mount();
@@ -193,8 +194,16 @@ describe("Services feature groups", () => {
       await screen.findByRole("switch", { name: /Ship builds/i }),
     );
     const dialog = await screen.findByRole("alertdialog");
+    expect(servicesDryRun).toHaveBeenCalledWith("djdl", {
+      services: {
+        release: { enabled: false },
+        distribution: { enabled: false },
+      },
+    });
     expect(
-      within(dialog).getByText(/Also turns off Distribution and Update/),
+      within(dialog).getByText(
+        "Also turns off Update because it requires this service.",
+      ),
     ).toBeTruthy();
     expect(updateServices).not.toHaveBeenCalled();
   });
@@ -223,19 +232,168 @@ describe("Services feature groups", () => {
     ).toBeTruthy();
   });
 
-  it("shows a 422 refusal beside the requested feature", async () => {
+  it("announces a 422 refusal, describes the requested switch with it, and clears on the next try", async () => {
     const user = userEvent.setup();
-    updateServices.mockRejectedValue(
+    updateServices.mockRejectedValueOnce(
       new ApiError(422, undefined, "bad_request", ["sync_requires_identity"]),
     );
     services.mockResolvedValue(
       state({ services: { ...state().services, identity: { enabled: true } } }),
     );
     mount();
-    await user.click(
-      await screen.findByRole("switch", { name: /Cloud Sync/i }),
-    );
+    const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
+    expect(sync.getAttribute("aria-describedby")).toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBeNull();
+
+    await user.click(sync);
     expect(await screen.findByText(/Cloud Sync needs Sign-in/)).toBeTruthy();
+    const title = document.getElementById("feature-cloud-sync-error")!;
+    const detail = document.getElementById("feature-cloud-sync-error-detail")!;
+    expect(title.textContent).toBe("The server refused this change");
+    expect(detail.textContent).toMatch(/Cloud Sync needs Sign-in/);
+    // The callout is a live region, so the refusal is announced when it appears.
+    expect(title.closest('[role="status"]')).toBe(
+      detail.closest('[role="status"]'),
+    );
+    expect(title.closest('[role="status"]')).not.toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBe("true");
+    expect(sync.getAttribute("aria-describedby")).toBe(
+      "feature-cloud-sync-error feature-cloud-sync-error-detail",
+    );
+
+    // The next attempt clears the refusal and the switch's description.
+    updateServices.mockResolvedValueOnce(
+      state({
+        services: {
+          ...state().services,
+          identity: { enabled: true },
+          sync: { enabled: true },
+        },
+      }),
+    );
+    await user.click(sync);
+    await waitFor(() =>
+      expect(document.getElementById("feature-cloud-sync-error")).toBeNull(),
+    );
+    expect(
+      document.getElementById("feature-cloud-sync-error-detail"),
+    ).toBeNull();
+    expect(sync.getAttribute("aria-describedby")).toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("announces a generic failure, describes the requested switch with it, and retries", async () => {
+    const user = userEvent.setup();
+    updateServices.mockRejectedValueOnce(new Error("write failed"));
+    services.mockResolvedValue(
+      state({ services: { ...state().services, identity: { enabled: true } } }),
+    );
+    mount();
+    const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
+
+    await user.click(sync);
+    const title = await screen.findByText("Something went wrong");
+    expect(title.id).toBe("feature-cloud-sync-error");
+    expect(title.closest('[role="status"]')).not.toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBe("true");
+    expect(sync.getAttribute("aria-describedby")!.split(" ")).toContain(
+      title.id,
+    );
+    for (const id of sync.getAttribute("aria-describedby")!.split(" "))
+      expect(document.getElementById(id)).not.toBeNull();
+
+    updateServices.mockResolvedValueOnce(
+      state({
+        services: {
+          ...state().services,
+          identity: { enabled: true },
+          sync: { enabled: true },
+        },
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(2));
+    expect(updateServices).toHaveBeenLastCalledWith("djdl", {
+      services: { sync: { enabled: true } },
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("Something went wrong")).toBeNull(),
+    );
+    expect(sync.getAttribute("aria-describedby")).toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("describes only the In-app updates switch when its own change fails", async () => {
+    const user = userEvent.setup();
+    updateServices.mockRejectedValueOnce(new Error("write failed"));
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+          distribution: { enabled: true },
+        },
+      }),
+    );
+    mount();
+    const updates = await screen.findByRole("switch", {
+      name: /In-app updates/i,
+    });
+    const shipBuilds = screen.getByRole("switch", { name: /Ship builds/i });
+    expect(updates.getAttribute("aria-describedby")).toBeNull();
+
+    await user.click(updates);
+    await screen.findByText("Something went wrong");
+    expect(updates.getAttribute("aria-invalid")).toBe("true");
+    expect(updates.getAttribute("aria-describedby")).toBe(
+      "feature-ship-builds-error feature-ship-builds-error-detail",
+    );
+    expect(shipBuilds.getAttribute("aria-invalid")).toBeNull();
+    expect(shipBuilds.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("announces a failed dry run beside Ship builds, keeps ids unique, and retries it", async () => {
+    const user = userEvent.setup();
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
+      }),
+    );
+    servicesDryRun.mockRejectedValueOnce(new Error("dry run failed"));
+    const { container } = mount();
+    const shipBuilds = await screen.findByRole("switch", {
+      name: /Ship builds/i,
+    });
+    await user.click(shipBuilds);
+    const title = await screen.findByText("Something went wrong");
+    expect(title.id).toBe("feature-ship-builds-error");
+    expect(title.closest('[role="status"]')).not.toBeNull();
+    expect(shipBuilds.getAttribute("aria-invalid")).toBe("true");
+    expect(shipBuilds.getAttribute("aria-describedby")).toBe(
+      "feature-ship-builds-error feature-ship-builds-error-detail",
+    );
+    const ids = [...container.querySelectorAll("[id]")].map((el) => el.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    servicesDryRun.mockResolvedValueOnce({
+      changes: [],
+      cascaded: ["update"],
+      signedInDevicesToClear: 0,
+    });
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        "Also turns off Update because it requires this service.",
+      ),
+    ).toBeTruthy();
+    expect(shipBuilds.getAttribute("aria-describedby")).toBeNull();
+    expect(shipBuilds.getAttribute("aria-invalid")).toBeNull();
   });
 
   it("keeps every id on the page unique so each label binds to its own switch", async () => {
