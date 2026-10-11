@@ -666,13 +666,26 @@ describe("controls and the drawer (MO-08)", () => {
       .click();
     const panel = page.getByRole("dialog");
     await panel.waitFor();
-    const out = await panel.evaluate((el) => ({
-      animations: el.getAnimations().map((a) => ({
-        name: (a as CSSAnimation).animationName,
-        duration: Number(a.effect?.getTiming().duration ?? 0),
-      })),
-      from: getComputedStyle(el).getPropertyValue("--pk-drawer-from").trim(),
-    }));
+    // The declared animation, read from computed style: unlike getAnimations(), it stays
+    // readable after the 320 ms entry has finished, so a slow CI container cannot race it.
+    const out = await panel.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const names = cs.animationName
+        .split(",")
+        .map((n) => n.trim())
+        .filter((n) => n !== "" && n !== "none");
+      const durations = cs.animationDuration.split(",").map((d) => {
+        const t = d.trim();
+        return t.endsWith("ms") ? parseFloat(t) : parseFloat(t) * 1000;
+      });
+      return {
+        animations: names.map((name, i) => ({
+          name,
+          duration: durations[i % durations.length] ?? 0,
+        })),
+        from: cs.getPropertyValue("--pk-drawer-from").trim(),
+      };
+    });
     await page.waitForTimeout(400);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(400);
