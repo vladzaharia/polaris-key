@@ -94,7 +94,16 @@ export const DOOR_TREES: readonly DoorTree[] = [
       { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Downloads and updates",
-        items: leaves("help/download", "help/update"),
+        items: leaves(
+          "help/download",
+          "help/check-a-download",
+          "help/install-sources",
+          "help/update",
+        ),
+      },
+      {
+        label: "Purchases",
+        items: leaves("help/restore-purchase", "help/refunds"),
       },
       { label: "Messages", items: leaves("help/messages/index") },
     ],

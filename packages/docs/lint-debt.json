@@ -646,11 +646,6 @@
       "banned-word": 2,
       "time-word": 1
     },
-    "help/download": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 23
-    },
     "help/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
@@ -673,11 +668,6 @@
       "frontmatter-last-reviewed": 1,
       "help-word": 7,
       "time-word": 1
-    },
-    "help/update": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 5
     },
     "index": {
       "frontmatter-type": 1,

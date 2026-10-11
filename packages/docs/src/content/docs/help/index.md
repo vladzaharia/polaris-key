@@ -19,16 +19,20 @@ across several products. This section covers every surface you might run into, f
 
 ## In this section
 
-| Page                                               | What it covers                                                                                            |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [Activation](/docs/users/activation/)              | The four ways to get a product running: a license key, signing in, free enrollment, or an offline bundle. |
-| [The customer portal](/docs/users/portal/)         | Signing in on the web, your licenses, claiming a key, downloads, and deleting your account.               |
-| [Devices](/docs/users/devices/)                    | What counts as a device, seat limits, and renaming or disconnecting one.                                  |
-| [Cloud Sync](/docs/help/sync/)                     | How settings and saves follow you between devices, and what its messages mean.                            |
-| [Updates](/docs/users/updates/)                    | How new versions reach you, and why an old build might ask you to update.                                 |
-| [Downloads and app stores](/docs/users/downloads/) | Adding an AltStore, SideStore or F-Droid source, Obtainium, and Scoop.                                    |
-| [Troubleshooting](/docs/users/troubleshooting/)    | Common activation, device, and sign-in problems, explained.                                               |
-| [Privacy](/docs/users/privacy/)                    | What the product collects from your device, and why.                                                      |
+| Page                                                                              | What it covers                                                                                            |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| [Activation](/docs/users/activation/)                                             | The four ways to get a product running: a license key, signing in, free enrollment, or an offline bundle. |
+| [The customer portal](/docs/users/portal/)                                        | Signing in on the web, your licenses, claiming a key, downloads, and deleting your account.               |
+| [Devices](/docs/users/devices/)                                                   | What counts as a device, seat limits, and renaming or disconnecting one.                                  |
+| [Cloud Sync](/docs/help/sync/)                                                    | How settings and saves follow you between devices, and what its messages mean.                            |
+| [Download your app](/docs/help/download/)                                         | Download from your library or the app's public download page.                                             |
+| [Check a download is genuine](/docs/help/check-a-download/)                       | Compare a file's SHA-256 with the listed value.                                                           |
+| [Install from AltStore, F-Droid, Obtainium or Scoop](/docs/help/install-sources/) | Add an app to a store app, or install it with a command.                                                  |
+| [Update your app](/docs/help/update/)                                             | Get a newer version, and what to do when an app can't update itself.                                      |
+| [Restore a purchase](/docs/help/restore-purchase/)                                | Get an App Store, Google Play or Steam purchase back.                                                     |
+| [Refunds, billing and cancellations](/docs/help/refunds/)                         | Who to ask, and what happens to an app after a refund.                                                    |
+| [Troubleshooting](/docs/users/troubleshooting/)                                   | Common activation, device, and sign-in problems, explained.                                               |
+| [Privacy](/docs/users/privacy/)                                                   | What the product collects from your device, and why.                                                      |
 
 Not every product turns on every surface described here — a license key might be all one product
 ever asks for, while another adds sign-in, a portal, and auto-updates on top. If a page describes
