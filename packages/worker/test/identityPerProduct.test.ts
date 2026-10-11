@@ -462,6 +462,7 @@ describe("turning Identity off clears every binding (PX-W17)", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       changes: [{ field: "services.identity.enabled", from: true, to: false }],
+      cascaded: [],
       signedInDevicesToClear: 2,
     });
     expect(await identityEnabled(w.db, "djdl")).toBe(true);
@@ -475,6 +476,7 @@ describe("turning Identity off clears every binding (PX-W17)", () => {
     });
     expect(await keep.json()).toEqual({
       changes: [{ field: "services.config.enabled", from: true, to: false }],
+      cascaded: [],
       signedInDevicesToClear: 0,
     });
   });

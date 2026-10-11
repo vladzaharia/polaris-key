@@ -6,6 +6,7 @@ import {
   mkReq as mkLicReq,
   NOW,
   seedLicenseWithKey,
+  seedTier,
   seedProduct,
   approveEdgeMintRecipe,
   seedProductSecret,
@@ -1399,6 +1400,49 @@ describe("admin services enablement", () => {
     });
     expect(body.effectiveRegistration).toBe("requires-license");
     expect(body.source).toBe("manifest");
+  });
+
+  it("GET, PATCH and revert all report facts counted from the rows, and a dry run reports none", async () => {
+    const w = await world();
+    await seedTier(w.db, "djdl", "free");
+    await seedTier(w.db, "djdl", "pro");
+    await seedLicenseWithKey(w.db, "djdl", { id: "lic_a" });
+    await seedLicenseWithKey(w.db, "djdl", { id: "lic_b" });
+    await seedLicenseWithKey(w.db, "djdl", { id: "lic_c" });
+    await w.db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, channel, metadata_access, artifacts_access,
+          published_at, created_at, modified_at)
+       VALUES ('djdl', 'rel_1', '2.4.0', 'beta', 'public', 'public', ?, ?, ?)`,
+      NOW,
+      NOW,
+      NOW,
+    );
+    const expected = {
+      licensing: { tiers: 2, licenses: 3 },
+      managedConfig: { catalogVersion: 1 },
+      shipBuilds: { latest: { version: "2.4.0", channel: "beta" } },
+    };
+
+    expect((await call(w, "GET")).body.facts).toEqual(expected);
+
+    // A write that adds a licence in between would show here if facts were read before it.
+    const patched = await call(w, "PATCH", "", {
+      services: { identity: { enabled: true } },
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.body.facts).toEqual(expected);
+
+    const dry = await call(w, "PATCH", "?dryRun=1", {
+      services: { identity: { enabled: false } },
+    });
+    expect(dry.status).toBe(200);
+    expect(dry.body).not.toHaveProperty("facts");
+    expect(
+      (await loadProduct(w.env, w.db, "djdl"))?.services.identity.enabled,
+    ).toBe(true);
+
+    expect((await call(w, "POST", "/revert")).body.facts).toEqual(expected);
   });
 
   it("PATCH merges, claims the row, and is visible to loadProduct", async () => {

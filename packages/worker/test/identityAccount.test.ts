@@ -21,7 +21,11 @@ import {
 } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { loadProduct, type Product } from "../src/core/products.js";
-import { serializeServices, SERVICE_SLUGS } from "../src/core/services.js";
+import {
+  serializeServices,
+  SERVICE_SLUGS,
+  type ServicesMap,
+} from "../src/core/services.js";
 import { setServices } from "../src/core/repo.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { countKeyEntries } from "../src/core/licensing/keyEntries.js";
@@ -57,27 +61,22 @@ beforeEach(async () => {
   await seedProduct(db, SLUG);
 });
 
+/** The service set a test runs under. Registration is derived from it: License on requires a
+ *  licence; with License off and Identity on it requires sign-in; with both off it is open. */
 async function setIdentity(
   on: boolean,
-  registration?: "open" | "requires-license",
+  opts: { license?: boolean } = {},
 ): Promise<Product> {
-  const enabled = on
-    ? ["license", "config", "identity"]
-    : ["license", "config"];
+  const license = opts.license ?? true;
+  const enabled = [
+    ...(license ? ["license"] : []),
+    "config",
+    ...(on ? ["identity"] : []),
+  ];
   const services = Object.fromEntries(
     SERVICE_SLUGS.map((s) => [s, { enabled: enabled.includes(s) }]),
-  );
-  await setServices(
-    db,
-    SLUG,
-    serializeServices(
-      (registration ? { services, registration } : { services }) as Parameters<
-        typeof serializeServices
-      >[0],
-    ),
-    "manifest",
-    NOW,
-  );
+  ) as ServicesMap;
+  await setServices(db, SLUG, serializeServices({ services }), "manifest", NOW);
   return (await loadProduct(env, db, SLUG))!;
 }
 
@@ -559,12 +558,15 @@ describe("attach (§12.3)", () => {
   });
 
   it("answers not_found for a device with no licence, and 401 for an unusable one", async () => {
-    await setIdentity(true, "open");
+    // Registration is open only with License and Identity both off, so the keyless device
+    // registers under that set and Identity is turned on afterwards.
+    await setIdentity(false, { license: false });
     const reg = await call("POST", `/${SLUG}/devices/register`, {
       "x-pkey-device": DEV_C,
     });
     expect(reg.status).toBe(200);
     const keyless = ((await reg.json()) as { token: string }).token;
+    await setIdentity(true);
     const someone = await account("someone@example.com");
     await signIn(DEV_C, someone.subject);
     const res = await attach(keyless, DEV_C);

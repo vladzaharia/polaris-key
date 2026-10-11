@@ -867,13 +867,6 @@ describe("linkRepo (GitHub-forward product creation)", () => {
   // with it, so the only per-file preference left is the EXTENSION: JSON, then YAML, then YML,
   // resolved independently for each of the three documents.
   describe("manifest directory", () => {
-    const REGISTRATION_PRODUCT_JSON = JSON.stringify({
-      slug: "acme",
-      name: "Acme",
-      modules: { license: { enabled: false }, config: { enabled: true } },
-      devices: { registration: "open" },
-    });
-
     it("reads the three documents from .pkey/", async () => {
       const db = makeTestDb();
       const env = envFor();
@@ -1559,7 +1552,9 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
-    const before = (await loadProduct(w.env, w.db, "acme"))!.registration;
+    const beforeProduct = (await loadProduct(w.env, w.db, "acme"))!;
+    const before = beforeProduct.registration;
+    const beforeServices = beforeProduct.services;
     const badSchema = JSON.stringify({
       schemaVersion: 1,
       entries: [
@@ -1580,6 +1575,33 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       NOW + 100,
       stubFetch({
         ".pkey/schema.json": badSchema,
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/release.json": releaseWith([BASE_RECIPE]),
+      }).fetchImpl,
+    );
+    expect(res.ok).toBe(false);
+    expect(before).not.toBe("open");
+    // The refusal is the bad schema, not a manifest field the validator now rejects.
+    expect(JSON.stringify(res)).not.toContain("invalid_registration_policy");
+    const after = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(after.registration).toBe(before);
+    expect(after.services).toEqual(beforeServices);
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
+    expect(await w.mint()).toBe(200);
+  });
+
+  it("rejects a manifest that still declares devices.registration and writes nothing", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    const beforeProduct = (await loadProduct(w.env, w.db, "acme"))!;
+    const res = await resyncRepo(
+      w.env,
+      w.db,
+      "acme",
+      NOW + 100,
+      stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
         ".pkey/product.json": JSON.stringify({
           ...JSON.parse(PRODUCT_JSON),
           devices: { registration: "open" },
@@ -1588,11 +1610,10 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       }).fetchImpl,
     );
     expect(res.ok).toBe(false);
-    expect(before).not.toBe("open");
-    expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe(before);
-    expect(await approvalCount(w.db)).toBe(1);
-    expect(await invalidations(w.db)).toHaveLength(0);
-    expect(await w.mint()).toBe(200);
+    expect(JSON.stringify(res)).toContain("devices.registration is removed");
+    const after = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(after.registration).toBe(beforeProduct.registration);
+    expect(after.services).toEqual(beforeProduct.services);
   });
 
   // A push can also THROW rather than be refused: the manifest validator does not reject a
