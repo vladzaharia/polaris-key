@@ -182,6 +182,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
             ),
           },
           leaf("build/web-apps"),
+          leaf("build/local", "Run Polaris Key locally"),
         ],
       },
       {
