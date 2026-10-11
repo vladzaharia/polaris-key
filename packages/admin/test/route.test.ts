@@ -129,7 +129,7 @@ describe("every page parses and round-trips", () => {
     expect(r.home()).toBe("#/");
     expect(r.products()).toBe("#/products");
     expect(r.overview("djdl")).toBe("#/p/djdl");
-    expect(r.keys("djdl")).toBe("#/p/djdl/keys");
+    expect(r.keys("djdl")).toBe("#/p/djdl/settings/keys");
     expect(r.license("djdl", "lic_1", "keys")).toBe(
       "#/p/djdl/license/licenses/lic_1/keys",
     );
@@ -208,7 +208,15 @@ describe("section roots redirect to the section's first page", () => {
     // ADMIN.md §2.5: old hash → the new address the moved page links to (id and query kept).
     const OLD: [string, string][] = [
       ["#/p/djdl/overview", "#/p/djdl"],
-      ["#/p/djdl/secrets", "#/p/djdl/keys"],
+      ["#/p/djdl/secrets", "#/p/djdl/settings/keys"],
+      // ST-08: three Core pages became tabs of the settings hub.
+      ["#/p/djdl/keys", "#/p/djdl/settings/keys"],
+      [
+        "#/p/djdl/keys?secret=OIDC_CLIENT_SECRET",
+        "#/p/djdl/settings/keys?secret=OIDC_CLIENT_SECRET",
+      ],
+      ["#/p/djdl/services", "#/p/djdl/settings/features"],
+      ["#/p/djdl/presentation", "#/p/djdl/settings/presentation"],
       ["#/p/djdl/licenses", "#/p/djdl/license/licenses"],
       ["#/p/djdl/licenses/lic_1", "#/p/djdl/license/licenses/lic_1"],
       [
@@ -270,6 +278,26 @@ describe("section roots redirect to the section's first page", () => {
       expect(parseLocation(`#/p/djdl/${key}`).redirect, key).toMatch(
         new RegExp(`^#/p/djdl/${key}/`),
       );
+  });
+
+  // ST-08 criterion 2 is blocked on these: each is a working editor and its replacement home is
+  // not built (the brief's "Criterion 2: blocked migrations"), so it opens as itself, never as
+  // Page moved. The package that builds a replacement deletes its line and adds the moved row.
+  it("keeps the four pages whose replacement homes are not built live", () => {
+    for (const [hash, page] of [
+      ["#/p/djdl/license/settings", "license-settings"],
+      ["#/p/djdl/license/enrollment", "enrollment"],
+      ["#/p/djdl/identity/portal", "portal"],
+      ["#/p/djdl/update/feed", "feed"],
+    ] as const) {
+      const parsed = parseLocation(hash);
+      expect(parsed.redirect, hash).toBeUndefined();
+      expect(parsed.route, hash).toMatchObject({
+        kind: "product",
+        slug: "djdl",
+        page,
+      });
+    }
   });
 
   it("a not-found path's search term is its first segment that is not a section key", () => {
@@ -460,6 +488,8 @@ describe("the nav model (nav.ts)", () => {
       "keys",
       "activity",
       "settings",
+      "settings-members",
+      "settings-all",
       "licenses",
       "tiers",
       "enrollment",

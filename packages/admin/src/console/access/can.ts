@@ -54,6 +54,8 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   presentation: "core",
   activity: "core",
   settings: "core",
+  "settings-members": "core",
+  "settings-all": "core",
   keys: "keys",
   licenses: "license",
   tiers: "license",

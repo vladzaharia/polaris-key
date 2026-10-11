@@ -1233,6 +1233,8 @@ export interface AdminSummary {
 export interface ProductDetail {
   slug: string;
   name: string;
+  /** ST-08: the browser origins the product answers CORS for. Absent from an older Worker. */
+  webOrigins?: string[];
   /** The logo (owner request 2026-10-06). Absent from a Worker that predates it. */
   presentation?: ProductPresentation;
   /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
@@ -1708,6 +1710,8 @@ export interface UpdateProductBody {
   defaultDeviceLimit?: number;
   /** `null` (or blank) clears the group (A-3). */
   adminGroup?: string | null;
+  /** ST-08: the browser origins the product answers CORS for; `[]` clears them. */
+  webOrigins?: string[];
   /** ST-20: turn manifest-authoritative mode on or off (a repository-linked product only). */
   manifestAuthoritative?: boolean;
   /** ST-20: on a manifest-authoritative product, the claimable fields' break-glass reason. */
@@ -5536,9 +5540,9 @@ const rawApi = {
 
   // ── product settings (LX-06: the row-backed slice of S-18 §4.7's settings API) ─────
   /** The row-backed settings of one settings-hub area, with the value in force. */
-  productSettings: (slug: string, area: string) =>
+  productSettings: (slug: string, area?: string) =>
     call<{ settings: ProductSetting[] }>(
-      `${p(slug)}/settings/effective?area=${encodeURIComponent(area)}`,
+      `${p(slug)}/settings/effective${area ? `?area=${encodeURIComponent(area)}` : ""}`,
     ),
   /** Set a setting in the console: on a repo-linked product this claims it from the manifest. */
   updateProductSetting: (

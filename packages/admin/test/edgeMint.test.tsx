@@ -344,7 +344,7 @@ describe("Edge mint page", () => {
       within(drawer)
         .getByRole("link", { name: "Keys & secrets" })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/keys");
+    ).toBe("#/p/djdl/settings/keys");
     expect(within(drawer).queryByText(/above/)).toBeNull();
   });
 

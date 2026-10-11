@@ -31,22 +31,14 @@
  */
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, GitBranch, RefreshCw } from "lucide-react";
 import {
-  api,
-  type BlobGcDryRun,
   type ClaimKey,
   type ProductDetail,
   type ResyncResult,
 } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import {
-  formatCount,
-  formatDateTime,
-  formatDuration,
-  fromSeconds,
-} from "../../../../lib/format.js";
+import { formatDateTime, fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
@@ -60,7 +52,7 @@ import {
 import { Input } from "../../../../ui/Input.js";
 import { NumberInput } from "../../../../ui/NumberInput.js";
 import { SaveBar } from "../../../../ui/SaveBar.js";
-import { PageSkeleton, Skeleton } from "../../../../ui/Skeleton.js";
+import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Switch } from "../../../../ui/Switch.js";
@@ -68,6 +60,7 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
+import { OriginsEditor } from "../../../components/OriginsEditor.js";
 import { BreakGlassDialog } from "../../../components/BreakGlassDialog.js";
 import { DeleteProductAction } from "../../../components/DeleteProductDialog.js";
 import {
@@ -81,7 +74,6 @@ import {
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import {
@@ -93,12 +85,14 @@ import {
 } from "../../../templates/Settings.js";
 import { SaveCancelled, intentOf, useConfirmGate } from "./confirmGate.js";
 import { LinkRepositoryDrawer } from "./LinkRepository.js";
+import { StorageSection } from "./SettingsStorage.js";
 
 /** Which draft field writes which claimable key. */
 const CLAIM_OF_FIELD: Partial<Record<keyof Draft, ClaimKey>> = {
   name: "core.name",
   defaultMaxOfflineDays: "license.defaults.maxOfflineDays",
   defaultDeviceLimit: "license.defaults.deviceLimit",
+  webOrigins: "core.web.origins",
 };
 
 /** "a", "a and b", "a, b and c". */
@@ -112,6 +106,8 @@ interface Draft extends Record<string, unknown> {
   name: string;
   defaultMaxOfflineDays: number | null;
   defaultDeviceLimit: number | null;
+  /** ST-08: browser origins allowed to call the product (`core.web.origins`). */
+  webOrigins: string[];
 }
 
 function draftOf(p: ProductDetail): Draft {
@@ -119,6 +115,7 @@ function draftOf(p: ProductDetail): Draft {
     name: p.name,
     defaultMaxOfflineDays: p.defaultMaxOfflineDays,
     defaultDeviceLimit: p.defaultDeviceLimit,
+    webOrigins: p.webOrigins ?? [],
   };
 }
 
@@ -140,7 +137,7 @@ export function SettingsPage({ slug }: { slug: string }): React.ReactElement {
   useLoadingAnnouncement("settings", product.isPending);
   const header = (
     <PageHeader
-      title="Settings"
+      title="General"
       refetching={product.isFetching && !product.isPending}
     />
   );
@@ -237,6 +234,9 @@ function SettingsBody({
         ...(body.defaultDeviceLimit !== undefined
           ? { defaultDeviceLimit: draft.defaultDeviceLimit! }
           : {}),
+        ...(body.webOrigins !== undefined
+          ? { webOrigins: draft.webOrigins }
+          : {}),
       });
       toast.success("Settings saved");
     },
@@ -271,6 +271,7 @@ function SettingsBody({
     ...(licenseOn
       ? [{ id: "settings-license", title: "License defaults" }]
       : []),
+    { id: "settings-origins", title: "Web origins" },
     { id: "settings-repository", title: "Repository" },
     { id: "settings-storage", title: "Storage" },
     { id: "danger-zone", title: "Danger zone" },
@@ -387,6 +388,37 @@ function SettingsBody({
             </SettingsRow>
           </SettingsSection>
         ) : null}
+
+        <SettingsSection id="settings-origins" title="Web origins">
+          <SettingsRow
+            label="Allowed origins"
+            align="stretch"
+            source={source("core.web.origins")}
+            help={claimHelp(
+              "core.web.origins",
+              "Adding an origin lets that site's scripts call this product.",
+            )}
+          >
+            <FormField
+              className="w-full"
+              hideLabel
+              group
+              name="webOrigins"
+              label="Allowed origins"
+            >
+              {(f) => (
+                <OriginsEditor
+                  id={f.id}
+                  value={f.value as string[]}
+                  onChange={f.onChange as (next: string[]) => void}
+                  disabled={f.disabled}
+                  aria-describedby={f["aria-describedby"]}
+                  aria-invalid={f["aria-invalid"]}
+                />
+              )}
+            </FormField>
+          </SettingsRow>
+        </SettingsSection>
 
         {nonFieldError ? (
           <Callout tone="danger" title={nonFieldError.title}>
@@ -635,68 +667,5 @@ function ManifestAuthorityRow({
         }}
       />
     </SettingsRow>
-  );
-}
-
-function StorageSection({ slug }: { slug: string }): React.ReactElement {
-  const gc = useQuery({
-    queryKey: qk.blobGc(slug),
-    queryFn: () => api.blobGc(slug),
-  });
-  return (
-    <SettingsSection
-      id="settings-storage"
-      title="Storage"
-      description="What the nightly blob collector would remove. Nothing here deletes anything."
-    >
-      {gc.isPending ? (
-        <div className="px-5 py-4">
-          <Skeleton className="h-16 w-full" />
-        </div>
-      ) : gc.isError ? (
-        <div className="px-5 py-4">
-          <ErrorState
-            compact
-            error={gc.error}
-            onRetry={() => void gc.refetch()}
-          />
-        </div>
-      ) : (
-        <StorageFacts dry={gc.data} />
-      )}
-    </SettingsSection>
-  );
-}
-
-function StorageFacts({ dry }: { dry: BlobGcDryRun }): React.ReactElement {
-  const drops = dry.drops.packObject + dry.drops.packUpload;
-  return (
-    <>
-      <SettingsRow label="Collector">
-        {dry.enabled ? (
-          <StatusPill tone="success">
-            On · {formatDuration(dry.graceSeconds * 1000).replace(/^for /, "")}{" "}
-            grace
-          </StatusPill>
-        ) : (
-          <StatusPill tone="neutral">Off on this deployment</StatusPill>
-        )}
-      </SettingsRow>
-      <SettingsRow
-        label="Eligible for removal"
-        help={`${formatCount(dry.drops.packObject)} pack objects, ${formatCount(dry.drops.packUpload)} abandoned uploads${dry.restores.count ? `; ${formatCount(dry.restores.count)} would be restored` : ""}.`}
-      >
-        <span className="tabular-nums">
-          {`${formatCount(drops)}${dry.drops.truncated ? "+" : ""} ${drops === 1 ? "object" : "objects"}`}
-        </span>
-      </SettingsRow>
-      <SettingsRow label="Earliest deletion">
-        {dry.earliestDeletion ? (
-          <Timestamp at={fromSeconds(dry.earliestDeletion)} format="detail" />
-        ) : (
-          <span className="text-fg-muted">None scheduled</span>
-        )}
-      </SettingsRow>
-    </>
   );
 }

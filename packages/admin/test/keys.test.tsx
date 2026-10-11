@@ -117,7 +117,8 @@ function keys(now = NOW): SigningKeysResponse {
   };
 }
 
-const mount = () => renderAt("#/p/djdl/keys", <KeysPage slug="djdl" />);
+const mount = () =>
+  renderAt("#/p/djdl/settings/keys", <KeysPage slug="djdl" />);
 
 beforeEach(() => {
   resetCore();
@@ -178,7 +179,7 @@ describe("Keys & secrets → Secrets", () => {
 
   it("opens Set secret with the name from ?secret= (C-7)", async () => {
     renderAt(
-      "#/p/djdl/keys?secret=OIDC_CLIENT_SECRET",
+      "#/p/djdl/settings/keys?secret=OIDC_CLIENT_SECRET",
       <KeysPage slug="djdl" />,
     );
     const drawer = await screen.findByRole("dialog", {

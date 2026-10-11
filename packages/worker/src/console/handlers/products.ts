@@ -34,7 +34,12 @@ import {
   stmtsActivateKey,
 } from "../../keyTransitions.js";
 import { Catalog } from "@polaris-key/catalog";
-import { PRODUCT_SLUG_RE, isReservedProductSlug } from "@polaris-key/manifest";
+import {
+  MAX_WEB_ORIGINS,
+  PRODUCT_SLUG_RE,
+  isReservedProductSlug,
+  webOriginProblem,
+} from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../platform/env.js";
 import type { Db, DbStatement } from "../../db/types.js";
@@ -377,6 +382,31 @@ export async function handleProducts(
         { fields: ["adminGroup"] },
       );
     }
+    // ST-08: the web-origins editor. Each entry must be an origin exactly as a browser sends it
+    // (the manifest's own rule); the list is bounded and a duplicate is refused, not dropped.
+    let webOrigins: string[] | undefined;
+    if (body.webOrigins !== undefined) {
+      const list = body.webOrigins;
+      const problem = !Array.isArray(list)
+        ? "webOrigins must be a list of origins"
+        : list.length > MAX_WEB_ORIGINS
+          ? `webOrigins takes at most ${MAX_WEB_ORIGINS} origins`
+          : (list
+              .map((o, i) => {
+                const why = webOriginProblem(o);
+                return why
+                  ? `webOrigins[${i}] ${why}`
+                  : list.indexOf(o) !== i
+                    ? `webOrigins[${i}] repeats ${String(o)}`
+                    : null;
+              })
+              .find((m) => m !== null) ?? null);
+      if (problem)
+        return err(422, ErrorCode.BadRequest, problem, {
+          fields: ["webOrigins"],
+        });
+      webOrigins = list as string[];
+    }
     // ST-04: every field is a registry setting, written through `writeSetting()` in one batch:
     // each gets its own audit row (`product.update`, with before/after and the setting key), and
     // on a repo-linked product each claimable field is claimed for the console (ST-01b, model C),
@@ -391,6 +421,7 @@ export async function handleProducts(
       "license.defaults.maxOfflineDays": "defaultMaxOfflineDays",
       "license.defaults.deviceLimit": "defaultDeviceLimit",
       "core.adminGroup": "adminGroup",
+      "core.web.origins": "webOrigins",
       [MANIFEST_AUTHORITATIVE_KEY]: "manifestAuthoritative",
     };
     // One summary per setting; a break-glass claim and the mode keep ST-20's wording.
@@ -430,6 +461,7 @@ export async function handleProducts(
     if (body.adminGroup === null) add("core.adminGroup", null);
     else if (typeof body.adminGroup === "string")
       add("core.adminGroup", body.adminGroup.trim() || null);
+    if (webOrigins !== undefined) add("core.web.origins", webOrigins);
     // The mode itself: an operator setting, never written for the system product (locked).
     if (typeof body.manifestAuthoritative === "boolean" && row.system !== 1)
       add(MANIFEST_AUTHORITATIVE_KEY, body.manifestAuthoritative);
