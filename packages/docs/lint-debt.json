@@ -625,22 +625,19 @@
       "frontmatter-last-reviewed": 1,
       "help-word": 10
     },
-    "help/sign-in": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 26,
-      "time-word": 1
-    },
     "help/sync": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "help-word": 7,
+      "help-word": 6,
       "time-word": 1
     },
     "help/update": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
       "help-word": 5
+    },
+    "help/your-data": {
+      "type-skeleton": 1
     },
     "operate/console/activity": {
       "frontmatter-type": 1,

@@ -50,4 +50,4 @@ both and you choose which to keep.
 
 Your settings and saves stay in your Cloud Sync data until you delete them or delete your account.
 Removing a product from your library, or disconnecting a device, doesn't delete them. See
-[The customer portal](/docs/help/sign-in/#deleting-your-account).
+[Delete your account](/docs/help/delete-account/).

@@ -55,5 +55,5 @@ A few common causes, roughly in order of likelihood:
   outside that group sign-in is refused even with otherwise-valid credentials — that's a
   question for whoever administers the product.
 
-If none of these fit, see [Signing in](/docs/users/portal/#signing-in) or check with whoever
+If none of these fit, see [Sign in to Polaris Key](/docs/help/sign-in/) or check with whoever
 administers the product for anything happening on their end.

@@ -24,7 +24,7 @@ behaves like a second, faster-moving lane of updates layered on top of the stabl
 
 You can also fetch the current build directly at any time, rather than waiting for the in-app
 updater — through the
-[customer portal's downloads](/docs/users/portal/#downloading-releases), for products that offer
+[customer portal's downloads](/docs/help/download/), for products that offer
 one. That's also the place to go if you ever need to reinstall from scratch.
 
 ## Version windows
