@@ -474,6 +474,18 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
   strictly (`400 bad_request` for anything but `1`, `true`, `0` or `false`). Needs the CSRF header
   and a sign-in in the last 5 minutes, 5 a minute in the product's shard; it answers
   `{ ok, product, removed, detachedLicenses }`, with `removed: false` when nothing was left.
+- **`POST /api/products/<product>/support-code`** — **Get a support code**. The person's pairwise id
+  for this product (`ps_` and 22 base64url characters): the string the console's relink accepts to
+  name them, the same one the product page shows as `supportCode` and the product export holds as
+  `subject`. The first ask creates it, the way a license attach or a sign-in does, and every ask
+  after answers the same one. A subject made only this way stays off the console's Users page
+  until it holds a license, a signed-in device or a sign-in. The answer is `{ supportCode }` and
+  nothing else: no account id, license or other product's id. Needs the CSRF header and is limited
+  to 10 a minute in the product's shard, charged once the account is proven to hold the product;
+  it needs no recent sign-in, because the code opens nothing and the product page already shows an
+  existing one. Creating it is audited as `portal.support_code.create`. `404` for a product the
+  account holds nothing in or whose portal is off, the same answer as for one that does not exist.
+  Removing the person's data from the product ends the code, and the next ask makes another.
 - **`GET /media/<product>/<asset>`** — public, no session: the product's `icon` or `header` art
   from its listing, fetched by the Worker and served from this origin, because the portal's CSP is
   `img-src 'self' data:`. Only `https` sources on GitHub-hosted names (`github.com`,

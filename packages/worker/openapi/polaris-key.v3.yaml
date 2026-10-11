@@ -11649,7 +11649,10 @@ paths:
         sign-in or a free auto-issue, with its store grants. A product the library holds as an
         entry only (PS-04, `kind: entry`) answers with no licences. `404` when the account holds
         neither a licence nor an entry for the product, or the developer has the portal off for
-        it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+        it. `supportCode` is the person's pairwise id for the product, the one thing the console's
+        relink accepts to name a target: `null` until one exists, which a licence or a sign-in
+        creates and so does the person's own ask (`POST /api/products/{product}/support-code`).
+        Session-authenticated by the portal cookie; `cache-control: no-store`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
         "200":
@@ -11679,6 +11682,7 @@ paths:
                       identity: false
                     status: active
                     addedAt: 1790000000
+                    supportCode: ps_Vq3nT8uB1xYk0LpR4sZ7cA
                     returnTo:
                       { origins: [https://app.tidewater.example], schemes: [] }
                     licenses:
@@ -11872,6 +11876,57 @@ paths:
                       reason:
                         type: string
                         enum: [no_active_key, key_claim_off]
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/products/{product}/support-code:
+    post:
+      operationId: createPortalProductSupportCode
+      tags: [portal]
+      summary: Get the signed-in account's support code for one product
+      description: >
+        I-11 (S-16 §5.2, §5.7). "Get a support code" on the product's page: the person's pairwise
+        id for THIS product (`ps_` and 22 base64url characters). It is the same id the product page
+        carries as `supportCode` and the product export as `subject`, and the one thing the
+        console's relink accepts to name a target (never an email). It is created on the first ask,
+        the way a licence attach or a sign-in creates it, and every ask after answers the same one,
+        so the route is idempotent. A subject made only by this ask is not listed on the console's
+        Users page until it holds a licence, a signed-in device or a sign-in. Removing the person's
+        data from the product (`DELETE /api/products/{product}/data`) ends the code, and the next
+        ask makes a new one. The answer is the code and nothing else: never the account id, a
+        licence, a key or another product's id. The request has no body and names no account.
+        Needs the `X-PKey-Portal-CSRF` header and is rate-limited to 10 a minute per account,
+        network and product, charged after the account is proven to hold the product. It needs no
+        recent sign-in, unlike the export and the removal: the code opens nothing, and the product
+        page already shows an existing code to the session alone. Creating the code is audited in
+        the account's history (`portal.support_code.create`); an ask that finds one writes
+        nothing. `404` for a product the account holds nothing in or whose developer has the
+        portal off, which is the same answer as for a product that does not exist.
+        `cache-control: no-store`.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The support code, created by this ask or already there.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalSupportCode" }
+              examples:
+                code:
+                  value: { supportCode: ps_Vq3nT8uB1xYk0LpR4sZ7cA }
+        "401":
+          description: No portal session, or the account's erasure has already begun.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: "`rate_limited`."
           content:
@@ -19735,6 +19790,14 @@ components:
               additionalProperties: { type: boolean }
             status: { $ref: "#/components/schemas/PortalStatus" }
             addedAt: { type: [integer, "null"] }
+            supportCode:
+              type: [string, "null"]
+              pattern: "^ps_[A-Za-z0-9_-]{22}$"
+              description: >
+                The person's pairwise id for this product, which is their support code; `null`
+                until one exists. A licence or a sign-in creates it, and so does the person's own
+                ask (`POST /api/products/{product}/support-code`). Absent from a Worker that
+                predates it.
             returnTo:
               type: object
               description: >
@@ -19797,6 +19860,20 @@ components:
                             dormant:
                               type: boolean
                               description: Past the dormancy window; holds no seat.
+    PortalSupportCode:
+      type: object
+      additionalProperties: false
+      description: >
+        `POST /api/products/{product}/support-code`: the person's support code for the product and
+        nothing else.
+      required: [supportCode]
+      properties:
+        supportCode:
+          type: string
+          pattern: "^ps_[A-Za-z0-9_-]{22}$"
+          description: >
+            The person's pairwise id for this product, which the console's relink accepts to name
+            them. Never the account id.
     # ── The person's own data (I-11): `GET /api/me/export`, `GET /api/products/{product}/export`.
     # Every object declares `additionalProperties: false`: the schema is the allow-list, and
     # `test/portalDataExport.test.ts` validates real documents against it, so a column nobody chose

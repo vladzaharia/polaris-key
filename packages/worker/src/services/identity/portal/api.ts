@@ -153,6 +153,7 @@ import {
   handleProductDataRemove,
   handleProductExport,
 } from "./dataRoutes.js";
+import { handleProductSupportCode } from "./supportCode.js";
 import { handleProfileApi } from "./profile.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
 
@@ -1813,6 +1814,15 @@ async function dispatchPortalApi(
     rest[1] === "data"
   ) {
     return handleProductDataRemove(req, env, db, session, rest[0], now);
+  }
+  // I-11 (S-16 §5.2): "Get a support code" on the product page (`supportCode.ts`).
+  if (
+    head === "products" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "support-code"
+  ) {
+    return handleProductSupportCode(req, env, db, session, rest[0], now);
   }
   return notFound();
 }
