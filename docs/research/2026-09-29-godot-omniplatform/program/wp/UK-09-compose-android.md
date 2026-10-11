@@ -217,5 +217,8 @@ commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/chec
   `PolarisGateStateTest` verifies status streaming, local key validation, activation, refusal and
   refresh outside any Compose runtime.
 - Verified this slice with `./gradlew --offline :ui-core:test :ui:compileDebugKotlin` under JDK 17.
-- Next: move the remaining existing state holders into `:ui-core`, then add the full
-  `ui-matrix.json` presentation core before the KMP source-set cutover.
+- Moved the RFC 8628 device-code `PolarisSignInState` and its SDK adapter into `:ui-core`.
+  `PolarisSignInStateTest` now verifies countdown, completion, expiry and retry without Compose;
+  Activity/ViewModel retention remains Android UI code.
+- Next: move the Devices, Settings, Update, Pack and Boot state holders into `:ui-core`, then add
+  the full `ui-matrix.json` presentation core before the KMP source-set cutover.
