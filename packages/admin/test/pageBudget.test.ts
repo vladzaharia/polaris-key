@@ -23,7 +23,6 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/core/pages/KeysCi.tsx": 714,
   "sections/core/pages/Overview.tsx": 1371,
   "sections/core/pages/Presentation.tsx": 814,
-  "sections/core/pages/Services.tsx": 775,
   "sections/core/pages/Settings.tsx": 731,
   "sections/core/pages/UserRecord.tsx": 670,
   "sections/distribution/components/RolloutDialogs.tsx": 847,

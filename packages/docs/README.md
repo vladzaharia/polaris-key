@@ -66,6 +66,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 | Family           | Here it          | Run                                  |
 | ---------------- | ---------------- | ------------------------------------ |
+| `services`       | writes           | `pnpm gen services`                  |
 | `channels`       | writes           | `pnpm gen channels`                  |
 | `constants`      | reads            | `pnpm gen constants`                 |
 | `settings`       | writes           | `pnpm gen settings`                  |

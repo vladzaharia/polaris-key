@@ -57,7 +57,7 @@ In a Node project, put the routing line in the project's `.npmrc`, install the C
 
 For Python, the pip block installs the package alone, so install its dependencies from your usual index first: `pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"`. The uv and Poetry blocks resolve them for you.
 
-For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. SwiftPM also fetches the SDK's two dependencies, `zstd` and `Sparkle`, from GitHub.
+For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. SwiftPM also fetches the SDK's one dependency, `Sparkle`, from GitHub.
 
 Other package managers and age gates are on **Install the SDKs and the CLI**. The product's **Overview** shows the same lines for the SDK you pick under **SDK quick start**.
 

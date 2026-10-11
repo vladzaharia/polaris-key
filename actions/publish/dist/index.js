@@ -1148,7 +1148,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/product.schema.json",
   "title": "Polaris Key product manifest (.pkey/product)",
-  "description": "The product document of a .pkey/ manifest: product metadata, enabled services, device-registration policy, licensing tiers/profiles, OIDC, provisioning hooks, fingerprint + auto-issue policy, declared secrets, and (optionally, inlined) the release document. Mirrors validateManifestDocuments in @polaris-key/manifest — the TypeScript validator is authoritative; this schema exists for editor autocomplete and machine consumers, and the schema-parity test keeps the two agreeing. Unknown keys are tolerated everywhere, exactly as the validator tolerates them. NOTE: the $id URL is a canonical identifier, not a fetchable locator (the docs site is auth-gated); editors should reference this file by path — it ships inside the @polaris-key/manifest npm package.",
+  "description": "The product document of a .pkey/ manifest: product metadata, enabled services, licensing tiers/profiles, OIDC, provisioning hooks, fingerprint + auto-issue policy, declared secrets, and (optionally, inlined) the release document. Mirrors validateManifestDocuments in @polaris-key/manifest — the TypeScript validator is authoritative; this schema exists for editor autocomplete and machine consumers, and the schema-parity test keeps the two agreeing. Unknown keys are tolerated everywhere, exactly as the validator tolerates them. NOTE: the $id URL is a canonical identifier, not a fetchable locator (the docs site is auth-gated); editors should reference this file by path — it ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
     "apiVersion": {
@@ -1196,8 +1196,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "object",
       "properties": {
         "registration": {
-          "description": "Who may mint a device token via POST /<product>/devices/register. Default is derived from the enabled services: requires-license if License is on, else requires-identity if Identity is on, else open.",
-          "enum": ["open", "requires-identity", "requires-license"]
+          "$comment": "invalid_registration_policy: removed (ST-38). The registration policy follows the enabled services: requires-license with License on, else requires-identity with Identity on, else open. Delete the field.",
+          "not": {}
         }
       }
     },
@@ -15409,6 +15409,15 @@ var DEFAULT_ENABLED_SERVICES = [
   "license",
   "config"
 ];
+var SERVICE_REQUIRES = {
+  license: [],
+  config: [],
+  release: [],
+  distribution: ["release"],
+  update: ["distribution"],
+  identity: [],
+  sync: ["config", "identity"]
+};
 var MODULE_SERVICES = {
   licensing: ["license"],
   edgeMint: ["config"],
@@ -18191,11 +18200,24 @@ function resolvePadPackNames(packIds) {
   if (problems.length) throw new TransportIdError(problems);
   return out;
 }
-var REGISTRATION_POLICIES = [
-  "open",
-  "requires-identity",
-  "requires-license"
-];
+var REQUIREMENT_MESSAGES = /* @__PURE__ */ new Map([
+  [
+    "distribution_requires_release",
+    "The distribution service delivers release artifacts, so release must be enabled too."
+  ],
+  [
+    "update_requires_distribution",
+    "The update service serves a feed over distribution's delivery state, so distribution must be enabled too."
+  ],
+  [
+    "sync_requires_config",
+    "Cloud Sync syncs catalog config keys, so config must be enabled too."
+  ],
+  [
+    "sync_requires_identity",
+    "Cloud Sync needs a signed-in person, so identity must be enabled too."
+  ]
+]);
 var LICENSING_ENTITLEMENT_MODELS = ["legacy", "combined"];
 var LICENSING_ENTITLEMENT_HOLDERS = ["device", "owner"];
 var LICENSING_ANCHOR_POLICIES = [
@@ -19682,50 +19704,27 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       "Config is enabled without an activation method."
     );
   }
-  if (modules.includes("distribution") && !modules.includes("release")) {
-    add4(
-      errors,
-      "product",
-      "/modules/distribution",
-      "distribution_requires_release",
-      "The distribution service delivers release artifacts, so release must be enabled too."
-    );
+  for (const slug of SERVICE_SLUGS) {
+    if (!modules.includes(slug)) continue;
+    for (const required of SERVICE_REQUIRES[slug]) {
+      if (modules.includes(required)) continue;
+      const code = `${slug}_requires_${required}`;
+      add4(
+        errors,
+        "product",
+        `/modules/${slug}`,
+        code,
+        REQUIREMENT_MESSAGES.get(code) ?? `The ${slug} service requires ${required}, so ${required} must be enabled too.`
+      );
+    }
   }
-  if (modules.includes("update") && !modules.includes("distribution")) {
-    add4(
-      errors,
-      "product",
-      "/modules/update",
-      "update_requires_distribution",
-      "The update service serves a feed over distribution's delivery state, so distribution must be enabled too."
-    );
-  }
-  if (modules.includes("sync") && !modules.includes("config")) {
-    add4(
-      errors,
-      "product",
-      "/modules/sync",
-      "sync_requires_config",
-      "Cloud Sync syncs catalog config keys, so config must be enabled too."
-    );
-  }
-  if (modules.includes("sync") && !modules.includes("identity")) {
-    add4(
-      errors,
-      "product",
-      "/modules/sync",
-      "sync_requires_identity",
-      "Cloud Sync needs a signed-in person, so identity must be enabled too."
-    );
-  }
-  const registration = registrationPolicy(productRoot);
-  if (registration !== void 0 && !isOneOf2(registration, REGISTRATION_POLICIES)) {
+  if (registrationPolicy(productRoot) !== void 0) {
     add4(
       errors,
       "product",
       "/devices/registration",
       "invalid_registration_policy",
-      `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}.`
+      "devices.registration is removed: the registration policy follows the enabled services (License on: requires a licence; else Identity on: requires sign-in; else open). Delete it."
     );
   }
   if (productRoot.presentation !== void 0) {
@@ -21046,9 +21045,6 @@ function parseManifest(files, opts = {}) {
       isString
     )
   };
-  const registration = registrationPolicy(productRoot);
-  if (isOneOf2(registration, REGISTRATION_POLICIES))
-    parsed.registration = registration;
   if (productRoot.oidc !== void 0) {
     const provider = isOneOf2(oidcRoot.provider, OIDC_PROVIDER_VALUES) ? oidcRoot.provider : "platform";
     parsed.oidc = {

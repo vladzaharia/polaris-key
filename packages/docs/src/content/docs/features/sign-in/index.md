@@ -80,12 +80,10 @@ unregistered slug or a bad path, and no handler ever runs to tell the two apart.
 
 Two things follow from that:
 
-- **`registration_requires_identity`.** A product may only declare
-  `devices.registration: requires-identity` while Identity is enabled. The enablement API
-  (`PATCH /manage/api/products/<slug>/services`) refuses the combination otherwise: there is no
-  login to stand behind, so turning Identity off would silently take registration away rather
-  than restrict it. See [Browser sessions](/docs/services/identity/sessions/) for what that
-  policy actually authorizes.
+- **Derived registration.** When License is off, turning Identity on makes keyless registration
+  identity-required; turning Identity off again makes it open unless License is on. The policy
+  follows the service set and is not declared separately. See [Browser
+  sessions](/docs/services/identity/sessions/) for what the identity-required path authorizes.
 - **`enabled` vs. `configured`.** The discovery document's `identity` fragment carries both.
   `enabled` is the flag, full stop. `configured` is separate — whether an `oidc_config` row
   exists yet — because a product can consent to the service before anyone has pointed it at an

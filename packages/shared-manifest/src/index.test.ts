@@ -1368,60 +1368,51 @@ describe("config_without_activation stays a warning", () => {
   });
 });
 
-describe("devices.registration policy", () => {
+describe("devices.registration (removed, ST-38)", () => {
   const parse = (devices: unknown) =>
     parseManifest({
       product: JSON.stringify({ ...PRODUCT, devices }),
       schema: JSON.stringify(catalogWithSecretDelivery()),
     });
 
-  it("carries each accepted policy through to the parsed manifest", () => {
-    for (const policy of ["open", "requires-identity", "requires-license"]) {
-      const res = parse({ registration: policy });
-      expect(res.ok).toBe(true);
-      if (!res.ok) return;
-      expect(res.manifest.registration).toBe(policy);
-    }
-  });
-
-  it("leaves registration undefined when undeclared", () => {
-    // The default is DERIVED from the enabled services at the point of use (§2.3), so it is
-    // deliberately not frozen at ingest.
-    const res = parse(undefined);
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.manifest.registration).toBeUndefined();
-  });
-
-  it("refuses an unrecognised policy instead of coercing it to a default", () => {
-    // Silently defaulting would answer "requires-license" with "open" for the one manifest
-    // that most meant it.
-    for (const bad of ["Open", "requires-payment", "", 1, true, null]) {
-      const res = parse({ registration: bad });
+  it("refuses every declared value, naming what replaces it", () => {
+    // Removed, not deprecated (tracks.md rule 6): the policy follows the services.
+    for (const value of [
+      "open",
+      "requires-identity",
+      "requires-license",
+      "nope",
+      null,
+    ]) {
+      const res = parse({ registration: value });
       expect(res.ok).toBe(false);
       if (res.ok) return;
       expect(res.errors.join("\n")).toContain(
-        "devices.registration must be one of",
+        "devices.registration is removed: the registration policy follows the enabled services",
       );
     }
   });
 
-  it("reports the invalid_registration_policy code", () => {
+  it("reports the invalid_registration_policy code at /devices/registration", () => {
     const res = validateManifestDocuments({
-      product: { ...PRODUCT, devices: { registration: "nope" } },
+      product: { ...PRODUCT, devices: { registration: "requires-license" } },
       schema: catalogWithSecretDelivery(),
     });
     expect(res.ok).toBe(false);
-    expect(res.errors.map((e) => e.code)).toContain(
-      "invalid_registration_policy",
+    expect(res.errors.map((e) => `${e.path} ${e.code}`)).toContain(
+      "/devices/registration invalid_registration_policy",
     );
   });
 
-  it("ignores a non-object devices block", () => {
-    const res = parse("open");
+  it("parses a manifest that leaves it out, and carries no policy", () => {
+    const res = parse(undefined);
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.manifest.registration).toBeUndefined();
+    expect("registration" in res.manifest).toBe(false);
+  });
+
+  it("ignores a non-object devices block", () => {
+    expect(parse("open").ok).toBe(true);
   });
 });
 

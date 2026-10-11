@@ -189,7 +189,7 @@ unreviewed branch — and re-applies each in place:
 - **Services enablement and the fingerprint/auto-issue policies follow the ownership rule**:
   the manifest's values are written only while the row is still `manifest`-owned. Once an
   operator edits one of those live (claiming it as `admin`-owned), a resync no longer touches it
-  — see [Services & enablement](/docs/admin/services-enablement/#manifest-vs-admin-ownership).
+  — see [Services & enablement](/docs/operate/console/products/#services--enablement).
 
 A resync is one D1 transaction, and every check runs before it: either everything above lands
 together, or a refusal (a bad catalog, an OIDC issuer change that fails the platform's own gate,
@@ -224,8 +224,8 @@ refused unless it is a **break-glass claim**, for an incident that cannot wait f
   break-glass claims and the ones it ended. Revert to manifest ends one early.
 
 To keep a break-glass value, commit it to `.pkey/`. Settings claimed before you turned the mode on
-stay claimed until you revert them. The other settings `.pkey/` declares — services and
-registration, the fingerprint and auto-issue policies, the compatibility window, the release
+stay claimed until you revert them. The other settings `.pkey/` declares — services (which derive
+device registration), the fingerprint and auto-issue policies, the compatibility window, the release
 access modes, tiers and profiles, and the trusted publisher — are not yet refused by the mode: a
 console edit still claims them as before. They move to it with the settings work packages ST-04
 and ST-05.
@@ -359,140 +359,37 @@ whether each one is actually set.
 
 ## Services & enablement
 
-Which of the seven opt-in services a product runs is the single most consequential switch in the
-console: everything else in [the tour](/docs/admin/console-tour/) — which nav sections exist,
-which routes the worker mounts, what a product's discovery document advertises, what the portal
-offers — is a **projection** of this one setting. It lives on **Core → Services**
-(`#/p/<slug>/services`) rather than inside any one service: a service that owned its own off
-switch would have to be running to be turned off.
+Services are product features, generated from `tools/services.json`: Licensing, Managed config,
+Ship builds, Sign-in and Cloud Sync. The feature groups control the services that back them; a
+feature is not a second service model.
 
-## The endpoint
+`GET /manage/api/products/<slug>/services` returns service state and feature facts. `PATCH` writes
+a partial service state, while `POST .../services/revert` hands ownership to the manifest. GET
+facts remain visible in the console after a mutation response updates its service state.
 
-`GET /manage/api/products/<slug>/services` returns the current state; `PATCH` on the same path
-writes it; `POST .../services/revert` hands ownership back to the manifest. All three are
-platform-admin gated like the rest of the admin surface, and enablement is **not** itself
-checked on these routes — you have to be able to reach a service's settings in order to
-configure it before turning it on.
+Ship builds is one feature switch. Enabling it sends Release, Distribution and In-app updates in
+one PATCH, hence one audited write. Its nested In-app updates switch controls only Update.
 
-The response, and the shape a `PATCH` body partially updates:
+Device registration is derived, never declared: License means `requires-license`; otherwise
+Identity means `requires-identity`; otherwise it is open. `devices.registration` is removed and
+the manifest validator rejects it with a replacement message.
 
-```json
-{
-  "services": {
-    "license": { "enabled": true },
-    "config": { "enabled": true },
-    "release": { "enabled": false },
-    "distribution": { "enabled": false },
-    "update": { "enabled": false },
-    "identity": { "enabled": false },
-    "sync": { "enabled": false }
-  },
-  "registration": null,
-  "effectiveRegistration": "requires-license",
-  "source": "manifest"
-}
-```
+## Coherence rule
 
-- `services` — the six slugs. A `PATCH` may send any subset; an omitted slug keeps its current
-  value rather than reverting to a default, so a console build that only knows about some of the
-  services can never accidentally turn off the ones it has never heard of.
-- `registration` — the **declared** device-registration policy, or `null` when the product rides
-  the derived default. Sending `null` explicitly clears a previous declaration.
-- `effectiveRegistration` — what the wire actually enforces right now, whether declared or
-  derived. See [The device principal](/docs/services/core/device-principal/#registration-policies)
-  for the full derivation and what each of the three policies allows.
-- `source` — `manifest` or `admin`. See below.
+The Worker owns the generated `SERVICE_REQUIRES` rule. It refuses an enable request whose
+prerequisite is off. Disabling a prerequisite cascades all dependents in the same audited write;
+the console first sends a dry run and names those cascades in its confirmation. Turning a
+prerequisite back on never restores a dependent.
 
-## Each switch saves on its own
+| Service        | Requires       | Refusal code                    |
+| -------------- | -------------- | ------------------------------- |
+| Distribution   | Release        | `distribution_requires_release` |
+| In-app updates | Distribution   | `update_requires_distribution`  |
+| Cloud Sync     | Managed config | `sync_requires_config`          |
+| Cloud Sync     | Sign-in        | `sync_requires_identity`        |
 
-Every service switch on the Services page writes as soon as you flip it; there is no services
-save bar. The services form a chain, **Release ← Distribution ← Update**, and the page applies
-one rule to it, read from the generated `SERVICE_REQUIRES` edges rather than a list kept in the
-console:
-
-- **Turning a service on also turns on what it needs, and nothing more.** Turning on Update with
-  everything off turns on Distribution and Release with it; turning on Release turns on Release
-  alone. Each row says what its service needs before you flip it. The toast that follows names
-  what came on with it ("Also turned on Distribution and Release") and offers **Undo**, which
-  turns off exactly the services that flip turned on.
-- **Turning a service off asks first.** The confirmation lists the dependents that go off with it
-  (turning Release off also turns off Distribution and Update, which need it), what stops working
-  for each (for example "The update feed answers not-configured: clients see no updates"), and
-  that the section leaves the navigation. The service's settings are kept and come back when you
-  turn it on again. Cancelling sends nothing.
-
-The `PATCH` carries only the flags the flip changed, so a page that has gone stale can never
-rewrite a service it did not touch, nor the registration policy. The server still validates the
-whole resulting **set** (see _Coherence errors_ below), and the chain keeps the service edges
-whole by construction. What it can't settle is the registration policy: a flip the declared
-policy forbids (turning Identity off while registration is declared `requires-identity`, say) is
-refused before anything is sent, and the message appears beside the controls involved: the
-switch and the registration choice. The registration policy is a choice of four rather than a
-switch, so it keeps its own **Save registration policy** action.
-
-**Turning Identity off** says how many devices it signs out. Before the dialog opens, the page
-sends the same body as a dry run, `PATCH .../services?dryRun=1`, which answers
-`{"changes": [...], "signedInDevicesToClear": n}` and writes nothing. When the save goes through,
-every device signed in through the product loses its sign-in: its install, token, licence and seat
-are untouched, nothing is deauthorized, and the change is audited as
-`services.identity_disabled` with the count. Accounts are not touched either: there is one Polaris
-Key account per person, and its licences of this product stay attached. Turning Identity back on
-asks nobody for consent again, but nobody is signed back in until they sign in.
-
-## Manifest vs admin ownership
-
-`services_json` carries an owner, `services_source`, exactly like the fingerprint and auto-issue
-policies do:
-
-- A **`PATCH`** claims the row for `admin`. From that point, a resync (a push to the linked
-  repo, or **Resync from repo**) no longer writes `services_json` — your live change can't be
-  silently undone by the next manifest sync.
-- **`Revert to manifest`** flips `services_source` back to `manifest` and changes **nothing
-  else**. It does not re-fetch the repo, does not re-derive a set, and does not touch the live
-  enablement — the values stay exactly as you left them until the _next_ resync re-applies the
-  manifest through the normal sync path, which is now allowed to write again. The confirm dialog
-  says this in as many words, because "revert" reads like an instant undo and this one is a
-  hand-back, not a rollback.
-
-The **Revert to manifest** button sits in the section header beside the owner badge (_From
-manifest_ or _Set in console_). It is disabled, with the reason shown, once a product is already
-`manifest`-owned: there is nothing to hand back.
-
-## Coherence errors
-
-A `PATCH` is validated as a whole proposed set, and a set that is individually well-formed but
-jointly impossible returns `422` with a stable code per problem in `error.errors` — distinct from
-`error.fields`, which means "this input itself was malformed." The console renders each code
-beside the control it names, not as a toast, and the same codes appear if a manifest push would
-produce the same incoherent state:
-
-| Code                             | Meaning                                                                                                                                                                              | Rendered against                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
-| `distribution_requires_release`  | Distribution delivers what Release says exists; Distribution can't be on with Release off.                                                                                           | The Distribution toggle                   |
-| `update_requires_distribution`   | Update is a feed over what Distribution delivers; Update can't be on with Distribution off. (It replaced `update_requires_release`, which it and the rule above together imply.)     | The Update toggle                         |
-| `registration_requires_identity` | Registration is declared `requires-identity`, but Identity is off — there is no login to stand behind it, so no device could ever register.                                          | Identity toggle + the registration select |
-| `config_without_activation`      | Config is on, License is off, and registration is declared `requires-license` — that closes the only mint path such a product has, so its devices could never obtain a token at all. | Config toggle + the registration select   |
-| `sync_requires_config`           | Cloud Sync syncs Config's settings; Cloud Sync can't be on with Config off, nor Config go off under it.                                                                              | The Cloud Sync and Config toggles         |
-| `sync_requires_identity`         | Cloud Sync needs people to sign in through the product; Cloud Sync can't be on with Identity off, nor Identity go off under it.                                                      | The Cloud Sync and Identity toggles       |
-
-Leaving `registration` **derived** rather than explicitly declared sidesteps the last two of
-these by construction: a derived value is read off the very enablement set being validated,
-so it can never itself be incoherent. That's why _Derived from services_ is the first choice on
-the page, and why the page shows the policy enforced now, and the one a save would enforce, in
-words (_License required_, _Identity required_, _Open_).
-
-A code this build doesn't have a control mapping for (a newer worker rule than the console
-knows about) is still shown, just without a specific field to sit next to — better to explain a
-save failure without full context than to drop it.
-
-:::note[A same-named code, different moment]
-`config_without_activation` also appears in [Manifest validation
-codes](/docs/reference/validation-codes/) — there, at manifest-ingest time, it's a **warning**,
-not a refusal, because a `.pkey/product` push is a different moment than a live admin edit: the
-manifest validator flags the shape as worth a second look, while the live `PATCH` endpoint
-refuses to write it. Same code, two different severities, because the two call sites carry
-different blast radii.
-:::
+`services_json` is owned by either `manifest` or `admin`. PATCH claims it for `admin`; reverting
+only returns ownership to `manifest`, leaving live state unchanged until the next resync.
 
 ## Where enablement actually takes effect
 
@@ -521,18 +418,19 @@ Distribution is on.
 
 ## Package feeds
 
-Below the services, **Package feeds** is Distribution's one sub-capability: whether the product's
-packages are served on the registry host. It is operator-owned (a manifest never writes it) and
-saves on its own, through `PUT /manage/api/products/<slug>/distribution/package-feeds` with
-`{enabled, expectedVersion}`; a stale version is a 409 and nothing changes. Turning it off asks
-first, because every feed of the product answers not-found within 30 seconds. While it is on,
-**Distribution → Package feeds** is in the sidebar: see [Package feeds](/docs/admin/feeds/).
+Under **Ship builds**, the **Packages** switch is Distribution's one sub-capability: whether the
+product's packages are served on the registry host. It is operator-owned (a manifest never writes
+it), blocked until Ship builds is on, and saves on its own, through
+`PUT /manage/api/products/<slug>/distribution/package-feeds` with `{enabled, expectedVersion}`; a
+stale version is a 409 and nothing changes. Turning it off asks first, because every feed of the
+product answers not-found within 30 seconds. While it is on, **Distribution → Package feeds** is in
+the sidebar: see [Package feeds](/docs/admin/feeds/).
 
 ## Reference
 
 - [D1 data model](/docs/reference/data-model/) — `products.services_json` and
   `products.services_source`.
-- [The device principal](/docs/services/core/device-principal/) — registration policies in full,
-  including the two coherence rules enforced at this same endpoint.
+- [The device principal](/docs/services/core/device-principal/) — the registration policies in
+  full.
 - [Products](/docs/admin/products/#what-resync-actually-re-applies) — how a resync interacts with
   an admin-claimed row.

@@ -103,6 +103,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
       { label: "Sign in", items: leaves("help/sign-in") },
       { label: "Devices", items: leaves("help/devices") },
       { label: "Cloud Sync", items: leaves("help/sync") },
+      { label: "Your data", items: leaves("help/your-data") },
       {
         label: "Downloads and updates",
         items: leaves("help/download", "help/update", "help/packages"),
@@ -129,6 +130,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: [
           leaf("build/index", "Build map"),
           leaf("build/install"),
+          leaf("build/upgrade-to-0-9"),
           sdkPages("node", "Node", true),
           sdkPages("react", "React", true),
           sdkPages("python", "Python", true),
@@ -356,6 +358,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "operate/console/presentation",
           "operate/console/keys-and-secrets",
           "operate/console/activity",
+          "operate/console/help-a-customer",
         ),
       },
       {

@@ -89,6 +89,7 @@ export const GENERATORS: Generator[] = [
     outputs: [
       "packages/shared-manifest/src/services.generated.ts",
       "packages/admin/src/services.generated.ts",
+      "packages/docs/src/lib/features.generated.ts",
       "packages/sdk-node/src/services.generated.ts",
       "packages/sdk-react/src/core/services.generated.ts",
       "sdks/python/src/polaris_key/_services.py",

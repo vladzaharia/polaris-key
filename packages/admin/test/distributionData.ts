@@ -7,9 +7,15 @@
  */
 
 const ALL_ON = Object.fromEntries(
-  ["license", "config", "release", "distribution", "update", "identity"].map(
-    (s) => [s, { enabled: true }],
-  ),
+  [
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "sync",
+  ].map((s) => [s, { enabled: true }]),
 );
 
 export const SLUG = "djdl";
@@ -973,8 +979,12 @@ export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
   [P("/config/catalog")]: CATALOG,
   [P("/services")]: {
     services: ALL_ON,
-    registration: null,
     effectiveRegistration: "requires-license",
     source: "manifest",
+    facts: {
+      licensing: { tiers: 3, licenses: 5 },
+      managedConfig: { catalogVersion: 4 },
+      shipBuilds: { latest: { version: "2.4.0", channel: "stable" } },
+    },
   },
 };

@@ -147,7 +147,6 @@ export async function productView(
     modules: setup.modules,
     portalSettings: portalProductSettingsView(portalSettings),
     services: services.services,
-    registration: services.registration,
     effectiveRegistration: services.effectiveRegistration,
     servicesSource: services.source,
     setup,

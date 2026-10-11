@@ -12,6 +12,7 @@ import {
   createActions,
   missingChain,
   sdkActions,
+  serviceSwitchId,
   turnOnActions,
 } from "../src/console/shell/palette/actions.js";
 import { rankPalette } from "../src/console/shell/palette/rank.js";
@@ -29,7 +30,13 @@ import {
 import type { PaletteItem } from "../src/console/shell/palette/types.js";
 import { parseLocation } from "../src/console/routes.js";
 import { PREF_KEYS } from "../src/console/storage.js";
-import { ALL_ON, NONE, boot, resetConsole } from "./consoleHarness.js";
+import {
+  ALL_ON,
+  NONE,
+  boot,
+  resetConsole,
+  servicesResponse,
+} from "./consoleHarness.js";
 
 /**
  * The palette's source registry and client sources (EXPERIENCE.md §0.3 J-1, UX-06a): actions
@@ -105,6 +112,27 @@ describe("Turn on <Service>", () => {
     ]);
     expect(missingChain("update", {})).toEqual(["distribution", "release"]);
     expect(missingChain("license", {})).toEqual([]);
+  });
+
+  it("targets Update's own switch only once Distribution is on, else the Ship builds switch", () => {
+    const owner = "feature-ship-builds-switch";
+    const nested = "feature-ship-builds-in-app-updates";
+    expect(
+      serviceSwitchId("update", {
+        license: { enabled: true },
+        config: { enabled: true },
+      }),
+    ).toBe(owner);
+    expect(serviceSwitchId("update", { release: { enabled: true } })).toBe(
+      owner,
+    );
+    expect(
+      serviceSwitchId("update", {
+        release: { enabled: true },
+        distribution: { enabled: true },
+      }),
+    ).toBe(nested);
+    expect(serviceSwitchId("distribution", {})).toBe(owner);
   });
 
   it("is found by the service's own page names", () => {
@@ -267,17 +295,12 @@ describe("the palette in the console", () => {
         update: { enabled: false },
       },
       extra: {
-        "/manage/api/products/djdl/services": {
-          services: {
-            ...ALL_ON,
-            release: { enabled: false },
-            distribution: { enabled: false },
-            update: { enabled: false },
-          },
-          source: "manifest",
-          registration: null,
-          effectiveRegistration: "requires-license",
-        },
+        "/manage/api/products/djdl/services": servicesResponse({
+          ...ALL_ON,
+          release: { enabled: false },
+          distribution: { enabled: false },
+          update: { enabled: false },
+        }),
       },
     });
     await screen.findByRole("navigation", { name: "Console" });
@@ -289,8 +312,35 @@ describe("the palette in the console", () => {
     await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/services"));
     await waitFor(() =>
-      expect(document.activeElement?.id).toBe("service-release"),
+      expect(document.activeElement?.id).toBe("feature-ship-builds-switch"),
     );
+  });
+
+  it("with Distribution off, Turn on Update focuses the enabled Ship builds switch, not the disabled In-app updates one", async () => {
+    const services = {
+      ...NONE,
+      license: { enabled: true },
+      config: { enabled: true },
+    };
+    boot("#/p/djdl", {
+      services,
+      extra: {
+        "/manage/api/products/djdl/services": servicesResponse(services),
+      },
+    });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    await userEvent.type(input(dialog), "turn on update");
+    await userEvent.click(
+      await within(dialog).findByRole("option", { name: /^Turn on Update/ }),
+    );
+    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/services"));
+    const owner = await screen.findByRole("switch", { name: /Ship builds/i });
+    expect(owner.id).toBe("feature-ship-builds-switch");
+    expect((owner as HTMLButtonElement).disabled).toBe(false);
+    await waitFor(() => expect(document.activeElement).toBe(owner));
+    const updates = screen.getByRole("switch", { name: /In-app updates/i });
+    expect((updates as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("“sdk” finds the SDK quick start, which opens Overview on the SDK chooser (UX-59)", async () => {

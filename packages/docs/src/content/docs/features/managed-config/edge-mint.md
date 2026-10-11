@@ -130,15 +130,14 @@ given.
 
 The acknowledgement is stored **on the approval** and checked on every mint, not only when you
 approve. All three settings are product state, and a `.pkey/product` push can change them without
-touching the recipe: declaring `devices.registration: open`, turning License off (with Identity
-off) so the derived policy becomes open, or enabling `autoIssue` (manifest-owned until an operator
-edits the policy in the console). While the mint is public, an approval given without the
-acknowledgement does not count: the recipe answers `404`, and the list shows it `changed` with
-`registration` in `changedFields` (the approval's `openRegistrationAcknowledged` is `false`).
-Re-approve it with the acknowledgement to make it mint again. A push that makes the mint public
-also deletes such an approval (see [Widening is permanent](#widening-is-permanent)), so closing
-the mint again does not bring it back. An approval that already carries the acknowledgement keeps
-minting whatever the policy becomes.
+touching the recipe: turning both License and Identity off makes registration open, or enabling
+`autoIssue` (manifest-owned until an operator edits the policy in the console). While the mint is
+public, an approval given without the acknowledgement does not count: the recipe answers `404`,
+and the list shows it `changed` with `registration` in `changedFields` (the approval's
+`openRegistrationAcknowledged` is `false`). Re-approve it with the acknowledgement to make it mint
+again. A push that makes the mint public also deletes such an approval (see [Widening is
+permanent](#widening-is-permanent)), so closing the mint again does not bring it back. An approval
+that already carries the acknowledgement keeps minting whatever the policy becomes.
 
 ### License checks
 
@@ -159,13 +158,12 @@ approval, so the recipe reads plain `pending` and the card-level warning is what
 
 ### Sign-in trust
 
-On a closed product, signing in is the other way people get device tokens without a key an
-operator issued: Identity licenses any account whose IdP groups hit the product's `groupRoleMap`,
-and with `registration: requires-identity` any signed-in account may register. The provider,
-issuer, client id and group map are all written from the `.pkey/product` manifest. So a push that
-points `oidc.issuer` at another host, swaps in a client the pusher registered, maps a group the
-pusher belongs to onto a tier, or turns Identity on, would otherwise hand the pusher a licensed
-device token that an approval given under the old settings still accepted.
+With License off and Identity on, registration requires product sign-in, so a signed-in account
+may receive a device token without an operator-issued key. The provider, issuer, client id and
+group map are all written from the `.pkey/product` manifest. A push that points `oidc.issuer` at
+another host, swaps in a client the pusher registered, maps a group the pusher belongs to onto a
+tier, or turns Identity on would otherwise hand the pusher a licensed device token that an
+approval given under the old settings still accepted.
 
 The approval therefore records the sign-in trust it was given under — whether Identity was on,
 and the `oidc_config` provider, issuer, client id and group map — and while Identity is on it

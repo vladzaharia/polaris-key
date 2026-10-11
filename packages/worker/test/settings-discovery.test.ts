@@ -130,13 +130,6 @@ const PROBES: Readonly<Record<string, Probe>> = {
     published: (doc) => doc.core.compat,
     enforced: (p) => ({ min: p.compatMin, max: p.compatMax }),
   },
-  // Who may mint a device token: discovery's `core.registration`, and the policy
-  // `core/register.ts` enforces (the product's resolved registration).
-  "core.registration": {
-    value: "open",
-    published: (doc) => doc.core.registration,
-    enforced: (p) => p.registration,
-  },
 
   // ── ST-19b's `.pkey/release` entries: manifest-only, written by link and resync ──────────
   "release.github": {

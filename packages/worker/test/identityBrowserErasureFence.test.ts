@@ -347,13 +347,13 @@ const seats = () =>
   );
 
 async function setRequiresIdentity(): Promise<void> {
-  // License, Config and Identity on; registration only behind a product sign-in.
+  // Config and Identity on, License off: registration follows the services to requires-identity.
   await setServices(
     db,
     SLUG,
     serializeServices({
       services: {
-        license: { enabled: true },
+        license: { enabled: false },
         config: { enabled: true },
         release: { enabled: false },
         distribution: { enabled: false },
@@ -361,13 +361,11 @@ async function setRequiresIdentity(): Promise<void> {
         identity: { enabled: true },
         sync: { enabled: false },
       },
-      registration: "requires-identity",
     }),
     "manifest",
     NOW,
   );
   product = (await loadProduct(env, db, SLUG))!;
-  expect(product.registration).toBe("requires-identity");
 }
 
 // ── 1 + 2. a live product browser session ────────────────────────────────────────────────────

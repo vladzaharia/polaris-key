@@ -844,17 +844,12 @@ async function registerFromManifest(
       admin_group: manifest.product.adminGroup,
       branding_json: null,
       release_source: "github",
-      // Which Polaris Key services this product runs — and, in the same value, who may register a
-      // device against it (`core/services.ts` explains why the two share a column). In the SAME
-      // atomic batch as the row itself, not applied afterwards like the fingerprint/auto-issue
-      // policies: enablement decides which routes a product has, so there must be no instant
-      // where a product row exists without it. A freshly linked product is manifest-owned.
-      services_json: serializeServices({
-        services: manifest.services,
-        ...(manifest.registration
-          ? { registration: manifest.registration }
-          : {}),
-      }),
+      // Which Polaris Key services this product runs (the registration policy is derived from
+      // it, ST-38). In the SAME atomic batch as the row itself, not applied afterwards like the
+      // fingerprint/auto-issue policies: enablement decides which routes a product has, so there
+      // must be no instant where a product row exists without it. A freshly linked product is
+      // manifest-owned.
+      services_json: serializeServices({ services: manifest.services }),
       services_source: "manifest",
       // The compat window is manifest-owned until an operator sets it in `update/settings`.
       compat_source: "manifest",

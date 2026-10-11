@@ -12,8 +12,6 @@ import {
   normalizeModules,
   servicesFromModules,
   SERVICE_SLUGS,
-  REGISTRATION_POLICIES,
-  type RegistrationPolicy,
 } from "@polaris-key/manifest";
 
 interface Tier {
@@ -55,7 +53,8 @@ interface ProductDef {
   adminGroup: string;
   /** `modules.<name>.enabled` — the same block a `.pkey/product` manifest carries. */
   modules?: Record<string, { enabled?: boolean }>;
-  devices?: { registration?: string };
+  /** Removed (ST-38): the registration policy follows the services. Refused when present. */
+  devices?: { registration?: unknown };
   oidc: {
     provider?: "platform" | "custom";
     issuer?: string;
@@ -105,28 +104,20 @@ function main(): void {
     "PRAGMA foreign_keys = OFF;",
   ];
 
-  // Service enablement + registration policy, read through the SAME manifest helpers the
+  // Service enablement, read through the SAME manifest helpers the
   // worker's link/resync path uses (`normalizeModules` → `servicesFromModules`), so a fixture
   // seed and a linked repo can never disagree about what a `modules:` block means. The column
   // is `services_source = 'manifest'`, which is what a freshly registered product is.
   const services = servicesFromModules(normalizeModules(product.modules));
-  const registration = product.devices?.registration;
-  if (
-    registration !== undefined &&
-    !(REGISTRATION_POLICIES as readonly string[]).includes(registration)
-  ) {
+  if (product.devices?.registration !== undefined) {
     console.error(
-      `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}`,
+      "devices.registration is removed: the registration policy follows the enabled services. Delete it.",
     );
     process.exit(2);
   }
   const servicesJson: Record<string, unknown> = {};
   for (const slug of SERVICE_SLUGS)
     servicesJson[slug] = { enabled: services[slug].enabled };
-  // Written only when declared — an absent key means "derive from the services" (wire v3 §6),
-  // which is a different thing from a policy nobody chose.
-  if (registration !== undefined)
-    servicesJson.registration = registration as RegistrationPolicy;
 
   out.push(
     `INSERT INTO products (slug,name,signing_kid,signing_pub,compat_min,compat_max,default_max_offline_days,default_device_limit,admin_group,branding_json,services_json,services_source,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultDeviceLimit},${q(product.adminGroup)},NULL,${j(servicesJson)},'manifest',${now},${now});`,

@@ -51,8 +51,8 @@ import {
  *
  * Three product settings, each of which a `.pkey/product` push can change without touching the
  * recipe, make the mint public:
- *   - the EFFECTIVE registration is `open` (declared `devices.registration: open`, or License
- *     off with Identity off so the derived policy is open) — any installation registers;
+ *   - the EFFECTIVE registration is `open` (License off with Identity off, so the derived policy
+ *     is open; the policy cannot be declared) — any installation registers;
  *   - auto-issue allows anonymous enrolment (`mode` `anonymous` or `both`, enabled with a tier):
  *     `POST /<p>/license/enroll` hands any caller a licence and a device token with no key and
  *     no sign-in, while the effective registration still reads `requires-license`; and

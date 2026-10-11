@@ -4378,6 +4378,8 @@ resync), `release.publishing.trustedPublisher` (which workflow and environment c
 `core.registration` (`open` lets any client mint a device token) and `identity.provisioning`
 (what a verified claim grants). All five are in `SECURITY_WIDENING_KEYS`. `core.secrets` is
 `secret`: it names secrets, never holds a value, and stays pending until ST-08 wires it.
+ST-38 later removed `core.registration`: the registration policy is derived from the enabled
+services, so there is nothing to declare or widen, and four of the five remain.
 
 ### Self-reported operations (A-14)
 
@@ -8341,8 +8343,9 @@ core (SP-55 to SP-57, SP-62).
   to the three product settings that decide who can hold a device token the mint accepts, because
   a push can change each of them without touching the recipe. (a) Whether the mint is public: the
   open-registration acknowledgement is stored on the approval, so a push that makes the mint
-  public — declaring `devices.registration: open`, turning License off so the derived policy is
-  open, enabling anonymous `autoIssue` enrolment (which hands any caller a licence and a device
+  public — turning License and Identity off so the derived policy is open (the policy cannot be
+  declared: `devices.registration` is removed), enabling anonymous `autoIssue` enrolment (which
+  hands any caller a licence and a device
   token while registration still reads `requires-license`), or turning on an OIDC default tier
   with Identity on (every account the IdP signs in gets a licence) — widens an approval given
   without it. (b) Whether licences are checked: the mint requires a usable licence only while

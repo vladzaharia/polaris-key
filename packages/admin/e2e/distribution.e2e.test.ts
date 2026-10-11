@@ -36,7 +36,6 @@ const row = (slug: string, name: string) => ({
   createdAt: 1,
   modifiedAt: 1,
   services,
-  registration: null,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
   setup: { status: "ok", healthy: true, nextActions: [] },

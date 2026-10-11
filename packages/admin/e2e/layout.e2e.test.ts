@@ -191,6 +191,7 @@ const ZOOM_CASES = [
   "djdl:devices",
   "djdl:keys",
   "djdl:settings",
+  "djdl:services",
   "djdl:releases",
   "djdl:activity?table",
   "long:overview",
@@ -252,20 +253,31 @@ const VIEWPORTS: {
         },
         { label: "zoom400", width: 320, height: 256, deviceScaleFactor: 4 },
       ].map((v) => ({ ...v, only: ZOOM_CASES })),
-      // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses.
+      // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
+      // Services.
       {
         label: "forced-colors",
         width: 1440,
         height: 900,
         forcedColors: "active" as const,
-        only: ["global:home", "djdl:licenses", "dialog:set-secret"],
+        only: [
+          "global:home",
+          "djdl:licenses",
+          "djdl:services",
+          "dialog:set-secret",
+        ],
       },
       {
         label: "more-contrast",
         width: 1440,
         height: 900,
         contrast: "more" as const,
-        only: ["global:home", "djdl:licenses", "dialog:set-secret"],
+        only: [
+          "global:home",
+          "djdl:licenses",
+          "djdl:services",
+          "dialog:set-secret",
+        ],
       },
     ];
 const THEMES = ["dark", "light"] as const;

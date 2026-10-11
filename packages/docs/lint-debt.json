@@ -5,7 +5,7 @@
     "build/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "count": 5
+      "count": 4
     },
     "build/manifest/distribution": {
       "frontmatter-type": 1,
@@ -26,9 +26,8 @@
     "build/manifest/product": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "count": 3,
+      "count": 1,
       "time-word": 1,
-      "http-path": 1,
       "banned-word": 1,
       "programme-id": 3
     },
@@ -400,7 +399,7 @@
     "features/managed-config/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "count": 3,
+      "count": 2,
       "programme-id": 3,
       "http-path": 1,
       "banned-word": 1
@@ -613,8 +612,8 @@
       "count": 2,
       "programme-id": 3,
       "time-word": 1,
-      "http-path": 2,
-      "banned-word": 1
+      "banned-word": 1,
+      "http-path": 1
     },
     "features/sign-in/oidc": {
       "frontmatter-type": 1,
@@ -679,10 +678,10 @@
     "operate/console/products": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "time-word": 2,
+      "time-word": 1,
       "count": 4,
       "http-path": 6,
-      "banned-word": 2,
+      "banned-word": 1,
       "future-tense": 2,
       "programme-id": 3
     },
@@ -760,7 +759,6 @@
     "reference/protocol/device-principal": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "http-path": 1,
       "future-tense": 2,
       "banned-word": 1,
       "time-word": 1,

@@ -322,7 +322,7 @@ describe("Controlled confirms return focus (C-5, C-41)", () => {
   it("Services: Escape from Turn off returns focus to the switch", async () => {
     const { page, errors } = await open("#/p/djdl/services");
     await title(page, "Services");
-    const sw = page.locator("#service-update");
+    const sw = page.locator("#feature-ship-builds-in-app-updates");
     await sw.focus();
     await page.keyboard.press("Space");
     const confirm = page.getByRole("alertdialog");
@@ -333,7 +333,7 @@ describe("Controlled confirms return focus (C-5, C-41)", () => {
     await confirm.waitFor({ state: "hidden" });
     await page.waitForTimeout(250);
     expect(await page.evaluate(() => document.activeElement?.id)).toBe(
-      "service-update",
+      "feature-ship-builds-in-app-updates",
     );
     expect(errors).toEqual([]);
     await page.context().close();

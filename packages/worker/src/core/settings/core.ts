@@ -162,44 +162,6 @@ export const CORE_SLICE: readonly SettingDef[] = [
     readers: ["core/services.ts", "core/registry.ts", "core/discovery.ts"],
     storage: { kind: "column", table: "products", column: "services_json" },
   }),
-  // ST-19b: `.pkey/product`'s `devices.registration`. It shares `services_json` with
-  // `core.services` (the blob's `registration` key, `core/services.ts`): the console's Services
-  // page writes it (`console/handlers/servicesAdmin.ts`, its own Save action) and that write claims the blob
-  // through `services_source`, so it is claimable like the enablement beside it.
-  setting({
-    key: "core.registration",
-    rbacArea: "settings",
-    scope: "product",
-    service: "core",
-    area: "services",
-    label: "Device registration",
-    description:
-      "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
-    keywords: ["devices.registration", "register", "device token", "open"],
-    docs: "/docs/reference/protocol/device-principal/",
-    value: {
-      kind: "enum",
-      values: ["open", "requires-identity", "requires-license"],
-    },
-    defaultValue: null,
-    allowUnset: true,
-    merge: "cascade",
-    ownership: "claimable",
-    manifest: { path: "product:devices.registration" },
-    securityWidening: true,
-    widensWhen: "any",
-    critical: true,
-    confirm: { change: "L1" },
-    wire: ["discovery", "refusal"],
-    readers: [
-      "core/services.ts",
-      "core/register.ts",
-      "core/discovery.ts",
-      "console/handlers/servicesAdmin.ts",
-    ],
-    storage: { kind: "column", table: "products", column: "services_json" },
-    since: "ST-19b",
-  }),
   // ST-19b: `.pkey/product`'s `secrets.required`, names only. A manifest names a secret and never
   // carries its value: an operator sets each value on Keys & secrets, sealed in `product_secrets`,
   // and only its presence is shown. No Worker file reads `secrets.required` yet (the validator

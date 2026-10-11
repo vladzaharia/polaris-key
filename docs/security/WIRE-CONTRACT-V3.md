@@ -315,7 +315,7 @@ architecture it was built for. For example:
 ## 6. Device principal
 
 - **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).
-- **Registration policy** (per product, manifest key `devices.registration`, default derived — `requires-license` if license enabled, else `requires-identity` if identity enabled, else `open`):
+- **Registration policy** (per product, manifest key `devices.registration` [removed in 0.9 (ST-38): the policy is only derived; see `WIRE-CONTRACT-V4.md` §6], default derived — `requires-license` if license enabled, else `requires-identity` if identity enabled, else `open`):
   - `open` — `POST /<p>/devices/register` (keyless, rate-limited, optional fingerprint) mints a token.
   - `requires-identity` — same endpoint, but only with a valid product identity session.
   - `requires-license` — the endpoint returns `403 registration_closed`; activation/enrollment are the only mint paths (today's behavior).

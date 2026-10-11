@@ -171,50 +171,15 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
         ["web_origins_json", serializeWebOrigins(args.value as string[])],
       ]),
   },
-  // The stored shape is `serializeServices`' (every slug, then `registration`, then a newer
-  // build's unknown slugs), so a value round-trips through the same parser the router reads.
+  // The stored shape is `serializeServices`' (every slug, then a newer build's unknown slugs;
+  // the retired `registration` key is dropped, ST-38), so a value round-trips through the same
+  // parser the router reads.
   "core.services": productClaimedJson(
     "services_json",
     "services_source",
     (raw) => JSON.parse(serializeServices(parseServices(raw))) as unknown,
     (value) => serializeServices(parseServices(JSON.stringify(value))),
   ),
-  // The blob's `registration` key (ST-19b registers the entry; adapted here ahead of it so the
-  // two land together). Claimed with the enablement beside it, through `services_source`.
-  "core.registration": {
-    table: "products",
-    keyColumn: "slug",
-    columns: ["services_json", "services_source"],
-    decode: (row) => {
-      const raw = row?.services_json;
-      return typeof raw === "string" && raw !== ""
-        ? parseServices(raw).registration
-        : undefined;
-    },
-    marker: (row) => legacyMarker(row?.services_source),
-    // `null` clears it (the services decide again); the rest of the blob is left as stored.
-    set: (args) => {
-      return [
-        {
-          sql: `UPDATE products
-                   SET services_json = CASE WHEN ? IS NULL
-                         THEN json_remove(COALESCE(services_json, '{}'), '$.registration')
-                         ELSE json_set(COALESCE(services_json, '{}'), '$.registration', ?) END,
-                       services_source = 'admin', modified_at = ?
-                 WHERE slug = ? AND (${args.guard.sql})`,
-          params: [
-            (args.value as string | null) ?? null,
-            (args.value as string | null) ?? null,
-            args.at,
-            args.product,
-            ...args.guard.params,
-          ],
-        },
-      ];
-    },
-    reset: (args) =>
-      updateProductColumns(args, [["services_source", "manifest"]]),
-  },
   "core.trustPolicy": {
     table: "products",
     keyColumn: "slug",

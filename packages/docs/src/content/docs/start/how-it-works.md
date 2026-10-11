@@ -68,19 +68,17 @@ Services depend on each other. Distribution needs Release, Update needs Distribu
 
 A config-only product is valid on purpose: it issues config documents to registered devices with no license anywhere. Ingest doesn't check `registration_requires_identity`, so a repository can push a `requires-identity` policy to a product without Identity. Core asks Identity again on every registration and refuses with `403 registration_closed`.
 
-## Device registration
+## Registration policy
 
-`devices.registration` decides who gets a device token from `POST /<product>/devices/register`. Core serves that route under every policy.
+Core derives the registration policy from the service set; no manifest or console control declares it:
 
-| Policy              | Who gets a token                                          |
-| ------------------- | --------------------------------------------------------- |
-| `open`              | Any caller, rate-limited by IP                            |
-| `requires-identity` | A caller with a live browser session on the product       |
-| `requires-license`  | No one here: activation and enrollment are the only paths |
+| Policy              | When it applies                        | Behaviour                                             |
+| ------------------- | -------------------------------------- | ----------------------------------------------------- |
+| `requires-license`  | License is enabled                     | Activation and enrollment are the only mint paths.    |
+| `requires-identity` | License is off and Identity is enabled | Registration requires a live product browser session. |
+| `open`              | License and Identity are both off      | Any caller may register, rate-limited by edge IP.     |
 
-If you leave the policy undeclared, it follows the services: `requires-license` when License is on, else `requires-identity` when Identity is on, else `open`. A product that later turns License off moves to the derived policy. Declaring a value pins it.
-
-Every refusal is the same `403 registration_closed`, whatever the reason.
+Every refusal is `403 registration_closed`, without revealing why. Core asks Identity through a narrow predicate for the identity-required case. The current result is exposed as `effectiveRegistration`, and it changes with the validated service set.
 
 ## Next steps
 

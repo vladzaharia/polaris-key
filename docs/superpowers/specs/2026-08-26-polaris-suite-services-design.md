@@ -70,11 +70,15 @@ Fed by the manifest: `.polaris/product` `modules.<slug>.enabled` — `normalizeM
 
 Validation rules (manifest + admin API): `update` requires `release`; `requires-identity` registration policy requires `identity`; `config` without `license` requires registration policy ≠ `requires-license` (generalizing the existing `config_without_activation` warning into an error); enabling `release` requires a release block (GitHub coordinates) or is held in `not-configured` state.
 
+_Superseded (ST-38, 0.9): the two registration-policy rules left with the declared policy. One generic requirement rule, read from the `requires` edges of `tools/services.json`, covers every edge (codes such as `sync_requires_identity`), and `config_without_activation` stays a warning._
+
 **Consumers — all four existing "modules" surfaces become projections of this flag:** route mounting (disabled service ⇒ its routes 404 as not-configured, matching the existing hide-don't-reveal pattern), the discovery document (per-service fragments with honest `enabled`), the admin setup view (`productSetupView`), and portal capabilities. None of them re-infer enablement from row presence anymore.
 
 ### 2.3 Device registration policy
 
 Product manifest key `devices.registration`: `open` | `requires-identity` | `requires-license`. Default derived: `requires-license` if license enabled; else `requires-identity` if identity enabled; else `open`. `POST /<p>/devices/register` (keyless, rate-limited) mints a `plrst_` device token for `open`/`requires-identity` products (the latter after an identity exchange); for `requires-license` products, tokens are minted only by license activation/enrollment exactly as today.
+
+_Superseded (ST-38, 0.9): the manifest key `devices.registration` is removed and the validator refuses it. The policy is always the derived default above; it is read-only (`effectiveRegistration`, and `core.registration` in discovery)._
 
 ---
 

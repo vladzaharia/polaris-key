@@ -839,7 +839,7 @@ describe("the admin regroup (§R1)", () => {
 });
 
 describe("productView carries the enablement set (D-15)", () => {
-  it("reports services, registration and the ownership source on the product row", async () => {
+  it("reports services, the effective policy, and the ownership source on the product row", async () => {
     // The console's shell filters its nav on this, so it has to arrive with the product rather
     // than on a second request the sidebar would have to wait for.
     const { db, env, auth } = await fixture(false);
@@ -851,7 +851,6 @@ describe("productView carries the enablement set (D-15)", () => {
         release: { enabled: true },
         update: { enabled: true },
         identity: { enabled: false },
-        registration: "open",
       }),
       SLUG,
     );
@@ -874,13 +873,12 @@ describe("productView carries the enablement set (D-15)", () => {
         update: { enabled: true },
         identity: { enabled: false },
       },
-      registration: "open",
-      effectiveRegistration: "open",
+      effectiveRegistration: "requires-license",
       servicesSource: "admin",
     });
   });
 
-  it("reports the DERIVED registration as null-declared when the manifest said nothing", async () => {
+  it("reports the registration derived from the service set", async () => {
     const { db, env, auth } = await fixture(false);
     const path = `/api/products/${SLUG}`;
     const res = await dispatch(
@@ -892,9 +890,6 @@ describe("productView carries the enablement set (D-15)", () => {
     const { product } = (await res.json()) as {
       product: Record<string, unknown>;
     };
-    // Undeclared is not the same as "someone chose requires-license": the console has to be able
-    // to show "derived", or an operator would think a value was set that nobody wrote.
-    expect(product.registration).toBeNull();
     expect(product.effectiveRegistration).toBe("requires-license");
     expect(product.servicesSource).toBe("manifest");
   });

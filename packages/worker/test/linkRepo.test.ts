@@ -867,13 +867,6 @@ describe("linkRepo (GitHub-forward product creation)", () => {
   // with it, so the only per-file preference left is the EXTENSION: JSON, then YAML, then YML,
   // resolved independently for each of the three documents.
   describe("manifest directory", () => {
-    const REGISTRATION_PRODUCT_JSON = JSON.stringify({
-      slug: "acme",
-      name: "Acme",
-      modules: { license: { enabled: false }, config: { enabled: true } },
-      devices: { registration: "open" },
-    });
-
     it("reads the three documents from .pkey/", async () => {
       const db = makeTestDb();
       const env = envFor();
@@ -930,9 +923,13 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         (await linkRepo(env, db, "acme-org/acme-app", NOW, link.fetchImpl)).ok,
       ).toBe(true);
 
-      // The repo then rewrites `product` to declare a registration policy.
+      // The repo then rewrites product services. Registration is derived from this set.
       const { fetchImpl } = stubFetch({
-        ".pkey/product.json": REGISTRATION_PRODUCT_JSON,
+        ".pkey/product.json": JSON.stringify({
+          slug: "acme",
+          name: "Acme",
+          modules: { license: { enabled: false }, config: { enabled: true } },
+        }),
         ".pkey/schema.json": SCHEMA_JSON,
         ".pkey/release.json": RELEASE_JSON,
       });
@@ -943,43 +940,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         (await getProduct(db, "acme"))?.services_json ?? null,
       );
       expect(parsed.services.license.enabled).toBe(false);
-      expect(parsed.registration).toBe("open");
-    });
-
-    it("persists a declared registration policy, and drops it when the manifest stops declaring one", async () => {
-      const db = makeTestDb();
-      const env = envFor();
-      const declared = stubFetch({
-        ".pkey/schema.json": SCHEMA_JSON,
-        ".pkey/product.json": REGISTRATION_PRODUCT_JSON,
-      });
-      expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, declared.fetchImpl))
-          .ok,
-      ).toBe(true);
-      expect(
-        parseServices((await getProduct(db, "acme"))?.services_json ?? null)
-          .registration,
-      ).toBe("open");
-
-      // Removing `devices.registration` returns the product to the DERIVED default rather than
-      // freezing whatever it last said — which is why the key is absent, not defaulted, in the
-      // column.
-      const undeclared = stubFetch({
-        ".pkey/schema.json": SCHEMA_JSON,
-        ".pkey/product.json": JSON.stringify({
-          slug: "acme",
-          name: "Acme",
-          modules: { license: { enabled: false }, config: { enabled: true } },
-        }),
-      });
-      expect(
-        (await resyncRepo(env, db, "acme", NOW + 1, undeclared.fetchImpl)).ok,
-      ).toBe(true);
-      expect(
-        parseServices((await getProduct(db, "acme"))?.services_json ?? null)
-          .registration,
-      ).toBeUndefined();
+      expect(parsed.services.identity.enabled).toBe(false);
     });
 
     it("the webhook path filter triggers on .pkey/ and nothing else", async () => {
@@ -1373,10 +1334,6 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
   // policy into a public mint.
   const OPENINGS: Array<[string, Record<string, unknown>]> = [
     [
-      "declares devices.registration: open",
-      { devices: { registration: "open" } },
-    ],
-    [
       "turns License off, so the derived registration is open",
       { modules: { license: { enabled: false }, config: { enabled: true } } },
     ],
@@ -1477,7 +1434,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       [BASE_RECIPE],
       JSON.stringify({
         ...JSON.parse(PRODUCT_JSON),
-        devices: { registration: "open" },
+        modules: { license: { enabled: false }, config: { enabled: true } },
       }),
     );
     expect(await w.mint()).toBe(404);
@@ -1574,10 +1531,13 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
-    // As if a push had written `services_json` and then failed before its sweep ran.
+    // As if a push had written an open service set and then failed before its sweep ran.
     await w.db.run(
       "UPDATE products SET services_json = ? WHERE slug = 'acme'",
-      JSON.stringify({ registration: "open" }),
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+      }),
     );
     await w.resync([BASE_RECIPE]);
     expect(await approvalCount(w.db)).toBe(0);
@@ -1592,7 +1552,9 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
-    const before = (await loadProduct(w.env, w.db, "acme"))!.registration;
+    const beforeProduct = (await loadProduct(w.env, w.db, "acme"))!;
+    const before = beforeProduct.registration;
+    const beforeServices = beforeProduct.services;
     const badSchema = JSON.stringify({
       schemaVersion: 1,
       entries: [
@@ -1613,6 +1575,33 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       NOW + 100,
       stubFetch({
         ".pkey/schema.json": badSchema,
+        ".pkey/product.json": PRODUCT_JSON,
+        ".pkey/release.json": releaseWith([BASE_RECIPE]),
+      }).fetchImpl,
+    );
+    expect(res.ok).toBe(false);
+    expect(before).not.toBe("open");
+    // The refusal is the bad schema, not a manifest field the validator now rejects.
+    expect(JSON.stringify(res)).not.toContain("invalid_registration_policy");
+    const after = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(after.registration).toBe(before);
+    expect(after.services).toEqual(beforeServices);
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
+    expect(await w.mint()).toBe(200);
+  });
+
+  it("rejects a manifest that still declares devices.registration and writes nothing", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    const beforeProduct = (await loadProduct(w.env, w.db, "acme"))!;
+    const res = await resyncRepo(
+      w.env,
+      w.db,
+      "acme",
+      NOW + 100,
+      stubFetch({
+        ".pkey/schema.json": SCHEMA_JSON,
         ".pkey/product.json": JSON.stringify({
           ...JSON.parse(PRODUCT_JSON),
           devices: { registration: "open" },
@@ -1621,11 +1610,10 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       }).fetchImpl,
     );
     expect(res.ok).toBe(false);
-    expect(before).not.toBe("open");
-    expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe(before);
-    expect(await approvalCount(w.db)).toBe(1);
-    expect(await invalidations(w.db)).toHaveLength(0);
-    expect(await w.mint()).toBe(200);
+    expect(JSON.stringify(res)).toContain("devices.registration is removed");
+    const after = (await loadProduct(w.env, w.db, "acme"))!;
+    expect(after.registration).toBe(beforeProduct.registration);
+    expect(after.services).toEqual(beforeProduct.services);
   });
 
   // A push can also THROW rather than be refused: the manifest validator does not reject a
@@ -1796,10 +1784,10 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     [string, string, string, Record<string, unknown> | undefined]
   > = [
     [
-      "closing registration",
+      "turning License back on",
       "PATCH",
       "/api/products/acme/services",
-      { registration: "requires-license" },
+      { services: { license: { enabled: true } } },
     ],
     [
       "handing services back to the manifest",
@@ -1813,10 +1801,13 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       const w = await linked();
       await w.resync([BASE_RECIPE]);
       await approveEdgeMintRecipe(w.db, "acme", "applemusic");
-      // The push's `setServices` committed; the isolate died before the batch and the sweep.
+      // The push's service write committed; the isolate died before the batch and sweep.
       await w.db.run(
         "UPDATE products SET services_json = ? WHERE slug = 'acme'",
-        JSON.stringify({ registration: "open" }),
+        JSON.stringify({
+          license: { enabled: false },
+          config: { enabled: true },
+        }),
       );
       expect(await approvalCount(w.db)).toBe(1);
       const res = await consoleCall(w.env, w.db, method, path, body);
@@ -1841,7 +1832,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       [
         "PATCH",
         "/api/products/acme/services",
-        { registration: "requires-license" },
+        { services: { license: { enabled: true } } },
       ],
       ["POST", "/api/products/acme/services/revert", undefined],
     ] as const) {

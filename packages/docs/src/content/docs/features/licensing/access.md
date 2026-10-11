@@ -38,6 +38,11 @@ and has four fields:
 | `mode`             | `anonymous`, `oidcDefault`, or `both`.                                   |
 | `rateLimitPerHour` | Per-IP enrollment ceiling. `0` disables the limit. Defaults to 10.       |
 
+This policy controls anonymous enrollment only; it does not change device registration, which is
+derived from the enabled License and Identity services. The console has no control for it: set it
+in the manifest's `autoIssue` block or through the admin endpoint below. A console home for it,
+an Anonymous devices row in a Licensing access policy, is planned and not available yet.
+
 The three modes open different doors:
 
 - **`anonymous`** opens `POST /<product>/license/enroll` — this page.
@@ -334,8 +339,9 @@ column and asserting the effective mode is still `normal`.
 
 ## Manifest versus live edits
 
-Both policies are declared in the product's `.pkey/product` manifest **and** editable live from
-the console. That combination is only coherent if the next resync cannot silently undo the live
+Both policies are declared in the product's `.pkey/product` manifest **and** editable live (the
+fingerprint policy in the console, the auto-issue policy through the admin endpoint below). That
+combination is only coherent if the next resync cannot silently undo the live
 change — the drift lockout an operator is paging about at 3am cannot wait for a pull request, but
 a change that evaporates on the next push to the product repo is arguably worse than being
 manifest-only.

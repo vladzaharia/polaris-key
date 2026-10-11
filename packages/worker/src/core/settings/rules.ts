@@ -155,7 +155,6 @@ export const SECURITY_WIDENING_KEYS: readonly string[] = [
   "update.metadataAccess",
   "distribution.access",
   // ST-19b: the manifest-declared settings that widen access.
-  "core.registration",
   "identity.provisioning",
   "release.github",
   "release.keys",
@@ -183,7 +182,6 @@ export const SECURITY_WIDENING_AREAS: Readonly<
   "release.sparkleEd25519Pub": "keys",
   "release.publishing.trustedPublisher": "keys",
   "release.github": "keys",
-  "core.registration": "settings",
   "core.adminGroup": "settings",
   "identity.provisioning": "settings",
   "identity.keyEntry.claimByKey": "settings",

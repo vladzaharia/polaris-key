@@ -379,8 +379,9 @@ export interface SyncPrincipal {
  * unknown licence is not evidence of an assigned one, so the answer fails closed. A device that
  * names NO licence (`NO_LICENSE_ID`, the empty string) has no licence to be floating, so the
  * check does not apply: that is a device on a product with License off, and equally a keyless
- * device registered on a License-on product whose `registration` is `"open"` (S-24 decides
- * floating from a licence's facts; a licence-less device has none). Its principal is its binding,
+ * device registered while the product's registration was open (License off, or a declared
+ * policy that 0.9 removed) and kept after License went on (S-24 decides floating from a
+ * licence's facts; a licence-less device has none). Its principal is its binding,
  * like any other device's.
  *
  * The caller passes the D1 row `validateDeviceToken` returned, never a KV token record (a cache)

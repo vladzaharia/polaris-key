@@ -48,7 +48,7 @@ In a Node project, put the routing line in the project's `.npmrc`, install the C
 <InstallSteps sdk="kotlin" />
 <InstallSteps sdk="godot" />
 
-For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. The SDK's floors are macOS 15, iOS 18, tvOS 18 and visionOS 2. SwiftPM also fetches the SDK's two dependencies, `zstd` and `Sparkle`, from GitHub. For Godot, search for "Polaris Key" in the **AssetLib** tab, install it, then enable it under **Project → Project Settings → Plugins**. The add-on lands in `res://addons/polaris_key/`.
+For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. The SDK's floors are macOS 15, iOS 18, tvOS 18 and visionOS 2. SwiftPM also fetches the SDK's one dependency, `Sparkle`, from GitHub; the zstd library it needs for packs is vendored in the package. For Godot, search for "Polaris Key" in the **AssetLib** tab, install it, then enable it under **Project → Project Settings → Plugins**. The add-on lands in `res://addons/polaris_key/`.
 
 ## Check it works
 
