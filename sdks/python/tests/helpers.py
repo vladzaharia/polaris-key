@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from polaris_key.client import PolarisKeyClient
 from polaris_key.core.b64url import b64url_encode
+from polaris_key.core.dirs import ProductDirs, resolve_dirs, store_namespace
 from polaris_key.core.jws import sign_jws
 from polaris_key.core.models import TYP_BUNDLE, TYP_CONFIG, TYP_LICENSE, TYP_TRUST
 from polaris_key.devices.store import InMemoryStore
@@ -272,6 +273,26 @@ def make_client(
     )
     c.init()
     return c
+
+
+def client_dirs(
+    *,
+    config_dir: Optional[str] = None,
+    data_dir: Optional[str] = None,
+    cache_dir: Optional[str] = None,
+    state_dir: Optional[str] = None,
+) -> ProductDirs:
+    """The directories ``make_client`` resolves from the bases it is given. ``BASE_URL`` is not
+    the production host, so each ends in ``<slug>@<host>`` (SP-41); against production it would
+    end in plain ``<slug>``."""
+    return resolve_dirs(
+        PRODUCT,
+        namespace=store_namespace(PRODUCT, BASE_URL),
+        config_dir=config_dir,
+        data_dir=data_dir,
+        cache_dir=cache_dir,
+        state_dir=state_dir,
+    )
 
 
 def discovery_doc(**enabled: bool) -> Dict[str, Any]:

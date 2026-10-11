@@ -15,12 +15,13 @@ import os
 import re
 import sys
 import time
+from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import httpx
 import pytest
 
-from helpers import BASE_URL, TOKEN, make_client
+from helpers import BASE_URL, TOKEN, client_dirs, make_client
 from pack_fixtures import (
     PRODUCT,
     PROBE_BASE,
@@ -214,6 +215,12 @@ def tree_on_disk(root: str, files: Dict[str, bytes]) -> bool:
     return True
 
 
+def pack_root(work: Any) -> Path:
+    """Where the client under test keeps its packs: ``<work>/data/<namespace>/packs``. The helpers'
+    ``BASE_URL`` is not the production host, so the namespace is ``<slug>@<host>`` (SP-41)."""
+    return Path(client_dirs(data_dir=str(work / "data")).data) / "packs"
+
+
 def test_installs_from_fake_byte_server_and_reports_pack_set_id(srv: FakeServer, tmp_path: Any) -> None:
     v1 = tree_pack("djdl.l10n", "1.0.0", 1, V1_FILES)
     srv.packs = [v1]
@@ -223,7 +230,9 @@ def test_installs_from_fake_byte_server_and_reports_pack_set_id(srv: FakeServer,
     (install,) = c.update.packs.ensure(["djdl.l10n"])
     assert install["recordSha256"] == v1.record_sha256
     d = c.update.packs.path("djdl.l10n")
-    assert d == os.path.join(str(tmp_path / "data"), PRODUCT, "packs", "store", "djdl.l10n", v1.tree_digest)
+    assert d == os.path.join(pack_root(tmp_path), "store", "djdl.l10n", v1.tree_digest)
+    # A client on another host never touches the production name's directory.
+    assert not os.path.exists(tmp_path / "data" / PRODUCT)
     assert tree_on_disk(d, v1.files)
     assert "done" in phases
     # The device bearer goes to the control plane's own origin.
@@ -388,7 +397,7 @@ def test_torn_state_json_is_held_across_loads(srv: FakeServer, tmp_path: Any) ->
     srv.packs = [v1]
     c = client(srv, tmp_path, [v1])
     c.update.packs.ensure(["djdl.l10n"])
-    root = tmp_path / "data" / PRODUCT / "packs"
+    root = pack_root(tmp_path)
     d = c.update.packs.path("djdl.l10n")
     c.close()
     (root / "state.json").write_text('{"v":1,"active":{"djdl')
@@ -406,7 +415,7 @@ def test_unreadable_state_json_refuses_to_write_or_install(srv: FakeServer, tmp_
     srv.packs = [v1]
     c = client(srv, tmp_path, [v1])
     c.update.packs.ensure(["djdl.l10n"])
-    root = tmp_path / "data" / PRODUCT / "packs"
+    root = pack_root(tmp_path)
     good = (root / "state.json").read_text()
     c.close()
     # A directory where the file should be: reading it fails (EISDIR), not ENOENT.
@@ -458,7 +467,7 @@ def test_list_never_answers_a_partial_listing(srv: FakeServer, tmp_path: Any) ->
     c.update.packs.ensure(["djdl.l10n", "djdl.extra"])
     dir_a = c.update.packs.path("djdl.l10n")
     c.close()
-    root = tmp_path / "data" / PRODUCT / "packs"
+    root = pack_root(tmp_path)
     (root / "state.json").write_text('{"v":1,"act')
     pack_dir = root / "store" / "djdl.l10n"
     os.chmod(pack_dir, 0o000)
@@ -541,7 +550,7 @@ def test_decide_learns_a_revocation_blocks_required_content_and_refuses_the_rele
     assert check.decision.action == "blocked"
     assert check.decision.reason == "revoked-content"
     # Persisted beside the pack state, the flag first; the release no longer runs.
-    root = os.path.join(str(tmp_path / "data"), PRODUCT, "packs")
+    root = pack_root(tmp_path)
     with open(os.path.join(root, "revocations.json"), encoding="utf-8") as f:
         assert list(json.load(f)["revoked"]) == [v1.record_sha256]
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
@@ -563,7 +572,7 @@ def test_decide_without_revocations_writes_nothing(srv: FakeServer, tmp_path: An
     assert content.holds == []
     assert content.active["djdl.l10n"].sha256 == v1.record_sha256
     assert content.revoked == {} and list(content.relearn) == []
-    root = os.path.join(str(tmp_path / "data"), PRODUCT, "packs")
+    root = pack_root(tmp_path)
     assert not os.path.exists(os.path.join(root, "revocations.json"))
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
         assert "revocationsStored" not in json.load(f)
