@@ -1,0 +1,44 @@
+{
+  "id": "docs.help-home",
+  "title": "Help",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02b", "DOC-04a"],
+  "uxRows": [],
+  "summary": "The consumer Help hub uses the Help header, a search trigger, top tasks and short topic paths in comfortable prose.",
+  "compare": [
+    "Help header has a Help tag, Search help and Your library, but no door tabs.",
+    "Top tasks use reader language and categories are organized by the task groups.",
+    "Comfortable prose is 16/26 and interactive phone controls remain usable."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "ResumeDocsWave.DocsMockupLensReview: one reviewer agent, consumer, developer and brand lenses in a single pass",
+    "date": "2026-10-11",
+    "lenses": {
+      "consumer": "Walked in the combined pass; no finding raised for this screen.",
+      "developer": "Walked in the combined pass; no finding raised for this screen.",
+      "brand": "Walked in the combined pass; 1 finding(s) raised, applied below."
+    },
+    "separatePasses": "not-run",
+    "verdict": "Combined three-lens pass ended PASS after its findings were applied; the PR #65 fix round (below) is checked by the contract check only, not re-reviewed by a lens.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The home title inherited the 24/32 article heading instead of the home display step.",
+        "resolution": "Scoped home titles to 40/48 on desktop and 30/36 on phone, retaining the comfortable-prose body treatment.",
+        "decision": "accepted",
+        "raisedBy": ["brand"]
+      },
+      {
+        "severity": "major",
+        "issue": "Top tasks showed three tiles; plan §8.4 specifies six task tiles.",
+        "resolution": "Added Download your app, Your code didn’t arrive and Refunds, the same six tiles as docs.landing; the categories and the one Get help with an app line are unchanged.",
+        "decision": "accepted",
+        "raisedBy": ["PR #65 review (plan §8.4)"]
+      }
+    ],
+    "notRun": "Plan §8.4 and the DOC-01 brief ask for three separate pkey-ux-reviewer passes (consumer, developer, brand consistency). Those three separate passes were not run. One reviewer agent (ResumeDocsWave.DocsMockupLensReview) walked the three lenses as sections of a single pass over saved renders, then re-checked after fixes. The PR #65 fixes recorded above were verified with tools/mockups/check.mjs and shoot.mjs --check only; no lens re-review followed them."
+  }
+}
