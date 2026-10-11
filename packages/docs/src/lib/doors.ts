@@ -108,6 +108,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: [
           leaf("start/index", "Overview"),
           leaf("start/first-product"),
+          leaf("start/choose-your-integration"),
           leaf("start/how-it-works"),
           leaf("start/concepts"),
         ],
