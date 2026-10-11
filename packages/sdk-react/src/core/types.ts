@@ -20,16 +20,22 @@ import type {
   Support,
   Unsupported,
 } from "@polaris-key/client-core";
-import type { StagedUpdate, UpdateCheck } from "@polaris-key/protocol/update";
+import type {
+  StagedUpdate,
+  UpdateCheck,
+  UpdateDecision,
+} from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
 // erased, so this value import creates no runtime cycle.
 import { noBusy, noErrors } from "./services.js";
 import type { ActivationOutcome } from "./activation.js";
+import type { BootAttempt } from "./bootGuard.js";
 import type { BootResult, BootRunOptions } from "./boot.js";
 import type { CrashTags, CrashTagsOptions } from "./crash.js";
 import type { UpdateEvent } from "../constants.generated.js";
 import type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
+import type { InstallOptions, InstallOutcome } from "./install.js";
 import type {
   FetchTarget,
   ReleaseFetchOptions,
@@ -45,7 +51,7 @@ import type {
 } from "./services.js";
 
 /** Which transport an adapter speaks. `auto` resolves at construction time. */
-export type PolarisMode = "browser" | "desktop";
+export type PolarisMode = "browser" | "desktop" | "local";
 
 /** The phase of the very first load — distinct from a license `status`. Until the first
  *  snapshot resolves we render a loading screen, not a (misleading) `needs-activation`. */
@@ -568,6 +574,33 @@ export interface PolarisAdapter {
    *  `environment` the channel, `pkey.outlet` the outlet, as the Worker's Sentry hook parses
    *  them. Desktop: the host's `client.crashTags()` over bridge v4. */
   crashTags(opts?: CrashTagsOptions): Promise<CrashTags>;
+  /**
+   * Install what a decision offers (update.driver, SDK-PARITY-PASS §3.16): answers an
+   * `InstallOutcome` and never throws for something that cannot be installed (it answers
+   * `unsupported{reason}`). Browser: a decision whose build is a newer one this page already
+   * holds as a waiting service worker hands off to it (`skipWaiting`, then a reload) and answers
+   * `handedOff`, or `restartRequired` with `reload: false`. Desktop: the host's install driver,
+   * over bridge v4 (`invoke("update", "install", {decision})`), `unsupported{version}` on an
+   * older host. Local: `unsupported{runtime}`.
+   */
+  installUpdate(
+    decision: UpdateDecision,
+    opts?: InstallOptions,
+  ): Promise<InstallOutcome>;
+  /**
+   * Count this launch before the app does anything that could crash (update.bootguard, §3.15):
+   * the first launch of a new version moves the slots, client-core's `bootGuardAction` decides,
+   * and the launch is counted as unconfirmed. After `MAX_FAILED_BOOTS` unconfirmed launches of
+   * an unconfirmed version it rolls back (through the host's `rollback` when it passed one) and
+   * journals `boot_rolled_back`. `boot()` calls it as its guard stage: call it yourself only
+   * when you do not boot through `boot()`. Browser: slots in browser storage, keyed by the
+   * page's `version`. Desktop: the host's guard over bridge v4
+   * (`invoke("update", "markBootAttempt")`).
+   */
+  markBootAttempt(): Promise<BootAttempt>;
+  /** Mark this launch healthy: resets the count and journals `update_confirmed` once. `boot()`
+   *  confirms by the stage matrix's `confirmCases`; call it yourself for a boot you drive. */
+  confirmBoot(): Promise<void>;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }

@@ -150,6 +150,20 @@ export type BridgeActivation =
  *     channel?, packSetId?, code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the
  *     renderer's update-health events, recorded in the host's journal with
  *     `client.update.journal.record(event, input)`, so its next report drains them).
+ *   * `update.driver` and `update.bootguard` (SP-15), three more `invoke` verbs the host answers:
+ *     `("update","install",{decision})` → the host's `client.update.install(decision)`, an
+ *     `InstallOutcome` over IPC (`restartRequired` and `handedOff` carry a `version`,
+ *     `storeOpened` a `url`, `unsupported` a `reason` and `detail`; a `restartRequired` has no
+ *     `restart` function across IPC); the renderer sends only `binary` and `store` decisions,
+ *     the ones a driver installs. `("update","restart")` → apply the install the host just
+ *     staged (a `restartRequired` outcome's `restart()`). `("update","markBootAttempt")` →
+ *     `client.update.markBootAttempt()`, a `BootAttempt` (`result`, `action`, `failedBoots`,
+ *     `version`, `previous`, `reason?`); `("update","confirmBoot")` →
+ *     `client.update.confirmBoot()`. The host's `boot()` already runs the guard, so a renderer
+ *     that boots through it never calls the last two; they are for a host that boots itself.
+ *     The host adds all four to `DEFAULT_INVOKE_VERBS` (`update.install`, `update.restart`,
+ *     `update.markBootAttempt`, `update.confirmBoot`) and its `client.boot()` answer carries the
+ *     `BootAttempt` as `guard`.
  *   * `config.local` (SP-13): `("config","set",{key,value})` and `("config","clear",{key})` →
  *     the host's `client.config.set`/`clear` (a refusal keeps its `managed_by_admin` or
  *     `bad_request` code), and `BridgeState.localConfig` = `client.config.localValues()` on

@@ -65,6 +65,7 @@ import {
   type ProductCatalog,
   type UpdateCheck,
   type UpdateDecideOptions,
+  type UpdateDecision,
 } from "../core/index.js";
 import type {
   CommerceBinding,
@@ -77,6 +78,13 @@ import type {
 } from "../core/types.js";
 import type { BootState, StoreStatus } from "@polaris-key/client-core";
 import type { BootResult, BootRunOptions } from "../core/boot.js";
+import type { BootAttempt } from "../core/bootGuard.js";
+import {
+  isWireInstallOutcome,
+  notInstallable,
+  type InstallOptions,
+  type InstallOutcome,
+} from "../core/install.js";
 import type { CrashTags, CrashTagsOptions } from "../core/crash.js";
 import type {
   UpdateEventEntry,
@@ -126,6 +134,9 @@ const V4_FEATURES = new Set<string>([
   Feature.configLocal,
   // SP-14: renderer update-health events, forwarded to the host's journal.
   Feature.telemetryUpdates,
+  // SP-15: the host's install driver and its app boot guard.
+  Feature.updateDriver,
+  Feature.updateBootguard,
 ]);
 
 export interface DesktopAdapterOptions {
@@ -956,6 +967,7 @@ export class DesktopAdapter implements PolarisAdapter {
       state: BootState;
       license?: { status?: PolarisState["status"] } | null;
       decision?: UpdateCheck | null;
+      guard?: BootAttempt | null;
       emits?: BootResult["emits"];
     }>(Feature.uiBoot, "the one-call boot", "core", "boot", wire);
     // The host's boot moved its state; re-read it (no network).
@@ -971,6 +983,7 @@ export class DesktopAdapter implements PolarisAdapter {
       state: r.state,
       status: r.license?.status ?? this.store.get().status,
       decision: r.decision ?? null,
+      guard: r.guard ?? null,
       emits: [...emits],
     };
   }
@@ -1068,6 +1081,67 @@ export class DesktopAdapter implements PolarisAdapter {
       { ...input, event },
     );
     return r ?? null;
+  }
+
+  /**
+   * `invoke("update", "install", {decision})`: the host's `client.update.install(decision)`, which
+   * hands the decision to its install driver (electron-updater, Velopack, …). `binary` and
+   * `store` decisions are the host's to install; any other decision is answered here, without
+   * crossing the bridge, as Node answers it. A `restartRequired` answer carries no function over
+   * IPC: its `restart()` is `invoke("update", "restart")`, which the host answers by applying
+   * the install it just staged. An older host answers the typed `version` N/A, as a result.
+   * Progress callbacks and the abort signal do not cross the bridge; an aborted signal stops the
+   * install before it starts.
+   */
+  async installUpdate(
+    decision: UpdateDecision,
+    opts: InstallOptions = {},
+  ): Promise<InstallOutcome> {
+    if (decision.action !== "binary" && decision.action !== "store")
+      return notInstallable(decision);
+    opts.signal?.throwIfAborted();
+    if (!this.bridge.invoke || !this.speaksV4())
+      return {
+        kind: "unsupported",
+        reason: "version",
+        detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) does not expose the host's install driver; bridge protocol v4 adds it.`,
+      };
+    const r = await this.invoke<unknown>("update", "install", { decision });
+    if (!isWireInstallOutcome(r))
+      throw new PolarisError(
+        "unknown",
+        "The host answered update.install with something that is not an install outcome.",
+      );
+    if (r.kind !== "restartRequired") return r;
+    return {
+      kind: "restartRequired",
+      version: r.version,
+      restart: async () => {
+        await this.invoke<unknown>("update", "restart");
+      },
+    };
+  }
+
+  /** `invoke("update", "markBootAttempt")`: the host's boot guard counts this launch
+   *  (`client.update.markBootAttempt()`). The host owns the slots; the renderer only reads. */
+  async markBootAttempt(): Promise<BootAttempt> {
+    const r = await this.invokeV4<BootAttempt>(
+      Feature.updateBootguard,
+      "the app boot guard",
+      "update",
+      "markBootAttempt",
+    );
+    return r;
+  }
+
+  /** `invoke("update", "confirmBoot")`: the host's `client.update.confirmBoot()`. */
+  async confirmBoot(): Promise<void> {
+    await this.invokeV4<unknown>(
+      Feature.updateBootguard,
+      "the app boot guard",
+      "update",
+      "confirmBoot",
+    );
   }
 
   /** True when the host reports bridge protocol v4 or later (an absent `version` is 1). A v3

@@ -33,9 +33,8 @@
       "status": "implemented"
     },
     "core.local": {
-      "status": "planned",
-      "wp": "SP-15",
-      "note": "No local-only client in React; P1b-07 leaves it unowned."
+      "status": "implemented",
+      "note": "SP-15: localAdapter() (@polaris-key/react/local) serves the documents the build bundles and a fixed licence state with no fetch in reach: it takes no transport, and every verb that would dial rejects local-only. The gate, config, config.local, crash tags, the boot guard and boot() work offline; supports() answers runtime N/A for the rest. A test with a throwing fetch stub proves no call is made."
     },
     "core.headers": {
       "status": "implemented"
@@ -264,14 +263,12 @@
       "note": "client-core decideUpdate with content; useUpdateDecision exposes the content reason and <UpdatePrompt> renders packs silently and the revoked-content hard stop (boot required). The Node and browser runners drive every contentRows and feedContentCases vector."
     },
     "update.driver": {
-      "status": "planned",
-      "wp": "SP-15",
-      "note": "No updater hand-off in React, and no work package adds one."
+      "status": "implemented",
+      "note": "SP-15: adapter.installUpdate(decision) answers an InstallOutcome. Web: a platform decision hands off to the registration's waiting service worker (postMessage SKIP_WAITING, wait for control, reload) and answers handedOff, restartRequired with reload: false, or unsupported{reason} with no worker; binary and store decisions are runtime N/A. Desktop-bridge: forwarded to the host's client.update.install() over bridge v4 (invoke update.install), the typed version N/A on an older host. update_downloaded and update_applied go through recordUpdateEvent."
     },
     "update.bootguard": {
-      "status": "planned",
-      "wp": "SP-15",
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "SP-15: markBootAttempt() and confirmBoot() over client-core's bootGuardAction. Web: slots (current, previous, failedBoots, confirmed, skipVersion) in localStorage with a memory fallback, a waiting service worker counted as staged, an optional host rollback, update_confirmed/update_reverted/boot_rolled_back through recordUpdateEvent; boot() runs it as its guard stage and confirms per bootConfirmation. Desktop-bridge: the host's guard over bridge v4 (invoke update.markBootAttempt / update.confirmBoot). The guardCases and confirmCases of stage-matrix.json replay against persisted slots."
     },
     "outlet.detect": {
       "status": "implemented",

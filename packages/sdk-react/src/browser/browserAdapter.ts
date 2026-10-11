@@ -81,6 +81,7 @@ import type {
   FeedDeltas,
   InstalledBuild,
   UpdateCheck,
+  UpdateDecision,
 } from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
 import { SDK_VERSION } from "../version.js";
@@ -186,6 +187,13 @@ import {
   type CrashTags,
   type CrashTagsOptions,
 } from "../core/crash.js";
+import type { BootAttempt, BootGuard } from "../core/bootGuard.js";
+import type { InstallOptions, InstallOutcome } from "../core/install.js";
+import {
+  hasWaitingWorker,
+  pageServiceWorker,
+  type SwContainer,
+} from "./serviceWorkerUpdate.js";
 import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
 import { classifyActivation } from "../core/activation.js";
 import { activationError } from "../core/activationError.js";
@@ -344,6 +352,25 @@ export interface BrowserAdapterOptions {
    *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
   update?: BrowserUpdateConfig;
   /**
+   * The update driver's service worker (update.driver): the container the install hand-off
+   * looks for a waiting worker in (default `navigator.serviceWorker`; `null`: this page has
+   * none, and `installUpdate()` answers `unsupported`) and the reload that follows the hand-off
+   * (default `window.location.reload()`). A waiting worker is also what the boot guard reads as
+   * a staged update.
+   */
+  serviceWorker?: { container?: SwContainer | null; reload?: () => void };
+  /**
+   * The app boot guard (update.bootguard): where its slots live (default `localStorage`, one
+   * entry per product; `null`, or storage that throws, keeps them in memory) and the host's
+   * rollback, which re-serves the previous build and answers whether it did. A page has no
+   * rollback of its own: without one a rollback is reported as `boot_rolled_back` with code
+   * `no-previous` and the failed version is remembered as the `skipVersion`.
+   */
+  bootGuard?: {
+    storage?: ConfigStorage | null;
+    rollback?: (previousVersion: string) => Promise<boolean>;
+  };
+  /**
    * How the page authenticates (SDK-PARITY-PASS §3.17, owner decision Q1):
    *
    *   "auto" (the default)  bearer when the page runs inside Tauri or on another origin than
@@ -464,6 +491,12 @@ export class BrowserAdapter implements PolarisAdapter {
   /** The re-verified offline state (device id + imported bundle), once loaded. */
   private offlineState: OfflineState | null = null;
   private readonly updateConfig: BrowserUpdateConfig | null;
+  /** The update driver's service worker, and the reload after the hand-off. */
+  private readonly swContainer: SwContainer | null;
+  private readonly swReload: (() => void) | undefined;
+  /** The boot guard, built on first use: most page loads never count a launch. */
+  private guard_: Promise<BootGuard> | null = null;
+  private readonly bootGuardOptions: BrowserAdapterOptions["bootGuard"];
   private readonly updateOutlet: ResolvedOutlet | null;
   private readonly updateDetected: DetectedOutlet | null;
   /** The verified discovery document, once it answered. */
@@ -534,6 +567,12 @@ export class BrowserAdapter implements PolarisAdapter {
         ? indexedDbOfflineStore()
         : opts.offlineStore;
     this.updateConfig = opts.update ?? null;
+    this.swContainer =
+      opts.serviceWorker?.container === undefined
+        ? pageServiceWorker()
+        : opts.serviceWorker.container;
+    this.swReload = opts.serviceWorker?.reload;
+    this.bootGuardOptions = opts.bootGuard;
     this.updateOutlet = null;
     this.updateDetected = null;
     if (this.updateConfig) {
@@ -1907,7 +1946,9 @@ export class BrowserAdapter implements PolarisAdapter {
     if (!u || Object.keys(u.pinnedReleaseKeys ?? {}).length === 0)
       return undefined;
     return async () => {
-      const check = await this.decideUpdate();
+      const check = await this.decideUpdate({
+        skipVersion: (await this.guard()).skipVersion(),
+      });
       return { decision: bootDecisionOf(check), check };
     };
   }
@@ -1931,6 +1972,7 @@ export class BrowserAdapter implements PolarisAdapter {
             return this.store.get().status;
           },
           changed: () => this.applyBearer(),
+          ...this.guardStage(),
           ...(decide ? { decide } : {}),
         })
       : this.cookieBootDriver(fresh, decide);
@@ -1986,7 +2028,17 @@ export class BrowserAdapter implements PolarisAdapter {
         };
       })(),
       status: () => this.store.get().status,
+      ...this.guardStage(),
       ...(decide ? { decide } : {}),
+    };
+  }
+
+  /** The boot driver's guard and confirmation, when the page has a version to count launches of. */
+  private guardStage(): Pick<BootDriver, "guard" | "confirm"> {
+    if (this.version === undefined) return {};
+    return {
+      guard: async () => (await this.guard()).markBootAttempt(),
+      confirm: async () => (await this.guard()).confirmBoot(),
     };
   }
 
@@ -2094,6 +2146,74 @@ export class BrowserAdapter implements PolarisAdapter {
       outlet: this.updateOutlet?.id ?? null,
       ...opts,
     });
+  }
+
+  /**
+   * The update driver (update.driver): hand off to the waiting service worker and reload. See
+   * `serviceWorkerUpdate.ts`. Journals `update_downloaded` and `update_applied` in bearer mode.
+   */
+  async installUpdate(
+    decision: UpdateDecision,
+    opts: InstallOptions = {},
+  ): Promise<InstallOutcome> {
+    // Loaded on first use: most page loads never install an update.
+    const { installViaServiceWorker } =
+      await import("./serviceWorkerInstall.js");
+    return installViaServiceWorker(
+      {
+        container: this.swContainer,
+        record: (event, input) => this.recordUpdateEvent(event, input),
+        currentVersion: this.version ?? null,
+        ...(this.swReload ? { reload: this.swReload } : {}),
+      },
+      decision,
+      opts,
+    );
+  }
+
+  /** The boot guard's launch decision (update.bootguard); `boot()` calls it as its guard stage.
+   *  Needs the page's `version`: the guard counts launches of a build. */
+  async markBootAttempt(): Promise<BootAttempt> {
+    this.requireVersion();
+    return (await this.guard()).markBootAttempt();
+  }
+
+  /** Mark this launch healthy (update.bootguard). */
+  async confirmBoot(): Promise<void> {
+    this.requireVersion();
+    return (await this.guard()).confirmBoot();
+  }
+
+  /** The version the guard rolled back from, for `decideUpdate({ skipVersion })`. */
+  async bootGuardSkipVersion(): Promise<string | null> {
+    return (await this.guard()).skipVersion();
+  }
+
+  private guard(): Promise<BootGuard> {
+    this.guard_ ??= import("../core/bootGuard.js").then(
+      ({ BootGuard, browserBootSlotStore }) =>
+        new BootGuard({
+          version: this.version ?? "",
+          store: browserBootSlotStore(
+            this.product,
+            this.bootGuardOptions?.storage,
+          ),
+          record: (event, input) => this.recordUpdateEvent(event, input),
+          staged: () => hasWaitingWorker(this.swContainer),
+          ...(this.bootGuardOptions?.rollback
+            ? { rollback: this.bootGuardOptions.rollback }
+            : {}),
+        }),
+    );
+    return this.guard_;
+  }
+
+  private requireVersion(): void {
+    if (this.version === undefined)
+      throw new PolarisError(
+        "not-configured",
+        "The boot guard counts launches of a build: pass `version` to the adapter.",
+      );
   }
 
   dispose(): void {
