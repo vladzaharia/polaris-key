@@ -19,12 +19,6 @@ loopback only.
    pnpm exec pkey dev
    ```
 
-Without Node, run the image. Publish the port on loopback only:
-
-```sh
-docker run --rm -p 127.0.0.1:8787:8787 pkg.plrs.im/polaris-key/pkey-dev
-```
-
 In a directory with a `.pkey/`, it seeds that product. Anywhere else, or with `--builtin`, it
 seeds Tidewater Studio (license, config, sign-in, release, distribution, update). It starts in
 under a second and prints the signing and release pins, a license key for each state, and writes

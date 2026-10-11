@@ -45,7 +45,24 @@ jobs:
             echo "::error::the size budget did not fail when exceeded"; exit 1
           fi
       - run: pnpm typecheck
+      # SP-41, the React lane. The React SDK's live suite (packages/sdk-react/test) runs inside the
+      # `pnpm test` below, against a fresh `pkey dev` started here from the CLI that `pnpm build` just
+      # made: loopback only, `--auto-approve`, the built-in Tidewater product and its seven test
+      # keys, on a port the OS picks. `start` writes what `pkey sdk --lang react --dev --write`
+      # generates under $RUNNER_TEMP and exports PKEY_DEV_BASE_URL, PKEY_DEV_CONFIG and
+      # PKEY_DEV_APPROVE (the host-side device-code approver) to the steps after it. turbo.json lists
+      # them under the `test` task's `env`: turbo's strict env mode would otherwise hide them from
+      # vitest and the suite would skip itself. `check` fails the job, naming what is missing, when a
+      # variable, the config or the server is not there, so a lane that lost its server fails
+      # instead of skipping. The same three steps and the same contract serve every SDK lane below.
+      - name: Start pkey dev (React live lane)
+        run: node packages/cli/scripts/start-dev-ci.mjs start --lang react
+      - name: Check the pkey dev lane (variables, config, server)
+        run: node packages/cli/scripts/start-dev-ci.mjs check
       - run: pnpm test
+      - name: Stop pkey dev (React live lane)
+        if: always()
+        run: node packages/cli/scripts/start-dev-ci.mjs stop --lang react
       # Adapter conformance (A-18a, notes/S-15 §6.6): every storefront and feed adapter against the
       # shared contract, and every write of each store's pinned vendor spec classified (allowed or
       # denied with a reason). `pnpm test` runs these too; this step names them, so a failing
@@ -313,6 +330,7 @@ jobs:
             python: "3.9"
           - os: ubuntu-latest
             python: "3.14"
+            live: true
           - os: macos-14
             python: "3.12"
     steps:
@@ -334,6 +352,37 @@ jobs:
       - name: pytest
         working-directory: sdks/python
         run: .venv/bin/python -m pytest -q
+      # SP-41, the Python lane: the 3.14 leg also runs the live suite against a fresh `pkey dev` (the
+      # `js` job says what `start` and `check` do). It comes after the plain `pytest -q` above, where
+      # tests/test_dev_live.py skips because none of the PKEY_DEV_* variables are set: the live test
+      # takes seats, publishes a release and changes config, so it refuses a server anything else
+      # has used, and it runs once, named on the command line, which makes missing variables fail it
+      # instead of skipping it.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: matrix.live
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: matrix.live
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Build the pkey dev server (the CLI and the Worker's dependencies)
+        if: matrix.live
+        run: |
+          pnpm install --frozen-lockfile --filter=@polaris-key/worker...
+          pnpm exec turbo run build --filter=@polaris-key/worker^...
+      - name: Start pkey dev (Python live lane)
+        if: matrix.live
+        run: node packages/cli/scripts/start-dev-ci.mjs start --lang python
+      - name: Check the pkey dev lane (variables, config, server)
+        if: matrix.live
+        run: node packages/cli/scripts/start-dev-ci.mjs check
+      - name: pytest, live (device-code sign-in, config event, update decision)
+        if: matrix.live
+        working-directory: sdks/python
+        run: .venv/bin/python -m pytest -q tests/test_dev_live.py
+      - name: Stop pkey dev (Python live lane)
+        if: always() && matrix.live
+        run: node packages/cli/scripts/start-dev-ci.mjs stop --lang python
 
   swift:
     name: Swift SDK
@@ -352,7 +401,27 @@ jobs:
       # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
       - name: UI kit source lint (swiftui)
         run: node packages/ui-qa/bin/kit-lint.mjs --kit=swiftui
+      # SP-41, the Swift lane: the full `swift test` below includes the live test, which needs a
+      # fresh `pkey dev` (the `js` job says what `start` and `check` do). The `apple` job and
+      # publish-sdks.yml run the same `swift test` with no server, where the test skips because none
+      # of the PKEY_DEV_* variables are set.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Build the pkey dev server (the CLI and the Worker's dependencies)
+        run: |
+          pnpm install --frozen-lockfile --filter=@polaris-key/worker...
+          pnpm exec turbo run build --filter=@polaris-key/worker^...
+      - name: Start pkey dev (Swift live lane)
+        run: node packages/cli/scripts/start-dev-ci.mjs start --lang swift
+      - name: Check the pkey dev lane (variables, config, server)
+        run: node packages/cli/scripts/start-dev-ci.mjs check
       - run: swift test --package-path sdks/swift
+      - name: Stop pkey dev (Swift live lane)
+        if: always()
+        run: node packages/cli/scripts/start-dev-ci.mjs stop --lang swift
       # P4-07: packs (PolarisKeyPacks, linking libzstd) and the update client that carries
       # `update.packs` build for iOS without Sparkle, whose product is conditioned to macOS.
       - name: iOS build (packs, update, platform)
@@ -522,6 +591,29 @@ jobs:
       - name: zstd-jni's Android natives are 16 KB page aligned
         working-directory: sdks/kotlin
         run: python3 tools/check_16k_alignment.py
+      # SP-41, the Kotlin lane: the live suite is its own Gradle task, :conformance:liveDevTest (never
+      # up to date or cached, JCA only, not part of :conformance:test), against a fresh `pkey dev`
+      # (the `js` job says what `start` and `check` do). JDK 17 and -Ppkey.jvmOnly=true are enough:
+      # no Android SDK.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Build the pkey dev server (the CLI and the Worker's dependencies)
+        run: |
+          pnpm install --frozen-lockfile --filter=@polaris-key/worker...
+          pnpm exec turbo run build --filter=@polaris-key/worker^...
+      - name: Start pkey dev (Kotlin live lane)
+        run: node packages/cli/scripts/start-dev-ci.mjs start --lang kotlin
+      - name: Check the pkey dev lane (variables, config, server)
+        run: node packages/cli/scripts/start-dev-ci.mjs check
+      - name: Kotlin live (device-code sign-in, config event, update decision)
+        working-directory: sdks/kotlin
+        run: ./gradlew --no-daemon -Ppkey.jvmOnly=true :conformance:liveDevTest
+      - name: Stop pkey dev (Kotlin live lane)
+        if: always()
+        run: node packages/cli/scripts/start-dev-ci.mjs stop --lang kotlin
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -897,6 +989,31 @@ jobs:
       - run: >-
           sdks/godot/tools/fetch_godot.sh "${{ matrix.godot }}"
           "$HOME/.cache/pkey-godot/${{ matrix.godot }}" ${{ matrix.template }}
+      # SP-41, the Godot lane (the Linux legs): the default `ci` selection includes the `dev_live`
+      # suite, which needs a fresh `pkey dev` (the `js` job says what `start` and `check` do). Every
+      # leg is its own runner, so no server is shared; the Windows and macOS smoke legs select
+      # `platform,devices` and need none. The generated config goes under $RUNNER_TEMP, never
+      # sdks/godot: the step after the run requires that tree to be as committed, and run_tests.sh
+      # empties sdks/godot/build. The editor run and the exported-pack run use the one server; the
+      # suite is written for that.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: runner.os == 'Linux'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: runner.os == 'Linux'
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Build the pkey dev server (the CLI and the Worker's dependencies)
+        if: runner.os == 'Linux'
+        run: |
+          pnpm install --frozen-lockfile --filter=@polaris-key/worker...
+          pnpm exec turbo run build --filter=@polaris-key/worker^...
+      - name: Start pkey dev (Godot live lane)
+        if: runner.os == 'Linux'
+        run: node packages/cli/scripts/start-dev-ci.mjs start --lang godot
+      - name: Check the pkey dev lane (variables, config, server)
+        if: runner.os == 'Linux'
+        run: node packages/cli/scripts/start-dev-ci.mjs check
       - run: |
           D="$HOME/.cache/pkey-godot/${{ matrix.godot }}"
           export GODOT_BIN="$D/godot"
@@ -906,6 +1023,9 @@ jobs:
           sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
+      - name: Stop pkey dev (Godot live lane)
+        if: always() && runner.os == 'Linux'
+        run: node packages/cli/scripts/start-dev-ci.mjs stop --lang godot
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
