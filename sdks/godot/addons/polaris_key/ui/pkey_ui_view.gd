@@ -1695,7 +1695,7 @@ static func _refit_words(l: Label) -> void:
 static func _widest_word(font: Font, words: Array, size: int) -> float:
 	var most := 0.0
 	for word in words:
-		most = maxf(most, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+		most = maxf(most, font.get_string_size(word, HORIZONTAL_ALIGNMENT_CENTER, -1, size).x)
 	return most
 
 
