@@ -143,7 +143,7 @@ let package = Package(
         ),
         .target(
             name: "PolarisKeyPacks",
-            dependencies: ["PolarisKeyCore", "PolarisKeyPlatform", "libzstd"],
+            dependencies: ["PolarisKeyCore", "PolarisKeyPlatform", "PolarisKeyUpdate", "libzstd"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(

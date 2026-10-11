@@ -256,7 +256,8 @@ public struct VersionCheck: Sendable, Equatable {
 }
 
 public actor UpdateClient {
-    let core: CoreContext
+    /// The shared core context for an opt-in packs facet.
+    public nonisolated let core: CoreContext
     public nonisolated let content: (any UpdateContentSource)?
     private let configured: ConfiguredUpdate?
     /// Why the client built from `client.update`'s pins is check-only: its options were refused
