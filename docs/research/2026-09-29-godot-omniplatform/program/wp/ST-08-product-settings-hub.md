@@ -143,3 +143,16 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 The role agent sets `--set ST-08 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-08 done`.
+
+## Builder notes (2026-10-11)
+
+- Page moved entries exist for `services`, `presentation`, `keys` (and `secrets`), with an e2e
+  (`core.e2e.test.ts`). The other four families the Brand transition section names stay **live**:
+  `license/settings`, `license/enrollment`, `identity/portal` and `update/feed` are working editors
+  today, the hub's All settings table links to them, and their ledger homes do not exist yet
+  (Features › Licensing nested settings LX-06, probes and device trust ST-12, App sign-in I-29,
+  portal switch ST-14, Updates P2-11; the ledger itself is ST-49, todo). Turning them into Page moved
+  now would delete working editors and name pages that are not built. Each owner adds its row to
+  `MOVED_TABS`/`ROUTE_LEDGER` and its e2e assertion when its replacement lands.
+- `ScrollTable` is now `relative`: an `sr-only` span inside a table cell is absolutely positioned and
+  otherwise escaped the scroll region, widening `main#content` by 132 px at 390 px on All settings.
