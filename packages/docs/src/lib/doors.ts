@@ -104,6 +104,10 @@ export const DOOR_TREES: readonly DoorTree[] = [
         label: "Sign in",
         items: leaves(
           "help/sign-in",
+          "help/code-didnt-arrive",
+          "help/passkeys",
+          "help/approve-a-sign-in",
+          "help/secure-your-account",
           "help/work-account",
           "help/messages/signing-in",
         ),
@@ -132,7 +136,6 @@ export const DOOR_TREES: readonly DoorTree[] = [
         ),
       },
       { label: "Cloud Sync", items: leaves("help/sync") },
-      { label: "Your data", items: leaves("help/your-data") },
       {
         label: "Downloads and updates",
         items: leaves(
@@ -144,7 +147,14 @@ export const DOOR_TREES: readonly DoorTree[] = [
       },
       {
         label: "Account and privacy",
-        items: leaves("help/messages/accounts"),
+        items: leaves(
+          "help/account",
+          "help/join-accounts",
+          "help/delete-account",
+          "help/your-data",
+          "help/manage-your-data",
+          "help/messages/accounts",
+        ),
       },
       {
         label: "Messages",

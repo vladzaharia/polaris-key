@@ -1,0 +1,88 @@
+---
+title: "Your sign-in code didn't arrive"
+description: "What to check when the email with your sign-in code is missing."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-10-11"
+sidebar:
+  order: 2
+---
+
+import HelpMessage from "../../../components/docs/HelpMessage.astro";
+
+A sign-in code comes by email and works for 10 minutes. If you can't find it, check these in
+order.
+
+## Find the email
+
+1. Look in your spam or junk folder for an email from **Polaris Key**. Its subject starts with
+   **Your Polaris Key code**.
+2. Check the address on the **Check your email** page. A typo sends the code to someone else. To
+   fix it, select **Use a different email**.
+3. Wait for the **Send a new code in** countdown to finish.
+4. Select **Send a new code**. The new code replaces the old one. The old code and link stop
+   working.
+
+To tell a real email from a fake one, read [Emails from Polaris Key](/docs/help/emails/).
+
+## Why no email comes
+
+Polaris Key limits sign-in emails. When one of these limits applies, the page looks the same as
+when an email is sent:
+
+- One email address gets up to 5 codes an hour and 20 a day.
+- A shared network has an hourly limit of its own.
+- After 10 wrong codes in an hour, new codes stop for 15 minutes.
+- An address that bounced email before, or reported it as spam, can be blocked.
+
+One sign-in sends up to 5 emails, the first one included. After that the page says **No more codes
+can be sent for this sign-in. The latest code still works.**
+
+If you reach the hourly limit, wait an hour. After 10 wrong codes, wait 15 minutes. If you reach
+the daily limit of 20, wait a day.
+
+If your address was blocked, a different address opens a different account with an empty library.
+Your licenses stay with the address you bought with. If you can't use that address any more, see
+[Get help with an app](/docs/help/contact/) before you try another.
+
+## Apple Hide My Email
+
+Apple's **Hide My Email** gives an address that ends in privaterelay.appleid.com. Polaris Key may
+not be able to send email to it. If you already have an account under that address, a different
+address opens a different account, and your licenses stay with the account you had. To add your
+real email to that account, see
+[Bought with a different email or on Steam?](/docs/help/join-accounts/#if-you-used-hide-my-email).
+If you have no account under that address, use your real email address instead.
+
+## If the code is wrong or expired
+
+Each code allows 5 tries. After that the page says **Too many tries. Send a new code.** A code
+older than 10 minutes shows **That code has expired. Send a new code.**
+
+After an expired code, **Send a new code** takes you back to the email step. Your address is filled
+in, with the note **That sign-in has expired. Continue to get a new code.** Select **Continue**.
+
+If email can't be sent, the app can show this message:
+
+<HelpMessage id="email_unavailable" />
+
+The sign-in page words this as **We can't send email right now. Try another way to sign in.** Try
+again later.
+
+When a sign-in can't start, the app can show this message:
+
+<HelpMessage id="turnstile_failed" />
+
+The sign-in page words this as **The security check did not pass. Try again.** No code was sent.
+
+If you ask for too many codes, the app can show this message:
+
+<HelpMessage id="rate_limited" />
+
+The sign-in page words this as **Too many codes. Try again in a few minutes.** Wait a few minutes,
+then ask again. If no email comes, check the limits in [Why no email comes](#why-no-email-comes).
+
+## Still need help?
+
+Never send anyone your sign-in code. If none of this helps, see
+[Get help with an app](/docs/help/contact/). Polaris Key doesn't publish a help address.

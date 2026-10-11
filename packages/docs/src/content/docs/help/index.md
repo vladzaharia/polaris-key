@@ -18,7 +18,7 @@ the task that matches what you need. An app shows only the options its developer
 - [Device limit reached](/docs/help/device-limit/) — make room for the device you want to use.
 - [Move to a new computer](/docs/help/new-computer/) — use an app on another device.
 - [Download your app](/docs/help/download/) — find the download for an app in your library.
-- [Your code didn't arrive](/docs/help/emails/) — request a new code for a sign-in you started.
+- [Your code didn't arrive](/docs/help/code-didnt-arrive/) — request a new code for a sign-in you started.
 - [Refunds](/docs/help/contact/) — find out whether to ask the developer or store.
 
 ## Browse by topic
@@ -31,7 +31,25 @@ the task that matches what you need. An app shows only the options its developer
 
 ### Sign in
 
-- [Sign in](/docs/help/sign-in/)
+- [Sign in to Polaris Key](/docs/help/sign-in/) — sign in with an email code or link.
+- [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/) — what to check when the email
+  with your code is missing.
+- [Use a passkey](/docs/help/passkeys/) — add, use and remove a passkey.
+- [Approve a sign-in on another device](/docs/help/approve-a-sign-in/) — enter the code a TV or
+  game system shows.
+- [Secure your account](/docs/help/secure-your-account/) — what to do after an email asks "Wasn't
+  you?".
+
+### Your account and data
+
+- [Your account and sign-in methods](/docs/help/account/) — your profile, appearance, sign-in
+  methods and where you're signed in.
+- [Bought with a different email or on Steam?](/docs/help/join-accounts/) — add the email you
+  bought with.
+- [Delete your account](/docs/help/delete-account/) — what happens when you delete it, and the
+  steps.
+- [Your data and privacy](/docs/help/your-data/) — what apps read from your device, what
+  developers see, and how to download or remove your data.
 
 ### Your library
 

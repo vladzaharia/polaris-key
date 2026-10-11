@@ -236,7 +236,7 @@ never a dictionary: gated packs always take the WASM path. The payload is found 
 200 newest releases; an older one, a tree variant or an unknown hash is the plain not-found.
 Cloudflare passes the dictionary headers through and varies its cache on them; it never computes
 a delta itself. What each browser ends up doing is in the
-[React SDK](/docs/build/sdks/react/#what-the-web-gets-payload-urls-and-compression-dictionary-transport).
+[React SDK](/docs/build/sdks/react/).
 
 ## Pack transports
 

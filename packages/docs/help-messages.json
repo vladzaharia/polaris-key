@@ -859,6 +859,12 @@
       "fix": "It stays in your library. To stop using it on a device, remove that device from the app's page. That signs the app out there. Otherwise ask the app's developer.",
       "cta": "library"
     },
+    "erasure_ledger_unavailable": {
+      "page": "accounts",
+      "entry": "erasure_ledger_unavailable",
+      "why": "Polaris Key couldn't confirm your account's status right now, so it didn't finish the sign-in or change anything.",
+      "fix": "Wait a few minutes, then try again."
+    },
     "network": {
       "page": "other",
       "entry": "network",

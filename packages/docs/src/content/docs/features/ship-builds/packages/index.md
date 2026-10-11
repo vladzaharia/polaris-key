@@ -798,7 +798,7 @@ A licence's **Keys** tab has a **Registry tokens** panel with the tokens bound t
 whoever minted them, and the same New token and Revoke all, for that licence only.
 
 A licensee can mint their own read tokens in the portal whenever the product has an enabled feed
-that is not public; see [Package access](/docs/users/portal/#package-access).
+that is not public.
 
 Tokens are bound to one owner, and docker, SwiftPM and netrc keep one credential per registry host,
 so one machine can hold a token for only one product on the registry host for those clients. npm,

@@ -613,16 +613,10 @@
       "frontmatter-last-reviewed": 1,
       "help-word": 23
     },
-    "help/sign-in": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 26,
-      "time-word": 1
-    },
     "help/sync": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "help-word": 7,
+      "help-word": 6,
       "time-word": 1
     },
     "help/update": {
