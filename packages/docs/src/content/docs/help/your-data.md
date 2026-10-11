@@ -22,7 +22,7 @@ developer sees, and what you can ask for.
   number of processor cores and memory, your language and time zone, and the version of the app.
   Polaris Key receives these as they are, and the app's developer can see them. They let the
   developer see which systems the app runs on, check that it works on yours and send it the right
-  settings. Apps that run in a web browser send only the kind of operating system, processor cores,
+  settings. Apps that run in a web browser send the kind of operating system, processor cores,
   memory, language, time zone and the version of the app.
 - **Your computer's name**, as set in your system settings. It can include your own name, and you
   can change it there. Apps you install usually send it, so you can tell your devices apart in your
@@ -47,7 +47,8 @@ anything from another app.
 ## What Polaris Key holds
 
 Polaris Key holds the details you give your account: email addresses, sign-in methods, name,
-picture and an optional birth date. It also keeps a list of the browsers signed in to your account.
+picture and an optional birth date. It also keeps a list of the browsers signed in to your account
+and a record of changes to your sign-in methods.
 For each device, it keeps the scrambled computer identifiers, never the originals, until the device
 is removed. It keeps your computer's name and the last system details your device sent for as long
 as the license exists. You can change your account details in
