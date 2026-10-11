@@ -17,6 +17,7 @@ export {
   LAYOUTS,
   lightDomCss,
   mergeThemes,
+  monogramOf,
   onCopyLoaded,
   OPENS,
   placeKeys,

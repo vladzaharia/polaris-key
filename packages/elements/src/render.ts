@@ -18,6 +18,7 @@ import { encodeQr } from "@polaris-key/node/qr";
 import { actionOf, OPENS, placeKeys } from "./contract.js";
 import { LAYOUTS, type Layout } from "./layout.js";
 import type { Resolved } from "./theme.js";
+import { monogramOf } from "./monogram.js";
 
 /** What a template needs to draw one view. */
 export interface RenderCtx {
@@ -190,7 +191,7 @@ export function productIcon(c: RenderCtx): TemplateResult {
       src=${c.resolved.iconUrl}
       alt=${label}
     />`;
-  const initial = [...name.trim()][0]?.toLocaleUpperCase() ?? "";
+  const initial = monogramOf(name);
   return html`<span
     class="icon monogram"
     part="icon monogram"

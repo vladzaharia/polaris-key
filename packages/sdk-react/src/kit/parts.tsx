@@ -5,7 +5,7 @@
 
 import { Fragment, type KeyboardEvent, type ReactNode } from "react";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
-import { encodeQr, OPENS, type Resolved } from "./contract.js";
+import { encodeQr, monogramOf, OPENS, type Resolved } from "./contract.js";
 
 /** What a part needs to draw one view. */
 export interface KitCtx {
@@ -259,7 +259,7 @@ export function productIcon(c: KitCtx): ReactNode {
         alt={label}
       />
     );
-  const initial = [...name.trim()][0]?.toLocaleUpperCase() ?? "";
+  const initial = monogramOf(name);
   return (
     <span
       className="icon monogram"

@@ -109,6 +109,18 @@ describe("the default look", () => {
     expect(root.textContent).toContain("Driftkart");
   });
 
+  it("the monogram is the name's first letter past its bidi isolates", () => {
+    const { container } = render(
+      <Welcome
+        input={welcome}
+        theme={{ product: { name: "\u2068tidewater Studio\u2069" } }}
+      />,
+    );
+    expect(
+      rootOf(container).querySelector('[data-part="monogram"]')?.textContent,
+    ).toBe("T");
+  });
+
   it("the native preset hands the look to the host and draws no ambient", () => {
     const { container } = render(
       <Welcome input={welcome} theme={{ preset: "native" }} />,
