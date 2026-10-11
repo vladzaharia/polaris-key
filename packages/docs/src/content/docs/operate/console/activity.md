@@ -123,6 +123,11 @@ product being disabled: [deleting a product](/docs/admin/products/#what-deleting
 tombstones the row and scrubs license PII, but never touches `audit`. A scheduled sweep prunes
 rows older than **180 days**, the same cutoff applied to the customer portal's own audit table.
 
+When a person erases their Polaris Key account, the rows that name them as the actor (adding a
+product from Discover, and a sign-in's license merge, tier change or license choice) keep their
+time, action and license, and show `erased-account` as the actor with no name, address or summary.
+Rows for anyone else, and console actions on other people's licenses, are not changed.
+
 The blob collector's trail, `blob_gc_log` (every ref it dropped or restored and every object it
 deleted), follows the same **180-day** cutoff. It is platform-wide, not product-scoped: it has no
 foreign key to `products` (an object's deletion belongs to no single product; a `ref-dropped` row

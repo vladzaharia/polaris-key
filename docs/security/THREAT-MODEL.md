@@ -6270,7 +6270,9 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   tokens move back untouched (a test). A join is refused while EITHER account could still undo a
   join of its own (`merge_pending`): absorbing that account would destroy its undo, and absorbing
   into it would hand the second join's data and aliases to the first join's absorbed account on
-  undo. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
+  undo. It is refused as well while either account has a scheduled deletion (`deletion_pending`,
+  under account erasure below), and an undo leaves such a request with the account it was made
+  for. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
   nightly once the window ends, and deleted with either account (docs/PRIVACY.md).
 - **Residuals.** Someone with a fresh session for an account can already change it directly
   (connect their own method, disconnect the others, delete it); joining gives them nothing more,
@@ -7741,6 +7743,34 @@ attachments in place, with no record and no retry, while the person had been tol
   together with the progress row, leaving the id-only tombstone and the receipt. The batch
   deletes ALL of the account's subject rows and their aliases (SEC-PRV-19), and the hook loop
   re-reads the subjects and runs the stores for one minted while it ran.
+- **Audit rows that name the person.** The same batch first rewrites the product `audit` rows
+  whose actor is the person (`accounts/accountAudit.ts`). The Discover claim, and the product
+  sign-in's licence merge, tier change and licence chooser, record the person's platform subject,
+  name and address, which would outlive the account for up to 180 days (`pruneAudit`). A row
+  qualifies only when its `actor_sub` is the subject of one of the account's platform sign-in
+  links (`kind = 'oidc'`, no tenant scope: the left side `syncAccountLicenseLinks` joins on,
+  R5-02) and it concerns that person's own licence (held now, or keyed by that subject) or is the
+  sign-in chooser's own row. Never an address or a name: another person's row that shares one
+  stays. The licence condition keeps an operator's console history: the console signs in at the
+  same IdP, so a person who is also an operator shares the subject, and erasing a portal account
+  must not anonymise what they did to anyone else's licence or product. A matching row keeps its
+  time, action, licence and parent licence and loses its actor (the constant marker
+  `erased-account`: never the account id, which a developer must not see, and never NULL, which
+  the console reads as a row Polaris Key wrote), name, address and summary. The statement is one
+  `UPDATE` that searches `idx_audit_time` by product and runs ahead of the deletes that remove
+  the links it reads, so it commits with the erasure or not at all. Tests:
+  `test/accountErasure.test.ts`, `test/portalDiscover.test.ts`.
+- **A join cannot cancel or broaden a request.** `mergeAccounts` refuses (`deletion_pending`,
+  shown to the person as `forbidden` with `reason: unavailable`) while either account has a row in
+  `account_deletions`, claimed or not. Absorbing the scheduled account used to cascade its
+  request away with the account row, a decision lost silently and out of an undo's reach; joining
+  another account into it put that account's data under a deadline its holder never chose. The
+  check runs before any store is re-keyed and again as the head of the join's batch (a NULL in a
+  NOT NULL column aborts it), so a request scheduled in between aborts the join and survives. The
+  person cancels the request, then joins. An undo never moves a request: one the survivor
+  schedules inside the 72 hours stays on the survivor, and the restored account starts with none.
+  Tests: `test/accounts.test.ts`, `test/portalLinkAccounts.test.ts`,
+  `test/identityCardGate.test.ts`.
 - **Resume and detection.** Both cron ticks run `sweepErasures`, which also adopts any
   `status = 'deleted'` account without a progress row (left by a Worker before this change). The
   nightly tick fails the `erasures` step, shown on the Operations page, while an erasure has
@@ -7760,10 +7790,10 @@ attachments in place, with no record and no retry, while the person had been tol
   email's link still belongs to the erasing account and sign-in is refused.
 - **Residual.** Until the retry completes the person's data still exists server-side, but no API
   or session reaches it; the time to completion is bounded by the store recovering plus the
-  back-off. This erasure does not rewrite `audit.summary` or `license_relinks.holder_json`: new
-  audit rows name a licence by id, older ones (which may hold a buyer's address) are deleted after
-  180 days, and a relink's holder snapshot is cleared once its 72-hour undo window ends (PRIVACY,
-  "Residue and limits").
+  back-off. Beyond the audit rows that name the person (above), this erasure does not rewrite
+  `audit.summary` or `license_relinks.holder_json`: new audit rows name a licence by id, older ones
+  (which may hold a buyer's address) are deleted after 180 days, and a relink's holder snapshot is
+  cleared once its 72-hour undo window ends (PRIVACY, "Residue and limits").
 
 ### Account pictures: profile import, re-encoding and uploads (PX-W16)
 

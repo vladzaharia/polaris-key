@@ -262,7 +262,15 @@ What the sections above do not promise, stated plainly:
 
 - **Console audit rows** (`audit`) name the licence by id; since October 2026 they no longer copy the
   buyer's email or name. Rows written before that may still hold an address and are deleted by the
-  nightly job after 180 days. Account erasure does not rewrite them.
+  nightly job after 180 days. Account erasure rewrites the rows that name the person as their actor:
+  a Discover add through the portal, and a product sign-in's licence merge, tier change or licence
+  choice, record the person's platform subject, name and address. In the erasure batch such a row
+  keeps its time, action and licence and loses the actor (replaced by the marker `erased-account`),
+  the name, the address and the summary. A row is rewritten only when its actor is one of the
+  account's platform sign-ins and it concerns the person's own licence: an address alone is no link,
+  and an operator's console actions on anyone else's licence stay attributed. The product's
+  developer sees the marker, never the global account id. Removing your data from a single app does
+  not rewrite them.
 - **Merge tombstones** (`account_tombstones` with a merge target, which carry an email hash) are
   deleted after 90 days; an erasure tombstone holds only the account id and is kept, so an erased
   account is never recreated by the legacy catch-up. Subject events (`subject_events`) are deleted

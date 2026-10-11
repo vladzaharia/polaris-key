@@ -16,6 +16,7 @@ import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
 } from "../src/core/accounts/accountCookies.js";
+import { scheduleAccountDeletion } from "../src/services/identity/accounts/lifecycle.js";
 import {
   EMAIL_ISSUER,
   insertAccount,
@@ -441,6 +442,61 @@ describe("the join offer (owner, 2026-10-04)", () => {
       )?.merged_into,
     ).toBe(ada);
   });
+
+  it.each([
+    ["the account being joined in", "stray"],
+    ["the email's account", "ada"],
+  ] as const)(
+    "a scheduled deletion on %s refuses the join, says why, and loses nothing (I-11)",
+    async (_label, scheduled) => {
+      const w = await seededWorld();
+      const ada = await emailAccount(w, "ada@example.com");
+      const stray = await insertAccount(
+        w.db,
+        { primaryEmail: null, primaryEmailVerified: false, displayName: "Ada" },
+        NOW,
+      );
+      await insertLink(
+        w.db,
+        stray.id,
+        {
+          issuerKey: GOOGLE,
+          tenantScope: "",
+          subject: "g-1",
+          kind: "google",
+          email: null,
+          emailVerified: false,
+          displayName: "Ada",
+          amr: null,
+        },
+        NOW,
+      );
+      const victim = scheduled === "stray" ? stray.id : ada;
+      await scheduleAccountDeletion(w.db, victim, NOW);
+      const d = new Device(w);
+      await arrive(w, d, google("g-1", null));
+      await d.send("POST", GATE, { choice: "typed", email: "ada@example.com" });
+      await d.send("POST", `${GATE}/verify`, {
+        code: lastCode(w, "ada@example.com"),
+      });
+
+      const join = await d.send("POST", `${GATE}/join`);
+      expect(join.status).toBe(403);
+      expect(await join.json()).toEqual({
+        error: "forbidden",
+        message: expect.stringContaining("scheduled for deletion"),
+      });
+      // No session, no join: both accounts and their own methods stand, and so does the request.
+      expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+      expect(await count(w, "accounts")).toBe(2);
+      expect(await linksOf(w, ada)).toEqual(["email:ada@example.com"]);
+      expect(await linksOf(w, stray.id)).toEqual(["google:g-1"]);
+      expect(await count(w, "account_merges")).toBe(0);
+      expect(
+        await w.db.all("SELECT account_id FROM account_deletions"),
+      ).toEqual([{ account_id: victim }]);
+    },
+  );
 
   it("declining is choosing a different email", async () => {
     const w = await seededWorld();

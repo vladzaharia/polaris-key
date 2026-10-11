@@ -65,5 +65,8 @@ Choose **Keep my account** during the 14 days to cancel the deletion. After 14 d
 erases the account for good. Your licenses stay with each app's developer, and each developer
 erases its own records.
 
+While a deletion is scheduled, you cannot join another account to this one. Choose **Keep my
+account** first, then join them.
+
 Time Travel keeps deleted rows for up to 30 days. If a restore happens, Polaris Key applies the
 deletion list again.

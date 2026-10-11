@@ -22,6 +22,14 @@
  * PX-W12: every join is undoable for 72 hours (`mergeUndo.ts`). The batch also writes an
  * `account_merges` row with a snapshot of what moved, and no join involves an account that can
  * still undo a join of its own (`merge_pending`), so each undo stays possible and exact.
+ *
+ * I-11: no join involves an account with a scheduled deletion (`deletion_pending`). The request is
+ * the holder's explicit, cancellable decision about ONE account: absorbing that account would
+ * cascade the request away with its row (the intent lost, and an undo could not bring it back),
+ * and joining another account into it would put that account's data under a deadline its holder
+ * never chose. The person cancels the request (Keep my account) and joins afterwards. The check
+ * is repeated inside the batch, so a request scheduled between the check and the commit aborts
+ * the join instead of vanishing with the absorbed row.
  */
 
 import type { DbStatement } from "../../../db/types.js";
@@ -32,6 +40,7 @@ import { randomId } from "../../../platform/crypto.js";
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsMergedNotice } from "../portal/notices.js";
 import { stmtSubjectEvent } from "./events.js";
+import { hasScheduledAccountDeletion } from "./lifecycle.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
 import {
   MERGE_UNDO_SECONDS,
@@ -63,7 +72,9 @@ export type MergeResult =
         | "account_disabled"
         /** Either account joined another less than 72 hours ago, and that join can still be
          *  undone: wait until it no longer can. */
-        | "merge_pending";
+        | "merge_pending"
+        /** Either account has a scheduled deletion (I-11): cancel it first, then join. */
+        | "deletion_pending";
     };
 
 export async function mergeAccounts(
@@ -94,6 +105,11 @@ export async function mergeAccounts(
     (await hasUndoableMerge(db, S, now))
   ) {
     return { ok: false, reason: "merge_pending" };
+  }
+  // A scheduled deletion belongs to ONE account and rides that account's id: refuse before anything
+  // moves, whichever side it is on (see the header).
+  if (await hasScheduledAccountDeletion(db, S, A)) {
+    return { ok: false, reason: "deletion_pending" };
   }
 
   // Everyone on either account hears about it; read before the absorbed rows move.
@@ -148,6 +164,16 @@ export async function mergeAccounts(
     alias: string | null;
   }> = [];
   const stmts: DbStatement[] = [
+    // The deletion check above, atomic with the join: a request scheduled since then (another
+    // session of either account) inserts a row with a NULL in a NOT NULL column and aborts the
+    // whole batch, instead of cascading away with the absorbed account or riding the survivor's
+    // deadline.
+    {
+      sql: `INSERT INTO account_merges (id, survivor_id, absorbed_id, merged_at, undo_until)
+            SELECT ?, NULL, NULL, 0, 0
+             WHERE EXISTS (SELECT 1 FROM account_deletions WHERE account_id IN (?, ?))`,
+      params: [`${mergeId}:guard`, S, A],
+    },
     {
       sql: "UPDATE account_links SET account_id = ? WHERE account_id = ?",
       params: [S, A],
@@ -319,7 +345,15 @@ export async function mergeAccounts(
     },
     stmtRecordMerge(mergeId, S, A, snapshot, now),
   );
-  await db.batch(stmts);
+  try {
+    await db.batch(stmts);
+  } catch (e) {
+    // The guard at the head of the batch tripped: a deletion was scheduled after the check.
+    if (await hasScheduledAccountDeletion(db, S, A)) {
+      return { ok: false, reason: "deletion_pending" };
+    }
+    throw e;
+  }
 
   const undoUntil = now + MERGE_UNDO_SECONDS;
   const message = accountsMergedNotice({ origin: ctx.origin, undoUntil });

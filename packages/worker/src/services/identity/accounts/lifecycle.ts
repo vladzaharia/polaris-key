@@ -27,9 +27,24 @@ export async function accountDeletionSchedule(
     "SELECT requested_at, due_at FROM account_deletions WHERE account_id = ?",
     accountId,
   );
-  return row
-    ? { requestedAt: row.requested_at, dueAt: row.due_at }
-    : null;
+  return row ? { requestedAt: row.requested_at, dueAt: row.due_at } : null;
+}
+
+/**
+ * Whether any of these accounts has a deletion request: still cancellable, due, or already claimed
+ * by the sweep. Joining two accounts (`mergeAccounts`) is refused while either has one.
+ */
+export async function hasScheduledAccountDeletion(
+  db: Db,
+  ...accountIds: string[]
+): Promise<boolean> {
+  if (accountIds.length === 0) return false;
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM account_deletions
+      WHERE account_id IN (${accountIds.map(() => "?").join(", ")}) LIMIT 1`,
+    ...accountIds,
+  );
+  return row !== null;
 }
 
 /** Schedule once. Repeating the request preserves the original deadline. */

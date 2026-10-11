@@ -1389,7 +1389,12 @@ async function gateJoin(
           403,
           [clearGate()],
         )
-      : gateRefused(403, "These accounts can't be joined.");
+      : gateRefused(
+          403,
+          merged.reason === "deletion_pending"
+            ? "One of these accounts is scheduled for deletion. Choose Keep my account under Your data on that account, then try again."
+            : "These accounts can't be joined.",
+        );
   }
   const link = await findLink(db, {
     issuerKey: gate.identity.issuerKey,

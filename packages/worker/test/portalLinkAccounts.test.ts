@@ -362,6 +362,59 @@ describe("joining needs proof of both accounts in one browser", () => {
     expect(await exists(w, c.accountId)).toBe(true);
   });
 
+  it.each([
+    ["the started account", "started"],
+    ["the other account", "other"],
+  ] as const)(
+    "blocks a join while %s has a scheduled deletion, whichever is kept, and the request survives",
+    async (_label, scheduled) => {
+      const w = await seededWorld();
+      const b = await emailAccount(w, "b@example.com");
+      const a = await emailAccount(w, "a@example.com");
+      const victim = scheduled === "started" ? a : b;
+      expect((await victim.d.send("DELETE", "/api/me")).status).toBe(200);
+      const requests = () =>
+        w.db.all(
+          "SELECT account_id, requested_at, due_at, claimed_until FROM account_deletions",
+        );
+      const request = await requests();
+      expect(request).toEqual([
+        expect.objectContaining({ account_id: victim.accountId }),
+      ]);
+      const expectRefused = async (res: Response) => {
+        expect(res.status).toBe(403);
+        expect(await res.json()).toEqual(
+          expect.objectContaining({
+            error: "forbidden",
+            reason: "unavailable",
+            message: expect.stringContaining("scheduled for deletion"),
+          }),
+        );
+        // The attempt used up the flow, and nothing moved: both accounts, and the request.
+        expect(a.d.jar.has(LINK_FLOW_COOKIE)).toBe(false);
+        expect(await exists(w, a.accountId)).toBe(true);
+        expect(await exists(w, b.accountId)).toBe(true);
+        expect(await w.db.all("SELECT id FROM account_merges")).toEqual([]);
+        expect(await requests()).toEqual(request);
+      };
+
+      await proveBoth(a, b);
+      // The screen already says it cannot be done (the public reason stays `unavailable`).
+      const view = (await (await a.d.send("GET", LINK)).json()) as {
+        flow: { canJoin: boolean; reason: string };
+      };
+      expect(view.flow).toEqual(
+        expect.objectContaining({ canJoin: false, reason: "unavailable" }),
+      );
+      await expectRefused(await join(a.d));
+
+      // Keeping the started account is refused alike. (The refusal used up the flow and this
+      // browser is signed in to B now, so it starts from B.)
+      await proveBoth({ ...b, d: a.d }, a);
+      await expectRefused(await join(a.d, { keep: "started" }));
+    },
+  );
+
   it("merges once when two confirms race", async () => {
     const w = await seededWorld();
     const b = await emailAccount(w, "b@example.com");
@@ -926,6 +979,31 @@ describe("undo within 72 hours", () => {
       merge: mergeId,
     });
     expect(res.status).toBe(404);
+  });
+
+  it("keeps a deletion the survivor scheduled on the survivor through an undo, and gives the restored account none", async () => {
+    const w = await seededWorld();
+    const { a, b, mergeId } = await joined(w);
+    // The survivor's holder asks to delete the joined account inside the 72 hours; the browser's
+    // session of the absorbed account acts as the survivor.
+    expect((await a.d.send("DELETE", "/api/me")).status).toBe(200);
+    const before = await w.db.all(
+      "SELECT account_id, requested_at, due_at, claimed_until FROM account_deletions",
+    );
+    expect(before).toEqual([
+      expect.objectContaining({ account_id: b.accountId }),
+    ]);
+
+    const res = await a.d.send("POST", `${LINK}/undo`, { merge: mergeId });
+    expect(res.status).toBe(200);
+    expect(await exists(w, a.accountId)).toBe(true);
+    // The request stayed with the account it was made for: the same row, the same deadline, and
+    // the restored account never inherited it.
+    expect(
+      await w.db.all(
+        "SELECT account_id, requested_at, due_at, claimed_until FROM account_deletions",
+      ),
+    ).toEqual(before);
   });
 
   it("keeps no snapshot past the window, nor after the survivor's hard erasure", async () => {

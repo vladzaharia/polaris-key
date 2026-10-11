@@ -6,13 +6,16 @@
  * it after the back-off and the final batch removes every row; a double invoke is harmless; a
  * subject minted while the hooks ran is not orphaned.
  */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { insertLicense } from "../src/core/repo.js";
+import { appendAudit, insertLicense, type AuditRow } from "../src/core/repo.js";
 import {
   subjectFor,
   subjectForOrNull,
@@ -31,7 +34,16 @@ import { attachLicense } from "../src/services/identity/accounts/claim.js";
 import { applyProvisionedAccountSecrets } from "../src/core/accounts/accountOverrides.js";
 import * as deletion from "../src/services/identity/accounts/deletion.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
-import { getAccountRow } from "../src/services/identity/accounts/repo.js";
+import {
+  ERASED_AUDIT_ACTOR,
+  ERASED_AUDIT_SUMMARY,
+  SIGNIN_LICENSE_CHOSEN_ACTION,
+  stmtScrubAccountAudit,
+} from "../src/services/identity/accounts/accountAudit.js";
+import {
+  getAccountRow,
+  insertLink,
+} from "../src/services/identity/accounts/repo.js";
 import { runScheduledMaintenance } from "../src/scheduled.js";
 
 const EMAIL = "erase-me@example.com";
@@ -471,5 +483,357 @@ describe("SEC-PRV-19: a subject minted during erasure is not orphaned", () => {
         "SELECT COUNT(*) AS n FROM subject_events WHERE type = 'subject.deleted'",
       ),
     ).toBe(2);
+  });
+});
+
+// ── I-11: the product `audit` rows that name the person ───────────────────────────────────────
+
+const PLATFORM = "https://id.example";
+const SUB = "pocket-sub-ada";
+const PERSON_EMAIL = "ada@example.com";
+const PERSON_NAME = "Ada Lovelace";
+/** The person as the platform IdP knows them: what the portal and the product sign-in write. */
+const AS_PERSON = {
+  actor_sub: SUB,
+  actor_name: PERSON_NAME,
+  actor_email: PERSON_EMAIL,
+};
+
+const auditRow = (
+  p: Partial<AuditRow> & Pick<AuditRow, "id" | "action">,
+): AuditRow => ({
+  product: "acme",
+  at: NOW,
+  actor_sub: null,
+  actor_name: null,
+  actor_email: null,
+  target_kind: null,
+  target_id: null,
+  parent_id: null,
+  summary: null,
+  ...p,
+});
+
+const auditRows = (db: Db) =>
+  db.all<AuditRow>(
+    `SELECT product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id,
+            parent_id, summary
+       FROM audit ORDER BY product, id`,
+  );
+
+async function seedLicense(
+  db: Db,
+  product: string,
+  id: string,
+  sub: string | null,
+  accountId: string | null,
+): Promise<void> {
+  await insertLicense(db, {
+    product,
+    id,
+    status: "active",
+    sub,
+    name: null,
+    email: null,
+    groups_json: null,
+    tier_id: null,
+    activated_at: NOW,
+    expires_at: null,
+    max_offline_days: null,
+    overrides_json: null,
+    channels_json: null,
+    min_version: null,
+    max_version: null,
+    modified_by: null,
+    modified_at: NOW,
+  });
+  if (accountId)
+    await db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ?",
+      accountId,
+      product,
+      id,
+    );
+}
+
+/**
+ * The account holds a platform sign-in (subject SUB). Its product audit holds the rows the four
+ * writers leave for such a person (`scrubbed`) and rows that merely look like them (`untouched`).
+ */
+async function auditWorld() {
+  const w = await world();
+  await seedProduct(w.db, "other");
+  await insertLink(
+    w.db,
+    w.id,
+    {
+      issuerKey: PLATFORM,
+      tenantScope: "",
+      subject: SUB,
+      kind: "oidc",
+      email: PERSON_EMAIL,
+      emailVerified: true,
+      displayName: PERSON_NAME,
+      amr: null,
+    },
+    NOW,
+  );
+  // Minted for the person (keyed by their subject) and still in their library...
+  await seedLicense(w.db, "acme", "lic-held", SUB, w.id);
+  // ...one they removed from it since (a floating licence keeps its subject)...
+  await seedLicense(w.db, "other", "lic-gone", SUB, null);
+  // ...and other people's.
+  await seedLicense(w.db, "acme", "lic-else", "user-else", null);
+  await seedLicense(w.db, "other", "lic-else2", "user-else", null);
+  const scrubbed = [
+    // The portal's Discover claim.
+    auditRow({
+      id: "s1-discover",
+      ...AS_PERSON,
+      action: "license.create",
+      target_kind: "license",
+      target_id: "lic-held",
+      summary: `Auto-issued to ${PERSON_EMAIL} from the portal's Discover (source: discover; path: auto_issue; reason: free_with_account)`,
+    }),
+    // The product sign-in's tier change, licence merge and licence chooser (`oidc.ts`).
+    auditRow({
+      id: "s2-tier",
+      ...AS_PERSON,
+      action: "license.tier.change",
+      target_kind: "license",
+      target_id: "lic-held",
+      summary:
+        "Moved from tier free to the higher-rank tier pro at sign-in (syncTierOnSignIn: upgradeOnly)",
+    }),
+    auditRow({
+      id: "s3-merge",
+      ...AS_PERSON,
+      action: "license.merge",
+      target_kind: "license",
+      target_id: "lic-held",
+      parent_id: "lic-enrolled",
+      summary: `Claimed the auto-issued license for ${PERSON_EMAIL}`,
+    }),
+    auditRow({
+      id: "s4-removed",
+      product: "other",
+      ...AS_PERSON,
+      action: "license.create",
+      target_kind: "license",
+      target_id: "lic-gone",
+      summary: `Auto-issued to ${PERSON_EMAIL} from the portal's Discover (source: discover; path: group; reason: group:beta)`,
+    }),
+    auditRow({
+      id: "s5-chooser",
+      ...AS_PERSON,
+      action: SIGNIN_LICENSE_CHOSEN_ACTION,
+      target_kind: "license",
+      target_id: null,
+      summary: "Chose a new free license to sign in Ada's MacBook",
+    }),
+  ];
+  const untouched = [
+    // The same subject acting as an operator on someone else's licence or on the product itself
+    // (the console signs operators in at the same IdP): console history stays attributed.
+    auditRow({
+      id: "u1-operator",
+      ...AS_PERSON,
+      action: "license.disable",
+      target_kind: "license",
+      target_id: "lic-else",
+      summary: "Disabled license lic-else",
+    }),
+    auditRow({
+      id: "u2-operator-other-product",
+      product: "other",
+      ...AS_PERSON,
+      action: "license.disable",
+      target_kind: "license",
+      target_id: "lic-else2",
+    }),
+    auditRow({
+      id: "u3-operator-product",
+      ...AS_PERSON,
+      action: "schema.publish",
+      target_kind: "product",
+      target_id: "acme",
+    }),
+    // The same address and name under another subject: an address alone is not a link, even on
+    // the person's own licence.
+    auditRow({
+      id: "u4-email-only",
+      actor_sub: "g-1",
+      actor_name: "A. Lovelace",
+      actor_email: PERSON_EMAIL,
+      action: "license.create",
+      target_kind: "license",
+      target_id: "lic-held",
+      summary: `Created for ${PERSON_EMAIL}`,
+    }),
+    // Another person on their own licence.
+    auditRow({
+      id: "u5-someone-else",
+      actor_sub: "user-else",
+      actor_name: "Else",
+      actor_email: "else@example.com",
+      action: "license.create",
+      target_kind: "license",
+      target_id: "lic-else",
+      summary: "Auto-issued to else@example.com",
+    }),
+    // The developer's record: the person's pairwise subject, never an identity of theirs.
+    auditRow({
+      id: "u6-pairwise",
+      actor_sub: w.subject,
+      action: "license.attach",
+      target_kind: "license",
+      target_id: "lic-1",
+      summary: `Added to the account of ${w.subject} from device dev-1 (via device)`,
+    }),
+    // A row the runtime wrote.
+    auditRow({ id: "u7-system", action: "device.deauthorize" }),
+  ];
+  for (const row of [...scrubbed, ...untouched]) await appendAudit(w.db, row);
+  return { w, scrubbed, untouched };
+}
+
+const anonymised = (row: AuditRow): AuditRow => ({
+  ...row,
+  actor_sub: ERASED_AUDIT_ACTOR,
+  actor_name: null,
+  actor_email: null,
+  summary: ERASED_AUDIT_SUMMARY,
+});
+
+describe("I-11: erasure anonymises the product audit rows that name the person", () => {
+  it("replaces actor, name, email and summary on the person's rows, keeps the event and its object, and leaves every other row as it was", async () => {
+    const { w, scrubbed, untouched } = await auditWorld();
+    expect(await deletion.deleteAccount(w.ctx(), w.id)).toEqual({ ok: true });
+
+    const after = await auditRows(w.db);
+    expect(after).toHaveLength(scrubbed.length + untouched.length);
+    const row = (r: AuditRow) =>
+      after.find((a) => a.product === r.product && a.id === r.id);
+    for (const r of scrubbed) expect(row(r)).toEqual(anonymised(r));
+    for (const r of untouched) expect(row(r)).toEqual(r);
+    // Nothing that identified the person survives on a row that was theirs.
+    const theirs = JSON.stringify(scrubbed.map(row));
+    for (const pii of [SUB, PERSON_EMAIL, PERSON_NAME, "Lovelace", "MacBook"])
+      expect(theirs).not.toContain(pii);
+  });
+
+  it("waits for the commit: a failing store leaves the rows alone until the retry finishes the erasure", async () => {
+    const { w, scrubbed } = await auditWorld();
+    let failing = true;
+    registerSubjectStore("flaky", {
+      merge: async () => {},
+      delete: async () => {
+        if (failing) throw new Error("DO unavailable");
+      },
+    });
+    const before = await auditRows(w.db);
+    expect(await deletion.deleteAccount(w.ctx(), w.id)).toEqual({
+      ok: true,
+      erasing: true,
+    });
+    expect(await auditRows(w.db)).toEqual(before);
+
+    failing = false;
+    expect(await deletion.sweepErasures(w.ctx(NOW + 2 * 3600))).toEqual({
+      completed: 1,
+      attempted: 1,
+    });
+    expect(
+      (await auditRows(w.db))
+        .filter((r) => r.actor_sub === ERASED_AUDIT_ACTOR)
+        .map((r) => r.id)
+        .sort(),
+    ).toEqual(scrubbed.map((r) => r.id).sort());
+  });
+
+  it("anonymises nothing for an account with no platform sign-in: an address, a Google subject or a tenant-scoped subject is no link", async () => {
+    const w = await world();
+    await insertLink(
+      w.db,
+      w.id,
+      {
+        issuerKey: "https://accounts.google.com",
+        tenantScope: "",
+        subject: "g-1",
+        kind: "google",
+        email: EMAIL,
+        emailVerified: true,
+        displayName: null,
+        amr: null,
+      },
+      NOW,
+    );
+    await insertLink(
+      w.db,
+      w.id,
+      {
+        issuerKey: PLATFORM,
+        tenantScope: "team-1",
+        subject: "tenant-sub",
+        kind: "oidc",
+        email: null,
+        emailVerified: false,
+        displayName: null,
+        amr: null,
+      },
+      NOW,
+    );
+    const rows = [
+      // The account's own verified address and its own licence.
+      auditRow({
+        id: "e1",
+        actor_sub: "x-1",
+        actor_name: "Erase Me",
+        actor_email: EMAIL,
+        action: "license.create",
+        target_kind: "license",
+        target_id: "lic-1",
+        summary: `Auto-issued to ${EMAIL}`,
+      }),
+      ...["g-1", "tenant-sub", SUB].map((sub, i) =>
+        auditRow({
+          id: `e${i + 2}`,
+          actor_sub: sub,
+          actor_name: "Erase Me",
+          action: "license.create",
+          target_kind: "license",
+          target_id: "lic-1",
+        }),
+      ),
+    ];
+    for (const r of rows) await appendAudit(w.db, r);
+    expect(await deletion.deleteAccount(w.ctx(), w.id)).toEqual({ ok: true });
+    expect(await auditRows(w.db)).toEqual(rows);
+  });
+
+  it("searches the audit index by product instead of scanning the whole table (R11-08)", async () => {
+    const { w } = await auditWorld();
+    const stmt = stmtScrubAccountAudit(w.id);
+    const plan = (
+      await w.db.all<{ detail: string }>(
+        `EXPLAIN QUERY PLAN ${stmt.sql}`,
+        ...stmt.params,
+      )
+    )
+      .map((p) => p.detail)
+      .join(" | ");
+    expect(plan).toMatch(
+      /SEARCH audit USING INDEX idx_audit_time \(product=\?\)/,
+    );
+    expect(plan).not.toMatch(/SCAN audit/);
+  });
+
+  it("names the sign-in chooser's action exactly as the product sign-in writes it", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const oidc = readFileSync(
+      join(here, "..", "src", "services", "identity", "oidc.ts"),
+      "utf8",
+    );
+    expect(oidc).toContain(`action: "${SIGNIN_LICENSE_CHOSEN_ACTION}"`);
   });
 });

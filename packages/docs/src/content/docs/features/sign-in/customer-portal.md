@@ -342,11 +342,13 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   proof in a 15-minute `__Host-pkey_link` flow; the person signs in to the other account on the
   login card by any of its methods, and **`GET /api/me/link`** then shows both accounts (how each
   was proven, what each holds), the result, and `canJoin` with a `reason` (`sign_in_other`,
-  `step_up_required`, `merge_pending`). **`POST /api/me/link/confirm {keep?}`** joins them when both
-  proofs are under 5 minutes old and both sessions are live, keeping the account linked in
-  (`other`, the default) or the started one; it is refused while either account could still undo
-  a join of its own (`403 forbidden`, `reason: merge_pending`), uses up the flow (two racing
-  confirms merge once), and is audited and emailed to both with the undo window. An account's
+  `step_up_required`, `merge_pending`, `unavailable`). **`POST /api/me/link/confirm {keep?}`** joins
+  them when both proofs are under 5 minutes old and both sessions are live, keeping the account
+  linked in (`other`, the default) or the started one; it is refused while either account could
+  still undo a join of its own (`403 forbidden`, `reason: merge_pending`) and while either has a
+  scheduled deletion (`403 forbidden`, `reason: unavailable`: cancel the deletion first, then
+  join; a join never cancels or moves a deletion request), uses up the flow (two racing confirms
+  merge once), and is audited and emailed to both with the undo window. An account's
   details show on the join screen only while its proof's session is live; signing out clears the
   flow. **`POST /api/me/link/cancel`** forgets the flow. `GET /api/me/link`
   also lists `undoable` joins, and **`POST /api/me/link/undo {merge}`** (a fresh sign-in to the kept
@@ -360,8 +362,11 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   (sessions end, sign-in is refused), every registered store's data is deleted, and then one
   atomic batch deletes every email, identity, and license-link row plus the account row itself and
   writes a single tombstone audit entry naming only the opaque `acct_…` id — nothing that still
-  identifies the person. If a store fails, the answer carries `erasing: true`: the erasure is
-  recorded and the Worker's cron retries it with back-off until it completes, and one that keeps
+  identifies the person. It also anonymizes the product `audit` rows that name the person as
+  actor (a Discover add; a product sign-in's license merge, tier change or choice): the actor
+  becomes `erased-account`, and the name, address and summary go. If a store fails, the answer
+  carries `erasing: true`: the erasure is recorded and the Worker's cron retries it with back-off
+  until it completes, and one that keeps
   failing shows as the failed `erasures` step on the Operations page. Rate-limited to 5 attempts on the account's own budget; the notice email is sent
   **before** the delete, because afterward there is no address left to send it to
   (the R11 audit findings, `R11-09`). Licenses themselves are **not** deleted — they

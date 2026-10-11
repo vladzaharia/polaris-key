@@ -32,8 +32,10 @@ import {
   runSubjectDeleteIsolated,
 } from "../../../core/accounts/subjectHooks.js";
 import { portalAudit } from "../portal/repo.js";
+import { stmtScrubAccountAudit } from "./accountAudit.js";
+import { detachLicense } from "./claim.js";
 import { stmtSubjectEvent } from "./events.js";
-import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
+import { endLicenseLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
@@ -78,25 +80,19 @@ export async function removeProductData(
   const detached: string[] = [];
   if (args.alsoDetachLicenses) {
     for (const licenseId of licenses) {
-      // No portal link survives the detach (see endLicenseLinks): §8 Q1 losers settle here.
-      await endLicenseLinks(ctx, args.product, licenseId, [args.accountId]);
+      // The owner's own detach (LX-26 block, ended links, token revocation, `account.license.detach`
+      // in the account's history): without the block an email-assigned licence would be re-attached
+      // by the very next portal request.
       if (
-        await moveLicenseOwnerEndingLinks(
-          ctx,
-          args.product,
-          licenseId,
-          args.accountId,
-          null,
-        )
+        (
+          await detachLicense(ctx, {
+            accountId: args.accountId,
+            product: args.product,
+            licenseId,
+          })
+        ).ok
       ) {
         detached.push(licenseId);
-        await onLicenseOwnershipEnded(db, env, {
-          product: args.product,
-          licenseId,
-          accountId: args.accountId,
-          reason: "detached",
-          now,
-        });
       }
     }
   }
@@ -189,9 +185,12 @@ function failure(step: string, e: unknown): ErasureFailure {
  *      person: links, subjects (ALL of the account's, so a subject minted during the run is not
  *      orphaned, SEC-PRV-19) and aliases, grants, terms acceptances, passkeys, library entries,
  *      the account, and the pre-I-05 `portal_*` rows (so a Worker rollback cannot resurrect
- *      them), then the progress row. What remains is an id-only tombstone (a restore from backup
- *      can re-apply the deletion) and one `portal.account.delete` receipt with no email, name or
- *      product. `subject.deleted` goes to the developer of each product, carrying the licence ids.
+ *      them), then the progress row. The product `audit` rows that name the person as actor
+ *      (`accountAudit.ts`) are anonymised first in the same batch, ahead of the statements that
+ *      delete the links and detach the licences their scope reads. What remains is an id-only
+ *      tombstone (a restore from backup can re-apply the deletion) and one `portal.account.delete`
+ *      receipt with no email, name or product. `subject.deleted` goes to the developer of each
+ *      product, carrying the licence ids.
  *
  * The retry sweeper ({@link sweepErasures}) resumes every unfinished erasure on the cron ticks.
  * Calling this again on an account already erasing resumes it, so a double invoke is harmless.
@@ -387,7 +386,11 @@ function commitStatements(
   licenses: Array<{ product: string; id: string }>,
   now: number,
 ): DbStatement[] {
-  const stmts: DbStatement[] = [];
+  const stmts: DbStatement[] = [
+    // The product `audit` rows naming this person are anonymised FIRST: the scope reads the
+    // links and the licences' owner pointer, which the statements below delete and detach.
+    stmtScrubAccountAudit(accountId),
+  ];
   for (const s of subjects) {
     stmts.push(
       stmtSubjectEvent(
