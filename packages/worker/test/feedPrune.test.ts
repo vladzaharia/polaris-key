@@ -21,11 +21,12 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { asR2, R2Mock } from "./r2Mock.js";
-import type { Db } from "../src/db/types.js";
+import type { Db, DbStatement } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { packageCatalog } from "../src/services/release/packages/catalog.js";
 import {
+  type AutoPruneOutcome,
   applyPackagePrune,
   compareRelease,
   devPrerelease,
@@ -37,6 +38,7 @@ import {
   planPackagePrune,
   PRUNE_MAX_PER_RUN,
   PRUNE_NOTICE_SECONDS,
+  type PruneNoticeOutcome,
   pruneAfterStablePublish,
   prunePackages,
   pruneRetentionOf,
@@ -1029,6 +1031,223 @@ describe("the automatic prune", () => {
       NOW,
     );
     expect(retry.status === "pruned" && retry.applied.pruned.length).toBe(3);
+  });
+});
+
+// ── The dry-run notice when callers race ─────────────────────────────────────────────────────
+
+/**
+ * A Db that runs `race` once, just before the first batch that writes a retention notice: a
+ * concurrent caller committing between this caller's reads (no notice yet, the dry run) and its
+ * write. It has no `batchChanges` when `inner` has none, as a test double without per-statement
+ * counts has none.
+ */
+function overtaken(inner: Db, race: () => Promise<unknown>): Db {
+  let fired = false;
+  const before = async (stmts: DbStatement[]): Promise<void> => {
+    if (
+      fired ||
+      !stmts.some((s) =>
+        s.sql.includes("INSERT INTO release_package_retention_notices"),
+      )
+    )
+      return;
+    fired = true;
+    await race();
+  };
+  const counted = inner.batchChanges?.bind(inner);
+  return {
+    all: (sql, ...p) => inner.all(sql, ...p),
+    first: (sql, ...p) => inner.first(sql, ...p),
+    run: (sql, ...p) => inner.run(sql, ...p),
+    runChanges: (sql, ...p) => inner.runChanges(sql, ...p),
+    batch: async (stmts) => {
+      await before(stmts);
+      return inner.batch(stmts);
+    },
+    ...(counted
+      ? {
+          batchChanges: async (stmts: DbStatement[]) => {
+            await before(stmts);
+            return counted(stmts);
+          },
+        }
+      : {}),
+  };
+}
+
+describe("the dry-run notice when callers race", () => {
+  const week = PRUNE_NOTICE_SECONDS;
+  /** A caller whose clock reads an hour after the one it races. */
+  const later = NOW + 3600;
+  const stable = {
+    deliverableId: did("npm"),
+    ecosystem: "npm",
+    name: SHAPES.npm.name,
+    version: "1.1.0",
+    channel: "stable",
+  };
+  const noticeRows = () =>
+    db.all(
+      "SELECT product, noticed_at, starts_at, packages, versions, bytes, freed_bytes FROM release_package_retention_notices",
+    );
+  const noticeAudits = () =>
+    db.all(
+      "SELECT at, actor_sub, target_kind, target_id, summary FROM audit WHERE product = ? AND action = 'package.prune.notice'",
+      P,
+    );
+
+  beforeEach(async () => {
+    await declare(P, ["npm"]);
+    await history("npm");
+  });
+
+  it("answers the notice it raised, and nothing once the product has one", async () => {
+    expect(await noticePruneRetention(db, env, P, NOW)).toEqual({
+      notice: {
+        noticedAt: NOW,
+        startsAt: NOW + week,
+        packages: 1,
+        versions: 1,
+        bytes: 1000,
+        freedBytes: 1000,
+      },
+      raised: true,
+    });
+    expect(await noticePruneRetention(db, env, P, later)).toBeNull();
+    expect(await noticeRows()).toHaveLength(1);
+    expect(await noticeAudits()).toHaveLength(1);
+  });
+
+  it("two callers that both found no notice raise ONE notice and ONE audit row, and both answer it", async () => {
+    // The loser's dry run, taken before the rival published the stable 1.1.0, found 1 version; the
+    // winner's found 3. The notice in force is the winner's whole: its counts and its start day.
+    const rival: { out: PruneNoticeOutcome | null } = { out: null };
+    const loser = await noticePruneRetention(
+      overtaken(db, async () => {
+        await publishRow("npm", "1.1.0", "stable");
+        rival.out = await noticePruneRetention(db, env, P, later);
+      }),
+      env,
+      P,
+      NOW,
+    );
+    const inForce = {
+      noticedAt: later,
+      startsAt: later + week,
+      packages: 1,
+      versions: 3,
+      bytes: 3000,
+      freedBytes: 3000,
+    };
+    expect(await noticeRows()).toEqual([
+      {
+        product: P,
+        noticed_at: later,
+        starts_at: later + week,
+        packages: 1,
+        versions: 3,
+        bytes: 3000,
+        freed_bytes: 3000,
+      },
+    ]);
+    expect(await noticeAudits()).toEqual([
+      {
+        at: later,
+        actor_sub: "system:feed-retention",
+        target_kind: "feed",
+        target_id: "retention",
+        summary: expect.stringContaining(
+          `turns on ${new Date((later + week) * 1000).toISOString().slice(0, 10)}: 3 versions across 1 package (3000 bytes)`,
+        ) as string,
+      },
+    ]);
+    expect(rival.out).toEqual({ notice: inForce, raised: true });
+    expect(loser).toEqual({ notice: inForce, raised: false });
+    expect(await pruneRetentionOf(db, P, NOW)).toMatchObject({
+      source: "default",
+      notice: inForce,
+    });
+    // Nothing was deleted: the history's six versions and the stable 1.1.0.
+    expect(await versionsOf("npm")).toHaveLength(7);
+  });
+
+  it("the Release cron overtaken by a stable publish reports no notice of its own, and the publish's notice stands", async () => {
+    await publishRow("npm", "1.1.0", "stable");
+    const publish: { out: AutoPruneOutcome | null } = { out: null };
+    const cron = await sweepPruneNotice({
+      db: overtaken(db, async () => {
+        publish.out = await pruneAfterStablePublish(db, env, P, stable, later);
+      }),
+      env,
+      product: { slug: P },
+      now: NOW,
+    });
+    expect(publish.out).toEqual({ status: "notice" });
+    expect(cron).toEqual({ noticed: 0 });
+    expect(await noticeRows()).toMatchObject([
+      { noticed_at: later, starts_at: later + week, versions: 3 },
+    ]);
+    expect(await noticeAudits()).toMatchObject([{ at: later }]);
+    expect(await versionsOf("npm")).toHaveLength(7);
+  });
+
+  it("a stable publish overtaken by the Release cron still answers notice, and the cron's notice stands", async () => {
+    await publishRow("npm", "1.1.0", "stable");
+    const cron: { out: { noticed: number } | null } = { out: null };
+    const publish = await pruneAfterStablePublish(
+      overtaken(db, async () => {
+        cron.out = await sweepPruneNotice({
+          db,
+          env,
+          product: { slug: P },
+          now: later,
+        });
+      }),
+      env,
+      P,
+      stable,
+      NOW,
+    );
+    expect(cron.out).toEqual({ noticed: 1 });
+    expect(publish).toEqual({ status: "notice" });
+    expect(await noticeRows()).toMatchObject([
+      { noticed_at: later, starts_at: later + week, versions: 3 },
+    ]);
+    expect(await noticeAudits()).toMatchObject([{ at: later }]);
+    expect(await versionsOf("npm")).toHaveLength(7);
+  });
+
+  it("holds on a database that reports no per-statement counts", async () => {
+    // A test double without `batchChanges`: every write goes through `batch`.
+    const blind: Db = {
+      all: (sql, ...p) => db.all(sql, ...p),
+      first: (sql, ...p) => db.first(sql, ...p),
+      run: (sql, ...p) => db.run(sql, ...p),
+      runChanges: (sql, ...p) => db.runChanges(sql, ...p),
+      batch: (stmts) => db.batch(stmts),
+    };
+    const rival: { out: PruneNoticeOutcome | null } = { out: null };
+    const loser = await noticePruneRetention(
+      overtaken(blind, async () => {
+        rival.out = await noticePruneRetention(blind, env, P, later);
+      }),
+      env,
+      P,
+      NOW,
+    );
+    const inForce = {
+      noticedAt: later,
+      startsAt: later + week,
+      packages: 1,
+      versions: 1,
+      bytes: 1000,
+      freedBytes: 1000,
+    };
+    expect(rival.out).toEqual({ notice: inForce, raised: true });
+    expect(loser).toEqual({ notice: inForce, raised: false });
+    expect(await noticeRows()).toHaveLength(1);
+    expect(await noticeAudits()).toMatchObject([{ at: later }]);
   });
 });
 

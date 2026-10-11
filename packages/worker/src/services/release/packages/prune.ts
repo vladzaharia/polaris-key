@@ -51,7 +51,8 @@
  *          (`release.packages.prunePrereleases`). The default is ON for every product, after a
  *          one-time dry-run NOTICE (F-36): the Release cron raises it for a product with a
  *          package deliverable (`noticePruneRetention`: one `package.prune.notice` audit row and
- *          one `release_package_retention_notices` row holding what a dry run found), and cleanup
+ *          one `release_package_retention_notices` row holding what a dry run found, written by
+ *          whichever caller wins the insert when the cron and a publish race), and cleanup
  *          starts `PRUNE_NOTICE_SECONDS` later; until then nothing is deleted. An operator's own
  *          value (a `release_package_retention` row) wins from the moment it is written: off
  *          stays off. The system product always prunes. A failure never fails the publish: it is
@@ -205,6 +206,17 @@ export interface PruneNotice {
   versions: number;
   bytes: number;
   freedBytes: number;
+}
+
+/** What `noticePruneRetention` settled on for a product that had no notice when it was called. */
+export interface PruneNoticeOutcome {
+  /** The notice in force: the row the winning insert wrote, whichever call that was. */
+  notice: PruneNotice;
+  /**
+   * This call's insert wrote the notice and the one audit row that goes with it. `false`: a
+   * concurrent call's insert won first, `notice` is that call's, and nothing was written here.
+   */
+  raised: boolean;
 }
 
 /**
@@ -892,7 +904,10 @@ async function recordFailure(
 export type AutoPruneOutcome =
   | { status: "not-stable" }
   | { status: "off" }
-  /** The product had no dry-run notice yet: it was raised now, and nothing was deleted. */
+  /**
+   * The product had no dry-run notice yet: one is in force now (raised by this call or a
+   * concurrent one), and nothing was deleted.
+   */
   | { status: "notice" }
   | { status: "pruned"; plan: PackagePrunePlan; applied: PruneApplied }
   | { status: "failed"; error: string };
@@ -968,16 +983,21 @@ export async function pruneAfterStablePublish(
 /**
  * The one-time dry-run notice (F-36): record what cleanup would delete today and the day it
  * turns on (`PRUNE_NOTICE_SECONDS` from now). Nothing is deleted by this. Written once per
- * product (a second call is a no-op): the notice row and one audit row
- * (`package.prune.notice`) in one batch. Answers the notice it wrote, or `null` when the product
- * is locked on, has chosen for itself, or already has one.
+ * product, whoever races for it (the Release cron and a stable publish can both find no notice
+ * and take their dry runs): the notice row and its one audit row (`package.prune.notice`) go in
+ * ONE batch, and the audit row is written only when the insert before it changed a row. So the
+ * call whose insert wins writes both (`raised`), and a call that lost answers the notice in
+ * force, the winner's counts and start day, never the dry run it took itself.
+ *
+ * `null` when there was nothing to raise: the product is locked on, has chosen for itself, or
+ * already had a notice when this was called.
  */
 export async function noticePruneRetention(
   db: Db,
   env: Env,
   product: string,
   now: number,
-): Promise<PruneNotice | null> {
+): Promise<PruneNoticeOutcome | null> {
   if (retentionLocked(product)) return null;
   const current = await pruneRetentionOf(db, product, now);
   if (current.source !== "default" || current.notice) return null;
@@ -995,7 +1015,8 @@ export async function noticePruneRetention(
     freedBytes: report?.totals.freedBytes ?? 0,
   };
   const day = new Date(notice.startsAt * 1000).toISOString().slice(0, 10);
-  await db.batch([
+  const auditId = randomId("aud");
+  const statements: DbStatement[] = [
     {
       sql: `INSERT INTO release_package_retention_notices
               (product, noticed_at, starts_at, packages, versions, bytes, freed_bytes)
@@ -1011,27 +1032,52 @@ export async function noticePruneRetention(
         notice.freedBytes,
       ],
     },
-    auditStatement({
-      product,
-      id: randomId("aud"),
-      at: now,
-      actor_sub: PRUNE_ACTOR,
-      actor_name: SYSTEM_PRUNE_ACTOR.name,
-      actor_email: null,
-      action: "package.prune.notice",
-      target_kind: "feed",
-      target_id: "retention",
-      parent_id: null,
-      summary: `Cleanup of builds of main and dev turns on ${day}: ${notice.versions} version${notice.versions === 1 ? "" : "s"} across ${notice.packages} package${notice.packages === 1 ? "" : "s"} (${notice.bytes} bytes) would be deleted at the next stable release. Nothing is deleted before then; turn cleanup off in the feed settings to keep them.`,
-    }),
-  ]);
-  return notice;
+    {
+      // Only the call whose insert won writes its audit row: `changes()` is the count of the
+      // statement just before this one in the batch's transaction, 0 when the product already
+      // had its notice (the primary key is the product). Proven on D1 in
+      // `test-workerd/pruneNotice.test.ts`.
+      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
+              target_kind, target_id, parent_id, summary)
+            SELECT ?, ?, ?, ?, ?, NULL, 'package.prune.notice', 'feed', 'retention', NULL, ?
+             WHERE changes() > 0`,
+      params: [
+        product,
+        auditId,
+        now,
+        PRUNE_ACTOR,
+        SYSTEM_PRUNE_ACTOR.name,
+        `Cleanup of builds of main and dev turns on ${day}: ${notice.versions} version${notice.versions === 1 ? "" : "s"} across ${notice.packages} package${notice.packages === 1 ? "" : "s"} (${notice.bytes} bytes) would be deleted at the next stable release. Nothing is deleted before then; turn cleanup off in the feed settings to keep them.`,
+      ],
+    },
+  ];
+  let raised: boolean;
+  if (db.batchChanges) {
+    // The insert's changed-row count says who won: 1 for the call that wrote the row, 0 for one
+    // that conflicted with it.
+    raised = (await db.batchChanges(statements))[0] === 1;
+  } else {
+    // A database without per-statement counts (a test double): the audit row follows only an
+    // insert that won, so this call's row exists exactly when it won.
+    await db.batch(statements);
+    raised =
+      (await db.first(
+        "SELECT 1 AS ok FROM audit WHERE product = ? AND id = ?",
+        product,
+        auditId,
+      )) !== null;
+  }
+  if (raised) return { notice, raised };
+  // A concurrent call's insert won: ITS notice is the one in force, not the dry run taken here.
+  const inForce = await noticeOf(db, product);
+  return inForce ? { notice: inForce, raised } : null;
 }
 
 /**
  * The Release cron's hook (`scheduled`, only for a product with Release on): raise the dry-run
  * notice for a product that has a package deliverable and has neither chosen a value nor been
- * noticed. One indexed read for every other product.
+ * noticed. One indexed read for every other product. `noticed` counts the notice THIS call
+ * raised: 0 when a stable publish (or another tick) raised it first.
  */
 export async function sweepPruneNotice(ctx: {
   db: Db;
@@ -1050,8 +1096,8 @@ export async function sweepPruneNotice(ctx: {
     product.slug,
   );
   if (!due) return { noticed: 0 };
-  const notice = await noticePruneRetention(db, ctx.env, product.slug, now);
-  return { noticed: notice ? 1 : 0 };
+  const outcome = await noticePruneRetention(db, ctx.env, product.slug, now);
+  return { noticed: outcome?.raised ? 1 : 0 };
 }
 
 function emptyPlan(p: {
