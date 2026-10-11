@@ -14,11 +14,19 @@ pnpm add @polaris-key/react react react-dom
 Gate an app with the provider and the self-starting kit gate:
 
 ```tsx
-import { PolarisKeyGate, PolarisKeyProvider } from "@polaris-key/react";
+import {
+  PolarisKeyProvider,
+  type PolarisKeyConfig,
+} from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+
+const polarisKey = {
+  productSlug: "acme",
+} satisfies PolarisKeyConfig;
 
 export function App() {
   return (
-    <PolarisKeyProvider productSlug="acme">
+    <PolarisKeyProvider config={polarisKey}>
       <PolarisKeyGate>
         <YourApp />
       </PolarisKeyGate>

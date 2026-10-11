@@ -83,18 +83,27 @@ describe("SDK quick start: initialise", () => {
     }
   });
 
-  it("React passes the pins as the provider's trust prop, so bearer mode verifies (P0-47)", () => {
+  it("React makes pins part of PolarisKeyConfig, so bearer mode verifies (P0-47)", () => {
     const { code } = sdkInit("react", input);
     expect(code).toContain(
       [
-        "      trust={{",
-        "        pinnedKeys: {",
-        '          "tb-a": "PUB-A",',
-        '          "tb-b": "PUB-B",',
-        "        },",
-        "      }}",
+        "const polarisKey = {",
+        '  productSlug: "tonebox",',
+        "  version: APP_VERSION,",
+        "  trust: {",
+        "    pinnedKeys: {",
+        '      "tb-a": "PUB-A",',
+        '      "tb-b": "PUB-B",',
+        "    },",
+        "  },",
+        '  expectedServices: ["license", "config"],',
+        "} satisfies PolarisKeyConfig;",
       ].join("\n"),
     );
+    expect(code).toContain(
+      'import { PolarisKeyGate } from "@polaris-key/react/kit";',
+    );
+    expect(code).toContain("<PolarisKeyProvider config={polarisKey}>");
   });
 
   it("names the base URL off production", () => {

@@ -1,0 +1,121 @@
+/* Tidewater's host shell. The Polaris Key components style their own internals. */
+:root {
+  color-scheme: dark light;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: #0d1416;
+  color: #e6efee;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    background: #f4f7f7;
+    color: #142022;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  min-block-size: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-block-end: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.app-name {
+  margin-inline-end: auto;
+}
+
+.app-bar nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.app-bar a {
+  color: inherit;
+  text-decoration: none;
+  padding-block: 0.5rem;
+}
+
+.app-bar a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 0.35em;
+}
+
+.app-profile {
+  color: color-mix(in srgb, currentColor 72%, transparent);
+  font-size: 0.875rem;
+}
+
+.app-bar button {
+  min-block-size: 2.75rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 0.5rem;
+  color: inherit;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-main {
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 48rem;
+  margin-inline: auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.app-main h1,
+.app-main h2 {
+  margin-block: 0 1rem;
+  font-weight: 600;
+}
+
+.settings {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.settings-part,
+.about {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.about {
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 0.75rem;
+}
+
+.about-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem 1.25rem;
+  margin: 0;
+}
+
+.about-details div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.about-details dt {
+  color: color-mix(in srgb, currentColor 65%, transparent);
+  font-size: 0.875rem;
+}
+
+.about-details dd {
+  margin: 0;
+}

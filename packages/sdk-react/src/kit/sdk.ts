@@ -20,11 +20,10 @@ import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
 import { isSignInRefusal } from "../core/adapter.js";
 import type { OidcSignInHandle, PolarisState } from "../core/index.js";
-import { knownProductName } from "../components/theme.js";
 import { withManageKey, withManageReturn } from "@polaris-key/client-core";
 
-import { openLink, safeLink } from "../components/links.js";
-import type { ErrorLike } from "../components/errors.js";
+import type { ErrorLike } from "./errors.js";
+import { openLink, safeLink } from "./links.js";
 
 /** Which step of the one sign-in form the gate shows while activation is needed. */
 export type GateStep = "home" | "activate" | "handoff";
@@ -33,8 +32,6 @@ export type GateStep = "home" | "activate" | "handoff";
 export interface SdkGate {
   input: UiInput;
   step: GateStep;
-  /** The integrator's product name from the provider's theme, for the kit's identity. */
-  productName: string | null;
   act(key: string): void;
   edit(field: string, value: string): void;
 }
@@ -325,7 +322,6 @@ export function useSdkGate(opts: { returnUrl?: string } = {}): SdkGate | null {
   return {
     input,
     step,
-    productName: knownProductName(ctx.theme),
     act,
     edit,
   };

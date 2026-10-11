@@ -31,7 +31,7 @@ import {
   adoptKitStyles,
   kitStylesCss,
   type KitAction,
-} from "../src/kit/index.js";
+} from "@polaris-key/react/kit";
 
 beforeAll(() => {
   globalThis.ResizeObserver ??= class {

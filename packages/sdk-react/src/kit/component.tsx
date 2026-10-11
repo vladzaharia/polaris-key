@@ -46,15 +46,16 @@ import {
   watchProductIdentity,
 } from "./contract.js";
 
-import {
-  isBrowserDefaultFont,
-  SYSTEM_FONT_STACK,
-} from "../components/theme.js";
 import { PolarisContext } from "../react/context.js";
 import { text, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
 import { adoptKitStyles } from "./styles.js";
 import { renderView } from "./views.js";
+
+const SYSTEM_FONT_STACK =
+  'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const BROWSER_DEFAULT_FONT =
+  /^\s*(?:"?times new roman"?|"?times"?|serif|-webkit-standard)\s*$/i;
 
 /** UI-KITS.md §3.1, as the React kit takes it: every field optional; an empty theme is the
  *  Polaris Key look in the product's accent. The same value `<pk-provider theme>` takes. */
@@ -371,7 +372,7 @@ export function useKit(
       native &&
         parent !== null &&
         parent !== undefined &&
-        isBrowserDefaultFont(getComputedStyle(parent).fontFamily),
+        BROWSER_DEFAULT_FONT.test(getComputedStyle(parent).fontFamily),
     );
   }, [native]);
 
@@ -570,19 +571,10 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   );
   const driven = props.input === undefined && sdk !== null;
   const step: GateStep = driven ? sdk.step : "home";
-  const productName = driven ? sdk.productName : null;
-  const theme = useMemo(
-    () =>
-      productName
-        ? mergeThemes({ product: { name: productName } }, props.theme)
-        : props.theme,
-    [productName, props.theme],
-  );
   const kit = useKit(
     "PolarisKeyGate",
     {
       ...props,
-      ...(theme ? { theme } : {}),
       input: driven ? sdk.input : props.input,
       fill: true,
       onAction: (a) => {

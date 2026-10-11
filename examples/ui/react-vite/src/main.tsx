@@ -3,13 +3,14 @@
 // Tidewater fixture (src/fixtures.ts); `--live` talks to the Worker in src/polaris.config.ts.
 import { StrictMode, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-import { PolarisKeyGate, PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
 import { desktopAdapter } from "@polaris-key/react/desktop";
 import "@polaris-key/react/fonts.css";
 
 import { App } from "./App";
 import { tidewaterBridge } from "./fixtures";
-import { polarisConfig } from "./polaris.config";
+import { polarisKey as samplePolarisKey } from "./polaris.config";
 import "./app.css";
 
 function Root() {
@@ -21,12 +22,16 @@ function Root() {
         : desktopAdapter({ bridge: tidewaterBridge() }),
     [],
   );
+  const polarisKey = useMemo(
+    () => ({
+      ...samplePolarisKey,
+      version: __APP_VERSION__,
+      ...(fixture ? { adapter: fixture } : {}),
+    }),
+    [fixture],
+  );
   return (
-    <PolarisKeyProvider
-      {...polarisConfig}
-      version={__APP_VERSION__}
-      {...(fixture ? { adapter: fixture } : {})}
-    >
+    <PolarisKeyProvider config={polarisKey}>
       <PolarisKeyGate returnUrl={location.href}>
         <App />
       </PolarisKeyGate>

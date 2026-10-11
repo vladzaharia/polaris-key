@@ -2,8 +2,9 @@
 
 Tidewater Studio by Harbor Audio, gated by `@polaris-key/react`. It shows:
 
-- **the drop-in**: `<PolarisKeyProvider>` and `<PolarisKeyGate>` in `src/main.tsx`; the gate draws
-  every screen the license calls for, then the app;
+- **the drop-in**: `<PolarisKeyProvider config={polarisKey}>` and the kit's
+  `<PolarisKeyGate>` in `src/main.tsx`; the gate draws every screen the license calls for, then the
+  app;
 - **the product as the hero**: Tidewater's name and accent come from the SDK's presentation, with
   no theme code;
 - **the parts**: `<UpdatePrompt>`, `<Devices>`, `<Settings>` and `<About>` from

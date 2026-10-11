@@ -22,14 +22,19 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { commands, page } from "vitest/browser";
 import { createRoot, type Root } from "react-dom/client";
 import axe from "axe-core";
-import matrixJson from "../../../../conformance/corpus/v2/ui-matrix.json" with {
-  type: "json",
-};
-import type { ComponentName, UiInput } from "@polaris-key/ui-core";
+import matrixJson from "../../../../conformance/corpus/v2/ui-matrix.json" with { type: "json" };
+import componentRegistryJson from "../../../../packages/brand/kit-copy/components.json" with { type: "json" };
+import type { UiInput } from "@polaris-key/ui-core";
 
 import { LAYOUTS } from "@polaris-key/elements/contract";
 
-import * as Kit from "../../src/kit/index.js";
+import * as Kit from "@polaris-key/react/kit";
+import {
+  DIRECT_COMPONENT_STATE_FIXTURES,
+  matrixComponentStateFixtures,
+  type ComponentStateFixture,
+  type MatrixComponentRow,
+} from "../kitFixtures.js";
 
 declare module "vitest/browser" {
   interface BrowserCommands {
@@ -40,11 +45,7 @@ declare const __PKEY_KIT_SHOTS__: string;
 declare const __PKEY_KIT_BASELINES__: string;
 
 type Obj = Record<string, unknown>;
-interface Row {
-  name: string;
-  input: Obj;
-  expect: { component: string; state: string };
-}
+interface Row extends MatrixComponentRow {}
 
 const FAMILIES = [
   "gate",
@@ -57,14 +58,10 @@ const FAMILIES = [
   "paywall",
 ] as const;
 
-// Importing the committed fixture makes the browser registration itself a completeness gate: a
-// state added to ui-matrix.json produces a render and baseline requirement without someone
-// remembering to add it to a hand-maintained scene list.
 const matrix = matrixJson as Obj & { vocabulary: Obj & { defaults: Obj } };
+const COMPONENT_ROWS = FAMILIES.flatMap((family) => matrix[family] as Row[]);
 const ROWS: Record<string, Row> = Object.fromEntries(
-  FAMILIES.flatMap((family) =>
-    (matrix[family] as Row[]).map((row) => [row.name, row]),
-  ),
+  COMPONENT_ROWS.map((row) => [row.name, row]),
 );
 
 beforeAll(async () => {
@@ -79,21 +76,22 @@ beforeAll(async () => {
   });
 });
 
-
-function withDefaults(input: Obj, defaults: Obj): UiInput {
+function withDefaults(input: UiInput, defaults: Obj): UiInput {
   const out: Obj = { ...input };
   for (const [k, v] of Object.entries(defaults)) {
     if (k === "capabilities")
-      out[k] = { ...(v as Obj), ...((input[k] as Obj | undefined) ?? {}) };
-    else if (!(k in input)) out[k] = v;
+      out[k] = { ...(v as Obj), ...((out[k] as Obj | undefined) ?? {}) };
+    else if (!(k in out)) out[k] = v;
   }
   return out as UiInput;
 }
 
-/** One scene: a matrix row, drawn by its component (the gate as the drop-in). */
 interface Scene {
   id: string;
-  row: string;
+  row?: string;
+  fixture?: ComponentStateFixture;
+  /** Record in `PKEY_KIT_BASELINES`, unlike the representative responsive scenes. */
+  baseline?: boolean;
   /** Under the native preset too. */
   native?: boolean;
 }
@@ -134,7 +132,6 @@ const SCENES: Scene[] = [
   { id: "GraceBanner.days-left", row: "GraceBanner/days-left" },
   { id: "Devices.list", row: "Devices/list", native: true },
   { id: "Devices.error", row: "Devices/error: the list could not load" },
-  { id: "UpdatePrompt.available", row: "UpdatePrompt/available" },
   { id: "UpdateProgress.downloading", row: "UpdateProgress/downloading" },
   { id: "Settings.list", row: "Settings/list" },
   { id: "AccountAndLicense.signed-in", row: "AccountAndLicense/signed-in" },
@@ -144,19 +141,23 @@ const SCENES: Scene[] = [
   },
 ];
 
-/** One representative fixture row for every visible component state (UK-02b §8). */
-const BASELINE_SCENES: Scene[] = (() => {
-  const seen = new Set<string>();
-  const out: Scene[] = [];
-  for (const family of FAMILIES)
-    for (const row of matrix[family] as Row[]) {
-      const id = `${row.expect.component}.${row.expect.state}`;
-      if (row.expect.state === "hidden" || seen.has(id)) continue;
-      seen.add(id);
-      out.push({ id, row: row.name });
-    }
-  return out;
-})();
+const COMPONENT_STATE_FIXTURES: readonly ComponentStateFixture[] = [
+  ...matrixComponentStateFixtures(COMPONENT_ROWS),
+  ...DIRECT_COMPONENT_STATE_FIXTURES,
+];
+
+/** One representative fixture input for every visible component state in the registry. */
+const BASELINE_SCENES: readonly Scene[] = COMPONENT_STATE_FIXTURES.map(
+  (fixture) => ({ id: fixture.id, fixture, baseline: true }),
+);
+
+const REGISTERED_COMPONENT_STATE_IDS = Object.entries(
+  componentRegistryJson.components,
+).flatMap(([component, definition]) =>
+  Object.keys(definition.states)
+    .filter((state) => state !== "hidden")
+    .map((state) => `${component}.${state}`),
+);
 
 interface Size {
   label: string;
@@ -169,12 +170,17 @@ interface Size {
 const SIZES: Size[] = [
   { label: "320", width: 320, height: 640 },
   { label: "390", width: 390, height: 844 },
+  { label: "844x390", width: 844, height: 390 },
+  { label: "640x360", width: 640, height: 360 },
   { label: "568x320", width: 568, height: 320 },
   { label: "667x375", width: 667, height: 375 },
   { label: "768", width: 768, height: 1024 },
+  { label: "820x1180", width: 820, height: 1180 },
+  { label: "1180x820", width: 1180, height: 820 },
   { label: "800x600", width: 800, height: 600 },
   { label: "1024", width: 1024, height: 768 },
   { label: "1440", width: 1440, height: 900 },
+  { label: "1920x1080", width: 1920, height: 1080 },
   { label: "2560", width: 2560, height: 1440 },
   { label: "1280x800-zoom200", width: 640, height: 400 },
   { label: "390-font24", width: 390, height: 844, rootPx: 24 },
@@ -215,16 +221,27 @@ const COMPONENTS = Kit as unknown as Record<
 >;
 
 /** The corpus elides the served device code; a visual render must show a real grouped value. */
-function extras(row: Row): Partial<UiInput> {
-  const deviceCode = row.input.deviceCode as Obj | undefined;
+function extras(input: UiInput): Partial<UiInput> {
+  const deviceCode = input.deviceCode;
   if (!deviceCode) return {};
   return {
     deviceCode: {
       ...deviceCode,
-      ...(deviceCode.userCode === undefined
-        ? { userCode: "WDJB-MJHT" }
-        : {}),
-    } as UiInput["deviceCode"],
+      ...(deviceCode.userCode === undefined ? { userCode: "WDJB-MJHT" } : {}),
+    },
+  };
+}
+
+function fixtureFor(scene: Scene): ComponentStateFixture {
+  if (scene.fixture) return scene.fixture;
+  const row = scene.row === undefined ? undefined : ROWS[scene.row];
+  if (!row) throw new Error(`no ui-matrix row "${scene.row ?? scene.id}"`);
+  return {
+    id: scene.id,
+    component: row.expect.component,
+    state: row.expect.state,
+    input: row.input,
+    row: row.name,
   };
 }
 
@@ -234,8 +251,7 @@ async function mount(
   preset: "polaris-key" | "native",
   rootPx = 16,
 ): Promise<HTMLElement> {
-  const row = ROWS[scene.row];
-  if (!row) throw new Error(`no ui-matrix row "${scene.row}"`);
+  const fixture = fixtureFor(scene);
   document.documentElement.style.fontSize = `${rootPx}px`;
   document.body.style.margin = "0";
   // A host page: light or dark ground (the native preset resolves against it).
@@ -243,17 +259,19 @@ async function mount(
   document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
   host = document.createElement("div");
   document.body.append(host);
-  const Component = COMPONENTS[row.expect.component as ComponentName]!;
+  const Component = COMPONENTS[fixture.component];
+  if (!Component)
+    throw new Error(`no React kit component "${fixture.component}"`);
   const input: UiInput = {
     elapsedMs: 60_000,
-    ...withDefaults(row.input, matrix.vocabulary.defaults),
-    ...extras(row),
+    ...withDefaults(fixture.input, matrix.vocabulary.defaults),
+    ...extras(fixture.input),
   };
   root = createRoot(host);
   root.render(
     <Component
       input={input}
-      fill={LAYOUTS[row.expect.component as ComponentName].kind === "screen"}
+      fill={LAYOUTS[fixture.component].kind === "screen"}
       theme={{
         product: PRODUCT,
         colorScheme: preset === "native" ? "system" : scheme,
@@ -404,6 +422,7 @@ async function check(
     );
   if (
     __PKEY_KIT_BASELINES__ &&
+    scene.baseline &&
     preset === "polaris-key" &&
     BASELINE_SIZES.some((baseline) => baseline.label === size.label)
   )
@@ -452,16 +471,13 @@ describe("the React kit at every size", () => {
 });
 
 describe("the complete fixture baseline matrix", () => {
-  it("selects every non-hidden component state exactly once", () => {
-    const expected = new Set<string>();
-    for (const family of FAMILIES)
-      for (const row of matrix[family] as Row[]) {
-        if (row.expect.state !== "hidden")
-          expected.add(`${row.expect.component}.${row.expect.state}`);
-      }
-    expect(
-      [...BASELINE_SCENES.map((scene) => scene.id)].sort(),
-    ).toEqual([...expected].sort());
+  it("selects all 133 registered non-hidden component states exactly once", () => {
+    const expected = [...REGISTERED_COMPONENT_STATE_IDS].sort();
+    const actual = BASELINE_SCENES.map((scene) => scene.id).sort();
+    expect(expected).toHaveLength(133);
+    expect(actual).toHaveLength(133);
+    expect(new Set(actual).size).toBe(133);
+    expect(actual).toEqual(expected);
   });
 
   for (const scheme of SCHEMES)

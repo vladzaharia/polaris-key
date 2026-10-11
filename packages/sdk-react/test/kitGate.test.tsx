@@ -14,8 +14,8 @@ import type {
   ProductPresentation,
 } from "@polaris-key/client-core/presentation";
 
-import { PolarisKeyProvider } from "../src/react/Provider.js";
-import { PolarisKeyGate } from "../src/index.js";
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeActivation, BridgeState } from "../src/desktop/bridge.js";
 import {
@@ -52,12 +52,11 @@ function mount(
   if (over.never) bridge.pollSignIn = () => new Promise(() => {});
   const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
   const view = render(
-    <PolarisKeyProvider
-      productSlug="acme"
-      adapter={adapter}
-      theme={{ copy: { productName: "Acme Studio" } }}
-    >
-      <PolarisKeyGate returnUrl={over.returnUrl}>
+    <PolarisKeyProvider config={{ productSlug: "acme", adapter }}>
+      <PolarisKeyGate
+        returnUrl={over.returnUrl}
+        theme={{ product: { name: "Acme Studio" } }}
+      >
         <div data-testid="app">APP</div>
       </PolarisKeyGate>
     </PolarisKeyProvider>,
@@ -231,7 +230,7 @@ describe("the product's identity comes from the SDK", () => {
     adapter.presentationSource = () =>
       source as ReturnType<typeof adapter.presentationSource>;
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: adapter }}>
         <PolarisKeyGate>
           <div data-testid="app">APP</div>
         </PolarisKeyGate>
@@ -264,7 +263,7 @@ describe("the product's identity comes from the SDK", () => {
     adapter.presentationSource = () =>
       source as ReturnType<typeof adapter.presentationSource>;
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: adapter }}>
         <PolarisKeyGate theme={{ presentation: null }}>
           <div data-testid="app">APP</div>
         </PolarisKeyGate>

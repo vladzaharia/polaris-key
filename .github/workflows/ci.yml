@@ -249,6 +249,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter=@polaris-key/react...
       - run: pnpm exec turbo run build --filter=@polaris-key/react^...
+      # The Vitest workspace has React 18 and React 19 projects; keep both supported majors live.
+      - run: pnpm --filter @polaris-key/react test
       - run: pnpm --filter @polaris-key/react test:browser
 
   # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the

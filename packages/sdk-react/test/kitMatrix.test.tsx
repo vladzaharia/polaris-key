@@ -1,4 +1,4 @@
-// @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall
+// @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall ui.theme ui.i18n
 //
 // Every component row of conformance/corpus/v2/ui-matrix.json, drawn by its React kit component
 // (plans/UK-02b.md §8), held to the same contract as the elements: the view is the row's (state,
@@ -16,25 +16,60 @@ import {
   Copy,
   viewOf,
   type ComponentName,
+  type CopyTable,
   type UiInput,
 } from "@polaris-key/ui-core";
-import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
+import {
+  resolveTheme,
+  themeSummary,
+  type ThemeContext,
+  type ThemeOptions,
+  type ThemeSummary,
+} from "@polaris-key/ui-core/theme";
+import {
+  KIT_COPY_EN,
+  KIT_COPY_LOCALES,
+  loadKitCopy,
+} from "@polaris-key/brand/kit-copy";
 
 import { LAYOUTS, formStep } from "@polaris-key/elements/contract";
 
-import * as Kit from "../src/kit/index.js";
+import * as Kit from "@polaris-key/react/kit";
+import { DIRECT_COMPONENT_STATE_FIXTURES } from "./kitFixtures.js";
 
 type Obj = Record<string, unknown>;
 interface Row {
   name: string;
-  input: Obj;
+  input: UiInput;
   expect: {
-    component: string;
+    component: ComponentName;
     state: string;
     copy: string[];
     actions?: string[];
   };
   mustNot?: { states?: string[] };
+}
+interface ThemeRowInput {
+  kit?: string;
+  preset?: ThemeOptions["preset"];
+  colorScheme?: ThemeOptions["colorScheme"];
+  integrator?: ThemeOptions["product"];
+  presentation?: ThemeContext["presentation"];
+  bundle?: ThemeContext["bundle"];
+  platform?: ThemeContext["platform"];
+}
+interface ThemeRow {
+  name: string;
+  input: ThemeRowInput;
+  expect: ThemeSummary;
+}
+interface I18nRow {
+  name: string;
+  locale: string;
+  key: string;
+  args: Record<string, string | number>;
+  overrides?: Record<string, Record<string, string>>;
+  expect: string;
 }
 
 const REPO = join(import.meta.dirname, "..", "..", "..");
@@ -62,13 +97,12 @@ const FAMILIES = [
 ] as const;
 const en = new Copy({ tables: { en: KIT_COPY_EN } });
 
-/** A member the input omits takes `vocabulary.defaults`; capabilities merge member by member. */
-function withDefaults(input: Obj, defaults: Obj): UiInput {
+function withDefaults(input: UiInput, defaults: Obj): UiInput {
   const out: Obj = { ...input };
   for (const [k, v] of Object.entries(defaults)) {
     if (k === "capabilities")
-      out[k] = { ...(v as Obj), ...((input[k] as Obj | undefined) ?? {}) };
-    else if (!(k in input)) out[k] = v;
+      out[k] = { ...(v as Obj), ...((out[k] as Obj | undefined) ?? {}) };
+    else if (!(k in out)) out[k] = v;
   }
   return out as UiInput;
 }
@@ -100,7 +134,7 @@ for (const family of FAMILIES) {
   const rows = matrix[family] as Row[];
   describe(`react kit × ui-matrix.json ${family}`, () => {
     it.each(rows.map((r) => [r.name, r] as const))("%s", (_n, row) => {
-      const component = row.expect.component as ComponentName;
+      const component = row.expect.component;
       // A row without `elapsedMs` means the DL7 delay has passed.
       const input: UiInput = {
         elapsedMs: 60_000,
@@ -221,3 +255,106 @@ for (const family of FAMILIES) {
     });
   });
 }
+
+describe("React kit × direct component-state fixtures", () => {
+  it.each(
+    DIRECT_COMPONENT_STATE_FIXTURES.map(
+      (fixture) => [fixture.id, fixture] as const,
+    ),
+  )("%s", (_id, fixture) => {
+    const input: UiInput = {
+      elapsedMs: 60_000,
+      ...withDefaults(fixture.input, matrix.vocabulary.defaults),
+    };
+    const view = viewOf(fixture.component, input);
+    expect({ component: view.component, state: view.state }).toEqual({
+      component: fixture.component,
+      state: fixture.state,
+    });
+    const Component = COMPONENTS[fixture.component]!;
+    expect(Component, `${fixture.component} is exported`).toBeTypeOf(
+      "function",
+    );
+    const { container } = render(<Component input={input} />);
+    const root = container.querySelector<HTMLElement>(".pk-root");
+    expect(root, "a kit root").not.toBeNull();
+    expect(root!.dataset.component).toBe(fixture.component);
+    expect(root!.dataset.state).toBe(fixture.state);
+  });
+});
+
+const REACT_THEME_ROWS = (matrix.theme as ThemeRow[]).filter(
+  (row) => row.input.kit === "react",
+);
+
+function resolveReactTheme(row: ThemeRow): ThemeSummary {
+  const input = row.input;
+  return themeSummary(
+    resolveTheme(
+      {
+        ...(input.preset === undefined ? {} : { preset: input.preset }),
+        ...(input.colorScheme === undefined
+          ? {}
+          : { colorScheme: input.colorScheme }),
+        ...(input.integrator === undefined
+          ? {}
+          : { product: input.integrator }),
+      },
+      {
+        kit: "react",
+        presentation:
+          input.presentation === undefined
+            ? (matrix.vocabulary.defaults
+                .presentation as ThemeContext["presentation"])
+            : input.presentation,
+        bundle: (input.bundle ??
+          matrix.vocabulary.defaults.bundle) as ThemeContext["bundle"],
+        platform: (input.platform ??
+          matrix.vocabulary.defaults.platform) as ThemeContext["platform"],
+      },
+    ),
+  );
+}
+
+describe("React kit × ui-matrix.json theme", () => {
+  it("contains React identity rows", () => {
+    expect(REACT_THEME_ROWS.length).toBeGreaterThan(0);
+  });
+
+  it.each(REACT_THEME_ROWS.map((row) => [row.name, row] as const))(
+    "%s",
+    (_name, row) => {
+      expect(resolveReactTheme(row)).toEqual(row.expect);
+    },
+  );
+});
+
+const tables: { en: CopyTable } & Record<string, CopyTable> = {
+  en: KIT_COPY_EN,
+};
+beforeAll(async () => {
+  await Promise.all(
+    KIT_COPY_LOCALES.map(async (locale) => {
+      tables[locale] = await loadKitCopy(locale);
+    }),
+  );
+});
+const I18N_ROWS = matrix.i18n as I18nRow[];
+
+describe("React kit × ui-matrix.json i18n", () => {
+  it("contains catalog rows", () => {
+    expect(I18N_ROWS.length).toBeGreaterThan(0);
+  });
+
+  it.each(I18N_ROWS.map((row) => [row.name, row] as const))(
+    "%s",
+    (_name, row) => {
+      const copy = new Copy({
+        tables,
+        locale: row.locale,
+        ...(row.overrides === undefined ? {} : { overrides: row.overrides }),
+      });
+      expect(copy.format(row.key, row.args)).toBe(row.expect);
+    },
+  );
+});

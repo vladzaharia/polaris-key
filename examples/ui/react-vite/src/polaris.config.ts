@@ -1,15 +1,15 @@
 // What `--live` connects with. Replace this file with the one `pkey sdk --lang react --write`
 // generates for your product: the slug, the Worker's origin and the pinned trust keys (a page on
 // its own origin verifies every document against them). Never paste keys by hand.
-import type { PolarisKeyProviderProps } from "@polaris-key/react";
+import type { PolarisKeyConfig } from "@polaris-key/react";
 
 export const pinnedKeys: Record<string, string> = {};
 
-export const polarisConfig = {
+export const polarisKey = {
   productSlug: "tidewater",
   baseUrl: "https://key.plrs.im",
   trust: { pinnedKeys },
-  expectServices: ["license", "config", "identity", "update"],
-} satisfies Partial<PolarisKeyProviderProps>;
+  expectedServices: ["license", "config", "identity", "update"] as const,
+} satisfies PolarisKeyConfig;
 
-export default polarisConfig;
+export default polarisKey;

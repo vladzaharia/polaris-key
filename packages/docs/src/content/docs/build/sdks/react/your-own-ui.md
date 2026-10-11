@@ -8,7 +8,7 @@ sidebar:
 The hooks return state and actions and draw nothing. This page gives the hook for each task, the
 states it can be in and the words to show. To take the finished screens instead, see the
 [drop-in quickstart](/docs/build/quickstart/react/#drop-in-screens). Everything renders inside
-`<PolarisKeyProvider>`, configured as the quickstart does.
+`<PolarisKeyProvider config={polarisKey}>`, configured as the quickstart does.
 
 ## The hook for each task
 
@@ -186,10 +186,10 @@ export function UpdateBanner() {
 ```
 
 `useUpdateDecision` needs the Update service and release keys: build the adapter with
-`browserAdapter({ update: { pinnedReleaseKeys } })` and pass it to the Provider as `adapter`. A
-Provider prop for the keys is planned. A mandatory answer and `blocked` are notices with no dismiss
-control over an app that keeps running, never a window that covers it. The unsigned
-`useLatestVersion()` is the older check.
+`browserAdapter({ update: { pinnedReleaseKeys } })`, then include it in the Provider configuration
+as `const testPolarisKey = { ...polarisKey, adapter }`. A mandatory answer and `blocked` are
+notices with no dismiss control over an app that keeps running, never a window that covers it. The
+unsigned `useLatestVersion()` is the older check.
 
 ## Refresh and storage
 
@@ -240,11 +240,11 @@ own reactivity, or for a service worker:
 ```ts
 import { browserAdapter } from "@polaris-key/react/browser";
 import { servicesFromList } from "@polaris-key/react/core";
-import { polarisConfig } from "./polaris.config";
+import { polarisKey } from "./polaris.config";
 
 const adapter = browserAdapter({
-  ...polarisConfig,
-  expectServices: servicesFromList(polarisConfig.expectServices),
+  ...polarisKey,
+  expectServices: servicesFromList(polarisKey.expectedServices),
   version: APP_VERSION,
 });
 
@@ -297,5 +297,5 @@ try {
 }
 ```
 
-Pass the same adapter to `<PolarisKeyProvider adapter={adapter}>` to render your components against
-it. `now` replaces the clock, in seconds.
+Make the adapter part of the same configuration: `const testPolarisKey = { ...polarisKey, adapter };`
+then render `<PolarisKeyProvider config={testPolarisKey}>`. `now` replaces the clock, in seconds.

@@ -13,8 +13,8 @@ import KitFacts from "../../../../../components/ui/KitFacts.astro";
 The React kit is part of `@polaris-key/react`. It runs in a browser page (on Polaris Key's origin,
 your own, or in Tauri) and in the Electron renderer. Every catalog component is a React component
 over the shared headless layer, and draws the same DOM under the same stylesheet as the web
-components kit, so a state looks the same in both. With an empty theme it is the Polaris Key look in
-your product's accent. The rest of the SDK is on the [React](/docs/build/sdks/react/) page.
+components kit, so a state looks the same in both. The kit takes its product identity from the
+provider configuration. The rest of the SDK is on the [React](/docs/build/sdks/react/) page.
 
 <KitFacts kit="react" />
 
@@ -40,20 +40,21 @@ import "@polaris-key/react/styles.css";
 import "@polaris-key/react/fonts.css";
 ```
 
-`@polaris-key/react/kit` is marked `"use client"`. `<PolarisKeyProvider>` holds state, so in a
-Next.js App Router app the file that renders it starts with `"use client"` too.
+`@polaris-key/react/kit` is marked `"use client"`. `<PolarisKeyProvider config={polarisKey}>` holds
+state, so in a Next.js App Router app the file that renders it starts with `"use client"` too.
 
 ## The one-line flow
 
-Layer (a): `<PolarisKeyGate>` inside `<PolarisKeyProvider>` starts itself.
+Layer (a): `<PolarisKeyGate>` inside `<PolarisKeyProvider config={polarisKey}>` starts itself.
 
 ```tsx
-import { PolarisKeyGate, PolarisKeyProvider } from "@polaris-key/react";
-import { polarisConfig } from "./polaris.config";
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+import { polarisKey } from "./polaris.config";
 
 export function App() {
   return (
-    <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>
+    <PolarisKeyProvider config={polarisKey}>
       <PolarisKeyGate>
         <YourApp />
       </PolarisKeyGate>
@@ -82,7 +83,6 @@ reports each control instead of calling the SDK.
 | `onAction`  | A control was pressed: its copy key (`key`), the shared vocabulary action or `null` (`action`), and the `component` and `state` |
 | `onInput`   | The person typed in a field (`key`, `rename`)                                                                                   |
 | `onSelect`  | The person picked a row: a device, a license                                                                                    |
-| `theme`     | This component's theme, over the nearest `<PolarisKeyTheme>`                                                                    |
 | `bare`      | An embedded pane without its own frame                                                                                          |
 | `fill`      | A blocking screen that owns the window                                                                                          |
 | `autoFocus` | Take focus on mount                                                                                                             |
@@ -166,70 +166,31 @@ export function GateState(props: { input: UiInput }) {
 The SDK's own hooks (`useLicenseGate()`, `usePolarisAuth()`, `useEntitlement(name)`, …) are on the
 [React](/docs/build/sdks/react/) page.
 
-## Theming
+## Styling and presentation
 
-`<PolarisKeyTheme theme={…}>` themes every kit component inside it, an inner one layering over an
-outer one, and each component's `theme` layers over that. The fields are the
-[one theme](/docs/build/ui/theming/); here they do this:
+`<PolarisKeyProvider>` holds transport configuration, not styling. Wrap kit components in
+`<PolarisKeyTheme theme={…}>` or give an individual component its `theme` prop; an inner theme
+layers over an outer one. When a theme leaves them unset, the kit resolves the product name, accent
+and verified icon from the adapter's presentation source.
 
-| Field          | In React                                                                                                                                      |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preset`       | `"polaris-key"` (default), or `"native"`: the host's font and grounds and no ambient art; on a page that sets no font, the platform's UI face |
-| `colorScheme`  | `"system"` (default) follows the OS live, or under `native` the ground the kit sits on; `"dark"` and `"light"` pin it                         |
-| `accent`       | `"product"` (default), `"core"` or a colour, always through the contrast resolver                                                             |
-| `radius`       | `"sm"` (6/10), `"md"` (12/22, default), `"lg"` (16/28) control/card, or the control radius in px                                              |
-| `density`      | `"compact"`, `"comfortable"` (default) or `"spacious"`                                                                                        |
-| `motion`       | `"system"` (default), `"reduced"` or `"none"`                                                                                                 |
-| `ambient`      | The product's icon, blurred behind the screens; off under `native`                                                                            |
-| `product`      | Your product identity: `name`, `shortName`, `developer`, `accent`, `accentDark`, `deviceCodeUrl`                                              |
-| `iconSrc`      | Your icon, as a URL the page may load                                                                                                         |
-| `bundle`       | What your app bundle knows about the product                                                                                                  |
-| `presentation` | The product's registered presentation; inside `<PolarisKeyProvider>` the adapter's, with no code; `null` draws none                           |
-| `locale`       | A BCP 47 tag ([Localisation](#localisation))                                                                                                  |
-| `copy`         | Overrides per locale and key                                                                                                                  |
-| `poweredBy`    | `false` (default), `"line"` or `"badge"`                                                                                                      |
-| `platform`     | The platform variant to draw (`"auto"`, `"ios"`, `"android"`, `"macos"`, `"windows"`, `"linux"`, `"web"`)                                     |
+Every kit root has `.pk-root`, `data-part`, `data-key` and `data-state` attributes, while the shared
+rules are in the `@layer polaris-key` cascade layer so host CSS wins without `!important`.
 
-```tsx
-import {
-  PolarisKeyGate,
-  PolarisKeyProvider,
-  PolarisKeyTheme,
-} from "@polaris-key/react";
-import { polarisConfig } from "./polaris.config";
-
-export function Themed() {
-  return (
-    <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>
-      <PolarisKeyTheme
-        theme={{ preset: "native", radius: "lg", accent: "#ff5c00" }}
-      >
-        <PolarisKeyGate>
-          <YourApp />
-        </PolarisKeyGate>
-      </PolarisKeyTheme>
-    </PolarisKeyProvider>
-  );
-}
-```
-
-The product's identity resolves in one order: your theme, the product's registered presentation
-(through the provider), the bundle, a colour derived from the icon, then ink. With no icon the kit
-draws a monogram, never a Polaris Key mark. The presentation's icon is shown as a `blob:` URL, so a
-page with a Content-Security-Policy allows `img-src blob:`.
+The presentation icon is shown as a `blob:` URL, so a page with a Content-Security-Policy allows
+`img-src blob:` and `connect-src` for the image origin. With no verified icon, the kit draws a
+monogram rather than a Polaris Key mark.
 
 ## Localisation
 
 Every string is a key of the kit's copy catalog. English is bundled; `de`, `es`, `fr`, `it`, `ja`,
 `ko`, `pt-BR` and `zh-Hans` load once, on demand, and every component showing that locale redraws
-when it arrives. The locale is `theme.locale`, else the document's `lang`, else the browser's.
-`theme.copy` overrides a key per locale (`{ en: { "welcome.title": "…" } }`).
+when it arrives. The locale follows the document's `lang`, then the browser's language.
 
-## Earlier components
+## Removed legacy components
 
-`LicenseGate`, `PolarisLogin`, `PolarisLogout`, `DeviceManager`, `ConfigPanel` and the subpath
-`UpdatePrompt` (`@polaris-key/react/update`) are still exported, with their slots and their own
-theme on `<PolarisKeyProvider>`. They are not the kit and do not take its theme.
+`LicenseGate`, `PolarisLogin`, `PolarisLogout`, `DeviceManager`, `ConfigPanel` and the old update
+subpath are removed. Import the gate and every interactive surface from
+`@polaris-key/react/kit`.
 
 ## Baselines
 

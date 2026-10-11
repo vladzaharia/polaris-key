@@ -39,23 +39,17 @@ export const CASES = {
   baseline: `${REACT}
 createRoot(document.getElementById("root")).render(createElement("div", null, "hi"));
 `,
-  "provider+license-gate": `${REACT}
-import { PolarisKeyProvider, LicenseGate } from "@polaris-key/react";
-createRoot(document.getElementById("root")).render(
-  createElement(PolarisKeyProvider, { baseUrl: "https://example.test", productId: "p" },
-    createElement(LicenseGate, null, "app")));
-`,
   "polaris-key-gate": `${REACT}
-import { PolarisKeyGate } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
 createRoot(document.getElementById("root")).render(
   createElement(PolarisKeyGate, { input: { gate: { status: "ok" } } }, "app"));
 `,
   "provider+use-license": `${REACT}
 import { PolarisKeyProvider, useLicense } from "@polaris-key/react";
+const config = { productSlug: "p", baseUrl: "https://example.test", trust: { pinnedKeys: {} } };
 function App() { return createElement("div", null, String(useLicense().state)); }
 createRoot(document.getElementById("root")).render(
-  createElement(PolarisKeyProvider, { baseUrl: "https://example.test", productId: "p" },
-    createElement(App)));
+  createElement(PolarisKeyProvider, { config }, createElement(App)));
 `,
 };
 

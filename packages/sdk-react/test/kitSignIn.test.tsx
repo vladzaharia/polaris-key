@@ -19,15 +19,13 @@ import type {
   UiInput,
 } from "@polaris-key/ui-core";
 
-import { formStep as formStepOf } from "@polaris-key/elements/contract";
-
 import {
   ReplaceDevice,
   SignIn,
   SignInDone,
   SignInMethods,
   type KitAction,
-} from "../src/kit/index.js";
+} from "@polaris-key/react/kit";
 
 type Obj = Record<string, unknown>;
 interface Row {
@@ -83,7 +81,6 @@ const flush = async () => {
 describe("the form's steps", () => {
   it("draws the code view in the form's body", () => {
     const i = input("SignIn/code: a device-code sign-in");
-    expect(formStepOf(i).body.component).toBe("SignInHandoff");
     const { container } = render(<SignIn input={i} />);
     expect(container.querySelector('[data-part="code"]')).not.toBeNull();
   });

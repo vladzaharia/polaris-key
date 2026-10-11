@@ -71,8 +71,7 @@ None of the SDKs will let a product talk to a service it doesn't run. `client.ca
 (or the equivalent property) resolves with **no network call**, in one fixed precedence:
 
 1. a discovery document loaded this session (`await client.discover()`) — always wins;
-2. `expectedServices` (or `expected_services`/`expectServices`) — what the build was compiled
-   expecting;
+2. `expectedServices` — what the build was compiled expecting;
 3. the suite default: **License + Config on**, Release/Update/Identity **off**.
 
 The licence **gate** is stricter than capability negotiation: it is on when the build's
