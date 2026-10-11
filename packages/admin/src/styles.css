@@ -45,6 +45,12 @@
  * or the targets passing under it; what stuck below it sticks to the top instead.
  */
 @custom-variant short (@media (max-height: 32rem));
+/*
+ * A short desktop (PORTAL.md §4.25): at least 1024 px wide and at most 900 px tall, a laptop
+ * window. The focused task frame puts the identity beside the task there, so its action is on the
+ * first screen.
+ */
+@custom-variant shortdesk (@media (min-width: 64rem) and (max-height: 56.25rem));
 @custom-variant motion-safe {
   @media (prefers-reduced-motion: no-preference) {
     &:where(

@@ -3,7 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { href } from "../router.js";
 import { Lockup } from "./Lockup.js";
-import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 
 /**
@@ -73,17 +72,20 @@ export function FocusedFlow({
 }
 
 /**
- * The flow's card: the product's art strip, its icon overlapping, "Name · Developer". On a short
- * screen (PORTAL.md §8) the art steps aside for the task and the icon, no longer overlapping,
- * carries the product's identity.
+ * The shared focused-task frame (PORTAL.md §4.25): a factual breadcrumb, a task title and a
+ * 56 px product identity row. It deliberately has no cropped art band: art belongs to a whole
+ * frame, never a slice behind unrelated task content.
  */
-export function FlowCard({
+export function TaskFrame({
   slug,
   name,
   developer,
   tint,
   iconUrl,
-  headerUrl,
+  task,
+  title,
+  identityMeta,
+  aside,
   children,
   className,
 }: {
@@ -92,44 +94,92 @@ export function FlowCard({
   developer: string | null;
   tint: string | null;
   iconUrl: string | null;
+  /** Factual task context, for example "Device access" or "Download". */
+  task: string;
+  /** The page's one h1, supplied by the task so it can retain its focus ref. */
+  title: React.ReactNode;
+  /** A task-specific fact stated beside the product identity once. */
+  identityMeta?: string | null;
+  /** Facts that belong with identity, such as the device-seat meter. */
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}): React.ReactElement {
+  const meta = [
+    developer ? `From ${developer}` : null,
+    identityMeta,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" · ");
+  return (
+    <div
+      className={cn(
+        "mx-auto w-full max-w-[40rem] shortdesk:max-w-[65rem]",
+        className,
+      )}
+    >
+      <p className="mb-2 text-xs text-fg-muted">
+        <span dir="auto">{name}</span> / {task}
+      </p>
+      {title}
+      <div className="mt-5 grid gap-6 shortdesk:grid-cols-[20rem_minmax(0,1fr)] shortdesk:gap-8">
+        <div className="space-y-3">
+          <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-raised p-3">
+            <ProductIcon
+              slug={slug}
+              name={name}
+              tint={tint}
+              src={iconUrl}
+              size={56}
+            />
+            <div className="min-w-0">
+              <p dir="auto" className="break-words font-semibold text-fg-strong">
+                {name}
+              </p>
+              {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
+            </div>
+          </div>
+          {aside}
+        </div>
+        <div className="min-w-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+
+/** @internal Temporary migration surface while PX-29 moves both focused flows to TaskFrame. */
+export function FlowCard({
+  slug,
+  name,
+  developer,
+  tint,
+  iconUrl,
+  children,
+  className,
+}: {
+  slug: string;
+  name: string;
+  developer: string | null;
+  tint: string | null;
+  iconUrl: string | null;
+  /** Retained only while callers migrate in this work package. */
   headerUrl: string | null;
   children: React.ReactNode;
   className?: string;
 }): React.ReactElement {
   return (
-    <section
-      className={cn(
-        "mx-auto w-full max-w-[41rem] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1",
-        className,
-      )}
+    <TaskFrame
+      slug={slug}
+      name={name}
+      developer={developer}
+      tint={tint}
+      iconUrl={iconUrl}
+      task="Device access"
+      title={null}
+      className={className}
     >
-      <ProductArt
-        slug={slug}
-        name={name}
-        tint={tint}
-        src={headerUrl}
-        variant="banner"
-        // No cover: a bare tint field; the icon overlapping the strip already shows the letter.
-        letter={false}
-        className="h-24 desk:h-30 short:hidden"
-      />
-      <div className="px-5 pb-6 desk:px-8 desk:pb-8 short:pt-5">
-        <ProductIcon
-          slug={slug}
-          name={name}
-          tint={tint}
-          src={iconUrl}
-          size={64}
-          lift
-          className="relative -mt-8 short:mt-0"
-          tileClassName="border-[3px] border-surface-raised"
-        />
-        <p className="mt-3 text-sm text-fg-muted">
-          {name}
-          {developer ? ` · ${developer}` : ""}
-        </p>
-        {children}
-      </div>
-    </section>
+      {children}
+    </TaskFrame>
   );
 }
