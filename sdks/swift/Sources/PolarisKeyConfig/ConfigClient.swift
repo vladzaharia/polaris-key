@@ -108,7 +108,10 @@ public actor ConfigClient {
         self.envPrefix = options.envPrefix
         self.environment = options.environment ?? ProcessInfo.processInfo.environment
         self.reacquire = reacquire
-        let store = options.local.store ?? UserDefaultsLocalConfigStore(product: core.product, suiteName: options.local.suiteName)
+        let store = options.local.store ?? UserDefaultsLocalConfigStore(
+            product: core.product,
+            namespace: storeNamespace(productSlug: core.product, baseUrl: core.endpoints.baseUrl),
+            suiteName: options.local.suiteName)
         self.localStore = store
         self.persisted = store.load()
     }

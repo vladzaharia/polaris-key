@@ -289,6 +289,8 @@ public actor CoreContext {
     // explicit ACROSS MODULES — a `let` could become a `var` in a later version of this package,
     // and the compiler will not assume otherwise on our behalf.
     public nonisolated let product: String
+    /// The product identity used for durable state. Non-production hosts append a safe host suffix.
+    public nonisolated let storageNamespace: String
     public nonisolated let endpoints: Endpoints
     public nonisolated let version: String
     public nonisolated let channel: String
@@ -374,15 +376,17 @@ public actor CoreContext {
         self.channel = options.channel ?? Semver.channelForVersion(options.version).rawValue
         self.pinnedTrust = options.pinnedKeys
         self.trustRefreshEnabled = options.trustRefresh
+        self.storageNamespace = storeNamespace(
+            productSlug: options.productSlug, baseUrl: endpoints.baseUrl)
         let groupRoots = options.appGroup.flatMap { ProductDirs.Roots.appGroup($0) }
         self.dirs = ProductDirs.resolve(
-            productSlug: options.productSlug, configDir: options.configDir,
+            productSlug: storageNamespace, configDir: options.configDir,
             dataDir: options.dataDir, cacheDir: options.cacheDir, stateDir: options.stateDir,
             roots: groupRoots ?? .system())
         self.store =
             options.store
             ?? KeychainStore(
-                productSlug: options.productSlug, configDir: options.configDir ?? groupRoots?.config,
+                productSlug: storageNamespace, configDir: options.configDir ?? groupRoots?.config,
                 accessGroup: options.keychainAccessGroup)
         self.journal = UpdateJournal(store: self.store)
         let transport = options.transport ?? URLSessionTransport()

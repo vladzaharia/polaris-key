@@ -18,6 +18,8 @@ import {
   configFile,
   type DevArgs,
   type DevInfo,
+  type DevServerHandle,
+  type DevServerStartOptions,
 } from "../src/devCommand.js";
 import { COMMANDS } from "../src/help.js";
 
@@ -46,10 +48,83 @@ const args = (over: Partial<DevArgs> = {}): DevArgs => ({
   ...over,
 });
 
-async function start(over: Parameters<Awaited<ReturnType<typeof loadDevBundle>>["startDevServer"]>[0] = {}) {
+interface StartedDevServer {
+  s: DevServerHandle;
+  info: DevInfo;
+}
+
+type TestFetchInput = string | URL | Request;
+
+async function start(over: DevServerStartOptions = {}): Promise<StartedDevServer> {
   const b = await loadDevBundle(bundle);
   const s = await b.startDevServer({ port: 0, ...over });
-  return { s, info: b.infoOf(s.world) as DevInfo };
+  return { s, info: b.infoOf(s.world) };
+}
+
+function verificationUri(body: unknown): string {
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("verificationUriComplete" in body) ||
+    typeof body.verificationUriComplete !== "string"
+  )
+    throw new Error("device-code start did not return verificationUriComplete");
+  return body.verificationUriComplete;
+}
+
+function setCookies(response: Response): string[] {
+  const headers: unknown = response.headers;
+  if (
+    headers &&
+    typeof headers === "object" &&
+    "getSetCookie" in headers &&
+    typeof headers.getSetCookie === "function"
+  ) {
+    const cookies = headers.getSetCookie();
+    if (Array.isArray(cookies) && cookies.every((cookie) => typeof cookie === "string"))
+      return cookies;
+  }
+  throw new Error("response headers do not expose Set-Cookie");
+}
+
+async function completeDeviceCodeSignIn(
+  { s, info }: StartedDevServer,
+  device: string,
+): Promise<Response> {
+  const base = s.url;
+  const begin = await fetch(`${base}/${info.product}/identity/auth/device/start`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-pkey-device": dev(device) },
+    body: JSON.stringify({ deviceName: "t" }),
+  });
+  expect(begin.status).toBe(200);
+  const verify = new URL(verificationUri(await begin.json()));
+  let cookies = "";
+  const jar = (r: Response) => {
+    for (const c of setCookies(r))
+      cookies += (cookies ? "; " : "") + c.split(";")[0];
+  };
+  const page = await fetch(verify, { redirect: "manual" });
+  jar(page);
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1] ?? "";
+  const confirm = await fetch(new URL(verify.pathname, verify), {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      "sec-fetch-site": "same-origin",
+      cookie: cookies,
+    },
+    body: new URLSearchParams({ user_code: verify.searchParams.get("user_code")!, csrf }),
+  });
+  jar(confirm);
+  // Auto-approve: the IdP answers the authorize request with the callback redirect at once.
+  const idp = await fetch(confirm.headers.get("location")!, { redirect: "manual" });
+  expect(idp.status).toBe(302);
+  return fetch(idp.headers.get("location")!, {
+    redirect: "manual",
+    headers: { cookie: cookies },
+  });
 }
 
 const activate = (url: string, product: string, key: string, device: string) =>
@@ -102,6 +177,57 @@ describe("pkey dev server", () => {
     await expect(fetch("https://key.plrs.im/")).rejects.toThrow(/does not contact/);
     expect(s.blocked).toEqual(["key.plrs.im"]);
     await s.close();
+  });
+
+  it("keeps the fetch guard when servers close out of order", async () => {
+    const nativeFetch = globalThis.fetch;
+    const upstream = (async (input: TestFetchInput, init?: RequestInit) => {
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      if (!["127.0.0.1", "localhost", "::1"].includes(new URL(raw).hostname))
+        throw new Error(`test prevented unexpected network access to ${raw}`);
+      return nativeFetch(input, init);
+    }) as typeof fetch;
+    globalThis.fetch = upstream;
+    let first: StartedDevServer | undefined;
+    let second: StartedDevServer | undefined;
+    try {
+      first = await start();
+      const guard = globalThis.fetch;
+      expect(guard).not.toBe(upstream);
+      second = await start();
+      expect(globalThis.fetch).toBe(guard);
+
+      await first.s.close();
+      first = undefined;
+      expect(globalThis.fetch).toBe(guard);
+      await expect(fetch("https://key.plrs.im/")).rejects.toThrow(
+        /does not contact/,
+      );
+      expect(second.s.blocked).toEqual(["key.plrs.im"]);
+      expect(
+        (await activate(
+          second.s.url,
+          second.info.product,
+          second.info.keys.ok!,
+          dev("second"),
+        )).status,
+      ).toBe(200);
+
+      const closing = second.s.close();
+      await second.s.close();
+      await closing;
+      second = undefined;
+      expect(globalThis.fetch).toBe(upstream);
+    } finally {
+      if (first) await first.s.close();
+      if (second) await second.s.close();
+      globalThis.fetch = nativeFetch;
+    }
   });
 
   it("refuses a request whose Host is not loopback", async () => {
@@ -167,37 +293,24 @@ describe("pkey dev server", () => {
   });
 
   it("device-code sign-in runs through the fake IdP", async () => {
-    const { s, info } = await start({ autoApprove: true });
-    const base = s.url;
-    const begin = await fetch(`${base}/${info.product}/identity/auth/device/start`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-pkey-device": dev("signin") },
-      body: JSON.stringify({ deviceName: "t" }),
-    });
-    expect(begin.status).toBe(200);
-    const p = (await begin.json()) as { verificationUriComplete: string; deviceCode?: string };
-    const verify = new URL(p.verificationUriComplete);
-    let cookies = "";
-    const jar = (r: Response) => {
-      for (const c of (r.headers as unknown as { getSetCookie(): string[] }).getSetCookie())
-        cookies += (cookies ? "; " : "") + c.split(";")[0];
-    };
-    const page = await fetch(verify, { redirect: "manual" });
-    jar(page);
-    const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1] ?? "";
-    const confirm = await fetch(new URL(verify.pathname, verify), {
-      method: "POST",
-      redirect: "manual",
-      headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "same-origin", cookie: cookies },
-      body: new URLSearchParams({ user_code: verify.searchParams.get("user_code")!, csrf }),
-    });
-    jar(confirm);
-    // auto-approve: the IdP answers the authorize request with the callback redirect at once.
-    const idp = await fetch(confirm.headers.get("location")!, { redirect: "manual" });
-    expect(idp.status).toBe(302);
-    const cb = await fetch(idp.headers.get("location")!, { redirect: "manual", headers: { cookie: cookies } });
-    expect(cb.status).toBe(200);
-    await s.close();
+    const running = await start({ autoApprove: true });
+    try {
+      expect((await completeDeviceCodeSignIn(running, "signin")).status).toBe(200);
+    } finally {
+      await running.s.close();
+    }
+  });
+
+  it("isolates fake IdP JWKS between live dev servers", async () => {
+    const first = await start({ autoApprove: true });
+    const second = await start({ autoApprove: true });
+    try {
+      expect((await completeDeviceCodeSignIn(first, "first-idp")).status).toBe(200);
+      expect((await completeDeviceCodeSignIn(second, "second-idp")).status).toBe(200);
+    } finally {
+      await first.s.close();
+      await second.s.close();
+    }
   });
 
   it("seeds from a repo's .pkey/ and serves its slug", async () => {

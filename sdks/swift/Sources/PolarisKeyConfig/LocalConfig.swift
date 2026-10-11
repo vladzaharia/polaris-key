@@ -23,15 +23,15 @@ public protocol LocalConfigStore: Sendable {
     func save(_ values: [String: JSONValue])
 }
 
-/// UserDefaults, one JSON blob per product (`pkey.config.local.<product>`).
+/// UserDefaults, one JSON blob per storage namespace (`pkey.config.local.<namespace>`).
 public struct UserDefaultsLocalConfigStore: LocalConfigStore, @unchecked Sendable {
     private let defaults: UserDefaults
     private let key: String
 
     /// `suiteName` names an app-group suite shared with extensions; nil uses `.standard`.
-    public init(product: String, suiteName: String? = nil) {
+    public init(product: String, namespace: String? = nil, suiteName: String? = nil) {
         self.defaults = suiteName.flatMap { UserDefaults(suiteName: $0) } ?? .standard
-        self.key = "pkey.config.local." + product
+        self.key = "pkey.config.local." + (namespace ?? product)
     }
 
     public func load() -> [String: JSONValue] {

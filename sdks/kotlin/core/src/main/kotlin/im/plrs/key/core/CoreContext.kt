@@ -151,6 +151,8 @@ public class CoreContext(options: CoreOptions) {
 
     /** Throws `insecure-base-url` before anything else happens. */
     public val endpoints: Endpoints = Endpoints(options.baseUrl, options.productSlug)
+    /** Product-scoped durable state uses this host-aware namespace; API routes keep [product]. */
+    public val storageNamespace: String = storeNamespace(options.productSlug, endpoints.baseUrl)
     public val version: String = options.version
     /** The channel this build was made for: `CoreOptions.channel`, else derived from the version. */
     public val buildChannel: String = options.channel ?: Semver.channelForVersion(options.version).wire
@@ -188,7 +190,7 @@ public class CoreContext(options: CoreOptions) {
     }
     public val pinnedTrust: TrustSet = options.pinnedKeys
     public val trustRefreshEnabled: Boolean = options.trustRefresh
-    public val store: Store = options.store ?: defaultStore(options.productSlug)
+    public val store: Store = options.store ?: defaultStore(storageNamespace)
     public val transport: PolarisTransport = options.transport ?: OkHttpTransport()
     public val requestTimeoutSeconds: Double = options.requestTimeoutSeconds
 

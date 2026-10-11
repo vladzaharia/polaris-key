@@ -51,6 +51,26 @@ class PolarisKeyAndroidTest {
     }
 
     @Test
+    fun localClientNamespacesTheDefaultAndroidStore() {
+        val local = PolarisKeyAndroid.client(
+            ctx,
+            PolarisKeyClientOptions(
+                core = CoreOptions(
+                    productSlug = "diceroll",
+                    baseUrl = "http://localhost:8787",
+                    version = "1.0.0",
+                    pinnedKeys = signer.trust,
+                ),
+                update = UpdateClientOptions(pinnedReleaseKeys = releaseSigner.trust),
+            ),
+        )
+        assertEquals(
+            "diceroll@localhost_8787",
+            (local.core.store as AndroidKeystoreStore).productSlug,
+        )
+    }
+
+    @Test
     fun buildDownloadStreamsA200AndRefusesAnythingElse() = runBlocking {
         val server = MockWebServer()
         val bytes = ByteArray(70_000) { (it % 251).toByte() }

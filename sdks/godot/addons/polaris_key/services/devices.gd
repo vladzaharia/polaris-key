@@ -489,13 +489,13 @@ func _android_gate() -> PKeyResult:
 func _app_attest(core: PKeyCore, request_hash: String) -> PKeyResult:
 	var a := _apple()
 	var stored := ""
-	var kr := a.keychain_get(core.product, APP_ATTEST_ACCOUNT)
+	var kr := a.keychain_get(core.storage_namespace, APP_ATTEST_ACCOUNT)
 	if kr.ok and kr.detail.get("value") is String:
 		stored = kr.detail["value"]
 	var r := await a.app_attest(request_hash, stored)
 	if not r.ok and stored != "" and r.detail is Dictionary and r.detail.get("error") == "invalid_key":
 		# The key died with a reinstall, a device migration or a restore: expected, not fraud.
-		a.keychain_delete(core.product, APP_ATTEST_ACCOUNT)
+		a.keychain_delete(core.storage_namespace, APP_ATTEST_ACCOUNT)
 		stored = ""
 		r = await a.app_attest(request_hash, "")
 	# Keep a key that exists now: the attested one, or a generated one whose attestation Apple's
@@ -503,7 +503,7 @@ func _app_attest(core: PKeyCore, request_hash: String) -> PKeyResult:
 	var key = r.detail.get("keyId") if r.detail is Dictionary else null
 	var keep: bool = r.ok or (r.detail is Dictionary and r.detail.get("error") == "server_unavailable")
 	if keep and key is String and key != "" and key != stored:
-		a.keychain_set(core.product, APP_ATTEST_ACCOUNT, key)
+		a.keychain_set(core.storage_namespace, APP_ATTEST_ACCOUNT, key)
 	if r.ok and not (r.detail.get("keyId") is String and r.detail.get("attestation") is String):
 		return PKeyResult.failure(PKeyErrors.PLATFORM_ERROR, "The Apple platform plugin answered no key id or attestation.", r.detail)
 	return r

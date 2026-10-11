@@ -10,9 +10,10 @@ func run(t: PKeyTestContext) -> void:
 	PKeyDeviceId.set_raw_source(func(): return RAW)
 	await _files(t)
 	await _device_write_failure(t)
+	_namespace(t)
+	_caller_overrides_survive_reattach(t)
 	_status(t)
 	PKeyDeviceId.set_raw_source(Callable())
-
 
 func _files(t: PKeyTestContext) -> void:
 	var root := PKeyTestFixtures.scratch_dir("store")
@@ -75,6 +76,50 @@ func _device_write_failure(t: PKeyTestContext) -> void:
 		t.check("store: start %d sets last_store_error" % start, sdk.last_store_error.get("op", "") in ["write", "rename"], str(sdk.last_store_error))
 		sdk.queue_free()
 	t.check("store: no new id is minted on the next start", ids.size() == 2 and ids[0] == ids[1] and ids[0] == PKeyDeviceId.from_raw("djdl", RAW), str(ids))
+	PKeyTestFixtures.remove_tree(root)
+
+
+func _namespace(t: PKeyTestContext) -> void:
+	var production := PKeyCore.store_namespace_for("djdl", "https://KEY.PLRS.IM:443/")
+	var development := PKeyCore.store_namespace_for("djdl", "http://localhost:8787")
+	t.check("store namespace: production keeps its historical product name", production == "djdl", production)
+	t.check("store namespace: local host and port are deterministic", development == "djdl@localhost_8787", development)
+	var root := PKeyTestFixtures.scratch_dir("store-namespace")
+	var prod := PKeyFileStore.new(production, root)
+	var dev := PKeyFileStore.new(development, root)
+	prod.set_token("pkeyt_production")
+	dev.set_token("pkeyt_development")
+	prod.write_cache({"v": 3, "docs": {"license": "production"}})
+	dev.write_cache({"v": 3, "docs": {"license": "development"}})
+	var prod_device := prod.get_device_id()
+	var dev_device := dev.get_device_id()
+	t.check("store namespace: credentials, cache and device identities do not share files", \
+		prod.get_token() == "pkeyt_production" and dev.get_token() == "pkeyt_development" \
+		and prod.read_cache()["docs"]["license"] == "production" and dev.read_cache()["docs"]["license"] == "development" \
+		and prod_device != dev_device and prod.dir != dev.dir, "%s %s" % [prod.dir, dev.dir])
+	PKeyTestFixtures.remove_tree(root)
+
+func _caller_overrides_survive_reattach(t: PKeyTestContext) -> void:
+	var root := PKeyTestFixtures.scratch_dir("store-namespace-overrides")
+	var sdk := PKeyTestFixtures.new_sdk()
+	var opts := PKeyOptions.new()
+	opts.product = "djdl"
+	opts.version = "1.0.0"
+	opts.base_url = "http://localhost:8787"
+	opts.store_root = root
+	opts.persist_settings = false
+	var first: PKeyResult = sdk.configure(opts)
+	var custom_root := root.path_join("custom-packs")
+	var custom_cache := root.path_join("custom-presentation")
+	sdk.update.packs.root = custom_root
+	sdk.presentation_source.cache_dir = custom_cache
+	var second: PKeyResult = sdk.configure(opts)
+	t.check(
+		"store namespace: caller pack and presentation roots survive reconfigure",
+		first.ok and second.ok and sdk.update.packs.root == custom_root and sdk.presentation_source.cache_dir == custom_cache,
+		"%s %s" % [sdk.update.packs.root, sdk.presentation_source.cache_dir],
+	)
+	sdk.queue_free()
 	PKeyTestFixtures.remove_tree(root)
 
 

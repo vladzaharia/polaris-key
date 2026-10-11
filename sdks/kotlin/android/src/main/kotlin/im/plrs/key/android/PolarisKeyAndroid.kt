@@ -31,6 +31,7 @@ import im.plrs.key.core.AttestationProviders
 import im.plrs.key.core.BinaryMethod
 import im.plrs.key.core.Platform
 import im.plrs.key.core.Store
+import im.plrs.key.core.storeNamespace
 import im.plrs.key.packs.PacksOptions
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.PolarisKeyClientOptions
@@ -82,21 +83,22 @@ public object PolarisKeyAndroid {
     public fun client(context: Context, options: PolarisKeyClientOptions, android: AndroidOptions = AndroidOptions()): PolarisKeyClient {
         val ctx = context.applicationContext
         val product = options.core.productSlug
+        val namespace = storeNamespace(product, options.core.baseUrl)
         val self = AtomicReference<PolarisKeyClient>()
         fun client(): PolarisKeyClient = self.get() ?: error("the client is still being constructed")
 
         val core = options.core.copy(
-            store = options.core.store ?: AndroidKeystoreStore(ctx, product, android.legacyStore),
+            store = options.core.store ?: AndroidKeystoreStore(ctx, namespace, android.legacyStore),
             // PX-W13 (§12.7.1): the device name the user set, else the model.
             defaultDeviceName = options.core.defaultDeviceName ?: { androidDeviceName(ctx) },
         )
-        val license = options.license.copy(fingerprintSource = options.license.fingerprintSource ?: AndroidFingerprintSource(ctx, product))
+        val license = options.license.copy(fingerprintSource = options.license.fingerprintSource ?: AndroidFingerprintSource(ctx, namespace))
         val update = options.update?.let { u ->
             u.copy(
                 signals = if (u.signals === NoOutletSignals) AndroidOutletSignalReader(ctx) else u.signals,
                 installDriver = if (u.installDriver === JvmInstallDriver) {
                     FlavorAndroid.installDriver(
-                        ctx, product, android.activity,
+                        ctx, namespace, android.activity,
                         records = { sha -> client().update.releaseRecord(sha).record },
                         buildUrl = { version, build -> client().update.buildUrl(version, build) },
                         download = { OkHttpBuildDownload(client().core) },

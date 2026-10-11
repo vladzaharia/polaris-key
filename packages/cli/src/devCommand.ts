@@ -100,13 +100,16 @@ export interface DevServerHandle {
   close(): Promise<void>;
 }
 
+/** The public options accepted by the isolated `pkey dev` server bundle. */
+export interface DevServerStartOptions {
+  port?: number;
+  manifest?: Record<string, string>;
+  autoApprove?: boolean;
+  log?: (line: string) => void;
+}
+
 interface DevBundle {
-  startDevServer(opts: {
-    port?: number;
-    manifest?: Record<string, string>;
-    autoApprove?: boolean;
-    log?: (line: string) => void;
-  }): Promise<DevServerHandle>;
+  startDevServer(opts: DevServerStartOptions): Promise<DevServerHandle>;
   infoOf(world: unknown): DevInfo;
 }
 

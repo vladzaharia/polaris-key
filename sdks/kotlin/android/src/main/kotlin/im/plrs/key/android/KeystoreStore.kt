@@ -68,7 +68,7 @@ public class AndroidKeystoreStore(
     public constructor(context: Context, productSlug: String, legacy: Store? = null) : this(
         productSlug,
         SecureStore(context, productSlug),
-        { File(context.noBackupFilesDir, "pkey/${SecureStore.checkName(productSlug)}") },
+        { File(context.noBackupFilesDir, "pkey/${SecureStore.checkProductName(productSlug)}") },
         { deviceIdRaw(SystemAndroidDevice(context), SecureStore(context, productSlug)) },
         legacy,
     )

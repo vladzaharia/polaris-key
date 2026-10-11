@@ -37,6 +37,30 @@ final class DirectoriesTests: XCTestCase {
         XCTAssertEqual(dirs.state.path, "/o/state/djdl")
     }
 
+    func testNonDefaultOriginsUseSeparateStorageNamespaces() {
+        XCTAssertEqual(storeNamespace(productSlug: "djdl", baseUrl: "https://key.plrs.im"), "djdl")
+        XCTAssertEqual(
+            storeNamespace(productSlug: "djdl", baseUrl: "https://KEY.PLRS.IM:443/"), "djdl")
+        XCTAssertEqual(
+            storeNamespace(productSlug: "djdl", baseUrl: "http://localhost:8787"), "djdl@localhost_8787")
+
+        let production = ProductDirs.resolve(
+            productSlug: storeNamespace(productSlug: "djdl", baseUrl: "https://key.plrs.im"),
+            roots: roots)
+        let local = ProductDirs.resolve(
+            productSlug: storeNamespace(productSlug: "djdl", baseUrl: "http://localhost:8787"),
+            roots: roots)
+        XCTAssertEqual(production.config.path, "/Users/ada/.config/djdl")
+        XCTAssertEqual(local.config.path, "/Users/ada/.config/djdl@localhost_8787")
+        XCTAssertEqual(
+            local.data.path,
+            "/Users/ada/Library/Application Support/polaris-key/data/djdl@localhost_8787")
+        XCTAssertEqual(local.cache.path, "/Users/ada/Library/Caches/polaris-key/djdl@localhost_8787")
+        XCTAssertEqual(
+            local.state.path,
+            "/Users/ada/Library/Application Support/polaris-key/state/djdl@localhost_8787")
+    }
+
     func testTheLegacyConfigBaseEqualsTodays() {
         #if os(macOS)
         XCTAssertEqual(
@@ -76,6 +100,14 @@ final class DirectoriesTests: XCTestCase {
         XCTAssertEqual(core.dirs.state.path, base.appendingPathComponent("state/djdl").path)
         XCTAssertEqual(core.dirs.config.path, base.appendingPathComponent("config/djdl").path)
         XCTAssertFalse(FileManager.default.fileExists(atPath: base.path))
+    }
+
+    func testCoreContextPublishesTheLocalStorageNamespace() throws {
+        let core = try CoreContext(
+            options: CoreOptions(
+                productSlug: "djdl", baseUrl: "http://localhost:8787", version: "1.0.0",
+                pinnedKeys: [:], store: InMemoryStore(productSlug: "djdl")))
+        XCTAssertEqual(core.storageNamespace, "djdl@localhost_8787")
     }
 
     func testExcludeFromBackupMarksTheDirectory() throws {

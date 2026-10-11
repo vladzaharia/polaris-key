@@ -15,9 +15,27 @@ extends RefCounted
 signal store_error(err: Dictionary)
 
 const DEFAULT_BASE := "https://key.plrs.im"
+## Stable state uses the bare product on the production origin. Other origins include their host
+## and non-default port, so a local control plane cannot reuse production credentials or caches.
+static func store_namespace_for(p_product: String, normalized_base_url: String) -> String:
+	var parsed := PKeyTransport.parse_url(normalized_base_url)
+	if parsed.is_empty():
+		return p_product
+	var host := String(parsed["host"])
+	var scheme := String(parsed["scheme"])
+	var port := int(parsed["port"])
+	var default_port := 443 if scheme == "https" else 80
+	if host == "key.plrs.im" and port == 443:
+		return p_product
+	var authority := host if port == default_port else "%s:%d" % [host, port]
+	return "%s@%s" % [p_product, RegEx.create_from_string("[^a-z0-9.-]").sub(authority, "_", true)]
+
+
 
 var options: PKeyOptions
 var product := ""
+## The SDK-owned persistent-state name; API claims and paths keep [product].
+var storage_namespace := ""
 var base_url := ""
 var version := ""
 var channel := ""
@@ -109,6 +127,7 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	core.options = opts
 	core.product = opts.product
 	core.base_url = base.detail
+	core.storage_namespace = store_namespace_for(core.product, core.base_url)
 	core.version = v
 	core.channel = channel
 	core.build_stamp = stamp
@@ -118,7 +137,7 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	# The platform store when its plugin is present (Keychain on iOS, P5-05; Keystore on Android,
 	# P5-06); the OS keyring store on the desktops (SP-27; the file store with a recorded reason
 	# when its native piece is missing); else the file store.
-	core.store = opts.store if opts.store != null else PKeyKeychainStore.preferred(opts.product, opts.store_root)
+	core.store = opts.store if opts.store != null else PKeyKeychainStore.preferred(core.storage_namespace, opts.store_root)
 	core.store.failed.connect(core._on_store_failed)
 	core.transport = PKeyTransport.new(host)
 	core.transport.timeout = opts.request_timeout_seconds

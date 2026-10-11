@@ -30,6 +30,7 @@ import im.plrs.key.core.FileStore
 import im.plrs.key.core.JavaKeyringBackend
 import im.plrs.key.core.KeyringBackend
 import im.plrs.key.core.KeyringStore
+import im.plrs.key.core.storeNamespace
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.PolarisKeyClientOptions
 import im.plrs.key.update.BootGuard
@@ -76,11 +77,12 @@ public object PolarisKeyDesktop {
     /** [options] with every desktop edge the host left unset filled in; see the file comment. */
     public fun client(options: PolarisKeyClientOptions, desktop: DesktopOptions = DesktopOptions()): PolarisKeyClient {
         val product = options.core.productSlug
-        val dir = dataDirectory(product, desktop)
+        val namespace = storeNamespace(product, options.core.baseUrl)
+        val dir = dataDirectory(namespace, desktop)
         val self = AtomicReference<PolarisKeyClient>()
         fun client(): PolarisKeyClient = self.get() ?: error("the client is still being constructed")
 
-        val core = options.core.copy(store = options.core.store ?: store(product, desktop))
+        val core = options.core.copy(store = options.core.store ?: store(namespace, desktop))
         val update = options.update?.let { u ->
             if (u.installDriver !== JvmInstallDriver) return@let u
             u.copy(

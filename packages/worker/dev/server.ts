@@ -11,9 +11,11 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import type { ManifestDocumentName } from "@polaris-key/manifest";
-import { createIdp, IDP_HOST, IDP_ORIGIN } from "./idp.js";
+import { createIdp } from "./idp.js";
 import { createWorld, KEY_STATES, type World } from "./world.js";
 
 export interface DevServerOptions {
@@ -70,9 +72,83 @@ export function infoOf(world: World): DevInfo {
 }
 
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+function hostOf(host: string): string {
+  return new URL(`http://${host}`).hostname;
+}
 
-function hostOf(h: string): string {
-  return new URL(`http://${h}`).hostname;
+
+type IdpHandler = (req: Request, u: URL, path: string) => Promise<Response>;
+
+interface FetchScope {
+  blocked: string[];
+  handleIdp?: IdpHandler;
+  idpHost?: string;
+}
+
+const FETCH_SCOPE = new AsyncLocalStorage<FetchScope>();
+const ACTIVE_FETCH_SCOPES = new Set<FetchScope>();
+let originalFetch: typeof fetch | undefined;
+let guardedFetch: typeof fetch | undefined;
+/**
+ * Install one process-wide guard for every live dev server. A scope selects the right fake IdP
+ * while its Worker request is running; outside a request, the guard still refuses egress and
+ * records it on every live server. The final release restores precisely the fetch it replaced.
+ */
+function acquireFetchGuard(scope: FetchScope): () => void {
+  if (!guardedFetch) {
+    const upstream = globalThis.fetch;
+    originalFetch = upstream;
+    guardedFetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
+      if (ACTIVE_FETCH_SCOPES.size === 0) return upstream(input, init);
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      let host = "";
+      try {
+        host = new URL(raw).hostname;
+      } catch {
+        host = raw;
+      }
+      const current = FETCH_SCOPE.getStore();
+      const idp =
+        current?.idpHost === host
+          ? current.handleIdp
+          : !current
+            ? [...ACTIVE_FETCH_SCOPES].find((candidate) => candidate.idpHost === host)
+                ?.handleIdp
+            : undefined;
+      if (idp) {
+        const u = new URL(raw);
+        return idp(new Request(raw, init), u, u.pathname);
+      }
+      if (!LOOPBACK.has(host)) {
+        for (const target of current ? [current] : ACTIVE_FETCH_SCOPES)
+          target.blocked.push(host);
+        throw new TypeError(`pkey dev does not contact ${host}`);
+      }
+      return upstream(input, init);
+    }) as typeof fetch;
+    globalThis.fetch = guardedFetch;
+  }
+  ACTIVE_FETCH_SCOPES.add(scope);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    ACTIVE_FETCH_SCOPES.delete(scope);
+    if (ACTIVE_FETCH_SCOPES.size > 0) return;
+    const installed = guardedFetch;
+    if (installed && originalFetch && globalThis.fetch === installed)
+      globalThis.fetch = originalFetch;
+    originalFetch = undefined;
+    guardedFetch = undefined;
+  };
 }
 
 async function bodyOf(req: IncomingMessage): Promise<Buffer> {
@@ -86,15 +162,20 @@ function send(
   r: Response,
   body: Buffer,
   origin: string,
+  idpOrigin: string | null,
 ): void {
   const headers: Record<string, string | string[]> = {};
   r.headers.forEach((v, k) => {
     headers[k] = v;
   });
-  // A browser sent to the fake IdP's https name lands on its page on this origin instead.
+  // A browser sent to this server's fake IdP https name lands on its loopback page instead.
   const to = headers.location;
-  if (typeof to === "string" && to.startsWith(`${IDP_ORIGIN}/`))
-    headers.location = `${origin}/__idp${to.slice(IDP_ORIGIN.length)}`;
+  if (
+    idpOrigin &&
+    typeof to === "string" &&
+    to.startsWith(`${idpOrigin}/`)
+  )
+    headers.location = `${origin}/__idp${to.slice(idpOrigin.length)}`;
   const cookies =
     (r.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ??
     [];
@@ -107,36 +188,9 @@ export async function startDevServer(
 ): Promise<DevServer> {
   const log = opts.log ?? (() => {});
   const blocked: string[] = [];
-  let handleIdp:
-    | ((req: Request, u: URL, path: string) => Promise<Response>)
-    | undefined;
-
-  // The router and the SDK-facing code may only reach this process: a dev run never contacts a
-  // hosted Polaris Key (or anything else), whatever a manifest names.
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const raw =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url;
-    let host = "";
-    try {
-      host = new URL(raw).hostname;
-    } catch {
-      host = raw;
-    }
-    if (host === IDP_HOST && handleIdp) {
-      const u = new URL(raw);
-      return handleIdp(new Request(raw, init), u, u.pathname);
-    }
-    if (!LOOPBACK.has(host)) {
-      blocked.push(host);
-      throw new TypeError(`pkey dev does not contact ${host}`);
-    }
-    return realFetch(input, init);
-  }) as typeof fetch;
+  const scope: FetchScope = { blocked };
+  const releaseFetch = acquireFetchGuard(scope);
+  let handleIdp: IdpHandler | undefined;
 
   let world: World | undefined;
   let ready: Promise<World>;
@@ -189,14 +243,14 @@ export async function startDevServer(
           },
           offline: () => offline,
         });
-        send(res, out, Buffer.from(await out.arrayBuffer()), url);
+        send(res, out, Buffer.from(await out.arrayBuffer()), url, w.idp.issuer);
         return done(out.status);
       }
       const r =
         path.startsWith("/__idp/") && handleIdp
           ? await handleIdp(request, target, path.slice("/__idp".length))
-          : await w.handle(request);
-      send(res, r, Buffer.from(await r.arrayBuffer()), url);
+          : await FETCH_SCOPE.run(scope, () => w.handle(request));
+      send(res, r, Buffer.from(await r.arrayBuffer()), url, w.idp.issuer);
       done(r.status);
     } catch (e) {
       res.writeHead(500, { "content-type": "text/plain" });
@@ -206,37 +260,53 @@ export async function startDevServer(
     }
   });
 
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(opts.port ?? 8787, "127.0.0.1", () => resolve());
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(opts.port ?? 8787, "127.0.0.1", () => resolve());
+    });
+  } catch (e) {
+    releaseFetch();
+    throw e;
+  }
   const port = (server.address() as AddressInfo).port;
   url = `http://127.0.0.1:${port}`;
+  const idpOrigin = `https://pkey-dev-idp-${randomUUID().replace(/-/g, "")}.test`;
 
-  ready = createWorld({
-    baseUrl: url,
-    ...(opts.manifest ? { manifest: opts.manifest } : {}),
-  }).then((w) => {
-    world = w;
-    handleIdp = createIdp(w.idp, { autoApprove: opts.autoApprove === true });
-    return w;
-  });
+  ready = FETCH_SCOPE.run(scope, () =>
+    createWorld({
+      baseUrl: url,
+      idpOrigin,
+      ...(opts.manifest ? { manifest: opts.manifest } : {}),
+    }).then((w) => {
+      world = w;
+      handleIdp = createIdp(w.idp, { autoApprove: opts.autoApprove === true });
+      scope.handleIdp = handleIdp;
+      scope.idpHost = w.idp.issuer ? new URL(w.idp.issuer).hostname : undefined;
+      return w;
+    }),
+  );
   try {
     await ready;
   } catch (e) {
     server.close();
-    globalThis.fetch = realFetch;
+    releaseFetch();
     throw e;
   }
 
+  let closePromise: Promise<void> | undefined;
   return {
     url,
     world: world!,
     blocked,
-    async close() {
-      globalThis.fetch = realFetch;
-      server.closeAllConnections();
-      await new Promise<void>((r) => server.close(() => r()));
+    close() {
+      closePromise ??= (async () => {
+        server.closeAllConnections();
+        await new Promise<void>((resolve, reject) =>
+          server.close((error) => (error ? reject(error) : resolve())),
+        );
+      })().finally(releaseFetch);
+      return closePromise;
     },
   };
 }

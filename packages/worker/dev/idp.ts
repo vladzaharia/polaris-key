@@ -42,13 +42,11 @@ small{display:block;margin-top:1rem;color:var(--mut)}
 }
 
 /**
- * The issuer. The Worker only dials an https issuer without a port on a public-looking host
- * (`core/oidc/client.ts`), so the fake IdP lives at an https `.test` name no resolver knows: the
- * dev server answers the Worker's own requests to it in-process, and rewrites the redirects that
- * send a browser there to its `/__idp/` path.
+ * The Worker only dials an https issuer without a port on a public-looking host
+ * (`core/oidc/client.ts`), so every dev server supplies a unique https `.test` issuer. The dev
+ * server answers the Worker's own requests to it in-process, and rewrites browser redirects to
+ * its `/__idp/` path.
  */
-export const IDP_HOST = "pkey-dev-idp.test";
-export const IDP_ORIGIN = `https://${IDP_HOST}`;
 
 /** A tiny in-memory code store: one-shot, 5 minutes. */
 interface Pending {

@@ -99,19 +99,21 @@ function req<T>(r: IDBRequest<T>): Promise<T> {
 
 /**
  * The IndexedDB cache: its own database (`polaris-key-presentation`), so it never moves the
- * version of the one that holds the device token and offline documents. Null where IndexedDB
- * does not exist; the source then keeps what it fetched in memory only.
+ * version of the one that holds the device token and offline documents. The production host uses
+ * that existing name; a non-default host gets a sibling database. Null where IndexedDB does not
+ * exist; the source then keeps what it fetched in memory only.
  */
 export function indexedDbPresentationCache(
   factory: IDBFactory | undefined = typeof indexedDB === "undefined"
     ? undefined
     : indexedDB,
+  namespace = "",
 ): PresentationCache | null {
   if (!factory) return null;
   let db: Promise<IDBDatabase> | null = null;
   const open = (): Promise<IDBDatabase> => {
     if (!db) {
-      const r = factory.open(DB_NAME, DB_VERSION);
+      const r = factory.open(`${DB_NAME}${namespace}`, DB_VERSION);
       r.onupgradeneeded = () => {
         for (const name of [MEMBERS, ICONS])
           if (!r.result.objectStoreNames.contains(name))
@@ -371,6 +373,8 @@ export interface BrowserPresentationOptions {
   product: string;
   /** The page's fetch, called per request. */
   fetchImpl: () => typeof fetch;
+  /** Empty for production; a non-default host's IndexedDB suffix otherwise. */
+  storageNamespace?: string;
   /** Default: IndexedDB, else memory. */
   cache?: PresentationCache | null;
 }
@@ -384,7 +388,8 @@ export class BrowserPresentationSource extends BasePresentationSource {
     super();
     this.cache =
       opts.cache === undefined
-        ? (indexedDbPresentationCache() ?? memoryPresentationCache())
+        ? (indexedDbPresentationCache(undefined, opts.storageNamespace) ??
+          memoryPresentationCache())
         : (opts.cache ?? memoryPresentationCache());
   }
 

@@ -125,7 +125,7 @@ public final class DevicesClient: Sendable {
         self.onLicenseChanged = onLicenseChanged
         self.license = license
         self.attestClient = options.client ?? DevicesClient.systemAttestClient()
-        self.keyStore = options.keyStore ?? KeychainAttestKeyStore(product: core.product)
+        self.keyStore = options.keyStore ?? KeychainAttestKeyStore(product: core.storageNamespace)
         self.outletCheck = options.outletCheck ?? DevicesClient.defaultOutletCheck
     }
 

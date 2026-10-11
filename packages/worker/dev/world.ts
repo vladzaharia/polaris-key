@@ -24,7 +24,6 @@ import { makeRlNamespace } from "../test/rlMock.js";
 import { makeSingleUseNamespace } from "../test/singleUseMock.js";
 import { NodeSqliteDb, openMemoryDb } from "./nodeSqlite.js";
 import { MIGRATIONS } from "pkey-dev:migrations";
-import { IDP_HOST, IDP_ORIGIN } from "./idp.js";
 import {
   DEV_WEB_ORIGINS,
   TIDEWATER_BUILD,
@@ -54,8 +53,10 @@ const ENTRY_LIMIT = 3;
 const FAKE_DEVICE_PREFIX = "DEVSEAT";
 
 export interface WorldOptions {
-  /** The origin the server answers on; the fake IdP's issuer and redirect URIs derive from it. */
+  /** The origin the server answers on. */
   baseUrl: string;
+  /** A unique public-looking fake IdP origin for this server. */
+  idpOrigin: string;
   /** `.pkey/` documents from the working directory; absent: the built-in Tidewater product. */
   manifest?: Partial<Record<ManifestDocumentName, string>>;
 }
@@ -122,6 +123,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
   const db: Db = new NodeSqliteDb(sqlite);
   const notes: string[] = [];
 
+  const idpHost = new URL(opts.idpOrigin).hostname;
   const kv = new KvMock();
   const env = {
     HOT: asKv(kv),
@@ -131,8 +133,8 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     PLATFORM_KEK: b64(32),
     KEY_HASH_PEPPER: b64(24),
     PORTAL_SESSION_SECRET: b64(24),
-    // The fake IdP is served from this process; the allowlist names its host.
-    OIDC_ISSUER_ALLOWLIST: IDP_HOST,
+    // The fake IdP is served from this process; the allowlist names its unique host.
+    OIDC_ISSUER_ALLOWLIST: idpHost,
     KEYENTRY_REFUSALS: "on",
   } as unknown as Env;
 
@@ -191,7 +193,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
   // ── The fake IdP, as the product's OIDC provider ─────────────────────────────────────────
   const idpPair = await generateEd25519();
   const idp: IdpFacts = {
-    issuer: services.includes("identity") ? IDP_ORIGIN : null,
+    issuer: services.includes("identity") ? opts.idpOrigin : null,
     clientId: `${slug}-dev`,
     person: {
       sub: "u-iris",

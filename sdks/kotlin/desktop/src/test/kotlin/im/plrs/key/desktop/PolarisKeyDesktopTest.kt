@@ -51,9 +51,13 @@ class PolarisKeyDesktopTest {
 
     private fun tempDir(): File = Files.createTempDirectory("pkey-desktop-sdk").toFile().also { it.deleteOnExit() }
 
-    private fun options(update: UpdateClientOptions? = null, store: im.plrs.key.core.Store? = null) = PolarisKeyClientOptions(
+    private fun options(
+        update: UpdateClientOptions? = null,
+        store: im.plrs.key.core.Store? = null,
+        baseUrl: String = "https://key.plrs.im",
+    ) = PolarisKeyClientOptions(
         core = CoreOptions(
-            productSlug = "djdl", version = "1.2.0", pinnedKeys = product.trust, trustRefresh = false,
+            productSlug = "djdl", baseUrl = baseUrl, version = "1.2.0", pinnedKeys = product.trust, trustRefresh = false,
             store = store, transport = ScriptedTransport { ScriptedTransport.respond(404) },
         ),
         update = update,
@@ -71,6 +75,18 @@ class PolarisKeyDesktopTest {
         assertEquals(StoreBackend.keyring, client.storeStatus()?.backend)
         assertTrue(File(dir, "device-id").isFile)
         if (client.supports(Feature.coreStore) !is Support.Supported) throw AssertionError("core.store is supported over a reachable keyring")
+    }
+
+    @Test
+    fun localClientUsesAHostScopedKeyringService() = runBlocking {
+        val ring = MapKeyring()
+        val client = PolarisKeyDesktop.create(
+            options(baseUrl = "http://localhost:8787"),
+            DesktopOptions(dataDirectory = tempDir(), keyring = ring),
+        )
+        client.core.setToken("pkeyt_local")
+        assertEquals("djdl@localhost_8787", client.core.storageNamespace)
+        assertEquals("pkeyt_local", ring.entries["pkey:djdl@localhost_8787/device-token"])
     }
 
     @Test
