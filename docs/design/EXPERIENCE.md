@@ -53,9 +53,11 @@ marks and type. [ADMIN.md](ADMIN.md) and [PORTAL.md](PORTAL.md) record the curre
 console and portal; this document records the wider experience direction and package coverage.
 
 **Source precedence.** Owner decisions and the platform contract govern behaviour; then these
-design docs; then accepted mockups; then the Brand Guide's studies and anatomy proposals; then the
-old console. A guide study enters the program only as a mockup id with status `proposal` until the
-owner accepts it. No API, entitlement or permission is derived from a mockup.
+design docs; then accepted mockups; then the Brand Guide's studies and anatomy proposals (a
+reference edition: its admin boards picture earlier mockups, so our mockups and decisions win on
+composition, copy, states, routes, permissions and contracts, and the guide never changes a
+contract); then the old console. A guide study enters the program only as a mockup id with status
+`proposal` until the owner accepts it. No API, entitlement or permission is derived from a mockup.
 
 **The owner-approved programs win over this document.** The settings architecture
 ([S-18](../research/2026-09-29-godot-omniplatform/notes/S-18-settings-architecture.md), `ST-*`
@@ -198,7 +200,7 @@ their settings.
 Access, Feeds and Metadata access one access-mode vocabulary ("Entitled: holds `<flag>`").
 
 **What a hop no longer does.** The section accent still marks where you are: the sidebar
-marker and links, plus the focus ring, hover, selected and checked states of elements that reference the
+marker, the workspace rule, the masthead tile and links, plus the focus ring, hover, selected and checked states of elements that reference the
 service (BRAND §5.4, B17). The primary button is neutral action ink (B2). The avatar no longer takes the section
 accent (CL 2), and drawers opened from another section keep the **origin's** accent and route, so a
 license's device drawer keeps the License accent over the license (§0.5 O1).
