@@ -122,7 +122,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           sdkPages("python", "Python", true),
           sdkPages("swift", "Swift", true),
           sdkPages("kotlin", "Kotlin", true),
-          sdkPages("godot", "Godot"),
+          sdkPages("godot", "Godot", true),
           leaf("build/sdks/index", "All SDKs"),
           {
             label: "Drop-in UI kits",
