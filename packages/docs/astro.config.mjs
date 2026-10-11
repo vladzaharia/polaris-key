@@ -96,6 +96,9 @@ export default defineConfig({
         PageFrame: "./src/components/PageFrame.astro",
         PageTitle: "./src/components/PageTitle.astro",
       },
+      // "On this page" for the Help messages pages, whose headings come from components rather
+      // than from Markdown (src/routeData.ts).
+      routeMiddleware: "./src/routeData.ts",
       // The three doors' trees (src/lib/doors.ts), in door order. Stubs are hidden by their own
       // frontmatter. DOC-02b's Sidebar override renders only the current door's tree.
       sidebar: starlightSidebar(),

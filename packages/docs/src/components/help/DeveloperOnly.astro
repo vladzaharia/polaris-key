@@ -2,15 +2,20 @@
 /**
  * The developer-only messages of Other messages (docs plan §7.1): the ones only the app's
  * developer can fix. Each title is listed with the message the app shows and the ids behind it.
- * Every id keeps its own anchor (`#<id>`), as a heading's ids do. Rendered from the catalog and
- * `help-messages.json`, so the titles are never retyped.
+ * Every id keeps its own anchor (`#<id>`), as a heading's ids do; the ids of a title's first
+ * message anchor at the title, so arriving at one shows it. The titles of every translated catalog
+ * follow each title as hidden text, as an entry has them, so search finds it from a title in
+ * another language. Rendered from the catalog and `help-messages.json`, so the titles are never
+ * retyped.
  */
 import {
   HELP_MESSAGES,
   KNOWN_ENTRIES,
+  aliasesFor,
   developerOnlyGroups,
   messageParts,
 } from "../../lib/helpMessages";
+import "./message.css";
 
 const groups = developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES);
 ---
@@ -19,12 +24,16 @@ const groups = developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES);
   {
     groups.map((group) => (
       <li>
+        {group.messages[0]!.ids.map((id) => (
+          <span id={id} class="pk-help-developer__anchor" />
+        ))}
         <strong>{group.title}</strong>
-        {group.messages.map((row) => (
+        {group.messages.map((row, i) => (
           <div class="pk-help-developer__message">
-            {row.ids.map((id) => (
-              <span id={id} class="pk-help-developer__anchor" />
-            ))}
+            {i > 0 &&
+              row.ids.map((id) => (
+                <span id={id} class="pk-help-developer__anchor" />
+              ))}
             <blockquote>
               <p>
                 {messageParts(row.message).map((part) =>
@@ -35,9 +44,9 @@ const groups = developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES);
             <p class="pk-help-developer__codes">
               <small>
                 {row.ids.length === 1 ? "Code" : "Codes"}:{" "}
-                {row.ids.map((id, i) => (
+                {row.ids.map((id, j) => (
                   <>
-                    {i > 0 && ", "}
+                    {j > 0 && ", "}
                     <code>{id}</code>
                   </>
                 ))}
@@ -45,16 +54,12 @@ const groups = developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES);
             </p>
           </div>
         ))}
+        {aliasesFor(group.messages.flatMap((row) => row.ids)).map((alias) => (
+          <span hidden lang={alias.lang} data-pagefind-weight="6">
+            {alias.title}
+          </span>
+        ))}
       </li>
     ))
   }
 </ul>
-
-<style is:global>
-  .pk-help-developer__codes {
-    color: var(--sl-color-gray-3);
-  }
-  .pk-help-developer__codes code {
-    overflow-wrap: anywhere;
-  }
-</style>

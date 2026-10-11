@@ -3,14 +3,19 @@
  * One message of Help (docs plan §7.1, §7.5). The heading is the catalog title, character for
  * character; its anchor is the message id, set here and never slugified. Under it come the message
  * as the app shows it (a placeholder shows what goes there), Why you see this and What to do from
- * `help-messages.json`, a link to the article that explains more when there is one, and the ids,
- * in small type, for telling the developer. The titles of the same message in every translated
- * catalog follow as hidden text, so search finds the entry from a title in another language.
+ * `help-messages.json`, a link that ends What to do when there is one (the library), a link to the
+ * article that explains more when there is one, and the ids, in small type, for telling the
+ * developer. The titles of the same message in every translated catalog follow as hidden text, so
+ * search finds the entry from a title in another language.
  *
  * `<HelpMessage id>` shows that one id, as an article does for the anchors it carries. On a
  * messages page, `<HelpMessage id entry>` shows the whole entry the id owns: one heading, and one
  * branch for each distinct message of the title, each id keeping its own anchor. A copy change
  * reaches Help on the next build.
+ *
+ * The heading comes from this component, not from the page's Markdown, so Starlight's heading
+ * collector never sees it: `src/routeData.ts` adds the entries of a messages page to "On this
+ * page".
  */
 import AnchorHeading from "@astrojs/starlight/components/AnchorHeading.astro";
 import { getEntry } from "astro:content";
@@ -18,12 +23,15 @@ import {
   HELP_MESSAGES,
   KNOWN_ENTRIES,
   aliasesFor,
+  articleHref,
   entryOf,
   messageParts,
   textParts,
   singleOf,
   type EntryBranch,
 } from "../../lib/helpMessages";
+import PortalLink from "./PortalLink.astro";
+import "../help/message.css";
 
 export interface Props {
   /** A message id: a `codes` key, `gate.<key>`, `activation.<key>`, `portal.<key>` or `fallback`. */
@@ -58,12 +66,10 @@ if (wholeEntry) {
 }
 
 /** The article link of each branch, unless the article is this page. */
-const here = Astro.url.pathname.replace(/\/?$/, "/");
 const more = await Promise.all(
   branches.map(async (branch) => {
-    if (branch.article === undefined) return undefined;
-    const href = `/docs/help/${branch.article}/`;
-    if (href === here) return undefined;
+    const href = articleHref(branch.article, Astro.url.pathname);
+    if (href === undefined) return undefined;
     const page = await getEntry("docs", `help/${branch.article}`);
     if (page === undefined)
       throw new Error(`<HelpMessage id="${id}">: the article help/${branch.article} does not exist`);
@@ -78,15 +84,21 @@ const codes = (branch: EntryBranch): string[] =>
 ---
 
 <div class="pk-help-message" data-help-message={id}>
-  <AnchorHeading level={2} id={ids[0]!}>{title}</AnchorHeading>
+  {
+    /* The ids that show the heading's own message anchor at the heading, so arriving at any of
+       them shows the title, not a bare quote under it. */
+    branches[0]!.ids
+      .filter((x) => x !== ids[0])
+      .map((x) => <span id={x} class="pk-help-message__anchor" />)
+  }
+  {/* The title is passed as HTML: AnchorHeading words its screen-reader label from the rendered slot
+      and escapes that text again, so an escaped title (Can&#39;t) would be read out as is. Titles hold
+      no `&`, `<` or `>` (helpMessages.test.ts). */}
+  <AnchorHeading level={2} id={ids[0]!}><Fragment set:html={title} /></AnchorHeading>
   {
     branches.map((branch, i) => (
       <div class="pk-help-message__branch">
-        {branch.ids
-          .filter((x) => x !== ids[0])
-          .map((x) => (
-            <span id={x} class="pk-help-message__anchor" />
-          ))}
+        {i > 0 && branch.ids.map((x) => <span id={x} class="pk-help-message__anchor" />)}
         <blockquote class="pk-help-message__shown">
           <p>
             {messageParts(branch.message).map((part) =>
@@ -108,6 +120,11 @@ const codes = (branch: EntryBranch): string[] =>
             {textParts(branch.fix).map((part) =>
               typeof part === "string" ? part : <strong>{part.strong}</strong>,
             )}
+          </p>
+        )}
+        {branch.cta === "library" && (
+          <p class="pk-help-message__cta">
+            <PortalLink to="library">Open your library</PortalLink>
           </p>
         )}
         {more[i] && (
@@ -139,16 +156,3 @@ const codes = (branch: EntryBranch): string[] =>
     ))
   }
 </div>
-
-<style is:global>
-  .pk-help-message__branch + .pk-help-message__branch {
-    border-top: 1px solid var(--sl-color-hairline);
-    padding-top: 1rem;
-  }
-  .pk-help-message__codes {
-    color: var(--sl-color-gray-3);
-  }
-  .pk-help-message__codes code {
-    overflow-wrap: anywhere;
-  }
-</style>

@@ -69,10 +69,28 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
     });
   });
 
-  it("drops stubs from the sitemap", () => {
+  it("drops stubs from the sitemap and marks each one noindex", () => {
     const sitemap = readFileSync(join(dist, "sitemap-0.xml"), "utf8");
     expect(sitemap).not.toContain("/docs/help/add-a-license/");
     expect(sitemap).toContain("/docs/help/activate/");
+    // Every stub of the manifest: out of the sitemap, and noindex in its own HTML.
+    const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+      (m) => new URL(m[1]!).pathname,
+    );
+    const stubs = Object.entries(manifest.pages)
+      .filter(([, page]) => page.status === "stub")
+      .map(([route]) => route);
+    expect(stubs, "the manifest still lists a stub to check").not.toEqual([]);
+    for (const route of stubs) {
+      expect(listed, route).not.toContain(route);
+      expect(
+        readFileSync(
+          join(dist, route.replace(/^\/docs\//, ""), "index.html"),
+          "utf8",
+        ),
+        `${route}: noindex`,
+      ).toContain('content="noindex"');
+    }
   });
 
   it("renders a Help message with the message id as the anchor, on an indexable page", () => {
@@ -83,5 +101,8 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
     expect(html).toContain('id="activation.device-limit"');
     expect(html).toContain("Device limit reached");
     expect(html).not.toContain('content="noindex"');
+    expect(readFileSync(join(dist, "sitemap-0.xml"), "utf8")).toContain(
+      "/docs/help/messages/devices/",
+    );
   });
 });

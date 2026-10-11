@@ -3,22 +3,26 @@
  * the data, and what keeps Help true. Every message of the copy catalog and every error of the
  * portal's `errors.ts` is in exactly one Help entry or in the developer-only list; titles render
  * from the catalog; the titles of every translated catalog are search aliases; the words of the
- * map pass the same prose rules as the pages; and the messages pages show exactly the map's
- * entries. Built-page checks run when the docs have been built, as slugManifest.test.ts does.
+ * map pass the same prose rules as the pages; the messages pages show exactly the map's entries,
+ * and "On this page" lists them (the A to Z index lists its letters, src/routeData.ts). Built-page
+ * checks run when the docs have been built, as slugManifest.test.ts does.
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import {
   CATALOG_ENTRIES,
+  CTA_ACTIONS,
   HELP_MESSAGES,
   KNOWN_ENTRIES,
   MESSAGE_ID,
   PLACEHOLDER_LABELS,
   TRANSLATED_CATALOGS,
   aliasesFor,
+  articleHref,
   catalogEntries,
   coverageProblems,
   developerOnlyGroups,
@@ -27,14 +31,18 @@ import {
   helpEntries,
   helpMessageUrl,
   indexRows,
+  indexSections,
   messageParts,
+  messageToc,
   pageOfId,
   singleOf,
   textParts,
   validateHelpMessages,
   type CatalogEntry,
   type HelpMessagesData,
+  type TocItem,
 } from "../src/lib/helpMessages";
+import { onRequest } from "../src/routeData";
 import { lintPage, type Facts } from "../scripts/lint-docs";
 import { fileFor, splitFrontmatter } from "../scripts/site-map.mjs";
 
@@ -46,7 +54,12 @@ const dist = join(docsRoot, "dist");
 const schema = JSON.parse(
   readFileSync(join(docsRoot, "help-messages.schema.json"), "utf8"),
 ) as {
-  properties: { messages: { propertyNames: { pattern: string } } };
+  properties: {
+    messages: {
+      propertyNames: { pattern: string };
+      additionalProperties: { properties: { cta: { enum: string[] } } };
+    };
+  };
   required: string[];
 };
 
@@ -56,6 +69,40 @@ const entries = helpEntries(HELP_MESSAGES, KNOWN_ENTRIES);
 const messagePages = Object.keys(HELP_MESSAGES.pages).filter(
   (k) => k !== "index",
 );
+
+/** The English catalog file as it is on disk: what the code under test is checked against. */
+const englishFile = JSON.parse(read(join(parity, "copy.en.json"))) as {
+  fallback: CatalogEntry;
+  codes: Record<string, CatalogEntry>;
+  gate: Record<string, CatalogEntry>;
+  activation: Record<string, CatalogEntry>;
+};
+let portalCopies: Record<string, CatalogEntry> | undefined;
+/** A message by its id, found in the files themselves, not through `catalogEntries`. */
+function fileEntry(id: string): CatalogEntry | undefined {
+  if (id === "fallback") return englishFile.fallback;
+  const dot = id.indexOf(".");
+  if (dot === -1) return englishFile.codes[id];
+  const key = id.slice(dot + 1);
+  const group = id.slice(0, dot);
+  if (group === "gate") return englishFile.gate[key];
+  if (group === "activation") return englishFile.activation[key];
+  if (group !== "portal") return undefined;
+  portalCopies ??= portalErrorsSource().copies;
+  return portalCopies[key];
+}
+
+/** Source without its comment lines: the code a screen is built from. */
+const withoutComments = (source: string): string =>
+  source
+    .split("\n")
+    .filter((line) => !/^\s*(?:\/\/|\/\*|\*)/.test(line))
+    .join("\n");
+/** A label as a whole word: a string or JSX text, not a piece of an identifier. */
+const wholeWord = (label: string): RegExp =>
+  new RegExp(
+    `(?<![A-Za-z0-9_])${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9_])`,
+  );
 
 describe("message ids", () => {
   it.each([
@@ -311,15 +358,24 @@ describe("the portal's own copy", () => {
 });
 
 describe("titles render from the catalog", () => {
-  it("every entry heading is the catalog's title, and every branch quotes its message", () => {
-    for (const entry of entries) {
-      expect(entry.title, entry.id).toBe(KNOWN_ENTRIES.get(entry.id)!.title);
+  it("every entry heading is the title of the catalog file, and every branch quotes its message", () => {
+    // Read from the files, not through the code that builds the entries.
+    for (const entry of entries)
       for (const branch of entry.branches)
         for (const id of branch.ids) {
-          expect(KNOWN_ENTRIES.get(id)!.title, id).toBe(entry.title);
-          expect(KNOWN_ENTRIES.get(id)!.message, id).toBe(branch.message);
+          const file = fileEntry(id);
+          expect(file, `${id}: not in the catalog files`).toBeDefined();
+          expect(entry.title, id).toBe(file!.title);
+          expect(branch.message, id).toBe(file!.message);
         }
-    }
+  });
+
+  it("a heading holds no markup character: it is handed to Starlight as HTML", () => {
+    // AnchorHeading words its screen-reader label from the rendered heading and escapes that text
+    // again, so HelpMessage.astro passes the title unescaped (an escaped Can&#39;t would be read
+    // out as is). That holds for a title with no & < >.
+    for (const entry of entries)
+      expect(entry.title, entry.id).not.toMatch(/[&<>]/);
   });
 
   it("a page never retypes a title: its headings come from the component", () => {
@@ -375,26 +431,32 @@ describe("search aliases", () => {
       expect(pack.locale, locale).toBe(locale);
   });
 
-  it("carry the translated title of every id of every entry", () => {
-    for (const entry of entries) {
+  it("carry the translated title of every id of every entry and developer-only title", () => {
+    const idLists = [
+      ...entries.map((e) => ({ name: e.id, ids: e.ids })),
+      ...developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES).map((g) => ({
+        name: g.title,
+        ids: g.messages.flatMap((m) => m.ids),
+      })),
+    ];
+    for (const { name, ids } of idLists) {
       const english = new Set(
-        entry.ids.map((id) => KNOWN_ENTRIES.get(id)!.title.toLowerCase()),
+        ids.map((id) => KNOWN_ENTRIES.get(id)!.title.toLowerCase()),
       );
       const expected = new Set<string>();
       for (const pack of Object.values(TRANSLATED_CATALOGS))
-        for (const id of entry.ids) {
+        for (const id of ids) {
           const title = catalogEntries(pack).get(id)?.title;
           if (title !== undefined && !english.has(title.toLowerCase()))
             expected.add(title.toLowerCase());
         }
-      const actual = aliasesFor(entry.ids);
-      expect(
-        new Set(actual.map((a) => a.title.toLowerCase())),
-        entry.id,
-      ).toEqual(expected);
+      const actual = aliasesFor(ids);
+      expect(new Set(actual.map((a) => a.title.toLowerCase())), name).toEqual(
+        expected,
+      );
       for (const alias of actual) {
-        expect(locales, entry.id).toContain(alias.lang);
-        expect(alias.title, entry.id).not.toContain("{");
+        expect(locales, name).toContain(alias.lang);
+        expect(alias.title, name).not.toContain("{");
       }
     }
     // The portal's own copy is English only: it has no translated title to index.
@@ -459,13 +521,23 @@ describe("the words", () => {
     ).toEqual([]);
   });
 
-  it("keep each branch within 120 words", () => {
-    for (const entry of entries)
-      for (const branch of entry.branches)
-        expect(
-          words(`${branch.message} ${branch.why ?? ""} ${branch.fix ?? ""}`),
-          branch.ids[0],
-        ).toBeLessThanOrEqual(120);
+  it("keep each entry within 120 words: its title and every branch's message, Why and What to do", () => {
+    // The budget is per entry (docs plan section 2, style guide section 3): one heading with all
+    // its branches.
+    const over = entries
+      .map((entry) => ({
+        id: entry.id,
+        count:
+          words(entry.title) +
+          entry.branches.reduce(
+            (sum, b) =>
+              sum + words(`${b.message} ${b.why ?? ""} ${b.fix ?? ""}`),
+            0,
+          ),
+      }))
+      .filter(({ count }) => count > 120)
+      .map(({ id, count }) => `${id}: ${count} words`);
+    expect(over).toEqual([]);
   });
 
   it("bold only labels a screen shows", () => {
@@ -485,10 +557,12 @@ describe("the words", () => {
       ) as Record<string, string>,
     );
     const portalDir = join(repoRoot, "packages", "admin", "src", "portal");
-    const portal = readdirSync(portalDir, { recursive: true })
-      .filter((f) => /\.tsx?$/.test(f))
-      .map((f) => read(join(portalDir, f)))
-      .join("\n");
+    const portal = withoutComments(
+      readdirSync(portalDir, { recursive: true })
+        .filter((f) => /\.tsx?$/.test(f))
+        .map((f) => read(join(portalDir, f)))
+        .join("\n"),
+    );
     const labels = new Set<string>();
     for (const m of Object.values(HELP_MESSAGES.messages))
       for (const text of [m.why, m.fix])
@@ -497,9 +571,18 @@ describe("the words", () => {
     expect(labels.size).toBeGreaterThan(0);
     for (const label of labels)
       expect(
-        kit.includes(label) || portal.includes(label),
+        kit.includes(label) || wholeWord(label).test(portal),
         `**${label}** is not a string a kit or the portal shows`,
       ).toBe(true);
+  });
+
+  it("finds a label as a whole word of the code, not in an identifier or a comment", () => {
+    const code = withoutComments(
+      "// Discover things\n * Discover again\nconst portalDiscover = 1;\n",
+    );
+    expect(wholeWord("Discover").test(code)).toBe(false);
+    expect(wholeWord("Discover").test(`${code}<h1>Discover</h1>`)).toBe(true);
+    expect(wholeWord("Add (new)").test("x Add (new) y")).toBe(true);
   });
 
   it("splits bold labels from plain text", () => {
@@ -533,6 +616,14 @@ describe("the pages", () => {
       for (const call of calls)
         expect(call[2], `${page}: ${call[1]} needs entry`).toBe(" entry");
       expect(body.includes("<DeveloperOnly />"), page).toBe(page === "other");
+      // "On this page" puts every entry before the page's own headings (src/routeData.ts), so a
+      // Markdown heading never comes before an entry.
+      const firstHeading = body.search(/^#{1,6} /m);
+      if (firstHeading !== -1)
+        expect(
+          body.lastIndexOf("<HelpMessage "),
+          `${page}: an entry follows a Markdown heading`,
+        ).toBeLessThan(firstHeading);
     }
   });
 
@@ -677,17 +768,247 @@ describe("entries", () => {
     expect(() => helpMessageUrl(doc, "nonesuch")).toThrow("nonesuch");
   });
 
-  it("indexes the real map: every title once, sorted", () => {
+  it("indexes the real map: every title once, A to Z", () => {
     const rows = indexRows(HELP_MESSAGES, KNOWN_ENTRIES);
     const titles = new Set([...KNOWN_ENTRIES.values()].map((e) => e.title));
     expect(rows.map((r) => r.title).sort()).toEqual([...titles].sort());
-    const sorted = [...rows].sort((a, b) =>
-      new Intl.Collator("en", {
-        sensitivity: "base",
-        ignorePunctuation: true,
-      }).compare(a.title, b.title),
+    // The order is checked against the first letters and fixed neighbours, not by sorting again
+    // with the collator the code sorts with.
+    const order = rows.map((r) => r.title);
+    const letters = order.map((t) => t.charAt(0).toUpperCase());
+    expect(letters).toEqual([...letters].sort());
+    const at = (title: string): number => {
+      expect(order, `${title} is indexed`).toContain(title);
+      return order.indexOf(title);
+    };
+    expect(at("Activate")).toBeLessThan(at("Activated"));
+    expect(at("Activated")).toBeLessThan(at("Activation failed"));
+    // And every pair of neighbours, read without case and punctuation: a plain comparison of the
+    // letters and digits, not the collator.
+    const key = (title: string): string =>
+      title.toLowerCase().replace(/[^a-z0-9]/g, "");
+    order.slice(1).forEach((title, i) => {
+      expect(
+        key(order[i]!) <= key(title),
+        `${order[i]} comes before ${title}`,
+      ).toBe(true);
+    });
+  });
+});
+
+describe("the library link", () => {
+  const known = new Map<string, CatalogEntry>([
+    ["a", { title: "Same", message: "one" }],
+    ["b", { title: "Same", message: "one" }],
+    ["c", { title: "Same", message: "two" }],
+  ]);
+  const doc: HelpMessagesData = {
+    version: 1,
+    pages: { index: { title: "All" }, p: { title: "P" } },
+    messages: {
+      a: { page: "p", entry: "a", why: "Why a", fix: "Fix a", cta: "library" },
+      b: { page: "p", entry: "a" },
+      c: { page: "p", entry: "a", why: "Why c", fix: "Fix c" },
+    },
+    developerOnly: [],
+  };
+
+  it("ends the branch that holds it, and no other", () => {
+    expect(helpEntries(doc, known)[0]!.branches.map((b) => b.cta)).toEqual([
+      "library",
+      undefined,
+    ]);
+    expect(singleOf(doc, known, "b")!.branch.cta).toBe("library");
+    expect(singleOf(doc, known, "c")!.branch.cta).toBeUndefined();
+  });
+
+  it("is one of the actions the schema lists", () => {
+    expect(
+      schema.properties.messages.additionalProperties.properties.cta.enum,
+    ).toEqual([...CTA_ACTIONS]);
+  });
+
+  it("is on the first id of a branch in the real data, and an action", () => {
+    for (const entry of entries)
+      for (const branch of entry.branches)
+        for (const id of branch.ids.slice(1))
+          expect(HELP_MESSAGES.messages[id]?.cta, id).toBeUndefined();
+    for (const [id, message] of Object.entries(HELP_MESSAGES.messages))
+      if (message.cta !== undefined)
+        expect(CTA_ACTIONS, id).toContain(message.cta);
+  });
+});
+
+describe("the article link", () => {
+  it("is the message's article, as a Help path", () => {
+    expect(articleHref("devices", "/docs/help/messages/devices/")).toBe(
+      "/docs/help/devices/",
     );
-    expect(rows).toEqual(sorted);
+    expect(articleHref("a/b", "/docs/")).toBe("/docs/help/a/b/");
+  });
+
+  it("is left out when the page showing the message is the article, with or without the trailing slash", () => {
+    expect(articleHref("activate", "/docs/help/activate/")).toBeUndefined();
+    expect(articleHref("activate", "/docs/help/activate")).toBeUndefined();
+  });
+
+  it("compares whole paths, not prefixes", () => {
+    expect(articleHref("device", "/docs/help/devices/")).toBe(
+      "/docs/help/device/",
+    );
+    expect(articleHref("devices", "/docs/help/devices-and-more/")).toBe(
+      "/docs/help/devices/",
+    );
+  });
+
+  it("is none for a message without an article", () => {
+    expect(articleHref(undefined, "/docs/help/devices/")).toBeUndefined();
+  });
+});
+
+describe("the A to Z letters", () => {
+  it("group the rows by the first letter of the title, in order, each with its heading's anchor", () => {
+    const rows = ["apple", "Avocado", "Banana", "Berry", "cherry"].map(
+      (title) => ({ title, id: title, page: "p", pageTitle: "P" }),
+    );
+    expect(
+      indexSections(rows).map((s) => [
+        s.letter,
+        s.id,
+        s.rows.map((r) => r.title),
+      ]),
+    ).toEqual([
+      ["A", "letter-a", ["apple", "Avocado"]],
+      ["B", "letter-b", ["Banana", "Berry"]],
+      ["C", "letter-c", ["cherry"]],
+    ]);
+  });
+
+  it("are plain capitals on the real index, so an anchor is plain ASCII and none repeats", () => {
+    const sections = indexSections(indexRows(HELP_MESSAGES, KNOWN_ENTRIES));
+    for (const s of sections) expect(s.letter).toMatch(/^[A-Z]$/);
+    expect(new Set(sections.map((s) => s.id)).size).toBe(sections.length);
+  });
+});
+
+describe("the table of contents", () => {
+  it("lists the entries of a group page: the ids its calls name, with the catalog titles", () => {
+    for (const page of messagePages) {
+      const { body } = splitFrontmatter(read(join(pagesDir, `${page}.mdx`)));
+      const called = [...body.matchAll(/<HelpMessage id="([^"]+)"/g)].map(
+        (m) => m[1]!,
+      );
+      const items = messageToc(
+        HELP_MESSAGES,
+        KNOWN_ENTRIES,
+        `help/messages/${page}`,
+      );
+      expect(called.length, page).toBeGreaterThan(0);
+      expect(
+        items.map((i) => i.slug),
+        page,
+      ).toEqual(called);
+      expect(
+        items.map((i) => i.text),
+        page,
+      ).toEqual(called.map((id) => fileEntry(id)!.title));
+      for (const item of items) {
+        expect(item.depth, page).toBe(2);
+        expect(item.children, page).toEqual([]);
+      }
+    }
+  });
+
+  it("lists the letters of the A to Z index", () => {
+    const letters = [
+      ...new Set(
+        [...KNOWN_ENTRIES.values()].map((e) => e.title.charAt(0).toUpperCase()),
+      ),
+    ].sort();
+    const items = messageToc(HELP_MESSAGES, KNOWN_ENTRIES, "help/messages");
+    expect(items.map((i) => i.text)).toEqual(letters);
+    expect(items.map((i) => i.slug)).toEqual(
+      letters.map((l) => `letter-${l.toLowerCase()}`),
+    );
+  });
+
+  it("is empty for any other page", () => {
+    for (const id of [
+      "help/activate",
+      "help/messages/nonesuch",
+      "help/messages/constructor",
+      "help/messages/devices/extra",
+      "contribute/docs-components",
+    ])
+      expect(messageToc(HELP_MESSAGES, KNOWN_ENTRIES, id), id).toEqual([]);
+  });
+});
+
+describe("the route middleware", () => {
+  const overview: TocItem = {
+    depth: 2,
+    slug: "_top",
+    text: "Overview",
+    children: [],
+  };
+  const own: TocItem = {
+    depth: 2,
+    slug: "own-heading",
+    text: "The page's own heading",
+    children: [],
+  };
+  /** Runs the middleware on a route and returns the slugs of its list, or undefined with none. */
+  const run = async (
+    id: string,
+    toc: { minHeadingLevel: number; maxHeadingLevel: number } | undefined,
+  ): Promise<string[] | undefined> => {
+    const starlightRoute = {
+      id,
+      toc: toc && { ...toc, items: [overview, own] },
+    };
+    await onRequest({ locals: { starlightRoute } } as never, async () => {});
+    return starlightRoute.toc?.items.map((i) => i.slug);
+  };
+  const levels = { minHeadingLevel: 2, maxHeadingLevel: 3 };
+
+  it("puts the entries of a messages page after Overview and before the page's own headings", async () => {
+    for (const page of messagePages)
+      expect(await run(`help/messages/${page}`, levels), page).toEqual([
+        "_top",
+        ...entries.filter((e) => e.page === page).map((e) => e.id),
+        "own-heading",
+      ]);
+  });
+
+  it("puts the letters of the index there", async () => {
+    const slugs = (await run("help/messages", levels))!;
+    expect(slugs[0]).toBe("_top");
+    expect(slugs.at(-1)).toBe("own-heading");
+    expect(slugs.slice(1, -1)).toEqual(
+      messageToc(HELP_MESSAGES, KNOWN_ENTRIES, "help/messages").map(
+        (i) => i.slug,
+      ),
+    );
+  });
+
+  it("leaves every other page's list as it is", async () => {
+    expect(await run("help/activate", levels)).toEqual(["_top", "own-heading"]);
+  });
+
+  it("leaves a page without a list, or with one that does not show level 2, alone", async () => {
+    expect(await run("help/messages/devices", undefined)).toBeUndefined();
+    expect(
+      await run("help/messages/devices", {
+        minHeadingLevel: 3,
+        maxHeadingLevel: 4,
+      }),
+    ).toEqual(["_top", "own-heading"]);
+    expect(
+      await run("help/messages/devices", {
+        minHeadingLevel: 1,
+        maxHeadingLevel: 1,
+      }),
+    ).toEqual(["_top", "own-heading"]);
   });
 });
 
@@ -796,6 +1117,23 @@ describe("validateHelpMessages", () => {
     );
   });
 
+  it("refuses a cta that is not an action", () => {
+    const doc = base();
+    doc.messages.device_limit = { page: "devices", cta: "nonesuch" as never };
+    expect(validateHelpMessages(doc, known).join()).toContain(
+      'device_limit: cta "nonesuch" is not one of library',
+    );
+  });
+
+  it("refuses a cta on an id that shows another id's message", () => {
+    const doc = base();
+    shared(doc);
+    doc.messages["activation.device-limit"]!.cta = "library";
+    expect(validateHelpMessages(doc, known).join()).toContain(
+      "shows the same message as device_limit",
+    );
+  });
+
   it("refuses portal copy that nothing uses", () => {
     const doc = base();
     doc.portal = { default: { title: "Own", message: "m" } };
@@ -831,6 +1169,36 @@ describe("coverageProblems", () => {
   });
 });
 
+describe("the Help message styles", () => {
+  const helpDir = join(docsRoot, "src", "components", "help");
+  // The shared stylesheet, and the style block of the one component that has its own.
+  const sheets = [
+    read(join(helpDir, "message.css")),
+    ...[
+      ...read(join(helpDir, "MessageIndex.astro")).matchAll(
+        /<style[^>]*>([\s\S]*?)<\/style>/g,
+      ),
+    ].map((m) => m[1]!),
+  ].join("\n");
+
+  it("use tokens only: no colour of their own, so dark and light follow the theme", () => {
+    expect(sheets).toContain("var(--");
+    expect(sheets).not.toMatch(/#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(/i);
+  });
+
+  it("read only variables the brand tokens or the docs theme declare", () => {
+    const declared = new Set<string>();
+    for (const file of [
+      join(repoRoot, "packages", "brand", "css", "tokens.css"),
+      join(docsRoot, "src", "styles", "global.css"),
+    ])
+      for (const m of read(file).matchAll(/(--[\w-]+)\s*:/g))
+        declared.add(m[1]!);
+    for (const m of sheets.matchAll(/var\((--[\w-]+)/g))
+      expect(declared, m[1]).toContain(m[1]);
+  });
+});
+
 describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
   "the built pages",
   () => {
@@ -862,7 +1230,7 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
         ].map((m) => [decode(m[1]!), decode(m[2]!)]);
         const expected = entries
           .filter((e) => e.page === page)
-          .map((e) => [e.id, KNOWN_ENTRIES.get(e.id)!.title]);
+          .map((e) => [e.id, fileEntry(e.id)!.title]);
         expect(
           headings.filter(([id]) => expected.some(([e]) => e === id)),
         ).toEqual(expected);
@@ -933,6 +1301,227 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
         has(text, `<strong>${group.title}</strong>`, "other");
         for (const row of group.messages)
           for (const id of row.ids) has(text, `<code>${id}</code>`, "other");
+      }
+    });
+
+    /** The links of one of a page's "On this page" lists, as [slug, text]. */
+    const toc = (page: string, element: string): string[][] => {
+      const text = html(page);
+      const start = text.indexOf(`<${element}`);
+      expect(
+        start,
+        `${page}: <${element}> is on the page`,
+      ).toBeGreaterThanOrEqual(0);
+      const list = text.slice(start, text.indexOf(`</${element}>`, start));
+      return [
+        ...list.matchAll(/<a href="#([^"]*)"[^>]*><span[^>]*>([^<]*)<\/span>/g),
+      ].map((m) => [decode(m[1]!), decode(m[2]!)]);
+    };
+
+    it.each([...messagePages, "index"])(
+      "%s: 'On this page' lists every heading of the page, in the page's order, on desktop and on a phone",
+      (page) => {
+        const headings = [
+          ...html(page).matchAll(/<h2 id="([^"]+)"[^>]*>([^<]*)<\/h2>/g),
+        ]
+          .map((m) => [decode(m[1]!), decode(m[2]!)])
+          .filter(([id]) => !id!.startsWith("starlight__"));
+        expect(headings.length, page).toBeGreaterThan(0);
+        for (const element of ["starlight-toc", "mobile-starlight-toc"])
+          expect(toc(page, element), `${page} ${element}`).toEqual([
+            ["_top", "Overview"],
+            ...headings,
+          ]);
+      },
+    );
+
+    it.each(messagePages)(
+      "%s: the anchor link of each heading is named by the heading's text, not by its HTML",
+      (page) => {
+        const text = html(page);
+        const headings = [
+          ...text.matchAll(
+            /<h2 id="[^"]+"[^>]*>([^<]*)<\/h2><a class="sl-anchor-link"[^>]*>.*?Section titled “([^<]*)”<\/span>/gs,
+          ),
+        ];
+        expect(headings.length, page).toBe(
+          [...text.matchAll(/<h2 id="(?!starlight__)/g)].length,
+        );
+        for (const [, title, label] of headings) {
+          expect(label, `${title}: the label is escaped twice`).not.toContain(
+            "&amp;",
+          );
+          expect(decode(label!), title).toBe(decode(title!));
+        }
+      },
+    );
+
+    it.each(messagePages)(
+      "%s: the ids of an entry's first message anchor at its heading, the ids of its other messages below it",
+      (page) => {
+        const text = html(page);
+        for (const entry of entries.filter((e) => e.page === page)) {
+          const start = text.indexOf(`data-help-message="${entry.id}"`);
+          const heading = text.indexOf(`<h2 id="${entry.id}"`, start);
+          expect(start, entry.id).toBeGreaterThanOrEqual(0);
+          expect(heading, entry.id).toBeGreaterThan(start);
+          entry.branches.forEach((branch, i) => {
+            for (const id of branch.ids.filter((x) => x !== entry.id)) {
+              const at = text.indexOf(`<span id="${id}"`, start);
+              expect(at, `${page}#${id}`).toBeGreaterThan(start);
+              if (i === 0) expect(at, `${page}#${id}`).toBeLessThan(heading);
+              else expect(at, `${page}#${id}`).toBeGreaterThan(heading);
+            }
+          });
+        }
+      },
+    );
+
+    it.each(messagePages)(
+      "%s: a branch that holds a cta ends with its library link, and no other branch has one",
+      (page) => {
+        const text = html(page);
+        const wanted = entries
+          .filter((e) => e.page === page)
+          .flatMap((e) => e.branches)
+          .filter((b) => b.cta === "library").length;
+        expect(
+          text.match(/class="pk-help-message__cta"/g) ?? [],
+          page,
+        ).toHaveLength(wanted);
+        expect(
+          text.match(
+            /<p class="pk-help-message__cta"><a class="pk-portal-link" href="\/library"[^>]*>Open your library ↗<\/a><\/p>/g,
+          ) ?? [],
+          page,
+        ).toHaveLength(wanted);
+      },
+    );
+
+    it("the A to Z index opens with a link to every letter, each to a heading of the page", () => {
+      const text = html("index");
+      const row =
+        /<nav class="[^"]*pk-help-letters[^"]*" aria-label="Jump to a letter">(.*?)<\/nav>/s.exec(
+          text,
+        )?.[1];
+      expect(row, "the letter row is on the page").toBeDefined();
+      const links = [...row!.matchAll(/<a href="#([^"]+)">([^<]+)<\/a>/g)].map(
+        (m) => [m[1], m[2]],
+      );
+      const letters = [
+        ...new Set(
+          [...KNOWN_ENTRIES.values()].map((e) =>
+            e.title.charAt(0).toUpperCase(),
+          ),
+        ),
+      ].sort();
+      expect(links).toEqual(
+        letters.map((l) => [`letter-${l.toLowerCase()}`, l]),
+      );
+      for (const [id, letter] of links)
+        has(text, `<h2 id="${id}">${letter}</h2>`, "index");
+      expect(text.indexOf("pk-help-letters")).toBeLessThan(
+        text.indexOf('<h2 id="letter-'),
+      );
+    });
+
+    it("emits each translated title of a developer-only title as hidden, language-tagged text", () => {
+      const text = decode(html("other"));
+      for (const group of developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES))
+        for (const alias of aliasesFor(group.messages.flatMap((m) => m.ids)))
+          has(
+            text,
+            `<span hidden lang="${alias.lang}" data-pagefind-weight="6">${alias.title}</span>`,
+            `other: ${group.title}`,
+          );
+    });
+
+    it("anchors the ids of a developer-only title's first message at the title, the ids of its other messages below it", () => {
+      const text = decode(html("other"));
+      const anchor = (id: string): string =>
+        `<span id="${id}" class="pk-help-developer__anchor"></span>`;
+      for (const group of developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES)) {
+        const [first, ...rest] = group.messages;
+        const head = `<li>${first!.ids.map(anchor).join("")}<strong>${group.title}</strong>`;
+        const start = text.indexOf(head);
+        expect(
+          start,
+          `${group.title}: its first message's ids come before the title`,
+        ).toBeGreaterThanOrEqual(0);
+        const end = text.indexOf("</li>", start);
+        for (const row of rest)
+          for (const id of row.ids) {
+            const at = text.indexOf(anchor(id), start);
+            expect(
+              at,
+              `${group.title}: ${id} is below the title`,
+            ).toBeGreaterThan(start);
+            expect(
+              at,
+              `${group.title}: ${id} is in its own title`,
+            ).toBeLessThan(end);
+          }
+      }
+    });
+
+    it("an article carries a message on its own: the title as heading, the id as anchor, the article link", () => {
+      const text = decode(
+        read(join(dist, "contribute", "docs-components", "index.html")),
+      );
+      const one = singleOf(HELP_MESSAGES, KNOWN_ENTRIES, "device_limit")!;
+      has(text, 'data-help-message="device_limit"', "docs-components");
+      has(text, `<h2 id="device_limit">${one.title}</h2>`, "docs-components");
+      if (one.branch.article === undefined)
+        expect(text).not.toContain("<strong>More help.</strong>");
+      else {
+        const article = splitFrontmatter(
+          read(fileFor(`help/${one.branch.article}`)!),
+        ).data.title;
+        has(
+          text,
+          `<strong>More help.</strong> <a href="/docs/help/${one.branch.article}/">${article}</a>`,
+          "docs-components",
+        );
+      }
+    });
+
+    it("the search index holds the translated titles of every entry and developer-only title", () => {
+      // A build without a search index is a defect, not a reason to skip.
+      const entry = join(dist, "pagefind", "pagefind-entry.json");
+      expect(existsSync(entry), "the build made a search index").toBe(true);
+      // Pagefind writes one gzipped fragment per page: a marker, then JSON with the page's text.
+      const dir = join(dist, "pagefind", "fragment");
+      const marker = "pagefind_dcd";
+      const indexed = new Map<string, string>();
+      for (const file of readdirSync(dir).filter((f) =>
+        f.endsWith(".pf_fragment"),
+      )) {
+        const raw = gunzipSync(readFileSync(join(dir, file))).toString("utf8");
+        expect(raw.startsWith(marker), file).toBe(true);
+        const page = JSON.parse(raw.slice(marker.length)) as {
+          url: string;
+          content: string;
+        };
+        indexed.set(page.url, page.content);
+      }
+      for (const page of messagePages) {
+        const content = indexed.get(`/help/messages/${page}/`);
+        expect(content, `${page} is in the search index`).toBeDefined();
+        const idLists = entries
+          .filter((e) => e.page === page)
+          .map((e) => e.ids);
+        if (page === "other")
+          idLists.push(
+            ...developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES).map((g) =>
+              g.messages.flatMap((m) => m.ids),
+            ),
+          );
+        for (const ids of idLists)
+          for (const alias of aliasesFor(ids))
+            expect(
+              content!.includes(alias.title),
+              `${page}: ${alias.lang} "${alias.title}" is searchable`,
+            ).toBe(true);
       }
     });
   },

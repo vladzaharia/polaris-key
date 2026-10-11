@@ -1,0 +1,66 @@
+/*
+ * Help messages: an entry of a messages page (HelpMessage.astro) and a developer-only title
+ * (DeveloperOnly.astro) show the app's own words, its placeholders and its codes the same way.
+ * Every value is a token, so dark and light come with them.
+ */
+
+/* The heading is the first child of its entry, so Starlight's rule that spaces a heading after a
+   paragraph (1.5em) misses it. The entry is spaced as a heading is. */
+.pk-help-message > .sl-heading-wrapper {
+  margin-top: 1.5em;
+}
+
+.pk-help-message__branch + .pk-help-message__branch {
+  border-top: 1px solid var(--sl-color-hairline);
+  padding-top: 1rem;
+}
+
+/* Where an id points. The empty spans take no room. */
+.pk-help-message__anchor,
+.pk-help-developer__anchor {
+  position: absolute;
+}
+
+/* The entry the reader arrived at (a /help/code/<id>/ link, the A to Z index, "On this page"). */
+.pk-help-message:has(:target),
+.pk-help-developer > li:has(:target) {
+  border-radius: var(--pk-radius-lg);
+  background-color: var(--pk-accent-subtle);
+  box-shadow: 0 0 0 var(--pk-space-3) var(--pk-accent-subtle);
+}
+
+/* The message as the app shows it: the words a reader matches against the screen, so the strongest
+   text of the block, on the fill inline code has (a raised one in dark, a sunken one in light). */
+.pk-help-message .pk-help-message__shown,
+.pk-help-developer .pk-help-developer__message blockquote {
+  margin-inline: 0;
+  padding: var(--pk-space-3) var(--pk-space-4);
+  border-inline-start: 3px solid var(--pk-border-strong);
+  background-color: var(--pkd-inline-code-bg);
+  color: var(--pk-text-strong);
+}
+
+/* A placeholder is where the app puts a value, and the page names it. Rubik ships no italic, so the
+   slot is set apart by its fill and a dashed edge, which shows in forced colors too. */
+.pk-help-message__shown var,
+.pk-help-developer__message var {
+  padding-inline: 0.3em;
+  border: 1px dashed var(--pk-border-strong);
+  border-radius: var(--pk-radius-sm);
+  background-color: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+  font-style: normal;
+}
+
+.pk-help-message__codes,
+.pk-help-developer__codes {
+  color: var(--sl-color-gray-3);
+}
+
+/* A code stays whole on a line unless it is wider than the line. */
+.pk-help-message__codes code,
+.pk-help-developer__codes code {
+  display: inline-block;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}

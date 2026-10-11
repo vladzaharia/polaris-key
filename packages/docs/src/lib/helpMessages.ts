@@ -43,6 +43,10 @@ export interface Catalog {
   activation: Record<string, CatalogEntry>;
 }
 
+/** The links a message can end with, after What to do (the schema's `cta`). */
+export const CTA_ACTIONS = ["library"] as const;
+export type CtaAction = (typeof CTA_ACTIONS)[number];
+
 export interface HelpMessage {
   /** A key of `pages`, other than `index`. */
   page: string;
@@ -54,6 +58,8 @@ export interface HelpMessage {
   why?: string;
   /** What to do. On the first id of each distinct on-screen message. */
   fix?: string;
+  /** A link that ends What to do: `library`. On the first id of each distinct on-screen message. */
+  cta?: CtaAction;
 }
 
 export interface HelpMessagesData {
@@ -138,6 +144,20 @@ export function helpMessageUrl(doc: HelpMessagesData, id: string): string {
   return `/docs/help/messages/${page}/#${id}`;
 }
 
+/**
+ * The "More help" link of a message: its article, unless the page showing the message is that
+ * article (a link to the page you are on says nothing). `pathname` is the page's path with the
+ * site base, with or without its trailing slash.
+ */
+export function articleHref(
+  article: string | undefined,
+  pathname: string,
+): string | undefined {
+  if (article === undefined) return undefined;
+  const href = `/docs/help/${article}/`;
+  return pathname.replace(/\/?$/, "/") === href ? undefined : href;
+}
+
 // ── placeholders ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -196,6 +216,7 @@ export interface EntryBranch {
   message: string;
   why: string | undefined;
   fix: string | undefined;
+  cta: CtaAction | undefined;
   article: string | undefined;
 }
 
@@ -230,6 +251,7 @@ function branchesOf(
       message,
       why: owner?.why,
       fix: owner?.fix,
+      cta: owner?.cta,
       article,
     };
   });
@@ -290,6 +312,7 @@ export function singleOf(
     message: base.message,
     why: undefined,
     fix: undefined,
+    cta: undefined,
     article: undefined,
   };
   return { id, title: base.title, branch: { ...branch, ids: [id] } };
@@ -403,6 +426,64 @@ export function indexRows(
   return rows.sort((a, b) => COLLATOR.compare(a.title, b.title));
 }
 
+export interface IndexSection {
+  /** The first letter of its titles, upper case. */
+  letter: string;
+  /** The anchor of the letter's heading. */
+  id: string;
+  rows: IndexRow[];
+}
+
+/** The index rows grouped by the first letter of the title, in order. */
+export function indexSections(rows: readonly IndexRow[]): IndexSection[] {
+  const sections = new Map<string, IndexSection>();
+  for (const row of rows) {
+    const letter = row.title.charAt(0).toUpperCase();
+    let section = sections.get(letter);
+    if (section === undefined) {
+      section = { letter, id: `letter-${letter.toLowerCase()}`, rows: [] };
+      sections.set(letter, section);
+    }
+    section.rows.push(row);
+  }
+  return [...sections.values()];
+}
+
+/** One "On this page" item, as Starlight's route data holds it. */
+export interface TocItem {
+  depth: number;
+  slug: string;
+  text: string;
+  children: TocItem[];
+}
+
+/**
+ * The headings a Help messages page gets from its components, not from its Markdown, so
+ * Starlight's heading collector never sees them: one item per entry on a group page, one per
+ * letter on the A to Z index. `routeId` is the page's Starlight id (`help/messages/<page>`);
+ * any other page has none.
+ */
+export function messageToc(
+  doc: HelpMessagesData,
+  known: ReadonlyMap<string, CatalogEntry>,
+  routeId: string,
+): TocItem[] {
+  const match = /^help\/messages(?:\/([^/]+))?$/.exec(routeId);
+  const page = match === null ? undefined : (match[1] ?? "index");
+  if (page === undefined || !Object.hasOwn(doc.pages, page)) return [];
+  const item = (slug: string, text: string): TocItem => ({
+    depth: 2,
+    slug,
+    text,
+    children: [],
+  });
+  return page === "index"
+    ? indexSections(indexRows(doc, known)).map((s) => item(s.id, s.letter))
+    : helpEntries(doc, known)
+        .filter((e) => e.page === page)
+        .map((e) => item(e.id, e.title));
+}
+
 // ── validation ───────────────────────────────────────────────────────────────────────────────
 
 /** The problems with the shape and the consistency of a `help-messages.json`; empty when fine. */
@@ -420,6 +501,13 @@ export function validateHelpMessages(
     if (!known.has(id)) problems.push(`${id}: not in the copy catalog`);
     if (!pageKeys.has(entry.page) || entry.page === "index")
       problems.push(`${id}: page "${entry.page}" is not a messages page`);
+    if (
+      entry.cta !== undefined &&
+      !(CTA_ACTIONS as readonly string[]).includes(entry.cta)
+    )
+      problems.push(
+        `${id}: cta "${entry.cta}" is not one of ${CTA_ACTIONS.join(", ")}`,
+      );
     if (entry.entry !== undefined) {
       const first = owner.get(entry.entry);
       if (first === undefined) {
@@ -465,16 +553,17 @@ export function validateHelpMessages(
         `"${title}" is in more than one place: ${[...where].join(", ")}`,
       );
 
-  // A branch's Why and What to do sit on its first id; the others show the same message.
+  // A branch's Why, What to do and cta sit on its first id; the others show the same message.
   for (const entry of helpEntries(doc, known))
     for (const branch of entry.branches)
       for (const id of branch.ids.slice(1))
         if (
           doc.messages[id]?.why !== undefined ||
-          doc.messages[id]?.fix !== undefined
+          doc.messages[id]?.fix !== undefined ||
+          doc.messages[id]?.cta !== undefined
         )
           problems.push(
-            `${id}: shows the same message as ${branch.ids[0]}, so its Why and What to do are ${branch.ids[0]}'s; remove them here`,
+            `${id}: shows the same message as ${branch.ids[0]}, so its Why, What to do and cta are ${branch.ids[0]}'s; remove them here`,
           );
 
   // The portal's copy is used: every `portal` key is an id of a message or of the developer list.

@@ -72,6 +72,11 @@
           "fix": {
             "description": "What to do: one or two plain sentences. Held like `why`.",
             "type": "string"
+          },
+          "cta": {
+            "description": "A link that ends What to do: `library` is Open your library. Held like `why`.",
+            "type": "string",
+            "enum": ["library"]
           }
         }
       }
