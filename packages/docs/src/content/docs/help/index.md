@@ -27,7 +27,7 @@ across several products. This section covers every surface you might run into, f
 | [Cloud Sync](/docs/help/sync/)                     | How settings and saves follow you between devices, and what its messages mean.                            |
 | [Updates](/docs/users/updates/)                    | How new versions reach you, and why an old build might ask you to update.                                 |
 | [Downloads and app stores](/docs/users/downloads/) | Adding an AltStore, SideStore or F-Droid source, Obtainium, and Scoop.                                    |
-| [Troubleshooting](/docs/users/troubleshooting/)    | Common activation, device, and sign-in problems, explained.                                               |
+| [All messages, A to Z](/docs/help/messages/)       | Every message an app or your library shows, what it means and what to do.                                 |
 | [Privacy](/docs/users/privacy/)                    | What the product collects from your device, and why.                                                      |
 
 Not every product turns on every surface described here — a license key might be all one product
@@ -37,5 +37,5 @@ something your product doesn't have, it simply doesn't apply to you.
 ## Getting help
 
 Polaris Key is the platform underneath a product, not the product itself — for anything beyond
-[Troubleshooting](/docs/users/troubleshooting/), the people who support the product you're using
+[All messages](/docs/help/messages/), the people who support the product you're using
 are the right first stop.
