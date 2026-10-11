@@ -160,3 +160,24 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs build && mise exec node@22 
 ## Hand-off
 
 Marked done last; the phase is complete when it is. The role agent sets `--set MO-13 in-review` when it hands off. After review, the lead adds the last commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set MO-13 done`.
+
+## Progress and continuation (2026-10-11)
+
+- Set MO-13 `in-progress` (`8551f9a2c`).
+- Marked route-tab content with `pk-vt-tabpanel`: user, tier, profile, package,
+  feed, listing, Rollouts, release, and pack pages (`aaf822ae6`, `539fe88b4`,
+  `8587433b1`). This is the small route-panel marker alternative from the 2026-10-06
+  follow-up, not the full `TabPanel` migration deferred by P0-39. P0-39's own
+  correction says that migration remains undone.
+- Prerequisite status checked: A-24, U-31, P2-09, P2-11, ST-43, ST-48, and LX-43
+  are `todo`. Their publish/approve/promote/updater surfaces, new-product shared
+  element, shell-v2 canvas/rule/masthead and workspace entrance, and duration marker
+  therefore cannot yet have real-app strips. Add those strips once their owning
+  packages land.
+- Firefox is installed locally but Playwright Firefox 1543 exits before launch on
+  macOS with `Could not find profile folder`; an explicit `/tmp` profile produced the
+  same result. The Firefox smoke remains to run on a runner where Playwright launches.
+- Next, in order: add the overflow-safe PageTabs indicator behavior and license
+  prefetch; finish the 30-second Operations polling QA and remaining-list audit; add
+  `PK_MOTION_STRIPS` plus opt-in 4× frame measurements and real-app assertions; add
+  the contributor page and component inventory rows; run the listed verification.
