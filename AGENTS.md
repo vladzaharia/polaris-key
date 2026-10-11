@@ -150,7 +150,7 @@ pnpm --filter @polaris-key/react test:browser
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
 ( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test \
-    :identity:test :release:test :update:test :packs:test :sdk:test :conformance:test )  # Kotlin (JDK 17;
+    :identity:test :release:test :update:test :packs:test :sdk:test :ui-core:test :conformance:test )  # Kotlin (JDK 17;
                                  # :conformance runs every suite on JCA and again with Tink forced)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)

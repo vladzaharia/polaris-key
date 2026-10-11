@@ -11,6 +11,7 @@
     "sdks/kotlin/update/src/test",
     "sdks/kotlin/packs/src/test",
     "sdks/kotlin/ui/src/test",
+    "sdks/kotlin/ui-core/src/test",
     "sdks/kotlin/sdk/src/test",
     "sdks/kotlin/conformance/src/test",
     "sdks/kotlin/android/src/test",

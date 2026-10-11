@@ -469,7 +469,7 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :core:test :license:test :config:test :identity:test :release:test
-          :update:test :packs:test :sdk:test :conformance:test :platform:testPlayDebugUnitTest
+          :update:test :packs:test :sdk:test :ui-core:test :conformance:test :platform:testPlayDebugUnitTest
           :platform:testDirectDebugUnitTest :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
           :ui:verifyRoborazziDebug :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
           :billing:testDebugUnitTest :desktop:test checkModuleBoundaries :platform:checkStandalone :godot:checkPlatformOnly
