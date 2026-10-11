@@ -36,8 +36,17 @@
  * is new enough to run the approver, and the server answers. A lane that lost its variables then
  * fails loudly, instead of its tests skipping as they do on a developer's machine.
  *
+ * A lane whose tests run under turbo (the React suite, in `pnpm test`) also needs the three names
+ * under that task's `env` in turbo.json: turbo's strict env mode drops every variable it was not
+ * told about, and a suite that sees none of them skips itself.
+ *
  * `stop` ends the server (SIGTERM, then SIGKILL) and prints the tail of its log in a collapsed
- * group. It is idempotent and refuses to signal a process that is not a `pkey ... dev`.
+ * group. It is idempotent and refuses to signal a process that is not a `pkey ... dev`. With
+ * `--job-status success` (CI passes the job's status: every step before it passed) it then also
+ * fails unless the server's request log shows what SP-41's B1-B5 ask of it: the seven seeded keys
+ * (two activate, three are unauthorized, two are forbidden), a config change, a device-code
+ * sign-in begun, approved and collected, a published release and a read of the update feed. A lane
+ * whose suite skipped itself, or never saw its variables, cannot go green.
  *
  * Exit 0: done. Exit 1: failed (a `::error::` annotation under Actions, details on stderr). Exit 2:
  * usage. POSIX only: the lanes are Linux and macOS.
@@ -72,11 +81,13 @@ const MIN_NODE = [22, 13];
 const BASE_URL = /^http:\/\/127\.0\.0\.1:[0-9]{1,5}$/;
 const MARKER = ".pkey-dev-ci";
 const LOG_TAIL_LINES = 300;
+/** One request line of the server's log, `HH:MM:SS METHOD /path -> status 12ms` (worker/dev/server.ts). */
+const LOG_LINE = /^\d{2}:\d{2}:\d{2} ([A-Z]+) (\S+) -> (\d+) \d+ms$/;
 
 const USAGE = `Usage:
   node start-dev-ci.mjs start --lang <lang> [--dir <state dir>] [--timeout <seconds>]
   node start-dev-ci.mjs check
-  node start-dev-ci.mjs stop  --lang <lang> | --dir <state dir>
+  node start-dev-ci.mjs stop  --lang <lang> | --dir <state dir> [--job-status <status>]
 <lang> is any \`pkey sdk --lang\` value: node, react, python, swift, kotlin, godot.`;
 
 class HarnessError extends Error {}
@@ -145,8 +156,9 @@ function freshDir(dir) {
 
 // ── the server process ───────────────────────────────────────────────────────────────────────
 
+/** The full command line of `pid` (`-ww`: no width limit, which would cut a long checkout path short). */
 function commandOf(pid) {
-  const ps = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
+  const ps = spawnSync("ps", ["-ww", "-p", String(pid), "-o", "command="], {
     encoding: "utf8",
   });
   return ps.status === 0 ? ps.stdout.trim() : null;
@@ -403,7 +415,7 @@ async function start(values) {
     const config = writeConfig(values.lang, info, dir);
     writeFileSync(
       path.join(dir, "state.json"),
-      `${JSON.stringify({ lang: values.lang, pid: server.pid, baseUrl: info.baseUrl, config, node: process.version }, null, 2)}\n`,
+      `${JSON.stringify({ lang: values.lang, pid: server.pid, baseUrl: info.baseUrl, product: info.product, config, node: process.version }, null, 2)}\n`,
     );
     log(
       `pkey dev (${values.lang}) on ${info.baseUrl}, pid ${server.pid}, product ${info.product}`,
@@ -492,15 +504,153 @@ function printLog(dir, title) {
   if (inActions()) console.log("::endgroup::");
 }
 
+/**
+ * What a lane's tests must have asked of the server, as requests on the wire: SP-41's B1 (first
+ * activation), B2 (the refusals), B3 (a config change), B4 (a device-code sign-in) and B5 (the
+ * update decision). The seven seeded keys give two activations, three 401s and two 403s.
+ */
+function expectedTraffic(product) {
+  const p = product ? product.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "[^/]+";
+  const name = product ?? "<product>";
+  return [
+    [
+      "B1 first activation (ok, floating)",
+      "POST",
+      `/${p}/license/activate`,
+      `/${name}/license/activate`,
+      200,
+      2,
+    ],
+    [
+      "B2 unauthorized (expired, disabled, revoked)",
+      "POST",
+      `/${p}/license/activate`,
+      `/${name}/license/activate`,
+      401,
+      3,
+    ],
+    [
+      "B2 forbidden (device-limit-full, key-entry-limit)",
+      "POST",
+      `/${p}/license/activate`,
+      `/${name}/license/activate`,
+      403,
+      2,
+    ],
+    ["B3 config change", "POST", "/__dev/config", "/__dev/config", 200, 1],
+    [
+      "B4 sign-in begun",
+      "POST",
+      `/${p}/identity/auth/device/start`,
+      `/${name}/identity/auth/device/start`,
+      200,
+      1,
+    ],
+    [
+      "B4 sign-in approved",
+      "GET",
+      `/${p}/identity/auth/callback`,
+      `/${name}/identity/auth/callback`,
+      200,
+      1,
+    ],
+    [
+      "B4 sign-in collected",
+      "POST",
+      `/${p}/identity/auth/device/poll`,
+      `/${name}/identity/auth/device/poll`,
+      200,
+      1,
+    ],
+    [
+      "B5 release published",
+      "POST",
+      "/__dev/release",
+      "/__dev/release",
+      200,
+      1,
+    ],
+    [
+      "B5 update feed read",
+      "GET",
+      `/${p}/update/[^/]+/feed\\.jws`,
+      `/${name}/update/<channel>/feed.jws`,
+      200,
+      1,
+    ],
+  ].map(([label, method, route, shown, status, min]) => ({
+    label,
+    method,
+    route: new RegExp(`^${route}$`),
+    shown: `${method} ${shown} -> ${status}`,
+    status,
+    min,
+  }));
+}
+
+/** The expectations the log does not meet, each as "what: saw n of m `request`". */
+function trafficGaps(logText, product) {
+  const seen = [];
+  for (const line of logText.split("\n")) {
+    const m = LOG_LINE.exec(line);
+    if (m) seen.push({ method: m[1], path: m[2], status: Number(m[3]) });
+  }
+  return expectedTraffic(product).flatMap((want) => {
+    const n = seen.filter(
+      (r) =>
+        r.method === want.method &&
+        r.status === want.status &&
+        want.route.test(r.path),
+    ).length;
+    return n >= want.min
+      ? []
+      : [`${want.label}: saw ${n} of ${want.min} \`${want.shown}\``];
+  });
+}
+
+/** Fails unless the server's whole request log shows the traffic a passing live lane leaves. */
+function verifyTraffic(dir) {
+  let product;
+  try {
+    product = JSON.parse(
+      readFileSync(path.join(dir, "state.json"), "utf8"),
+    ).product;
+  } catch {
+    product = undefined;
+  }
+  let text;
+  try {
+    text = readFileSync(path.join(dir, "server.err.log"), "utf8");
+  } catch {
+    return fail(`no server log in ${dir}: this lane never started a pkey dev`);
+  }
+  const gaps = trafficGaps(text, product);
+  if (gaps.length)
+    fail(
+      `the job passed, but this lane's tests never made the requests SP-41 needs of a live pkey dev (the suite skipped itself, or never saw its variables):\n${gaps.map((g) => `  - ${g}`).join("\n")}`,
+    );
+  log(
+    "the server saw every request B1-B5 make: activations, refusals, config change, sign-in, release, update feed",
+  );
+}
+
 async function stop(values) {
   const dir = stateDir(values);
+  const status = values["job-status"];
   const result = await stopServer(dir);
   if (result === "none") {
     log(`no pkey dev recorded in ${dir}`);
+    if (status === "success")
+      fail(
+        "the job passed but this lane never started a pkey dev: its start step did not run",
+      );
     return;
   }
   log(`pkey dev in ${dir}: ${result === "gone" ? "already gone" : result}`);
   printLog(dir, "pkey dev server log");
+  if (status === "success") verifyTraffic(dir);
+  else if (status)
+    log(`job status ${status}: the lane's traffic is not checked`);
 }
 
 async function main(argv) {
@@ -513,6 +663,7 @@ async function main(argv) {
         lang: { type: "string" },
         dir: { type: "string" },
         timeout: { type: "string" },
+        "job-status": { type: "string" },
         help: { type: "boolean", short: "h" },
       },
     });
