@@ -630,8 +630,8 @@ revocation has no `revocations.json` and nothing is refused.
 - Python: `client.update.packs` — see the [Python SDK](/docs/build/sdks/python/). zstd comes from
   the standard library's `compression.zstd` on Python 3.14 and from `zstandard` (a dependency
   below 3.14) on 3.9–3.13.
-- Swift: `update.packs` from the cross-platform `PolarisKeyPacks` target (macOS and iOS, libzstd
-  1.5.7) — see the [Swift SDK](/docs/build/sdks/swift/).
+- Swift: `update.packs` from the optional, cross-platform `PolarisKeyPacks` product (macOS and
+  iOS, vendored libzstd 1.5.7; `PolarisKeyUpdate` links neither) — see the [Swift SDK](/docs/build/sdks/swift/).
 - Godot: `PolarisKey.update.packs` — see the [Godot SDK](/docs/build/sdks/godot/). A pure-GDScript
   port over the same conformance vectors, with the `godot.pck` handler: a rebuilt pack is checked
   against the same admission list as the publish lint before it commits (including the

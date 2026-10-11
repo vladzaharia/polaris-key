@@ -15,18 +15,18 @@ Polaris Key is a suite of opt-in services over an always-on Core, and on Apple p
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product              | Contents                                                                                                                                             | Depends on                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import                                                        | Core, License, Config, Identity, Release  |
-| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles, and wire v4's feed and record verifiers and update decision | —                                         |
-| `PolarisKeyLicense`  | the gate, activation, entitlements                                                                                                                   | Core                                      |
-| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch                                                                  | Core                                      |
-| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                                                                       | Core                                      |
-| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                      |
-| `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, and the `update.packs` facet (macOS **and** iOS)                                           | Core, libzstd 1.5.7                       |
-| `PolarisKeyUpdate`   | wire v4's `UpdateClient` and its `packs` facet (macOS **and** iOS), and the Sparkle wiring (**macOS only**)                                          | Core, Packs, Sparkle ≥ 2.9.6 (macOS only) |
-| `PolarisKeyUI`       | the brandable SwiftUI gate, sign-in and offline activation over the `@Observable` `PolarisKeyModel`                                                  | Core, License, Config                     |
-| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                            |
+| Product              | Contents                                                                                                                                             | Depends on                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import                                                        | Core, License, Config, Identity, Release     |
+| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles, and wire v4's feed and record verifiers and update decision | —                                            |
+| `PolarisKeyLicense`  | the gate, activation, entitlements                                                                                                                   | Core                                         |
+| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch                                                                  | Core                                         |
+| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                                                                       | Core                                         |
+| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                         |
+| `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, the `PacksClient` facet and its vendored zstd 1.5.7 (macOS **and** iOS); optional          | Core, Platform, Update, vendored libzstd     |
+| `PolarisKeyUpdate`   | wire v4's `UpdateClient` decision and the Sparkle wiring (**macOS only**); no packs and no zstd                                                      | Core, Platform, Sparkle ≥ 2.9.6 (macOS only) |
+| `PolarisKeyUI`       | the brandable SwiftUI gate, sign-in and offline activation over the `@Observable` `PolarisKeyModel`                                                  | Core, License, Config                        |
+| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                               |
 
 Platforms: macOS 15+, iOS 18+ (iPadOS and Mac Catalyst take the iOS paths and are built in CI); tvOS 18 and visionOS 2 are declared.
 tvOS, visionOS and watchOS derive the device id from `identifierForVendor`; their platform header
@@ -71,9 +71,11 @@ depend on a checkout instead: `.package(path: "../polaris-key/sdks/swift")`, wit
 
 - **Every app:** `PolarisKey` (licensing, config, identity, devices, commerce, release notes).
 - **A SwiftUI app:** add `PolarisKeyUI` for the gate, sign-in and offline-activation views.
-- **Updates or packs:** add `PolarisKeyUpdate`. It links Sparkle on macOS only, so it is safe in
-  an iOS target. An iOS-only app that ships no packs can leave it out: App Store builds update
-  through the store, and `client.update` / `client.packs` exist only when it is imported.
+- **Updates:** add `PolarisKeyUpdate`. It links Sparkle on macOS only and links no packs or zstd, so
+  it is safe in an iOS target for `decide()`. An iOS-only app can leave it out: App Store builds
+  update through the store, and `client.update` exists only when it is imported.
+- **Packs:** also add `PolarisKeyPacks`, then pass a `PacksClient` as
+  `UpdateClientOptions.content`; `update.packs` is the same client.
 
 ### From a bundled plist
 
@@ -731,24 +733,28 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
 
 ## Packs (`update.packs`)
 
-Content packs (plans/P4-01.md; CONTENT §10) install through `UpdateClient.packs`, a
-`PolarisKeyPacks.PacksClient` over the same `CoreContext`. Pack records verify against
-`pinnedReleaseKeys` only. The running build's pins come from its **content stamp**
-(`pkey-content.json`, written by `pkey release content-stamp` before the build and shipped in the
-app's own read-only resources): a build without one has no packs, and `ensure` throws
+Content packs (plans/P4-01.md; CONTENT §10) install through `PolarisKeyPacks.PacksClient`, handed
+to `UpdateClient` as `UpdateClientOptions.content`; `update.packs` returns that client. Pack
+records verify against `pinnedReleaseKeys` only. The running build's pins come from its **content
+stamp** (`pkey-content.json`, written by `pkey release content-stamp` before the build and shipped
+in the app's own read-only resources): a build without one has no packs, and `ensure` throws
 `not-configured`.
 
 ```swift
+import PolarisKeyPacks
 import PolarisKeyUpdate
 
+let packs = PacksClient(
+    core: client.core,
+    releaseKeys: ["djdl-release-2026": "<raw key, base64url>"],
+    options: PacksOptions(
+        contentStamp: .file(Bundle.main.url(forResource: "pkey-content", withExtension: "json")!),
+        embedded: [EmbeddedPack(path: Bundle.main.url(forResource: "djdl.l10n", withExtension: nil)!)],
+        axes: ["locale": ["fr", "en"]]))
 let update = try UpdateClient(
     core: client.core,
     options: UpdateClientOptions(
-        pinnedReleaseKeys: ["djdl-release-2026": "<raw key, base64url>"],
-        packs: PacksOptions(
-            contentStamp: .file(Bundle.main.url(forResource: "pkey-content", withExtension: "json")!),
-            embedded: [EmbeddedPack(path: Bundle.main.url(forResource: "djdl.l10n", withExtension: nil)!)],
-            axes: ["locale": ["fr", "en"]])))
+        pinnedReleaseKeys: ["djdl-release-2026": "<raw key, base64url>"], content: packs))
 
 update.packs.on { p in print(p.phase, p.done, p.total) }    // or `for await p in update.packs.progress()`
 let installs = try await update.packs.ensure(["djdl.l10n"])  // fetch, verify, commit, activate
@@ -768,9 +774,10 @@ try await update.packs.confirm()                             // this boot is hea
   `state.json.torn.list`) and garbage collection waits for `recoverState()`; one that cannot be read
   makes every write throw `pack-state-unreadable` this process; an install whose bytes cannot be
   read is kept, unused, until a later launch can check it. `state().stateIssue` says which.
-- **zstd.** libzstd 1.5.7 from the official facebook/zstd package (Apple's Compression has no
-  zstd); `--patch-from` deltas decode as raw-content prefixes, and every one passes the frame
-  window check before it is decoded.
+- **zstd.** libzstd 1.5.7 is vendored in the package as a C target (the official release tarball,
+  SHA-256 `eb33e51f…6fa3`; Apple's Compression has no zstd), so SwiftPM clones nothing for it.
+  `--patch-from` deltas decode as raw-content prefixes, and every one passes the frame window
+  check before it is decoded.
 - **Memory.** `memBudget` (default 256 MiB) caps one delta frame's `memBytes`: a `--patch-from`
   decode holds the base, the frame and the output at once. iOS background tasks and app
   extensions (widgets, share and notification extensions, Background Assets) run under much

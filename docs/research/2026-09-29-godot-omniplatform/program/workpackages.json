@@ -11913,7 +11913,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-52-swift-package-footprint.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "SP-53",

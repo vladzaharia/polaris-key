@@ -201,8 +201,7 @@ public struct PolarisTypography: Sendable, Equatable {
 
 /// Process-scoped registration of the bundled Rubik and JetBrains Mono faces.
 enum BrandFonts {
-    static let regularName = "Rubik-Regular"
-    static let boldName = "Rubik-Bold"
+    static let rubikFile = "Rubik-Variable"
     /// JetBrains Mono's PostScript name (the bundled `JetBrainsMono-Variable.ttf`).
     static let monoName = "JetBrainsMono-Regular"
     static let monoFile = "JetBrainsMono-Variable"
@@ -212,16 +211,30 @@ enum BrandFonts {
         brandResourceURL("fonts/\(file).ttf")
     }
 
-    /// Registers the Rubik faces once per process; true when both can be instantiated by name.
+    /// The variable Rubik instance names. CoreText's names are intentionally read from the font:
+    /// its regular and bold instances are `Rubik-Light_Regular` and `Rubik-Light_Bold`, not the
+    /// static-font names this package used to carry.
+    static let rubikFaces: [String: String] = {
+        guard let url = url(rubikFile) else { return [:] }
+        _ = CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        let descriptors =
+            CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor] ?? []
+        return Dictionary(
+            uniqueKeysWithValues: descriptors.compactMap { descriptor in
+                guard
+                    let name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String,
+                    let style = CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute) as? String
+                else { return nil }
+                return (style.replacingOccurrences(of: " ", with: "").lowercased(), name)
+            })
+    }()
+
+    static let regularName = rubikFaces["regular"] ?? ""
+    static let boldName = rubikFaces["bold"] ?? rubikFaces["semibold"] ?? ""
+
+    /// Registers Rubik once per process; true when its regular and bold instances are usable.
     static let isAvailable: Bool = {
-        for name in [regularName, boldName] {
-            if let url = url(name) {
-                // An "already registered" error (the host bundles Rubik too) is fine: the face is
-                // reachable by name either way, which the check below confirms.
-                _ = CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
-            }
-        }
-        return [regularName, boldName].allSatisfy(isInstalled)
+        !regularName.isEmpty && !boldName.isEmpty && [regularName, boldName].allSatisfy(isInstalled)
     }()
 
     /// Registers JetBrains Mono once per process; true when it can be instantiated by name.

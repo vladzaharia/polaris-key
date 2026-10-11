@@ -20,7 +20,6 @@
 
 import Foundation
 import PolarisKeyCore
-import PolarisKeyPacks
 import PolarisKeyPlatform
 
 /// The prefix every pack's files sit under inside its asset pack.

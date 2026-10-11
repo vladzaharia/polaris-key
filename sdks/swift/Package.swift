@@ -20,8 +20,8 @@ import PackageDescription
 //   PolarisKeyRelease  the changelog and the install/download URLs.       (deps Core)
 //   PolarisKeyPacks    packs (plans/P4-01.md, P4-07): the planner, the appliers, the install
 //                   state, the pipeline and the `update.packs` facet. macOS AND iOS: it links
-//                   libzstd (the official facebook/zstd SwiftPM package, pinned 1.5.7, since
-//                   Apple's Compression has no zstd) and never Sparkle.       (deps Core, libzstd)
+//                   the vendored zstd 1.5.7 C target (Apple's Compression has no zstd) and
+//                   never Sparkle.                                      (deps Core, libzstd)
 //   PolarisKeyUpdate   the update client (`UpdateClient`, its `packs` facet) and the Sparkle
 //                   wiring, which alone is macOS ONLY.    (deps Core, Packs, Platform, Sparkle)
 //   PolarisKeyPlatform the Apple platform edges (P5-05): AppDistributor, AppTransaction,
@@ -104,10 +104,6 @@ let package = Package(
         // delta-patch symlink and privilege-escalation fixes (2.9.5/2.9.6) on top of
         // CVE-2025-0509 (2.6.4).
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.6"),
-        // P4-07: libzstd for packs (plain frames and `zstd --patch-from` raw-prefix deltas).
-        // Pinned exactly: the content corpus's blobs are zstd 1.5.7 output, and PARITY §6.2
-        // names this package. BSD-3-Clause.
-        .package(url: "https://github.com/facebook/zstd", exact: "1.5.7"),
     ],
     targets: [
         .target(
@@ -134,12 +130,20 @@ let package = Package(
             dependencies: ["PolarisKeyCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // zstd 1.5.7's BSD-3-Clause C library, vendored from the official source release:
+        // https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+        // SHA-256 eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3.
+        // Keeping it in-package stops SwiftPM cloning facebook/zstd at resolve time.
+        .target(
+            name: "libzstd",
+            path: "Sources/libzstd",
+            sources: ["common", "compress", "decompress"],
+            publicHeadersPath: ".",
+            cSettings: [.headerSearchPath(".")]
+        ),
         .target(
             name: "PolarisKeyPacks",
-            dependencies: [
-                "PolarisKeyCore",
-                .product(name: "libzstd", package: "zstd"),
-            ],
+            dependencies: ["PolarisKeyCore", "PolarisKeyPlatform", "PolarisKeyUpdate", "libzstd"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
@@ -154,11 +158,9 @@ let package = Package(
         .target(
             name: "PolarisKeyUpdate",
             dependencies: [
-                // The umbrella, so `import PolarisKeyUpdate` adds `client.update` and
-                // `client.packs` to `PolarisKeyClient` (the umbrella never links Sparkle).
+                // The umbrella adds `client.update` to `PolarisKeyClient`; packs stay optional.
                 "PolarisKey",
                 "PolarisKeyCore",
-                "PolarisKeyPacks",
                 // The one AppDistributor call lives in PolarisKeyPlatform (P5-05).
                 "PolarisKeyPlatform",
                 .product(
@@ -192,10 +194,11 @@ let package = Package(
         .target(
             name: "PolarisKeyUI",
             // The umbrella (never Sparkle) for `.polarisKey(client)` and the models that observe
-            // `client.events`; Packs (no Sparkle) for the pack-progress view's events.
+            // `client.events`. Pack progress is carried by those core events; the kit does not
+            // link the optional packs engine or libzstd.
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
-                "PolarisKeyIdentity", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform",
+                "PolarisKeyIdentity", "PolarisKeyRelease", "PolarisKeyPlatform",
                 // The presentation core the kit's views draw (UK-07).
                 "PolarisKeyUICore",
             ],
@@ -214,8 +217,7 @@ let package = Package(
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUICore", "PolarisKeyUpdate",
-                "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform",
-                .product(name: "libzstd", package: "zstd"),
+                "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform", "libzstd",
             ],
             // No resources: the tests read the SAME cross-language corpus the Node and Python
             // runners drive (`conformance/corpus/v2/`) and the HTTP transcripts
