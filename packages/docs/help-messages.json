@@ -115,7 +115,8 @@
       "page": "downloads-and-updates"
     },
     "delivery_gate_missing": {
-      "page": "downloads-and-updates"
+      "page": "downloads-and-updates",
+      "article": "download"
     },
     "delta-apply-failed": {
       "page": "downloads-and-updates"
@@ -140,7 +141,8 @@
       "page": "signing-in"
     },
     "download_auth_required": {
-      "page": "downloads-and-updates"
+      "page": "downloads-and-updates",
+      "article": "download"
     },
     "email_in_use": {
       "page": "accounts"
@@ -296,10 +298,12 @@
       "page": "signing-in"
     },
     "swap-failed": {
-      "page": "downloads-and-updates"
+      "page": "downloads-and-updates",
+      "article": "update"
     },
     "swap-refused": {
-      "page": "downloads-and-updates"
+      "page": "downloads-and-updates",
+      "article": "update"
     },
     "sync-failed": {
       "page": "license-status"

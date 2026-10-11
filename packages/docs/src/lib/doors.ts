@@ -106,7 +106,17 @@ export const DOOR_TREES: readonly DoorTree[] = [
       { label: "Your data", items: leaves("help/your-data") },
       {
         label: "Downloads and updates",
-        items: leaves("help/download", "help/update", "help/packages"),
+        items: leaves(
+          "help/download",
+          "help/check-a-download",
+          "help/install-sources",
+          "help/update",
+          "help/packages",
+        ),
+      },
+      {
+        label: "Purchases",
+        items: leaves("help/restore-purchase", "help/refunds"),
       },
       { label: "Messages", items: leaves("help/messages/index") },
     ],
