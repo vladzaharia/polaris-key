@@ -567,6 +567,29 @@ both zstd paths), `headers.json`, `fingerprint.json`, `stage-matrix.json`,
 `ConformanceSuite`, which installs the backend the task names before the suite runs. The `kotlin` job in `.github/workflows/ci.yml`
 runs the JVM line.
 
+`:conformance:liveDevTest` is a separate task, not part of `test` or `testTink`: it runs the
+quickstart against a real `pkey dev` ([Run Polaris Key locally](/docs/build/local/)) on the JCA
+backend only. It drives the `PolarisConfig.kt` that `pkey sdk` generated, the SDK's own client over
+its OkHttp transport and the dev server's approval script (Node on PATH): first activation, what
+each of the seven test keys does, a config change event, a device-code sign-in and an update
+decision. It needs a fresh server (it spends device seats and key entries) and three variables:
+`PKEY_DEV_BASE_URL` (the server's origin), `PKEY_DEV_CONFIG` (the absolute path of the generated
+file, which Gradle compiles into the test sources) and `PKEY_DEV_APPROVE`
+(`packages/cli/scripts/dev-approve.mjs`).
+
+```sh
+pkey dev --builtin --auto-approve --port 8787 &
+pkey sdk --lang kotlin --dev --url http://127.0.0.1:8787 --write --out /tmp/PolarisConfig.kt
+cd sdks/kotlin
+PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/PolarisConfig.kt \
+  PKEY_DEV_APPROVE="$(git rev-parse --show-toplevel)/packages/cli/scripts/dev-approve.mjs" \
+  ./gradlew --no-daemon -Ppkey.jvmOnly=true :conformance:liveDevTest
+```
+
+With the variables unset the suite skips, so no server is needed anywhere else; under `CI=true` an
+unset one fails it. The `kotlin` job starts its own `pkey dev` for this task. It covers the JVM
+line only, not Android.
+
 The Android modules need the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`) with
 `platforms;android-36` and `build-tools;36.1.0`; `settings.gradle.kts` includes them only when an
 SDK is configured. The unit tests run on Robolectric 4.14 with Play Core's
