@@ -120,7 +120,11 @@ Maven, the coordinate table and the other SDKs:
   0600 files, Python's `KeyringStore` rules (a verified write else the file, file-first reads, a
   `FileStore` token moves in). java-keyring is `compileOnly`: without it at runtime, or with no
   reachable keyring, the token stays in the file and `supports(core.store)` says `dependency`. On
-  Android, `:android`'s `AndroidKeystoreStore` (below).
+  Android, `:android`'s `AndroidKeystoreStore` (below). Every default store is scoped to its control
+  plane (SP-41, `CoreContext.storageNamespace`): production (`https://key.plrs.im`) keeps the bare
+  product name, any other `baseUrl` (a local `pkey dev` Worker) names its directory, keyring service,
+  Keystore alias and pack root `<product>@<host>[_<port>]` (`storeNamespace`), so it never shares a
+  token, device id or cache with production.
 - **Capabilities.** `Capabilities.sdk().supports(feature, services)` answers from the generated
   table (`Constants.generated.kt`, from `parity.json`), with typed reasons.
 - **Pure functions.** `bootTransition` (the boot stage machine), `licenseState`,
@@ -350,14 +354,27 @@ Android's. It fills in the keyring store, the desktop install driver and the def
 // build.gradle.kts: implementation("im.plrs.key:polaris-key-sdk:…")
 //                   runtimeOnly("com.github.javakeyring:java-keyring:1.0.4")   // the OS keyring
 val client = PolarisKeyDesktop.create(options)            // KeyringStore, DesktopInstallDriver
-val guard = PolarisKeyDesktop.bootGuard("djdl", "1.4.0")  // the GUARD stage over DirUpdateSlots
+val guard = PolarisKeyDesktop.bootGuard("djdl", "1.4.0", baseUrl = options.core.baseUrl) // the GUARD stage over DirUpdateSlots
 val check = client.update.decide()
 client.update.install(check)                              // download, verify, open the installer
 ```
 
 Everything lives under `FileStore.defaultDirectory(product)` unless `DesktopOptions.dataDirectory`
 says otherwise; `DesktopOptions` also takes the keyring binding, the installer opener and download
-progress. The `kotlin-desktop` CI job runs the keyring store's contract against the real OS keyring
+progress.
+
+**One control plane, one directory (SP-41).** Those paths are production's (`https://key.plrs.im`). A
+client whose `baseUrl` is anything else (a local `pkey dev` Worker, a staging Worker) keeps its token,
+device id, cache, installers, update slots and guard state under `<product>@<host>[_<port>]` instead
+(`storeNamespace`; its keyring service is `pkey:<product>@<host>`), so it never reads, overwrites or
+applies production's. An explicit `DesktopOptions.dataDirectory` stays production's directory
+unchanged, and every other control plane gets `<dataDirectory>/<product>@<host>` beneath it. `client`
+reads the control plane from its options; `dataDirectory`, `store`, `slots` and `bootGuard` run before
+a client exists, so they take the same `baseUrl` (`CoreOptions.baseUrl`; left out, production). A
+payload staged in a local control plane's `slots` is therefore never applied by production's launch,
+and the reverse.
+
+The `kotlin-desktop` CI job runs the keyring store's contract against the real OS keyring
 on macOS, Windows and Linux (`PKEY_KEYRING_TESTS=1`).
 
 ## :platform

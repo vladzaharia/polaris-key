@@ -1,4 +1,4 @@
-// @pkey-feature core.store-namespace
+// @pkey-feature core.store
 //
 // A local control plane is a separate authority: it must not reuse the production token, device
 // identity, cache or unsigned state merely because the product slug is the same.
