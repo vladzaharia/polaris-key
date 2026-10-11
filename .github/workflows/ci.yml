@@ -353,8 +353,12 @@ jobs:
       - name: UI kit source lint (swiftui)
         run: node packages/ui-qa/bin/kit-lint.mjs --kit=swiftui
       - run: swift test --package-path sdks/swift
-      # P4-07: packs (PolarisKeyPacks, linking libzstd) and the update client that carries
-      # `update.packs` build for iOS without Sparkle, whose product is conditioned to macOS.
+      - name: Swift registry archive footprint
+        run: sdks/swift/tools/check-registry-archive.sh
+      - name: Swift resolve boundary
+        run: sdks/swift/tools/check-resolve-clones.sh
+      # The packs product links vendored libzstd. The separate update target is the launch
+      # decision path and deliberately has neither dependency.
       - name: iOS build (packs, update, platform)
         working-directory: sdks/swift
         # P5-05: PolarisKeyPlatform compiles here with Xcode 16.4 (Swift 6.1) because its Xcode 26+
