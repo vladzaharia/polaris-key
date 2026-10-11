@@ -1,5 +1,5 @@
 // The wire between `exposePolarisBridge` (Electron main) and the preload's PolarisBridge (SDK
-// parity pass SP-N10). This module is imported by BOTH sides, so it has no Node or Electron
+// parity pass SP-N10, v4 in SP-31). This module is imported by BOTH sides, so it has no Node or Electron
 // import: a sandboxed preload can bundle it.
 //
 // Every call is `ipcRenderer.invoke("<prefix>:<method>", ...args)` answered by an
@@ -13,7 +13,7 @@
 // config change, and after any verb that changes state.
 
 /** The PolarisBridge protocol revision this host speaks (`@polaris-key/react`'s BRIDGE_VERSION). */
-export const POLARIS_BRIDGE_VERSION = 3;
+export const POLARIS_BRIDGE_VERSION = 4;
 
 /** The default channel prefix and `window` key. */
 export const DEFAULT_BRIDGE_CHANNEL = "polaris-key";
@@ -35,10 +35,12 @@ export const BRIDGE_METHODS = [
 ] as const;
 export type BridgeMethod = (typeof BRIDGE_METHODS)[number];
 
-/** The `invoke(service, method, args)` verbs a host answers by default: exactly the ones the
- *  React desktop adapter calls. Anything else answers `invoke-not-allowed`; a host widens the
- *  list with `exposePolarisBridge(..., { invoke: { extra } })`. */
+/** The `invoke(service, method, args)` verbs a host answers by default: every one the React
+ *  desktop adapter sends to a v4 host (`test/electronBridge.test.ts` enumerates the adapter's
+ *  calls and fails on a pair missing here). Anything else answers `invoke-not-allowed`; a host
+ *  widens the list with `exposePolarisBridge(..., { invoke: { extra } })`. */
 export const DEFAULT_INVOKE_VERBS = [
+  // v3
   "devices.list",
   "devices.rename",
   "devices.deauthorize",
@@ -51,6 +53,24 @@ export const DEFAULT_INVOKE_VERBS = [
   // Discovery's `core.presentation` (HA-13): one verified icon's bytes. The member itself rides
   // every state push (`presentation`).
   "core.presentationIcon",
+  // v4 (SP-R07)
+  "config.mint",
+  "commerce.binding",
+  "commerce.claim",
+  "core.discovery",
+  "core.storeStatus",
+  "devices.id",
+  // v4 (SP-12)
+  "core.boot",
+  "core.crashTags",
+  "release.fetch",
+  "distribution.downloadModel",
+  "distribution.thisPlatform",
+  "update.feedUrl",
+  // v4 (SP-13 config.local, SP-14 update-health events)
+  "config.set",
+  "config.clear",
+  "update.journal",
 ] as const;
 
 /** What every handler resolves. */

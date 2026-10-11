@@ -1,25 +1,29 @@
 // @pkey-feature core.store license.activate identity.devicecode
-// SDK parity pass SP-N10 and SP-N11: exposePolarisBridge (Electron main) and the preload's
-// PolarisBridge v3 round-trip over a structured-clone IPC, and SafeStorageStore's surfaced
-// degradation. `PolarisBridge` is imported from `@polaris-key/react/desktop` itself (a
-// workspace devDependency, type-only), so if the React contract in
-// `packages/sdk-react/src/desktop/bridge.ts` changes, this stops compiling instead of drifting.
+// SDK parity pass SP-N10, SP-N11 and SP-31: exposePolarisBridge (Electron main) and the preload's
+// PolarisBridge v4 round-trip over a structured-clone IPC (every v3 method and verb, every v4
+// verb, the v4 sign-in and activation shapes, the `release.fetch` path rule), and
+// SafeStorageStore's surfaced degradation. `PolarisBridge` is imported from
+// `@polaris-key/react/desktop` itself (a workspace devDependency, type-only), so if the React
+// contract in `packages/sdk-react/src/desktop/bridge.ts` changes, this stops compiling instead
+// of drifting.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { BridgeState, PolarisBridge } from "@polaris-key/react/desktop";
+import type { PolarisKeyClientOptions } from "../src/client.js";
 import {
   DEFAULT_INVOKE_VERBS,
   exposePolarisBridge,
+  POLARIS_BRIDGE_VERSION,
   SafeStorageStore,
-  type IpcMainLike,
+  type ExposePolarisBridgeOptions,
 } from "../src/electron/index.js";
 import {
   createPreloadBridge,
   exposePolarisBridgeInMainWorld,
-  type IpcRendererLike,
 } from "../src/electron/renderer.js";
+import { allowApp, ipcPair } from "./electronIpc.js";
 import {
   json,
   seededClient,
@@ -27,57 +31,6 @@ import {
   tempDir,
   type Handler,
 } from "./parityFixtures.js";
-
-/** An in-process ipcMain/ipcRenderer pair that structured-clones every message, as Electron
- *  does, so a function or class instance in a reply fails the test. */
-function ipcPair() {
-  const handlers = new Map<string, (...a: unknown[]) => unknown>();
-  const listeners = new Map<
-    string,
-    Set<(e: unknown, ...a: unknown[]) => void>
-  >();
-  const sender = {
-    id: 7,
-    send(channel: string, ...args: unknown[]) {
-      for (const l of listeners.get(channel) ?? [])
-        l({}, ...structuredClone(args));
-    },
-    once() {
-      return undefined;
-    },
-  };
-  let allowed = true;
-  const ipcMain: IpcMainLike = {
-    handle: (ch, fn) => void handlers.set(ch, fn as never),
-    removeHandler: (ch) => void handlers.delete(ch),
-  };
-  const ipcRenderer: IpcRendererLike = {
-    async invoke(ch, ...args) {
-      const h = handlers.get(ch);
-      if (!h) throw new Error(`No handler registered for '${ch}'`);
-      const event = {
-        sender,
-        senderFrame: { url: allowed ? "app://main" : "https://evil.test" },
-      };
-      return structuredClone(await h(event, ...structuredClone(args)));
-    },
-    on(ch, l) {
-      if (!listeners.has(ch)) listeners.set(ch, new Set());
-      listeners.get(ch)!.add(l);
-    },
-    removeListener(ch, l) {
-      listeners.get(ch)?.delete(l);
-    },
-  };
-  return {
-    ipcMain,
-    ipcRenderer,
-    handlers,
-    deny: () => {
-      allowed = false;
-    },
-  };
-}
 
 const START = {
   deviceCode: "dc_never_leaves_main",
@@ -89,34 +42,49 @@ const START = {
   interval: 1,
 };
 
+interface SetupOptions {
+  services?: string[];
+  extra?: Partial<PolarisKeyClientOptions>;
+  host?: Partial<ExposePolarisBridgeOptions>;
+}
+
 async function setup(
   routes: Record<string, Handler> = {},
   token: string | null = "pkeyt_seed",
+  o: SetupOptions = {},
 ) {
   const license = await signedLicense({ pro: true });
   const seeded = await seededClient({
     license: license,
     token,
     extra: {
-      expectedServices: ["license", "config", "identity", "release"] as never,
+      expectedServices: (o.services ?? [
+        "license",
+        "config",
+        "identity",
+        "release",
+      ]) as never,
+      ...o.extra,
     },
     routes,
   });
   const ipc = ipcPair();
   const handle = exposePolarisBridge(seeded.client, {
     ipcMain: ipc.ipcMain,
-    allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,
+    allowSender: allowApp,
+    ...o.host,
   });
   const bridge = createPreloadBridge(ipc.ipcRenderer);
   // The load-bearing type assertion: the preload's object IS a React PolarisBridge.
   const typed: PolarisBridge = bridge;
-  return { ...seeded, ipc, handle, bridge: typed };
+  return { ...seeded, license, ipc, handle, bridge: typed };
 }
 
-describe("PolarisBridge v3 over IPC (SP-N10)", () => {
+describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
   it("serves the gate state with the capability map", async () => {
     const { bridge } = await setup();
-    expect(bridge.version).toBe(3);
+    expect(POLARIS_BRIDGE_VERSION).toBe(4);
+    expect(bridge.version).toBe(4);
     const s = await bridge.getSyncState();
     expect(s.activation).toBe("token");
     expect((s.doc as { licenseId: string }).licenseId).toBe("lic_parity");
@@ -139,10 +107,14 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
       deviceCount: 2,
     });
     const other = await bridge.submitKey("KEY-2");
-    expect(other.kind).toBe("error");
-    expect((other as { message: string }).message).toContain(
-      "[license_suspended]",
-    );
+    // v4: a refusal the bridge does not name keeps its code and status (never folded into `error`).
+    expect(other).toMatchObject({
+      kind: "refused",
+      code: "license_suspended",
+      status: 403,
+    });
+    if (other.kind !== "refused") throw new Error("expected a refusal");
+    expect(other.message).toContain("[license_suspended]");
   });
 
   it("keeps the device code in the main process and pushes state on ready", async () => {
@@ -167,6 +139,8 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
     expect(begin).toMatchObject({
       verificationUrl: START.verificationUriComplete,
       userCode: "WDJB-MJHT",
+      verificationUri: START.verificationUri,
+      interval: START.interval,
     });
     expect(JSON.stringify(begin)).not.toContain("dc_never_leaves_main");
     expect(await bridge.pollSignIn(begin.flowId)).toEqual({ kind: "pending" });

@@ -1,4 +1,4 @@
-// The desktop IPC contract, version 3. In an Electron/Tauri app the main/native process owns
+// The desktop IPC contract, version 4. In an Electron/Tauri app the main/native process owns
 // the real `@polaris-key/node` client (token + keyring + loopback OIDC) and exposes THIS object to the
 // renderer (default: `window.polarisKey`, via a contextBridge preload). The React desktop
 // adapter is a thin renderer-side proxy over these methods — all credential and filesystem
@@ -131,33 +131,70 @@ export type BridgeActivation =
  *  `version`; the adapter treats an absent value as 1 and degrades accordingly. A v3 host keeps
  *  working: every v4 verb it does not answer is refused with a typed `UnsupportedError`.
  *
- * ── WHAT v4 ADDS (SP-R07; the host side is pending SP-N10) ─────────────────────────────
+ * ── WHAT v4 ADDS (SP-R07, SP-12 to SP-14; the host is `@polaris-key/node/electron`, SP-31) ───
  *
- * The renderer half below is implemented here. The Node Electron host still speaks v3
- * (`@polaris-key/node`'s bridge reports version 3 and answers none of the v4 `invoke` verbs)
- * until SP-N10 ships, so against today's host every v4 verb is refused typed.
+ * `exposePolarisBridge` in `@polaris-key/node/electron` is the reference v4 host: its
+ * `subscribe` answers `{version: 4}`, its preload object reports `version: 4`, and it answers
+ * every verb below over the Node client. It stays an allowlist (`DEFAULT_INVOKE_VERBS`); a host
+ * adds its own verbs with `invoke.extra`. A v4 host keeps answering every v3 method and verb
+ * unchanged. Each verb resolves a value or rejects with an error carrying the host's `code`
+ * (and, for an update refusal, `detail`); the adapter maps it by that code.
  *
- *   * `beginSignIn({deviceName?})`; the begin result's `verificationUri`, `expiresAt`, `interval`;
- *     `pollSignIn`'s `ok` carrying `identity`.
+ * Method changes:
+ *
+ *   * `beginSignIn({deviceName?})`: the renderer's name wins over the host's `deviceName`
+ *     option, which stays the default. The result adds `verificationUri` (the bare page, the
+ *     code typed by hand), `expiresAt` (epoch seconds, the host's clock) and `interval` (the
+ *     minimum seconds between polls) to `flowId`, `verificationUrl` and `userCode`. The device
+ *     code never leaves the host.
+ *   * `pollSignIn`'s `ok` carries `identity` (`{name?, email?}`) when the host's poll knew it.
  *   * `submitKey`'s `BridgeActivation` gains `fingerprint-required`, `enroll-disabled`,
- *     `hardware-mismatch` and `refused{code}`, so the renderer keeps the server's code (§3.1).
- *   * `invoke` verbs, sent only to a host whose `version` is 4 or later (a v3 host gets a typed
- *     `UnsupportedError` with reason `version`, or `null` for the nullable reads, without the
- *     call crossing the bridge): `("config","mint",{recipeId})` → `{token, expiresAt}`;
- *     `("commerce","binding")` → `{bindingId, products}`; `("commerce","claim",{store,payload})`
- *     → a `CommerceClaimResult`; `("core","discovery")`; `("core","storeStatus")`;
- *     `("devices","id")`; `("update","journal",{event, release, fromRelease?, deliverable?,
- *     channel?, packSetId?, code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the
- *     renderer's update-health events, recorded in the host's journal with
- *     `client.update.journal.record(event, input)`, so its next report drains them).
- *   * `config.local` (SP-13): `("config","set",{key,value})` and `("config","clear",{key})` →
- *     the host's `client.config.set`/`clear` (a refusal keeps its `managed_by_admin` or
- *     `bad_request` code), and `BridgeState.localConfig` = `client.config.localValues()` on
- *     every state, so the renderer resolves with the host's persisted overrides.
+ *     `hardware-mismatch{drift?, changed?}` and `refused{code, status, message}`, so the
+ *     renderer keeps the server's code (§3.1) instead of one folded `error`. A refusal outside
+ *     the named kinds is still `error{message, code}`.
+ *   * `BridgeState.localConfig` is `client.config.localValues()` on every state (`config.local`).
+ *
+ * `invoke` verbs, sent only to a host whose `version` is 4 or later (a v3 host gets a typed
+ * `UnsupportedError` with reason `version`, or `null` for the nullable reads, without the call
+ * crossing the bridge). Arguments are one bag; a malformed one rejects `invalid-argument`:
+ *
+ *   * `("config","mint",{recipeId})` → `{token, expiresAt}`: `client.config.mintToken()`.
+ *   * `("commerce","binding")` → `{bindingId, products: [{store, productId, flag, deliverable}]}`;
+ *     a refusal rejects with its code.
+ *   * `("commerce","claim",{store, payload})` → a `CommerceClaimResult` (`ok`, `notOwned`,
+ *     `attestationRequired`, `refused`), then a state push after an `ok`. `store` is
+ *     `app-store` (`{signedTransaction}`), `play` (`{productId, purchaseToken}`) or `steam`
+ *     (`{ticket, dlcAppId}`). No answer or a 5xx rejects with the Node code.
+ *   * `("core","discovery")` → the host's discovery document, or `null`.
+ *   * `("core","storeStatus")` → `{backend, degraded?}` or `null`: where the host keeps the token.
+ *   * `("devices","id")` → the host's device id (what an offline bundle is minted for).
+ *   * `("core","boot",opts)` → `{outcome, state, license, decision, emits}`: `client.boot()` in
+ *     the host (`consent`, `metered`, `allowOffline`, `allowGrace`, `registration`,
+ *     `requiredPacks`; callbacks do not cross), then a state push.
+ *   * `("core","crashTags",{deliverable?, build?})` → `{release, environment, outlet}`.
+ *   * `("release","fetch",{target, to})` → `{path, size, sha256, version, buildId}`: the verified
+ *     download. `target` is a release record hash, `{sha256, buildId?}` or a `binary` decision
+ *     (a record the renderer holds is refused: the host fetches and verifies its own).
+ *     `to` is a path RELATIVE to the host's `downloadDir` option (Electron's
+ *     `app.getPath("downloads")`); an absolute path or a `..` escape rejects `invalid-argument`,
+ *     and a host with no `downloadDir` rejects `not-configured`. `path` is the resolved file.
+ *     A state push follows.
+ *   * `("distribution","downloadModel",{channel?})` → the download model.
+ *   * `("distribution","thisPlatform",{channel?, platform?})` → the host's platform group
+ *     (`platform` overrides).
+ *   * `("update","feedUrl",{kind, channel?, velopackChannel?, buildId?, arch?})` → `FeedUrl`,
+ *     `{supported: true, url}` or the typed `Unsupported` as a result.
+ *   * `("config","set",{key,value})` and `("config","clear",{key})` → `null` (`config.local`,
+ *     SP-13): `client.config.set`/`clear`; a refusal keeps its `managed_by_admin` or
+ *     `bad_request` code. A state push follows, carrying `localConfig`.
+ *   * `("update","journal",{event, release, fromRelease?, deliverable?, channel?, packSetId?,
+ *     code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the renderer's update-health
+ *     events, recorded with `client.update.journal.record(event, input)`, so the host's next
+ *     report drains them).
  *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or
- * subscribes to them.
+ * subscribes to them, and the Node host answers none of them.
  */
 export const BRIDGE_VERSION = 4;
 
