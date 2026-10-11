@@ -1259,8 +1259,6 @@ export interface ProductDetail {
    * make the nav pop in after the view it frames.
    */
   services?: Record<ServiceSlug, { enabled: boolean }>;
-  /** Declared device-registration policy, or `null` when the product rides the derived default. */
-  registration?: RegistrationPolicy | null;
   /** What the derivation currently produces — what the wire actually enforces. */
   effectiveRegistration?: RegistrationPolicy;
   /** Who owns `services_json`: `manifest` (a resync may rewrite it) or `admin`. */
@@ -1952,62 +1950,64 @@ export interface ActivityFilters {
  *  table (`tools/services.json`) by `pnpm gen services`. */
 export type { ServiceSlug };
 
-/** How a device may register (spec §2.3). Derived from the enablement set unless declared. */
+/** How the wire currently admits a device. It is always derived from the enabled services. */
 export type RegistrationPolicy =
   | "open"
   | "requires-identity"
   | "requires-license";
 
-/**
- * `GET /manage/api/products/<slug>/services` — the single authority for which services a
- * product runs. Every console affordance that only makes sense for a running service is a
- * projection of this, rather than being inferred from the presence of some child row.
- */
-export interface ServicesResponse {
+/** Read-only facts shown with the console's feature groups. */
+export interface ServiceFeatureFacts {
+  licensing: { tiers: number; licenses: number };
+  managedConfig: { catalogVersion: number | null };
+  shipBuilds: {
+    latest: { version: string; channel: string | null } | null;
+  };
+}
+
+/** The service-enable state returned by mutations and embedded in the reader response. */
+export interface ServiceState {
   services: Record<ServiceSlug, { enabled: boolean }>;
-  /** As DECLARED — `null` when the product rides the derived default. */
-  registration: RegistrationPolicy | null;
-  /** What the derivation currently produces — what the wire actually enforces. */
+  /** The policy the wire enforces, derived from the services. */
   effectiveRegistration: RegistrationPolicy;
   /** Who owns the row: `manifest` (a resync may rewrite it) or `admin` (operator-claimed). */
   source: string;
 }
 
+/** `GET …/services` adds read-only feature facts to the service state. */
+export interface ServicesResponse extends ServiceState {
+  facts: ServiceFeatureFacts;
+}
+
 /**
- * `PATCH …/services?dryRun=1` (PX-W17): what the same PATCH would change, with no write. The
- * console confirms turning Identity off with `signedInDevicesToClear`: every such device is
- * signed out (its install and licence keep working).
+ * `PATCH …/services?dryRun=1` (PX-W17, ST-38): what the same PATCH would change, with no write.
+ * `cascaded` lists dependent services the server turns off under the requirement rule.
  */
 export interface ServicesDryRun {
   changes: Array<{ field: string; from: unknown; to: unknown }>;
+  cascaded: ServiceSlug[];
   signedInDevicesToClear: number;
 }
 
 /** A partial enablement patch: an omitted slug keeps its current value server-side. */
 export interface UpdateServicesBody {
   services?: Partial<Record<ServiceSlug, { enabled: boolean }>>;
-  /** `null` clears the declaration and returns the product to the derived default. */
-  registration?: RegistrationPolicy | null;
 }
 
 /**
- * The stable coherence codes `PATCH …/services` returns in `error.errors` (worker
- * `core/services.ts` `validateServices`). Rendered as inline validation rather than a toast:
- * they name the exact toggle the operator just moved.
+ * The stable requirement codes `PATCH …/services` returns in `error.errors` (worker
+ * `core/services.ts` `validateServices`). The server owns prerequisite enforcement; the console
+ * only explains a refusal or blocks a visibly impossible enable.
  */
 export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
   distribution_requires_release:
-    "Distribution delivers what Release says exists — enable Release first, or turn Distribution off.",
+    "Distribution delivers what Release says exists — turn on Release first.",
   update_requires_distribution:
-    "Update is a feed over what Distribution delivers — enable Distribution first, or turn Update off.",
-  registration_requires_identity:
-    "Registration is set to “requires-identity”, but Identity is off; no device could ever register.",
-  config_without_activation:
-    "Config is on without License, but registration is set to “requires-license” — those devices could never obtain a token.",
+    "In-app updates need Distribution to be on first.",
   sync_requires_config:
-    "Cloud Sync syncs Config’s user settings — enable Config first, or turn Cloud Sync off.",
+    "Cloud Sync needs Managed config to be on first.",
   sync_requires_identity:
-    "Cloud Sync needs people to sign in through this product — enable Identity first, or turn Cloud Sync off.",
+    "Cloud Sync needs Sign-in to be on first.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────
@@ -4852,7 +4852,7 @@ const rawApi = {
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
   updateServices: (slug: string, body: UpdateServicesBody) =>
-    call<ServicesResponse>(`${p(slug)}/services`, {
+    call<ServiceState>(`${p(slug)}/services`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
@@ -4865,7 +4865,7 @@ const rawApi = {
   /** Hand `services_json` back to the manifest. Changes nothing live — the manifest re-applies
    *  on the NEXT resync (worker `console/handlers/servicesAdmin.ts`). */
   revertServices: (slug: string) =>
-    call<ServicesResponse>(`${p(slug)}/services/revert`, { method: "POST" }),
+    call<ServiceState>(`${p(slug)}/services/revert`, { method: "POST" }),
 
   // ── update settings ─────────────────────────────────────────────────────────
   updateSettings: (slug: string) =>

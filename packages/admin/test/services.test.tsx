@@ -56,10 +56,10 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError, SERVICE_ERROR_MESSAGES } = await import("../src/api.js");
-const { ServicesPage, chainFlip, dependentsOf, needsOf } =
+const { ServicesPage, unmetRequirements } =
   await import("../src/console/sections/core/pages/Services.js");
 
-/** Everything but Config, on the derived registration policy. */
+/** Everything but Config, with the GET-only feature facts. */
 function state(over: Partial<ServicesResponse> = {}): ServicesResponse {
   return {
     services: {
@@ -71,9 +71,13 @@ function state(over: Partial<ServicesResponse> = {}): ServicesResponse {
       identity: { enabled: true },
       sync: { enabled: false },
     },
-    registration: null,
     effectiveRegistration: "requires-license",
     source: "admin",
+    facts: {
+      licensing: { tiers: 0, licenses: 0 },
+      managedConfig: { catalogVersion: null },
+      shipBuilds: { latest: null },
+    },
     ...over,
   };
 }
@@ -101,6 +105,7 @@ const ALL_ON = {
 };
 const CHAIN_OFF = { release: false, distribution: false, update: false };
 
+
 const mount = () => renderAt("#/p/djdl/services", <ServicesPage slug="djdl" />);
 const sw = (name: string) =>
   screen.getByRole("switch", { name: new RegExp(name) });
@@ -116,7 +121,7 @@ beforeEach(() => {
   savePackageFeeds.mockReset();
   servicesDryRun
     .mockReset()
-    .mockResolvedValue({ changes: [], signedInDevicesToClear: 0 });
+    .mockResolvedValue({ changes: [], cascaded: [], signedInDevicesToClear: 0 });
 });
 afterEach(cleanup);
 
@@ -157,13 +162,8 @@ describe("Core → Services", () => {
     expect(row?.getAttribute("data-service")).toBe("distribution");
   });
 
-  it("names a declared policy in words, never the raw slug (SVC-5)", async () => {
-    services.mockResolvedValue(
-      state({
-        registration: "requires-identity",
-        effectiveRegistration: "requires-identity",
-      }),
-    );
+  it("names the derived policy in words, never the raw slug (SVC-5)", async () => {
+    services.mockResolvedValue(state({ effectiveRegistration: "requires-identity" }));
     mount();
     const radio = await screen.findByRole("radio", {
       name: /Identity required/,
@@ -172,42 +172,35 @@ describe("Core → Services", () => {
     expect(screen.queryByText("requires-identity")).toBeNull();
   });
 
-  it("derives the chain from the generated edges: what X needs, and what needs X", () => {
-    expect(needsOf("update")).toEqual(["distribution", "release"]);
-    expect(needsOf("release")).toEqual([]);
-    expect(dependentsOf("release")).toEqual(["distribution", "update"]);
-    expect(dependentsOf("update")).toEqual([]);
-    const off = { ...ALL_ON, ...CHAIN_OFF };
-    // Turning on X turns on what X needs, and nothing more.
-    expect(chainFlip("update", true, off)).toEqual([
-      "update",
-      "distribution",
-      "release",
-    ]);
-    expect(chainFlip("release", true, off)).toEqual(["release"]);
-    expect(chainFlip("update", true, { ...off, release: true })).toEqual([
-      "update",
+  it("identifies prerequisites outside an enable batch", () => {
+    expect(unmetRequirements(["update"], { ...ALL_ON, distribution: false })).toEqual([
       "distribution",
     ]);
-    // Turning off X takes what needs X with it.
-    expect(chainFlip("release", false, ALL_ON)).toEqual([
-      "release",
-      "distribution",
-      "update",
-    ]);
-    expect(chainFlip("update", false, ALL_ON)).toEqual(["update"]);
-  });
-
-  it("derives the Cloud Sync edges: it needs Config and Identity, and goes with either (U-04)", () => {
-    expect(needsOf("sync")).toEqual(["config", "identity"]);
-    expect(dependentsOf("config")).toEqual(["sync"]);
-    expect(dependentsOf("identity")).toEqual(["sync"]);
-    expect(chainFlip("identity", false, ALL_ON)).toEqual(["identity", "sync"]);
-    expect(chainFlip("config", false, ALL_ON)).toEqual(["config", "sync"]);
-    // With Cloud Sync off, Identity goes alone.
-    expect(chainFlip("identity", false, { ...ALL_ON, sync: false })).toEqual([
+    expect(
+      unmetRequirements(["update", "distribution"], {
+        ...ALL_ON,
+        distribution: false,
+      }),
+    ).toEqual([]);
+    expect(unmetRequirements(["sync"], { ...ALL_ON, identity: false })).toEqual([
       "identity",
     ]);
+  });
+
+  it("identifies Cloud Sync's Config and Sign-in prerequisites (U-04)", () => {
+    expect(unmetRequirements(["sync"], { ...ALL_ON, config: false })).toEqual([
+      "config",
+    ]);
+    expect(unmetRequirements(["sync"], { ...ALL_ON, identity: false })).toEqual([
+      "identity",
+    ]);
+    expect(
+      unmetRequirements(["sync"], {
+        ...ALL_ON,
+        config: false,
+        identity: false,
+      }),
+    ).toEqual(["config", "identity"]);
   });
 
   it("turning on Cloud Sync from all-off turns on Config and Identity with it, sending only those flags (U-04)", async () => {
@@ -430,30 +423,13 @@ describe("Core → Services", () => {
     );
   });
 
-  it("refuses a flip the registration policy forbids before asking or sending", async () => {
-    const user = userEvent.setup();
-    services.mockResolvedValue(
-      state({
-        registration: "requires-identity",
-        effectiveRegistration: "requires-identity",
-      }),
-    );
-    mount();
-    await screen.findByRole("switch", { name: /Identity/ });
-    await user.click(sw("Identity"));
-    const msg = SERVICE_ERROR_MESSAGES.registration_requires_identity!;
-    // Both halves: the Identity row and the registration row.
-    await waitFor(() => expect(screen.getAllByText(msg)).toHaveLength(2));
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(updateServices).not.toHaveBeenCalled();
-    expect(sw("Identity").getAttribute("aria-checked")).toBe("true");
-  });
 
   it("turning Identity off names how many signed-in devices it signs out (PX-W17)", async () => {
     const user = userEvent.setup();
     updateServices.mockResolvedValue(state());
     servicesDryRun.mockResolvedValue({
       changes: [{ field: "services.identity.enabled", from: true, to: false }],
+      cascaded: [],
       signedInDevicesToClear: 3,
     });
     mount();
@@ -494,43 +470,6 @@ describe("Core → Services", () => {
     expect(servicesDryRun).not.toHaveBeenCalled();
   });
 
-  it("renders a server coherence rejection beside the controls it indicts, and clears it when the policy moves", async () => {
-    const user = userEvent.setup();
-    updateServices.mockRejectedValue(
-      new ApiError(422, undefined, "bad_request", [
-        "registration_requires_identity",
-      ]),
-    );
-    mount();
-    await screen.findByRole("switch", { name: /Config/ });
-    await user.click(sw("Config"));
-    const msg = SERVICE_ERROR_MESSAGES.registration_requires_identity!;
-    await waitFor(() => expect(screen.getAllByText(msg)).toHaveLength(2));
-    // The refused flip did not stick.
-    expect(sw("Config").getAttribute("aria-checked")).toBe("false");
-    await user.click(screen.getByRole("radio", { name: /Open/ }));
-    expect(screen.queryAllByText(msg)).toHaveLength(0);
-  });
-
-  it("saves the registration policy through its own section save, sending only the policy", async () => {
-    const user = userEvent.setup();
-    updateServices.mockResolvedValue(
-      state({ registration: "open", effectiveRegistration: "open" }),
-    );
-    mount();
-    await screen.findByRole("radio", { name: /Open/ });
-    await user.click(screen.getByRole("radio", { name: /Open/ }));
-    expect(screen.getByText(/After saving/)).toBeTruthy();
-    await user.click(
-      screen.getByRole("button", { name: "Save registration policy" }),
-    );
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-    expect(updateServices.mock.calls[0]).toEqual([
-      "djdl",
-      { registration: "open" },
-    ]);
-    expect(await screen.findByText("Registration policy saved")).toBeTruthy();
-  });
 
   it("package feeds save on their own: on at once with undo, off behind a confirm", async () => {
     const user = userEvent.setup();

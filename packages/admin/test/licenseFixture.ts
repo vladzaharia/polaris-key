@@ -224,9 +224,13 @@ export const SERVICES: ServicesResponse = {
     identity: { enabled: false },
     sync: { enabled: false },
   },
-  registration: null,
   effectiveRegistration: "requires-license",
   source: "manifest",
+  facts: {
+    licensing: { tiers: 0, licenses: 0 },
+    managedConfig: { catalogVersion: null },
+    shipBuilds: { latest: null },
+  },
 };
 
 /** A response with a status, for error states. */

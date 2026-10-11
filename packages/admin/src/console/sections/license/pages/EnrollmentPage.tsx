@@ -230,15 +230,6 @@ function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
               {label(data.effectiveRegistration)}
             </StatusPill>
           </SettingsRow>
-          <SettingsRow label="Declared">
-            {data.registration ? (
-              label(data.registration)
-            ) : (
-              <span className="text-fg-muted">
-                None: derived from the services
-              </span>
-            )}
-          </SettingsRow>
         </>
       ) : (
         <div className="p-5">
