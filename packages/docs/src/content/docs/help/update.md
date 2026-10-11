@@ -34,7 +34,7 @@ you have installed falls outside that window, the app is told so the next time i
 asks you to update rather than continuing to run silently on a version the product no longer
 supports. This is the most common reason an otherwise-working install suddenly starts asking to
 update — see
-[Your version is blocked](/docs/users/troubleshooting/#your-version-is-blocked) for what that
+[Update required](/docs/help/messages/license-status/#gate.version-too-old) for what that
 screen means and what to do about it.
 
 :::note[No in-app updater?]

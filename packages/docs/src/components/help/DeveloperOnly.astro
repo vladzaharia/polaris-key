@@ -1,0 +1,67 @@
+---
+/**
+ * The developer-only messages of Other messages (docs plan §7.1): the ones only the app's
+ * developer can fix. Each title is listed with the message the app shows and the ids behind it.
+ * Every id keeps its own anchor (`#<id>`), as a heading's ids do; the ids of a title's first
+ * message anchor at the title, so arriving at one shows it. The titles of every translated catalog
+ * come before each title as hidden text, as an entry has them, so search finds it from a title in
+ * another language. They come first, not last, so an item still ends with its last message:
+ * Starlight spaces a list item by its last child, and a hidden span there would take that space
+ * from the message. Rendered from the catalog and `help-messages.json`, so the titles are never
+ * retyped.
+ */
+import {
+  HELP_MESSAGES,
+  KNOWN_ENTRIES,
+  aliasesFor,
+  developerOnlyGroups,
+  messageParts,
+} from "../../lib/helpMessages";
+import "./message.css";
+
+const groups = developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES);
+---
+
+<ul class="pk-help-developer">
+  {
+    groups.map((group) => (
+      <li>
+        {group.messages[0]!.ids.map((id) => (
+          <span id={id} class="pk-help-developer__anchor" />
+        ))}
+        {aliasesFor(group.messages.flatMap((row) => row.ids)).map((alias) => (
+          <span hidden lang={alias.lang} data-pagefind-weight="6">
+            {alias.title}
+          </span>
+        ))}
+        <strong>{group.title}</strong>
+        {group.messages.map((row, i) => (
+          <div class="pk-help-developer__message">
+            {i > 0 &&
+              row.ids.map((id) => (
+                <span id={id} class="pk-help-developer__anchor" />
+              ))}
+            <blockquote>
+              <p>
+                {messageParts(row.message).map((part) =>
+                  typeof part === "string" ? part : <var>{part.label}</var>,
+                )}
+              </p>
+            </blockquote>
+            <p class="pk-help-developer__codes">
+              <small>
+                {row.ids.length === 1 ? "Code" : "Codes"}:{" "}
+                {row.ids.map((id, j) => (
+                  <>
+                    {j > 0 && ", "}
+                    <code>{id}</code>
+                  </>
+                ))}
+              </small>
+            </p>
+          </div>
+        ))}
+      </li>
+    ))
+  }
+</ul>
