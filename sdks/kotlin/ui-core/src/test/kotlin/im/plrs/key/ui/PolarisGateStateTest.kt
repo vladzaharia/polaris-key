@@ -109,4 +109,31 @@ class PolarisGateStateTest {
         assertFalse(gate.gate.value.refreshing)
         assertEquals(LicenseStatus.expired, gate.gate.value.license?.status)
     }
+
+    @Test
+    fun continueFreeEnrolsAndSurfacesARefusal() = runTest {
+        class EnrollGate(private val result: ActivationResult) : PolarisGateActions {
+            var state = LicenseState(LicenseStatus.needsActivation)
+            var enrollments = 0
+            override suspend fun status(): LicenseState = state
+            override suspend fun activate(key: String): ActivationResult = ActivationResult.EnrollDisabled
+            override suspend fun enroll(): ActivationResult {
+                enrollments++
+                if (result is ActivationResult.Ok) state = LicenseState(LicenseStatus.ok)
+                return result
+            }
+        }
+        val allowedActions = EnrollGate(ActivationResult.Ok("pkeyt_free", 1))
+        val allowed = PolarisGateState(allowedActions, backgroundScope)
+        allowed.continueFree()
+        runCurrent()
+        assertEquals(1, allowedActions.enrollments)
+        assertEquals(LicenseStatus.ok, allowed.gate.value.license?.status)
+        assertNull(allowed.activation.value.error)
+
+        val refused = PolarisGateState(EnrollGate(ActivationResult.EnrollDisabled), backgroundScope)
+        refused.continueFree()
+        runCurrent()
+        assertEquals(PolarisActivationError.Refused(ActivationResult.EnrollDisabled), refused.activation.value.error)
+    }
 }

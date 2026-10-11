@@ -41,190 +41,21 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import im.plrs.key.core.UpdateCheck
-import im.plrs.key.core.UpdateDecision
-import im.plrs.key.sdk.PolarisKeyClient
-import im.plrs.key.update.InstallResult
-import im.plrs.key.update.InstallStage
-import im.plrs.key.update.ProgressiveInstallDriver
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-
-// ── State ────────────────────────────────────────────────────────────────────────────────────
-
-/** An update to offer the player. */
-public data class PolarisUpdateUi(
-    /** The version on offer, when the decision names one. */
-    val version: String?,
-    /** The player cannot dismiss it. */
-    val mandatory: Boolean = false,
-    /** The release is marked critical (a security fix). */
-    val critical: Boolean = false,
-    val kind: Kind = Kind.Install,
-    /**
-     * Bytes downloaded so far and the total, while the platform downloads it (a Play flexible
-     * update). The banner's rendering of this and [error] is the UI-kit program's (UK-*).
-     */
-    val progress: Pair<Long, Long>? = null,
-    /** The last install attempt's failure, as copy, or null. */
-    val error: String? = null,
-) {
-    public enum class Kind {
-        /** A new build to install (a binary, store or platform update). */
-        Install,
-
-        /** A staged update that applies on the next launch: restart to finish. */
-        Restart,
-    }
-
-    public companion object {
-        /** What [decision] offers the player, or null when it offers nothing here. */
-        public fun from(decision: UpdateDecision): PolarisUpdateUi? = when (decision) {
-            is UpdateDecision.Binary -> PolarisUpdateUi(decision.release.version, decision.mandatory, decision.critical)
-            is UpdateDecision.Store -> PolarisUpdateUi(decision.release.version, decision.mandatory, decision.critical)
-            is UpdateDecision.Platform -> PolarisUpdateUi(decision.release.version, decision.mandatory, decision.critical)
-            is UpdateDecision.CodeReady -> PolarisUpdateUi(decision.release.version, false, decision.critical, Kind.Restart)
-            is UpdateDecision.None, is UpdateDecision.Blocked, is UpdateDecision.Packs -> null
-        }
-
-        public fun from(check: UpdateCheck): PolarisUpdateUi? = from(check.decision)
-    }
-}
-
-/** The install the update banner's action runs. [PolarisKeyClient.updateActions] adapts the umbrella client. */
-public fun interface PolarisUpdateActions {
-    public suspend fun install(check: UpdateCheck): InstallResult
-
-    /** Install an update the platform finished downloading ("Restart to finish"). */
-    public suspend fun finish(): InstallResult = InstallResult.NothingToInstall
-
-    /** A background install's stage (a Play flexible update); empty for drivers that have none. */
-    public val stages: Flow<InstallStage> get() = emptyFlow()
-}
-
-/**
- * `client.update.install(check)`: Play In-App Updates or the verified self-update on Android. A
- * driver that keeps going in the background (ProgressiveInstallDriver) also reports its [stages]
- * and finishes with [PolarisUpdateActions.finish].
- */
-public fun PolarisKeyClient.updateActions(): PolarisUpdateActions {
-    val client = this
-    return object : PolarisUpdateActions {
-        override suspend fun install(check: UpdateCheck): InstallResult = client.update.install(check)
-
-        override suspend fun finish(): InstallResult =
-            (client.update.installDriver as? ProgressiveInstallDriver)?.finish() ?: InstallResult.NothingToInstall
-
-        override val stages: Flow<InstallStage>
-            get() = (client.update.installDriver as? ProgressiveInstallDriver)?.progress ?: emptyFlow()
-    }
-}
-
-/**
- * Holds the update on offer; the host feeds it each check (`bootHost(onCheck = state::show)` does)
- * and the banner dismisses it or runs [install].
- */
-public class PolarisUpdateState {
-    private val _offer = MutableStateFlow<PolarisUpdateUi?>(null)
-    public val offer: StateFlow<PolarisUpdateUi?> = _offer.asStateFlow()
-    private var dismissedVersion: String? = null
-
-    /** Whether the platform reported the update downloaded, so [install] finishes it. */
-    @Volatile private var downloaded = false
-
-    /** The decision behind the offer, for [install]. */
-    @Volatile public var check: UpdateCheck? = null
-        private set
-
-    /** Offer what [check] decided; a version the player dismissed stays dismissed unless mandatory. */
-    public fun show(check: UpdateCheck) {
-        this.check = check
-        show(PolarisUpdateUi.from(check))
-    }
-
-    /**
-     * Hand the offered decision to the platform installer ([actions]). A typed N/A or a failure
-     * stays on the offer as [PolarisUpdateUi.error]; a started install keeps the offer until the
-     * platform reports it downloaded ([readyToRestart]) or the app restarts.
-     */
-    public fun install(actions: PolarisUpdateActions, scope: CoroutineScope, copy: PolarisCopy = PolarisCopy()) {
-        val finishing = downloaded
-        val c = check
-        if (c == null && !finishing) return
-        scope.launch {
-            val result = try {
-                if (finishing) actions.finish() else actions.install(c!!)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: im.plrs.key.core.UnsupportedException) {
-                InstallResult.Failed(e.code, e.unsupported.detail)
-            } catch (e: Exception) {
-                InstallResult.Failed(im.plrs.key.core.ErrorCode.platformError, e.message)
-            }
-            _offer.update { o ->
-                o?.copy(error = when (result) {
-                    is InstallResult.Failed -> copy.updateFailed
-                    is InstallResult.Declined, InstallResult.NothingToInstall, InstallResult.Started -> null
-                })
-            }
-        }
-    }
-
-    /** The platform's download progress (a Play flexible update's InstallState). */
-    public fun progress(done: Long, total: Long) {
-        _offer.update { it?.copy(progress = done to total, error = null) }
-    }
-
-    /**
-     * Follow [actions]' background install: its progress, then "Restart to finish" (whose action
-     * [install] turns into [PolarisUpdateActions.finish]), or its failure. Runs until [scope] ends.
-     */
-    public fun follow(actions: PolarisUpdateActions, scope: CoroutineScope, copy: PolarisCopy = PolarisCopy()): Job = scope.launch {
-        actions.stages.collect { stage ->
-            when (stage) {
-                is InstallStage.Downloading -> progress(stage.done, stage.total)
-                InstallStage.ReadyToRestart -> readyToRestart()
-                is InstallStage.Failed -> _offer.update { it?.copy(progress = null, error = copy.updateFailed) }
-                InstallStage.Idle -> _offer.update { it?.copy(progress = null) }
-            }
-        }
-    }
-
-    /** The platform downloaded the update: the offer becomes "Restart to finish". */
-    public fun readyToRestart() {
-        downloaded = true
-        _offer.update { (it ?: PolarisUpdateUi(null)).copy(kind = PolarisUpdateUi.Kind.Restart, progress = null, error = null) }
-    }
-
-    public fun show(ui: PolarisUpdateUi?) {
-        _offer.value = ui?.takeIf { it.mandatory || it.version == null || it.version != dismissedVersion }
-    }
-
-    /** The player dismissed the banner (never a mandatory update). */
-    public fun dismiss() {
-        val current = _offer.value ?: return
-        if (current.mandatory) return
-        dismissedVersion = current.version
-        _offer.value = null
-    }
-}
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
 /** The banner line for [ui]. */
-public fun PolarisCopy.updateBannerText(ui: PolarisUpdateUi): String = when {
-    ui.kind == PolarisUpdateUi.Kind.Restart && ui.version != null -> format(updateRestartBody, ui.version)
-    ui.version != null -> format(updateAvailable, ui.version)
-    else -> updateAvailableGeneric
+public fun PolarisCopy.updateBannerText(ui: PolarisUpdateUi): String {
+    val version = ui.version
+    return when {
+        ui.kind == PolarisUpdateUi.Kind.Restart && version != null -> format(updateRestartBody, version)
+        version != null -> format(updateAvailable, version)
+        else -> updateAvailableGeneric
+    }
 }
+
+/** Catalog copy for a typed install failure; backend details never appear in UI text. */
+internal fun PolarisCopy.updateFailureMessage(failure: PolarisUpdateFailure): String = updateFailed
 
 /**
  * A slim banner announcing an update: the version, an Update (or Restart) action, and a dismiss
@@ -261,6 +92,7 @@ public fun PolarisUpdateBanner(
                 ) {
                     Text(copy.updateBannerText(ui), style = MaterialTheme.typography.bodyLarge)
                     if (ui.critical) Text(copy.updateCritical, style = MaterialTheme.typography.bodySmall)
+                    ui.error?.let { Text(copy.updateFailureMessage(it), style = MaterialTheme.typography.bodySmall) }
                 }
                 Spacer(Modifier.width(8.dp))
                 PolarisTextButton(if (ui.kind == PolarisUpdateUi.Kind.Restart) copy.updateRestart else copy.updateAction, onUpdate)
@@ -289,18 +121,21 @@ public fun PolarisUpdatePrompt(
 }
 
 /** The prompt's title and body for [ui]: the kit-copy "ready" pair once it can restart. */
-internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, String?> = when {
-    // With no product name there is no "{product}" to fill: the banner's wording stands in.
-    ui.kind == PolarisUpdateUi.Kind.Restart && productName(this) != null && ui.version != null ->
-        format(updateReadyTitle, productName, ui.version) to format(updateReadyBody, productName)
-    ui.kind == PolarisUpdateUi.Kind.Restart -> updateRestart to ui.version?.let { format(updateRestartBody, it) }
-    ui.mandatory && productName(this) != null ->
-        format(updateMandatoryTitle, productName) to format(updateMandatoryBody, productName)
-    ui.mandatory -> updateRequiredTitle to format(updateRequiredBody, ui.version ?: "")
-    // An offer says what it is, not that it is downloaded: "{product} {version}" and Update now.
-    ui.version == null -> updateAvailableGeneric to null
-    productName(this) == null -> format(updateAvailable, ui.version) to null
-    else -> format(updatePromptTitle, productName, ui.version) to null
+internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, String?> {
+    val version = ui.version
+    return when {
+        // With no product name there is no "{product}" to fill: the banner's wording stands in.
+        ui.kind == PolarisUpdateUi.Kind.Restart && productName(this) != null && version != null ->
+            format(updateReadyTitle, productName, version) to format(updateReadyBody, productName)
+        ui.kind == PolarisUpdateUi.Kind.Restart -> updateRestart to version?.let { format(updateRestartBody, it) }
+        ui.mandatory && productName(this) != null ->
+            format(updateMandatoryTitle, productName) to format(updateMandatoryBody, productName)
+        ui.mandatory -> updateRequiredTitle to format(updateRequiredBody, version ?: "")
+        // An offer says what it is, not that it is downloaded: "{product} {version}" and Update now.
+        version == null -> updateAvailableGeneric to null
+        productName(this) == null -> format(updateAvailable, version) to null
+        else -> format(updatePromptTitle, productName, version) to null
+    }
 }
 
 @Composable
@@ -344,6 +179,10 @@ private fun PolarisUpdatePromptCard(
                     if (ui.critical) {
                         Spacer(Modifier.height(8.dp))
                         PolarisBody(copy.updateCritical, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                    ui.error?.let {
+                        Spacer(Modifier.height(8.dp))
+                        PolarisBody(copy.updateFailureMessage(it), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }

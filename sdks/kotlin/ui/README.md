@@ -56,6 +56,13 @@ Each screen is a stateless composable over a UI value, plus a state holder that 
 as a `StateFlow` and turns the player's actions into SDK calls. You can use the drop-in pieces, or
 compose your own flow from the same parts.
 
+The state holders and their UI values live in `polaris-key-ui-core` (`im.plrs.key:polaris-key-ui-core`,
+the `:ui-core` module): plain Kotlin over `polaris-key-sdk` and coroutines, with no Compose, AndroidX,
+fonts or QR code on its classpath. `:ui` exposes it with `api`, so a desktop or headless integration
+runs the same holders and tests them without a renderer. A holder never produces user-facing text:
+failures stay typed (`PolarisSettingsFailure`, `PolarisUpdateFailure`) and each renderer maps them to
+its catalog copy.
+
 | Screen                     | Drop-in                                            | State holder (from `PolarisKeyClient`)                                | Stateless                                      |
 | -------------------------- | -------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
 | Boot shell                 | `PolarisBoot(boot, gate, packs) { … }`             | `PolarisBootState`, driven by `boot.launch(scope, client.bootHost())` | `PolarisBootScreen`                            |
@@ -102,10 +109,11 @@ runs `finish()`). It provides the client through `LocalPolarisKey`, so any scree
 - `client.settingsActions(editable = true)` types each row from the served catalog
   (`PolarisSettingEntry.editor`: `Toggle`, `Choice`, `Number`, `Text`; none for an enforced row or a
   secret), and `PolarisSettingsState.set(key, value)` / `reset(key)` persist or clear a local
-  override (`client.config.set` / `clear`), with a refusal in `PolarisSettingsUi.error`.
+  override (`client.config.set` / `clear`), with a refusal in `PolarisSettingsUi.error` (a typed
+  `PolarisSettingsFailure`; a failed read is `loadFailure`).
 - `PolarisUpdateState.install(actions, scope)` hands the offer to the installer, `follow(actions,
 scope)` tracks a background install (`progress`, then the `Restart` kind) and the offer's `error`
-  carries a failure.
+  carries a typed `PolarisUpdateFailure`.
 
 The settings screen still renders the read-only summary, and the activation screen has no "Continue
 free", "Buy", "Activate offline" or "Manage devices" buttons yet: drawing those belongs to the UI-kit

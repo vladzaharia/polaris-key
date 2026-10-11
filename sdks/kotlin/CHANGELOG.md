@@ -11,6 +11,15 @@ deprecated aliases).
   (`im.plrs.key.core.PresentationSource`); the icon verified by SHA-256 and cached by hash.
   `PolarisTheme(presentation = …)` defaults the logo to the verified icon and, branded, the accent
   to the product's. `PolarisRequest.followRedirects` (default true) lets a request see a 3xx.
+- **`polaris-key-ui-core` (UK-09).** A Compose-free JVM artifact (`:ui-core`) holds the UI kit's
+  state holders, so a desktop or headless integration runs them without Compose or AndroidX:
+  `PolarisGateState`, `PolarisSignInState`, `PolarisDevicesState`, `PolarisBootState`,
+  `PolarisPackProgressState`, `PolarisSettingsState` and `PolarisUpdateState` with their UI values
+  moved there from `polaris-key-ui` (same package; `:ui` re-exports it with `api`). **Breaking:** a
+  holder no longer produces user-facing text. `PolarisSettingsUi.error` and `PolarisUpdateUi.error`
+  are typed (`PolarisSettingsFailure`, `PolarisUpdateFailure`) and each renderer maps them to catalog
+  copy; `PolarisSettingsUi.failed` is `PolarisSettingsUi.loadFailure`; `PolarisSettingsActions.set`
+  and `reset` have no default body; `PolarisUpdateState.install` and `follow` take no `PolarisCopy`.
 
 Key-custody and offline-bundle fixes (wire contract v4). Each **breaking** line names what to change.
 

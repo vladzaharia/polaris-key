@@ -22,6 +22,7 @@ dependencies {
     // The state holders adapt the umbrella SDK only. They never reach Android glue or :platform.
     api(project(":sdk"))
     api(libs.kotlinx.coroutines.core)
+    api(libs.kotlinx.serialization.json)
 
     testImplementation(testFixtures(project(":core")))
     testImplementation(libs.junit)

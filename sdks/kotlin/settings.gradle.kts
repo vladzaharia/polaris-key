@@ -10,6 +10,8 @@
 //                   driver port) and the pack engine; each depends on :core only
 //     :sdk          polaris-key-sdk, the umbrella PolarisKeyClient (P6-07): the one place the
 //                   service modules meet, re-exported through `api`, so it is the one-line dependency
+//     :ui-core      polaris-key-ui-core, the Compose-free UI layer (UK-09): the UI kits' state
+//                   holders and presentation core over :sdk only; no Compose, AndroidX or fonts
 //   Android libraries:
 //     :platform     polaris-key-platform-{play,direct}, the shared Android backend (install
 //                   source, Keystore, Play Integrity, and per flavour Play In-App Updates + Play

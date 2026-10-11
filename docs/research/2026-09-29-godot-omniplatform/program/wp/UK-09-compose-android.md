@@ -223,5 +223,21 @@ commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/chec
 - Moved the Devices roster state holder, adapter and deterministic sorting to `:ui-core`.
   `PolarisDevicesStateTest` covers list failure, sorting, rename normalization and device removal;
   the Compose renderer retains only its UI and copy fallback.
-- Next: move the Settings, Update, Pack and Boot state holders into `:ui-core`, then add the full
-  `ui-matrix.json` presentation core before the KMP source-set cutover.
+- Moved the Pack reducer, subscription holder and SDK adapter to `:ui-core`.
+  `PolarisPackProgressStateTest` holds the event-fold order, aggregate progress and subscription
+  lifecycle outside Compose.
+- Moved the Update offer, install and follow state, the Boot holder over `:sdk`'s `BootDriver` and the
+  Settings holder (catalog-typed editors) to `:ui-core`, each with its test (`PolarisUpdateStateTest`,
+  `PolarisBootStateTest`, `PolarisSettingsStateTest`). Settings' catalog-owned error copy is resolved
+  by typing the failures: `PolarisSettingsUi.error` and `loadFailure` and `PolarisUpdateUi.error` carry
+  `PolarisSettingsFailure` and `PolarisUpdateFailure`, and the renderer maps them to catalog copy
+  (`PolarisCopy.settingsFailureMessage` and `updateFailureMessage`, which also draws an update failure
+  on the banner and the prompt). `HeadlessWiringTest` is removed: its tests live in the holder tests
+  and `PolarisGateStateTest`; `StateHoldersTest` keeps the `:ui` side (`bootScreen`, `updateBannerText`).
+- Verified with the command below under JDK 17 (no committed baseline changed):
+
+  ```sh
+  ( cd sdks/kotlin && ./gradlew --offline :ui-core:test :ui:compileDebugKotlin :ui:testDebugUnitTest :ui:verifyRoborazziDebug checkModuleBoundaries )
+  ```
+
+- Next: add the full `ui-matrix.json` presentation core before the KMP source-set cutover.
