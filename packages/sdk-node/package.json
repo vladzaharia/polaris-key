@@ -1,6 +1,26 @@
 {
   "name": "@polaris-key/node",
   "version": "0.0.0",
+  "description": "The Polaris Key SDK for Node: licensing, managed config, releases and updates over one verified wire format, with commander and yargs CLI adapters and Electron support.",
+  "keywords": [
+    "polaris-key",
+    "licensing",
+    "managed-config",
+    "software-updates",
+    "jws",
+    "ed25519",
+    "node",
+    "electron"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/sdk-node"
+  },
+  "homepage": "https://key.plrs.im/docs/build/sdks/node/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": [

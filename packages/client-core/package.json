@@ -1,6 +1,25 @@
 {
   "name": "@polaris-key/client-core",
   "version": "0.0.0",
+  "description": "The isomorphic client substrate behind the Polaris Key JS SDKs: strict JWS document verification, trust sets, the license gate, layered config, the update decision and the clock floor. WebCrypto only, no I/O.",
+  "keywords": [
+    "polaris-key",
+    "licensing",
+    "managed-config",
+    "jws",
+    "ed25519",
+    "webcrypto",
+    "isomorphic"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/client-core"
+  },
+  "homepage": "https://key.plrs.im/docs/build/sdks/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

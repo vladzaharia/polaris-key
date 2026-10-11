@@ -45,6 +45,8 @@ The audits scored the root README 5 (stale layout block, broken nested backticks
 - Tier: must (required; gates 1.0 on its deterministic checks only). Wave 1 in the plan's order (§8.4). Model routing (§8.5): Sonnet 5.5 (READMEs written from the code); set the model on every agent call, never inherit.
 - Published READMEs follow the §3.1 template in the plan; the README at the root is the router, not a published package.
 - The `brand` and `zstd-wasm` `description` correction was made in the plan's review: they already have one.
+- Correction (code is the fact): eleven packages publish (`brand`, `cli`, `client-core`, `sdk-node`, `sdk-react`, `shared-catalog`, `shared-jws`, `shared-manifest`, `shared-protocol`, `ui-core`, `zstd-wasm`); `ui-core` also had a `description` and no other field, and `elements` is private. `package-metadata.test.ts` lives in `tools/` and discovers the published set from `private`, so a new package is covered without an edit. The four published READMEs that linked `/docs/…` by root-relative path (`cli`, `client-core`, `sdk-node`, `sdk-react`) now use absolute `https://key.plrs.im/docs/…` links, resolved against the current pages (`build/install-from-feeds` moved to `build/install`, `build/offline` to `features/licensing/offline`, `build/wire/bundles` to `reference/protocol/bundles`). The SDK READMEs owned by SP-37 (python, swift, kotlin, godot) still carry root-relative links; they are outside the published-package set this test walks (it reads `packages/*`), and SP-37 rewrites them.
+- `README.md` layout is held by `tools/root-readme.test.ts` (every `packages/*` and `sdks/*` directory listed, no test counts), rather than generated: the workspace has no generator for prose, and a test fails on the same drift.
 
 ## Steps
 

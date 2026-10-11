@@ -1,6 +1,25 @@
 {
   "name": "@polaris-key/cli",
   "version": "0.0.0",
+  "description": "The pkey CLI: validate and register .pkey/ manifests, mint offline activation bundles, publish releases from CI, configure SDKs and generate typed config mirrors.",
+  "keywords": [
+    "polaris-key",
+    "pkey",
+    "cli",
+    "licensing",
+    "managed-config",
+    "release-delivery",
+    "manifest"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://key.plrs.im/docs/reference/cli/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "bin": {

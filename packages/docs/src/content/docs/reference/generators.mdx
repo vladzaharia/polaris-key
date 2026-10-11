@@ -176,6 +176,17 @@ This registry as a docs page and the AGENTS.md generated-files table.
 - Reads: `tools/generators.ts`, `tools/gen-generators-doc.ts`.
 - Writes: `packages/docs/src/content/docs/reference/generators.mdx`, `AGENTS.md`.
 
+### readme-work
+
+The Work on it block of each internal README.
+
+- Run: default, pre-commit.
+- Regenerate: `pnpm gen readme-work`.
+- Check: `pnpm gen readme-work --check`.
+- Underlying: `pnpm exec tsx tools/gen-readme-work.ts`.
+- Reads: `tools/generators.ts`, `tools/gen-readme-work.ts`, `package.json`, `packages/{worker,admin,docs,elements,ui-qa}/package.json`, `conformance/runners/*/package.json`, `tools/package.json`, `products/package.json`.
+- Writes: `packages/{worker,admin,docs,elements,ui-qa}/README.md`, `conformance/README.md`, `tools/README.md`, `products/README.md`, `docs/README.md`.
+
 ### parity
 
 Parity gate: every SDK's parity.json against the feature registry.

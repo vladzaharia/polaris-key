@@ -28,7 +28,7 @@ export interface UiHints {
   adminSection?: string;
 }
 
-/** A minimal JSON Schema fragment (Draft-07 subset Ajv understands). */
+/** A minimal JSON Schema fragment the catalog's Draft-07 subset interpreter supports. */
 export type JsonSchema = Record<string, unknown>;
 
 /** One declarable item. `key` is dotted; for `config`/`secret` it maps to a client

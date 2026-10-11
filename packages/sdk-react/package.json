@@ -1,6 +1,25 @@
 {
   "name": "@polaris-key/react",
   "version": "0.0.0",
+  "description": "The Polaris Key SDK for React: browser sign-in over OIDC, desktop apps over the Node SDK, and the drop-in login UI kit.",
+  "keywords": [
+    "polaris-key",
+    "react",
+    "licensing",
+    "managed-config",
+    "oidc",
+    "sign-in",
+    "ui-kit"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/sdk-react"
+  },
+  "homepage": "https://key.plrs.im/docs/build/sdks/react/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

@@ -12,7 +12,7 @@ corpus the Python and Swift SDKs run.
 
 The `@polaris-key` packages are published to Polaris Key's npm feed only (not npmjs). Route the
 scope to it once, in the project's `.npmrc` (Yarn, Bun and the rest:
-[Installing the SDKs from the feeds](/docs/build/install-from-feeds/)):
+[Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/)):
 
 ```ini
 @polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
@@ -702,7 +702,7 @@ await program.parseAsync();
 The verbs, the styled parts and the `@polaris-key/node/terminal` primitives, the headless views,
 theming, localisation, the `--json` contract and the fallbacks (`NO_COLOR`, `TERM=dumb`,
 `--ascii`, CI, narrow and short terminals, a resize) are on
-[Terminal (Node)](/docs/build/ui/frameworks/terminal-node/).
+[Terminal (Node)](https://key.plrs.im/docs/build/ui/frameworks/terminal-node/).
 `kit: false` keeps the plain output, and each verb is also a plain function (`status(client)`,
 `devicesList(client)`, …) returning `{ ok, message, data }`.
 
