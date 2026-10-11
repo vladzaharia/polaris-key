@@ -37,6 +37,16 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 
 portal pages; `identity/portal/{notices,email}.ts`; `docs/legal/help.md` (a draft skeleton, checked claim by claim); PORTAL.md; `copy.en.json`
 
+## Correction (verified 2026-10-11)
+
+The intended public Polaris Key support address is not configured in shipped source.
+`docs/legal/help.md` still holds the unfilled `[[OWNER: support email]]` and
+`[[OWNER: privacy email]]` placeholders, and `docs/legal/REVIEW-NOTES.md` (P3, P4) records the
+missing support and privacy addresses. This package's
+contact page therefore identifies Polaris Key account, sign-in, and privacy questions without
+inventing a contact address; app license and download questions use the shipped product-page
+**Need help?** card when the developer has supplied support details.
+
 ## Design notes
 
 - Nothing describes unbuilt behaviour as shipped; P2 lines belong to the consolidation packages that ship them (§10).

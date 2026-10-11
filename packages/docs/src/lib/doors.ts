@@ -88,7 +88,18 @@ export const DOOR_TREES: readonly DoorTree[] = [
     door: "help",
     label: "Help",
     groups: [
-      { label: "Get started", items: leaves("help/index", "help/activate") },
+      {
+        label: "Get started",
+        items: [
+          leaf("help/index", "Help home"),
+          ...leaves(
+            "help/what-is-polaris-key",
+            "help/activate",
+            "help/emails",
+            "help/contact",
+          ),
+        ],
+      },
       { label: "Sign in", items: leaves("help/sign-in") },
       { label: "Devices", items: leaves("help/devices") },
       { label: "Cloud Sync", items: leaves("help/sync") },

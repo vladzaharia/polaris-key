@@ -632,13 +632,6 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "help/activate": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 20,
-      "future-tense": 2,
-      "banned-word": 3
-    },
     "help/devices": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
@@ -650,12 +643,6 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
       "help-word": 23
-    },
-    "help/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 19,
-      "banned-word": 1
     },
     "help/messages/index": {
       "frontmatter-type": 1,
