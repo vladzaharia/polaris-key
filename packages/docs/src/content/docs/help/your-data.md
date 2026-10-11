@@ -23,14 +23,14 @@ developer sees, and what you can ask for.
   Polaris Key receives these as they are, and the app's developer can see them. They let the
   developer see which systems the app runs on, check that it works on yours and send it the right
   settings. Apps that run in a web browser send only the kind of operating system, processor cores,
-  memory, language and time zone.
-- **Your computer's name**, usually the one you set in your system settings. Apps you install
-  usually send it, so you can tell your devices apart in your library. The developer sees it too.
-  Apps that run in a web browser send none.
+  memory, language, time zone and the version of the app.
+- **Your computer's name**, as set in your system settings. It can include your own name, and you
+  can change it there. Apps you install usually send it, so you can tell your devices apart in your
+  library. The developer sees it too. Apps that run in a web browser send none.
 - **A few named apps**: a developer can ask whether specific apps, such as a companion app, are
   installed. The app can't list the apps you have.
 
-An app doesn't read your computer account's user name, your files or your browsing. A developer can
+An app doesn't read your user name on the computer, your files or your browsing. A developer can
 turn the computer identifiers off. The system details are still sent.
 
 ## What the developer sees
@@ -47,15 +47,17 @@ anything from another app.
 ## What Polaris Key holds
 
 Polaris Key holds the details you give your account: email addresses, sign-in methods, name,
-picture and an optional birth date. It also keeps the computer identifiers and system details above
-until the device is removed, and a list of the browsers signed in to your account. You can change
-your account details in [Your account and sign-in methods](/docs/help/account/).
+picture and an optional birth date. It also keeps a list of the browsers signed in to your account.
+For each device, it keeps the scrambled computer identifiers, never the originals, until the device
+is removed. It keeps your computer's name and the last system details your device sent for as long
+as the license exists. You can change your account details in
+[Your account and sign-in methods](/docs/help/account/).
 
-## Ask for a copy or for erasure
+## Ask about or erase your data
 
-- To ask Polaris Key what it holds about your account, see who to contact in
-  [Get help with an app](/docs/help/contact/).
-- To ask what a developer holds, such as your licenses and devices, ask the app's developer. Ask
-  the developer too if you want it to erase its records.
+- Polaris Key doesn't publish a privacy address. [Who to contact](/docs/help/contact/) says who to
+  ask about your Polaris Key account.
+- To ask what an app holds about you, such as your licenses and devices, ask the app's developer.
+  Ask the developer too if you want it to erase its records.
 - To erase your Polaris Key account, see [Delete your account](/docs/help/delete-account/).
   Deleting it doesn't erase a developer's own records.
