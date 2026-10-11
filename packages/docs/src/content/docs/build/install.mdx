@@ -74,7 +74,13 @@ Some clients skip a version until it reaches a minimum age. Behind a gate, an in
 
 ### Python: pip, uv and Poetry
 
-Name the feed as an explicit index for that one project, never as an extra index. pip can't route one project to one index: with two indexes it takes the highest version from either, so a public `polaris-key` could win. The generated pip lines install the package alone, without its dependencies, so install those from your usual index first.
+Name the feed as an explicit index for that one project, never as an extra index. pip can't route one project to one index: with two indexes it takes the highest version from either, so a public `polaris-key` could win. The generated pip line installs the package alone, without its dependencies, so install those from your usual index first. The SDK needs Python 3.9 or later and three packages (`zstandard` only below Python 3.14, where the standard library has its own):
+
+```sh title="Terminal"
+pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"
+```
+
+The uv and Poetry blocks resolve the dependencies from your default index, because the feed is an explicit index for `polaris-key` only.
 
 ### Kotlin
 

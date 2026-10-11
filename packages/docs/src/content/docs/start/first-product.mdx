@@ -40,7 +40,7 @@ You should see the **License** switch on.
 
 ## 3. Install the CLI and an SDK
 
-**CLI** The first block installs the CLI. The picker then selects one SDK's install. Each block routes the `@polaris-key` scope, or its ecosystem's equivalent, to `pkg.plrs.im` before it installs, because the packages exist nowhere else.
+**CLI** The first block installs the CLI. The blocks after it each install one SDK: use the one for your SDK and skip the rest. Each block routes the `@polaris-key` scope, or its ecosystem's equivalent, to `pkg.plrs.im` before it installs, because the packages exist nowhere else.
 
 <InstallSteps sdk="cli" />
 
@@ -54,6 +54,8 @@ Outside a Node project, put the routing line in `~/.npmrc` and add `--global` to
 <InstallSteps sdk="swift" />
 <InstallSteps sdk="kotlin" />
 <InstallSteps sdk="godot" />
+
+For Python, the pip block installs the package alone, so install its dependencies from your usual index first: `pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"`. The uv and Poetry blocks resolve them for you.
 
 Other package managers and age gates are on **Install the SDKs and the CLI**. The product's **Overview** shows the same lines under **SDK quick start**.
 

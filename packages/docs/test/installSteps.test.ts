@@ -165,4 +165,34 @@ describe("InstallSteps FEEDS mapping", () => {
         '<InstallSteps sdk="cli" />',
       );
   });
+
+  it("the pip block installs no dependencies, so both pages name the SDK's own", () => {
+    const pip = render("python").snippets.find((s) => s.id === "pip");
+    expect(pip?.code).toContain("--no-deps");
+    const pyproject = readFileSync(
+      join(here, "..", "..", "..", "sdks", "python", "pyproject.toml"),
+      "utf8",
+    );
+    const block = /^dependencies = \[([\s\S]*?)^\]/m.exec(pyproject)?.[1] ?? "";
+    const want = [
+      ...block
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("#"))
+        .join("\n")
+        .matchAll(/"([^"]+)"/g),
+    ]
+      .map((m) => m[1])
+      .sort();
+    expect(want.map((d) => d?.split(/[>=;]/)[0]?.trim())).toEqual([
+      "cryptography",
+      "httpx",
+      "zstandard",
+    ]);
+    for (const page of ["build/install.mdx", "start/first-product.mdx"]) {
+      const text = read("src/content/docs", page);
+      const line = /pip install ("cryptography[^\n`]*)/.exec(text)?.[1] ?? "";
+      const got = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+      expect(got, page).toEqual(want);
+    }
+  });
 });
