@@ -116,9 +116,13 @@ describe("api — request shaping", () => {
     stubFetch(() =>
       json({
         services: { license: { enabled: true }, config: { enabled: false } },
-        registration: null,
         effectiveRegistration: "requires-license",
         source: "manifest",
+        facts: {
+          licensing: { tiers: 0, licenses: 0 },
+          managedConfig: { catalogVersion: null },
+          shipBuilds: { latest: null },
+        },
       }),
     );
     const res = await api.services("djdl");

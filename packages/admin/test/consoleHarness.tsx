@@ -82,7 +82,6 @@ export function productRow(
     ...(services
       ? {
           services,
-          registration: null,
           effectiveRegistration: "requires-license",
           servicesSource: "manifest",
         }
