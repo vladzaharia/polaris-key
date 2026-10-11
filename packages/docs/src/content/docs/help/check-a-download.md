@@ -8,7 +8,7 @@ sidebar:
   order: 7
 ---
 
-Compare your file's SHA-256 with the value listed for it. A SHA-256 is a code worked out from a file's contents, so a changed or damaged file gets a different one.
+Compare your file's SHA-256 with the value listed for it. A SHA-256 is a code worked out from a file's contents, so a changed or damaged file gets a different one. This check is optional.
 
 :::caution[Important]
 A matching value can't show that the page itself is genuine. Take the value from the app's own download page, or from your library at [key.plrs.im](https://key.plrs.im).
@@ -41,15 +41,15 @@ The download page links **SHA256SUMS**, a list of the SHA-256 for each file of t
 
 ## Check an Android app's signing key
 
-For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. An app such as AppVerifier shows the signing certificate of an app you installed.
+For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. You check an Android app after you install it, with an app such as AppVerifier that shows an installed app's signing certificate.
 
 1. Install the app.
 2. In AppVerifier, find the installed app's signing certificate SHA-256.
-3. Compare it with the matching entry under **Signing keys**. Use **Android sideload signing certificate** for a file you downloaded from the page or added with Obtainium. Use **Android app signing certificate** for an app from Google Play.
+3. Compare it with the matching entry under **Signing keys**. Use **Android sideload signing certificate** for a file you downloaded from the page or installed with a tool such as Obtainium. Use **Android app signing certificate** for an app from Google Play.
 
 ## If the values don't match
 
-Don't install the file. Delete it and download it again.
+Don't install the file. Delete it and download it again. If an Android app's signing certificate doesn't match its entry, uninstall the app.
 
 ## Check it worked
 

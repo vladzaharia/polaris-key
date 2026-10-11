@@ -27,21 +27,21 @@ An update restarts the app, so save your work first.
 
 **Update required** means the app can't continue until you install a newer version. Select **Update now** or **Update**. A message that starts **Update to keep using** has no **Later** button. An update that fixes a security problem says **This update includes an important security fix.**
 
-If the app says **This version is no longer supported** with **No update is available here yet.**, no update is ready for your install. You can keep using the app. Check again later.
+If the app says **This version is no longer supported** and **No update is available here yet.**, the app keeps working. No update is ready for your install, so check again later.
 
 ## Apps from a store or package manager
 
 A store or package manager installs updates for the apps you got from it. The app shows where.
 
-| If the app shows                                                               | Do this                                                  |
-| ------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| **Update on the App Store** or **Update on Google Play**                       | Open the store and update the app there.                 |
-| **Get it on Steam**, or a line saying Steam installs it                        | Open Steam. If the update hasn't arrived, restart Steam. |
-| **Open AltStore**, **Open TestFlight**, or **Open** and a store's name         | Update the app there.                                    |
-| A line saying the itch app, a software center or a package manager installs it | Update the app there.                                    |
-| A line saying Windows installs it the next time the app starts                 | Close the app and open it again.                         |
-| A line telling you to run a command                                            | Copy the command into a terminal and run it.             |
-| A line telling you to reload the page                                          | Reload the page.                                         |
+| If the app shows                                                                                              | Do this                                                  |
+| ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Update on the App Store** or **Update on Google Play**                                                      | Open the store and update the app there.                 |
+| **Get it on Steam**, or **Steam installs it. Restart Steam if it hasn't arrived.**                            | Open Steam. If the update hasn't arrived, restart Steam. |
+| **Open AltStore**, **Open TestFlight**, or **Open** and a store's name                                        | Update the app there.                                    |
+| **The itch app installs it.**, **Your software center installs it.** or **Your package manager installs it.** | Update the app in that tool.                             |
+| **Windows installs it the next time** the app **starts.**                                                     | Close the app and open it again.                         |
+| **Run** a command **to install it.**                                                                          | Copy the command into a terminal and run it.             |
+| **Reload the page to get it.**                                                                                | Reload the page.                                         |
 
 ## Why you may not see an update yet
 
@@ -55,7 +55,7 @@ If the last update didn't start, some apps put the previous version back and say
 | ------------------------------ | --------------------------------------------------------- | --------------------------------------------------------------- |
 | **Can't update here**          | The app can't replace its own files where it's installed. | Update it the way you installed it.                             |
 | **Update not finished**        | The update couldn't be applied.                           | Close the app and open it again. It tries again when it starts. |
-| **Paused · waiting for Wi-Fi** | The app paused a large download on a metered connection.  | Connect to Wi-Fi, or select **Download now**.                   |
+| **Paused · waiting for Wi-Fi** | The app paused the download until you're on Wi-Fi.        | Connect to Wi-Fi, or select **Download now**.                   |
 | **Couldn't download**          | The download failed.                                      | Select **Try again**.                                           |
 
 ## <a id="the-download-page"></a>Download a newer version yourself

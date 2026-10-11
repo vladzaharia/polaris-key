@@ -8,7 +8,7 @@ sidebar:
   order: 8
 ---
 
-Some apps can also be installed through AltStore, SideStore, F-Droid, Obtainium, Scoop or Homebrew. These are separate tools. Once you add an app to one, the tool finds new versions itself.
+Some apps can also be installed through AltStore, SideStore, F-Droid, Obtainium, Scoop or Homebrew. AltStore and SideStore are sideloading apps for iPhone and iPad. F-Droid and Obtainium install apps on Android. Scoop and Homebrew install apps from a terminal on Windows and on a Mac. These are optional: use one if you already use that tool, or download the app as usual. Once you add an app to one, the tool finds new versions itself.
 
 Find them under **Other ways to get it** on the app's public download page, or under **Other ways to install** in your library.
 
@@ -23,7 +23,7 @@ Find them under **Other ways to get it** on the app's public download page, or u
 2. On the download page, find **Add to AltStore** or **Add to SideStore** and select **Open in the app**. In your library, select **Add to AltStore** or **Add to SideStore**.
 3. Approve the source in the app.
 
-On a computer, scan the QR code with your phone instead. To add the source by hand, copy the **Source URL** and paste it into the app.
+On a computer, the page also shows a QR code. Scan it with your phone instead. To add the source by hand, copy the **Source URL** and paste it into the app.
 
 **Add to AltStore PAL** is for AltStore PAL, a separate store app. It appears only when the developer has set it up.
 
@@ -47,7 +47,7 @@ Some apps list an install command. Copy it from the page, then run it in a termi
 
 ## When a new version shows up
 
-The page and its sources can take up to 5 minutes to show a new version, and your tool decides how often it looks. A source lists a version only when it's ready for everyone. During a gradual release or a pause, it keeps showing the previous version. A version the developer withdraws disappears from every source.
+The page and its sources can take up to 5 minutes to show a new version, and your tool decides how often it looks. A source lists a version only when it's ready for everyone. If the developer is releasing a new version in stages, or has paused it, a source keeps showing the previous version. A version the developer withdraws disappears from every source.
 
 ## Check it worked
 

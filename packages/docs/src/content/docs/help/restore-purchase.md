@@ -26,21 +26,21 @@ Use the store account you bought with. The app can restore only the purchases th
 
 For other ways to start using an app, see [Activate your app](/docs/help/activate/).
 
-## Show a store purchase in your library
+## If your library doesn't show the app
 
-Your library lists an app once a license for it is linked to your account. Under **Missing a license?**, the library tells you what to do for a store purchase.
+Your library at [key.plrs.im](https://key.plrs.im) lists an app once a license for it is linked to your account. If you bought in a store and the app is missing, look under **Missing a license?** in your library.
 
 - **Steam:** add Steam to your account.
   1. Sign in at [key.plrs.im](https://key.plrs.im).
   2. Open the account menu and select **Sign-in methods**.
   3. Under **Accounts**, select **Connect** next to **Steam**.
   4. Finish signing in with Steam. If the library says **Confirm it's you first**, confirm with the method it offers, then continue.
-- **App Store or Google Play:** sign in to the app once, then check your library.
+- **App Store or Google Play:** sign in to the app once, then check your library again.
 
 ## If it doesn't work
 
 - If nothing is restored, check that you're signed in to the store with the account you bought with.
-- A store purchase links to only one license. Restore it with the license you first used it on.
+- A store purchase links to only one license. Restore it with the same sign-in or license key you used the first time.
 - A purchase the store has refunded can't be restored. See [Refunds, billing and cancellations](/docs/help/refunds/).
 
 ## Check it worked
