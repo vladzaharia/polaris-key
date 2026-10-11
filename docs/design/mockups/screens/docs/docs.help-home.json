@@ -1,0 +1,16 @@
+{
+  "id": "docs.help-home",
+  "title": "Help",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02b", "DOC-04a"],
+  "uxRows": [],
+  "summary": "The consumer Help hub uses the Help header, a search trigger, top tasks and short topic paths in comfortable prose.",
+  "compare": [
+    "Help header has a Help tag, Search help and Your library, but no door tabs.",
+    "Top tasks use reader language and categories are organized by the task groups.",
+    "Comfortable prose is 16/26 and interactive phone controls remain usable."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

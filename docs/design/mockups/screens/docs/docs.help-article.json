@@ -1,0 +1,16 @@
+{
+  "id": "docs.help-article",
+  "title": "Move your license to a new computer",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02a", "DOC-05b"],
+  "uxRows": [],
+  "summary": "A consumer device-transfer article with an Important consequence, explicit steps, portal state pair, check, undo and support route.",
+  "compare": [
+    "The warning says what removing a device does before the action.",
+    "Steps use portal labels and the capture pair follows the active theme without external requests.",
+    "Copy page is in the header and Last reviewed appears once in the footer."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

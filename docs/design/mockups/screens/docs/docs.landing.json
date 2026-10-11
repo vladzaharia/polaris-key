@@ -1,0 +1,16 @@
+{
+  "id": "docs.landing",
+  "title": "Polaris Key docs",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02b", "DOC-07a"],
+  "uxRows": [],
+  "summary": "The public landing offers the Help, Developers and member-only Operate doors, a docs search trigger and top Help tasks without hero art.",
+  "compare": [
+    "Landing has no hero art and names Help, Developers and Operate as equal doors.",
+    "Only Operate is labelled For console members: developers are public in docs access code.",
+    "The title uses the display step and task tiles stack without horizontal scroll on phone."
+  ],
+  "status": "mockup",
+  "designReview": null
+}
