@@ -8,10 +8,10 @@ sidebar:
   order: 7
 ---
 
-Compare your file's SHA-256 with the value listed for it. A SHA-256 is a code worked out from a file's contents, so a changed or damaged file gets a different one. This check is optional.
+Compare your file's SHA-256 with the value listed for it. A SHA-256 is a code worked out from a file's contents, so a changed or damaged file gets a different one. Do this before you install the file.
 
 :::caution[Important]
-A matching value can't show that the page itself is genuine. Take the value from the app's own download page, or from your library at [key.plrs.im](https://key.plrs.im).
+A matching value can't show that the page itself is genuine. Take the value from the app's own download page, or from your library at [key.plrs.im](https://key.plrs.im). To check the page's address, see [Use the public download page](/docs/help/download/#use-the-public-download-page).
 :::
 
 ## Before you start
@@ -25,31 +25,31 @@ Have the file you downloaded, and the app's download page or your library, open.
 
 ## Get your file's value
 
-Run the command for your system, with `<file>` replaced by the file's name. The file needs to be in the folder you run it from.
+A terminal is a window where you type commands. Replace `<file>` with the file's name, in quotes if it has spaces. The file needs to be in the folder you run the command from.
 
-| System  | Program    | Command                |
-| ------- | ---------- | ---------------------- |
-| macOS   | Terminal   | `shasum -a 256 <file>` |
-| Windows | PowerShell | `Get-FileHash <file>`  |
-| Linux   | A terminal | `sha256sum <file>`     |
+- **macOS:** in Terminal, run `shasum -a 256 <file>`
+- **Linux:** in a terminal, run `sha256sum <file>`
+- **Windows:** use a program you trust that shows a file's SHA-256
 
 The two values must match exactly. Capital and small letters count as the same.
 
 ## Check several files at once
 
-The download page links **SHA256SUMS**, a list of the SHA-256 for each file of that version. Put your downloads and **SHA256SUMS** in one folder. If your system has `sha256sum`, run `sha256sum --check SHA256SUMS` there. It reports **OK** for each file that matches.
+The download page links **SHA256SUMS**, a list of the SHA-256 for every file of that version, for all systems. Put your downloads and **SHA256SUMS** in one folder. If your system has `sha256sum`, run `sha256sum --check SHA256SUMS` there. It prints `OK` for each file that matches. A listed file you didn't download can't be checked, which isn't a mismatch.
 
 ## Check an Android app's signing key
 
-For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. You check an Android app after you install it, with an app such as AppVerifier that shows an installed app's signing certificate.
+For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. An app such as AppVerifier shows an installed app's signing certificate. Check the file's SHA-256 first, then install the app.
 
 1. Install the app.
 2. In AppVerifier, find the installed app's signing certificate SHA-256.
-3. Compare it with the matching entry under **Signing keys**. Use **Android sideload signing certificate** for a file you downloaded from the page or installed with a tool such as Obtainium. Use **Android app signing certificate** for an app from Google Play.
+3. Compare it with the matching entry under **Signing keys**:
+   - **Android sideload signing certificate**: for a file you downloaded from the page or installed with a tool such as Obtainium.
+   - **Android app signing certificate**: for an app from Google Play.
 
 ## If the values don't match
 
-Don't install the file. Delete it and download it again. If an Android app's signing certificate doesn't match its entry, uninstall the app.
+Don't open or install the file. Delete it and download it again from the app's own download page or your library. If an Android app's signing certificate doesn't match its entry, uninstall the app.
 
 ## Check it worked
 

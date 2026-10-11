@@ -14,13 +14,7 @@ This page helps with refunds, charges and cancellations for an app that uses Pol
 Polaris Key takes no payment, so it can't refund an app. The app's developer or the store you bought it from can.
 :::
 
-## Who to ask
-
-Ask the store you bought from, such as the App Store, Google Play or Steam. If you paid the developer directly, ask the developer.
-
 ## What happens to the app after a refund
-
-A refund ends what you paid for.
 
 - If a store refunds a purchase that unlocked something in an app, it stops working the next time the app checks your license. The App Store and Google Play tell Polaris Key about a refund. Polaris Key checks Steam about once a week.
 - If the developer ends your license after a refund, your library shows **Suspended** for that license, and the app may say **License disabled**.

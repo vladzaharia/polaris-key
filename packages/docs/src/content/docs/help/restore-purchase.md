@@ -21,10 +21,9 @@ Use the store account you bought with. The app can restore only the purchases th
 ## Restore in the app
 
 1. Open the app.
-2. Select **Restore purchase**. Some apps say **Restore purchases**. Look on the welcome screen or on the screen that offers the purchase.
-3. Follow the store's prompt.
+2. On the welcome screen, or on the screen that says to get the app from a store, select **Restore purchase**. Some apps say **Restore purchases**.
 
-For other ways to start using an app, see [Activate your app](/docs/help/activate/).
+On a Mac, buttons use capital letters, such as **Restore Purchase**. For other ways to start using an app, see [Activate your app](/docs/help/activate/).
 
 ## If your library doesn't show the app
 
@@ -34,14 +33,15 @@ Your library at [key.plrs.im](https://key.plrs.im) lists an app once a license f
   1. Sign in at [key.plrs.im](https://key.plrs.im).
   2. Open the account menu and select **Sign-in methods**.
   3. Under **Accounts**, select **Connect** next to **Steam**.
-  4. Finish signing in with Steam. If the library says **Confirm it's you first**, confirm with the method it offers, then continue.
-- **App Store or Google Play:** sign in to the app once, then check your library again.
+  4. If the page says **Confirm it's you first**, confirm with the method it offers.
+  5. Finish signing in with Steam.
+- **App Store or Google Play:** sign in once in the app itself, then check your library again.
 
 ## If it doesn't work
 
 - If nothing is restored, check that you're signed in to the store with the account you bought with.
-- A store purchase links to only one license. Restore it with the same sign-in or license key you used the first time.
-- A purchase the store has refunded can't be restored. See [Refunds, billing and cancellations](/docs/help/refunds/).
+- A store purchase links to only one license. Sign in the same way you did the first time. If you used a license key, enter that same key.
+- A purchase the store has refunded can't be restored unless the store reverses the refund. See [Refunds, billing and cancellations](/docs/help/refunds/).
 
 ## Check it worked
 

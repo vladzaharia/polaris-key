@@ -8,46 +8,50 @@ sidebar:
   order: 8
 ---
 
-Some apps can also be installed through AltStore, SideStore, F-Droid, Obtainium, Scoop or Homebrew. AltStore and SideStore are sideloading apps for iPhone and iPad. F-Droid and Obtainium install apps on Android. Scoop and Homebrew install apps from a terminal on Windows and on a Mac. These are optional: use one if you already use that tool, or download the app as usual. Once you add an app to one, the tool finds new versions itself.
+Some apps can also be installed through AltStore, SideStore, F-Droid, Obtainium, Scoop or Homebrew. Once you add an app to AltStore, SideStore, F-Droid or Obtainium, that tool finds new versions itself.
 
 Find them under **Other ways to get it** on the app's public download page, or under **Other ways to install** in your library.
 
 ## Before you start
 
+- These are optional. Use one if you already use that tool.
 - Install the tool first, so the add link has an app to open.
+- Only add a source, or run a command, from the app's own download page or your library. Anything else can install something you didn't choose. See [Use the public download page](/docs/help/download/#use-the-public-download-page).
 - These tools can't sign in. An app that needs a license or an account to download isn't offered through them. Download it from your library instead. See [Download your app](/docs/help/download/).
 
 ## AltStore and SideStore on iPhone and iPad
 
 1. Install AltStore or SideStore on your iPhone or iPad.
-2. On the download page, find **Add to AltStore** or **Add to SideStore** and select **Open in the app**. In your library, select **Add to AltStore** or **Add to SideStore**.
+2. On the app's download page, find **Add to AltStore** or **Add to SideStore** and select **Open in the app**.
 3. Approve the source in the app.
 
-On a computer, the page also shows a QR code. Scan it with your phone instead. To add the source by hand, copy the **Source URL** and paste it into the app.
+In your library, select **Add to AltStore** or **Add to SideStore** for step 2. On a computer, the page also shows a QR code: scan it with your phone. To add the source by hand, copy the **Source URL** and paste it into the app.
 
 **Add to AltStore PAL** is for AltStore PAL, a separate store app. It appears only when the developer has set it up.
 
 ## F-Droid on Android
 
 1. Install F-Droid on your Android device.
-2. Select **Add to F-Droid**. On the download page, select **Open in the app**.
+2. On the app's download page, find **Add to F-Droid** and select **Open in the app**.
 3. Approve the repository in F-Droid.
 
-When the page lists a SHA-256 value for the repository, the link carries it for F-Droid to check. To add the repository by hand, copy the **Repository URL** and that value from the page. If the page says that no SHA-256 value is published for the repository, ask the developer before you add it.
+In your library, select **Add to F-Droid** for step 2. When the page lists a SHA-256 value for the repository, the link carries it for F-Droid to check. To add the repository by hand, copy the **Repository URL** and that value. If the page says that no SHA-256 value is published, ask the developer before you add it.
 
 ## Obtainium on Android
 
 1. Install Obtainium.
-2. On the download page, find **Add to Obtainium** and select **Open in the app**. In your library, select **Add to Obtainium**. It opens Obtainium with the app's details filled in.
+2. On the app's download page, find **Add to Obtainium** and select **Open in the app**. It opens Obtainium with the app's details filled in.
 3. If the link doesn't open Obtainium, select **Open via obtainium.imranr.dev**.
+
+In your library, select **Add to Obtainium** for step 2.
 
 ## Scoop, Homebrew and other commands
 
-Some apps list an install command. Copy it from the page, then run it in a terminal on the system it names. Scoop and winget are for Windows, Homebrew is for a Mac, and Flathub and Snap Store are for Linux.
+Some apps list an install command under the system it is for. Copy it from the app's own download page or your library, then run it in a terminal. It installs the app, so don't run a command you don't understand.
 
 ## When a new version shows up
 
-The page and its sources can take up to 5 minutes to show a new version, and your tool decides how often it looks. A source lists a version only when it's ready for everyone. If the developer is releasing a new version in stages, or has paused it, a source keeps showing the previous version. A version the developer withdraws disappears from every source.
+The page and its sources can take up to 5 minutes to show a new version, and your tool decides how often it looks. If the developer is releasing a new version in stages, or has paused or stopped it, the page, AltStore, SideStore, AltStore PAL, F-Droid and Scoop keep showing the previous version. Obtainium can still offer the new version. A version the developer withdraws disappears from every source.
 
 ## Check it worked
 
@@ -55,7 +59,7 @@ The app appears in the tool you added it to. To check a downloaded file, see [Ch
 
 ## Undo
 
-Remove the app or the source in the tool you added it to.
+In AltStore, SideStore, F-Droid or Obtainium, remove the app or the source. For an app you installed with a command, remove it with the tool that installed it.
 
 ## Still need help?
 
