@@ -9,10 +9,13 @@
  * in the blob store. So:
  *
  *   WHAT   When version V of a package is published on `stable` (a final release: no prerelease
- *          part), the package's `main`-channel prereleases that sort below V are pruned: semver
- *          `X-main.N` and PEP 440 `X.devN` with X <= V. Never a stable or beta version, never a
- *          prerelease of a version newer than V, never another package. A `beta` publish (a
- *          prerelease tag) prunes nothing.
+ *          part), the package's builds on the two ephemeral channels that sort below V are
+ *          pruned: on `main` semver `X-main.N`, on the built-in `dev` semver `X-dev.N`, and on
+ *          either PyPI's PEP 440 `X.devN`, with X <= V (every ecosystem with a feed here, OCI
+ *          included). Never a stable or beta version, never a prerelease of a version newer than
+ *          V, never another package. A `beta` publish (a prerelease tag) prunes nothing. Only
+ *          this feed is ever pruned: a copy on a public registry (npmjs, PyPI.org) is never
+ *          touched, because nothing here reaches it.
  *          The ceiling is a LIVE stable row: a yanked or deprecated stable never is one, so it
  *          cannot pull builds of main above the newest live release into the prune.
  *   KEPT   A candidate a channel policy points at (a promote or a pin), or that any other row
@@ -44,9 +47,15 @@
  *          refs left after that batch, so a run the cap or a failure cuts short records (in the
  *          tombstone, the audit and the report) only what its own deletions left unreferenced.
  *   WHEN   Automatically, right after a stable publish is committed (`pruneAfterStablePublish`,
- *          called by the ingest), for that package only, when the product turned retention on
- *          (`release.packages.prunePrereleases`: off by default for a tenant product, which opts
- *          in; the system product always prunes). A failure never fails the publish: it is
+ *          called by the ingest), for that package only, once retention is on for the product
+ *          (`release.packages.prunePrereleases`). The default is ON for every product, after a
+ *          one-time dry-run NOTICE (F-36): the Release cron raises it for a product with a
+ *          package deliverable (`noticePruneRetention`: one `package.prune.notice` audit row and
+ *          one `release_package_retention_notices` row holding what a dry run found, written by
+ *          whichever caller wins the insert when the cron and a publish race), and cleanup
+ *          starts `PRUNE_NOTICE_SECONDS` later; until then nothing is deleted. An operator's own
+ *          value (a `release_package_retention` row) wins from the moment it is written: off
+ *          stays off. The system product always prunes. A failure never fails the publish: it is
  *          audited (`package.prune.failed`), and the next stable publish retries it, as does the
  *          backfill (`prunePackages`, the admin and CI routes and `pkey feeds prune`), which
  *          dry-runs by default.
@@ -84,6 +93,9 @@ export const PRUNE_ACTOR = "system:feed-retention";
 /** The channel `publish-sdks.yml`'s builds of main are published on. */
 export const MAIN_CHANNEL = "main";
 
+/** The built-in release track (P2-08) whose builds are ephemeral beside `main`'s (F-36). */
+export const DEV_CHANNEL = "dev";
+
 /** The blob-ref kind a package version's files are held by (`ingest.ts`; SEC-DST-1). */
 const ARTIFACT_REF = PACKAGE_FILE_REF;
 
@@ -99,6 +111,7 @@ const SEMVER_MAIN = new RegExp(`^v?${NUMBER}-main\\.(\\d+)$`);
 /** PEP 440 (PyPI): a final release, and a developmental release of one. */
 const PEP440_FINAL = new RegExp(`^${NUMBER}$`);
 const PEP440_MAIN = new RegExp(`^${NUMBER}\\.dev(\\d+)$`);
+const SEMVER_DEV = new RegExp(`^v?${NUMBER}-dev\\.(\\d+)$`);
 
 function numberOf(text: string): ReleaseNumber {
   return text.split(".").map((n) => Number(n));
@@ -125,6 +138,34 @@ export function mainPrerelease(
   return m ? numberOf(m[1]!) : null;
 }
 
+/**
+ * The release number X of a build of the built-in `dev` channel (`X-dev.N`, or PyPI's `X.devN`),
+ * or `null` when the version is not one.
+ */
+export function devPrerelease(
+  ecosystem: string,
+  version: string,
+): ReleaseNumber | null {
+  const m = (ecosystem === "pypi" ? PEP440_MAIN : SEMVER_DEV).exec(version);
+  return m ? numberOf(m[1]!) : null;
+}
+
+/**
+ * The release number X of an ephemeral build, or `null` when this is not one: the version must
+ * have the shape of the channel it was published on (`main`: `X-main.N` / `X.devN`; `dev`:
+ * `X-dev.N` / `X.devN`), so a build of main published on any other channel is never a candidate.
+ * Every other channel (stable, beta, a manual one) is never ephemeral.
+ */
+export function ephemeralPrerelease(
+  ecosystem: string,
+  version: string,
+  channel: string | null | undefined,
+): ReleaseNumber | null {
+  if (channel === MAIN_CHANNEL) return mainPrerelease(ecosystem, version);
+  if (channel === DEV_CHANNEL) return devPrerelease(ecosystem, version);
+  return null;
+}
+
 /** Compare two release numbers, missing parts as 0 (`1.4` = `1.4.0`). */
 export function compareRelease(a: ReleaseNumber, b: ReleaseNumber): number {
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
@@ -149,20 +190,86 @@ export function triggersPrune(
 
 // ── The setting ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * How long a product that never chose has between the dry-run notice and the day cleanup turns
+ * on (F-36; the dry-run dialog's "Oct 7 notice, Oct 14 start"). A constant, not a setting.
+ */
+export const PRUNE_NOTICE_SECONDS = 7 * 86_400;
+
+/** The dry run the one-time notice recorded (`release_package_retention_notices`). */
+export interface PruneNotice {
+  noticedAt: number;
+  /** When cleanup turns on for a product that never chose: `noticedAt` + the window. */
+  startsAt: number;
+  /** What the dry run found: packages with something to delete, versions, bytes, freed bytes. */
+  packages: number;
+  versions: number;
+  bytes: number;
+  freedBytes: number;
+}
+
+/** What `noticePruneRetention` settled on for a product that had no notice when it was called. */
+export interface PruneNoticeOutcome {
+  /** The notice in force: the row the winning insert wrote, whichever call that was. */
+  notice: PruneNotice;
+  /**
+   * This call's insert wrote the notice and the one audit row that goes with it. `false`: a
+   * concurrent call's insert won first, `notice` is that call's, and nothing was written here.
+   */
+  raised: boolean;
+}
+
+/**
+ * Where the effective value comes from: `system` (the platform's own product, locked on),
+ * `operator` (a stored choice, on or off, effective at once) or `default` (nobody chose: on once
+ * the notice window has passed).
+ */
+export type RetentionSource = "system" | "operator" | "default";
+
 export interface PruneRetention {
-  /** The effective value: prune `main` prereleases on a stable publish. */
+  /** The effective value now: prune builds of main and dev on a stable publish. */
   prunePrereleases: boolean;
   /** The system product always prunes; its value cannot be turned off. */
   locked: boolean;
-  /** 0 = never written (the default: off for a tenant product, on for the system product). */
+  source: RetentionSource;
+  /** `default` only: the dry-run notice, `null` until it is raised (nothing is pruned before). */
+  notice: PruneNotice | null;
+  /** 0 = never written (the default: on after the notice window, always on for the system product). */
   version: number;
   updatedAt: number | null;
   updatedBy: string | null;
 }
 
+async function noticeOf(db: Db, product: string): Promise<PruneNotice | null> {
+  const r = await db.first<{
+    noticed_at: number;
+    starts_at: number;
+    packages: number;
+    versions: number;
+    bytes: number;
+    freed_bytes: number;
+  }>(
+    `SELECT noticed_at, starts_at, packages, versions, bytes, freed_bytes
+       FROM release_package_retention_notices WHERE product = ?`,
+    product,
+  );
+  return r
+    ? {
+        noticedAt: r.noticed_at,
+        startsAt: r.starts_at,
+        packages: r.packages,
+        versions: r.versions,
+        bytes: r.bytes,
+        freedBytes: r.freed_bytes,
+      }
+    : null;
+}
+
 /**
- * `release.packages.prunePrereleases` for `product`: no row is the default, OFF for a tenant
- * product (it opts in); the system product is always on.
+ * `release.packages.prunePrereleases` for `product` at `now`. A stored value is the operator's
+ * choice and wins at once. With none, the default is ON, but only once the one-time dry-run
+ * notice has been raised and its window has passed (`noticePruneRetention`), so nothing is
+ * deleted that the owner was not told about. The system product is always on.
  *
  * ST-04: the setting is written through `writeSetting()` (its column adapter is in
  * `../settingsColumns.ts`), whose `product_settings` row carries the version a write must name,
@@ -172,6 +279,7 @@ export interface PruneRetention {
 export async function pruneRetentionOf(
   db: Db,
   product: string,
+  now: number,
 ): Promise<PruneRetention> {
   const row = await db.first<{
     prune_prereleases: number;
@@ -192,9 +300,19 @@ export async function pruneRetentionOf(
     PRUNE_SETTING_KEY,
   );
   const locked = retentionLocked(product);
+  const source: RetentionSource = locked
+    ? "system"
+    : row
+      ? "operator"
+      : "default";
+  const notice = source === "default" ? await noticeOf(db, product) : null;
   return {
-    prunePrereleases: locked || row?.prune_prereleases === 1,
+    prunePrereleases:
+      locked ||
+      (row ? row.prune_prereleases === 1 : !!notice && notice.startsAt <= now),
     locked,
+    source,
+    notice,
     version: setting?.version ?? 0,
     updatedAt: setting?.updated_at ?? row?.updated_at ?? null,
     updatedBy: setting?.updated_by ?? row?.updated_by ?? null,
@@ -489,8 +607,7 @@ export async function planPackagePrune(
     freedBytes: 0,
   };
   const candidates = rows.filter((row) => {
-    if (row.channel !== MAIN_CHANNEL) return false;
-    const base = mainPrerelease(row.ecosystem, row.version);
+    const base = ephemeralPrerelease(row.ecosystem, row.version, row.channel);
     return base !== null && compareRelease(base, ceiling) <= 0;
   });
   const holds = await holdsOf(
@@ -787,14 +904,20 @@ async function recordFailure(
 export type AutoPruneOutcome =
   | { status: "not-stable" }
   | { status: "off" }
+  /**
+   * The product had no dry-run notice yet: one is in force now (raised by this call or a
+   * concurrent one), and nothing was deleted.
+   */
+  | { status: "notice" }
   | { status: "pruned"; plan: PackagePrunePlan; applied: PruneApplied }
   | { status: "failed"; error: string };
 
 /**
  * The automatic prune, after a package version was published and committed: when it is a final
- * release on `stable` and the product keeps retention on, prune that package's builds of main
- * below it. NEVER throws: a failure is audited, and the next stable publish (or the
- * backfill) retries it.
+ * release on `stable` and retention is on for the product, prune that package's builds of main
+ * and dev below it. A product that never chose and has had no dry-run notice yet gets the notice
+ * now instead (`noticePruneRetention`). NEVER throws: a failure is audited, and the next stable
+ * publish (or the backfill) retries it.
  */
 export async function pruneAfterStablePublish(
   db: Db,
@@ -813,8 +936,13 @@ export async function pruneAfterStablePublish(
     return { status: "not-stable" };
   const target = `${published.ecosystem}:${published.name}`;
   try {
-    if (!(await pruneRetentionOf(db, product)).prunePrereleases)
-      return { status: "off" };
+    const retention = await pruneRetentionOf(db, product, now);
+    if (!retention.prunePrereleases) {
+      if (retention.source !== "default" || retention.notice)
+        return { status: "off" };
+      await noticePruneRetention(db, env, product, now);
+      return { status: "notice" };
+    }
     const plan = await planPackagePrune(
       db,
       product,
@@ -852,6 +980,126 @@ export async function pruneAfterStablePublish(
   }
 }
 
+/**
+ * The one-time dry-run notice (F-36): record what cleanup would delete today and the day it
+ * turns on (`PRUNE_NOTICE_SECONDS` from now). Nothing is deleted by this. Written once per
+ * product, whoever races for it (the Release cron and a stable publish can both find no notice
+ * and take their dry runs): the notice row and its one audit row (`package.prune.notice`) go in
+ * ONE batch, and the audit row is written only when the insert before it changed a row. So the
+ * call whose insert wins writes both (`raised`), and a call that lost answers the notice in
+ * force, the winner's counts and start day, never the dry run it took itself.
+ *
+ * `null` when there was nothing to raise: the product is locked on, has chosen for itself, or
+ * already had a notice when this was called.
+ */
+export async function noticePruneRetention(
+  db: Db,
+  env: Env,
+  product: string,
+  now: number,
+): Promise<PruneNoticeOutcome | null> {
+  if (retentionLocked(product)) return null;
+  const current = await pruneRetentionOf(db, product, now);
+  if (current.source !== "default" || current.notice) return null;
+  const report = await prunePackages(db, env, product, {
+    apply: false,
+    actor: SYSTEM_PRUNE_ACTOR,
+    now,
+  });
+  const notice: PruneNotice = {
+    noticedAt: now,
+    startsAt: now + PRUNE_NOTICE_SECONDS,
+    packages: report?.packages.filter((p) => p.prune.length > 0).length ?? 0,
+    versions: report?.totals.versions ?? 0,
+    bytes: report?.totals.bytes ?? 0,
+    freedBytes: report?.totals.freedBytes ?? 0,
+  };
+  const day = new Date(notice.startsAt * 1000).toISOString().slice(0, 10);
+  const auditId = randomId("aud");
+  const statements: DbStatement[] = [
+    {
+      sql: `INSERT INTO release_package_retention_notices
+              (product, noticed_at, starts_at, packages, versions, bytes, freed_bytes)
+            VALUES (?,?,?,?,?,?,?)
+            ON CONFLICT(product) DO NOTHING`,
+      params: [
+        product,
+        notice.noticedAt,
+        notice.startsAt,
+        notice.packages,
+        notice.versions,
+        notice.bytes,
+        notice.freedBytes,
+      ],
+    },
+    {
+      // Only the call whose insert won writes its audit row: `changes()` is the count of the
+      // statement just before this one in the batch's transaction, 0 when the product already
+      // had its notice (the primary key is the product). Proven on D1 in
+      // `test-workerd/pruneNotice.test.ts`.
+      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
+              target_kind, target_id, parent_id, summary)
+            SELECT ?, ?, ?, ?, ?, NULL, 'package.prune.notice', 'feed', 'retention', NULL, ?
+             WHERE changes() > 0`,
+      params: [
+        product,
+        auditId,
+        now,
+        PRUNE_ACTOR,
+        SYSTEM_PRUNE_ACTOR.name,
+        `Cleanup of builds of main and dev turns on ${day}: ${notice.versions} version${notice.versions === 1 ? "" : "s"} across ${notice.packages} package${notice.packages === 1 ? "" : "s"} (${notice.bytes} bytes) would be deleted at the next stable release. Nothing is deleted before then; turn cleanup off in the feed settings to keep them.`,
+      ],
+    },
+  ];
+  let raised: boolean;
+  if (db.batchChanges) {
+    // The insert's changed-row count says who won: 1 for the call that wrote the row, 0 for one
+    // that conflicted with it.
+    raised = (await db.batchChanges(statements))[0] === 1;
+  } else {
+    // A database without per-statement counts (a test double): the audit row follows only an
+    // insert that won, so this call's row exists exactly when it won.
+    await db.batch(statements);
+    raised =
+      (await db.first(
+        "SELECT 1 AS ok FROM audit WHERE product = ? AND id = ?",
+        product,
+        auditId,
+      )) !== null;
+  }
+  if (raised) return { notice, raised };
+  // A concurrent call's insert won: ITS notice is the one in force, not the dry run taken here.
+  const inForce = await noticeOf(db, product);
+  return inForce ? { notice: inForce, raised } : null;
+}
+
+/**
+ * The Release cron's hook (`scheduled`, only for a product with Release on): raise the dry-run
+ * notice for a product that has a package deliverable and has neither chosen a value nor been
+ * noticed. One indexed read for every other product. `noticed` counts the notice THIS call
+ * raised: 0 when a stable publish (or another tick) raised it first.
+ */
+export async function sweepPruneNotice(ctx: {
+  db: Db;
+  env: Env;
+  product: { slug: string };
+  now: number;
+}): Promise<{ noticed: number }> {
+  const { db, product, now } = ctx;
+  if (retentionLocked(product.slug)) return { noticed: 0 };
+  const due = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM release_deliverables d
+      WHERE d.product = ? AND d.kind = 'package'
+        AND NOT EXISTS (SELECT 1 FROM release_package_retention r WHERE r.product = d.product)
+        AND NOT EXISTS (SELECT 1 FROM release_package_retention_notices n WHERE n.product = d.product)
+      LIMIT 1`,
+    product.slug,
+  );
+  if (!due) return { noticed: 0 };
+  const outcome = await noticePruneRetention(db, ctx.env, product.slug, now);
+  return { noticed: outcome?.raised ? 1 : 0 };
+}
+
 function emptyPlan(p: {
   deliverableId: string;
   ecosystem: string;
@@ -886,6 +1134,8 @@ export interface PruneReport {
   dryRun: boolean;
   /** The product's retention setting (the backfill runs either way: it is an explicit act). */
   prunePrereleases: boolean;
+  /** Where that value comes from, and the dry-run notice while it is the default. */
+  retention: PruneRetention;
   packages: PrunePackageReport[];
   /** Packages with no live stable release yet, which nothing is pruned below. */
   skipped: { deliverableId: string; reason: "no-stable" }[];
@@ -931,10 +1181,12 @@ export async function prunePackages(
     .map((r) => r.deliverable_id)
     .filter((id) => opts.deliverable === undefined || id === opts.deliverable);
   if (opts.deliverable !== undefined && ids.length === 0) return null;
+  const retention = await pruneRetentionOf(db, product, opts.now);
   const report: PruneReport = {
     product,
     dryRun: !opts.apply,
-    prunePrereleases: (await pruneRetentionOf(db, product)).prunePrereleases,
+    prunePrereleases: retention.prunePrereleases,
+    retention,
     packages: [],
     skipped: [],
     totals: { versions: 0, bytes: 0, freedBytes: 0, failed: 0, skipped: 0 },

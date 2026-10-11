@@ -310,6 +310,39 @@ describe("pkey feeds prune", () => {
     expect((JSON.parse(r.out) as PruneReport).totals.skipped).toBe(2);
   });
 
+  it("says when a default cleanup turns on, from the dry-run notice", () => {
+    const notice = {
+      noticedAt: 1_700_000_000,
+      startsAt: 1_700_604_800,
+      packages: 1,
+      versions: 1,
+      bytes: 1,
+      freedBytes: 1,
+    };
+    const base = report(true);
+    const out = renderPruneReport({
+      ...base,
+      prunePrereleases: false,
+      retention: { source: "default", notice },
+    });
+    expect(out).toContain("(automatic cleanup off)");
+    expect(out).toContain("Automatic cleanup turns on 2023-11-21");
+    expect(out).toContain("Nothing is deleted before then.");
+    expect(
+      renderPruneReport({
+        ...base,
+        retention: { source: "operator", notice: null },
+      }),
+    ).not.toContain("turns on");
+    expect(
+      renderPruneReport({
+        ...base,
+        prunePrereleases: false,
+        retention: { source: "default", notice: null },
+      }),
+    ).toContain("starts a week after a first dry-run notice");
+  });
+
   it("formats bytes in decimal units", () => {
     expect(formatBytes(999)).toBe("999 B");
     expect(formatBytes(1500)).toBe("1.5 kB");

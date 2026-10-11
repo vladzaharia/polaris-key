@@ -47,6 +47,22 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Security review and THREAT-MODEL rows before merge (`sec`).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections found against the code (2026-10-11)
+
+- The brief said `prune.ts` prunes "prereleases at or below V ... on stable"; the code pruned only
+  the `main` channel by version SHAPE (`X-main.N`, `X.devN`). The built-in `dev` channel (P2-08)
+  has its own spelling, `X-dev.N` (PyPI `X.devN`), and a build is a candidate only on the channel
+  its spelling belongs to (`ephemeralPrerelease`). OCI needed no change: it reads the same rows.
+- "A one-time dry-run notice" had no mechanism. It is `release_package_retention_notices`
+  (placeholder `00XX_`, the lead numbers it) plus one `package.prune.notice` audit row, raised by
+  Release's cron hook or the first stable publish; cleanup starts `PRUNE_NOTICE_SECONDS` (a week)
+  later. A stored `release_package_retention` value (on or off) is the operator's choice and wins
+  at once. The registry default flips to `true`; no new setting and no per-channel flag.
+- `pruneRetentionOf` takes `now` (the default depends on the notice window); the retention route's
+  GET and the prune report carry `source` and `notice`, the data F-38's dialog reads.
+- The public registries are never pruned: the prune has no network client; a test pins it.
+- The stable-tag backstop job's "builds of main only" check in `publish-sdks.yml` admits `X-dev.N`.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -60,9 +76,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Tenants get pruning on after a dry-run notice
-- [ ] -main.N and dev builds disappear at the next stable
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/packages/*`; `build/install` (private feeds); `help/packages`.
+- [x] Tenants get pruning on after a dry-run notice
+- [x] -main.N and dev builds disappear at the next stable
+- [x] Docs, in this PR (`features/ship-builds/packages/index`, `build/install`, RUNBOOK, THREAT-MODEL; `help/packages` has no page yet: a stub owned by the docs lane) ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/packages/*`; `build/install` (private feeds); `help/packages`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

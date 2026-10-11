@@ -22853,7 +22853,7 @@ var COMMANDS = [
       },
       {
         subs: ["prune"],
-        text: "pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants."
+        text: "pkey feeds prune deletes each package's builds of main and dev (X-main.N, X-dev.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed cleanup, which is on by default after a one-time dry-run notice. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants."
       },
       {
         subs: ["setup"],
@@ -40922,8 +40922,15 @@ function renderPruneReport(r, env = {}) {
   const lines3 = [];
   const verb = r.dryRun ? "Would prune" : "Pruned";
   lines3.push(
-    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`
+    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic cleanup ${r.prunePrereleases ? "on" : "off"}).`
   );
+  const notice = r.retention?.notice;
+  if (r.retention?.source === "default") {
+    const day = notice ? new Date(notice.startsAt * 1e3).toISOString().slice(0, 10) : null;
+    lines3.push(
+      day ? `Automatic cleanup ${r.prunePrereleases ? "turned on" : "turns on"} ${day}: the first stable release after that deletes what is listed here. Nothing is deleted before then. Turn it off in the feed settings to keep these builds.` : "Automatic cleanup is on by default and starts a week after a first dry-run notice; nothing is deleted before then."
+    );
+  }
   for (const p of r.packages) {
     lines3.push(
       `${u(p.ecosystem)} ${u(p.name)}: newest stable ${u(p.stable)}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`

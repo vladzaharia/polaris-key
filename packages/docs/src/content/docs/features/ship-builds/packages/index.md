@@ -830,21 +830,28 @@ A yank needs a reason and is a danger confirmation; unyank, deprecate (with a me
 deprecation are caution confirmations. There is no delete action. A version number is unique
 forever, so a yanked version can never be published again.
 
-### Retention: builds of main
+### Retention: builds of main and dev
 
 Feed retention is the one thing that deletes versions. When a version is published on `stable`,
-the package's builds of main below it are pruned: `X-main.N`, or Python's `X.devN`, for every X
-at or below the released version. Stable and beta versions stay, and so do builds of a newer
-version and any version a channel points at. Each pruned version is audited as
-`package.version.prune` with its size, and it leaves a tombstone, so the number is still never
-published again. The bytes are reclaimed by the blob collector once no remaining version,
-package or product references them. It is off by default for a product, which opts in through
-`PUT …/retention` (`release.packages.prunePrereleases`). The platform's own feeds always prune
-and cannot turn it off. A yanked or deprecated stable release never sets the ceiling.
-`POST …/prune` is the backfill for versions released before this existed, or before the product
-opted in. It runs as a dry run unless `apply` is true, and so does `pkey feeds prune`. A version
-a channel or another row took hold of between the plan and the deletion is kept and listed as
-skipped.
+the package's builds on the two ephemeral tracks are pruned: `X-main.N` from `main`, `X-dev.N` from
+the built-in `dev` track, or Python's `X.devN`, for every X at or below the released version, on
+every ecosystem with a feed (OCI tags included). Stable and beta versions stay, and so do builds of
+a newer version and any version a channel points at. A build is a candidate only on the track its
+spelling belongs to. Each pruned version is audited as `package.version.prune` with its size, and it
+leaves a tombstone, so the number is still never published again. The bytes are reclaimed by the
+blob collector once no remaining version, package or product references them. Copies on public
+registries are never touched: cleanup only reaches this feed.
+
+It is on by default for every product (`release.packages.prunePrereleases`), after a dry-run
+notice. The first time a product that never chose reaches it (the Release cron, or its first
+stable publish), the Worker records what a dry run finds and the day cleanup starts, a week later
+(`package.prune.notice` in the audit log, and `notice` on `GET …/retention`). Nothing is deleted
+before that day. An operator's own value through `PUT …/retention` applies at once, on or off, and
+off stays off. The platform's own feeds always prune and cannot turn it off. A yanked or deprecated
+stable release never sets the ceiling. `POST …/prune` is the backfill for versions released before
+this existed, or while it was off. It runs as a dry run unless `apply` is true, and so does
+`pkey feeds prune`. A version a channel or another row took hold of between the plan and the
+deletion is kept and listed as skipped.
 
 ## Setup from the CLI
 

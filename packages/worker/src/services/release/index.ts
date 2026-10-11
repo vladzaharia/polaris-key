@@ -24,6 +24,7 @@ import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { releaseCatalog } from "./catalog.js";
 import { releaseKeyFingerprints } from "./records.js";
 import { sweepNativeSessions } from "./packages/native/index.js";
+import { sweepPruneNotice } from "./packages/prune.js";
 import { RELEASE_SETTINGS_SLICE } from "./settings.js";
 
 export const releaseService: ServiceDescriptor = {
@@ -42,8 +43,13 @@ export const releaseService: ServiceDescriptor = {
    * F-22: the connector cron's sweep of native-client upload sessions (twine and Maven send a
    * version as several requests): publish the sessions left idle, fail the abandoned ones, purge
    * finished rows (`packages/native/sessions.ts`). One indexed read for a product with none.
+   * F-36: the same tick raises the one-time dry-run notice of feed cleanup for a product that
+   * never chose (`packages/prune.ts` `sweepPruneNotice`).
    */
-  scheduled: async (ctx) => ({ nativeUploads: await sweepNativeSessions(ctx) }),
+  scheduled: async (ctx) => ({
+    nativeUploads: await sweepNativeSessions(ctx),
+    pruneNotice: await sweepPruneNotice(ctx),
+  }),
   /**
    * Release's slice of `/.well-known/polaris.json` (design spec §4.3).
    *

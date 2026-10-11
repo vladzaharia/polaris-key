@@ -9,6 +9,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PACKAGE_ECOSYSTEM_RULES,
@@ -20,23 +21,30 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { asR2, R2Mock } from "./r2Mock.js";
-import type { Db } from "../src/db/types.js";
+import type { Db, DbStatement } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { packageCatalog } from "../src/services/release/packages/catalog.js";
 import {
+  type AutoPruneOutcome,
   applyPackagePrune,
   compareRelease,
+  devPrerelease,
+  ephemeralPrerelease,
   finalRelease,
   mainPrerelease,
   newestStable,
+  noticePruneRetention,
   planPackagePrune,
   PRUNE_MAX_PER_RUN,
+  PRUNE_NOTICE_SECONDS,
+  type PruneNoticeOutcome,
   pruneAfterStablePublish,
   prunePackages,
   pruneRetentionOf,
   setPruneRetention,
   SYSTEM_PRUNE_ACTOR,
+  sweepPruneNotice,
   triggersPrune,
 } from "../src/services/release/packages/prune.js";
 import { catalogPackageSource } from "../src/services/distribution/registry/catalogSource.js";
@@ -779,39 +787,144 @@ describe("the automatic prune", () => {
     expect(await versionsOf("npm")).toHaveLength(7);
   });
 
-  it("is off by default for a tenant product: a stable publish prunes nothing until it opts in", async () => {
-    expect(await pruneRetentionOf(db, P)).toEqual({
+  it("is on by default after a one-time dry-run notice: nothing is pruned until the notice's week has passed", async () => {
+    expect(await pruneRetentionOf(db, P, NOW)).toEqual({
       prunePrereleases: false,
       locked: false,
+      source: "default",
+      notice: null,
       version: 0,
       updatedAt: null,
       updatedBy: null,
     });
     await publishRow("npm", "1.1.0", "stable");
-    expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
+    // The first stable publish of a product that never chose raises the notice and deletes nothing.
+    expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "notice" });
     expect(await versionsOf("npm")).toHaveLength(7);
     expect(
       await db.first("SELECT COUNT(*) AS n FROM release_package_prunes"),
     ).toEqual({ n: 0 });
+    const notice = {
+      noticedAt: NOW,
+      startsAt: NOW + PRUNE_NOTICE_SECONDS,
+      packages: 1,
+      versions: 3,
+      bytes: 3000,
+      freedBytes: 3000,
+    };
+    expect(await pruneRetentionOf(db, P, NOW)).toMatchObject({
+      prunePrereleases: false,
+      source: "default",
+      notice,
+    });
+    expect(
+      await db.all(
+        "SELECT actor_sub, target_kind, target_id FROM audit WHERE product = ? AND action = 'package.prune.notice'",
+        P,
+      ),
+    ).toEqual([
+      {
+        actor_sub: "system:feed-retention",
+        target_kind: "feed",
+        target_id: "retention",
+      },
+    ]);
+    // The notice is raised once: the next publish inside the window prunes nothing either.
+    expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
+    expect(await noticePruneRetention(db, env, P, NOW + 5)).toBeNull();
+    expect(
+      await db.first(
+        "SELECT COUNT(*) AS n FROM audit WHERE product = ? AND action = 'package.prune.notice'",
+        P,
+      ),
+    ).toEqual({ n: 1 });
+    expect(await versionsOf("npm")).toHaveLength(7);
 
-    // Opting in (version 0 → 1), then turning it off again, each against the version read.
-    await optIn();
-    expect(await setRetention(P, false, 0)).toBe("stale");
-    expect(await pruneRetentionOf(db, P)).toMatchObject({
+    // After the week the default is on: the next stable publish prunes.
+    const later = NOW + PRUNE_NOTICE_SECONDS;
+    expect(await pruneRetentionOf(db, P, later)).toMatchObject({
       prunePrereleases: true,
-      locked: false,
+      source: "default",
+    });
+    const out = await pruneAfterStablePublish(
+      db,
+      env,
+      P,
+      {
+        deliverableId: did("npm"),
+        ecosystem: "npm",
+        name: SHAPES.npm.name,
+        version: "1.1.0",
+        channel: "stable",
+      },
+      later,
+    );
+    expect(out.status).toBe("pruned");
+    expect(await versionsOf("npm")).toHaveLength(4);
+  });
+
+  it("an operator's own choice wins at once: off stays off, on needs no notice", async () => {
+    await publishRow("npm", "1.1.0", "stable");
+    expect(await setRetention(P, false, 0)).toBe("written");
+    expect(await pruneRetentionOf(db, P, NOW)).toMatchObject({
+      prunePrereleases: false,
+      source: "operator",
+      notice: null,
       version: 1,
       updatedBy: "admin:u1",
     });
-    expect(await setRetention(P, false, 1)).toBe("written");
+    // Off is never noticed over and never pruned, even long after.
     expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
+    expect(
+      await sweepPruneNotice({ db, env, product: { slug: P }, now: NOW }),
+    ).toEqual({
+      noticed: 0,
+    });
     expect(await versionsOf("npm")).toHaveLength(7);
+
+    // Turning it on prunes the very next stable publish, with no notice.
+    expect(await setRetention(P, true, 0)).toBe("stale");
+    expect(await setRetention(P, true, 1)).toBe("written");
+    expect(await autoPrune("npm", "1.1.0")).toMatchObject({ status: "pruned" });
+    expect(await versionsOf("npm")).toHaveLength(4);
+    expect(
+      await db.first(
+        "SELECT COUNT(*) AS n FROM release_package_retention_notices",
+      ),
+    ).toEqual({ n: 0 });
+  });
+
+  it("the Release cron raises the notice for a product with a package, once, and never for the system product", async () => {
+    const swept = () =>
+      sweepPruneNotice({ db, env, product: { slug: P }, now: NOW });
+    // The history's one build of main below the stable 1.0.0 is what the dry run finds.
+    expect(await swept()).toEqual({ noticed: 1 });
+    expect(await pruneRetentionOf(db, P, NOW)).toMatchObject({
+      notice: { versions: 1, startsAt: NOW + PRUNE_NOTICE_SECONDS },
+    });
+    expect(await swept()).toEqual({ noticed: 0 });
+    await seedProduct(db, SYSTEM_PRODUCT_SLUG);
+    expect(
+      await sweepPruneNotice({
+        db,
+        env,
+        product: { slug: SYSTEM_PRODUCT_SLUG },
+        now: NOW,
+      }),
+    ).toEqual({ noticed: 0 });
+    // A product without a package deliverable is not noticed.
+    await seedProduct(db, "plain");
+    expect(
+      await sweepPruneNotice({ db, env, product: { slug: "plain" }, now: NOW }),
+    ).toEqual({ noticed: 0 });
   });
 
   it("is on by default for the system product, which cannot turn it off", async () => {
-    expect(await pruneRetentionOf(db, SYSTEM_PRODUCT_SLUG)).toEqual({
+    expect(await pruneRetentionOf(db, SYSTEM_PRODUCT_SLUG, NOW)).toEqual({
       prunePrereleases: true,
       locked: true,
+      source: "system",
+      notice: null,
       version: 0,
       updatedAt: null,
       updatedBy: null,
@@ -827,13 +940,13 @@ describe("the automatic prune", () => {
       NOW,
     );
     expect(
-      (await pruneRetentionOf(db, SYSTEM_PRODUCT_SLUG)).prunePrereleases,
+      (await pruneRetentionOf(db, SYSTEM_PRODUCT_SLUG, NOW)).prunePrereleases,
     ).toBe(true);
   });
 
-  it("registers the setting with the tenant default, off", () => {
+  it("registers the setting with the default on", () => {
     const def = SETTINGS.get("release.packages.prunePrereleases", "product")!;
-    expect(def.defaultValue).toBe(false);
+    expect(def.defaultValue).toBe(true);
     expect(def.storage).toEqual({
       kind: "column",
       table: "release_package_retention",
@@ -921,6 +1034,223 @@ describe("the automatic prune", () => {
   });
 });
 
+// ── The dry-run notice when callers race ─────────────────────────────────────────────────────
+
+/**
+ * A Db that runs `race` once, just before the first batch that writes a retention notice: a
+ * concurrent caller committing between this caller's reads (no notice yet, the dry run) and its
+ * write. It has no `batchChanges` when `inner` has none, as a test double without per-statement
+ * counts has none.
+ */
+function overtaken(inner: Db, race: () => Promise<unknown>): Db {
+  let fired = false;
+  const before = async (stmts: DbStatement[]): Promise<void> => {
+    if (
+      fired ||
+      !stmts.some((s) =>
+        s.sql.includes("INSERT INTO release_package_retention_notices"),
+      )
+    )
+      return;
+    fired = true;
+    await race();
+  };
+  const counted = inner.batchChanges?.bind(inner);
+  return {
+    all: (sql, ...p) => inner.all(sql, ...p),
+    first: (sql, ...p) => inner.first(sql, ...p),
+    run: (sql, ...p) => inner.run(sql, ...p),
+    runChanges: (sql, ...p) => inner.runChanges(sql, ...p),
+    batch: async (stmts) => {
+      await before(stmts);
+      return inner.batch(stmts);
+    },
+    ...(counted
+      ? {
+          batchChanges: async (stmts: DbStatement[]) => {
+            await before(stmts);
+            return counted(stmts);
+          },
+        }
+      : {}),
+  };
+}
+
+describe("the dry-run notice when callers race", () => {
+  const week = PRUNE_NOTICE_SECONDS;
+  /** A caller whose clock reads an hour after the one it races. */
+  const later = NOW + 3600;
+  const stable = {
+    deliverableId: did("npm"),
+    ecosystem: "npm",
+    name: SHAPES.npm.name,
+    version: "1.1.0",
+    channel: "stable",
+  };
+  const noticeRows = () =>
+    db.all(
+      "SELECT product, noticed_at, starts_at, packages, versions, bytes, freed_bytes FROM release_package_retention_notices",
+    );
+  const noticeAudits = () =>
+    db.all(
+      "SELECT at, actor_sub, target_kind, target_id, summary FROM audit WHERE product = ? AND action = 'package.prune.notice'",
+      P,
+    );
+
+  beforeEach(async () => {
+    await declare(P, ["npm"]);
+    await history("npm");
+  });
+
+  it("answers the notice it raised, and nothing once the product has one", async () => {
+    expect(await noticePruneRetention(db, env, P, NOW)).toEqual({
+      notice: {
+        noticedAt: NOW,
+        startsAt: NOW + week,
+        packages: 1,
+        versions: 1,
+        bytes: 1000,
+        freedBytes: 1000,
+      },
+      raised: true,
+    });
+    expect(await noticePruneRetention(db, env, P, later)).toBeNull();
+    expect(await noticeRows()).toHaveLength(1);
+    expect(await noticeAudits()).toHaveLength(1);
+  });
+
+  it("two callers that both found no notice raise ONE notice and ONE audit row, and both answer it", async () => {
+    // The loser's dry run, taken before the rival published the stable 1.1.0, found 1 version; the
+    // winner's found 3. The notice in force is the winner's whole: its counts and its start day.
+    const rival: { out: PruneNoticeOutcome | null } = { out: null };
+    const loser = await noticePruneRetention(
+      overtaken(db, async () => {
+        await publishRow("npm", "1.1.0", "stable");
+        rival.out = await noticePruneRetention(db, env, P, later);
+      }),
+      env,
+      P,
+      NOW,
+    );
+    const inForce = {
+      noticedAt: later,
+      startsAt: later + week,
+      packages: 1,
+      versions: 3,
+      bytes: 3000,
+      freedBytes: 3000,
+    };
+    expect(await noticeRows()).toEqual([
+      {
+        product: P,
+        noticed_at: later,
+        starts_at: later + week,
+        packages: 1,
+        versions: 3,
+        bytes: 3000,
+        freed_bytes: 3000,
+      },
+    ]);
+    expect(await noticeAudits()).toEqual([
+      {
+        at: later,
+        actor_sub: "system:feed-retention",
+        target_kind: "feed",
+        target_id: "retention",
+        summary: expect.stringContaining(
+          `turns on ${new Date((later + week) * 1000).toISOString().slice(0, 10)}: 3 versions across 1 package (3000 bytes)`,
+        ) as string,
+      },
+    ]);
+    expect(rival.out).toEqual({ notice: inForce, raised: true });
+    expect(loser).toEqual({ notice: inForce, raised: false });
+    expect(await pruneRetentionOf(db, P, NOW)).toMatchObject({
+      source: "default",
+      notice: inForce,
+    });
+    // Nothing was deleted: the history's six versions and the stable 1.1.0.
+    expect(await versionsOf("npm")).toHaveLength(7);
+  });
+
+  it("the Release cron overtaken by a stable publish reports no notice of its own, and the publish's notice stands", async () => {
+    await publishRow("npm", "1.1.0", "stable");
+    const publish: { out: AutoPruneOutcome | null } = { out: null };
+    const cron = await sweepPruneNotice({
+      db: overtaken(db, async () => {
+        publish.out = await pruneAfterStablePublish(db, env, P, stable, later);
+      }),
+      env,
+      product: { slug: P },
+      now: NOW,
+    });
+    expect(publish.out).toEqual({ status: "notice" });
+    expect(cron).toEqual({ noticed: 0 });
+    expect(await noticeRows()).toMatchObject([
+      { noticed_at: later, starts_at: later + week, versions: 3 },
+    ]);
+    expect(await noticeAudits()).toMatchObject([{ at: later }]);
+    expect(await versionsOf("npm")).toHaveLength(7);
+  });
+
+  it("a stable publish overtaken by the Release cron still answers notice, and the cron's notice stands", async () => {
+    await publishRow("npm", "1.1.0", "stable");
+    const cron: { out: { noticed: number } | null } = { out: null };
+    const publish = await pruneAfterStablePublish(
+      overtaken(db, async () => {
+        cron.out = await sweepPruneNotice({
+          db,
+          env,
+          product: { slug: P },
+          now: later,
+        });
+      }),
+      env,
+      P,
+      stable,
+      NOW,
+    );
+    expect(cron.out).toEqual({ noticed: 1 });
+    expect(publish).toEqual({ status: "notice" });
+    expect(await noticeRows()).toMatchObject([
+      { noticed_at: later, starts_at: later + week, versions: 3 },
+    ]);
+    expect(await noticeAudits()).toMatchObject([{ at: later }]);
+    expect(await versionsOf("npm")).toHaveLength(7);
+  });
+
+  it("holds on a database that reports no per-statement counts", async () => {
+    // A test double without `batchChanges`: every write goes through `batch`.
+    const blind: Db = {
+      all: (sql, ...p) => db.all(sql, ...p),
+      first: (sql, ...p) => db.first(sql, ...p),
+      run: (sql, ...p) => db.run(sql, ...p),
+      runChanges: (sql, ...p) => db.runChanges(sql, ...p),
+      batch: (stmts) => db.batch(stmts),
+    };
+    const rival: { out: PruneNoticeOutcome | null } = { out: null };
+    const loser = await noticePruneRetention(
+      overtaken(blind, async () => {
+        rival.out = await noticePruneRetention(blind, env, P, later);
+      }),
+      env,
+      P,
+      NOW,
+    );
+    const inForce = {
+      noticedAt: later,
+      startsAt: later + week,
+      packages: 1,
+      versions: 1,
+      bytes: 1000,
+      freedBytes: 1000,
+    };
+    expect(rival.out).toEqual({ notice: inForce, raised: true });
+    expect(loser).toEqual({ notice: inForce, raised: false });
+    expect(await noticeRows()).toHaveLength(1);
+    expect(await noticeAudits()).toMatchObject([{ at: later }]);
+  });
+});
+
 // ── Render leftovers ─────────────────────────────────────────────────────────────────────────
 
 describe("the render after a prune", () => {
@@ -983,6 +1313,88 @@ describe("the channel filter", () => {
         ["1.0.0", "1.1.0", onBeta, onNightly, onStable].sort(),
       );
     }
+  });
+});
+
+describe("the built-in dev channel (F-36)", () => {
+  it("reads a build of dev only on the dev channel, in its own spelling", () => {
+    expect(devPrerelease("npm", "1.4.0-dev.7")).toEqual([1, 4, 0]);
+    expect(devPrerelease("pypi", "1.4.0.dev7")).toEqual([1, 4, 0]);
+    expect(devPrerelease("npm", "1.4.0-main.7")).toBeNull();
+    expect(devPrerelease("npm", "1.4.0-dev.7-x")).toBeNull();
+    expect(ephemeralPrerelease("npm", "1.4.0-dev.7", "dev")).toEqual([1, 4, 0]);
+    expect(ephemeralPrerelease("npm", "1.4.0-dev.7", "main")).toBeNull();
+    expect(ephemeralPrerelease("npm", "1.4.0-main.7", "dev")).toBeNull();
+    expect(ephemeralPrerelease("npm", "1.4.0-main.7", "main")).toEqual([
+      1, 4, 0,
+    ]);
+    expect(ephemeralPrerelease("pypi", "1.4.0.dev7", "dev")).toEqual([1, 4, 0]);
+    expect(ephemeralPrerelease("npm", "1.4.0-dev.7", "stable")).toBeNull();
+    expect(ephemeralPrerelease("npm", "1.4.0-dev.7", "beta")).toBeNull();
+    expect(ephemeralPrerelease("npm", "1.4.0-dev.7", null)).toBeNull();
+  });
+
+  it("prunes builds of dev beside builds of main at the next stable, per ecosystem, and keeps the rest", async () => {
+    await declare(P, ["npm", "pypi", "oci"]);
+    await optIn();
+    const dev = {
+      npm: ["1.1.0-dev.1", "1.1.0-dev.2", "1.1.1-dev.1"],
+      pypi: ["1.1.0.dev11", "1.1.0.dev12", "1.1.1.dev1"],
+      oci: ["1.1.0-dev.1", "1.1.0-dev.2", "1.1.1-dev.1"],
+    } as const;
+    for (const eco of ["npm", "pypi", "oci"] as const) {
+      const [a, b, newer] = dev[eco];
+      await publishRow(eco, "1.0.0", "stable");
+      await publishRow(eco, a, "dev");
+      await publishRow(eco, b, "dev");
+      await publishRow(eco, newer, "dev");
+      await publishRow(eco, SHAPES[eco].v.main1, "main");
+      await publishRow(eco, SHAPES[eco].v.beta, "beta");
+      await publishRow(eco, "1.1.0", "stable");
+      const out = await autoPrune(eco, "1.1.0");
+      expect(out.status, eco).toBe("pruned");
+      // PyPI spells both ephemeral channels X.devN: a main build is one too (a and main1 differ by channel).
+      const expected =
+        eco === "pypi"
+          ? ["1.0.0", "1.1.0", "1.1.0rc1", "1.1.1.dev1"]
+          : ["1.0.0", "1.1.0", "1.1.0-rc.1", "1.1.1-dev.1"];
+      expect(await versionsOf(eco), eco).toEqual(expected.sort());
+      const pruned = await db.all<{ version: string }>(
+        "SELECT version FROM release_package_prunes WHERE product = ? AND ecosystem = ? ORDER BY version",
+        P,
+        eco,
+      );
+      expect(
+        pruned.map((r) => r.version),
+        eco,
+      ).toEqual([a, b, SHAPES[eco].v.main1].sort());
+    }
+  });
+
+  it("a build of dev published on main, or of main published on dev, is never a candidate", async () => {
+    await declare(P, ["npm"]);
+    await optIn();
+    await publishRow("npm", "1.0.0", "stable");
+    await publishRow("npm", "1.1.0-dev.1", "main");
+    await publishRow("npm", "1.1.0-main.1", "dev");
+    await publishRow("npm", "1.1.0-dev.2", "dev");
+    await publishRow("npm", "1.1.0", "stable");
+    const plan = (await planPackagePrune(db, P, did("npm"), "1.1.0"))!;
+    expect(plan.prune.map((p) => p.version)).toEqual(["1.1.0-dev.2"]);
+  });
+});
+
+describe("public registries are never pruned", () => {
+  it("the prune reads and deletes only this feed's rows, bytes and refs: nothing in it addresses a public registry", async () => {
+    // The prune is D1 + blob-ref only (`prune.ts`): it has no network client and no registry
+    // credential. The `Env` it is given for the render queue carries no fetch; assert the
+    // module imports neither.
+    const src = readFileSync(
+      new URL("../src/services/release/packages/prune.ts", import.meta.url),
+      "utf8",
+    );
+    expect(src).not.toMatch(/\bfetch\s*\(/);
+    expect(src).not.toMatch(/registry\.npmjs\.org|pypi\.org|crates\.io/);
   });
 });
 
