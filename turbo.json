@@ -22,7 +22,14 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "env": ["PKEY_DEV_BASE_URL", "PKEY_DEV_CONFIG", "PKEY_DEV_APPROVE"]
+      "env": [
+        "PKEY_DEV_BASE_URL",
+        "PKEY_DEV_CONFIG",
+        "PKEY_DEV_APPROVE",
+        "PKEY_DOCS_SKIP_LANES",
+        "PKEY_DOCS_LANES",
+        "PKEY_DOCS_PYTHON"
+      ]
     },
     "lint": {},
     "dev": {

@@ -145,7 +145,8 @@ export async function compileSwift(snippets: Snippet[]): Promise<Failure[]> {
   const bin = (
     await run("swift", ["build", "--show-bin-path"], { cwd: SWIFT_DIR })
   ).out.trim();
-  const zstd = join(SWIFT_DIR, ".build/checkouts/zstd/lib");
+  // libzstd is vendored as a C target since SP-52 (no SwiftPM checkout): its module map is in the source.
+  const zstd = join(SWIFT_DIR, "Sources/libzstd");
   const dir = mkdtempSync(join(tmpdir(), "pkey-docs-swift-"));
   try {
     writeFileSync(join(dir, "Config.swift"), readFileSync(SWIFT_SAMPLE));
