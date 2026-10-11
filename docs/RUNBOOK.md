@@ -542,11 +542,13 @@ still open, because the ring still holds it. After step 8 only the escrowed old 
 back a value it left dark (step 8's first bullet). After step 9 there is no rollback at all.
 Step 7 is there so you never need one.
 
-**`wrangler rollback` un-rotates secrets.** A Worker version captures its bindings, and classic
-secrets are bindings, so rolling back to a pre-rotation version also restores the pre-rotation
-keyring. If rows have already been re-sealed under the new kid, that version cannot open them
-and every affected product 404s. After any KEK change, prefer a forward fix over
-`wrangler rollback`.
+**Do not use `wrangler rollback` as a secret rollback.** A Worker version captures its
+bindings, and secrets are bindings; treat a rollback to a pre-rotation version as restoring the
+secret values that version held. That conclusion follows Cloudflare's version model, so re-apply
+every secret rotated after the target version immediately after any rollback and verify the
+behaviour below. A forward fix (deploying the known-good code as a new version) is safer because
+it retains the current secrets. For this KEK specifically, an old keyring cannot open rows already
+re-sealed under the new kid, so affected product routes return 404. See "Key compromise" below.
 
 **KEK compromise (containment).** The leak is exploited offline against a D1 dump, so there is
 nothing to block at the edge; the only response is to re-key. Run steps 1-8 immediately — the
@@ -732,6 +734,137 @@ set is always safe. Do not go back to `PLATFORM_KEK` alone once anything has bee
 the new kid (the sweep, or any admin write after step 2): those values would go dark. After step
 6 the old key is gone for good, and so is every D1 backup, bookmark or `wrangler rollback` target
 from before step 4: restored, their blobs carry the legacy kid and cannot be opened.
+## Key compromise
+
+Treat a suspected compromise as an incident: record the first plausible exposure time, preserve
+the affected GitHub and Cloudflare audit evidence, and rotate the compromised credential from a
+trusted workstation. Do not use a Worker rollback as containment. Cloudflare documents that a
+Worker version captures its bindings, secrets are bindings, and `wrangler secret put` creates and
+deploys a new version. A rollback to an older version can therefore restore a leaked secret
+value while leaving D1 and KV data unchanged.
+
+Prefer a forward deployment of trusted code. If a rollback is unavoidable, identify every secret
+rotated after its target version, immediately re-apply each from escrow with `wrangler secret
+put` or `wrangler secret bulk`, then perform the secret-specific verification below. Keep a
+pre-rotation cookie or webhook delivery only as a verification fixture; never keep compromised
+secret material.
+
+### Compromised session secret
+
+`ADMIN_SESSION_SECRET` is the only signing key for the stateless
+`__Host-pkey_admin` cookie (`packages/worker/src/core/console/session.ts`). A holder can forge
+the cookie's subject, groups and step-up timestamp; the root rule grants Superadmin when those
+groups include `PLATFORM_ADMIN_GROUP` (`core/rbac/principal.ts`). Per-subject logout revocation is
+useful for a stolen cookie, but it cannot contain a leaked signing secret: the attacker can mint a
+new subject and expiry. Removing an operator from the IdP group also does not end an existing
+cookie; groups are copied into the cookie for its eight-hour lifetime.
+
+1. Generate a new value (64 hex characters exceeds the deployed-environment minimum):
+
+   ```sh
+   openssl rand -hex 32 | npx wrangler secret put ADMIN_SESSION_SECRET --env <env>
+   ```
+
+2. Keep `PORTAL_SESSION_SECRET` separate. The portal has no fallback to the admin secret
+   (`services/identity/portal/session.ts`), so this rotation does **not** sign portal visitors
+   out.
+3. Verify a saved old admin cookie is rejected:
+
+   ```sh
+   curl -i https://<host>/manage/api/me \
+     -H 'cookie: __Host-pkey_admin=<old-cookie>'
+   # 401
+   ```
+
+   Then sign in afresh at `/manage` and confirm `GET /manage/api/me` returns 200.
+4. Review the exposure window in Platform → Activity and every affected product's activity log.
+   A genuine console callback writes `admin.signin` to `platform_audit`
+   (`console/auth.ts`); a forged cookie does not. An action whose `actor_sub` has no recent
+   corresponding sign-in is a lead, not proof—security-event writes are best-effort. Treat
+   `key.*`, `secret.set`, `ci.token.*`, repo-link/resync, exports and deletes as possible
+   Superadmin actions, and rotate or revoke anything unrecognised.
+
+For a leaked `PORTAL_SESSION_SECRET`, rotate it the same way. A portal cookie also needs a live,
+unrevoked `account_sessions` row named by its random `sid`
+(`services/identity/portal/accountSessions.ts`), so the secret alone is not a usable forged
+portal session. Rotation nevertheless signs every portal visitor out; use the account's existing
+“sign out everywhere” path first when the incident is limited to one account.
+
+### Compromised `KEY_HASH_PEPPER`
+
+`hashKey` is HMAC-SHA-256 when the pepper exists and falls back to plain SHA-256 when it does not
+(`packages/worker/src/platform/crypto.ts`). On prod, staging and dev, `core/configGuard.ts`
+refuses every request if the pepper is missing or shorter than 32 characters; that avoids a
+silent production fallback, but it does **not** provide versioning or a dual-read window.
+
+Do **not** rotate this secret merely because its value leaked. It is useful to an attacker only
+with the corresponding D1/KV hashes. Licence keys have 128 random bits and device tokens 256, so
+the pepper does not make either practical to brute-force; the meaningful offline risk is
+low-entropy values such as email-derived limit keys and short-lived sign-in codes. Contain the
+data-access incident first: rotate Cloudflare credentials, audit D1/KV access, and let
+short-lived flows expire.
+
+There is no safe in-place rotation today. Changing the pepper invalidates device-token,
+licence-key, CI-token, registry-token, portal-session and single-use-flow hashes; it also makes
+existing admin logout marks unreachable. Licence-key plaintext is shown once and is not stored, so
+old keys cannot be re-hashed. A forced rotation is a planned, owner-approved platform-wide
+credential reissue: set the new pepper, mint and distribute replacement keys through each
+licence's Keys API, have devices re-activate or sign in again, and reissue CI and registry tokens.
+Take a D1 Time Travel bookmark first, escrow the old pepper, and do not begin without a customer
+communication and recovery plan. `KEY_HASH_PEPPER` versioning and dual-read remain open work.
+
+### Compromised GitHub webhook secret
+
+`GITHUB_WEBHOOK_SECRET` is one global HMAC secret. The handler accepts
+`GITHUB_WEBHOOK_SECRET_PREVIOUS` only for a planned overlap
+(`packages/worker/src/githubWebhook.ts`); it also binds a delivery to the installation recorded
+for the linked repository and re-syncs the GitHub-resolved default-branch head, never
+`payload.after` (`services/release/resync.ts`, `services/release/manifestFetch.ts`). A forged
+delivery can therefore force a resync or poison webhook metadata, but cannot choose arbitrary
+repository content. Per-tenant webhook secrets remain an open control-plane gap.
+
+For a suspected leak, **do not** retain the old value in `_PREVIOUS`:
+
+1. Generate a new secret and set it on the Worker first, clearing `_PREVIOUS` if present.
+2. Change the GitHub App webhook secret immediately afterwards.
+3. GitHub does not automatically redeliver failed deliveries. Redeliver failures from the App's
+   Recent Deliveries view, or run `POST /manage/api/products/<slug>/release/resync` for each
+   linked product after the App and Worker agree on the new secret.
+4. Compare webhook-sourced `product_sync_state` rows with GitHub's delivery history and the
+   GitHub-resolved `product_manifest_snapshot.applied_sha`; inspect `setting.resync` audit rows
+   for unexpected changes. Signature failures themselves are not audited.
+
+For routine rotation, set the old value as `_PREVIOUS` and the new value as the current secret in
+one bulk update, change GitHub, verify a new delivery, then delete `_PREVIOUS`.
+
+### Compromised product signing key
+
+This is the product Ed25519 key held under `PLATFORM_KEK`, not a CI release key. It signs the
+product's licence, config, feed, trust and bundle documents; release records remain separately
+signed by CI. First determine whether one product key leaked or whether a Worker/KEK compromise
+requires the KEK procedure and rotation across every product.
+
+1. In the product's Keys page (or `POST /manage/api/products/<slug>/keys/prepare`), prepare a
+   replacement. The key is `staged` and published before it signs; wait its 300-second
+   `activateAfter` trust-cache window. During active forgery, `activate` may use
+   `breakGlass: true`, which requires a fresh console step-up.
+2. Activate the staged key. This atomically retires the previous active key. Retirement alone is
+   **not containment**: retired keys remain verification keys.
+3. Revoke the leaked, now-retired kid with
+   `POST /manage/api/products/<slug>/keys/revoke`. An active key cannot be revoked; replacement
+   activation is required first. Revocation removes it from JWKS and keeps a positive
+   `status: "revoked"` listing in the trust manifest for 400 days.
+4. Verify the Keys listing, `/<slug>/.well-known/jwks.json`, and
+   `/<slug>/.well-known/polaris-trust.jws`. Check the product audit trail for
+   `key.prepare`, `key.activate` (or `key.activate.break_glass`) and `key.revoke`.
+5. Run "Recovering the update feeds after a signer compromise" below for the affected product.
+
+Clients with the leaked kid as their **only** compiled trust pin cannot be repaired remotely once
+it is revoked: a tombstone must be signed by another already-usable pin. Ship new app builds
+pinning a clean standby key. Keep a standby pin in future builds; the trust-manifest tombstone
+rule can then remove a compromised pin. The `product_keys.status` column has no declarative
+CHECK in `0003_keyvault.sql`, but `0015_data_integrity.sql` triggers reject values outside
+`active`, `staged`, `retired` and `revoked`; use the Keys API, never an ad-hoc status update.
 
 ## Product operations
 
