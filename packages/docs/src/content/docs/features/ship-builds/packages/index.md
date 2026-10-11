@@ -670,7 +670,7 @@ URL layout and who may read). The console manages the feeds in two places, with 
   the product switcher and the Products registry. This scope also holds the **platform policy**:
   each ecosystem's kill switch and size ceiling, above every product's own settings.
 - **Distribution → Package feeds** (`#/p/<slug>/distribution/feeds`): one product's feeds. The
-  sidebar lists it while the product's package feeds are on (**Core → Services → Package feeds**);
+  sidebar lists it while the product's package feeds are on (the **Packages** switch under **Ship builds** on **Core → Services**);
   with them off the page says where to turn them on. It is named "Package feeds" so it does not
   collide with **Outlets & feeds**, which covers storefront feeds.
 
@@ -903,5 +903,5 @@ the platform's feeds); the policy, the bootstrap and platform-scope token action
 platform activity.
 
 The product's own switch is `GET`/`PUT /manage/api/products/<slug>/distribution/package-feeds`
-(`{enabled, expectedVersion}`, audited `distribution.package_feeds.update`), the **Package feeds**
-section of [Services](/docs/admin/services-enablement/).
+(`{enabled, expectedVersion}`, audited `distribution.package_feeds.update`), the **Packages**
+switch under **Ship builds** on [Services](/docs/admin/services-enablement/).

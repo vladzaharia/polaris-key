@@ -94,8 +94,9 @@ The order of operations is load-bearing:
    which is what a client that lost its credential needs — including one whose row was
    deauthorized, since an unlicensed device holds no seat. Re-registering an id bound to a real
    **license** must never work: registration rewrites `license_id`, so allowing it would let
-   anyone who knows a licensed device's id evict that device from its seat. Products where both
-   paths coexist are why this is a check and not an assumption.
+   anyone who knows a licensed device's id evict that device from its seat. A product that turned
+   License off keeps its license-bound devices beside keyless ones, which is why this is a check
+   and not an assumption.
 7. **The optional fingerprint**, read from the body. Absent, empty, oversized (over 4 KiB), or
    unparseable all mean "no fingerprint", never an error. There is no tier here to demand one.
 8. **Mint**, and write the `devices` row, the fingerprint row if one was presented, and the KV
