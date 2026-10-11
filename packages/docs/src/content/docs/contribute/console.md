@@ -1,6 +1,8 @@
 ---
 title: "Add a page, a setting, a wizard, or a write"
 description: "Extend the operator console through its page registry, settings engine, routed flows, write invalidation table, permissions, and tests."
+type: "reference"
+lastReviewed: "2026-10-11"
 sidebar:
   order: 10
 ---
