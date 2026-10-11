@@ -1158,7 +1158,7 @@
       "path": "operate/console/help-a-customer",
       "type": "how-to",
       "title": "Help a customer",
-      "description": "Fix a lost key, changed hardware, a refund or an account problem from the console.",
+      "description": "Export or delete a person's data for your product, and relink their license.",
       "nearest": "/docs/operate/",
       "package": "DOC-11a",
       "pri": "P1"

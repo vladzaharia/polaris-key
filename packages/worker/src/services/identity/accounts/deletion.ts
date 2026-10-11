@@ -457,6 +457,11 @@ function commitStatements(
     },
     // LX-26: the account's auto-attach blocks (its account id) go with it.
     stmtDeleteAccountAutoAttachBlocks(accountId),
+    // I-11: a hard erasure ends any still-pending soft-deletion request.
+    {
+      sql: "DELETE FROM account_deletions WHERE account_id = ?",
+      params: [accountId],
+    },
     // PS-04: and its library entries (open products added from the storefront, S-21 §6.4).
     {
       sql: "DELETE FROM library_entries WHERE account_id = ?",
