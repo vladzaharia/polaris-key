@@ -1,58 +1,51 @@
 ---
 title: "Messages about signing in"
-description: "What each sign-in message means and what to do."
+description: "What each message about signing in means, and what to do."
 type: "help-messages"
-status: "stub"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 20
 ---
 
 import HelpMessage from "../../../../components/docs/HelpMessage.astro";
 
-Placeholder page. See [Troubleshooting](/docs/help/messages/) for the nearest live page.
+Find the title an app, or your library at key.plrs.im, showed when you tried to sign in. Each entry says why you saw it and what to do.
 
-<HelpMessage id="enroll_claimed" />
+<HelpMessage id="disabled" entry />
 
-<HelpMessage id="activation.enroll-claimed" />
+<HelpMessage id="auth_method_disabled" entry />
 
-<HelpMessage id="signin_expired" />
+<HelpMessage id="email_unavailable" entry />
 
-<HelpMessage id="oidc_error" />
+<HelpMessage id="turnstile_failed" entry />
 
-<HelpMessage id="sign-in-failed" />
+<HelpMessage id="invalid_code" entry />
 
-<HelpMessage id="sign-in-denied" />
+<HelpMessage id="rate_limited" entry />
 
-<HelpMessage id="cancelled" />
+<HelpMessage id="sign-in-expired" entry />
 
-<HelpMessage id="disabled" />
+<HelpMessage id="signin_expired" entry />
 
-<HelpMessage id="unavailable" />
+<HelpMessage id="sign-in-denied" entry />
 
-<HelpMessage id="identity_disabled" />
+<HelpMessage id="cancelled" entry />
 
-<HelpMessage id="sign-in-unavailable" />
+<HelpMessage id="oidc_error" entry />
 
-<HelpMessage id="auth_method_disabled" />
+<HelpMessage id="terms_required" entry />
 
-<HelpMessage id="sign-in-expired" />
+<HelpMessage id="enroll_claimed" entry />
 
-<HelpMessage id="invalid_code" />
+<HelpMessage id="account_required" entry />
 
-<HelpMessage id="turnstile_failed" />
+<HelpMessage id="step_up_required" entry />
 
-<HelpMessage id="rate_limited" />
+<HelpMessage id="portal.step_up_required" entry />
 
-<HelpMessage id="activation.rate-limited" />
+<HelpMessage id="portal.status-401" entry />
 
-<HelpMessage id="step_up_required" />
+<HelpMessage id="sign-out-failed" entry />
 
-<HelpMessage id="email_unavailable" />
-
-<HelpMessage id="terms_required" />
+Still stuck? See [Get help with an app](/docs/help/contact/). It covers the app's developer, the store you bought from, and your account. Say which message you saw, and never send anyone a full license key.

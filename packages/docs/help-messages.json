@@ -34,294 +34,1039 @@
       "group": "Messages"
     }
   },
+  "portal": {
+    "step_up_required": {
+      "title": "Sign in again to continue",
+      "message": "This needs a sign-in from the last five minutes. Sign out, sign back in, then try again."
+    },
+    "file_not_found": {
+      "title": "That file is no longer offered",
+      "message": "A newer release may have replaced it. Reload the page to see the current downloads."
+    },
+    "not_hosted": {
+      "title": "Not available here yet",
+      "message": "This file can't be downloaded from here yet. Contact the developer for another way to get it."
+    },
+    "license_inactive": {
+      "title": "Your license isn't active",
+      "message": "Renew or reactivate your license, then try the download again."
+    },
+    "not_entitled": {
+      "title": "Your license doesn't include this version",
+      "message": "Download a version your license covers, or upgrade your license to get this one."
+    },
+    "status-0": {
+      "title": "Can't reach Polaris Key",
+      "message": "Check your connection, then try again."
+    },
+    "status-401": {
+      "title": "You're signed out",
+      "message": "Sign in again to carry on."
+    },
+    "status-403": {
+      "title": "That didn't go through",
+      "message": "Reload the page and try again."
+    },
+    "status-404": {
+      "title": "That isn't here",
+      "message": "It may have been removed, or the link is out of date."
+    },
+    "status-429": {
+      "title": "Too many tries",
+      "message": "Wait a minute, then try again."
+    },
+    "default": {
+      "title": "Something went wrong",
+      "message": "Try again. If it keeps happening, contact the developer."
+    }
+  },
   "messages": {
-    "activation.attestation-required": {
-      "page": "devices"
+    "disabled": {
+      "page": "signing-in",
+      "entry": "disabled",
+      "why": "The app's developer hasn't set up sign-in for this app.",
+      "fix": "Use another way to start, such as a license key, if the app offers one. Otherwise ask the app's developer."
     },
-    "activation.device-limit": {
-      "page": "devices",
-      "article": "device-limit"
+    "unavailable": {
+      "page": "signing-in",
+      "entry": "disabled",
+      "why": "The sign-in service couldn't start a sign-in right now.",
+      "fix": "Wait a few minutes, then try again."
     },
-    "activation.enroll-claimed": {
-      "page": "signing-in"
+    "sign-in-unavailable": {
+      "page": "signing-in",
+      "entry": "disabled"
     },
-    "activation.enroll-disabled": {
-      "page": "license-key"
-    },
-    "activation.error": {
-      "page": "license-key"
-    },
-    "activation.fingerprint-required": {
-      "page": "devices"
-    },
-    "activation.hardware-mismatch": {
-      "page": "devices"
-    },
-    "activation.key-entry-limit": {
-      "page": "accounts"
-    },
-    "activation.license-disabled": {
-      "page": "license-key"
-    },
-    "activation.license-expired": {
-      "page": "license-status"
-    },
-    "activation.rate-limited": {
-      "page": "signing-in"
-    },
-    "activation.refused": {
-      "page": "license-key"
-    },
-    "activation.unauthorized": {
-      "page": "license-key"
-    },
-    "attestation_rejected": {
-      "page": "devices"
-    },
-    "attestation_required": {
-      "page": "devices"
-    },
-    "attestation_unavailable": {
-      "page": "devices"
+    "identity_disabled": {
+      "page": "signing-in",
+      "entry": "disabled",
+      "why": "The app's developer turned off sign-in through this app. Installs and licenses that are already set up keep working; only signing in stops.",
+      "fix": "Keep using the app. If you need to sign in, ask the app's developer."
     },
     "auth_method_disabled": {
-      "page": "signing-in"
+      "page": "signing-in",
+      "why": "That way of signing in has been turned off.",
+      "fix": "Choose another sign-in method on the sign-in screen."
     },
-    "bundle": {
-      "page": "devices"
+    "email_unavailable": {
+      "page": "signing-in",
+      "why": "Email can't be sent right now, so no sign-in code was sent.",
+      "fix": "Choose another sign-in method on the sign-in screen, or try again later."
     },
-    "bundle-claims-rejected": {
-      "page": "devices"
+    "turnstile_failed": {
+      "page": "signing-in",
+      "why": "The security check on the sign-in page didn't pass or couldn't be confirmed, so no email was sent.",
+      "fix": "Reload the page and ask for the code again. If it fails again, choose another sign-in method."
     },
-    "bundle-jws-rejected": {
-      "page": "devices"
+    "invalid_code": {
+      "page": "signing-in",
+      "why": "The code you entered isn't the one we emailed. Each code allows 5 tries, then stops working.",
+      "fix": "Check the email and enter the code again. If the tries run out, select **Send a new code**."
     },
-    "bundle-rejected": {
-      "page": "devices"
+    "rate_limited": {
+      "page": "signing-in",
+      "entry": "rate_limited",
+      "why": "The service received too many tries from your device or network in a short time, so it paused them.",
+      "fix": "Wait a few minutes, then try again. Some limits last an hour, so wait longer if it still happens."
     },
-    "bundle-trust-rejected": {
-      "page": "devices"
+    "activation.rate-limited": {
+      "page": "signing-in",
+      "entry": "rate_limited"
+    },
+    "sign-in-expired": {
+      "page": "signing-in",
+      "why": "The code shown in the app works for 10 minutes, and it ran out before the sign-in finished.",
+      "fix": "Start the sign-in again in the app to get a new code."
+    },
+    "signin_expired": {
+      "page": "signing-in",
+      "why": "This browser's sign-in is no longer valid: it was already used, ran out of time, was canceled, or was started in a different browser.",
+      "fix": "Start again from the beginning, in the same browser."
+    },
+    "sign-in-denied": {
+      "page": "signing-in",
+      "why": "The sign-in didn't complete. It was refused or it failed, and the service doesn't say which.",
+      "fix": "Start the sign-in again. If it keeps failing, try another sign-in method."
     },
     "cancelled": {
-      "page": "signing-in"
+      "page": "signing-in",
+      "why": "The app stopped waiting for the sign-in to finish.",
+      "fix": "Start the sign-in again if you still want to sign in."
+    },
+    "oidc_error": {
+      "page": "signing-in",
+      "entry": "oidc_error",
+      "why": "The service you chose to sign in with didn't confirm who you are, or the app couldn't finish the sign-in.",
+      "fix": "Try again. If it keeps happening, choose another sign-in method."
+    },
+    "sign-in-failed": {
+      "page": "signing-in",
+      "entry": "oidc_error"
+    },
+    "terms_required": {
+      "page": "signing-in",
+      "why": "The app asks you to agree to its terms before you continue, and this version of the terms wasn't accepted.",
+      "fix": "Ask the app's developer."
+    },
+    "enroll_claimed": {
+      "page": "signing-in",
+      "entry": "enroll_claimed",
+      "why": "This device started with a free license from the app. That license has since been added to a Polaris Key account, so you need to sign in to use it.",
+      "fix": "Sign in with the account that holds the license."
+    },
+    "activation.enroll-claimed": {
+      "page": "signing-in",
+      "entry": "enroll_claimed"
+    },
+    "account_required": {
+      "page": "signing-in",
+      "entry": "account_required",
+      "why": "This action needs a Polaris Key account, and no account is signed in on this device.",
+      "fix": "Sign in from the app's sign-in screen, then repeat the action."
+    },
+    "sign_in_required": {
+      "page": "signing-in",
+      "entry": "account_required",
+      "why": "This part of the app needs to know your Polaris Key account, and the license on this device doesn't name one.",
+      "fix": "Sign in to your Polaris Key account in the app, then try again."
+    },
+    "step_up_required": {
+      "page": "signing-in",
+      "article": "sign-in",
+      "why": "Changes to how you sign in need a sign-in from the last 5 minutes: adding or removing a passkey (a sign-in saved on your device) or another sign-in method.",
+      "fix": "Sign in again, then repeat what you were doing."
+    },
+    "portal.step_up_required": {
+      "page": "signing-in",
+      "article": "sign-in",
+      "why": "Deleting your account, removing a license from your library and setting up **Package access** on an app's page need a sign-in from the last 5 minutes.",
+      "fix": "Sign out, sign in again, then repeat the change."
+    },
+    "portal.status-401": {
+      "page": "signing-in",
+      "article": "sign-in",
+      "why": "Your sign-in to your library at key.plrs.im has ended or isn't valid any more.",
+      "fix": "Sign in again.",
+      "cta": "contact"
+    },
+    "sign-out-failed": {
+      "page": "signing-in",
+      "why": "The app couldn't finish signing you out.",
+      "fix": "Try again. Until it works, treat this device as still signed in, and don't leave it unattended if it isn't yours.",
+      "cta": "contact"
+    },
+    "gate.needs-activation": {
+      "page": "license-key",
+      "article": "activate",
+      "why": "This device has no license yet.",
+      "fix": "Enter a license key or sign in, whichever the app offers."
+    },
+    "no-token": {
+      "page": "license-key",
+      "article": "activate",
+      "why": "The app tried something that needs an activated device, and this device isn't activated or has lost its sign-in.",
+      "fix": "Activate the app with a license key, or sign in."
+    },
+    "license_required": {
+      "page": "license-key",
+      "article": "activate",
+      "why": "The app's own online service needs to see your license, and the request from the app didn't include one.",
+      "fix": "Activate the app, then try again."
+    },
+    "activation.unauthorized": {
+      "page": "license-key",
+      "article": "activate",
+      "why": "The key doesn't match an active license for this app. It may be mistyped, belong to another app, or be for a license that was turned off or has ended. The app shows the same message for all of these.",
+      "fix": "Check the key one character at a time, with no spaces at either end. A key works only in the app it came with. If it still fails, ask the app's developer."
+    },
+    "license_disabled": {
+      "page": "license-key",
+      "entry": "license_disabled",
+      "why": "The app's developer turned this license off on purpose, so it can't be used.",
+      "fix": "Ask the app's developer why it was turned off. Signing in doesn't bring it back."
+    },
+    "activation.license-disabled": {
+      "page": "license-key",
+      "entry": "license_disabled"
+    },
+    "license_unusable": {
+      "page": "license-key",
+      "article": "activate",
+      "why": "The license this device uses was turned off, has ended or no longer exists, so the app can't load its settings.",
+      "fix": "Sign in or activate again with a license that works. If you think it was turned off by mistake, ask the app's developer."
+    },
+    "activation.refused": {
+      "page": "license-key",
+      "why": "The licensing service turned down the activation for a reason the app has no specific message for. The code in parentheses says which reason.",
+      "fix": "Note the code, and tell the app's developer. Never send anyone your full license key."
+    },
+    "activation.error": {
+      "page": "license-key",
+      "why": "The app couldn't reach the licensing service, or the service had a problem and didn't answer properly.",
+      "fix": "Check your connection and try again. If it still fails after a few minutes, tell the app's developer."
+    },
+    "enroll_disabled": {
+      "page": "license-key",
+      "entry": "enroll_disabled",
+      "article": "activate",
+      "why": "The app tried to start with a free license, and its developer doesn't offer one.",
+      "fix": "Enter a license key or sign in."
+    },
+    "activation.enroll-disabled": {
+      "page": "license-key",
+      "entry": "enroll_disabled"
+    },
+    "enroll_failed": {
+      "page": "license-key",
+      "why": "The service couldn't issue a free license for this device.",
+      "fix": "Try again in a few minutes. If it keeps happening, tell the app's developer which message you saw."
+    },
+    "registration_closed": {
+      "page": "license-key",
+      "article": "activate",
+      "why": "This app doesn't let a new device start without a license key or an account.",
+      "fix": "Activate with a license key, or sign in."
+    },
+    "not_eligible": {
+      "page": "license-key",
+      "why": "The offer was withdrawn or changed after the page loaded, or it was never offered on the **Discover** page of your library at key.plrs.im.",
+      "fix": "Reload **Discover** and look for the app again. If it's gone, it isn't offered to you any more."
+    },
+    "activation.ok": {
+      "page": "license-key",
+      "article": "activate",
+      "why": "The app accepted your license and activated it on this device.",
+      "fix": "Nothing. You can use the app."
+    },
+    "gate.ok": {
+      "page": "license-status",
+      "why": "The app checked your license, and it is valid.",
+      "fix": "Nothing. You can use the app."
+    },
+    "gate.grace": {
+      "page": "license-status",
+      "why": "The app couldn't reach the licensing service to renew its last license check, so it is running on that check for a limited time.",
+      "fix": "Connect to the internet before that time runs out. The app can show how many days are left, and offers **Reconnect**. If you activated this device with an activation file, ask the app's developer for a new file instead."
+    },
+    "gate.expired": {
+      "page": "license-status",
+      "entry": "gate.expired",
+      "why": "The app's last license check is too old, and the time it may run without a new one is over. The license may have ended, or the app stayed offline too long.",
+      "fix": "Connect to the internet so the app can check again. If the license has ended, renew it, for example with **Renew** when the app offers it. If you activated with an activation file, ask the app's developer for a new file."
+    },
+    "license_expired": {
+      "page": "license-status",
+      "entry": "gate.expired",
+      "why": "The end date of this license has passed.",
+      "fix": "Renew it with the app's developer or the store you bought it from."
+    },
+    "activation.license-expired": {
+      "page": "license-status",
+      "entry": "gate.expired"
+    },
+    "gate.revoked": {
+      "page": "license-status",
+      "article": "activate",
+      "why": "The licensing service no longer recognizes this device. It may have been removed, from the app or from your library, or its license was turned off or has ended.",
+      "fix": "Sign in or activate again. If the app still refuses, the license may have been turned off or may have ended: ask the app's developer."
+    },
+    "unauthorized": {
+      "page": "license-status",
+      "article": "activate",
+      "why": "The app has no valid sign-in for this device. It was never activated, the device was removed, or the license can't be used any more.",
+      "fix": "Sign in or activate again. If the app still refuses, the license may have been turned off or may have ended: ask the app's developer."
+    },
+    "sync-failed": {
+      "page": "license-status",
+      "why": "At start the app asks its licensing service to check your license. The answer was missing or unusable, so the app stopped.",
+      "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
+    },
+    "refresh-failed": {
+      "page": "license-status",
+      "why": "The app tried to renew its saved license and settings, and that failed.",
+      "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
+    },
+    "local-only": {
+      "page": "license-status",
+      "why": "The app is set to run without a network connection, so it didn't try to reach the service.",
+      "fix": "Nothing is broken. If you expected an online feature, ask the app's developer."
+    },
+    "gate.version-too-old": {
+      "page": "license-status",
+      "entry": "gate.version-too-old",
+      "why": "Your license no longer allows this version of the app. The app can show which versions are allowed.",
+      "fix": "Update the app the way you installed it. Apps from a store update through the store. Some apps offer **Update**."
+    },
+    "version_blocked": {
+      "page": "license-status",
+      "entry": "gate.version-too-old",
+      "why": "The licensing service refused this version of the app for your license.",
+      "fix": "Update the app the way you installed it. Apps from a store update through the store."
+    },
+    "gate.version-too-new": {
+      "page": "license-status",
+      "why": "Your license covers versions up to a certain one, and this version of the app is newer.",
+      "fix": "Install a version your license covers, or ask the app's developer about extending your license. If you have saved data, check with the developer first."
+    },
+    "gate.channel-not-entitled": {
+      "page": "license-status",
+      "entry": "gate.channel-not-entitled",
+      "why": "This is an early-access version, such as a beta, and your license doesn't include early-access versions.",
+      "fix": "Install the regular version. If the app offers **Switch channel**, use it to go back. If you have saved data, check with the app's developer first. To get early access, ask them."
     },
     "channel_not_allowed": {
-      "page": "license-status"
+      "page": "license-status",
+      "entry": "gate.channel-not-entitled"
     },
-    "chunk-bundle-truncated": {
-      "page": "downloads-and-updates"
+    "not_entitled": {
+      "page": "license-status",
+      "entry": "not_entitled",
+      "why": "Your license doesn't cover the feature you tried to use.",
+      "fix": "Ask the app's developer about adding it, or use a feature your license includes."
     },
-    "chunk-corrupt": {
-      "page": "downloads-and-updates"
+    "release-refused": {
+      "page": "license-status",
+      "entry": "not_entitled",
+      "why": "Your license doesn't cover this version of the app, so the service refused to share it.",
+      "fix": "Use a version your license covers, or ask the app's developer about extending your license."
     },
-    "delivery_gate_missing": {
-      "page": "downloads-and-updates"
+    "pack-not-entitled": {
+      "page": "license-status",
+      "entry": "not_entitled",
+      "why": "This extra content isn't part of your license.",
+      "fix": "Ask the app's developer about adding it to your license."
     },
-    "delta-apply-failed": {
-      "page": "downloads-and-updates"
+    "license_invalid": {
+      "page": "license-status",
+      "why": "The app's online service didn't accept the saved copy of your license from this device.",
+      "fix": "Reconnect the app. It checks your license again. Then try again."
     },
-    "delta-artifact-mismatch": {
-      "page": "downloads-and-updates"
+    "license_stale": {
+      "page": "license-status",
+      "why": "The saved copy of your license is too old for the app's online service.",
+      "fix": "Connect to the internet so the app can refresh it, then try again."
     },
-    "device_deauthorize_failed": {
-      "page": "devices"
+    "gate.not-applicable": {
+      "page": "license-status",
+      "why": "This app doesn't use licenses.",
+      "fix": "Nothing. You can use the app."
     },
     "device_limit": {
       "page": "devices",
-      "article": "device-limit"
+      "entry": "device_limit",
+      "article": "devices",
+      "why": "A license allows a set number of devices at once, and all of them are in use.",
+      "fix": "Free one of them. Select **Replace a device** in the app when it offers it. Or remove a device you no longer use from the app's page in your library at key.plrs.im, if the app has one. Or select **Sign out** in the app on a device you no longer use, while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
+      "cta": "library"
     },
-    "device_list_failed": {
-      "page": "devices"
-    },
-    "device_rename_failed": {
-      "page": "devices"
-    },
-    "disabled": {
-      "page": "signing-in"
-    },
-    "download_auth_required": {
-      "page": "downloads-and-updates"
-    },
-    "email_in_use": {
-      "page": "accounts"
-    },
-    "email_mismatch": {
-      "page": "accounts"
-    },
-    "email_unavailable": {
-      "page": "signing-in"
-    },
-    "enroll_claimed": {
-      "page": "signing-in"
-    },
-    "enroll_disabled": {
-      "page": "license-key"
-    },
-    "enroll_failed": {
-      "page": "license-key"
-    },
-    "feed-rejected": {
-      "page": "downloads-and-updates"
-    },
-    "feed-rollback": {
-      "page": "downloads-and-updates"
-    },
-    "file-corrupt": {
-      "page": "downloads-and-updates"
-    },
-    "fingerprint_required": {
-      "page": "devices"
-    },
-    "full-corrupt": {
-      "page": "downloads-and-updates"
-    },
-    "gate.channel-not-entitled": {
-      "page": "license-status"
-    },
-    "gate.expired": {
-      "page": "license-status"
-    },
-    "gate.grace": {
-      "page": "license-status"
-    },
-    "gate.revoked": {
-      "page": "license-status"
-    },
-    "gate.version-too-new": {
-      "page": "license-status"
-    },
-    "gate.version-too-old": {
-      "page": "license-status"
+    "activation.device-limit": {
+      "page": "devices",
+      "entry": "device_limit"
     },
     "hardware_mismatch": {
-      "page": "devices"
+      "page": "devices",
+      "entry": "hardware_mismatch",
+      "why": "The app compared this device with the one the license was activated on, and too much has changed. The earlier activation was ended.",
+      "fix": "Activate again in the app. That registers this device again."
     },
-    "identity_disabled": {
-      "page": "signing-in"
+    "activation.hardware-mismatch": {
+      "page": "devices",
+      "entry": "hardware_mismatch"
+    },
+    "attestation_required": {
+      "page": "devices",
+      "entry": "attestation_required",
+      "why": "The app's developer asks every device to pass a device check, which confirms it is a genuine device, before this action.",
+      "fix": "Try again. If it keeps happening, ask the app's developer, because the app may not be able to run the device check on this device."
+    },
+    "activation.attestation-required": {
+      "page": "devices",
+      "entry": "attestation_required",
+      "why": "This license needs the device to pass a device check, which confirms it is a genuine device.",
+      "fix": "Try again. If it keeps happening, ask the app's developer."
+    },
+    "attestation_rejected": {
+      "page": "devices",
+      "entry": "attestation_rejected",
+      "why": "The check that confirms this device is genuine didn't pass, or it ran out of time before it finished.",
+      "fix": "Try again. If it keeps failing, ask the app's developer."
+    },
+    "fingerprint_required": {
+      "page": "devices",
+      "entry": "attestation_rejected",
+      "why": "This license is tied to details of the device's hardware, and the app couldn't read them on this device. This is about the device, not about you.",
+      "fix": "Try again. If it keeps happening on this device, ask the app's developer."
+    },
+    "activation.fingerprint-required": {
+      "page": "devices",
+      "entry": "attestation_rejected"
+    },
+    "attestation_unavailable": {
+      "page": "devices",
+      "why": "The device check isn't set up for this app, or the service that runs it couldn't be reached.",
+      "fix": "Try again in a few minutes. If it keeps happening, ask the app's developer."
+    },
+    "device_list_failed": {
+      "page": "devices",
+      "article": "devices",
+      "why": "The app couldn't get the list of devices that use your license.",
+      "fix": "Check your connection and try again. If it keeps happening, tell the app's developer."
+    },
+    "device_deauthorize_failed": {
+      "page": "devices",
+      "article": "devices",
+      "why": "The app couldn't remove the device from your license.",
+      "fix": "Try again. You can also remove a device from the app's page in your library at key.plrs.im, if the app has one.",
+      "cta": "library"
+    },
+    "device_rename_failed": {
+      "page": "devices",
+      "article": "devices",
+      "why": "The app couldn't save the new name for the device.",
+      "fix": "Try again. If it keeps happening, tell the app's developer."
+    },
+    "bundle-jws-rejected": {
+      "page": "devices",
+      "entry": "bundle-jws-rejected",
+      "why": "It was changed, damaged, or isn't for this app.",
+      "fix": "Ask the app's developer for a new file."
+    },
+    "bundle-claims-rejected": {
+      "page": "devices",
+      "entry": "bundle-jws-rejected",
+      "why": "Made for another app or device, older than 30 days, or this device's date is wrong.",
+      "fix": "Check the date, then send the app's developer this device's request code."
     },
     "inner-doc-rejected": {
-      "page": "devices"
+      "page": "devices",
+      "entry": "bundle-jws-rejected",
+      "why": "Its license failed a check.",
+      "fix": "Ask the app's developer."
     },
-    "invalid_code": {
-      "page": "signing-in"
+    "bundle": {
+      "page": "devices",
+      "entry": "bundle-jws-rejected",
+      "why": "The app couldn't read it.",
+      "fix": "Copy it again, or ask the app's developer."
     },
-    "key_entry_limit": {
-      "page": "accounts"
+    "bundle-rejected": {
+      "page": "devices",
+      "entry": "bundle-jws-rejected",
+      "why": "A check failed.",
+      "fix": "Ask the app's developer."
     },
-    "last_link": {
-      "page": "accounts"
+    "bundle-trust-rejected": {
+      "page": "devices",
+      "why": "The file was signed by someone this app doesn't trust, so it may be for another app or may not come from the app's developer.",
+      "fix": "Use only an activation file the app's developer made for this app. If you did, ask the app's developer for a new one."
     },
-    "license_disabled": {
-      "page": "license-key"
+    "download_auth_required": {
+      "page": "downloads-and-updates",
+      "article": "download",
+      "why": "The app didn't send a license this device can use: it was never activated, the device was removed, or the license can't be used any more.",
+      "fix": "Sign in or activate in the app, then download again. If the app still refuses, the license may have been turned off or may have ended: ask the app's developer."
     },
-    "license_expired": {
-      "page": "license-status"
-    },
-    "license_owned": {
-      "page": "accounts"
-    },
-    "license_unusable": {
-      "page": "license-key"
-    },
-    "link_conflict": {
-      "page": "accounts"
-    },
-    "local-only": {
-      "page": "license-status"
-    },
-    "no-token": {
-      "page": "license-key"
-    },
-    "not_eligible": {
-      "page": "license-key"
-    },
-    "not_entitled": {
-      "page": "license-status"
-    },
-    "not_removable": {
-      "page": "accounts"
-    },
-    "oidc_error": {
-      "page": "signing-in"
-    },
-    "pack-not-entitled": {
-      "page": "license-status"
-    },
-    "payload-hash-mismatch": {
-      "page": "downloads-and-updates"
-    },
-    "payload-mismatch": {
-      "page": "downloads-and-updates"
-    },
-    "plan-insufficient-disk": {
-      "page": "downloads-and-updates"
-    },
-    "plan-transport-unsupported": {
-      "page": "downloads-and-updates"
-    },
-    "rate_limited": {
-      "page": "signing-in"
-    },
-    "record-mismatch": {
-      "page": "downloads-and-updates"
-    },
-    "record-rejected": {
-      "page": "downloads-and-updates"
-    },
-    "refresh-failed": {
-      "page": "license-status"
-    },
-    "registration_closed": {
-      "page": "license-key"
-    },
-    "release-refused": {
-      "page": "license-status"
-    },
-    "sign-in-denied": {
-      "page": "signing-in"
-    },
-    "sign-in-expired": {
-      "page": "signing-in"
-    },
-    "sign-in-failed": {
-      "page": "signing-in"
-    },
-    "sign-in-unavailable": {
-      "page": "signing-in"
-    },
-    "signin_expired": {
-      "page": "signing-in"
-    },
-    "step_up_required": {
-      "page": "signing-in"
-    },
-    "swap-failed": {
-      "page": "downloads-and-updates"
-    },
-    "swap-refused": {
-      "page": "downloads-and-updates"
-    },
-    "sync-failed": {
-      "page": "license-status"
-    },
-    "terms_required": {
-      "page": "signing-in"
-    },
-    "turnstile_failed": {
-      "page": "signing-in"
-    },
-    "unauthorized": {
-      "page": "license-status"
-    },
-    "unavailable": {
-      "page": "signing-in"
+    "delivery_gate_missing": {
+      "page": "downloads-and-updates",
+      "article": "download",
+      "why": "The app's developer hasn't finished setting up who may download this content, so it is closed for everyone.",
+      "fix": "Try again later. If it stays unavailable, tell the app's developer."
     },
     "upstream_rate_limited": {
-      "page": "downloads-and-updates"
+      "page": "downloads-and-updates",
+      "why": "The place the download comes from is busy, and it asked the service to slow down.",
+      "fix": "Try again in a few minutes. If it keeps happening, tell the app's developer which message you saw."
     },
-    "version_blocked": {
-      "page": "license-status"
+    "internal_error": {
+      "page": "downloads-and-updates",
+      "why": "The download server had a problem while answering.",
+      "fix": "Try again in a few minutes. If it keeps happening, tell the app's developer which message you saw."
+    },
+    "chunk-bundle-truncated": {
+      "page": "downloads-and-updates",
+      "why": "Part of the download didn't arrive, so the connection may have dropped.",
+      "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
+    },
+    "payload-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "payload-mismatch",
+      "why": "The update that arrived doesn't match the one the developer published, so the app kept it out.",
+      "fix": "Try again. If it keeps happening, tell the app's developer."
+    },
+    "full-corrupt": {
+      "page": "downloads-and-updates",
+      "entry": "payload-mismatch",
+      "why": "A piece of content failed its check after it downloaded, so the app discarded it.",
+      "fix": "Nothing. The app downloads the content again next time. If it keeps happening, tell the app's developer."
+    },
+    "delta-artifact-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "payload-mismatch"
+    },
+    "file-corrupt": {
+      "page": "downloads-and-updates",
+      "entry": "payload-mismatch"
+    },
+    "payload-hash-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "payload-mismatch"
+    },
+    "chunk-corrupt": {
+      "page": "downloads-and-updates",
+      "entry": "payload-mismatch"
+    },
+    "plan-transport-unsupported": {
+      "page": "downloads-and-updates",
+      "why": "This content can be downloaded only in a way that this device or app doesn't support.",
+      "fix": "Get it another way, such as from the store the app came from, or ask the app's developer."
+    },
+    "plan-insufficient-disk": {
+      "page": "downloads-and-updates",
+      "why": "No way of installing this content fits in the free space on this device.",
+      "fix": "Free up space on the device, then try again."
+    },
+    "plan-no-strategy": {
+      "page": "downloads-and-updates",
+      "why": "The app has no way to put this content on this device.",
+      "fix": "Ask the app's developer."
+    },
+    "swap-refused": {
+      "page": "downloads-and-updates",
+      "article": "update",
+      "why": "This copy of the app can't replace its own files, because of how or where it is installed.",
+      "fix": "Update it the way you installed it, such as through a store, an installer or a package manager."
+    },
+    "swap-failed": {
+      "page": "downloads-and-updates",
+      "article": "update",
+      "why": "The update was downloaded and checked, but the app couldn't replace its files. It keeps the update.",
+      "fix": "Close the app and open it again. The app tries the update again at the next start. If it keeps failing, make sure the device has enough free space."
+    },
+    "delta-apply-failed": {
+      "page": "downloads-and-updates",
+      "why": "A content update that builds on what is installed didn't apply correctly.",
+      "fix": "Nothing. The app downloads the content again next time. If it keeps happening, tell the app's developer."
+    },
+    "feed-rejected": {
+      "page": "downloads-and-updates",
+      "entry": "feed-rejected",
+      "why": "The app checks that update information comes from the developer and is current, and this information failed a check. A wrong date or time on your device can cause this.",
+      "fix": "Check that the date and time on your device are right, then try again. If it keeps happening, update the app the way you installed it, or tell the app's developer."
+    },
+    "feed-rollback": {
+      "page": "downloads-and-updates",
+      "entry": "feed-rejected",
+      "why": "The app never accepts update information older than what it already has, so it ignored this information.",
+      "fix": "Try again later. If it keeps happening, tell the app's developer."
+    },
+    "feed_not_composable": {
+      "page": "downloads-and-updates",
+      "why": "The service couldn't prepare the update information for the app, so no update check could be made.",
+      "fix": "Try again in a few minutes. The app keeps working on the version you have. If it keeps happening, tell the app's developer."
+    },
+    "record-rejected": {
+      "page": "downloads-and-updates",
+      "entry": "record-rejected",
+      "why": "The app checks every update against the developer's signed record before installing it, and this one failed that check. Nothing was installed.",
+      "fix": "Try again later. If it keeps happening, tell the app's developer."
+    },
+    "record-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "record-rejected",
+      "why": "The update isn't the one the developer published, so the app didn't install it.",
+      "fix": "Try again later. If it keeps happening, tell the app's developer."
+    },
+    "delta-base-mismatch": {
+      "page": "downloads-and-updates",
+      "why": "The content on this device no longer matches what the update expected, for example because a file was changed.",
+      "fix": "Nothing. The app downloads the content in full."
+    },
+    "fetch-failed": {
+      "page": "downloads-and-updates",
+      "entry": "fetch-failed",
+      "why": "The app needs some content to start, and it couldn't download it.",
+      "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
+    },
+    "file-source-missing": {
+      "page": "downloads-and-updates",
+      "entry": "fetch-failed",
+      "why": "The app couldn't find a copy of a file to build the content from.",
+      "fix": "Nothing. The app downloads the content again next time. If it keeps happening, tell the app's developer."
+    },
+    "pack-no-variant": {
+      "page": "downloads-and-updates",
+      "entry": "pack-no-variant",
+      "why": "None of the versions of this content suits this device.",
+      "fix": "Ask the app's developer."
+    },
+    "pack-not-pinned": {
+      "page": "downloads-and-updates",
+      "entry": "pack-no-variant",
+      "why": "This version of the app doesn't list this content.",
+      "fix": "Update the app to the latest version. If that doesn't help, ask the app's developer."
+    },
+    "chunks-unsupported-version": {
+      "page": "downloads-and-updates",
+      "entry": "chunks-unsupported-version",
+      "why": "The content uses a format this version of the app doesn't understand.",
+      "fix": "Update the app."
+    },
+    "pack-type-unsupported": {
+      "page": "downloads-and-updates",
+      "entry": "chunks-unsupported-version"
+    },
+    "pck-engine-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "chunks-unsupported-version",
+      "why": "The content was made for a different version of the game than the one running.",
+      "fix": "Update the game."
+    },
+    "files-index-invalid": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid",
+      "why": "The content's description didn't pass the app's checks, so the app didn't install it.",
+      "fix": "Nothing. The app downloads the content again next time. If it keeps happening, tell the app's developer."
+    },
+    "files-duplicate-path": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "files-case-collision": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "files-path-conflict": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "files-layout-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-ref-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-bad-length": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-bad-magic": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-bad-record-size": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-bad-flags": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-reserved-nonzero": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-zero-length": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-bad-clen": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-bad-bundle-ref": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-bad-bundle-range": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-size-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "chunks-payload-mismatch": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid"
+    },
+    "pack-type-check-failed": {
+      "page": "downloads-and-updates",
+      "entry": "files-index-invalid",
+      "why": "The content failed a check the app runs on it before using it, so it wasn't installed.",
+      "fix": "Try again later. If it keeps happening, tell the app's developer."
+    },
+    "files-unsafe-path": {
+      "page": "downloads-and-updates",
+      "entry": "files-unsafe-path",
+      "why": "A file in the content has a name or location the app doesn't allow, so the app refused all of it.",
+      "fix": "Nothing you can change. Tell the app's developer."
+    },
+    "pck-directory-refused": {
+      "page": "downloads-and-updates",
+      "entry": "files-unsafe-path",
+      "why": "The content has a file list the app can't read, or files that aren't allowed in content.",
+      "fix": "Nothing you can change. Tell the app's developer."
+    },
+    "pack-not-data-only": {
+      "page": "downloads-and-updates",
+      "entry": "files-unsafe-path",
+      "why": "This content may hold only plain data, and it includes files that aren't.",
+      "fix": "Nothing you can change. Tell the app's developer."
+    },
+    "pack-rolled-back": {
+      "page": "downloads-and-updates",
+      "why": "The app didn't start after the last content update, so it went back to the previous content.",
+      "fix": "Nothing. The app keeps the previous content."
+    },
+    "pack-revoked": {
+      "page": "downloads-and-updates",
+      "why": "The app's developer withdrew this content, or the app can't check whether it was withdrawn, so it refuses to use it.",
+      "fix": "Update the app and connect to the internet so it can check again. If that doesn't help, ask the app's developer."
+    },
+    "portal.file_not_found": {
+      "page": "downloads-and-updates",
+      "article": "download",
+      "why": "A newer version has probably replaced the file you asked for.",
+      "fix": "Reload the page and choose from the current downloads."
+    },
+    "portal.not_hosted": {
+      "page": "downloads-and-updates",
+      "article": "download",
+      "why": "Your license covers this file, but your library at key.plrs.im can't hand it to your browser yet.",
+      "fix": "Look for **Get it from** next to the file, which names where to get it. If there's none, ask the app's developer for another way to get it."
+    },
+    "portal.license_inactive": {
+      "page": "downloads-and-updates",
+      "article": "download",
+      "why": "This download needs a working license, and none of the licenses in your account for this app is working. A license may have expired or been turned off.",
+      "fix": "Renew the license with the app's developer or the store you bought it from, then try the download again. If it was turned off, ask the app's developer."
+    },
+    "portal.not_entitled": {
+      "page": "downloads-and-updates",
+      "article": "download",
+      "why": "Your license doesn't cover this version. Its update period may have ended, or the license itself may have expired or been turned off.",
+      "fix": "Download a version your license covers, or ask the app's developer about extending your license. If the license has ended, renew it with the app's developer or the store you bought it from. If it was turned off, ask the app's developer."
+    },
+    "license_owned": {
+      "page": "accounts",
+      "why": "This license was added to a Polaris Key account earlier. A license in an account is used by signing in to that account, never by entering its key.",
+      "fix": "Sign in with the account that holds the license. In your library, you can also select **Use a different key** to try another key. If you don't recognize that account, or have no other key, ask the app's developer."
+    },
+    "email_mismatch": {
+      "page": "accounts",
+      "entry": "email_mismatch",
+      "why": "A license joins only an account that has verified the email address it was bought with.",
+      "fix": "Select **Add and verify that email**, enter that address, and verify it with the emailed code. Not sure which address? Check your receipt, or ask the app's developer."
+    },
+    "license_email_bound": {
+      "page": "accounts",
+      "entry": "email_mismatch",
+      "why": "This device's license is tied to the email address it was bought with.",
+      "fix": "Verify that email address in your account, then try again. Not sure which address? Check your receipt."
+    },
+    "key_entry_limit": {
+      "page": "accounts",
+      "entry": "key_entry_limit",
+      "why": "A license key that isn't in an account can be entered on a limited number of new devices, and this key has used them all.",
+      "fix": "Add the license to your Polaris Key account, then sign in to the app with that account. After that, a new device can't use the key and signs in instead. Add the license only if it is yours. If you can't add it, ask the app's developer."
+    },
+    "activation.key-entry-limit": {
+      "page": "accounts",
+      "entry": "key_entry_limit"
+    },
+    "email_in_use": {
+      "page": "accounts",
+      "why": "That email address already belongs to another Polaris Key account, but not as a way to sign in. Nothing was changed.",
+      "fix": "Sign in to that account with the method you used before. Then add this email under **Sign-in methods**, or use a different email."
+    },
+    "link_conflict": {
+      "page": "accounts",
+      "why": "That sign-in method, such as an email address or an account with another service, is already connected to a different Polaris Key account.",
+      "fix": "Sign in to that account, or connect a different sign-in method."
+    },
+    "last_link": {
+      "page": "accounts",
+      "entry": "last_link",
+      "why": "Every account needs at least one way to sign in, so its last sign-in method can't be removed.",
+      "fix": "Add another sign-in method first, then remove this one."
+    },
+    "not_removable": {
+      "page": "accounts",
+      "entry": "last_link",
+      "why": "You can remove a license only if you could add it back by entering its key. This one has no key, or the app doesn't allow that.",
+      "fix": "It stays in your library. To stop using it on a device, remove that device from the app's page. That signs the app out there. Otherwise ask the app's developer.",
+      "cta": "library"
+    },
+    "network": {
+      "page": "other",
+      "entry": "network",
+      "why": "The app couldn't reach Polaris Key, or got an error instead of an answer. Your connection may be down, something between you and the service may have blocked the request, or the service may be having a problem.",
+      "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
+    },
+    "network-error": {
+      "page": "other",
+      "entry": "network"
+    },
+    "portal.status-0": {
+      "page": "other",
+      "why": "Your browser couldn't reach Polaris Key.",
+      "fix": "Check your connection, then try again."
+    },
+    "transport": {
+      "page": "other",
+      "entry": "transport",
+      "why": "The app got a reply it couldn't read.",
+      "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
+    },
+    "too-many-redirects": {
+      "page": "other",
+      "entry": "transport",
+      "why": "The connection was passed from address to address too many times and never arrived.",
+      "fix": "Try again. If it keeps happening, tell the app's developer."
+    },
+    "timeout": {
+      "page": "other",
+      "why": "The service didn't finish answering in time.",
+      "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
+    },
+    "server-error": {
+      "page": "other",
+      "entry": "server-error",
+      "why": "The service had a problem while answering the app.",
+      "fix": "Wait a few minutes, then try again. If it keeps happening, tell the app's developer which message you saw."
+    },
+    "http-error": {
+      "page": "other",
+      "entry": "server-error",
+      "why": "The service answered with an error the app has no specific message for.",
+      "fix": "Try again. If it keeps happening, tell the app's developer which message you saw."
+    },
+    "document_not_representable": {
+      "page": "other",
+      "entry": "server-error",
+      "why": "A value stored for the app can't be used, so the service couldn't prepare your settings.",
+      "fix": "Nothing you can change. Tell the app's developer."
+    },
+    "bad_response": {
+      "page": "other",
+      "entry": "bad_response",
+      "why": "The app couldn't use or confirm the service's answer. A wrong date or time on your device is one cause.",
+      "fix": "Check your device's date and time, then try again. If it keeps happening, tell the app's developer."
+    },
+    "invalid-response": {
+      "page": "other",
+      "entry": "bad_response"
+    },
+    "response-too-large": {
+      "page": "other",
+      "entry": "bad_response"
+    },
+    "platform-error": {
+      "page": "other",
+      "why": "Your device's system, or a store the app uses, reported an error to the app.",
+      "fix": "Try again. If it keeps happening, tell the app's developer which message you saw."
+    },
+    "service-unavailable": {
+      "page": "other",
+      "entry": "service-unavailable",
+      "why": "The app doesn't use the Polaris Key feature that this needs.",
+      "fix": "Nothing is broken. If you expected it, ask the app's developer."
+    },
+    "service-disabled": {
+      "page": "other",
+      "entry": "service-unavailable",
+      "why": "The app's developer turned off the Polaris Key feature that this needs.",
+      "fix": "Nothing is broken. If you expected it, ask the app's developer."
+    },
+    "mint-unavailable": {
+      "page": "other",
+      "entry": "service-unavailable",
+      "why": "The app's developer hasn't set this up.",
+      "fix": "Nothing is broken. If you expected it, ask the app's developer."
+    },
+    "unsupported": {
+      "page": "other",
+      "entry": "unsupported",
+      "why": "The app, or where it runs, doesn't support this.",
+      "fix": "In a browser, try the installed app. Otherwise ask the app's developer."
+    },
+    "bundle-import-unsupported": {
+      "page": "other",
+      "entry": "unsupported",
+      "why": "This app version or browser can't open activation files.",
+      "fix": "Use a license key or sign in instead."
+    },
+    "report-unsupported": {
+      "page": "other",
+      "entry": "unsupported",
+      "why": "The app can't send device details from here, such as a browser.",
+      "fix": "Nothing is broken. Use the installed app."
+    },
+    "device-management-unsupported": {
+      "page": "other",
+      "entry": "unsupported",
+      "why": "This app version can't list or remove your devices.",
+      "fix": "Manage them from your library.",
+      "cta": "library"
+    },
+    "key-entry-unsupported": {
+      "page": "other",
+      "entry": "unsupported",
+      "why": "This app version can't take a license key.",
+      "fix": "Sign in instead."
+    },
+    "managed_by_admin": {
+      "page": "other",
+      "why": "Your organization, or the app's developer, set this setting and locked it.",
+      "fix": "Ask whoever manages the app for your organization if you need it changed."
+    },
+    "catalog_unavailable": {
+      "page": "other",
+      "why": "The service couldn't prepare the app's settings, so none were loaded.",
+      "fix": "Try again in a few minutes. If it keeps happening, tell the app's developer."
+    },
+    "fallback": {
+      "page": "other",
+      "entry": "fallback",
+      "why": "The app hit a problem it has no specific message for. The code in parentheses says which problem.",
+      "fix": "Try again. If it keeps happening, tell the app's developer the code."
+    },
+    "unknown": {
+      "page": "other",
+      "entry": "fallback",
+      "why": "Something unexpected happened inside the app.",
+      "fix": "Try again. If it keeps happening, tell the app's developer."
+    },
+    "portal.default": {
+      "page": "other",
+      "entry": "fallback",
+      "why": "Your library hit a problem it has no specific message for.",
+      "fix": "Try again.",
+      "cta": "contact"
+    },
+    "not_found": {
+      "page": "other",
+      "why": "What was asked for doesn't exist or can't be found. It may have been removed.",
+      "fix": "Try again from the beginning. If you expect it to exist, ask the app's developer."
+    },
+    "portal.status-404": {
+      "page": "other",
+      "why": "What you opened isn't there. It may have been removed, or the link is out of date.",
+      "fix": "Go back to your library and open it from there.",
+      "cta": "library"
+    },
+    "forbidden": {
+      "page": "other",
+      "why": "You're signed in, but your account isn't allowed to do this.",
+      "fix": "Sign in with an account that has permission, or ask the app's developer."
+    },
+    "portal.status-403": {
+      "page": "other",
+      "why": "The request was refused. A fresh copy of the page often fixes it.",
+      "fix": "Reload the page and try again.",
+      "cta": "contact"
+    },
+    "portal.status-429": {
+      "page": "other",
+      "why": "You made too many requests in a short time.",
+      "fix": "Wait a minute, then try again.",
+      "cta": "contact"
+    },
+    "body_too_large": {
+      "page": "other",
+      "why": "What the app tried to send is larger than the service accepts.",
+      "fix": "Try again. If it keeps happening, tell the app's developer which message you saw."
+    },
+    "store-failed": {
+      "page": "other",
+      "entry": "store-failed",
+      "why": "The app couldn't read or save its license information on this device.",
+      "fix": "Make sure the device has free space and restart the app, then try again. If it keeps happening, ask the app's developer. Don't change system permissions unless the developer tells you to."
+    },
+    "pack-state-unreadable": {
+      "page": "other",
+      "entry": "store-failed",
+      "why": "The app couldn't read its list of installed content, so it installed nothing new, to avoid losing what it has.",
+      "fix": "Restart the app."
     }
   },
-  "developerOnly": []
+  "developerOnly": [
+    "bad_request",
+    "method_not_allowed",
+    "misconfigured",
+    "server_misconfigured",
+    "value_not_representable",
+    "insecure-base-url",
+    "insecure-redirect",
+    "invalid-options",
+    "not-configured",
+    "bridge-missing",
+    "content-stamp-invalid",
+    "marker-rejected",
+    "release_record_rejected",
+    "release_tag_is_pack_release",
+    "asset_unreachable"
+  ]
 }

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://key.plrs.im/docs/schemas/help-messages.schema.json",
   "title": "Help messages",
-  "description": "Maps every consumer-facing message id of the copy catalog (conformance/parity/copy.en.json) to the Help page that explains it. The id is the heading anchor and the /docs/help/code/<id>/ redirect path. DOC-03a owns the shape; DOC-05a fills the data.",
+  "description": "Maps every consumer-facing message id of the copy catalog (conformance/parity/copy.en.json) and of the customer portal's own error copy to the Help page that explains it. The id is the heading anchor and the /docs/help/code/<id>/ redirect path: an id's anchor is /docs/help/messages/<page>/#<id>, where the page of a developerOnly id is `other`. DOC-03a owns the shape; DOC-05a fills the data.",
   "type": "object",
   "required": ["version", "pages", "messages", "developerOnly"],
   "additionalProperties": false,
@@ -27,11 +27,25 @@
         }
       }
     },
+    "portal": {
+      "description": "The customer portal's own error copy (packages/admin/src/portal/errors.ts), keyed as that file keys it: a code, `status-<n>` for an HTTP status, `default`. Each key is the message id `portal.<key>`. helpMessages.test.ts fails when this mirror and errors.ts disagree.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9]+(?:[_-][a-z0-9]+)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["title", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "messages": {
-      "description": "One entry per message id. A catalog `codes` key is its own id (server codes use `_`, client codes use `-`); a `gate` or `activation` key is prefixed with its group and a dot; the fallback is `fallback`.",
+      "description": "One entry per message id, in the order the pages show them. A catalog `codes` key is its own id (server codes use `_`, client codes use `-`); a `gate` or `activation` key is prefixed with its group and a dot; the fallback is `fallback`; a portal error is `portal.<key>`.",
       "type": "object",
       "propertyNames": {
-        "pattern": "^(?:fallback|(?:gate|activation)\\.[a-z0-9]+(?:-[a-z0-9]+)*|[a-z0-9]+(?:[_-][a-z0-9]+)*)$"
+        "pattern": "^(?:fallback|(?:gate|activation)\\.[a-z0-9]+(?:-[a-z0-9]+)*|portal\\.[a-z0-9]+(?:[_-][a-z0-9]+)*|[a-z0-9]+(?:[_-][a-z0-9]+)*)$"
       },
       "additionalProperties": {
         "type": "object",
@@ -43,27 +57,32 @@
             "type": "string"
           },
           "entry": {
-            "description": "Ids that carry the same on-screen title share one heading; give them the same `entry` and the first id owns the heading.",
+            "description": "Ids that carry the same on-screen title share one heading: give them the same `entry`, named after the first of them, which owns the heading and its anchor. Every id keeps its own anchor.",
             "type": "string"
           },
           "article": {
-            "description": "A Help article (path under help/) this message links to.",
+            "description": "A shipped Help article (path under help/) this message links to.",
             "type": "string",
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*$"
           },
           "why": {
-            "description": "Why you see this: one or two plain sentences.",
+            "description": "Why you see this: one or two plain sentences. Held by the first id of each distinct on-screen message; the other ids that show the same message share it.",
             "type": "string"
           },
           "fix": {
-            "description": "What to do: one or two plain sentences.",
+            "description": "What to do: one or two plain sentences. Held like `why`.",
             "type": "string"
+          },
+          "cta": {
+            "description": "A link that ends What to do: `library` is Open your library, `contact` is Still need help? with a link to Get help with an app. Held like `why`.",
+            "type": "string",
+            "enum": ["library", "contact"]
           }
         }
       }
     },
     "developerOnly": {
-      "description": "Ids listed under Other messages as developer-only: the app's developer needs to fix them.",
+      "description": "Ids listed under Other messages as developer-only: the app's developer needs to fix them. They have no entry of their own.",
       "type": "array",
       "uniqueItems": true,
       "items": { "type": "string" }

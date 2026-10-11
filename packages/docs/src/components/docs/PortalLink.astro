@@ -1,12 +1,13 @@
 ---
 /** A link into the customer portal on the same origin, "Open your library ↗". */
+import { portalHref } from "../../lib/portalHref";
+
 export interface Props {
-  /** The portal path, e.g. `library` or `account`. */
+  /** The portal page: `library` is its home, any other is a page of it, e.g. `account` or `account/methods`. */
   to: string;
 }
 
 const { to } = Astro.props;
-const href = `/${to.replace(/^\/+/, "")}`;
 ---
 
-<a class="pk-portal-link" href={href} target="_blank" rel="noopener"><slot>Open the portal</slot> ↗</a>
+<a class="pk-portal-link" href={portalHref(to)} target="_blank" rel="noopener"><slot>Open the portal</slot> ↗</a>
