@@ -426,6 +426,20 @@ jobs:
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
+      - name: iOS app footprint (kit + decide() vs 0.8.33)
+        # SP-52: a Release arm64 app must be at least 25% smaller than over the v0.8.33 SDK. Report
+        # only until it holds: measured 2026-10-11 with Xcode 27, removing packs, zstd and the static
+        # Rubik still leaves this tree 13% LARGER (3.47 MB vs 3.07 MB .ipa), because the UK-07 kit
+        # (PolarisKeyUI + PolarisKeyUICore, +2.1 MB of code and resources) outweighs the 1.4 MB
+        # removed. Drop `continue-on-error` when the kit's own footprint package lands.
+        # XcodeGen is installed by the hosted-tests step below, so this one fetches the same pinned release.
+        continue-on-error: true
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/xcodegen-size.zip" \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.45.4/xcodegen.zip
+          echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen-size.zip" | shasum -a 256 -c
+          unzip -q "$RUNNER_TEMP/xcodegen-size.zip" -d "$RUNNER_TEMP/xcodegen-size"
+          XCODEGEN="$RUNNER_TEMP/xcodegen-size/xcodegen/bin/xcodegen" sdks/swift/tools/measure-ios-footprint.sh
       - name: Mac Catalyst build of every library
         working-directory: sdks/swift
         # SP-S16: Catalyst takes the iOS branches (identifierForVendor, no Sparkle: the Sparkle

@@ -1,0 +1,27 @@
+name: SizeApp
+options:
+  deploymentTarget:
+    iOS: "18.0"
+packages:
+  PolarisKey:
+    path: PKPATH
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGN_IDENTITY: ""
+    GENERATE_INFOPLIST_FILE: "YES"
+    PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.sizeapp
+    SWIFT_COMPILATION_MODE: wholemodule
+targets:
+  SizeApp:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: PolarisKey
+        product: PolarisKey
+      - package: PolarisKey
+        product: PolarisKeyUI
+      - package: PolarisKey
+        product: PolarisKeyUpdate
