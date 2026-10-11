@@ -2,8 +2,10 @@
  * Settings → All settings (ST-08, S-18 §4.9): every product-scope entry of the settings registry
  * the member can see and the product's services make real, in one filterable table. The value and
  * source come from the settings API where it serves the key (`GET …/settings/effective`, the
- * row-backed slice until ST-05b widens it); every other row names where it is edited and links
- * there. Nothing is edited in this table: a value has one home (S-18 §4.9 principles).
+ * row-backed slice until ST-05b widens it). Every other row names where its key is edited, by
+ * the key and not by its area (`SETTING_HOMES`): a link to the page that has the control, or,
+ * where the console has none, the `.pkey/` file or the admin API that does. Nothing is edited in
+ * this table: a value has one home (S-18 §4.9 principles).
  */
 
 import * as React from "react";
@@ -24,7 +26,7 @@ import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { canIn } from "../../../access/can.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
-import { pageOf, type ProductPageId } from "../../../nav.js";
+import { pageOf, sectionOf, type ProductPageId } from "../../../nav.js";
 import { Link } from "../../../router.js";
 import { productPage } from "../../../routes.js";
 import {
@@ -32,38 +34,63 @@ import {
   type SettingsIndexEntry,
 } from "../../../settings.generated.js";
 import { SettingsSection } from "../../../templates/Settings.js";
+import { SETTING_HOMES, type SettingHome } from "../model/settingHomes.js";
+import { SETTINGS_AREAS } from "./SettingsHub.js";
 
-/** Where an area's settings are edited: `<service>|<area>` → the page. */
-const HOME: Record<string, ProductPageId> = {
-  "core|general": "settings",
-  "core|access": "settings",
-  "core|services": "services",
-  "core|keys": "keys",
-  "core|assets": "presentation",
-  "core|storefront": "settings",
-  "license|license.policy": "license-settings",
-  "license|license.licensing": "license-settings",
-  "license|license.autoIssue": "enrollment",
-  "license|license.tiers": "tiers",
-  "config|config.catalog": "catalog",
-  "config|config.profiles": "profiles",
-  "config|config.edgeMint": "edge-mint",
-  "release|release.compatibility": "compatibility",
-  "release|release.sync": "feed",
-  "release|release.channels": "channels",
-  "release|release.deliverables": "deliverables",
-  "release|release.publishing": "keys",
-  "release|release.signing": "keys",
-  "release|release.packages": "package-feeds",
-  "distribution|distribution.access": "access",
-  "distribution|distribution.outlets": "outlets",
-  "distribution|distribution.commerce": "commerce",
-  "update|update.access": "feed",
-  "update|update.policy": "feed",
-  "identity|identity.keyEntry": "sign-in",
-  "identity|identity.signIn": "sign-in",
-  "sync|cloudSync.limits": "sync-data",
-};
+/** A page as the console words it elsewhere: `Settings → General`, `License → Enrollment`. */
+function destination(page: ProductPageId): string {
+  const area = SETTINGS_AREAS.find((a) => a.page === page);
+  if (area) return `Settings → ${area.label}`;
+  const section = sectionOf(page);
+  return section
+    ? `${section.label} → ${pageOf(page).label}`
+    : pageOf(page).label;
+}
+
+/**
+ * The "Edit in" cell: a link to the page whose control writes the key, with the section that
+ * holds it when the page has several; or, for a key the console cannot edit, the file or API that
+ * can (no link: there is no page to send the operator to).
+ */
+function EditIn({
+  slug,
+  entry,
+  home,
+}: {
+  slug: string;
+  entry: SettingsIndexEntry;
+  home: SettingHome | undefined;
+}): React.ReactElement {
+  if (home?.kind === "page")
+    return (
+      <>
+        <Link
+          to={productPage(slug, home.page, { id: home.id })}
+          className="inline-flex min-h-6 items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
+        >
+          {destination(home.page)}
+          <ArrowRight aria-hidden className="size-3.5" />
+          <span className="sr-only"> for {entry.label}</span>
+        </Link>
+        {home.section ? (
+          <span className="block text-xs text-fg-muted">{home.section}</span>
+        ) : null}
+      </>
+    );
+  return (
+    <span className="text-fg-muted">
+      {home?.kind === "manifest" ? (
+        <>
+          <code className="text-xs">.pkey/{home.file}</code> in the repository
+        </>
+      ) : home?.kind === "api" ? (
+        "Admin API only"
+      ) : (
+        "No editor listed"
+      )}
+    </span>
+  );
+}
 
 const OWNER: Record<SettingsIndexEntry["ownership"], string> = {
   operator: "Console",
@@ -218,7 +245,7 @@ export function SettingsAllPage({
             <tbody className="divide-y divide-border">
               {rows.map((e) => {
                 const live = byKey.get(e.key);
-                const page = HOME[`${e.service}|${e.area}`] ?? "settings";
+                const home = SETTING_HOMES[e.key];
                 return (
                   <tr key={e.key}>
                     <th scope="row" className="px-5 py-3 font-normal">
@@ -233,7 +260,11 @@ export function SettingsAllPage({
                       {live ? (
                         formatSettingValue(live.spec, live.value)
                       ) : (
-                        <span className="text-fg-muted">On its page</span>
+                        <span className="text-fg-muted">
+                          {home?.kind === "page"
+                            ? "On its page"
+                            : "Not shown here"}
+                        </span>
                       )}
                     </td>
                     <td className="px-3 py-3">
@@ -246,14 +277,7 @@ export function SettingsAllPage({
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      <Link
-                        to={productPage(slug, page)}
-                        className="inline-flex min-h-6 items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
-                      >
-                        {pageOf(page).label}
-                        <ArrowRight aria-hidden className="size-3.5" />
-                        <span className="sr-only"> for {e.label}</span>
-                      </Link>
+                      <EditIn slug={slug} entry={e} home={home} />
                     </td>
                   </tr>
                 );

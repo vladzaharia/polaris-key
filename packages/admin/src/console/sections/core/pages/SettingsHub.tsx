@@ -16,7 +16,8 @@ import { useCan } from "../../../access/useCan.js";
 import type { ProductPageId } from "../../../nav.js";
 import { productPage } from "../../../routes.js";
 
-const AREAS: { page: ProductPageId; label: string }[] = [
+/** The hub's areas in tab order; All settings words its destinations with these labels. */
+export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
   { page: "settings", label: "General" },
   { page: "services", label: "Services" },
   { page: "presentation", label: "Presentation" },
@@ -35,13 +36,13 @@ export function SettingsHub({
   children: React.ReactNode;
 }): React.ReactElement {
   const canKeys = useCan("keys", slug);
-  const tabs: PageTab[] = AREAS.filter((a) => a.page !== "keys" || canKeys).map(
-    (a) => ({
-      value: a.page,
-      label: a.label,
-      to: productPage(slug, a.page),
-    }),
-  );
+  const tabs: PageTab[] = SETTINGS_AREAS.filter(
+    (a) => a.page !== "keys" || canKeys,
+  ).map((a) => ({
+    value: a.page,
+    label: a.label,
+    to: productPage(slug, a.page),
+  }));
   return (
     <div className="space-y-6" data-template="settings-hub">
       <PageHeader

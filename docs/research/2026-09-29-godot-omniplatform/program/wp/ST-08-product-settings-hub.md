@@ -125,7 +125,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 5 lower, and `settings-coverage.test.ts` passes.
-- [ ] Old deep links open a Page moved page naming the new home, with no redirect (e2e).
+- [ ] Old deep links open a Page moved page naming the new home, with no redirect (e2e). **Blocked: 3 of 7 pages done.** `services`, `presentation` and `keys` (with its `secrets` alias) are done and covered by `core.e2e.test.ts`. `license/settings`, `license/enrollment`, `identity/portal` and `update/feed` are working editors whose replacement homes are not built, so they stay live; their owners and dependencies are under "Criterion 2: blocked migrations". The criterion is not met today. Whether ST-08 goes to review with it carved out to those owners is the lead's call.
 - [ ] Console CSP parity passes.
 - [ ] The hub renders at phone width.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
@@ -146,13 +146,75 @@ commit of the PR:
 
 ## Builder notes (2026-10-11)
 
-- Page moved entries exist for `services`, `presentation`, `keys` (and `secrets`), with an e2e
-  (`core.e2e.test.ts`). The other four families the Brand transition section names stay **live**:
+- Page moved entries exist for `services`, `presentation` and `keys` (and `secrets`), with an e2e
+  (`core.e2e.test.ts`). The other four pages the Brand transition section names stay **live**:
   `license/settings`, `license/enrollment`, `identity/portal` and `update/feed` are working editors
-  today, the hub's All settings table links to them, and their ledger homes do not exist yet
-  (Features › Licensing nested settings LX-06, probes and device trust ST-12, App sign-in I-29,
-  portal switch ST-14, Updates P2-11; the ledger itself is ST-49, todo). Turning them into Page moved
-  now would delete working editors and name pages that are not built. Each owner adds its row to
-  `MOVED_TABS`/`ROUTE_LEDGER` and its e2e assertion when its replacement lands.
+  and their ledger homes do not exist. Turning them into Page moved now would delete working
+  editors and name pages that are not built. `route.test.ts` pins them as live. Criterion 2 is
+  blocked on them: see "Criterion 2: blocked migrations".
+- The All settings table sends each key to the page whose control edits it, by key and not by area
+  (`sections/core/model/settingHomes.ts`, pinned by `settingHomes.test.ts` and
+  `settingsAll.test.tsx`). A key the console has no control for names the `.pkey/` file or the admin
+  API instead and links nowhere: `release.binaryName`, `release.summaryMarker` and `license.autoIssue`
+  are manifest-only, `core.trustPolicy` is API-only. The four live editors stay linked from their
+  own keys.
 - `ScrollTable` is now `relative`: an `sr-only` span inside a table cell is absolutely positioned and
   otherwise escaped the scroll region, widening `main#content` by 132 px at 390 px on All settings.
+
+## Criterion 2: blocked migrations (2026-10-11)
+
+An old page stays a live editor until its replacement exists. The package that builds the
+replacement then adds that route's row to `MOVED_TABS` (ST-49's `ROUTE_LEDGER` once it lands) and an
+assertion to the Page moved e2e in `core.e2e.test.ts`, and deletes the page's line in
+`route.test.ts`. ST-49's own criterion accepts "live content or a Page moved page" for an old URL.
+The ledger homes quoted below are `docs/design/ADMIN.md` §2.8.
+
+- **`license/settings`** (License → Settings). Live: the six `licensing.*` rows, of which
+  `clampGraceToExpiry` is the one in effect. Ledger home: "Features › Licensing nested settings
+  (LX-06)". That home is not built, and LX-06 is not its owner: LX-06 is `done` and built License →
+  Settings itself. No package builds a Features-nested licensing panel (ST-38's Features rows are
+  switches: Package feeds, Customer portal, Polaris Key storefront visibility, Minted tokens).
+  Packages that act on this page: **LX-40** (todo; waits on LX-09, LX-10 and LX-05b) retires six of
+  its settings and deletes `LicenseSettingsPage`; **P2-10** (todo) lists License → Settings among the
+  routes that redirect to the product Access page. See prerequisite 1.
+- **`license/enrollment`** (License → Enrollment). Live: the fingerprint mode (`license.fingerprint`),
+  the registration read-out and the probes table. It has no auto-issue control: `license.autoIssue`
+  is manifest-only in the console. Ledger home: "split: registration derived on Features;
+  fingerprint mode in tier limits; probes and device trust ST-12; automatic access Licenses ›
+  Access". Per part: registration derived on Features is **ST-38** (todo, no dependencies);
+  fingerprint mode in tier limits is **LX-34** (todo: tier API and manifest `fingerprintMode`), then
+  **LX-44** (todo: the tier record shows it); the device trust policy editor is **ST-12** (todo;
+  depends on ST-08 and ST-09); automatic access, the home of auto-issue, is **P2-10** (todo; waits on
+  ST-07, F-34, LX-36 and ST-39, none done), whose automatic-licences section is `license.access`
+  (editor defined by LX-36). ST-12's own Consolidation note says it "keeps the device trust policy
+  editor only" and that the auto-issue editor goes to P2-10, so ST-12 owns neither auto-issue nor
+  probes. See prerequisite 2.
+- **`identity/portal`** (Identity → Portal). Live: availability, sign-in methods, modules,
+  `identity.keyEntry.claimByKey`, Discover and automatic linking (`PATCH …/identity/portal`); branding
+  is read-only. Ledger home: "Sign-in › App sign-in (I-29) and the Customer portal switch on
+  Features". **I-29** (todo; waits on ST-38 and I-30, which is in review) merges Identity → Portal and
+  Identity → Sign-in into App sign-in; the Customer portal switch row on Features is **ST-38**'s.
+  **ST-14** (todo; depends on ST-08 and I-29) registers only `portal.enabled`, `keyReissue` and
+  `identity.keyEntry.claimByKey` as rows, so it is not the switch's owner.
+- **`update/feed`** (Update → Feed). Live: metadata access (`update.metadataAccess`), the
+  compatibility window (`release.compatWindow`), the artifact policy (`update.operatorPolicy`) and
+  the feed endpoints (`PATCH …/update/settings`). Ledger home: "Ship builds › Updates (P2-11)".
+  **P2-11** (todo; waits on A-20, and P2-08 is done) builds the Updates page. **P2-10** turns the
+  access sections on the feed and Update pages read-only, with a link to Access.
+
+Prerequisites no package owns; the lead assigns or drops each:
+
+1. A home for the one `licensing.*` setting that outlives LX-40, `license.dunningGraceDays`. LX-41b
+   removes its `pending` and shows it only while a subscription source exists, and names no page;
+   LX-40 deletes the page it would sit on. Until this is assigned, the ledger's "Features › Licensing
+   nested settings" has no builder.
+2. The fingerprint probes table (read-only, fed by the manifest, with Resync). The ledger credits
+   ST-12, whose brief keeps the device trust editor only.
+3. Which plan wins for License → Settings and License → Enrollment: ADMIN.md §2.8 (Features nested
+   settings; Licenses › Access) or P2-10 (the product Access page for both). ST-49 has to pick one
+   when it writes `ROUTE_LEDGER`.
+
+No dependency edge is added to ST-08. ST-12, ST-14 and ST-45 depend on ST-08, and ST-49 on ST-45, so
+an edge from ST-08 to any of them is a cycle; that is also why ST-08 cannot wait for the ledger and
+uses P0-31's `MOVED_TABS`. ST-38, I-29, P2-10, P2-11, LX-34, LX-40 and LX-44 do not depend on ST-08,
+but making ST-08 wait for them (all are todo) would hold the three finished tabs behind them.

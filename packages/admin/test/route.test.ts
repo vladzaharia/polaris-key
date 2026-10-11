@@ -280,6 +280,26 @@ describe("section roots redirect to the section's first page", () => {
       );
   });
 
+  // ST-08 criterion 2 is blocked on these: each is a working editor and its replacement home is
+  // not built (the brief's "Criterion 2: blocked migrations"), so it opens as itself, never as
+  // Page moved. The package that builds a replacement deletes its line and adds the moved row.
+  it("keeps the four pages whose replacement homes are not built live", () => {
+    for (const [hash, page] of [
+      ["#/p/djdl/license/settings", "license-settings"],
+      ["#/p/djdl/license/enrollment", "enrollment"],
+      ["#/p/djdl/identity/portal", "portal"],
+      ["#/p/djdl/update/feed", "feed"],
+    ] as const) {
+      const parsed = parseLocation(hash);
+      expect(parsed.redirect, hash).toBeUndefined();
+      expect(parsed.route, hash).toMatchObject({
+        kind: "product",
+        slug: "djdl",
+        page,
+      });
+    }
+  });
+
   it("a not-found path's search term is its first segment that is not a section key", () => {
     expect(searchTermFor("nope")).toBe("nope");
     expect(searchTermFor("license/nope")).toBe("nope");
