@@ -411,7 +411,12 @@ async function check(
       `${__PKEY_KIT_BASELINES__}/${scene.id}/${size.label}-${scheme}.png`,
     );
   const kit = document.querySelector<HTMLElement>(".pk-root");
-  expect(kit, "a kit root").not.toBeNull();
+  // A licensed gate correctly gets out of the way: its baseline is the host app, not a kit root.
+  if (!kit) {
+    expect(scene.id).toBe("PolarisKeyGate.licensed");
+    expect(document.querySelector("[data-host-content]")).not.toBeNull();
+    return;
+  }
   expect(sidewaysOverflow().join("\n")).toBe("");
   // One h1 at most; a screen whose view names a title has exactly one, in the first viewport (a
   // step inside the sign-in form whose view carries no title, Activate's key step, has none).
