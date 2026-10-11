@@ -135,7 +135,8 @@ export async function handleServicesAdmin(
       session,
       now,
     );
-    return adminJson(serviceStateOf(await getProduct(db, slug)));
+    const state = serviceStateOf(await getProduct(db, slug));
+    return adminJson({ ...state, facts: await featureFactsOf(db, slug) });
   }
   if (action !== undefined) return notFound();
 
@@ -260,5 +261,6 @@ export async function handleServicesAdmin(
   );
   if (!written.ok) return settingRefused(written);
   await applyServiceTransitions(env, db, slug, services, session, now);
-  return adminJson(serviceStateOf(await getProduct(db, slug)));
+  const state = serviceStateOf(await getProduct(db, slug));
+  return adminJson({ ...state, facts: await featureFactsOf(db, slug) });
 }

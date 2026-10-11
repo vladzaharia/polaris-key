@@ -1412,7 +1412,11 @@ describe("admin services enablement", () => {
     });
     expect(status).toBe(200);
     expect(body.source).toBe("admin");
-    // Omitted slugs keep their current values rather than reverting to a default.
+    expect(body.facts).toMatchObject({
+      licensing: { tiers: 0, licenses: 0 },
+      managedConfig: { catalogVersion: 1 },
+      shipBuilds: { latest: null },
+    });
     expect(body.services).toEqual({
       license: { enabled: true },
       config: { enabled: true },
@@ -1640,6 +1644,11 @@ describe("admin services enablement", () => {
     expect(reverted.body.source).toBe("manifest");
     expect(reverted.body.services).toMatchObject({
       config: { enabled: false },
+    });
+    expect(reverted.body.facts).toMatchObject({
+      licensing: { tiers: 0, licenses: 0 },
+      managedConfig: { catalogVersion: 1 },
+      shipBuilds: { latest: null },
     });
 
     // …and now a resync is permitted to write again.

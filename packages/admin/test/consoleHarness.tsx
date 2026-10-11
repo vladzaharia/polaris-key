@@ -7,7 +7,11 @@ import { vi } from "vitest";
 import { render } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
 import { App } from "../src/App.js";
-import { setLoginRedirectForTests, type Me } from "../src/api.js";
+import {
+  setLoginRedirectForTests,
+  type Me,
+  type ServicesResponse,
+} from "../src/api.js";
 import { resetRouterForTests } from "../src/console/router.js";
 
 export type Enablement = Record<string, { enabled: boolean }>;
@@ -25,6 +29,25 @@ export const ALL_ON: Enablement = {
 export const NONE: Enablement = Object.fromEntries(
   Object.keys(ALL_ON).map((k) => [k, { enabled: false }]),
 );
+
+export function servicesResponse(
+  services: Enablement = ALL_ON,
+): ServicesResponse {
+  return {
+    services: services as ServicesResponse["services"],
+    effectiveRegistration: services.license?.enabled
+      ? "requires-license"
+      : services.identity?.enabled
+        ? "requires-identity"
+        : "open",
+    source: "manifest",
+    facts: {
+      licensing: { tiers: 0, licenses: 0 },
+      managedConfig: { catalogVersion: null },
+      shipBuilds: { latest: null },
+    },
+  };
+}
 
 export const ME: Me = {
   sub: "u1",

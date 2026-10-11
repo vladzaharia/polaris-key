@@ -4852,7 +4852,7 @@ const rawApi = {
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
   updateServices: (slug: string, body: UpdateServicesBody) =>
-    call<ServiceState>(`${p(slug)}/services`, {
+    call<ServicesResponse>(`${p(slug)}/services`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
@@ -4865,7 +4865,7 @@ const rawApi = {
   /** Hand `services_json` back to the manifest. Changes nothing live — the manifest re-applies
    *  on the NEXT resync (worker `console/handlers/servicesAdmin.ts`). */
   revertServices: (slug: string) =>
-    call<ServiceState>(`${p(slug)}/services/revert`, { method: "POST" }),
+    call<ServicesResponse>(`${p(slug)}/services/revert`, { method: "POST" }),
 
   // ── update settings ─────────────────────────────────────────────────────────
   updateSettings: (slug: string) =>
