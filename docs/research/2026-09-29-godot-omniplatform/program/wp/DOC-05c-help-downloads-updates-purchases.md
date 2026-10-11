@@ -37,6 +37,16 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 
 `portal/downloads.ts`; `distribution/page/render.ts`; store origins; the kits' update screens
 
+## Correction (verified 2026-10-11)
+
+The named sources are `packages/worker/src/services/identity/portal/downloads.ts` and the portal's Get it panel, download flow and library quick action; the public page (`distribution/page/render.ts`, `model.ts`); the kits' update screens (`ui-core` `models/update.ts` and `models/gate.ts`, the kit-copy `update.*` and `boot.*` lines, `ui-matrix.json` and `update-matrix.json`); and, for store origins, `model.ts` `storeLink`, `customer.ts` and the commerce service. Where the code disagrees with the legacy pages or the plan, the pages follow the code:
+
+- The legacy `download` page told readers to check an Android file against the Android app signing certificate. The key inventory also holds a separate sideload certificate for sideloaded and Obtainium APKs (`features/ship-builds/channels/availability.md` key table, `render.ts` `KEY_LABELS`), so `check-a-download` names both and says which file each one checks.
+- The legacy `download` page stated platform facts that no shipped source states: the free Apple ID refresh and app limits, the AltStore PAL regions and notarization, `scoop update`. They are removed. The legacy `update` page's channel and Sparkle text is removed too: beta access is written in the package that ships it (P2-08), and the updater's name is a developer word.
+- Linking Steam: Discover's `store_owned` path ("You own it on Steam") is not built (`identity/portal/store/obtain.ts`, `identity/portal/discover.ts`: "until then no engine source offers them"). `restore-purchase` sends Steam buyers to **Connect** under **Sign-in methods**, the library's own **Missing a license?** advice (`MissingLicense.tsx`).
+- Refunds: no code writes a license-level refund yet (`core/licensing/lifecycle.ts`: "Nothing writes a reversal through this module yet"). What ships is a store refund removing the purchase's unlock (`commerce.md`, `distribution/commerce/recheck.ts`) and a developer's Disable, which the portal shows as **Suspended**. `refunds` describes only that.
+- The old updates URL `/docs/users/updates/#the-download-page` is still linked from `help/messages/index.md` (DOC-05a's page), so `update` keeps that anchor until the link goes.
+
 ## Design notes
 
 - Nothing describes unbuilt behaviour as shipped; P2 lines belong to the consolidation packages that ship them (§10).
