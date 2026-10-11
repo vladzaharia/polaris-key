@@ -495,6 +495,66 @@ describe("replayErasureLedger: the ledger applied back to D1", () => {
     });
     expect(r).toMatchObject({ scanned: 2, tombstoned: 2, more: true });
   });
+
+  it("round-trips an id as it is: the key is the prefix and the id, whatever the id holds", async () => {
+    const { db, env, r2 } = world();
+    const odd = "acct/with slash and space ü";
+    await recordErasure(env, odd, NOW);
+    expect(r2.keys()).toEqual([`erasures/${odd}`]);
+    expect(await replayErasureLedger({ db, env }, eraser(db))).toMatchObject({
+      scanned: 1,
+      tombstoned: 1,
+      mirrored: 0,
+    });
+    expect(await erasureTombstones(db)).toEqual([odd]);
+  });
+
+  it("walks past a page that is empty yet truncated instead of mistaking it for the end", async () => {
+    class EmptyFirst extends R2Mock {
+      private emptied = false;
+      override async list(options?: R2ListOptions): Promise<R2Objects> {
+        if (!this.emptied) {
+          this.emptied = true;
+          return {
+            objects: [],
+            delimitedPrefixes: [],
+            truncated: true,
+            cursor: ERASURE_PREFIX,
+          };
+        }
+        return super.list(options);
+      }
+    }
+    const { db, env } = world(new EmptyFirst());
+    for (const id of range(1, 3)) await recordErasure(env, id, NOW);
+    const r = await replayErasureLedger({ db, env }, eraser(db), {
+      pageSize: 2,
+    });
+    expect(r).toMatchObject({ scanned: 3, tombstoned: 3, more: false });
+    expect(await erasureTombstones(db)).toEqual(range(1, 3));
+  });
+
+  it("a ledger that fits its page bound exactly does not claim there is more", async () => {
+    const { db, env, kv } = world();
+    for (const id of range(1, 4)) await recordErasure(env, id, NOW);
+    const r = await replayErasureLedger({ db, env }, eraser(db), {
+      pageSize: 2,
+      maxPages: 2,
+    });
+    expect(r).toMatchObject({ scanned: 4, more: false });
+    expect(kv.keys()).toEqual([]);
+  });
+
+  it("counts only the accounts the erasure state machine accepted", async () => {
+    const { db, env } = world();
+    await recordErasure(env, acct(1), NOW);
+    await seedAccount(db, acct(1));
+    // The account vanished between the read and the call (another pass erased it first).
+    const r = await replayErasureLedger({ db, env }, async () => ({
+      ok: false,
+    }));
+    expect(r).toMatchObject({ reapplied: 0, failures: [] });
+  });
 });
 
 describe("erasure tombstones are never purged", () => {
