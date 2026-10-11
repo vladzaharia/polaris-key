@@ -965,6 +965,7 @@ PlatformHostTests/run.sh                 # PolarisKeyPlatform against StoreKit T
 tools/typecheck-platform-old-swift.sh    # PolarisKeyPlatform on Swift 6.0 / 6.1 / 6.2 (Docker)
 swift test --filter UpdateMatrixTests   # wire v4's update-matrix.json, row for row
 swift test --filter "ContentConformanceTests|PlanMatrixTests|PackRecordConformanceTests"  # packs
+swift test --filter PkeyDevLiveTests   # the quickstart against a live `pkey dev` (skipped unless it is set up, below)
 
 # The Sparkle conditioning: PolarisKeyUpdate must build for iOS without linking a macOS framework,
 # and the decision lives in PolarisKeyCore, which iOS needs whole.
@@ -981,3 +982,24 @@ monorepo checkout (from any working directory: CI runs `swift test --package-pat
 The corpus and the transcripts are **generated**: run `pnpm gen corpus` (or `pnpm gen transcripts`)
 from the repo root after any wire change, and `pnpm gen corpus --check` (and
 `pnpm gen transcripts --check`) is the CI drift gate.
+
+**Against a live `pkey dev` (SP-41).** `PkeyDevLiveTests` runs the quickstart against a real local
+Polaris Key over the SDK's own `URLSessionTransport`: no replayed traffic. It covers first
+activation (`ok`, `floating`), each refusal the other five seeded keys reach (`unauthorized`,
+`device_limit`, `key_entry_limit`), a `config` change event after `pkey dev config`, device-code
+sign-in (`beginSignIn`, an approval by the harness, `pollSignIn`, `waitForSignIn`) and the update
+decision before and after `pkey dev release`. Every client is built from the origin and pins in the
+`PolarisConfig.swift` that `pkey sdk` wrote for that server. Start a fresh server and set three
+variables; the tests are skipped when none is set and fail when only some are:
+
+```sh
+pnpm exec pkey dev --builtin --auto-approve        # from the repo root; it prints its port (8787 by default)
+pnpm exec pkey sdk --lang swift --dev --url http://127.0.0.1:8787 --write --out /tmp/PolarisConfig.swift
+PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/PolarisConfig.swift \
+  PKEY_DEV_APPROVE="$(git rev-parse --show-toplevel)/packages/cli/scripts/dev-approve.mjs" \
+  swift test --filter PkeyDevLiveTests
+```
+
+The approver is `node` (22.13 or later, on `PATH`). Each device the tests use is fixed, so a second run
+against the same server works. The CI Swift job starts its own server and sets the variables for its
+`swift test`.
