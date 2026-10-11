@@ -1819,7 +1819,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "ui.gate": { status: "implemented", service: "sdk", na: [] },
   "ui.activate": { status: "implemented", service: "sdk", na: [] },
-  "ui.signin": { status: "planned", service: "sdk", na: [] },
+  "ui.signin": { status: "implemented", service: "sdk", na: [] },
   "ui.devicelimit": { status: "implemented", service: "sdk", na: [] },
   "ui.devices": { status: "implemented", service: "sdk", na: [] },
   "ui.update": { status: "implemented", service: "sdk", na: [] },
@@ -1864,4 +1864,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "37bb06aa8db13da9d011eb59cff2ae56744f3f2412bd01e93320352bf4249a8a";
+  "0261b2fe799d99c343c53e87844d04b8b866442c5e1654d05dd7209bc180825d";

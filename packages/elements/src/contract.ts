@@ -17,6 +17,8 @@ export { tokenCss } from "./tokens.js";
 export { encodeQr } from "@polaris-key/node/qr";
 // DL8: platform names, never a raw id.
 export { platformLabel } from "./platforms.js";
+// The one sign-in form's steps (SIGN-IN.md §3.17): the body each snapshot draws, the travel order.
+export { FORM_ORDER, formStep, type FormInput, type FormStep } from "./form.js";
 // The theme and copy resolution both renderers run (§1.2, §3.1, §4.7): one copy table per locale
 // on the page, one identity path through ui-core.
 export { copyFor, ensureLocale, onCopyLoaded, provideTable } from "./copy.js";

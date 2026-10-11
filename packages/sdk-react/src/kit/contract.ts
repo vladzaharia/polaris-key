@@ -11,6 +11,8 @@ export {
   copyFor,
   decodeIcon,
   encodeQr,
+  FORM_ORDER,
+  formStep,
   inputWithIdentity,
   LAYOUTS,
   lightDomCss,
@@ -22,6 +24,8 @@ export {
   resolveFor,
   themeVars,
   watchProductIdentity,
+  type FormInput,
+  type FormStep,
   type Layout,
   type Resolved,
 } from "@polaris-key/elements/contract";

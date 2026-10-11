@@ -5,7 +5,8 @@
 //   (a) drop-in   <PolarisKeyGate> runs every screen the license calls for and renders the app
 //   (b) parts     every §4.1 component as its own React component, restyled with `pk-*` classes,
 //                 `data-part` names and `--pk-*` variables in `@layer polaris-key`
-//   (c) headless  ui-core's models (viewOf, ViewModel, SignInModel), re-exported here
+//   (c) headless  ui-core's models (viewOf, ViewModel, SignInModel), re-exported here, and
+//                 useSignIn() for the one sign-in form
 //
 // Theme with `<PolarisKeyTheme theme={…}>` or a component's `theme` prop (§3.1). The stylesheet is
 // adopted on first render; a server-rendered app imports `@polaris-key/react/styles.css`.
@@ -24,6 +25,19 @@ export {
   type PolarisKeyGateProps,
 } from "./component.js";
 export { adoptKitStyles, kitStylesCss } from "./styles.js";
+// The one sign-in form (SIGN-IN.md §3.17): the drop-in form, its step parts, its headless hook.
+export {
+  ReplaceDevice,
+  SignIn,
+  SignInDone,
+  SignInMethods,
+  useSignIn,
+  type FormInput,
+  type FormStep,
+  type SignInProps,
+  type UseSignIn,
+  type UseSignInOptions,
+} from "./signin.js";
 
 // Layer (c): the headless models, so an app building its own UI imports one package.
 export {
@@ -39,7 +53,6 @@ const c = (name: ComponentName) => kitComponent(name);
 
 export const Boot = c("Boot");
 export const Welcome = c("Welcome");
-export const SignIn = c("SignIn");
 export const SignInHandoff = c("SignInHandoff");
 export const Activate = c("Activate");
 export const OfflineActivation = c("OfflineActivation");

@@ -117,6 +117,7 @@ const SCENES: Scene[] = [
   { id: "Activate.rejected", row: "Activate/rejected: not a key" },
   { id: "SignIn.code", row: "SignIn/code: Use a code instead" },
   { id: "SignIn.choose", row: "SignIn/choose: desktop" },
+  { id: "SignIn.replace", row: "SignIn/replace: the web confirms inline" },
   {
     id: "DeviceLimit.default",
     row: "DeviceLimit/default: the devices listed in the app",

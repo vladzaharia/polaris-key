@@ -20,7 +20,7 @@ import {
 } from "@polaris-key/ui-core";
 import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 
-import { LAYOUTS } from "@polaris-key/elements/contract";
+import { LAYOUTS, formStep } from "@polaris-key/elements/contract";
 
 import * as Kit from "../src/kit/index.js";
 
@@ -184,7 +184,8 @@ for (const family of FAMILIES) {
           ).toBe(true);
       }
       // DL4: at most one filled control, the primary of the view drawn (the gate draws Welcome,
-      // StatusScreen or the grace banner for its state).
+      // StatusScreen or the grace banner for its state; the sign-in form its step's body: the
+      // handoff's code view, the license choice).
       const filled = [...root!.querySelectorAll('[data-variant="primary"]')];
       expect(filled.length).toBeLessThanOrEqual(1);
       const drawn =
@@ -192,7 +193,9 @@ for (const family of FAMILIES) {
           ? (["Welcome", "StatusScreen", "GraceBanner"] as const).map(
               (c) => viewOf(c, input).decisions.primary,
             )
-          : [];
+          : component === "SignIn"
+            ? [formStep(input).body.decisions.primary]
+            : [];
       if (filled.length === 1)
         expect([view.decisions.primary, ...drawn]).toContain(
           filled[0]!.getAttribute("data-key"),

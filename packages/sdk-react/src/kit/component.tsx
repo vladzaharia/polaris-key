@@ -179,12 +179,21 @@ function identityKey(o: KitTheme): string {
   return JSON.stringify([o.product, o.accent, o.preset, o.bundle, o.iconSrc]);
 }
 
+/** What a composed component (the gate, the sign-in form) adds to the kit's own handling. */
+export interface KitHooks {
+  /** Extra members of a control's `onAction` (the form's device or license id). */
+  detail?: (key: string, input: UiInput) => Record<string, unknown>;
+  /** A picked row: true when the component handled it (the form's Replace step). */
+  pick?: (id: string, view: View) => boolean;
+}
+
 /** Everything one kit component resolves and holds: the model, the theme, the identity. */
-function useKit(
+export function useKit(
   component: ComponentName,
   props: KitProps,
   /** The view drawn for a view (the gate hands to Welcome, StatusScreen…): focus follows it. */
   drawnOf?: (view: View, input: UiInput) => View,
+  hooks: KitHooks = {},
 ) {
   const provided = useContext(ThemeContext);
   const options = useMemo(
@@ -397,6 +406,7 @@ function useKit(
         action: actionOf(key),
         component: v.component,
         state: v.state,
+        ...(hooks.detail?.(key, input) ?? {}),
         ...extra,
       });
     },
@@ -406,6 +416,7 @@ function useKit(
       props.onInput?.(field, value);
     },
     pick: (id) => {
+      if (hooks.pick?.(id, v)) return;
       setLocal((l) => ({ ...l, selected: id }));
       props.onSelect?.(id);
     },
@@ -438,7 +449,7 @@ function useKit(
   return { view, resolved, copy, input, ctxFor, rootRef, shape, kb, fontless };
 }
 
-type Kit = ReturnType<typeof useKit>;
+export type Kit = ReturnType<typeof useKit>;
 
 /** The platform's UI face for every type role, for `native` on a page that sets no font. */
 const SYSTEM_FONT_VARS: Record<string, string> = {
@@ -452,7 +463,7 @@ const SYSTEM_FONT_VARS: Record<string, string> = {
 };
 
 /** The `.pk-root` every component draws in: the elements' attributes, the theme's variables. */
-function KitRoot(props: {
+export function KitRoot(props: {
   kit: Kit;
   bare?: boolean;
   className?: string;
