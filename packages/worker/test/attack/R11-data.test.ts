@@ -126,6 +126,8 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
       "account_sessions",
       "account_product_grants",
       "account_passkeys",
+      // I-11: the cancellable deletion request cannot survive its account.
+      "account_deletions",
       // PX-W15: terms acceptances are the account's too (an orphan would say what a deleted
       // person agreed to).
       "account_terms_acceptances",
@@ -698,6 +700,9 @@ describe("R11-05 product scoping", () => {
       "account_product_subjects",
       "account_tombstones",
       "account_erasures",
+      // I-11 — one cancellable erasure request per account. It remains account-keyed rather than
+      // product-first while the fourteen-day window is open, and is deleted by final erasure.
+      "account_deletions",
       "account_sessions",
       "account_product_grants",
       "account_passkeys",

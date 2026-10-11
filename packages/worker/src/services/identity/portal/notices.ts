@@ -372,9 +372,7 @@ export function accountDeletionCancelledNotice(input: {
 }
 
 /** The account was deleted at the holder's request (sent before the rows go). */
-export function accountDeletedNotice(input: {
-  origin: string;
-}): NoticeMessage {
+export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
   return buildNotice({
     subject: "Your Polaris Key account has been deleted",
     paragraphs: [
