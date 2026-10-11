@@ -28,6 +28,8 @@ await client.update.markBootAttempt();
 
 exposePolarisBridge(client, {
   ipcMain,
+  // release.fetch writes only under this host-owned directory; renderers name a relative file.
+  downloadDir: app.getPath("downloads"),
   // Only the app's own pages may use the bridge.
   allowSender: (e) => e.senderFrame?.url.startsWith("file://") === true,
 });
