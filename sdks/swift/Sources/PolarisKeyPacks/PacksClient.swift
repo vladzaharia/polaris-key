@@ -221,7 +221,8 @@ public actor PacksClient {
     /// `pinnedReleaseKeys`, never the product trust set). Registers itself as the source of the
     /// device report's `content.packSetId`.
     ///
-    /// `loadFeedDeltas` (the update client's) reads the committed feed's delta menu from the cache
+    /// `loadFeedDeltas` overrides the default read of the committed feed's delta menu from the
+    /// cache (re-verified on the reload path, no freshness: a stale menu only falls back), used
     /// when the engine starts before any check ran: nil for no committed feed.
     public init(
         core: CoreContext, releaseKeys: TrustSet, options: PacksOptions = PacksOptions(),
@@ -230,7 +231,17 @@ public actor PacksClient {
         self.core = core
         self.releaseKeys = releaseKeys
         self.opts = options
-        self.loadFeedDeltas = loadFeedDeltas
+        self.loadFeedDeltas =
+            loadFeedDeltas ?? { [core] in
+                guard let platform = PlatformFamily.updatePlatform else { return nil }
+                let committed = reloadFeeds(
+                    await core.updateSlices().feeds, trust: await core.trust, expectedAud: core.product,
+                    platform: platform)
+                for k in boundChannels(core.channel) {
+                    if let cf = committed.feeds[k] { return .some(cf.feed.content.deltas) }
+                }
+                return nil
+            }
         // Only a facet with a stamp has packs to report.
         if options.contentStamp != nil {
             core.setPackSetIdSource { [weak self] in await self?.packSetId() }
