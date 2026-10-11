@@ -1,8 +1,8 @@
 // @pkey-feature ui.kit
 //
-// The React kit (`@polaris-key/react/kit`) in real Chromium, drawn from ui-matrix.json rows at the
-// UI-KITS §7.1 sizes in dark and light, and the main screens again under the `native` preset. On
-// every render:
+// The React kit (`@polaris-key/react/kit`) in real Chromium. The responsive scenes cover every
+// UI-KITS §7.1 size in dark and light, and the complete fixture state matrix covers the 390 and
+// 1440 baseline rows in both schemes. On every render:
 //
 //   * nothing scrolls sideways (DL15);
 //   * a screen's h1 and its primary are fully in the first viewport (DL1), and there is one h1;
@@ -11,15 +11,20 @@
 //   * the kit's text is set in Rubik or the kit mono (native: the host's face);
 //   * nothing the kit sets lands on :root (§3.2).
 //
-// `PKEY_KIT_SHOTS=<dir>` writes each render to <dir>/react-kit.<scene>/<size>-<scheme>[-native].png;
-// the 1440 and 390 renders of each scene are the committed baselines under
-// test/visual/__screenshots__/kit.<scene>/.
+// `PKEY_KIT_SHOTS=<dir>` writes every responsive render to
+// `<dir>/react.<component>.<state>/<size>-<scheme>[-native].png`.
+// `PKEY_KIT_BASELINES=<dir>` writes the complete 390 and 1440 dark/light state matrix directly
+// under `<dir>/<Component>.<state>/<size>-<scheme>.png`, the paths UK-04's elements renderer
+// records so ui:report can compare them.
 
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { commands, page } from "vitest/browser";
 import { createRoot, type Root } from "react-dom/client";
 import axe from "axe-core";
+import matrixJson from "../../../../conformance/corpus/v2/ui-matrix.json" with {
+  type: "json",
+};
 import type { ComponentName, UiInput } from "@polaris-key/ui-core";
 
 import { LAYOUTS } from "@polaris-key/elements/contract";
@@ -32,6 +37,7 @@ declare module "vitest/browser" {
   }
 }
 declare const __PKEY_KIT_SHOTS__: string;
+declare const __PKEY_KIT_BASELINES__: string;
 
 type Obj = Record<string, unknown>;
 interface Row {
@@ -39,33 +45,6 @@ interface Row {
   input: Obj;
   expect: { component: string; state: string };
 }
-
-// The matrix and the brand's fonts.css (Rubik, as `@polaris-key/react/fonts.css` gives a host)
-// are served by Vite from the workspace: the browser has no file system.
-let matrix: Obj & { vocabulary: Obj & { defaults: Obj } } = {
-  vocabulary: { defaults: {} },
-};
-const ROWS = new Map<string, Row>();
-
-beforeAll(async () => {
-  const res = await fetch(
-    new URL(
-      "../../../../conformance/corpus/v2/ui-matrix.json",
-      import.meta.url,
-    ),
-  );
-  matrix = (await res.json()) as typeof matrix;
-  for (const f of FAMILIES)
-    for (const r of matrix[f] as Row[]) ROWS.set(r.name, r);
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
-  document.head.append(link);
-  await new Promise((r) => {
-    link.addEventListener("load", r, { once: true });
-    link.addEventListener("error", r, { once: true });
-  });
-});
 
 const FAMILIES = [
   "gate",
@@ -77,6 +56,28 @@ const FAMILIES = [
   "settings",
   "paywall",
 ] as const;
+
+// Importing the committed fixture makes the browser registration itself a completeness gate: a
+// state added to ui-matrix.json produces a render and baseline requirement without someone
+// remembering to add it to a hand-maintained scene list.
+const matrix = matrixJson as Obj & { vocabulary: Obj & { defaults: Obj } };
+const ROWS: Record<string, Row> = Object.fromEntries(
+  FAMILIES.flatMap((family) =>
+    (matrix[family] as Row[]).map((row) => [row.name, row]),
+  ),
+);
+
+beforeAll(async () => {
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
+  document.head.append(link);
+  const { promise, resolve } = Promise.withResolvers<void>();
+  link.addEventListener("load", resolve, { once: true });
+  link.addEventListener("error", resolve, { once: true });
+  await promise;
+});
+
 
 function withDefaults(input: Obj, defaults: Obj): UiInput {
   const out: Obj = { ...input };
@@ -142,6 +143,20 @@ const SCENES: Scene[] = [
   },
 ];
 
+/** One representative fixture row for every visible component state (UK-02b §8). */
+const BASELINE_SCENES: Scene[] = (() => {
+  const seen = new Set<string>();
+  const out: Scene[] = [];
+  for (const family of FAMILIES)
+    for (const row of matrix[family] as Row[]) {
+      const id = `${row.expect.component}.${row.expect.state}`;
+      if (row.expect.state === "hidden" || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ id, row: row.name });
+    }
+  return out;
+})();
+
 interface Size {
   label: string;
   width: number;
@@ -163,6 +178,9 @@ const SIZES: Size[] = [
   { label: "1280x800-zoom200", width: 640, height: 400 },
   { label: "390-font24", width: 390, height: 844, rootPx: 24 },
 ];
+const BASELINE_SIZES = SIZES.filter(
+  (size) => size.label === "390" || size.label === "1440",
+);
 const NATIVE_SIZES = SIZES.filter((s) =>
   ["390", "1440", "667x375"].includes(s.label),
 );
@@ -195,13 +213,27 @@ const COMPONENTS = Kit as unknown as Record<
   (p: Kit.KitProps & { children?: ReactNode }) => ReactNode
 >;
 
+/** The corpus elides the served device code; a visual render must show a real grouped value. */
+function extras(row: Row): Partial<UiInput> {
+  const deviceCode = row.input.deviceCode as Obj | undefined;
+  if (!deviceCode) return {};
+  return {
+    deviceCode: {
+      ...deviceCode,
+      ...(deviceCode.userCode === undefined
+        ? { userCode: "WDJB-MJHT" }
+        : {}),
+    } as UiInput["deviceCode"],
+  };
+}
+
 async function mount(
   scene: Scene,
   scheme: Scheme,
   preset: "polaris-key" | "native",
   rootPx = 16,
 ): Promise<HTMLElement> {
-  const row = ROWS.get(scene.row);
+  const row = ROWS[scene.row];
   if (!row) throw new Error(`no ui-matrix row "${scene.row}"`);
   document.documentElement.style.fontSize = `${rootPx}px`;
   document.body.style.margin = "0";
@@ -214,6 +246,7 @@ async function mount(
   const input: UiInput = {
     elapsedMs: 60_000,
     ...withDefaults(row.input, matrix.vocabulary.defaults),
+    ...extras(row),
   };
   root = createRoot(host);
   root.render(
@@ -366,7 +399,15 @@ async function check(
   await mount(scene, scheme, preset, size.rootPx);
   if (__PKEY_KIT_SHOTS__)
     await commands.kitShot(
-      `${__PKEY_KIT_SHOTS__}/react-kit.${scene.id}/${size.label}-${scheme}${preset === "native" ? "-native" : ""}.png`,
+      `${__PKEY_KIT_SHOTS__}/react.${scene.id}/${size.label}-${scheme}${preset === "native" ? "-native" : ""}.png`,
+    );
+  if (
+    __PKEY_KIT_BASELINES__ &&
+    preset === "polaris-key" &&
+    BASELINE_SIZES.some((baseline) => baseline.label === size.label)
+  )
+    await commands.kitShot(
+      `${__PKEY_KIT_BASELINES__}/${scene.id}/${size.label}-${scheme}.png`,
     );
   const kit = document.querySelector<HTMLElement>(".pk-root");
   expect(kit, "a kit root").not.toBeNull();
@@ -402,4 +443,24 @@ describe("the React kit at every size", () => {
             it(`${size.label} ${scheme} native`, () =>
               check(scene, scheme, size, "native"));
     });
+});
+
+describe("the complete fixture baseline matrix", () => {
+  it("selects every non-hidden component state exactly once", () => {
+    const expected = new Set<string>();
+    for (const family of FAMILIES)
+      for (const row of matrix[family] as Row[]) {
+        if (row.expect.state !== "hidden")
+          expected.add(`${row.expect.component}.${row.expect.state}`);
+      }
+    expect(
+      [...BASELINE_SCENES.map((scene) => scene.id)].sort(),
+    ).toEqual([...expected].sort());
+  });
+
+  for (const scheme of SCHEMES)
+    for (const size of BASELINE_SIZES)
+      for (const scene of BASELINE_SCENES)
+        it(`${scene.id} at ${size.label} ${scheme}`, () =>
+          check(scene, scheme, size, "polaris-key"));
 });
