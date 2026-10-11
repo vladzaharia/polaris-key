@@ -172,22 +172,24 @@ export function PackageRecord({
         refetching={query.isFetching}
         sticky
       />
-      {current === "versions" ? (
-        <VersionsTab scope={scope} eco={eco} data={data} />
-      ) : current === "setup" ? (
-        <PackageSetup scope={scope} eco={eco} data={data} />
-      ) : (
-        <ActivityTab
-          scope={scope}
-          eco={eco}
-          emptyTitle="No activity on this package yet"
-          filter={(t) =>
-            t !== null &&
-            t.kind === "package" &&
-            t.id.startsWith(`${eco}:${data.name}@`)
-          }
-        />
-      )}
+      <div className="pk-vt-tabpanel">
+        {current === "versions" ? (
+          <VersionsTab scope={scope} eco={eco} data={data} />
+        ) : current === "setup" ? (
+          <PackageSetup scope={scope} eco={eco} data={data} />
+        ) : (
+          <ActivityTab
+            scope={scope}
+            eco={eco}
+            emptyTitle="No activity on this package yet"
+            filter={(t) =>
+              t !== null &&
+              t.kind === "package" &&
+              t.id.startsWith(`${eco}:${data.name}@`)
+            }
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -282,13 +282,29 @@ function UserRecordBody({
       />
 
       {tab === "overview" ? (
-        <UserOverview slug={slug} user={user} configOn={configOn} />
+        <div className="pk-vt-tabpanel">
+          <UserOverview slug={slug} user={user} configOn={configOn} />
+        </div>
       ) : null}
-      {tab === "licenses" ? <UserLicenses slug={slug} user={user} /> : null}
-      {tab === "devices" ? <UserDevices slug={slug} user={user} /> : null}
-      {tab === "activity" ? <UserActivity user={user} /> : null}
+      {tab === "licenses" ? (
+        <div className="pk-vt-tabpanel">
+          <UserLicenses slug={slug} user={user} />
+        </div>
+      ) : null}
+      {tab === "devices" ? (
+        <div className="pk-vt-tabpanel">
+          <UserDevices slug={slug} user={user} />
+        </div>
+      ) : null}
+      {tab === "activity" ? (
+        <div className="pk-vt-tabpanel">
+          <UserActivity user={user} />
+        </div>
+      ) : null}
       {tab === "data" && DataTab ? (
-        <DataTab slug={slug} subject={user.subject} />
+        <div className="pk-vt-tabpanel">
+          <DataTab slug={slug} subject={user.subject} />
+        </div>
       ) : null}
 
       <ConfirmDialog
