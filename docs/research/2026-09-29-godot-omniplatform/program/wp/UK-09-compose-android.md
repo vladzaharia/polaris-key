@@ -204,3 +204,13 @@ UK-10 adds `desktopMain`; UK-28 and UK-35 wrap these states.
 
 The role agent sets `--set UK-09 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-09 done`.
+
+## Progress and continuation (2026-10-11)
+
+- Status is `in-progress` in f9f138bb8.
+- Confirmed that HA-13's `im.plrs.key.core.PresentationSource` and
+  `PolarisKeyClient.presentationSource` are available; this kit needs no local presentation seam.
+- Confirmed that UK-02a already generates the nine Compose Resources locale tables under
+  `ui/src/commonMain/composeResources/`; they are intentionally inert until this module is KMP.
+- Next: establish the Compose-free headless artifact and the KMP source-set/toolchain foundation
+  before moving any screens, then run every `ui-matrix.json` family through that headless layer.
