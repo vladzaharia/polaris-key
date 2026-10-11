@@ -70,8 +70,15 @@ the task that matches what you need. An app shows only the options its developer
 
 ### Downloads and updates
 
-- [Downloads and app stores](/docs/help/download/)
-- [Updates](/docs/help/update/)
+- [Download your app](/docs/help/download/)
+- [Check a download is genuine](/docs/help/check-a-download/)
+- [Install from AltStore, F-Droid, Obtainium or Scoop](/docs/help/install-sources/)
+- [Update your app](/docs/help/update/)
+
+### Purchases
+
+- [Restore a purchase](/docs/help/restore-purchase/)
+- [Refunds, billing and cancellations](/docs/help/refunds/)
 
 ### Messages
 

@@ -1,109 +1,62 @@
 ---
-title: "Downloads and app stores"
-description: "Where you can get a product besides its own download page: adding an AltStore, SideStore or F-Droid source, tracking it in Obtainium, and installing it with Scoop."
+title: "Download your app"
+description: "Download an app from your library or from its public download page."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
   order: 6
 ---
 
-A product can reach you through more than its own download page. Besides the big app stores,
-many products publish to storefronts you add yourself: a **source** in a sideloading app on
-iPhone and iPad, a **repository** in an Android store, or a **manifest** for a Windows package
-manager. Once a source is added, the store notices new versions by itself.
+Download an app from your library at [key.plrs.im](https://key.plrs.im), which lists your apps, or from its public download page. Polaris Key is the service the app uses for licenses, sign-in and downloads.
 
-Each source belongs to a **channel**. Stable is the one almost everyone wants. Beta includes
-everything stable gets, plus the early builds. Add the source for the channel you want; to
-switch channels later, remove one source and add the other.
+## Before you start
 
-The product's download page has buttons and QR codes for all of these. The rest of this page
-explains what each one does.
+Sign in to your library with the email that has the license.
 
-## The download page
+## Download from your library
 
-Every product that publishes downloads to everyone has a public download page at its short link
-on the download host, `https://dl.plrs.im/<product>`. You do not need an account to open it, and
-it sets no cookies.
+1. Sign in at [key.plrs.im](https://key.plrs.im) and find the app.
+2. Select **Download for macOS**, **Download for Windows** or **Download for Linux**. If your license covers only an older version, the button names it, such as **Download 2.4.1**.
+3. With one file, the download starts. With more, the button opens the app's page with a list: choose a file and select **Download**.
 
-The page works out which device you are on and leads with one button for it: the App Store or
-Google Play listing when the product is there, otherwise a direct download of the right build for
-your system. On an iPad, which reports itself as a Mac to websites, the page shows the iPhone and
-iPad option on touch screens. If the page cannot tell, it offers every platform.
+**Apple silicon** and **Intel** are for Macs with those chips. **Universal** runs on both, so choose it if you're not sure.
 
-Below the button, **Other ways to get it** lists everything else: the other stores, the
-AltStore, SideStore and F-Droid sources described below with a QR code to scan from your phone,
-the Obtainium link, and the Scoop and Homebrew commands. **All downloads** lists every build with
-its version, size, minimum system version and SHA-256 checksum, and **Signing keys** lists the
-fingerprints of the keys the product signs with.
+## Download on a phone
 
-### Checking a download
+The library shows your phone's store, such as **Get it on the App Store** or **Get it on Google Play**. If the app has only a computer version, select **Email me the download**. Open the link it emails you on a computer and sign in.
 
-Before you install something you downloaded directly, you can check it is the file the product
-published:
+## Other places to get the app
 
-- **Checksum.** Compare the file's SHA-256 with the one on the page. On macOS and Linux run
-  `shasum -a 256 <file>`; on Windows run `Get-FileHash <file>` in PowerShell.
-- **Signing key (Android).** Apps such as AppVerifier compare an installed app's signing
-  certificate with a published fingerprint. Use the Android app signing certificate under
-  **Signing keys**.
+- **Other ways to install** lists tools such as AltStore and Scoop. See [Install from AltStore, F-Droid, Obtainium or Scoop](/docs/help/install-sources/).
+- If a file says **Get it from Steam**, or names another store or the developer, your library doesn't host it, but your license covers it. Use only the link shown next to that file in your library, if there is one. If not, ask the developer.
 
-The page only lists versions that are released to everyone. While a product is rolling an update
-out gradually, or has paused it, the page keeps offering the previous version.
+## Use the public download page
 
-## Adding a source
+A developer can share a page that anyone can open. Its address is exactly `dl.plrs.im`, then a `/` and a path. A look-alike such as `dl.plrs.im.example.com` isn't the app's download page.
 
-### AltStore and SideStore (iPhone and iPad)
+- It leads with one button for your device, such as **Download for macOS**.
+- **Other ways to get it** lists other stores, entries such as **Add to AltStore**, and install commands. **Download from Polaris Key** lists the app's files.
+- While the developer releases a new version in stages, or has paused or stopped it, the page keeps offering the previous version.
 
-Tap the product's **Add to AltStore** or **Add to SideStore** link, or open AltStore or SideStore
-and go to **Sources → Add**, then paste the source URL:
+## If a download doesn't work
 
-```
-https://key.plrs.im/<product>/distribution/altstore/stable/source.json
-```
+A file your license doesn't cover shows **Not included** and a reason. A download that can't start shows **The download didn't start** and a line saying why. The last two rows appear inside an app.
 
-The links are `altstore://source?url=…` and `sidestore://source?url=…`. A `sidestore://` link
-does nothing useful unless SideStore is already installed, so install the store app first.
+| You see                                                                      | What it means and what to do                                                                                                                                                                         |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Needs an active license**                                                  | A license may have expired or been turned off. Renew it with the app's developer or the store you bought from. If it was turned off, ask the developer.                                              |
+| **Your license doesn't include this version**                                | The update period may have ended. Download a version it covers, or ask the developer about extending your license. An expired or turned-off license shows this too: see **Needs an active license**. |
+| **Not available here yet**                                                   | Ask the developer for another way to get it.                                                                                                                                                         |
+| **The download didn't start** with **A newer release may have replaced it.** | Reload the page to see the current downloads.                                                                                                                                                        |
+| Any other line, or no message                                                | Try the button again. If it still fails, see [Get help with an app](/docs/help/contact/).                                                                                                            |
+| **Sign in to download**                                                      | Sign in or activate a license, then try again. See [Activate your app](/docs/help/activate/).                                                                                                        |
+| **Download unavailable**                                                     | The developer hasn't set up this download. Ask the developer.                                                                                                                                        |
 
-Apps installed this way with a free Apple ID have to be refreshed every seven days, and a free
-account can have only three such apps at once. That is Apple's limit, not the product's.
+## Check it worked
 
-**AltStore PAL** (in the EU, Japan and Brazil) uses its own source, ending in
-`altstore-pal/<channel>/source.json`. AltStore PAL installs only apps that Apple has notarized,
-so a version appears there a little later than in the regular source.
+The file appears in your browser's downloads. To check it's genuine, see [Check a download is genuine](/docs/help/check-a-download/).
 
-### F-Droid and other Android stores
+## Still need help?
 
-In F-Droid (or Droid-ify or Neo Store), go to **Settings → Repositories → Add**, or tap the
-product's **Add to F-Droid** link (`fdroidrepos://…`). The repository URL ends in
-`fdroid/<channel>/repo` and carries a `?fingerprint=` value. Keep that value: the store uses it to
-check that the repository really is the product's, and it refuses a repository signed with a
-different key.
-
-### Obtainium
-
-Tap the product's **Add to Obtainium** link (`obtainium://app/…`). It opens Obtainium with the
-app's settings filled in. When the product has an F-Droid repository, Obtainium tracks that
-repository, which gives it real version numbers and the right build for your phone.
-
-### Scoop (Windows)
-
-Install straight from the manifest URL:
-
-```
-scoop install https://key.plrs.im/<product>/distribution/scoop/stable.json
-```
-
-Run `scoop update` to update the app, the same way you update anything else installed with Scoop.
-
-## When a new version shows up
-
-A source lists a version only once it is ready for everyone on that storefront. While a product
-is rolling an update out gradually, or has paused or stopped a rollout, the source keeps showing
-the previous version: these stores have no way to offer an update to only some people. A version
-the developer has withdrawn disappears from every source.
-
-Sources are refreshed every few minutes, but your store app may check less often.
-
-## Private products
-
-These storefronts cannot sign in. A product that requires a license or an account to download
-does not publish any of these sources. Download it from the
-[customer portal](/docs/users/portal/) instead.
+For the right contact, read [Get help with an app](/docs/help/contact/).

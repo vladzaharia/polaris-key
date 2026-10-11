@@ -608,21 +608,11 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "help/download": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 23
-    },
     "help/sync": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
       "help-word": 6,
       "time-word": 1
-    },
-    "help/update": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 5
     },
     "operate/console/activity": {
       "frontmatter-type": 1,
