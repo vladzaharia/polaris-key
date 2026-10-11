@@ -342,11 +342,13 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   proof in a 15-minute `__Host-pkey_link` flow; the person signs in to the other account on the
   login card by any of its methods, and **`GET /api/me/link`** then shows both accounts (how each
   was proven, what each holds), the result, and `canJoin` with a `reason` (`sign_in_other`,
-  `step_up_required`, `merge_pending`). **`POST /api/me/link/confirm {keep?}`** joins them when both
-  proofs are under 5 minutes old and both sessions are live, keeping the account linked in
-  (`other`, the default) or the started one; it is refused while either account could still undo
-  a join of its own (`403 forbidden`, `reason: merge_pending`), uses up the flow (two racing
-  confirms merge once), and is audited and emailed to both with the undo window. An account's
+  `step_up_required`, `merge_pending`, `unavailable`). **`POST /api/me/link/confirm {keep?}`** joins
+  them when both proofs are under 5 minutes old and both sessions are live, keeping the account
+  linked in (`other`, the default) or the started one; it is refused while either account could
+  still undo a join of its own (`403 forbidden`, `reason: merge_pending`) and while either has a
+  scheduled deletion (`403 forbidden`, `reason: unavailable`: cancel the deletion first, then
+  join; a join never cancels or moves a deletion request), uses up the flow (two racing confirms
+  merge once), and is audited and emailed to both with the undo window. An account's
   details show on the join screen only while its proof's session is live; signing out clears the
   flow. **`POST /api/me/link/cancel`** forgets the flow. `GET /api/me/link`
   also lists `undoable` joins, and **`POST /api/me/link/undo {merge}`** (a fresh sign-in to the kept
@@ -360,8 +362,11 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   (sessions end, sign-in is refused), every registered store's data is deleted, and then one
   atomic batch deletes every email, identity, and license-link row plus the account row itself and
   writes a single tombstone audit entry naming only the opaque `acct_…` id — nothing that still
-  identifies the person. If a store fails, the answer carries `erasing: true`: the erasure is
-  recorded and the Worker's cron retries it with back-off until it completes, and one that keeps
+  identifies the person. It also anonymizes the product `audit` rows that name the person as
+  actor (a Discover add; a product sign-in's license merge, tier change or choice): the actor
+  becomes `erased-account`, and the name, address and summary go. If a store fails, the answer
+  carries `erasing: true`: the erasure is recorded and the Worker's cron retries it with back-off
+  until it completes, and one that keeps
   failing shows as the failed `erasures` step on the Operations page. Rate-limited to 5 attempts on the account's own budget; the notice email is sent
   **before** the delete, because afterward there is no address left to send it to
   (the R11 audit findings, `R11-09`). Licenses themselves are **not** deleted — they
@@ -432,6 +437,55 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
   back to with `?return=` — the product's exact `web.origins`; app schemes are always empty until
   the manifest can declare them, so a scheme return ends on the product page. `404` for a product
   the account holds nothing for.
+- **`GET /api/me/export`** — **Download my data**: the person's own copy of their account as a JSON
+  file (`pkey-account-export/1`, the `PortalAccountExport` schema in the OpenAPI spec). It holds the
+  account (its id, primary email, times and any pending deletion request), the profile with where
+  each value came from and the birth date if one was added, every stored picture, each sign-in
+  method with what its provider supplied (and a single sign-on connection's groups and claims), the
+  passkeys' display facts, the account's sessions, what was consented to share with each app, the
+  terms accepted, the library entries and the licenses removed from it, the package tokens minted,
+  joins still undoable, the account's activity (the newest 5000 rows; `activityTruncated` says when
+  more exist), and one section per product the account holds a license or a pairwise subject in:
+  the subject, the ids it replaced, the licenses with their keys' facts, devices and entitlements,
+  and every registered store's export (managed config overrides, entitlement events, later Cloud
+  Sync), where a secret is named and said to be set, never given. It never holds a credential (no
+  license key or hash, device token, package token text or hash, session id, passkey credential id,
+  public key or user handle, provider picture reference or consent scope hash), the join undo
+  snapshot, a license's `overrides_json`, device fingerprints, store purchase records, the
+  developers' relink history or audit logs, or anything about another person. Every member is
+  listed in the schema, which refuses any other. Like the other exports it is a GET that needs the
+  CSRF header (it hands over personal data), a sign-in in the last 5 minutes
+  (`401 step_up_required`), and is limited to 5 a minute; it is audited as `portal.account.export`
+  and works while a deletion is pending. Only `/api/me` itself answers the account summary: any
+  other path below it is a `404`.
+- **`GET /api/products/<product>/export`** — the same for one product
+  (`pkey-product-export/1`, `PortalProductExport`): only what is held for the person in that
+  product, with no sign-in methods, sessions, birth date or other product. It reads without
+  creating anything, so a product the person never signed in to exports no subject. The same gates,
+  10 a minute in the product's shard, audited as `portal.product.export`. `404` for a product the
+  account holds nothing in, the same answer as for one that does not exist; a product whose portal
+  is off can still be exported.
+- **`DELETE /api/products/<product>/data`** — **Remove my data from this app**. Every registered
+  store deletes the subject's data, the devices signed in with it lose the binding, the subject
+  ends, and the developer gets a `subject.deleted` event with the subject and license ids only. The
+  license stays unless `?alsoRemoveLicense=1`: then each license leaves the account exactly as
+  **Remove from my library** does it (an auto-attach block, package tokens revoked, audited), and
+  only a `removable` license may go (`409 not_removable`, nothing written). The parameter is read
+  strictly (`400 bad_request` for anything but `1`, `true`, `0` or `false`). Needs the CSRF header
+  and a sign-in in the last 5 minutes, 5 a minute in the product's shard; it answers
+  `{ ok, product, removed, detachedLicenses }`, with `removed: false` when nothing was left.
+- **`POST /api/products/<product>/support-code`** — **Get a support code**. The person's pairwise id
+  for this product (`ps_` and 22 base64url characters): the string the console's relink accepts to
+  name them, the same one the product page shows as `supportCode` and the product export holds as
+  `subject`. The first ask creates it, the way a license attach or a sign-in does, and every ask
+  after answers the same one. A subject made only this way stays off the console's Users page
+  until it holds a license, a signed-in device or a sign-in. The answer is `{ supportCode }` and
+  nothing else: no account id, license or other product's id. Needs the CSRF header and is limited
+  to 10 a minute in the product's shard, charged once the account is proven to hold the product;
+  it needs no recent sign-in, because the code opens nothing and the product page already shows an
+  existing one. Creating it is audited as `portal.support_code.create`. `404` for a product the
+  account holds nothing in or whose portal is off, the same answer as for one that does not exist.
+  Removing the person's data from the product ends the code, and the next ask makes another.
 - **`GET /media/<product>/<asset>`** — public, no session: the product's `icon` or `header` art
   from its listing, fetched by the Worker and served from this origin, because the portal's CSP is
   `img-src 'self' data:`. Only `https` sources on GitHub-hosted names (`github.com`,

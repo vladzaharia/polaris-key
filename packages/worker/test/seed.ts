@@ -18,6 +18,7 @@ import { seal } from "../src/platform/keyvault.js";
 import { parseServices } from "../src/core/services.js";
 import { readIdentityIssuance } from "../src/core/accounts/identityTrust.js";
 import { IDENTITY_COLUMN_ADAPTERS } from "../src/services/identity/settingsColumns.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
 import { makeSingleUseNamespace } from "./singleUseMock.js";
@@ -51,7 +52,10 @@ export const UNKNOWN_DEVICE_TOKEN = `pkeyt_${"u".repeat(43)}`;
 export const RETIRED_DEVICE_TOKEN = `plrst_${"r".repeat(43)}`;
 
 /** An Env whose KV is the mock, whose PLATFORM_KEK is the test KEK, and whose per-product
- *  signing keys are sealed in D1 under the test KEK. */
+ *  signing keys are sealed in D1 under the test KEK. `BLOBS` is an empty bucket: the erasure
+ *  fence (`core/accounts/erasureFence.ts`) reads the ledger on every request that acts as an
+ *  account and fails closed with no bucket, so an env that omits it models a deploy that refuses
+ *  those requests. A test that needs another bucket (or none) sets or deletes `env.BLOBS`. */
 export function makeEnv(kv: KvMock, _slugs: string[]): Env {
   const env: Record<string, unknown> = {
     HOT: asKv(kv),
@@ -59,6 +63,7 @@ export function makeEnv(kv: KvMock, _slugs: string[]): Env {
     RL: makeRlNamespace(),
     SINGLE_USE: makeSingleUseNamespace(),
     PLATFORM_KEK: TEST_KEK,
+    BLOBS: asR2(new R2Mock()),
   };
   return env as Env;
 }

@@ -89,6 +89,7 @@ import {
 } from "../../../core/accounts/accountCookies.js";
 import { portalAudit, recordLinkAssertion } from "../portal/repo.js";
 import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { checkAccountSession } from "../portal/accountSessions.js";
 import {
   portalSessionAuthenticatedAt,
@@ -379,6 +380,7 @@ export async function beginProviderSignIn(
     const emailConfirmed = account.primary_email_verified_at !== null;
     if (emailConfirmed && !(await needsTerms(db, account, product, terms))) {
       const result = await signIn(db, identity, now, {
+        env,
         product: product ? { slug: product, tenantScopes: scopes } : undefined,
       });
       if (result.status !== "signed_in") {
@@ -1007,6 +1009,21 @@ async function gatePass(
   email: string | null,
   now: number,
 ): Promise<Response> {
+  // I-11: an existing account finishing its sign-in must not be one the erasure ledger holds (a D1
+  // restore brings an erased account back as `active`). Asked before the gate is taken, so a
+  // ledger that cannot be read burns nothing and the person tries again.
+  if (gate.accountId) {
+    const ledger = await erasureVerdict(env, now, gate.accountId);
+    if (ledger === "erased") return gateRefused(403, ACCOUNT_DISABLED_MESSAGE);
+    if (ledger === "unavailable")
+      return cardJson(
+        {
+          error: "unavailable",
+          message: "Sign-in is unavailable right now. Try again in a moment.",
+        },
+        503,
+      );
+  }
   // One completion only: of two racing submissions, one gets the gate.
   if (!(await consumeArtefact(env, ref))) return gateExpired();
   const id = gate.identity;
@@ -1333,7 +1350,7 @@ async function gateJoin(
     const live = session
       ? await checkAccountSession(env, db, session, now)
       : null;
-    if (session && live?.accountId === other) {
+    if (session && live?.status === "live" && live.accountId === other) {
       const at = portalSessionAuthenticatedAt(session);
       if (isFresh({ accountId: other, authenticatedAt: at }, now)) otherAt = at;
     }
@@ -1389,7 +1406,12 @@ async function gateJoin(
           403,
           [clearGate()],
         )
-      : gateRefused(403, "These accounts can't be joined.");
+      : gateRefused(
+          403,
+          merged.reason === "deletion_pending"
+            ? "One of these accounts is scheduled for deletion. Choose Keep my account under Your data on that account, then try again."
+            : "These accounts can't be joined.",
+        );
   }
   const link = await findLink(db, {
     issuerKey: gate.identity.issuerKey,

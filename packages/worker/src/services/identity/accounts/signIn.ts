@@ -20,11 +20,20 @@
  *
  * Nothing here reads the product's Identity toggle: the account is platform-level. Only the
  * routes that reach `signIn` THROUGH a product (I-08, I-09, I-13, I-15) check the toggle.
+ *
+ * ERASURE FENCE (I-11). A D1 restore brings an erased account back as `active`, so `status` alone
+ * cannot refuse it. A sign-in on a request passes its `env` and `signIn` asks the erasure ledger
+ * (`core/accounts/erasureFence.ts`) about the account it is about to sign in to, or to offer a
+ * join to, before it writes anything: an erased account, or a ledger that cannot be read, refuses
+ * with `account_disabled`. A caller that is not a request (a fixture building accounts) says
+ * `unfenced: true`, which the type requires it to say.
  */
 
 import { subjectFor } from "../../../core/accounts/accountSubjects.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import { portalAudit } from "../portal/repo.js";
 import {
   EMAIL_ISSUER,
@@ -131,17 +140,24 @@ export function normalizeIdentity(
   };
 }
 
+/**
+ * What a sign-in needs besides the identity. Exactly one of `env` and `unfenced: true`: `env` is
+ * the request's, read for the erasure fence (an unbound bucket or a failing read refuses the
+ * sign-in); `unfenced` is for a caller that runs outside any request.
+ */
+export type SignInOptions = {
+  product?: SignInProduct;
+  /** Sign in through an existing link only; never offer a join or create an account. A passkey
+   *  (I-16) is enrolled on an account after its email is verified, so one with no link (removed
+   *  a moment ago) is refused rather than starting an account with no email. */
+  linkedOnly?: boolean;
+} & ({ env: Env; unfenced?: undefined } | { unfenced: true; env?: undefined });
+
 export async function signIn(
   db: Db,
   identity: VerifiedIdentity,
   now: number,
-  opts: {
-    product?: SignInProduct;
-    /** Sign in through an existing link only; never offer a join or create an account. A passkey
-     *  (I-16) is enrolled on an account after its email is verified, so one with no link (removed
-     *  a moment ago) is refused rather than starting an account with no email. */
-    linkedOnly?: boolean;
-  } = {},
+  opts: SignInOptions,
 ): Promise<SignInResult> {
   const id = normalizeIdentity(identity);
   if (!id) return { status: "refused", reason: "invalid_identity" };
@@ -162,6 +178,14 @@ export async function signIn(
     const account = await resolveAccount(db, existing.account_id, now);
     if (!account) return { status: "refused", reason: "invalid_identity" };
     if (account.status !== "active") {
+      return { status: "refused", reason: "account_disabled" };
+    }
+    // A restore brings an erased account back as `active`; only the ledger says it is not.
+    if (
+      opts.env &&
+      (await erasureVerdict(opts.env, now, existing.account_id, account.id)) !==
+        "clear"
+    ) {
       return { status: "refused", reason: "account_disabled" };
     }
     // A provider address another account already uses is kept on this link as unverified, as
@@ -207,6 +231,13 @@ export async function signIn(
   if (id.email && id.emailVerified) {
     const other = await accountUsingEmail(db, id.email);
     if (other) {
+      // An erased account is not one to join, however it came back: refused, as one being erased.
+      if (
+        opts.env &&
+        (await erasureVerdict(opts.env, now, other)) !== "clear"
+      ) {
+        return { status: "refused", reason: "account_disabled" };
+      }
       return {
         status: "join_offer",
         existingAccountId: other,

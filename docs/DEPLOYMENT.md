@@ -365,9 +365,12 @@ on a second custom domain, the **bytes host**. Both are already declared in `wra
 
 The three buckets already exist in the `Polaris` account with the rules below, so this is for
 bootstrapping a fresh account or re-checking one. If a bucket is missing, `wrangler deploy
---env <env>` fails on the `BLOBS` binding; remove the `[[env.<env>.r2_buckets]]` block to
-deploy without a store (the Worker then treats it as absent and every byte route answers
-not-found). For each environment:
+--env <env>` fails on the `BLOBS` binding. Do not remove the `[[env.<env>.r2_buckets]]` block in
+an environment that serves accounts: the Worker would then treat the store as absent, every byte
+route would answer not-found, and, because every request that acts as an account reads the erasure
+ledger described below and fails closed without it, account sign-in and portal API calls would
+refuse with `503 unavailable` and every account erasure would refuse to start. Only an environment
+that serves no accounts can deploy without a store. For each environment:
 
 ```sh
 cd packages/worker
@@ -425,6 +428,13 @@ Rules for the bucket, each one load-bearing:
   `BLOB_ORIGIN` is itself `http:`, for local development) and, on `dl-staging` and `dl-dev`, names
   the environment under its title and asks not to be indexed. Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
   anywhere on the platform.
+- **`erasures/` is the account-erasure ledger (I-11): no lifecycle rule, no manual deletes.** The
+  Worker writes one id-only object per erased account there (create-only) and never overwrites or
+  deletes one, so the prefix needs no age lock. A lifecycle or expiry rule, or an object deleted by
+  hand, removes the record that both the request-time fence and the D1 restore replay read, and the
+  bucket is the ledger's only copy. No other code writes the prefix (the blob store refuses the
+  layout). See "Account erasure ledger (I-11)" under "Account erasures (SEC-PRV-1): migration
+  order" and RUNBOOK "Account erasure ledger and D1 restore".
 
 After the next deploy, check the isolation from outside:
 
@@ -703,6 +713,41 @@ previous Worker never reads it). `deploy.yml` applies it before the Worker. Noth
 hand: the sweeper (`services/identity/accounts/deletion.ts`, nightly and on every 15-minute tick)
 adopts every `status = 'deleted'` account that has no row. An erasure that has failed 5 times
 fails the nightly `erasures` step, which names its account id and failing step.
+
+### Account erasure ledger (I-11): bucket, binding and first deploy
+
+The ledger is the existing `BLOBS` bucket under `erasures/` (see "Blob store (R2) and the bytes
+host" above): no new binding, queue or secret. It is what lets Polaris Key refuse and then erase an
+account again after a D1 Time Travel restore, which rewinds the tombstone together with the account.
+
+- **`BLOBS` must be bound in every environment that serves accounts, not only to delete them.**
+  Every request that acts as an account reads the ledger first (one HEAD of `erasures/<account id>`,
+  remembered per Worker isolate: an erased answer for the isolate's life, a not-erased answer for 30
+  seconds), and it fails closed. With no binding, or while R2 is failing, the portal API answers
+  `503 unavailable`, sign-in is refused, a product browser session reads signed out (its record is
+  kept), an approved device sign-in or a licensed download answers `503` without being spent, and a
+  portal-minted package token resolves to nothing (public feeds, console and operator tokens and CI
+  tokens are not asked). An erasure is also recorded on the ledger before the account is closed:
+  with no binding or failing R2 it refuses to start and D1 is untouched. The nightly run then
+  records a failed `accountDeletions` step.
+- **Nothing to do by hand on the first deploy.** On every 15-minute connector tick and in the
+  nightly 03:17 UTC maintenance, the replay copies D1's existing erasure tombstones into the ledger
+  (at most 100 per pass). Until they are copied, an erasure that finished before the ledger shipped
+  is not protected against a restore to a point before its tombstone existed.
+- **The replay is the cleanup, and it is cron-driven, never synchronous with a restore.** Each pass
+  reads at most 5 pages of 1,000 keys and re-erases at most 25 restored accounts, before the
+  due-deletion and retry sweeps. A restored account on the ledger is already refused by the fence
+  from the moment the restore lands; the replay's timing (at least one connector tick, up to 15
+  minutes, more for a large restore) decides only how long its rows sit in the restored database.
+  This repo has no maintenance mode or traffic switch for a restore; do not assume one. The
+  operator console's Users page, per-user detail and export are not fenced, and a not-erased answer
+  is remembered for 30 seconds per isolate (RUNBOOK "Account erasure ledger and D1 restore").
+- **Check after the first deploy that includes I-11.** In D1, `platform_job_runs` rows with
+  `step = 'erasureLedger'` appear on `connectorPoll` ticks, with `rows_affected` above 0 while the
+  mirror copies and 0 once it has finished. Only the nightly `maintenance` row can show the step
+  as `failed`; a poll tick records a failed replay as `ok` with 0. The query and the restore
+  procedure are in RUNBOOK "Account erasure ledger and D1 restore". Then confirm that
+  `npx wrangler r2 bucket lifecycle list polaris-key-blobs-<env>` shows no rule on `erasures/`.
 
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
 
@@ -1130,6 +1175,10 @@ Validate portal email:
   `content-security-policy: sandbox; …` and no `set-cookie`; `OPTIONS` on any path answers 405.
 - `PKG_ORIGIN` is set in every deployed environment's `[env.<env>.vars]`, and no R2 lock or
   lifecycle rule covers `registry/`.
+- `BLOBS` is bound in every deployed environment where accounts can sign in or be deleted, and no R2
+  lifecycle rule covers `erasures/` (the account-erasure ledger: without the binding account
+  sign-in and portal API calls answer `503` and an erasure refuses to start, and a rule would
+  delete the record the fence and a D1 restore replay read).
 - `https://img.plrs.im/manage` and `https://img.plrs.im./manage` answer 404 with
   `content-security-policy: default-src 'none'; sandbox`, `access-control-allow-origin: *` and no
   `set-cookie`; `IMG_ORIGIN` is set in every deployed environment's `[env.<env>.vars]`.

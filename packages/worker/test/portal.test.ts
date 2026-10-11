@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import {
   makeEnv,
   mkReq as mkLicReq,
@@ -17,12 +18,11 @@ import { authorizeAndMint } from "../src/services/identity/oidc.js";
 import { serializeServices } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
-import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import {
-  registerSubjectStore,
-  unregisterSubjectStore,
-} from "../src/core/accounts/subjectHooks.js";
-import { sweepErasures } from "../src/services/identity/accounts/deletion.js";
+  ACCOUNT_DELETION_GRACE_SECONDS,
+  claimDueAccountDeletion,
+  sweepAccountDeletions,
+} from "../src/services/identity/accounts/lifecycle.js";
 import { hashKey } from "../src/platform/crypto.js";
 import { getTokenRecord } from "../src/platform/kv.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
@@ -777,26 +777,14 @@ describe("customer portal", () => {
   });
 });
 
-describe("portal account erasure (DELETE /api/me)", () => {
-  // R11-09: there was no delete endpoint at all, so `portal_accounts.primary_email` and
-  // `portal_account_emails.email` — the latter a PRIMARY KEY, with nowhere to record a
-  // tombstone that does not re-store the address — were unerasable through the API.
-  it("erases the account, its emails, its identities and its license links", async () => {
+describe("portal account deletion scheduling (DELETE /api/me)", () => {
+  it("schedules a reversible deletion, preserves account data, and exposes its deadline", async () => {
     const db = makeTestDb();
     const env = portalEnv();
     await seedProduct(db, "djdl");
     const { licenseId } = await seedLicenseWithKey(db, "djdl");
     const session = await portalSession(env, db);
-    // I-05: sign-in methods are `account_links` rows (the portal tables are the pre-I-05 copy).
-    await db.run(
-      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email,
-         email_verified, created_at, last_used_at)
-       VALUES ('lnk_oidc', ?, 'https://id.example', '', 'sub-1', 'oidc', 'ada@example.com', 1, ?, ?)`,
-      session.accountId,
-      NOW,
-      NOW,
-    );
-    // The license link is real: the seeded license carries ada@example.com.
+
     const before = await handlePortalApi(
       req("GET", "/api/licenses", { cookie: session.cookie }),
       env,
@@ -821,93 +809,115 @@ describe("portal account erasure (DELETE /api/me)", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, deleted: session.accountId });
-    // The session cookie is cleared on the way out.
-    expect(res.headers.get("set-cookie")).toMatch(/Max-Age=0/);
-
-    for (const [table, column] of [
-      ["accounts", "id"],
-      ["account_links", "account_id"],
-      ["account_product_subjects", "account_id"],
-      ["licenses", "account_id"],
-      ["portal_accounts", "id"],
-      ["portal_account_emails", "account_id"],
-      ["portal_account_identities", "account_id"],
-      ["portal_license_links", "account_id"],
-    ] as const) {
-      const row = await db.first<{ n: number }>(
-        `SELECT COUNT(*) AS n FROM ${table} WHERE ${column} = ?`,
+    expect(await res.json()).toEqual({
+      ok: true,
+      scheduled: true,
+      deletionDueAt: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+    });
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(
+      await db.first(
+        "SELECT id FROM accounts WHERE id = ? AND status = 'active'",
         session.accountId,
-      );
-      expect(`${table}=${row?.n}`).toBe(`${table}=0`);
-    }
-    // The address itself is gone from the database, not merely unlinked.
-    for (const sql of [
-      "SELECT email FROM portal_account_emails WHERE email = 'ada@example.com'",
-      "SELECT email FROM account_links WHERE email = 'ada@example.com'",
-      "SELECT primary_email FROM accounts WHERE primary_email = 'ada@example.com'",
-    ]) {
-      expect(await db.first(sql)).toBeNull();
-    }
+      ),
+    ).toBeTruthy();
+    expect(
+      await db.first(
+        "SELECT account_id FROM account_deletions WHERE account_id = ?",
+        session.accountId,
+      ),
+    ).toBeTruthy();
+
+    const after = await handlePortalApi(
+      req("GET", "/api/licenses", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/licenses",
+      NOW + 1,
+    );
+    expect(
+      ((await after.json()) as { licenses: unknown[] }).licenses,
+    ).toHaveLength(1);
+    const me = await handlePortalApi(
+      req("GET", "/api/me", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/me",
+      NOW + 1,
+    );
+    expect(await me.json()).toMatchObject({
+      account: {
+        deletion: {
+          requestedAt: NOW,
+          dueAt: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+        },
+      },
+    });
   });
 
-  it("leaves the product's own license record alone — it is the tenant's data, not the account's", async () => {
+  it("preserves the first deadline and sends one schedule notice and audit entry", async () => {
     const db = makeTestDb();
     const env = portalEnv();
-    await seedProduct(db, "djdl");
-    const { licenseId } = await seedLicenseWithKey(db, "djdl");
+    const sent: Array<{ to: string; subject: string }> = [];
+    env.EMAIL = {
+      send: async (message: { to: string; subject: string }) => {
+        sent.push(message);
+      },
+    } as unknown as Env["EMAIL"];
     const session = await portalSession(env, db);
 
-    await handlePortalApi(
-      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+    const first = await handlePortalApi(
+      req("DELETE", "/api/me", {
+        cookie: session.cookie,
+        csrf: session.csrf,
+      }),
       env,
       db,
       "/api/me",
       NOW,
     );
-
-    const license = await db.first<{ email: string | null }>(
-      "SELECT email FROM licenses WHERE product = 'djdl' AND id = ?",
-      licenseId,
-    );
-    expect(license?.email).toBe("ada@example.com");
-  });
-
-  it("keeps a non-identifying erasure receipt and drops the account's activity log", async () => {
-    const db = makeTestDb();
-    const env = portalEnv();
-    const session = await portalSession(env, db);
-    await db.run(
-      `INSERT INTO portal_audit (id, account_id, at, action, product, target_kind, target_id, summary)
-       VALUES ('paud_old', ?, ?, 'portal.license.claim', 'djdl', 'license', 'lic-1', 'Claimed license with a license key')`,
-      session.accountId,
-      NOW,
-    );
-
-    await handlePortalApi(
-      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+    const repeated = await handlePortalApi(
+      req("DELETE", "/api/me", {
+        cookie: session.cookie,
+        csrf: session.csrf,
+      }),
       env,
       db,
       "/api/me",
-      NOW,
+      NOW + 60,
     );
 
-    const rows = await db.all<{
+    expect(await first.json()).toMatchObject({ scheduled: true });
+    expect(await repeated.json()).toEqual({
+      ok: true,
+      scheduled: true,
+      deletionDueAt: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+    });
+    expect(sent.map(({ to, subject }) => ({ to, subject }))).toEqual([
+      {
+        to: "ada@example.com",
+        subject: "Your Polaris Key account is scheduled for deletion",
+      },
+    ]);
+    const audits = await db.all<{
       action: string;
-      account_id: string;
-      summary: string;
       product: string | null;
-    }>("SELECT action, account_id, summary, product FROM portal_audit");
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.action).toBe("portal.account.delete");
-    // The surrogate id survives; it no longer resolves to a person, and no email, name or
-    // product travels with it.
-    expect(rows[0]!.account_id).toBe(session.accountId);
-    expect(rows[0]!.product).toBeNull();
-    expect(rows[0]!.summary).not.toMatch(/@/);
+      summary: string | null;
+    }>(
+      `SELECT action, product, summary FROM portal_audit
+       WHERE account_id = ? AND action = 'portal.account.deletion.schedule'`,
+      session.accountId,
+    );
+    expect(audits).toEqual([
+      {
+        action: "portal.account.deletion.schedule",
+        product: null,
+        summary: "Scheduled account deletion",
+      },
+    ]);
   });
 
-  it("notifies the account holder BEFORE the address is erased", async () => {
+  it("cancels a pending deletion without signing the account out", async () => {
     const db = makeTestDb();
     const env = portalEnv();
     const sent: Array<{ to: string; subject: string }> = [];
@@ -919,116 +929,86 @@ describe("portal account erasure (DELETE /api/me)", () => {
     const session = await portalSession(env, db);
 
     await handlePortalApi(
-      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
-      env,
-      db,
-      "/api/me",
-      NOW,
-    );
-
-    expect(sent).toHaveLength(1);
-    expect(sent[0]!.to).toBe("ada@example.com");
-    expect(sent[0]!.subject).toMatch(/deleted/i);
-  });
-
-  it("SEC-PRV-1: a failing store hook answers erasing:true, closes the session and the sweeper finishes", async () => {
-    const db = makeTestDb();
-    const env = portalEnv();
-    await seedProduct(db, "djdl");
-    const session = await portalSession(env, db);
-    await subjectFor(db, session.accountId, "djdl", NOW);
-    let failing = true;
-    registerSubjectStore("flaky-erasure", {
-      merge: async () => {},
-      delete: async () => {
-        if (failing) throw new Error("DO unavailable");
-      },
-    });
-    try {
-      const res = await handlePortalApi(
-        req("DELETE", "/api/me", {
-          cookie: session.cookie,
-          csrf: session.csrf,
-        }),
-        env,
-        db,
-        "/api/me",
-        NOW,
-      );
-      expect(res.status).toBe(200);
-      expect(await res.json()).toMatchObject({
-        ok: true,
-        deleted: session.accountId,
-        erasing: true,
-      });
-      // The cookie no longer opens anything.
-      const me = await handlePortalApi(
-        req("GET", "/api/me", { cookie: session.cookie }),
-        env,
-        db,
-        "/api/me",
-        NOW + 1,
-      );
-      expect(me.status).toBe(401);
-      failing = false;
-      expect(
-        await sweepErasures({ db, env, now: NOW + 7200, origin: "" }),
-      ).toEqual({ completed: 1, attempted: 1 });
-      expect(
-        await db.first(
-          "SELECT id FROM accounts WHERE id = ?",
-          session.accountId,
-        ),
-      ).toBeNull();
-    } finally {
-      unregisterSubjectStore("flaky-erasure");
-    }
-  });
-
-  it("requires a session", async () => {
-    const db = makeTestDb();
-    const env = portalEnv();
-    const res = await handlePortalApi(
-      req("DELETE", "/api/me"),
-      env,
-      db,
-      "/api/me",
-      NOW,
-    );
-    expect(res.status).toBe(401);
-  });
-
-  it("requires the CSRF header — a bare authenticated DELETE is refused", async () => {
-    const db = makeTestDb();
-    const env = portalEnv();
-    const session = await portalSession(env, db);
-
-    const res = await handlePortalApi(
-      req("DELETE", "/api/me", { cookie: session.cookie }),
-      env,
-      db,
-      "/api/me",
-      NOW,
-    );
-
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ message: "csrf" });
-    const account = await db.first(
-      "SELECT id FROM accounts WHERE id = ?",
-      session.accountId,
-    );
-    expect(account).toBeTruthy();
-  });
-
-  it("a wrong CSRF token is refused too, and the account survives", async () => {
-    const db = makeTestDb();
-    const env = portalEnv();
-    const session = await portalSession(env, db);
-
-    const res = await handlePortalApi(
       req("DELETE", "/api/me", {
         cookie: session.cookie,
-        csrf: "not-the-token",
+        csrf: session.csrf,
+      }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+    const cancelled = await handlePortalApi(
+      req("POST", "/api/me/deletion/cancel", {
+        cookie: session.cookie,
+        csrf: session.csrf,
+      }),
+      env,
+      db,
+      "/api/me/deletion/cancel",
+      NOW + 1,
+    );
+    const repeated = await handlePortalApi(
+      req("POST", "/api/me/deletion/cancel", {
+        cookie: session.cookie,
+        csrf: session.csrf,
+      }),
+      env,
+      db,
+      "/api/me/deletion/cancel",
+      NOW + 2,
+    );
+
+    expect(await cancelled.json()).toEqual({ ok: true });
+    expect(await repeated.json()).toEqual({ ok: true });
+    expect(
+      await db.first(
+        "SELECT account_id FROM account_deletions WHERE account_id = ?",
+        session.accountId,
+      ),
+    ).toBeNull();
+    const me = await handlePortalApi(
+      req("GET", "/api/me", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/me",
+      NOW + 2,
+    );
+    expect(await me.json()).toMatchObject({ account: { deletion: null } });
+    expect(sent.map((message) => message.subject)).toEqual([
+      "Your Polaris Key account is scheduled for deletion",
+      "Your Polaris Key account deletion was cancelled",
+    ]);
+    const audits = await db.all<{ action: string }>(
+      `SELECT action FROM portal_audit
+       WHERE account_id = ? AND action LIKE 'portal.account.deletion.%'
+       ORDER BY action`,
+      session.accountId,
+    );
+    expect(audits).toEqual([
+      { action: "portal.account.deletion.cancel" },
+      { action: "portal.account.deletion.schedule" },
+    ]);
+  });
+
+  it("starts the existing hard-erasure state machine only after the grace period", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    env.BLOBS = asR2(new R2Mock());
+    const session = await portalSession(env, db);
+    await db.run(
+      `INSERT INTO portal_audit
+         (id, account_id, at, action, product, target_kind, target_id, summary)
+       VALUES ('paud_old', ?, ?, 'portal.license.claim', 'djdl', 'license', 'lic-1',
+         'Claimed license with a license key')`,
+      session.accountId,
+      NOW,
+    );
+    await handlePortalApi(
+      req("DELETE", "/api/me", {
+        cookie: session.cookie,
+        csrf: session.csrf,
       }),
       env,
       db,
@@ -1036,57 +1016,138 @@ describe("portal account erasure (DELETE /api/me)", () => {
       NOW,
     );
 
-    expect(res.status).toBe(403);
+    expect(
+      await sweepAccountDeletions({
+        db,
+        env,
+        now: NOW + ACCOUNT_DELETION_GRACE_SECONDS - 1,
+        origin: "",
+      }),
+    ).toEqual({ attempted: 0, started: 0 });
     expect(
       await db.first("SELECT id FROM accounts WHERE id = ?", session.accountId),
     ).toBeTruthy();
+
+    expect(
+      await sweepAccountDeletions({
+        db,
+        env,
+        now: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+        origin: "",
+      }),
+    ).toEqual({ attempted: 1, started: 1 });
+    expect(
+      await db.first("SELECT id FROM accounts WHERE id = ?", session.accountId),
+    ).toBeNull();
+    expect(
+      await db.first(
+        "SELECT id FROM account_tombstones WHERE id = ?",
+        session.accountId,
+      ),
+    ).toBeTruthy();
+    const audits = await db.all<{
+      action: string;
+      product: string | null;
+      summary: string | null;
+    }>("SELECT action, product, summary FROM portal_audit");
+    expect(audits).toEqual([
+      {
+        action: "portal.account.delete",
+        product: null,
+        summary: "Portal account erased at the account holder's request",
+      },
+    ]);
   });
 
-  it("the session stops working the moment the account is gone", async () => {
+  it("answers deletion_in_progress once the scheduler claim wins", async () => {
     const db = makeTestDb();
     const env = portalEnv();
     const session = await portalSession(env, db);
     await handlePortalApi(
-      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
+      req("DELETE", "/api/me", {
+        cookie: session.cookie,
+        csrf: session.csrf,
+      }),
       env,
       db,
       "/api/me",
       NOW,
+    );
+    const dueAt = NOW + ACCOUNT_DELETION_GRACE_SECONDS;
+    expect(await claimDueAccountDeletion(db, session.accountId, dueAt)).toBe(
+      true,
+    );
+    const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
+    const { token, session: freshSession } = await issuePortalSessionRow(
+      env,
+      db,
+      {
+        accountId: account.id,
+        email: account.primary_email,
+        name: account.display_name,
+      },
+      dueAt,
+    );
+    const res = await handlePortalApi(
+      req("POST", "/api/me/deletion/cancel", {
+        cookie: `${PORTAL_COOKIE}=${token}`,
+        csrf: freshSession.csrf,
+      }),
+      env,
+      db,
+      "/api/me/deletion/cancel",
+      dueAt,
     );
 
-    // Same still-unexpired cookie, and a second delete: `requireSession` re-reads the account.
-    const res = await handlePortalApi(
-      req("GET", "/api/me", { cookie: session.cookie }),
-      env,
-      db,
-      "/api/me",
-      NOW,
-    );
-    expect(res.status).toBe(401);
-    const again = await handlePortalApi(
-      req("DELETE", "/api/me", { cookie: session.cookie, csrf: session.csrf }),
-      env,
-      db,
-      "/api/me",
-      NOW,
-    );
-    expect(again.status).toBe(401);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "deletion_in_progress",
+      message: "account deletion has already begun",
+    });
   });
 
-  it("GET /api/me is unaffected", async () => {
+  it("requires a session and CSRF for scheduling and cancellation", async () => {
     const db = makeTestDb();
     const env = portalEnv();
-    const session = await portalSession(env, db);
-    const res = await handlePortalApi(
-      req("GET", "/api/me", { cookie: session.cookie }),
+    const noSession = await handlePortalApi(
+      req("DELETE", "/api/me"),
       env,
       db,
       "/api/me",
       NOW,
     );
-    expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({
-      account: { email: "ada@example.com" },
-    });
+    const noSessionCancel = await handlePortalApi(
+      req("POST", "/api/me/deletion/cancel"),
+      env,
+      db,
+      "/api/me/deletion/cancel",
+      NOW,
+    );
+    expect(noSession.status).toBe(401);
+    expect(noSessionCancel.status).toBe(401);
+
+    const session = await portalSession(env, db);
+    const noCsrf = await handlePortalApi(
+      req("DELETE", "/api/me", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/me",
+      NOW,
+    );
+    const noCsrfCancel = await handlePortalApi(
+      req("POST", "/api/me/deletion/cancel", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/me/deletion/cancel",
+      NOW,
+    );
+    expect(noCsrf.status).toBe(403);
+    expect(noCsrfCancel.status).toBe(403);
+    expect(
+      await db.first(
+        "SELECT account_id FROM account_deletions WHERE account_id = ?",
+        session.accountId,
+      ),
+    ).toBeNull();
   });
 });

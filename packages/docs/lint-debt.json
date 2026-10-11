@@ -597,7 +597,7 @@
     "features/sign-in/customer-portal": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "http-path": 22,
+      "http-path": 20,
       "programme-id": 4
     },
     "features/sign-in/device-flow": {
@@ -645,7 +645,7 @@
     "help/sign-in": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "help-word": 28,
+      "help-word": 26,
       "time-word": 1
     },
     "help/sync": {

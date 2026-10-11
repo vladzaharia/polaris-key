@@ -228,6 +228,7 @@ async function pushPublisher(
   )
     return null;
   const resolved = await lookupRegistrySubject(
+    ctx.env,
     ctx.db,
     owner,
     claims.sub,

@@ -262,7 +262,15 @@ What the sections above do not promise, stated plainly:
 
 - **Console audit rows** (`audit`) name the licence by id; since October 2026 they no longer copy the
   buyer's email or name. Rows written before that may still hold an address and are deleted by the
-  nightly job after 180 days. Account erasure does not rewrite them.
+  nightly job after 180 days. Account erasure rewrites the rows that name the person as their actor:
+  a Discover add through the portal, and a product sign-in's licence merge, tier change or licence
+  choice, record the person's platform subject, name and address. In the erasure batch such a row
+  keeps its time, action and licence and loses the actor (replaced by the marker `erased-account`),
+  the name, the address and the summary. A row is rewritten only when its actor is one of the
+  account's platform sign-ins and it concerns the person's own licence: an address alone is no link,
+  and an operator's console actions on anyone else's licence stay attributed. The product's
+  developer sees the marker, never the global account id. Removing your data from a single app does
+  not rewrite them.
 - **Merge tombstones** (`account_tombstones` with a merge target, which carry an email hash) are
   deleted after 90 days; an erasure tombstone holds only the account id and is kept, so an erased
   account is never recreated by the legacy catch-up. Subject events (`subject_events`) are deleted
@@ -284,10 +292,25 @@ What the sections above do not promise, stated plainly:
   licence document for a device an account is signed in on also carries that person's pairwise
   subject for the product (`profile.user`), which is no new personal data: no name, email or
   account id. Once issued they cannot be recalled or erased; they expire with the document.
-- **Erasure.** Account deletion is a resumable state machine (`account_erasures`). There is no
-  self-service data export for the person and no `removeProductData` route: an admin exports and
-  deletes a person's data per product from the Users page. Data is not encrypted per person
-  (no crypto-shredding), and D1 Time Travel backups keep deleted rows for up to 30 days.
+- **Export and removal.** `GET /api/me/export` and `GET /api/products/<product>/export` hand the
+  person a JSON copy of their own data (the whole account, or one product), and
+  `DELETE /api/products/<product>/data` removes what is held for them in one product. Each needs a
+  sign-in no older than five minutes and is recorded in the account's activity. An export carries no
+  credential (no key, token, session id or passkey material), none of the developers' own records
+  (audit logs, relink history, purchase records, device fingerprints) and nothing about another
+  person; the birth date is in the full export only. A removal keeps the license unless the person
+  also removes it, and while it stays the developer can still connect them to the old records
+  through it.
+
+- **Erasure.** `DELETE /api/me` records a cancellable request in `account_deletions` and keeps
+  the account active for fourteen days. At its deadline the scheduled worker claims the request
+  and starts the resumable hard-erasure state machine (`account_erasures`); it deletes
+  account-linked data and the request's account activity, retains only the id-only erasure
+  tombstone and final receipt, and detaches licences. The tombstone is kept and reapplied after a
+  D1 restore so legacy catch-up cannot recreate the account, and a restored deleted account is
+  refused at sign-in and on every request before that cleanup erases it again. Data is not
+  encrypted per person (no crypto-shredding), and D1 Time Travel backups keep deleted rows for up to
+  30 days.
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/core/repo.ts`, which purges both tables in the

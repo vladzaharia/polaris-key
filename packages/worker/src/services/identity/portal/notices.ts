@@ -351,6 +351,44 @@ export function primaryEmailChangedNotice(input: {
   });
 }
 
+/** The account holder scheduled a reversible, self-service deletion. */
+export function accountDeletionScheduledNotice(input: {
+  origin: string;
+  dueAt: number;
+}): NoticeMessage {
+  return buildNotice({
+    subject: "Your Polaris Key account is scheduled for deletion",
+    paragraphs: [
+      `Your Polaris Key account is scheduled to be erased on ${utcInstant(input.dueAt)} unless you cancel the deletion before then.`,
+      "Your account stays active during that 14-day period. Deleting it does not cancel your licenses: they stay with each developer, and you can add them again with a new account.",
+    ],
+    action: {
+      label: "Review account settings",
+      url: appLink(input.origin, "account/data"),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/** The account holder cancelled a scheduled self-service deletion. */
+export function accountDeletionCancelledNotice(input: {
+  origin: string;
+}): NoticeMessage {
+  return buildNotice({
+    subject: "Your Polaris Key account deletion was cancelled",
+    paragraphs: [
+      "Your Polaris Key account will stay active. No account data will be erased.",
+    ],
+    action: {
+      label: "Review account settings",
+      url: appLink(input.origin, "account/data"),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
 /** The account was deleted at the holder's request (sent before the rows go). */
 export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
   return buildNotice({

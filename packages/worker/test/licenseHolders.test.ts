@@ -17,6 +17,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { handlePortalApi } from "./portalHarness.js";
@@ -77,6 +78,8 @@ let call: (method: string, path: string, body?: unknown) => Promise<Response>;
 beforeEach(async () => {
   db = makeTestDb();
   env = makeEnv(new KvMock(), [SLUG]);
+  // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+  env.BLOBS = asR2(new R2Mock());
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   env.PORTAL_SESSION_SECRET = PORTAL_SECRET;
@@ -126,7 +129,7 @@ async function account(
     db,
     { issuerKey: "email", subject: email, kind: "email" },
     NOW,
-    { product: { slug: SLUG } },
+    { unfenced: true, product: { slug: SLUG } },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return { id: r.account.id, subject: r.subject! };

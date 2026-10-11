@@ -236,7 +236,7 @@ async function account(
     db,
     { issuerKey: "email", subject: email, kind: "email" },
     NOW,
-    { product: { slug: SLUG } },
+    { unfenced: true, product: { slug: SLUG } },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return { id: r.account.id, subject: r.subject! };
@@ -388,6 +388,7 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
       w.db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (ada.status !== "signed_in") throw new Error(ada.status);
     const sealedToken = await sealManagedValue(
@@ -949,6 +950,7 @@ describe("U-03: the migration's guards", () => {
       w.db,
       { issuerKey: "email", subject: "cy@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (cy.status !== "signed_in") throw new Error(cy.status);
     const sealed = await sealManagedValue(

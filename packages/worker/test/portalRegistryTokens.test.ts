@@ -8,6 +8,7 @@ import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -27,6 +28,10 @@ import {
   lookupRegistryCredential,
 } from "../src/core/registry/registryTokens.js";
 import { handlePortalApi } from "./portalHarness.js";
+import {
+  ACCOUNT_DELETION_GRACE_SECONDS,
+  sweepAccountDeletions,
+} from "../src/services/identity/accounts/lifecycle.js";
 
 const SLUG = "acme";
 let db: Db;
@@ -217,7 +222,7 @@ describe("portal package access (Q3)", () => {
     expect((await call("POST", "", { label: "x" })).status).toBe(403);
   });
 
-  it("erasing the portal account revokes every token it minted", async () => {
+  it("hard erasure after the grace period revokes every token it minted", async () => {
     await setFeed("licensed");
     const minted = (await (
       await call("POST", "", { label: "laptop" })
@@ -238,6 +243,14 @@ describe("portal package access (Q3)", () => {
       NOW,
     );
     expect(me.status).toBeLessThan(300);
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    env.BLOBS = asR2(new R2Mock());
+    await sweepAccountDeletions({
+      db,
+      env,
+      now: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+      origin: "",
+    });
     forgetRegistryTokens();
     expect(
       (await lookupRegistryCredential(env, db, minted.token)).resolved,

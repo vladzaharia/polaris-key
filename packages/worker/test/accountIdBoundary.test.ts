@@ -111,6 +111,7 @@ describe("the account id never reaches a developer (PX-W17)", () => {
       db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (signedIn.status !== "signed_in") throw new Error(signedIn.status);
     const accountId = signedIn.account.id;

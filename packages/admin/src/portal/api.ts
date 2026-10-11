@@ -4,6 +4,8 @@ export interface PortalAccount {
   id: string;
   name: string;
   email: string;
+  /** A soft account deletion, until its 14-day due time; absent on a Worker before I-11. */
+  deletion?: { requestedAt: number; dueAt: number } | null;
   /**
    * The picture in use (PX-W16): a same-origin `/media/avatar/<asset>` URL (256 px; `-96` names
    * the small one), or null for initials. Absent on an older Worker, which means initials.
@@ -275,6 +277,8 @@ export interface PortalProduct extends PortalPresentation {
   product: string;
   /** `entry`: an open product's library entry (PS-04), with no licences. */
   kind?: "license" | "entry";
+  /** The person's product-specific support code, created only on their request. */
+  supportCode?: string | null;
   /** Each service's own toggle (e.g. `identity`); a section shows only for a service that is on. */
   services: Record<string, boolean>;
   status: PortalStatus;
@@ -958,10 +962,17 @@ export function setPortalCsrf(token: string): void {
 /** This tab started an email sign-in that has not finished yet (I-07). */
 let signInPending = false;
 
-async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+/**
+ * One request to the Worker, answered or refused as a {@link PortalApiError}. `withCsrf` sends
+ * the portal binder for every change and for a personal-data download.
+ */
+async function send(
+  path: string,
+  init: RequestInit,
+  withCsrf: boolean,
+): Promise<Response> {
   const headers = new Headers(init.headers);
-  const mutating = init.method != null && init.method !== "GET";
-  if (mutating) {
+  if (withCsrf) {
     headers.set(CSRF_HEADER, csrf);
     // JSON unless the caller sent bytes with their own type (a picture upload).
     if (init.body && !headers.has("Content-Type"))
@@ -1007,8 +1018,34 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (reason !== undefined) error.reason = reason;
     throw error;
   }
+  return res;
+}
+
+async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await send(
+    path,
+    init,
+    init.method != null && init.method !== "GET",
+  );
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
+}
+
+function saveDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function download(path: string, filename: string): Promise<void> {
+  const res = await send(path, {}, true);
+  saveDownload(await res.blob(), filename);
 }
 
 const enc = encodeURIComponent;
@@ -1022,9 +1059,11 @@ export const portalApi = {
     ),
   me: () => call<PortalMe>("/api/me"),
   deleteMe: () =>
-    call<{ ok: true; deleted: string; erasing?: true }>("/api/me", {
+    call<{ ok: true; scheduled: true; deletionDueAt: number }>("/api/me", {
       method: "DELETE",
     }),
+  cancelDeletion: () =>
+    call<{ ok: true }>("/api/me/deletion/cancel", { method: "POST" }),
   /** Account → Profile (PX-W16): the profile, its sources and what each method supplied. */
   profile: () => call<{ profile: PortalProfile }>("/api/me/profile"),
   /** An explicit choice (a typed or picked name; Initials, a method's picture or an upload). */
@@ -1156,6 +1195,25 @@ export const portalApi = {
     ),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
+  createSupportCode: (product: string) =>
+    call<{ supportCode: string }>(
+      `/api/products/${enc(product)}/support-code`,
+      { method: "POST" },
+    ),
+  exportProductData: (product: string) =>
+    download(
+      `/api/products/${enc(product)}/export`,
+      `polaris-key-${product}-data.json`,
+    ),
+  removeProductData: (product: string, alsoRemoveLicense: boolean) =>
+    call<{ ok: true; product: string; detachedLicenses: string[] }>(
+      `/api/products/${enc(product)}/data${
+        alsoRemoveLicense ? "?alsoRemoveLicense=1" : ""
+      }`,
+      { method: "DELETE" },
+    ),
+  exportAccountData: () =>
+    download("/api/me/export", "polaris-key-account-data.json"),
   downloads: (product: string) =>
     call<PortalDownloads>(`/api/products/${enc(product)}/downloads`),
   previewKey: (key: string) =>

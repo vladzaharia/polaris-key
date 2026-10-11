@@ -12,6 +12,7 @@
  */
 
 import type { Db, DbStatement } from "../../../db/types.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Env } from "../../../platform/env.js";
 import { onAccountEmailVerified } from "../../../core/licensing/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
@@ -105,12 +106,17 @@ export async function linkIdentity(
   proof: AccountProof,
   identity: VerifiedIdentity,
 ): Promise<LinkResult> {
-  const { db, now } = ctx;
+  const { db, env, now } = ctx;
   if (!isFresh(proof, now)) return { ok: false, error: "step_up_required" };
   const id = normalizeIdentity(identity);
   if (!id) return { ok: false, error: "bad_request" };
   const account = await getAccountRow(db, proof.accountId);
   if (!account || account.status !== "active") {
+    return { ok: false, error: "not_found" };
+  }
+  // I-11: an account the erasure ledger holds takes no new method, however it came back (a D1
+  // restore); a ledger that cannot be read refuses the same way.
+  if ((await erasureVerdict(env, now, account.id)) !== "clear") {
     return { ok: false, error: "not_found" };
   }
   const key = {

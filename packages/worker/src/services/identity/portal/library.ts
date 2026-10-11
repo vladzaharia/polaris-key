@@ -54,6 +54,7 @@ import {
   loadProductPublic,
   type ProductPublic,
 } from "../../../core/products.js";
+import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
 import { seatActiveSince } from "../../../core/repo.js";
 import type { DeviceRow } from "../../../core/repo.js";
@@ -551,6 +552,7 @@ export async function productView(
     services: serviceToggles(product),
     status: shaped[0]!.status,
     addedAt: await addedAt(db, accountId, slug),
+    supportCode: await existingSubjectFor(db, accountId, slug),
     returnTo: returnTo(product),
     licenses,
   };
@@ -593,6 +595,7 @@ async function entryProductView(
     ...(await presentationFor(env, db, product, hooksFor, now, "product")),
     services: serviceToggles(product),
     ...entryFields(entry),
+    supportCode: await existingSubjectFor(db, accountId, slug),
     returnTo: returnTo(product),
     licenses: [],
   };

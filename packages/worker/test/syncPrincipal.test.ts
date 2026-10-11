@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import {
   makeEnv,
   mkReq,
@@ -104,7 +105,7 @@ async function account(db: Db, email: string) {
     db,
     { issuerKey: "email", subject: email, kind: "email" },
     NOW,
-    { product: { slug: SLUG } },
+    { unfenced: true, product: { slug: SLUG } },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return { id: r.account.id, subject: r.subject! };
@@ -472,6 +473,8 @@ describe("the clearing hook's Cloud Sync cases", () => {
   it("account deletion clears it", async () => {
     const w = await world();
     const { ada } = await signedInDevice(w);
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    w.env.BLOBS = asR2(new R2Mock());
     expect(await deleteAccount(w.ctx, ada.id)).toEqual({ ok: true });
     expect(await bindingOf(w)).toBeNull();
   });
@@ -697,6 +700,7 @@ describe("syncAccess", () => {
       w.db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (ada.status !== "signed_in") throw new Error(ada.status);
     expect(

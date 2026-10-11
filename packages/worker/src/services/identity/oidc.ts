@@ -138,7 +138,7 @@ import {
   attachClaimedLicenses,
   claimPlatformSubject,
   platformSignInEnded,
-  platformSubjectAccountRefused,
+  platformSubjectStanding,
   platformSubjectLink,
   PLATFORM_SIGNIN_ENDED,
 } from "./accounts/platformMigration.js";
@@ -2261,13 +2261,14 @@ export async function handleAuthCallback(
   }
 
   // N9 (the I-17 review): a subject whose Polaris Key account can no longer sign in (disabled,
-  // or its deletion under way) does not sign in to a product either, in every migration mode and
-  // whichever way the flow would end (the claim, I-26's chooser, the device-code poll, a new or
-  // existing `sub`-keyed licence). Refused before any of them, so nothing is minted or written;
-  // the flow is dropped, so the poll then answers `timeout`. A subject with no account signs in
-  // exactly as before.
+  // or its deletion under way, or erased and brought back by a D1 restore: I-11's ledger) does not
+  // sign in to a product either, in every migration mode and whichever way the flow would end
+  // (the claim, I-26's chooser, the device-code poll, a new or existing `sub`-keyed licence).
+  // Refused before any of them, so nothing is minted or written; the flow is dropped, so the poll
+  // then answers `timeout`. A subject with no account signs in exactly as before.
   if (
     await signInAccountRefused(
+      env,
       db,
       oidc.row.provider,
       oidc.issuer,
@@ -2433,11 +2434,13 @@ async function migratePlatformSubject(
 
 /**
  * N9: whether this product sign-in's subject belongs to a Polaris Key account that can no longer
- * sign in (`platformSubjectAccountRefused`). Only a `provider: platform` product's subject is the
- * platform IdP's, the one a Polaris Key account holds; a custom issuer's subject resolves no
- * account, so its sign-in is unchanged.
+ * sign in (`platformSubjectStanding`: anything but `allowed` refuses, so an erasure ledger that
+ * cannot be read refuses too). Only a `provider: platform` product's subject is the platform
+ * IdP's, the one a Polaris Key account holds; a custom issuer's subject resolves no account, so
+ * its sign-in is unchanged.
  */
 async function signInAccountRefused(
+  env: Env,
   db: Db,
   provider: string | null,
   issuer: string,
@@ -2445,7 +2448,9 @@ async function signInAccountRefused(
   now: number,
 ): Promise<boolean> {
   if ((provider ?? "platform") !== "platform") return false;
-  return platformSubjectAccountRefused(db, issuer, sub, now);
+  return (
+    (await platformSubjectStanding(env, db, issuer, sub, now)) !== "allowed"
+  );
 }
 
 /** A branded 403 sign-in refusal page: no caching, no retry on this route. `body` is TRUSTED. */
@@ -3390,6 +3395,7 @@ async function pollAccountRefused(
   // No platform secrets while a platform-provider flow waits: refuse (fail closed).
   if (!platform) return (row?.provider ?? "platform") === "platform";
   return signInAccountRefused(
+    env,
     db,
     row?.provider ?? null,
     platform.issuer,

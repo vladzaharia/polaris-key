@@ -280,7 +280,12 @@ describe("GET /api/platform/deployment", () => {
 
   it("reports migrations, indexes and binding presence (never binding ids)", async () => {
     const db = makeTestDb();
-    const r = await call(adminEnv(), db, "/api/platform/deployment");
+    // A deploy without a blob store: `makeEnv` binds an empty bucket, so unbind it here.
+    const r = await call(
+      adminEnv({ BLOBS: undefined }),
+      db,
+      "/api/platform/deployment",
+    );
     expect(r.status).toBe(200);
     expect(r.body.current.latestMigration).toBe(LATEST_MIGRATION);
     // No d1_migrations in the Node harness: unknown, not "none applied".

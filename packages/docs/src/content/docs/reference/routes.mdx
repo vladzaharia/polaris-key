@@ -153,6 +153,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/api/library/{product}` | portal | Remove a library entry |
 | GET | `/api/library` | portal | The signed-in account's library |
 | DELETE | `/api/licenses/{product}/{licenseId}` | portal | Remove a licence from the library |
+| POST | `/api/me/deletion/cancel` | portal | Cancel a pending account deletion |
+| GET | `/api/me/export` | portal | Download everything held for the signed-in account |
 | POST | `/api/me/link/cancel` | portal | Forget this browser's link flow |
 | POST | `/api/me/link/confirm` | portal | Join the two accounts, with proof of both |
 | POST | `/api/me/link/start` | portal | Start linking an existing account |
@@ -171,6 +173,11 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/me/profile/picture` | portal | Upload a picture |
 | GET | `/api/me/profile` | portal | The account's profile, with sources and explicit flags |
 | PATCH | `/api/me/profile` | portal | Make an explicit profile choice |
+| GET | `/api/me` | portal | The signed-in account and a CSRF token |
+| DELETE | `/api/me` | portal | Schedule the signed-in account for deletion |
+| DELETE | `/api/products/{product}/data` | portal | Remove the signed-in account's data from one product |
+| GET | `/api/products/{product}/export` | portal | Download what is held for the signed-in account in one product |
+| POST | `/api/products/{product}/support-code` | portal | Get the signed-in account's support code for one product |
 | GET | `/api/products/{product}` | portal | One product in the signed-in account's library |
 | DELETE | `/api/sessions/{sessionId}` | portal | End one of the account's sessions |
 | POST | `/api/sessions/sign-out-everywhere` | portal | End every session of the account, this one included |

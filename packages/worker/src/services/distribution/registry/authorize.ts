@@ -169,6 +169,7 @@ async function resolveUncached(
       return ANONYMOUS;
     if (!claims.repos.includes(`${owner}/${ctx.repository}`)) return ANONYMOUS;
     const resolved = await lookupRegistrySubject(
+      env,
       ctx.db,
       owner,
       claims.sub,

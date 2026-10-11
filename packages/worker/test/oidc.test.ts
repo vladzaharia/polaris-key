@@ -590,6 +590,7 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
       db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (ada.status !== "signed_in") throw new Error(ada.status);
     await db.run(
@@ -701,6 +702,7 @@ describe("OIDC claim of an enrolled licence after the migration's run (U-03, N8)
       db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (ada.status !== "signed_in") throw new Error(ada.status);
     // An anonymous enrolled licence that Ada's account already owns.

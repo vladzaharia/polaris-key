@@ -1811,6 +1811,162 @@ surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep
   its lock age: stop the collector and escalate. Never shorten or remove the bucket lock to make
   it pass.
 
+## Account erasure ledger and D1 restore (I-11)
+
+A D1 Time Travel restore rewinds the whole database, so an account erased after the restore point
+comes back with nothing in D1 to say it was erased. The erasure ledger is the record a restore
+does not touch: one object per erased account in the existing `BLOBS` R2 bucket, key
+`erasures/<account id>`, holding the opaque `acct_…` id, a version and a timestamp (no email, name
+or product). It is written create-only, **before** the erasure closes the account, so a write that
+fails (R2 down, `BLOBS` unbound) stops the erasure with D1 untouched and the due request is claimed
+again after its 10-minute lease. No code deletes a ledger object; do not delete one by hand, and
+never put a lifecycle or expiry rule on `erasures/` (DEPLOYMENT §3). A deletion that is only
+scheduled (the 14-day grace period, still cancellable) is **not** on the ledger: a restore to a
+point before the request was made forgets it, and the person has to schedule it again.
+
+**When the ledger is applied.** The replay, which is the cleanup, runs only from the cron: never
+synchronously with a restore and never from a request. No route, console action or restore hook
+runs it, so an operator waits for the next tick. (Requests only read the ledger, see "The
+request-time fence" below; none applies it.) The ticks are:
+
+- every 15 minutes, on the connector tick (`*/15 * * * *`), as the first of the erasure steps,
+  before the due-deletion and retry sweeps;
+- nightly at 03:17 UTC (`17 3 * * *`), after the registry-token purge and before the legacy
+  `accountsCatchUp`.
+
+One pass reads the ledger in key order, in pages of 1,000 keys, at most 5 pages (5,000 ids) a
+pass; a longer ledger is continued from where the last pass stopped (a KV resume marker that
+expires on its own; losing it only restarts the walk). For each page, in this order:
+
+1. **Tombstones.** An id-only `account_tombstones` row is created for every listed id that has none
+   (`INSERT OR IGNORE`: an existing row is never rewritten), so the legacy catch-up cannot copy the
+   account back.
+2. **Re-erasure.** Every listed account that is live again (`status <> 'deleted'`) is handed to the
+   erasure state machine, at most **25 accounts per pass**; the rest are counted as deferred, and a
+   pass that stopped at its page bound with accounts deferred resumes from the same point, so they
+   are read first. The state machine closes the account in one batch (status `deleted`, sessions
+   deleted, package-registry tokens revoked; another Worker isolate may keep a cached registry
+   token for up to 30 seconds), then runs the stores' per-person deletes and the final erasure
+   again. Developers receive `subject.deleted` again. An account already at `deleted` is left to
+   the retry sweeper and its back-off (15 minutes, 1 hour, 4 hours, 12 hours, then 24 hours).
+3. **Mirror.** D1 erasure tombstones (never merge tombstones) that the ledger lacks, from erasures
+   that finished before the ledger shipped, are copied into it, at most **100 per pass**, over the
+   key range the pages covered.
+
+Every step is idempotent: a pass over a consistent state changes nothing. A single account that
+fails is recorded and the pass goes on; an unreachable R2 or D1 fails the step.
+
+**The request-time fence.** Every request that acts as an account reads the ledger first: one HEAD
+of `erasures/<account id>` in the `BLOBS` bucket, remembered per Worker isolate (an erased answer for
+the isolate's life, a not-erased answer for 30 seconds). It needs no new binding, queue or secret.
+An account on the ledger is refused from the moment a restore lands, before the replay runs:
+
+- sign-in through every front door (email code or link, providers and the email gate, passkeys,
+  single sign-on, product sign-in through the platform IdP) is refused with the same answer as a
+  disabled account, and so is a join offer to it;
+- the portal API answers `401` to its session cookies; a product browser session reads signed out
+  and its record is ended; an approved sign-in on another device is refused; licensed download
+  links answer `404`;
+- package-registry tokens a person minted from the portal resolve to nothing, as a revoked token
+  does;
+- devices bound to the account cannot attach a licence or read its subject; joining, linking,
+  undoing a join and relinking a licence to it are refused.
+
+**It fails closed.** With `BLOBS` unbound or R2 failing, nothing is let through for an account: the
+portal API answers `503 unavailable` (the browser keeps its cookie and retries), sign-in is refused,
+a product browser session reads signed out but its record is kept, an approved device sign-in or a
+download answers `503` without being spent, and a portal-minted package token resolves to nothing.
+Public feeds keep working; tokens no account owns (console and operator tokens) and CI tokens are
+not asked.
+
+**The replay is still the cleanup.** It closes the restored account in D1 and erases what the
+restore brought back (tombstone, data, tokens). Its timing no longer decides whether a restored
+account can be used; it decides how long its rows sit in the restored database. That is up to one
+connector tick (15 minutes), and longer when:
+
+- more than 25 accounts came back: each pass re-erases 25, so _n_ accounts need ⌈_n_ ÷ 25⌉ passes
+  (1,000 accounts: 40 passes, about 10 hours of 15-minute ticks);
+- the ledger holds more than 5,000 ids and the account is past the pages a pass reads (the walk
+  needs ⌈ids ÷ 5,000⌉ passes to reach every id);
+- re-erasing an account failed (it is retried on the next pass).
+
+**What stays open after a restore.** The fence is the in-repo control; there is still no maintenance
+mode, read-only switch or traffic switch, and none should be assumed.
+
+- The console's Users page, per-user detail and export are staff-only reads and are **not**
+  fenced: until the replay erases the rows they can still list a restored erased account's contact
+  address and activity. Staff should not act on those rows.
+- Cloud Sync and account overrides identify a device by its token and its subject binding, not by
+  the account (`syncAccess`, `accountOverrides`), so they are **not** fenced: a device still bound
+  to a restored erased account's subject keeps that access until the replay clears the binding.
+- The not-erased answer is remembered for 30 seconds per isolate, so an erasure recorded by another
+  isolate in the last 30 seconds is unseen by this one for up to that long. The isolate that
+  recorded the erasure knows at once.
+- A `503` from the fence is not a signal that a restore happened. The evidence of the replay is the
+  `platform_job_runs` rows of step `erasureLedger` (below).
+
+### Restoring D1
+
+1. Follow the Time Travel commands in `docs/security/arch/operational-resilience.md` §5
+   ("Point-in-time restore"): capture the current bookmark first (the restore is in place and
+   destructive), find the target bookmark, then
+   `npx wrangler d1 time-travel restore polaris_key_prod --env prod --bookmark <bookmark>`.
+   Time Travel reaches back 30 days. Restoring to the undo bookmark afterwards is safe for erasures
+   too: the ledger lives outside D1, and the replay applies it again whichever state D1 is in.
+2. Leave R2 alone. The restore does not touch `BLOBS`; do not empty, replace or re-point the
+   bucket, and keep the `BLOBS` binding in `wrangler.toml` for the environment. With no binding the
+   fence refuses account sign-in and portal API calls with `503`, the replay does nothing and every
+   account erasure refuses to start.
+3. Note the restore time (UTC). Accounts on the ledger are refused from the moment the restore
+   lands; the replay then erases what came back, on the next connector tick (the nightly tick is
+   the second chance). Nothing here can be forced or sped up, and the console Users rows stay
+   visible until it has run (see "What stays open").
+4. Verify **after** that time. `platform_job_runs` is in D1, so the restore rewound it too: only
+   ticks that ran after the restore appear.
+
+   ```sh
+   cd packages/worker
+   npx wrangler d1 execute polaris_key_prod --env prod --remote --command \
+     "SELECT job, cron, datetime(started_at/1000,'unixepoch') AS started_utc, outcome, rows_affected, error_summary FROM platform_job_runs WHERE step = 'erasureLedger' ORDER BY started_at DESC LIMIT 12"
+   ```
+
+   (`started_at` is epoch milliseconds.) The same rows are on the console's Operations page
+   (`GET /manage/api/platform/operations`, `jobs`). `rows_affected` is the sum of tombstones
+   created, accounts re-erased and ledger copies made in that pass: expect it above 0 on the first
+   tick after a restore that brought erased accounts back, then 0 once D1 and the ledger agree.
+   **A `connectorPoll` row never shows a failure**: the 15-minute tick keeps only the count, so a
+   replay that threw is recorded there as `ok` with `rows_affected` 0. Only the nightly
+   (`maintenance`) row can be `failed`; its `error_summary` names up to ten opaque account ids with
+   the failing step (`reapply` or `mirror`). Read a 0 on the poll tick together with the nightly
+   result, never alone. Likewise only the nightly run records a failed `accountDeletions` step
+   (due scheduled deletions) or `erasures` step (an erasure that failed 5 times, named by id and
+   step).
+
+5. For a specific account id (from the ledger, or from the person's report), check D1 directly:
+   `SELECT id FROM account_tombstones WHERE id = '<id>'` should return the row;
+   `SELECT id, status FROM accounts WHERE id = '<id>'` should return nothing once the erasure has
+   finished, or `status = 'deleted'` while it is being resumed; `SELECT attempts, failed_step,
+last_error FROM account_erasures WHERE account_id = '<id>'` shows a resumed erasure's progress.
+   The repo has no command that lists the ledger itself; the R2 dashboard's object browser shows
+   the `erasures/` prefix.
+
+**Limits to know before relying on it.**
+
+- Erasures that finished **before** the ledger shipped are protected only once the mirror has copied
+  them (100 per pass). A restore to a point before such an account's tombstone existed, made before
+  that copy, brings the account back usable, with nothing to refuse or re-erase it. After the first
+  deploy of I-11, do not restore D1 to a point earlier than the deploy until the `erasureLedger`
+  count on the connector ticks has stayed at 0 for a day. No recorded signal says the mirror is
+  complete, only that a pass did nothing.
+- The ledger is one bucket with no other copy. R2 is outside Time Travel and the repo configures
+  no backup of it; a lost or emptied bucket loses the ledger. So does a ledger object deleted by
+  hand or by a lifecycle rule: the fence and the replay both read it, and both lose that account.
+
+**Troubleshooting.** A wave of `503 unavailable` on the portal API, sign-in refusals or signed-out
+product sessions while R2 is degraded or `BLOBS` is unbound is the fence failing closed, not an
+account problem: restore R2 or the binding and signed-in clients carry on. An unreadable ledger
+clears no portal cookie and ends no product browser session; it only refuses until it can be read.
+
 ## Release-file mirroring (HA-08)
 
 Polaris Key keeps its own copy of every app-release file whose bytes live only on GitHub or at an
