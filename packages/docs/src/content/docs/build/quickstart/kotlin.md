@@ -15,7 +15,7 @@ pkey sdk --lang kotlin --write --package com.acme.polaris --out app/src/main/kot
 
 ```kotlin
 import com.acme.polaris.PolarisConfig
-import im.plrs.key.core.isUsable
+import im.plrs.key.license.isUsable
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.serialization.json.JsonPrimitive
 
