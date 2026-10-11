@@ -13,6 +13,8 @@ import { ServiceGlyph, serviceLabel } from "../../../../ui/ServiceBadge.js";
 import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { Switch } from "../../../../ui/Switch.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
+import { Link } from "../../../router.js";
+import { r } from "../../../routes.js";
 import { CustomerPortalControl } from "./CustomerPortalControl.js";
 import { PackageFeedsControl } from "./PackageFeedsControl.js";
 import {
@@ -57,6 +59,7 @@ export function FeatureSection({
   const missing = on ? [] : unmetRequirements(feature.services, enabled);
   const blocked = !on && missing.length > 0;
   const sectionId = `feature-${feature.id}`;
+  const requirementId = `${sectionId}-requirements`;
   const fact = factFor(feature, facts);
   const errorMessages = codes.map(codeMessage);
 
@@ -102,9 +105,13 @@ export function FeatureSection({
           }
           htmlFor={`${sectionId}-switch`}
           help={
-            blocked
-              ? `Needs ${listOf(missing)} to be on first.`
-              : "Turns this feature’s services on or off together."
+            blocked ? (
+              <span id={requirementId}>
+                Needs {listOf(missing)} to be on first.
+              </span>
+            ) : (
+              "Turns this feature’s services on or off together."
+            )
           }
         >
           <Switch
@@ -113,6 +120,7 @@ export function FeatureSection({
             disabled={blocked}
             readOnly={busy}
             aria-invalid={errorMessages.length ? true : undefined}
+            aria-describedby={blocked ? requirementId : undefined}
             onCheckedChange={(next) =>
               onRequestChange(featureChange(feature, next))
             }
@@ -137,7 +145,6 @@ export function FeatureSection({
             enabled={enabled}
             featureOn={on}
             busy={busy}
-            facts={facts}
             onRequestChange={onRequestChange}
           />
         ))}
@@ -159,7 +166,6 @@ function FeatureSwitch({
   enabled,
   featureOn,
   busy,
-  facts,
   onRequestChange,
 }: {
   row: FeatureSwitchRow;
@@ -168,7 +174,6 @@ function FeatureSwitch({
   enabled: Enabled;
   featureOn: boolean;
   busy: boolean;
-  facts: ServiceFeatureFacts;
   onRequestChange: (change: ServiceChange) => void;
 }): React.ReactElement {
   if (row.kind === "service") {
@@ -177,15 +182,20 @@ function FeatureSwitch({
     const missing = on ? [] : unmetRequirements([service], enabled);
     const blocked = !on && missing.length > 0;
     const id = `feature-${feature.id}-${row.id}`;
+    const requirementId = `${id}-requirements`;
     return (
       <div data-service={service}>
         <SettingsRow
           label={row.label}
           htmlFor={id}
           help={
-            blocked
-              ? `Needs ${listOf(missing)} to be on first.`
-              : "Controls this service independently of the feature switch."
+            blocked ? (
+              <span id={requirementId}>
+                Needs {listOf(missing)} to be on first.
+              </span>
+            ) : (
+              "Controls this service independently of the feature switch."
+            )
           }
         >
           <Switch
@@ -193,6 +203,7 @@ function FeatureSwitch({
             checked={on}
             disabled={blocked}
             readOnly={busy}
+            aria-describedby={blocked ? requirementId : undefined}
             onCheckedChange={(next) =>
               onRequestChange(serviceChange(feature, row, next))
             }
@@ -223,19 +234,26 @@ function FeatureSwitch({
   }
 
   // The generator makes a new fact id a type error until it lands here. Minted tokens have no
-  // separate mutable service state: their catalog state is the feature fact.
+  // separate mutable service state: recipes are declared in the release manifest and approved in
+  // Edge mint.
   if (row.id === "minted-tokens") {
-    const version = facts.managedConfig.catalogVersion;
     return (
       <SettingsRow
         label={row.label}
-        help="Minted tokens are declared and approved in Catalog."
+        help={
+          <>
+            Recipes are declared in <code>.pkey/release</code>. They mint only
+            after their signing secret is marked Edge mint and an operator
+            approves the recipe exactly as shown.
+          </>
+        }
       >
-        <span role="status" className="text-sm text-fg-muted">
-          {version === null
-            ? "No published catalog"
-            : `Catalog v${version} published`}
-        </span>
+        <Link
+          to={r.edgeMint(slug)}
+          className="text-sm text-accent-fg underline underline-offset-2"
+        >
+          Review recipe
+        </Link>
       </SettingsRow>
     );
   }

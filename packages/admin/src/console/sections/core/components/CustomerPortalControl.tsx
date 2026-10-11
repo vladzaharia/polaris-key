@@ -22,9 +22,13 @@ export function CustomerPortalControl({
   });
   const [pending, setPending] = React.useState<boolean | null>(null);
   const [error, setError] = React.useState<unknown>(null);
+  const [failedRequested, setFailedRequested] = React.useState<boolean | null>(
+    null,
+  );
   const on = pending ?? query.data?.portalEnabled ?? false;
   const save = async (next: boolean): Promise<void> => {
     setError(null);
+    setFailedRequested(null);
     setPending(next);
     try {
       const result = await mutate("updatePortalSettings", slug, {
@@ -34,6 +38,7 @@ export function CustomerPortalControl({
       toast.success(`Customer portal turned ${next ? "on" : "off"}`);
     } catch (failure) {
       setError(failure);
+      setFailedRequested(next);
       throw failure;
     } finally {
       setPending(null);
@@ -63,7 +68,10 @@ export function CustomerPortalControl({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => void save(on).catch(() => undefined)}
+              onClick={() => {
+                if (failedRequested === null) return;
+                void save(failedRequested).catch(() => undefined);
+              }}
             >
               Retry
             </Button>

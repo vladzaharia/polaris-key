@@ -117,6 +117,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: [
           leaf("build/index", "Build map"),
           leaf("build/install"),
+          leaf("build/upgrade-to-0-9"),
           sdkPages("node", "Node", true),
           sdkPages("react", "React", true),
           sdkPages("python", "Python", true),

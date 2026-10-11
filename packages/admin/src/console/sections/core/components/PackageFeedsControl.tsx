@@ -28,12 +28,15 @@ export function PackageFeedsControl({
   });
   const [pending, setPending] = React.useState<boolean | null>(null);
   const [confirming, setConfirming] = React.useState(false);
-  const [error, setError] = React.useState<unknown>(null);
+  const [failure, setFailure] = React.useState<{
+    error: unknown;
+    requested: boolean;
+  } | null>(null);
   const latest = React.useRef(query.data?.packageFeeds);
   latest.current = query.data?.packageFeeds;
   const on = pending ?? query.data?.packageFeeds?.enabled ?? false;
   const save = async (next: boolean): Promise<void> => {
-    setError(null);
+    setFailure(null);
     setPending(next);
     try {
       const result = await mutate("savePackageFeeds", slug, {
@@ -51,11 +54,22 @@ export function PackageFeedsControl({
         },
       });
     } catch (failure) {
-      setError(failure);
+      setFailure({ error: failure, requested: next });
       throw failure;
     } finally {
       setPending(null);
     }
+  };
+  const failureCopy = failure ? errorCopy(failure.error) : null;
+  const recover = (): void => {
+    if (!failure) return;
+    if (failureCopy?.action === "reload") {
+      void query.refetch().then((result) => {
+        if (!result.isError) setFailure(null);
+      });
+      return;
+    }
+    void save(failure.requested).catch(() => undefined);
   };
   if (query.isError)
     return (
@@ -79,6 +93,16 @@ export function PackageFeedsControl({
             : on
               ? "Packages are available from this product’s registry."
               : "Packages are kept but no package feed answers installs or updates."
+        }
+        footer={
+          failure && failureCopy ? (
+            <div className="mt-2 flex items-center gap-3">
+              <span className="text-xs text-danger">{failureCopy.title}</span>
+              <Button size="sm" variant="outline" onClick={recover}>
+                {failureCopy.action === "reload" ? "Reload" : "Retry"}
+              </Button>
+            </div>
+          ) : undefined
         }
       >
         <Switch

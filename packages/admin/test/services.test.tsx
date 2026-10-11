@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
+  PortalProductSettings,
   ServicesDryRun,
   ServicesResponse,
+  UpdatePortalSettingsBody,
   UpdateServicesBody,
 } from "../src/api.js";
 import { ApiError } from "../src/api.js";
@@ -18,6 +20,30 @@ const updateServices =
 const revertServices = vi.fn<(slug: string) => Promise<ServicesResponse>>();
 const servicesDryRun =
   vi.fn<(slug: string, body: UpdateServicesBody) => Promise<ServicesDryRun>>();
+const packageFeeds =
+  vi.fn<
+    (
+      slug: string,
+    ) => Promise<{ packageFeeds: { enabled: boolean; version: number } }>
+  >();
+const savePackageFeeds = vi.fn<
+  (
+    slug: string,
+    body: { enabled: boolean; expectedVersion: number },
+  ) => Promise<{
+    ok: true;
+    packageFeeds: { enabled: boolean; version: number };
+  }>
+>();
+const portalSettings =
+  vi.fn<(slug: string) => Promise<{ settings: PortalProductSettings }>>();
+const updatePortalSettings =
+  vi.fn<
+    (
+      slug: string,
+      body: UpdatePortalSettingsBody,
+    ) => Promise<{ ok: true; settings: PortalProductSettings }>
+  >();
 
 vi.mock("../src/api.js", async () => {
   const actual =
@@ -31,17 +57,14 @@ vi.mock("../src/api.js", async () => {
       revertServices: (slug: string) => revertServices(slug),
       servicesDryRun: (slug: string, body: UpdateServicesBody) =>
         servicesDryRun(slug, body),
-      packageFeeds: async () => ({
-        packageFeeds: { enabled: false, version: 1 },
-      }),
-      savePackageFeeds: async () => ({
-        ok: true as const,
-        packageFeeds: { enabled: false, version: 1 },
-      }),
-      portalSetting: async () => ({ settings: { portalEnabled: false } }),
-      updatePortalSettings: async () => ({
-        settings: { portalEnabled: false },
-      }),
+      packageFeeds: (slug: string) => packageFeeds(slug),
+      savePackageFeeds: (
+        slug: string,
+        body: { enabled: boolean; expectedVersion: number },
+      ) => savePackageFeeds(slug, body),
+      portalSettings: (slug: string) => portalSettings(slug),
+      updatePortalSettings: (slug: string, body: UpdatePortalSettingsBody) =>
+        updatePortalSettings(slug, body),
     },
   };
 });
@@ -65,6 +88,14 @@ const state = (over: Partial<ServicesResponse> = {}): ServicesResponse => ({
   },
   ...over,
 });
+const portal: PortalProductSettings = {
+  portalEnabled: false,
+  oidcEnabled: false,
+  magicEnabled: false,
+  licenseKeyClaimEnabled: false,
+  releasesEnabled: false,
+  autoLinkEnabled: null,
+};
 const mount = () =>
   renderAt("#/p/djdl/settings/features", <ServicesPage slug="djdl" />);
 const feature = (name: string) =>
@@ -80,6 +111,18 @@ beforeEach(() => {
     changes: [],
     cascaded: [],
     signedInDevicesToClear: 0,
+  });
+  packageFeeds
+    .mockReset()
+    .mockResolvedValue({ packageFeeds: { enabled: false, version: 1 } });
+  savePackageFeeds.mockReset().mockResolvedValue({
+    ok: true,
+    packageFeeds: { enabled: false, version: 1 },
+  });
+  portalSettings.mockReset().mockResolvedValue({ settings: portal });
+  updatePortalSettings.mockReset().mockResolvedValue({
+    ok: true,
+    settings: { ...portal, portalEnabled: true },
   });
 });
 
@@ -97,7 +140,7 @@ describe("Services feature groups", () => {
         await screen.findByRole("switch", { name: new RegExp(name, "i") }),
       ).toBeTruthy();
     expect(screen.getByText(/2 tiers/)).toBeTruthy();
-    expect(screen.getAllByText(/Catalog v4/)).toHaveLength(2);
+    expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
   });
 
   it("enables Ship builds with one audited three-service PATCH and retains GET facts", async () => {
@@ -209,5 +252,107 @@ describe("Services feature groups", () => {
     expect((sync as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(/Needs .*Identity|Needs Sign-in/i)).toBeTruthy();
     expect(updateServices).not.toHaveBeenCalled();
+  });
+
+  it("shows the Edge mint recipe approval path for minted tokens", async () => {
+    mount();
+    const copy = await screen.findByText(/Recipes are declared in/i);
+    expect(copy.textContent).toMatch(/\.pkey\/release/);
+    expect(copy.textContent).toMatch(
+      /signing secret is marked Edge mint and an operator approves/i,
+    );
+    const review = screen.getByRole("link", { name: "Review recipe" });
+    expect(review.getAttribute("href")).toBe("#/p/djdl/config/edge-mint");
+    expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
+  });
+
+  it("loads Customer portal settings and retries the failed requested state", async () => {
+    const user = userEvent.setup();
+    updatePortalSettings.mockRejectedValueOnce(
+      new Error("Customer portal write failed"),
+    );
+    mount();
+    const customerPortal = await screen.findByRole("switch", {
+      name: /Customer portal/i,
+    });
+    await waitFor(() => expect(portalSettings).toHaveBeenCalledWith("djdl"));
+
+    await user.click(customerPortal);
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
+    expect(updatePortalSettings).toHaveBeenLastCalledWith("djdl", {
+      portalEnabled: true,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() =>
+      expect(updatePortalSettings).toHaveBeenLastCalledWith("djdl", {
+        portalEnabled: true,
+      }),
+    );
+    expect(updatePortalSettings).toHaveBeenCalledTimes(2);
+  });
+
+  it("names a package feed version conflict and reloads it", async () => {
+    const user = userEvent.setup();
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
+      }),
+    );
+    savePackageFeeds.mockRejectedValueOnce(
+      new ApiError(409, undefined, "version_conflict"),
+    );
+    mount();
+    const packages = await screen.findByRole("switch", { name: /Packages/i });
+    await user.click(packages);
+    expect(await screen.findByText("This changed on the server")).toBeTruthy();
+    const callsBeforeReload = packageFeeds.mock.calls.length;
+
+    await user.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() =>
+      expect(packageFeeds.mock.calls.length).toBeGreaterThan(callsBeforeReload),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Reload" })).toBeNull(),
+    );
+  });
+
+  it("links a disabled Cloud Sync switch to its requirement", async () => {
+    mount();
+    const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
+    const requirementId = sync.getAttribute("aria-describedby");
+    expect((sync as HTMLButtonElement).disabled).toBe(true);
+    expect(requirementId).toBe("feature-cloud-sync-requirements");
+    expect(document.getElementById(requirementId!)?.textContent).toMatch(
+      /Needs Identity/,
+    );
+  });
+
+  it("links a disabled In-app updates switch to its requirement", async () => {
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+        },
+      }),
+    );
+    mount();
+    const updates = await screen.findByRole("switch", {
+      name: /In-app updates/i,
+    });
+    const requirementId = updates.getAttribute("aria-describedby");
+    expect((updates as HTMLButtonElement).disabled).toBe(true);
+    expect(requirementId).toBe(
+      "feature-ship-builds-in-app-updates-requirements",
+    );
+    expect(document.getElementById(requirementId!)?.textContent).toMatch(
+      /Needs Distribution/,
+    );
   });
 });
