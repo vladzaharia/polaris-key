@@ -17009,7 +17009,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3 (AX-03a)"
       ],
       "brief": "wp/AX-03a-claude-md-split-move-table-role-agents.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "AX-03b",
