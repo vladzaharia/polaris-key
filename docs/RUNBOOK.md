@@ -1167,7 +1167,7 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
 "prunePrereleases": false}` keeps the builds (audited `feed.retention.update`; `true` opts in
   without waiting). `GET` on the same path shows `source` and the `notice`. The system product
   (`polaris-key`) is on by default and locked on: a write is refused. Rolling the CODE back across
-  F-36 leaves cleanup off for a product that never chose (`scripts/rollback/00XX_release_package_retention_notices.down.sql`).
+  F-36 leaves cleanup off for a product that never chose (`scripts/rollback/0115_release_package_retention_notices.down.sql`).
 - **What a prune does.** Versions go in atomic D1 batches of up to 20. For each version, the batch deletes its
   `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows and drops
   its `artifact` blob refs. It writes a tombstone to `release_package_prunes`: ingest refuses to
