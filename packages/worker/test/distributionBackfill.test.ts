@@ -92,10 +92,7 @@ const SEEDS: Seed[] = [
   // Release on, with an unknown slug: it survives.
   {
     slug: "extras",
-    json: legacy(
-      { release: true, update: true },
-      { zeta: { enabled: true } },
-    ),
+    json: legacy({ release: true, update: true }, { zeta: { enabled: true } }),
     source: "manifest",
   },
   // Already says something about distribution (a deliberate `false`): left alone.

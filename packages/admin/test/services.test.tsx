@@ -156,6 +156,30 @@ describe("Services feature groups", () => {
     expect(updateServices).not.toHaveBeenCalled();
   });
 
+  it("names a cascaded service by its service-table label, not its slug", async () => {
+    const user = userEvent.setup();
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          identity: { enabled: true },
+          sync: { enabled: true },
+        },
+      }),
+    );
+    servicesDryRun.mockResolvedValue({
+      changes: [],
+      cascaded: ["sync"],
+      signedInDevicesToClear: 0,
+    });
+    mount();
+    await user.click(await screen.findByRole("switch", { name: /Sign-in/i }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/Also turns off Cloud Sync because/),
+    ).toBeTruthy();
+  });
+
   it("shows a 422 refusal beside the requested feature", async () => {
     const user = userEvent.setup();
     updateServices.mockRejectedValue(

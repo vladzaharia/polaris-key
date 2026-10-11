@@ -310,9 +310,7 @@ export function applyRequirementRule(
   before: ServicesMap,
   patch: Partial<Record<ServiceSlug, boolean>>,
 ): RequirementOutcome {
-  const services = servicesWhere(
-    (slug) => patch[slug] ?? before[slug].enabled,
-  );
+  const services = servicesWhere((slug) => patch[slug] ?? before[slug].enabled);
   const cascaded = new Set<ServiceSlug>();
   let changed = true;
   while (changed) {

@@ -227,12 +227,7 @@ export interface BackfillReport {
 /** The manifest fields the backfill reads (a ParsedManifest, or the system product's snapshot). */
 export type BackfillManifest = Pick<
   ParsedManifest,
-  | "product"
-  | "catalog"
-  | "tiers"
-  | "profiles"
-  | "webOrigins"
-  | "services"
+  "product" | "catalog" | "tiers" | "profiles" | "webOrigins" | "services"
 >;
 
 /** The stored state of one product, read before classifying. */
