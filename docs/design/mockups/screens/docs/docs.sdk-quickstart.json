@@ -1,0 +1,16 @@
+{
+  "id": "docs.sdk-quickstart",
+  "title": "Swift quickstart",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02a", "DOC-08a"],
+  "uxRows": [],
+  "summary": "Swift route setup, equal UI lanes, comparison and first license gate.",
+  "compare": [
+    "The package scope routes to pkg.plrs.im before Package.swift adds PolarisKey.",
+    "Lane cards are equal and have no recommendation badge.",
+    "Code frames put Copy in the named file header."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

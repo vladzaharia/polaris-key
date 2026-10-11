@@ -1,0 +1,16 @@
+{
+  "id": "docs.help-message",
+  "title": "Messages about devices",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02a", "DOC-05a"],
+  "uxRows": [],
+  "summary": "The target device-limit Help message quotes catalog copy and takes the reader to their library.",
+  "compare": [
+    "The target entry is highlighted at #device_limit.",
+    "The catalog title and message are quoted verbatim.",
+    "Help uses comfortable prose and an Open your library action."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -1,0 +1,16 @@
+{
+  "id": "docs.guide-lanes",
+  "title": "Add licensing to your app",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02a", "DOC-09a"],
+  "uxRows": [],
+  "summary": "Licensing how-to with page-level SDK choice, own-UI lane, state copy keys and Help URLs.",
+  "compare": [
+    "SDK choice is separate from lane tabs.",
+    "Own UI lists every state with its copy key and Help URL.",
+    "The check uses Verified rather than a success pill."
+  ],
+  "status": "mockup",
+  "designReview": null
+}
