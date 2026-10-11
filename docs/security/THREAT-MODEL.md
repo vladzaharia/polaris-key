@@ -247,14 +247,18 @@ serves, so who may make them is part of this boundary:
   the newest unyanked release the truth store holds below it, computed on every resolution
   (`yankedFloorFallback`), so yanking the newest release leaves the channel protected against
   the R6-10 deletion downgrade. `release:yank` cannot be used to strip a channel's floor.
-- **External locations are a tenant-chosen redirect.** An artifact location of provider
-  `external` makes the build and file routes answer a `302` to that `https://` URL, from
-  `dl.plrs.im` and from the console host. The URL is whatever the release descriptor recorded
-  in `locations_json`, so it is tenant-controlled in the way R6-12's portal redirect was: the
-  platform's hostname vouches for a destination the tenant picked. Only `https:` is followed and
-  the response carries no credentials, but the destination is not allowlisted. Today nothing
-  writes `locations_json` (the descriptor is P2-04's); P2-04 owns deciding whether external
-  URLs need a host allowlist before it does.
+- **External locations are a tenant-chosen redirect.** A release descriptor writes its
+  `locations` array to `release_artifacts.locations_json`
+  (`services/release/descriptor.ts` `stmtSetArtifactModel`); an `external` location is accepted
+  only when its URL is `https:` without credentials
+  (`shared-manifest/src/descriptor.ts` `isHttpsUrl`). `serveArtifact`
+  (`services/distribution/bytes.ts`) tries R2, then GitHub, then answers a `302` to the external
+  URL. The target is rechecked as `https:` and the response carries no credentials, but it is
+  not host-allowlisted. HA-08's mirror fetches an external URL through its guarded ingest path
+  and appends an R2 location, which normally wins that ordering; the original location remains a
+  fallback. CI holding the product publishing credential or a repository-synchronised descriptor
+  can therefore make the platform hostname vouch for a destination the tenant selected. **Open,
+  unowned:** decide and enforce a destination-host allowlist before serving the redirect.
 
 **Deviation, recorded: the bytes host is same-site with the console.** The design rule
 (research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`
@@ -306,16 +310,23 @@ any other `plrs.im` sibling that serves attacker-influenced HTML. Hosted web bui
 which need HTML and script, cannot live on this host under these rules and need their own
 registrable domain.
 
-Residual risk: **delta keys can be squatted.** `deltas/<from>/<to>.<method>` is named by its
-endpoints, not by its own content, and is not product-scoped, so `promote` can verify only
-that the bytes match the hash the caller supplies. Any tenant can promote arbitrary bytes under
-another product's delta key first; the 180-day lock then fixes them in place, and the
-legitimate promote answers `conflict`. This must stay an availability problem only: a client
-must accept a delta's output only when it matches the signed `to` hash, and so falls back to
-the full blob; the delta path for that pair is then denied until the lock lapses. The packages
-that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named delta keys, or
-granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
-under the victim product.
+Residual (latent, not tenant-reachable on main): a `deltas/<from>/<to>.<method>` key is named by
+its endpoints rather than its own content hash, and `promote` deliberately accepts a parsed
+delta target (`core/assets/blobs.ts` `namedHash` returns `null` for one). A future caller that
+lets a tenant select such a target could therefore recreate first-writer-wins squatting under
+the 180-day lock.
+
+No current publish path reaches that primitive with a delta key. Descriptor R2 locations are
+restricted to content-addressed `blobs/sha256/<sha256>` keys
+(`shared-manifest/src/descriptor.ts` `KEY_SHAPE_RE`), release publish accepts only parsed
+`kind: "blob"` targets (`services/release/publish.ts`), and pack publish constructs every target
+with `blobKey` (`services/release/packs/publish.ts`). The only `deltaKey` writer is P4-17's
+consumer: it proves the product holds both payload refs, decodes the generated frame against the
+base and target before its create-only put, then grants that product its `lazy-delta` ref
+(`services/release/packs/deltas/consumer.ts`). CI record deltas are ordinary content-addressed
+blob artifacts. Clients still accept a delta only when its output matches the signed `to` hash.
+Keep this caller invariant explicit, or make `promote` reject delta targets before adding another
+writer.
 
 ### Trusted publishing (P2-02)
 
