@@ -127,7 +127,7 @@
       "page": "signing-in",
       "entry": "rate_limited",
       "why": "The service received too many tries from your device or network in a short time, so it paused them.",
-      "fix": "Wait a while, then try again."
+      "fix": "Wait a few minutes, then try again. Some limits last an hour, so wait longer if it still happens."
     },
     "activation.rate-limited": {
       "page": "signing-in",
@@ -414,7 +414,7 @@
       "entry": "device_limit",
       "article": "devices",
       "why": "A license allows a set number of devices at once, and all of them are in use.",
-      "fix": "Free one: choose **Replace a device** in the app when it offers it, remove a device you no longer use from the app's page in your library at key.plrs.im if the app has one, or select **Sign out** in the app on a device you no longer use. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
+      "fix": "Free one: choose **Replace a device** in the app when it offers it, remove a device you no longer use from the app's page in your library at key.plrs.im if the app has one, or select **Sign out** in the app on a device you no longer use while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
       "cta": "library"
     },
     "activation.device-limit": {
@@ -492,26 +492,26 @@
     "bundle-claims-rejected": {
       "page": "devices",
       "entry": "bundle-jws-rejected",
-      "why": "Its 30 days have passed, or this device's date is wrong.",
-      "fix": "Check the date, then send the app's developer a new request code."
+      "why": "Made for another app or device, older than 30 days, or this device's date is wrong.",
+      "fix": "Check the date, then send the app's developer this device's request code."
     },
     "inner-doc-rejected": {
       "page": "devices",
       "entry": "bundle-jws-rejected",
-      "why": "The file is genuine, but its license failed a check.",
-      "fix": "Ask for a new file."
+      "why": "Its license failed a check.",
+      "fix": "Ask the app's developer."
     },
     "bundle": {
       "page": "devices",
       "entry": "bundle-jws-rejected",
       "why": "The app couldn't read it.",
-      "fix": "Copy it again, or ask for a new one."
+      "fix": "Copy it again, or ask the app's developer."
     },
     "bundle-rejected": {
       "page": "devices",
       "entry": "bundle-jws-rejected",
       "why": "A check failed.",
-      "fix": "Ask for a new file."
+      "fix": "Ask the app's developer."
     },
     "bundle-trust-rejected": {
       "page": "devices",
@@ -614,7 +614,7 @@
     "feed-rollback": {
       "page": "downloads-and-updates",
       "entry": "feed-rejected",
-      "why": "The app never goes back to an older version, so it ignored this information.",
+      "why": "The app never accepts update information older than what it already has, so it ignored this information.",
       "fix": "Try again later. If it keeps happening, tell the app's developer."
     },
     "feed_not_composable": {
@@ -804,13 +804,13 @@
     "portal.not_entitled": {
       "page": "downloads-and-updates",
       "article": "download",
-      "why": "Your license doesn't cover this version. Its update period may have ended, it may be an early-access version your license doesn't include, or the license itself may have expired or been turned off.",
+      "why": "Your license doesn't cover this version. Its update period may have ended, or the license itself may have expired or been turned off.",
       "fix": "Download a version your license covers, or ask the app's developer about extending your license. If the license has ended, renew it with the app's developer or the store you bought it from. If it was turned off, ask the app's developer."
     },
     "license_owned": {
       "page": "accounts",
       "why": "This license was added to a Polaris Key account earlier. A license in an account is used by signing in to that account, never by entering its key.",
-      "fix": "Select **Sign in to that account** when it's offered, or **Use a different key**. If you don't recognize that account, or have no other key, ask the app's developer."
+      "fix": "Sign in with the account that holds the license. In your library, you can also select **Use a different key** to try another key. If you don't recognize that account, or have no other key, ask the app's developer."
     },
     "email_mismatch": {
       "page": "accounts",
@@ -828,7 +828,7 @@
       "page": "accounts",
       "entry": "key_entry_limit",
       "why": "A license key that isn't in an account can be entered on a limited number of new devices, and this key has used them all.",
-      "fix": "Add the license to your Polaris Key account, then sign in to the app with that account."
+      "fix": "Add the license to your Polaris Key account, then sign in to the app with that account. After that, a new device signs in instead of entering the key, so add it only if it should be yours. If you can't add it, ask the app's developer."
     },
     "activation.key-entry-limit": {
       "page": "accounts",
@@ -837,7 +837,7 @@
     "email_in_use": {
       "page": "accounts",
       "why": "That email address already belongs to another Polaris Key account, but not as a way to sign in. Nothing was changed.",
-      "fix": "Sign in with the method you used before. Then add this email under **Sign-in methods**, or use a different email."
+      "fix": "Sign in to that account with the method you used before. Then add this email under **Sign-in methods**, or use a different email."
     },
     "link_conflict": {
       "page": "accounts",
@@ -948,7 +948,7 @@
       "page": "other",
       "entry": "unsupported",
       "why": "The app, or where it runs, doesn't support this.",
-      "fix": "Try another way, or ask the app's developer."
+      "fix": "In a browser, try the installed app. Otherwise ask the app's developer."
     },
     "bundle-import-unsupported": {
       "page": "other",
@@ -1032,7 +1032,7 @@
     "body_too_large": {
       "page": "other",
       "why": "What the app tried to send is larger than the service accepts.",
-      "fix": "Try again with less. If you did nothing unusual, tell the app's developer."
+      "fix": "Try again. If it keeps happening, tell the app's developer which message you saw."
     },
     "store-failed": {
       "page": "other",

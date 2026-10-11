@@ -370,12 +370,15 @@ describe("titles render from the catalog", () => {
         }
   });
 
-  it("a heading holds no markup character: it is handed to Starlight as HTML", () => {
+  it("no title holds a markup character: a heading is handed to Starlight as HTML", () => {
     // AnchorHeading words its screen-reader label from the rendered heading and escapes that text
     // again, so HelpMessage.astro passes the title unescaped (an escaped Can&#39;t would be read
-    // out as is). That holds for a title with no & < >.
-    for (const entry of entries)
-      expect(entry.title, entry.id).not.toMatch(/[&<>]/);
+    // out as is). That holds for a title with no & < >. A single `<HelpMessage id>` in an article
+    // takes the title of any id the catalog or the portal's copy has, not only of an entry, so
+    // every one is checked.
+    expect(KNOWN_ENTRIES.size).toBeGreaterThan(0);
+    for (const [id, { title }] of KNOWN_ENTRIES)
+      expect(title, id).not.toMatch(/[&<>]/);
   });
 
   it("a page never retypes a title: its headings come from the component", () => {
@@ -1389,9 +1392,12 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
           text.match(/class="pk-help-message__cta"/g) ?? [],
           page,
         ).toHaveLength(wanted);
+        // The portal root, not `/library`: the portal is one page at the site root that routes by
+        // hash (`#/` is the Library), and the Worker serves its shell for `/`, `/index.html`,
+        // `/activate` and `/assets/` only (packages/worker/src/router.ts), so `/library` is a 404.
         expect(
           text.match(
-            /<p class="pk-help-message__cta"><a class="pk-portal-link" href="\/library"[^>]*>Open your library ↗<\/a><\/p>/g,
+            /<p class="pk-help-message__cta"><a class="pk-portal-link" href="\/"[^>]*>Open your library ↗<\/a><\/p>/g,
           ) ?? [],
           page,
         ).toHaveLength(wanted);

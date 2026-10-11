@@ -139,7 +139,8 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
   {
     name: "PortalLink",
     file: "PortalLink.astro",
-    summary: "A link into the customer portal.",
+    summary:
+      "A link into the customer portal: library is its home, any other page opens as a route of it.",
     props: ["to: string", "slot: the link text"],
   },
   {

@@ -65,6 +65,12 @@ if (wholeEntry) {
   branches = [one.branch];
 }
 
+/* The title reaches the heading as HTML (below), so a character that is markup there stops the build. */
+if (/[&<>]/.test(title))
+  throw new Error(
+    `<HelpMessage id="${id}">: the title "${title}" holds & < or >, which the heading would pass on as HTML`,
+  );
+
 /** The article link of each branch, unless the article is this page. */
 const more = await Promise.all(
   branches.map(async (branch) => {
