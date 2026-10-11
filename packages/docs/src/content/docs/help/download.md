@@ -8,8 +8,6 @@ sidebar:
   order: 6
 ---
 
-import PortalShot from "../../../components/docs/PortalShot.astro";
-
 You can download an app from your library at [key.plrs.im](https://key.plrs.im) or from its public download page. What you see depends on the app and on your device.
 
 ## Before you start
@@ -26,12 +24,6 @@ Sign in to your library with the email that has the license. An app that anyone 
 ## Download on a phone
 
 The library shows your phone's store, such as **Get it on the App Store** or **Get it on Google Play**. If the app has only a computer version, select **Email me the download**. The library sends a link to your account's email address. Open it on a computer and sign in.
-
-<PortalShot
-  id="download-flow"
-  caption="The download page that the emailed link opens"
-  alt="A download page for one app. It lists a Linux file with a Download button, a Steam button under Also on, and a link to the other systems."
-/>
 
 ## Other places to get the app
 
