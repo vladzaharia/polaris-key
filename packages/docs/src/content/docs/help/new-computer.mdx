@@ -1,18 +1,66 @@
 ---
 title: "Move your license to a new computer"
-description: "Free a device and activate the new one."
+description: "Free the old computer, then activate the app on the new one."
 type: "help"
-status: "stub"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 2
 ---
 
-Placeholder page. See [Devices](/docs/help/devices/) for the nearest live page.
+import HelpMessage from "../../../components/docs/HelpMessage.astro";
 
-<h2 id="hardware_mismatch">Device changed</h2>
+To use an app on a new computer, activate it there. If your license is already on every device it
+allows, free the old computer first.
+
+## Before you start
+
+Have your license key, or the account you sign in with. If you lost the key, see
+[Find a lost license key](/docs/help/lost-key/).
+
+## What happens when you free a computer
+
+The old computer stops counting toward your limit, and its app asks to be activated again. Its saved
+files stay on it. You can add it back later. See [Manage your devices](/docs/help/devices/).
+
+## If you still have the old computer
+
+1. On the old computer, open the screen in the app that shows your account and license.
+2. Select **Sign out**. Do this while the computer is online, so the app can tell Polaris Key.
+3. On the new computer, open the app and activate it. See [Activate your app](/docs/help/activate/).
+
+Your app may look different. If you cannot find **Sign out**, or the old computer was offline, free
+it from your library as described next.
+
+## If the old computer is gone
+
+1. Sign in at [key.plrs.im](https://key.plrs.im) and open the app's page.
+2. In **Devices**, select **Remove** next to the old computer, then select **Remove** again.
+3. On the new computer, open the app and activate it.
+
+If the license is not in your library yet, add its key first. See
+[Add a license with a key](/docs/help/add-a-license/). If the app says the device limit was reached,
+see [Device limit reached](/docs/help/device-limit/).
+
+## If you reinstalled the same computer
+
+Activate the app again with your key or by signing in. If the app checks the device, the new install
+replaces the old one. If **Devices** lists the same computer twice, remove the older one.
+
+<HelpMessage id="hardware_mismatch" />
+
+Activate the app again on this computer. This does not use a second device, because the old entry
+for this computer is replaced.
+
+## Check it worked
+
+Your new computer appears under **Devices** in your library, and the app shows **Activated**.
+
+## Undo
+
+To go back, free the new computer the same way, then activate the old one again.
+
+## Still need help?
+
+For help with an app, read [Get help with an app](/docs/help/contact/). To manage the devices on a
+license, see [Manage your devices](/docs/help/devices/).

@@ -1,20 +1,68 @@
 ---
 title: "Device limit reached"
-description: "Replace a device when your license is on all its devices."
+description: "Free a device when your license is already on all the devices it allows."
 type: "help"
-status: "stub"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 3
 ---
 
-Placeholder page. See [Devices](/docs/help/devices/) for the nearest live page.
+import Callout from "../../../components/docs/Callout.astro";
+import HelpMessage from "../../../components/docs/HelpMessage.astro";
 
-<h2 id="device_limit">Device limit reached</h2>
+Your license is already on all the devices it allows. To use the app on this device, free one of
+the others.
 
-<h2 id="activation.device-limit">Device limit reached</h2>
+<Callout type="caution" title="Important">
+  Polaris Key cannot raise the limit. Only the app's developer can. To ask for
+  more devices, see [Get help with an app](/docs/help/contact/).
+</Callout>
+
+<HelpMessage id="device_limit" />
+
+<HelpMessage id="activation.device-limit" />
+
+## What happens when you free a device
+
+The other device stops counting toward your limit, and its app asks to be activated again. Its saved
+files stay on it. You can add it back later. See [Manage your devices](/docs/help/devices/).
+
+## Free a device
+
+Your app may look different. Use the branch that matches what it shows.
+
+### The app lists your devices
+
+1. Choose the device to replace. The app marks the device that has gone longest without use as
+   **Least recent**.
+2. Read what happens, then select **Replace and continue**.
+
+### The app sends you to your library
+
+If the app shows **Open in browser**, or a code to scan with your phone:
+
+1. Select **Open in browser**, or scan the code, and sign in to Polaris Key.
+2. Choose the device to remove, then select **Remove** followed by the device's name.
+3. Go back to the app and select **Try again**.
+
+If the license is not in your library yet, the page first asks you to add its key. Add it, then free
+a device. See [Add a license with a key](/docs/help/add-a-license/).
+
+### The app shows neither
+
+Free a device yourself. In your library, remove it as described in
+[Manage your devices](/docs/help/devices/). To free the computer you are holding, see
+[Move your license to a new computer](/docs/help/new-computer/).
+
+## Check it worked
+
+The app activates and shows **Activated**.
+
+## Undo
+
+Activate the device you removed again, as long as you are under the limit.
+
+## Still need help?
+
+For help with an app, read [Get help with an app](/docs/help/contact/).

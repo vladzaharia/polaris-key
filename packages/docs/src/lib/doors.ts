@@ -90,7 +90,26 @@ export const DOOR_TREES: readonly DoorTree[] = [
     groups: [
       { label: "Get started", items: leaves("help/index", "help/activate") },
       { label: "Sign in", items: leaves("help/sign-in") },
-      { label: "Devices", items: leaves("help/devices") },
+      {
+        label: "Your library",
+        items: leaves(
+          "help/library",
+          "help/add-a-license",
+          "help/discover",
+          "help/lost-key",
+          "help/license-status",
+          "help/remove-from-library",
+        ),
+      },
+      {
+        label: "Devices",
+        items: leaves(
+          "help/devices",
+          "help/new-computer",
+          "help/device-limit",
+          "help/offline-activation",
+        ),
+      },
       { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Downloads and updates",

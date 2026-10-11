@@ -1,16 +1,65 @@
 ---
 title: "Remove an app from your library"
-description: "What happens to your devices, and the steps."
+description: "See what removing an app does to your devices, then remove it."
 type: "help"
-status: "stub"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 6
 ---
 
-Placeholder page. See [Using a Polaris Key product](/docs/help/) for the nearest live page.
+import HelpMessage from "../../../components/docs/HelpMessage.astro";
+
+Removing an app takes it off your library page. What else it does depends on how the app got there.
+
+## What happens when you remove an app
+
+If you added the app with a license key, its devices keep working. The license leaves your account
+and does not come back to it by itself. To add it again, use its key. If no email address is tied to
+the license, anyone with the key can add it to their own account.
+
+If you added a free app from **Discover**, nothing else changes. You can add it again from Discover
+while its developer offers it.
+
+Removing an app does not free a device. To free one, see
+[Manage your devices](/docs/help/devices/).
+
+## Remove an app you added with a key
+
+1. Sign in at [key.plrs.im](https://key.plrs.im) and open the app's page.
+2. Select the three-dot menu next to the main button, then **Remove from my library**.
+3. Read what happens, then select **Remove from my library**. Select **Keep it** to stop.
+
+If you hold more than one license for the app, first choose the one you want to remove in the
+license list on the page. The dialog names that license, and your other licenses stay.
+
+If the library asks you to sign in again, sign in and repeat the steps. Removing a license needs a
+sign-in from the last 5 minutes.
+
+## Remove a free app
+
+1. Find the app's tile in your library, or open its page.
+2. Select the three-dot menu, then **Remove from library**.
+3. Select **Remove from library** again. Select **Keep it** to stop.
+
+## If there is no remove option
+
+The menu has no remove option when the license has no key to add it back with, such as a license
+the app gave you when you signed in. It also has none when the developer does not allow adding by
+key.
+
+<HelpMessage id="not_removable" />
+
+## Check it worked
+
+The app is gone from your library, and a message says it was removed.
+
+## Undo
+
+Add the app again. Use **Activate license** with its key, or add a free app from **Discover**. See
+[Add a license with a key](/docs/help/add-a-license/) and
+[Get free apps from Discover](/docs/help/discover/).
+
+## Still need help?
+
+For help with an app, read [Get help with an app](/docs/help/contact/).
