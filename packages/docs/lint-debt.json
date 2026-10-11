@@ -7,13 +7,6 @@
       "frontmatter-last-reviewed": 1,
       "count": 5
     },
-    "build/install": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "banned-word": 1,
-      "http-path": 1
-    },
     "build/manifest/distribution": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
@@ -679,10 +672,6 @@
       "frontmatter-last-reviewed": 1,
       "help-word": 5
     },
-    "index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
     "operate/console/activity": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
@@ -838,38 +827,6 @@
     "reference/what-apps-collect": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
-    },
-    "start/concepts": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 34,
-      "http-path": 2,
-      "count": 2,
-      "future-tense": 2
-    },
-    "start/first-product": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 4,
-      "count": 3,
-      "future-tense": 3,
-      "http-path": 2,
-      "time-word": 1
-    },
-    "start/how-it-works": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 2,
-      "banned-word": 1,
-      "http-path": 3,
-      "future-tense": 1
-    },
-    "start/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 5,
-      "banned-word": 1,
-      "future-tense": 1
     }
   }
 }

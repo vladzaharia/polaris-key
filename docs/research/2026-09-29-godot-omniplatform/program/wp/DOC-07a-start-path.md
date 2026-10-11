@@ -85,3 +85,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 The role agent sets `--set DOC-07a in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set DOC-07a done`.
+
+## Corrections and notes (builder)
+
+- `InstallSteps` gained `sdk="cli"` (the `pkey` CLI on the npm feed); the Kotlin and Swift package names now match the console's quick start.
+- `start/choose-your-integration` is added to the Developers sidebar (`doors.ts`).
+- Not done here: the fresh-reader run (§6.2) and the pkey-ux-reviewer built-mode pass need the lead to schedule them. The first-product page is written on today's console and CLI; claim-to-code evidence is in the PR body.
