@@ -55,15 +55,17 @@ export function indexedDbStore(
   opts: {
     factory?: IDBFactory;
     persistence?: StoragePersistence;
+    /** Empty for production; a non-default host's IndexedDB suffix otherwise. */
+    namespace?: string;
   } = {},
 ): BrowserStore | null {
   const factory =
     opts.factory ?? (typeof indexedDB === "undefined" ? undefined : indexedDB);
   if (!factory) return null;
-  const offline = indexedDbOfflineStore(factory);
+  const offline = indexedDbOfflineStore(factory, opts.namespace);
   if (!offline) return null;
   const tokens = async (mode: IDBTransactionMode) =>
-    (await openPolarisDb(factory))
+    (await openPolarisDb(factory, opts.namespace))
       .transaction(TOKEN_STORE_NAME, mode)
       .objectStore(TOKEN_STORE_NAME);
   return recordStore(product, offline, {

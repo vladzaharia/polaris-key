@@ -246,15 +246,73 @@ export const COMMANDS: readonly PkeyCommand[] = [
       "pkey sdk --product slug [--base-url url] [--kid kid --public-key key]",
       "pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url] " +
         "[--write [--out path] [--force]] [--kid kid --public-key key] " +
-        "[--release-key kid=key ...] [--package kotlin.package]",
+        "[--release-key kid=key ...] [--package kotlin.package] [--dev [--url origin]]",
     ],
+    valueless: ["dev"],
     about: [
       {
         text:
           "Without --lang, pkey sdk prints a Node example with the pins given. With --lang it " +
           "reads the product's discovery (and, in the product's repo, .pkey/release's " +
           "releaseKeys) and prints that SDK's config file; --write writes it to the SDK's " +
-          "default path or --out, and --force replaces a file pkey sdk did not write.",
+          "default path or --out, and --force replaces a file pkey sdk did not write. --dev " +
+          "reads the product, origin and release keys from a running pkey dev (--url, else " +
+          "./polaris-key.json) instead.",
+      },
+    ],
+  },
+  {
+    name: "dev",
+    group: "sdk",
+    json: true,
+    valueless: ["json", "auto-approve", "builtin", "no-write"],
+    summary: "Run a local Polaris Key to build against",
+    rows: [
+      ["dev", "Run a local Polaris Key with a seeded product and test keys"],
+      [
+        "dev expire|disable|revoke|restore key",
+        "Change a test key's state",
+      ],
+      ["dev fill-seats key", "Fill a test key's device limit"],
+      ["dev config name json", "Set a config value on the test keys"],
+      ["dev release version", "Publish a signed release"],
+      ["dev offline|online", "Drop requests, or answer them again"],
+      ["dev keys|status", "Print the test keys, or the server's state"],
+    ],
+    tree: {
+      keys: [],
+      status: [],
+      expire: [],
+      disable: [],
+      revoke: [],
+      restore: [],
+      "fill-seats": [],
+      config: [],
+      release: [],
+      offline: [],
+      online: [],
+    },
+    usage: [
+      "pkey dev [--port n] [--auto-approve] [--builtin] [--out file | --no-write] [--json]",
+      "pkey dev keys|status [--url origin] [--json]",
+      "pkey dev expire|disable|revoke|restore|fill-seats key [--url origin]",
+      "pkey dev config name json [--key key] [--url origin]",
+      "pkey dev release version [--channel stable|beta|name] [--url origin]",
+      "pkey dev offline|online [--url origin]",
+    ],
+    about: [
+      {
+        text:
+          "pkey dev runs the Worker's real router in this process (Node 22.13 or newer; no " +
+          "account, no secrets, no install) on 127.0.0.1:8787. It seeds the product in " +
+          "./.pkey/, else the built-in Tidewater Studio, with throwaway signing and release " +
+          "keys, a licence key for each state (ok, expired, disabled, revoked, " +
+          "device-limit-full, key-entry-limit, floating), a fake identity provider, and a " +
+          "signed release on stable and beta. It writes polaris-key.json and prints the pins; " +
+          "nothing outlives the process. --auto-approve signs people in without the approval " +
+          "page; --builtin ignores ./.pkey/. The control commands act on a running server: " +
+          "--url names it (default: the baseUrl in ./polaris-key.json, else " +
+          "http://127.0.0.1:8787). Run Polaris Key locally: /docs/build/local/.",
       },
     ],
   },

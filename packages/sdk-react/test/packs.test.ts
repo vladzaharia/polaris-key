@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bootTransition,
   initialBootState,
@@ -33,6 +33,7 @@ import {
   type BrowserPacksOptions,
   type DirHandle,
   type FileHandle,
+  type WorkerLike,
 } from "../src/update/index.js";
 import {
   PRODUCT,
@@ -438,6 +439,167 @@ describe("createBrowserPacks (update.packs, web)", () => {
     });
     expect(await none.packSetId()).toBeNull();
     expect(() => packs(byteServer(v1), [v1], { contentStamp: "{}" })).toThrow();
+  });
+});
+
+// SP-41 state isolation. Without an `opfsRoot` the store is rooted at the page's own
+// `navigator.storage.getDirectory()`, so a local Worker (`pkey dev`) must neither install into nor
+// read from the directory production uses for the same product. A supplied root is the caller's.
+describe("createBrowserPacks and the default OPFS layout (SP-41 state isolation)", () => {
+  const PRODUCTION = "https://key.plrs.im";
+  const LOCAL = "http://localhost:8787";
+  const LOCAL_DIR = `${PRODUCT}@localhost_8787`;
+  /** [the page, its directory under `polaris-key/`, its control plane] */
+  const hosts: [string, string, string][] = [
+    ["production", PRODUCT, PRODUCTION],
+    ["a local Worker", LOCAL_DIR, LOCAL],
+  ];
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** The page's OPFS: `navigator.storage.getDirectory()` answers an in-memory directory. */
+  function pageOpfs(): DirHandle {
+    const root = memoryDir();
+    vi.stubGlobal("navigator", {
+      storage: { getDirectory: async () => root },
+    });
+    return root;
+  }
+
+  async function names(d: DirHandle): Promise<string[]> {
+    const out: string[] = [];
+    for await (const [name] of d.entries()) out.push(name);
+    return out.sort();
+  }
+
+  /** `polaris-key/<dir>/packs` below `root`. */
+  async function packsAt(root: DirHandle, dir: string): Promise<DirHandle> {
+    const polarisKey = await root.getDirectoryHandle("polaris-key");
+    return (await polarisKey.getDirectoryHandle(dir)).getDirectoryHandle(
+      "packs",
+    );
+  }
+
+  const l10n = () =>
+    treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+
+  /** A staging worker that only acknowledges `init`, handing the root it was told to open to
+   *  `seen`. */
+  function initWorker(seen: (root: readonly string[]) => void): WorkerLike {
+    const listeners: ((e: MessageEvent) => void)[] = [];
+    return {
+      postMessage(message) {
+        const req = message as { id: number; op: string; root: string[] };
+        if (req.op === "init") seen(req.root);
+        queueMicrotask(() =>
+          listeners.forEach((l) =>
+            l({ data: { id: req.id, ok: true, value: true } } as MessageEvent),
+          ),
+        );
+      },
+      addEventListener(type, listener) {
+        if (type === "message")
+          listeners.push(listener as (e: MessageEvent) => void);
+      },
+      terminate() {},
+    };
+  }
+
+  it.each(hosts)(
+    "%s keeps its packs under polaris-key/%s and reloads from there",
+    async (_page, dir, baseUrl) => {
+      const v1 = await l10n();
+      const server = byteServer(v1);
+      const root = pageOpfs();
+      const open = () =>
+        packs(server, [v1], { storage: "opfs", opfsWorker: false, baseUrl });
+
+      await open().p.ensure(["djdl.l10n"]);
+      // Only this host's directory exists, and it holds the install.
+      expect(await names(await root.getDirectoryHandle("polaris-key"))).toEqual(
+        [dir],
+      );
+      expect(await names(await packsAt(root, dir))).toEqual(
+        expect.arrayContaining(["state.json", "store"]),
+      );
+
+      // A reload re-verifies what is there and fetches nothing.
+      const reload = open();
+      expect((await reload.p.state()).active["djdl.l10n"]!.recordSha256).toBe(
+        v1.recordSha256,
+      );
+      await reload.p.ensure(["djdl.l10n"]);
+      expect(reload.calls.filter((c) => c.url.includes("/blobs/"))).toEqual([]);
+    },
+  );
+
+  it("a local Worker and production share no pack state on one origin", async () => {
+    const v1 = await l10n();
+    const server = byteServer(v1);
+    const root = pageOpfs();
+    const open = (baseUrl: string) =>
+      packs(server, [v1], { storage: "opfs", opfsWorker: false, baseUrl });
+
+    await open(PRODUCTION).p.ensure(["djdl.l10n"]);
+
+    // The local Worker's page finds none of production's install and fetches its own.
+    const local = open(LOCAL);
+    expect((await local.p.state()).active["djdl.l10n"]).toBeUndefined();
+    await local.p.ensure(["djdl.l10n"]);
+    expect(local.calls.some((c) => c.url.endsWith(v1.fullSha256))).toBe(true);
+    expect(await names(await root.getDirectoryHandle("polaris-key"))).toEqual([
+      PRODUCT,
+      LOCAL_DIR,
+    ]);
+
+    // The two directories are independent: evicting one leaves the other installed.
+    await (
+      await packsAt(root, LOCAL_DIR)
+    ).removeEntry("store", { recursive: true });
+    expect(
+      (await open(PRODUCTION).p.state()).active["djdl.l10n"]!.recordSha256,
+    ).toBe(v1.recordSha256);
+    expect((await open(LOCAL).p.state()).active["djdl.l10n"]).toBeUndefined();
+  });
+
+  it.each(hosts)(
+    "%s starts the staging worker at the root the store opens (polaris-key/%s)",
+    async (_page, dir, baseUrl) => {
+      const root = pageOpfs();
+      const started: (readonly string[])[] = [];
+      const v1 = await l10n();
+      const { p } = packs(byteServer(v1), [v1], {
+        storage: "opfs",
+        baseUrl,
+        opfsWorker: () => initWorker((r) => started.push(r)),
+      });
+      await p.state();
+      expect(started).toEqual([["polaris-key", dir, "packs"]]);
+      // The main thread's half of the store is where the worker was pointed.
+      expect(await names(await root.getDirectoryHandle("polaris-key"))).toEqual(
+        [dir],
+      );
+    },
+  );
+
+  it("leaves a host-supplied root to the host: the product name, whatever the control plane", async () => {
+    const v1 = await l10n();
+    const root = memoryDir();
+    await packs(byteServer(v1), [v1], {
+      storage: "opfs",
+      opfsRoot: root,
+      baseUrl: LOCAL,
+    }).p.ensure(["djdl.l10n"]);
+    expect(await names(await root.getDirectoryHandle("polaris-key"))).toEqual([
+      PRODUCT,
+    ]);
   });
 });
 

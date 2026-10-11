@@ -108,11 +108,18 @@ describe("the command table", () => {
       COMMANDS.filter((c) => c.json)
         .map((c) => c.name)
         .sort(),
-    ).toEqual(["doctor", "feeds", "listing", "storefront", "validate"]);
+    ).toEqual(["dev", "doctor", "feeds", "listing", "storefront", "validate"]);
   });
 
   it("reads parse's valueless flags from the table", () => {
-    expect([...VALUELESS_FLAGS].sort()).toEqual(["fix", "json"]);
+    expect([...VALUELESS_FLAGS].sort()).toEqual([
+      "auto-approve",
+      "builtin",
+      "dev",
+      "fix",
+      "json",
+      "no-write",
+    ]);
   });
 
   describe("negative controls: a wrong table fails the check", () => {

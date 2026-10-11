@@ -35,8 +35,7 @@ It writes `polaris.config.ts`: `productSlug`, `baseUrl`, `expectServices` and `t
 on another origin, or in Tauri, signs in with a device token and verifies every document in the
 page against those pins. Without them the page makes no request, developers see a console error and
 users see a neutral error screen. The file also exports `pinnedKeys` and `pinnedReleaseKeys` for the
-Electron main process, whose `@polaris-key/node` client verifies. A local Polaris Key to run
-against is planned.
+Electron main process, whose `@polaris-key/node` client verifies. [Run Polaris Key locally](/docs/build/local/) to try this without a registered product.
 
 ## Choose your path
 

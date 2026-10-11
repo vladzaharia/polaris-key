@@ -47,6 +47,7 @@ signal pack_failed(id: String, err: String)
 signal set_changed(activation: String)
 
 const DEFAULT_STAMP_PATH := "res://pkey_packs/pkey-content.json"
+const DEFAULT_ROOT := "user://pkey"
 ## The total mounted pack bytes on web until device numbers exist (S-05 §4.3): 150 MB on mobile
 ## browsers, 300 MB on desktop ones.
 const WEB_CAP_MOBILE := 150 * 1000 * 1000
@@ -63,7 +64,7 @@ var embedded_dir := PKeyPackTransport.EMBEDDED_DIR
 var platform_transport: PKeyPackPlatformTransport = null
 ## Where staging, the store and the state live (`user://pkey`; on web a MEMFS path such as
 ## `/pkey` keeps large packs out of the IndexedDB mirror, A6 §2.6).
-var root := "user://pkey"
+var root := DEFAULT_ROOT
 ## Variant preferences per axis, in preference order. Empty: detected (texture families from
 ## OS.has_feature, the locale from TranslationServer).
 var axes := {}
@@ -92,6 +93,8 @@ var content: Variant = null
 var background_targets: Array = []
 
 var _core_ref: WeakRef = null
+## The last host-scoped root the SDK generated. Any other current value is caller-owned.
+var _generated_root := ""
 var _starting := false
 ## plans/P4-29.md §2.4 step 1: the delta menu of the feed the last update check or feed fetch in
 ## this process committed (or fell back to), once one ran; before that the engine reads the
@@ -103,6 +106,10 @@ signal _started
 
 
 func attach(core: PKeyCore) -> void:
+	var generated := DEFAULT_ROOT if core.storage_namespace == core.product else DEFAULT_ROOT.path_join(core.storage_namespace)
+	if root == DEFAULT_ROOT or root == _generated_root:
+		root = generated
+	_generated_root = generated
 	_core_ref = weakref(core)
 
 

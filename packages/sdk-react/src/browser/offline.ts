@@ -98,17 +98,31 @@ export function request<T>(req: IDBRequest<T>): Promise<T> {
   });
 }
 
-const openers = new WeakMap<IDBFactory, () => Promise<IDBDatabase>>();
+const openers = new WeakMap<
+  IDBFactory,
+  Map<string, () => Promise<IDBDatabase>>
+>();
 
-/** The one `polaris-key` database for a factory, opened once and shared by the offline and
- *  token stores. A failed open is forgotten, so it does not poison every later call. */
-export function openPolarisDb(factory: IDBFactory): Promise<IDBDatabase> {
-  let open = openers.get(factory);
+/**
+ * The production host keeps the existing `polaris-key` database. A non-default control-plane
+ * host gets a sibling database, so its device, bundles, update cache, and bearer token cannot
+ * reach production state.
+ */
+export function openPolarisDb(
+  factory: IDBFactory,
+  namespace = "",
+): Promise<IDBDatabase> {
+  let byNamespace = openers.get(factory);
+  if (!byNamespace) {
+    byNamespace = new Map();
+    openers.set(factory, byNamespace);
+  }
+  let open = byNamespace.get(namespace);
   if (!open) {
     let db: Promise<IDBDatabase> | null = null;
     open = () => {
       if (!db) {
-        const req = factory.open(DB_NAME, DB_VERSION);
+        const req = factory.open(`${DB_NAME}${namespace}`, DB_VERSION);
         req.onupgradeneeded = () => {
           for (const name of [STORE_NAME, TOKEN_STORE_NAME])
             if (!req.result.objectStoreNames.contains(name))
@@ -121,7 +135,7 @@ export function openPolarisDb(factory: IDBFactory): Promise<IDBDatabase> {
       }
       return db;
     };
-    openers.set(factory, open);
+    byNamespace.set(namespace, open);
   }
   return open();
 }
@@ -135,11 +149,12 @@ export function indexedDbOfflineStore(
   factory: IDBFactory | undefined = typeof indexedDB === "undefined"
     ? undefined
     : indexedDB,
+  namespace = "",
 ): OfflineStore | null {
   if (!factory) return null;
   return {
     async read(product) {
-      const tx = (await openPolarisDb(factory)).transaction(
+      const tx = (await openPolarisDb(factory, namespace)).transaction(
         STORE_NAME,
         "readonly",
       );
@@ -147,7 +162,7 @@ export function indexedDbOfflineStore(
       return isRecord(value) ? value : null;
     },
     async write(product, record) {
-      const tx = (await openPolarisDb(factory)).transaction(
+      const tx = (await openPolarisDb(factory, namespace)).transaction(
         STORE_NAME,
         "readwrite",
       );

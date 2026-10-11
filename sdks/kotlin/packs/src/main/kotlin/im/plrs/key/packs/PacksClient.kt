@@ -465,7 +465,7 @@ public class PacksClient(
 
     /** `<the store's state directory>/packs` (a FileStore's directory; Android's no-backup directory). */
     private fun defaultRoot(): Path {
-        val base = core.store.stateDirectory ?: FileStore.defaultDirectory(core.product)
+        val base = core.store.stateDirectory ?: FileStore.defaultDirectory(core.storageNamespace)
         return File(base, "packs").toPath()
     }
 

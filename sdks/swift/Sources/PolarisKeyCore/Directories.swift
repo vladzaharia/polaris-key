@@ -12,6 +12,28 @@
 
 import Foundation
 
+/// The production control-plane host keeps every historical storage name unchanged. Any other
+/// origin receives a deterministic suffix so a local emulator cannot share credentials or cache
+/// with production.
+public func storeNamespace(productSlug: String, baseUrl: String) -> String {
+    guard let components = URLComponents(string: baseUrl),
+        let host = components.host?.lowercased()
+    else { return productSlug }
+
+    let scheme = components.scheme?.lowercased()
+    let defaultPort =
+        (scheme == "https" && components.port == 443)
+        || (scheme == "http" && components.port == 80)
+    var origin = host
+    if let port = components.port, !defaultPort {
+        origin += ":\(port)"
+    }
+    guard origin != "key.plrs.im" else { return productSlug }
+    let safeOrigin = origin.replacingOccurrences(
+        of: "[^a-z0-9.-]", with: "_", options: .regularExpression)
+    return "\(productSlug)@\(safeOrigin)"
+}
+
 /// The four directories of one product. Each already ends in `<product>`.
 public struct ProductDirs: Sendable, Equatable {
     public let config: URL

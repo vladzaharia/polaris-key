@@ -147,6 +147,21 @@ final class KeychainStoreTests: XCTestCase {
         XCTAssertEqual(dirs.cache.path, "/tmp/group.example/Library/Caches/polaris-key/djdl")
     }
 
+    func testNonDefaultOriginNamespaceSeparatesKeychainAndFileState() async throws {
+        let fake = FakeKeychain()
+        let namespace = storeNamespace(productSlug: "djdl", baseUrl: "http://localhost:8787")
+        let store = KeychainStore(productSlug: namespace, configDir: root, keychain: fake)
+        let service = await store.keychainService
+        XCTAssertEqual(service, "pkey:djdl@localhost_8787")
+        try await store.setToken("pkeyt_local")
+        try await store.setDeviceId("local-device")
+        XCTAssertTrue(
+            FileManager.default.fileExists(
+                atPath: root.appendingPathComponent("djdl@localhost_8787/device").path))
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: root.appendingPathComponent("djdl/device").path))
+    }
+
     func testEntitledWritesGoToTheDataProtectionKeychainWithAfterFirstUnlockThisDeviceOnly() async throws {
         let fake = FakeKeychain()
         fake.legacy = Data("pkeyt_old".utf8)

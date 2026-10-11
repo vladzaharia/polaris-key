@@ -98,9 +98,32 @@ def default_dir_bases(
     )
 
 
+#: The host production runs on; its state keeps the bare product name.
+DEFAULT_STORE_HOST = "key.plrs.im"
+
+
+def store_namespace(product_slug: str, base_url: Optional[str]) -> str:
+    """The name a product's local state (directories, keyring entry) goes under: the slug for
+    the default host (production names are unchanged), ``<slug>@<host>`` for any other base URL,
+    so a ``pkey dev`` run never touches production state on the same machine."""
+    if not base_url:
+        return product_slug
+    import re
+    from urllib.parse import urlsplit
+
+    try:
+        host = (urlsplit(base_url).netloc or "").lower().rpartition("@")[2]
+    except ValueError:
+        return product_slug
+    if not host or host == DEFAULT_STORE_HOST:
+        return product_slug
+    return f"{product_slug}@{re.sub(r'[^a-z0-9.-]', '_', host)}"
+
+
 def resolve_dirs(
     product_slug: str,
     *,
+    namespace: Optional[str] = None,
     config_dir: Optional[str] = None,
     data_dir: Optional[str] = None,
     cache_dir: Optional[str] = None,
@@ -114,6 +137,7 @@ def resolve_dirs(
     platform = platform or sys.platform
     path = _path_for(platform)
     bases = default_dir_bases(platform=platform, env=env, home=home)
+    product_slug = namespace or product_slug
     return ProductDirs(
         config=path.join(config_dir or bases.config, product_slug),
         data=path.join(data_dir or bases.data, product_slug),

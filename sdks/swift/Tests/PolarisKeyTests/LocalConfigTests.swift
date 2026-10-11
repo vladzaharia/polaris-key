@@ -71,6 +71,27 @@ final class LocalConfigTests: XCTestCase {
         }
     }
 
+    func testNonDefaultOriginNamespacesUserDefaultsOverrides() {
+        let suite = "im.plrs.key.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let production = UserDefaultsLocalConfigStore(
+            product: "djdl",
+            namespace: storeNamespace(productSlug: "djdl", baseUrl: "https://key.plrs.im"),
+            suiteName: suite)
+        let local = UserDefaultsLocalConfigStore(
+            product: "djdl",
+            namespace: storeNamespace(productSlug: "djdl", baseUrl: "http://localhost:8787"),
+            suiteName: suite)
+
+        production.save(["ui.theme": .string("dark")])
+        local.save(["ui.theme": .string("light")])
+        XCTAssertEqual(production.load(), ["ui.theme": .string("dark")])
+        XCTAssertEqual(local.load(), ["ui.theme": .string("light")])
+        XCTAssertNotNil(defaults.data(forKey: "pkey.config.local.djdl"))
+        XCTAssertNotNil(defaults.data(forKey: "pkey.config.local.djdl@localhost_8787"))
+    }
+
     func testASetValueBeatsTheRemoteDefaultPersistsAndRaisesAChange() async throws {
         let local = MemoryLocalConfigStore()
         let c = try await client(store: local)

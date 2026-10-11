@@ -81,7 +81,11 @@ async function settle(adapter: { snapshot(): { phase: string } }) {
 
 function browser(
   storage: ConfigStorage | null,
-  opts: { catalog?: ProductCatalog | null; fetchImpl?: typeof fetch } = {},
+  opts: {
+    catalog?: ProductCatalog | null;
+    fetchImpl?: typeof fetch;
+    baseUrl?: string;
+  } = {},
 ) {
   return browserAdapter({
     auth: "cookie",
@@ -89,6 +93,7 @@ function browser(
     fetchImpl: opts.fetchImpl ?? makeFakeFetch(makeDoc(), { config: CONFIG }),
     now: () => NOW_SEC,
     configStorage: storage,
+    ...(opts.baseUrl !== undefined ? { baseUrl: opts.baseUrl } : {}),
     ...(opts.catalog !== undefined ? { catalog: opts.catalog } : {}),
   });
 }
@@ -114,6 +119,29 @@ describe("config.local — browser", () => {
     expect(b.getConfig("ui.theme", "light")).toBe("dark");
     expect(b.config.localValues()).toEqual({ "ui.theme": "dark" });
     b.dispose();
+  });
+
+  it("keeps a local Worker override separate from the production product key", async () => {
+    const storage = memoryStorage();
+    const production = browser(storage, { catalog: CATALOG });
+    const development = browser(storage, {
+      catalog: CATALOG,
+      baseUrl: "http://localhost:8787",
+    });
+    await Promise.all([settle(production), settle(development)]);
+    await production.config.set("ui.theme", "dark");
+    await development.config.set("ui.theme", "light");
+
+    expect(
+      JSON.parse(storage.data.get(localConfigStorageKey("acme"))!),
+    ).toEqual({ "ui.theme": "dark" });
+    expect(
+      JSON.parse(
+        storage.data.get(localConfigStorageKey("acme@localhost_8787"))!,
+      ),
+    ).toEqual({ "ui.theme": "light" });
+    production.dispose();
+    development.dispose();
   });
 
   it("clear drops one override and clearAll drops every one", async () => {

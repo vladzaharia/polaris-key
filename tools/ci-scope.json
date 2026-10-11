@@ -115,7 +115,8 @@
           },
           {
             "os": "ubuntu-latest",
-            "python": "3.14"
+            "python": "3.14",
+            "live": true
           }
         ]
       },
@@ -127,7 +128,8 @@
           },
           {
             "os": "ubuntu-latest",
-            "python": "3.14"
+            "python": "3.14",
+            "live": true
           },
           {
             "os": "macos-14",

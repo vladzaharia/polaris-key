@@ -10,7 +10,8 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "env": ["PKEY_DEV_BASE_URL", "PKEY_DEV_CONFIG", "PKEY_DEV_APPROVE"]
     },
     "lint": {},
     "dev": {
@@ -19,6 +20,35 @@
     },
     "clean": {
       "cache": false
+    },
+    "@polaris-key/cli#build": {
+      "dependsOn": ["^build", "@polaris-key/brand#build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../pnpm-lock.yaml",
+        "../../tsconfig.base.json",
+        "../worker/package.json",
+        "../worker/tsconfig.json",
+        "../worker/src/**",
+        "../worker/dev/**",
+        "../worker/migrations/**",
+        "../worker/test/*Mock.ts"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "@polaris-key/cli#test": {
+      "dependsOn": ["^build", "@polaris-key/brand#build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../pnpm-lock.yaml",
+        "../../tsconfig.base.json",
+        "../worker/package.json",
+        "../worker/tsconfig.json",
+        "../worker/src/**",
+        "../worker/dev/**",
+        "../worker/migrations/**",
+        "../worker/test/*Mock.ts"
+      ]
     }
   }
 }

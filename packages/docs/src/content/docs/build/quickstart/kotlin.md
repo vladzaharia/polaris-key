@@ -7,13 +7,15 @@ sidebar:
 
 For Android (with the Compose kit) and the JVM. JDK 17.
 
+[Run Polaris Key locally](/docs/build/local/) to try this without a registered product.
+
 ```sh
 pkey sdk --lang kotlin --write --package com.acme.polaris --out app/src/main/kotlin/com/acme/polaris/PolarisConfig.kt
 ```
 
 ```kotlin
 import com.acme.polaris.PolarisConfig
-import im.plrs.key.core.isUsable
+import im.plrs.key.license.isUsable
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.serialization.json.JsonPrimitive
 

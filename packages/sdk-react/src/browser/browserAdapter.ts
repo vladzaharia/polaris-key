@@ -211,6 +211,7 @@ import {
   browserLocalConfigBackend,
   type ConfigStorage,
 } from "../core/localConfig.js";
+import { storageNamespace, storeNamespace } from "../core/storeNamespace.js";
 import {
   buildDownloadUrl,
   buildInstallUrl,
@@ -520,6 +521,8 @@ export class BrowserAdapter implements PolarisAdapter {
   constructor(opts: BrowserAdapterOptions) {
     this.product = opts.productSlug;
     this.base = (opts.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, "");
+    const hostStorage = storageNamespace(this.base);
+    const productStorage = storeNamespace(this.product, this.base);
     this.fetchImpl = opts.fetchImpl ?? ((...a) => fetch(...a));
     this.navigate =
       opts.navigate ??
@@ -529,7 +532,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.clock = opts.now ?? nowSec;
     const hostOverrides = opts.localOverrides ?? {};
     const localBackend = browserLocalConfigBackend(
-      this.product,
+      productStorage,
       opts.configStorage,
     );
     this.localOverrides = { ...hostOverrides, ...localBackend.read() };
@@ -543,6 +546,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.presentation_ = new BrowserPresentationSource({
       product: this.product,
       fetchImpl: () => this.fetchImpl,
+      storageNamespace: hostStorage,
       cache:
         opts.presentationCache !== undefined
           ? opts.presentationCache
@@ -554,7 +558,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.pinned = opts.trust?.pinnedKeys ?? null;
     this.offline =
       opts.offlineStore === undefined
-        ? indexedDbOfflineStore()
+        ? indexedDbOfflineStore(undefined, hostStorage)
         : opts.offlineStore;
     this.updateConfig = opts.update ?? null;
     this.sw = opts.serviceWorker;
@@ -618,7 +622,7 @@ export class BrowserAdapter implements PolarisAdapter {
       this.bearerStore =
         opts.store ??
         (opts.offlineStore === undefined
-          ? indexedDbStore(this.product)
+          ? indexedDbStore(this.product, { namespace: hostStorage })
           : null) ??
         memoryStore(this.product, this.offline ?? undefined);
       this.bearer = new BearerSession({

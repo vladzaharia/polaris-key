@@ -24,6 +24,18 @@ deprecated aliases).
   state, the catalog copy lines and the actions of every UI-KITS component,
   `KitIdentity` resolves the product identity and theme, and `KitCopy` formats the generated
   launch-locale catalog (`kit-copy.json`, from `packages/brand/kit-copy`).
+- **State is scoped to its control plane** (`core.store`, SP-41). A client whose `baseUrl` is not
+  `https://key.plrs.im` (a local `pkey dev` Worker, a staging Worker) keeps its token, device id,
+  cache, installers and pack root under `<product>@<host>[_<port>]` (`storeNamespace`,
+  `CoreContext.storageNamespace`), its keyring service as `pkey:<product>@<host>` and, on Android,
+  its Keystore alias and store directory under the same name, so it never reads or overwrites
+  production's; production names are unchanged. `PolarisKeyDesktop.dataDirectory`, `store`, `slots`
+  and `bootGuard` take that control plane's `baseUrl` (default: production; `client` reads it from its
+  options), so a payload staged for a local control plane is never applied by production's launch.
+  **Breaking: an explicit `DesktopOptions.dataDirectory` is production's directory, and every other
+  control plane nests `<dataDirectory>/<product>@<host>` beneath it.** A host that ran a local
+  control plane out of its explicit directory starts fresh in the nested one (a new local token,
+  device id and cache); nothing moves, and production's files stay where they are.
 
 Key-custody and offline-bundle fixes (wire contract v4). Each **breaking** line names what to change.
 

@@ -121,7 +121,11 @@ Maven, the coordinate table and the other SDKs:
   0600 files, Python's `KeyringStore` rules (a verified write else the file, file-first reads, a
   `FileStore` token moves in). java-keyring is `compileOnly`: without it at runtime, or with no
   reachable keyring, the token stays in the file and `supports(core.store)` says `dependency`. On
-  Android, `:android`'s `AndroidKeystoreStore` (below).
+  Android, `:android`'s `AndroidKeystoreStore` (below). Every default store is scoped to its control
+  plane (SP-41, `CoreContext.storageNamespace`): production (`https://key.plrs.im`) keeps the bare
+  product name, any other `baseUrl` (a local `pkey dev` Worker) names its directory, keyring service,
+  Keystore alias and pack root `<product>@<host>[_<port>]` (`storeNamespace`), so it never shares a
+  token, device id or cache with production.
 - **Capabilities.** `Capabilities.sdk().supports(feature, services)` answers from the generated
   table (`Constants.generated.kt`, from `parity.json`), with typed reasons.
 - **Pure functions.** `bootTransition` (the boot stage machine), `licenseState`,
@@ -351,14 +355,27 @@ Android's. It fills in the keyring store, the desktop install driver and the def
 // build.gradle.kts: implementation("im.plrs.key:polaris-key-sdk:…")
 //                   runtimeOnly("com.github.javakeyring:java-keyring:1.0.4")   // the OS keyring
 val client = PolarisKeyDesktop.create(options)            // KeyringStore, DesktopInstallDriver
-val guard = PolarisKeyDesktop.bootGuard("djdl", "1.4.0")  // the GUARD stage over DirUpdateSlots
+val guard = PolarisKeyDesktop.bootGuard("djdl", "1.4.0", baseUrl = options.core.baseUrl) // the GUARD stage over DirUpdateSlots
 val check = client.update.decide()
 client.update.install(check)                              // download, verify, open the installer
 ```
 
 Everything lives under `FileStore.defaultDirectory(product)` unless `DesktopOptions.dataDirectory`
 says otherwise; `DesktopOptions` also takes the keyring binding, the installer opener and download
-progress. The `kotlin-desktop` CI job runs the keyring store's contract against the real OS keyring
+progress.
+
+**One control plane, one directory (SP-41).** Those paths are production's (`https://key.plrs.im`). A
+client whose `baseUrl` is anything else (a local `pkey dev` Worker, a staging Worker) keeps its token,
+device id, cache, installers, update slots and guard state under `<product>@<host>[_<port>]` instead
+(`storeNamespace`; its keyring service is `pkey:<product>@<host>`), so it never reads, overwrites or
+applies production's. An explicit `DesktopOptions.dataDirectory` stays production's directory
+unchanged, and every other control plane gets `<dataDirectory>/<product>@<host>` beneath it. `client`
+reads the control plane from its options; `dataDirectory`, `store`, `slots` and `bootGuard` run before
+a client exists, so they take the same `baseUrl` (`CoreOptions.baseUrl`; left out, production). A
+payload staged in a local control plane's `slots` is therefore never applied by production's launch,
+and the reverse.
+
+The `kotlin-desktop` CI job runs the keyring store's contract against the real OS keyring
 on macOS, Windows and Linux (`PKEY_KEYRING_TESTS=1`).
 
 ## :platform
@@ -550,6 +567,29 @@ both zstd paths), `headers.json`, `fingerprint.json`, `stage-matrix.json`,
 `TranscriptReplay.kt`, a port of the Node engine, driving `PolarisKeyClient`). Every suite extends
 `ConformanceSuite`, which installs the backend the task names before the suite runs. The `kotlin` job in `.github/workflows/ci.yml`
 runs the JVM line.
+
+`:conformance:liveDevTest` is a separate task, not part of `test` or `testTink`: it runs the
+quickstart against a real `pkey dev` ([Run Polaris Key locally](/docs/build/local/)) on the JCA
+backend only. It drives the `PolarisConfig.kt` that `pkey sdk` generated, the SDK's own client over
+its OkHttp transport and the dev server's approval script (Node on PATH): first activation, what
+each of the seven test keys does, a config change event, a device-code sign-in and an update
+decision. It needs a fresh server (it spends device seats and key entries) and three variables:
+`PKEY_DEV_BASE_URL` (the server's origin), `PKEY_DEV_CONFIG` (the absolute path of the generated
+file, which Gradle compiles into the test sources) and `PKEY_DEV_APPROVE`
+(`packages/cli/scripts/dev-approve.mjs`).
+
+```sh
+pkey dev --builtin --auto-approve --port 8787 &
+pkey sdk --lang kotlin --dev --url http://127.0.0.1:8787 --write --out /tmp/PolarisConfig.kt
+cd sdks/kotlin
+PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/PolarisConfig.kt \
+  PKEY_DEV_APPROVE="$(git rev-parse --show-toplevel)/packages/cli/scripts/dev-approve.mjs" \
+  ./gradlew --no-daemon -Ppkey.jvmOnly=true :conformance:liveDevTest
+```
+
+With the variables unset the suite skips, so no server is needed anywhere else; under `CI=true` an
+unset one fails it. The `kotlin` job starts its own `pkey dev` for this task. It covers the JVM
+line only, not Android.
 
 The Android modules need the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`) with
 `platforms;android-36` and `build-tools;36.1.0`; `settings.gradle.kts` includes them only when an

@@ -8,6 +8,8 @@ sidebar:
 For every Godot 4 export target. Install the addon from the Godot feed and enable the
 **Polaris Key** plugin, then in the project directory:
 
+[Run Polaris Key locally](/docs/build/local/) to try this without a registered product.
+
 ```sh
 pkey sdk --lang godot --write   # writes polaris_key_config.gd beside project.godot
 ```

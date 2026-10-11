@@ -80,9 +80,9 @@ func core() -> PKeyCore:
 	return _core_ref.get_ref() as PKeyCore if _core_ref != null else null
 
 
-## `<store_root>/<product>/updates`, which is `user://pkey/<product>/updates/` by default.
+## `<store_root>/<state namespace>/updates`; the production namespace stays `<product>`.
 static func root_for(core: PKeyCore) -> String:
-	return core.options.store_root.path_join(core.product).path_join("updates")
+	return core.options.store_root.path_join(core.storage_namespace).path_join("updates")
 
 
 func active() -> bool:

@@ -130,7 +130,7 @@ public class SecureStore(
     public constructor(dir: File, product: String, keys: KeyProvider) : this({ dir }, product, keys)
 
     public constructor(context: Context, product: String) : this(
-        { File(context.noBackupFilesDir, "pkey/${checkName(product)}/keystore") },
+        { File(context.noBackupFilesDir, "pkey/${checkProductName(product)}/keystore") },
         product,
         AndroidKeyStoreProvider(context),
     )
@@ -138,7 +138,7 @@ public class SecureStore(
     private val dir: File by lazy(directory)
 
     init {
-        checkName(product)
+        checkProductName(product)
     }
 
     public val alias: String get() = "pkey:$product:device"
@@ -301,10 +301,21 @@ public class SecureStore(
         private const val QUARANTINE = ".quarantine"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private val NAME = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+        // `storeNamespace` appends `@` plus a sanitized DNS host and optional port. DNS hosts are
+        // at most 253 characters and a port adds `_65535`, while account names remain unchanged.
+        private val PRODUCT_NAME = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[A-Za-z0-9._-]{1,259})?$")
 
-        /** Product and account names become path segments: a slug, never `..` or a separator. */
+        /** Account names become path segments: a slug, never `..` or a separator. */
         public fun checkName(name: String): String {
             if (!NAME.matches(name) || name.contains("..")) {
+                throw SecureStoreException("invalid-name", "not a valid store name: \"$name\"")
+            }
+            return name
+        }
+
+        /** Product storage identities may carry the generated non-production host suffix. */
+        public fun checkProductName(name: String): String {
+            if (!PRODUCT_NAME.matches(name) || name.contains("..")) {
                 throw SecureStoreException("invalid-name", "not a valid store name: \"$name\"")
             }
             return name

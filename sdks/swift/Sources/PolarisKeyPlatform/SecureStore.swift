@@ -68,8 +68,9 @@ public struct SecureStore: Sendable {
         case login
     }
 
-    /// Product slugs and account names: what a `pkey:<product>` service may carry.
-    static let namePattern = "^[a-z0-9][a-z0-9._-]{0,63}$"
+    /// Account names are stable; product storage identities may have a non-production host suffix.
+    static let accountNamePattern = "^[a-z0-9][a-z0-9._-]{0,63}$"
+    static let productNamePattern = "^[a-z0-9][a-z0-9._-]{0,63}(?:@[a-z0-9._-]{1,259})?$"
 
     public let product: String
     public let keychain: Keychain
@@ -83,7 +84,13 @@ public struct SecureStore: Sendable {
 
     public var service: String { "pkey:\(product)" }
 
-    static func validName(_ s: String) -> Bool { s.range(of: namePattern, options: .regularExpression) != nil }
+    static func validProduct(_ s: String) -> Bool {
+        s.range(of: productNamePattern, options: .regularExpression) != nil
+    }
+
+    static func validAccount(_ s: String) -> Bool {
+        s.range(of: accountNamePattern, options: .regularExpression) != nil
+    }
 
     /// The item's identity: class, service, account, the data-protection keychain (unless the
     /// login keychain was asked for), never synchronizable, and no access group.
@@ -100,7 +107,7 @@ public struct SecureStore: Sendable {
 
     /// `{ok, value}` (`value` null when absent) or `{ok:false, error, status}`.
     public func get(account: String) -> PlatformObject {
-        guard Self.validName(product), Self.validName(account) else { return Self.invalid }
+        guard Self.validProduct(product), Self.validAccount(account) else { return Self.invalid }
         var q = query(account)
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -120,7 +127,7 @@ public struct SecureStore: Sendable {
 
     /// Update the item, or add it when absent. `{ok, op}` or `{ok:false, error, status}`.
     public func set(account: String, value: String) -> PlatformObject {
-        guard Self.validName(product), Self.validName(account) else { return Self.invalid }
+        guard Self.validProduct(product), Self.validAccount(account) else { return Self.invalid }
         var attributes: [String: Any] = [kSecValueData as String: Data(value.utf8)]
         if keychain == .dataProtection {
             attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
@@ -139,7 +146,7 @@ public struct SecureStore: Sendable {
 
     /// `{ok}`; an absent item is success.
     public func delete(account: String) -> PlatformObject {
-        guard Self.validName(product), Self.validName(account) else { return Self.invalid }
+        guard Self.validProduct(product), Self.validAccount(account) else { return Self.invalid }
         let status = backend.delete(query(account))
         if status == errSecSuccess || status == errSecItemNotFound { return ["ok": true] }
         return ["ok": false, "error": "keychain", "status": .int(Int(status))]

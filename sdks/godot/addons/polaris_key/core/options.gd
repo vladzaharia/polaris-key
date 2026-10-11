@@ -11,6 +11,11 @@ const CONFIG_ENV_AUTO := 0
 const CONFIG_ENV_ALWAYS := 1
 ## `config_env_layer`: off everywhere.
 const CONFIG_ENV_NEVER := 2
+## Default locations retain their historical names on production. PKeyCore gives local origins
+## their own host-suffixed descendants before creating SDK-owned stores.
+const DEFAULT_STORE_ROOT := "user://pkey"
+const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
+
 
 ## The product slug (`aud`, `/<product>/…`).
 @export var product := ""
@@ -83,7 +88,7 @@ const CONFIG_ENV_NEVER := 2
 ## Per-frame budget for a verify sliced across frames on a build without threads (4–8 ms).
 @export_range(4.0, 8.0, 0.5) var verify_slice_ms := 6.0
 ## Where the file store keeps `<product>/{device, token, managed.json}`.
-@export var store_root := "user://pkey"
+@export var store_root := DEFAULT_STORE_ROOT
 
 ## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server
 ## records the device `unverified` (a `strict` tier refuses it). Raw values never leave the device.
@@ -115,7 +120,7 @@ const CONFIG_ENV_NEVER := 2
 ## (the game installs its own store with config.set_override_store()).
 @export var persist_settings := true
 ## Where the default settings store lives (a ConfigFile; your own settings.cfg works too).
-@export var settings_path := "user://pkey_settings.cfg"
+@export var settings_path := DEFAULT_SETTINGS_PATH
 ## The config environment layer (`PKEY_CONFIG_*` variables and `--pkey-config key=value`
 ## arguments). Auto: on in debug builds and on desktop, off in release builds on mobile and web.
 @export_enum("Auto", "Always", "Never") var config_env_layer := CONFIG_ENV_AUTO

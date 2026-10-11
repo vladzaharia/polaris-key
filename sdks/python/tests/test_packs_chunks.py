@@ -14,13 +14,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from typing import Any, Dict, Iterator, List, Optional
 
 import httpx
 import pytest
 
-from helpers import BASE_URL, TOKEN, make_client
+from helpers import BASE_URL, TOKEN, client_dirs, make_client
 from pack_fixtures import (
     PRODUCT,
     PRODUCT_TRUST,
@@ -595,7 +596,10 @@ def test_the_python_client_syncs_chunks_with_bounded_ranges_into_the_directory_s
     srv = BlobServer([v1, v2])
     c = _client(srv, tmp_path, v1)
     c.update.packs.ensure(["djdl.levels"])
-    root = str(tmp_path / "data" / PRODUCT / "packs")
+    # The client's host is not production's, so its packs live under `<slug>@<host>` (SP-41), and
+    # the production name's directory is never touched.
+    root = os.path.join(client_dirs(data_dir=str(tmp_path / "data")).data, "packs")
+    assert not os.path.exists(tmp_path / "data" / PRODUCT)
     with open(f"{root}/index/{v1.index_sha256}", "rb") as f:
         assert f.read() == v1.objects[v1.index_sha256]
     c.close()
