@@ -78,20 +78,25 @@ import { StepUp } from "./StepUp.js";
  *   any platform identity (Game Center, Play Games, single sign-on) the account holds. **Connect**
  *   opens the provider, which comes back to `#/account/methods?connected=<provider>` (or
  *   `?error=<code>&method=<provider>`); **Disconnect** asks for step-up (`MethodRow`).
- * - **Email**: each verified address, the primary first, with **Remove**; **Add an email**
- *   verifies a new one with a 6-digit code.
- * - **Passkeys**: each passkey by its provider (a static AAGUID table, else the browser it was
- *   added from), with **Remove**; **Add a passkey**, disabled with its reason until the account
- *   has a verified email (or while the browser can't make one).
+ * - **Email**: each verified address, the primary first, with **Make primary** (on the others)
+ *   and **Remove**, and how many products the address brought in; **Add an email** verifies a new
+ *   one with a 6-digit code.
+ * - **Passkeys**: each passkey by the name its holder gave it (**Rename**), else its provider (a
+ *   static AAGUID table, else the browser it was added from), with **Remove**; **Add a passkey**,
+ *   disabled with its reason until the account has a verified email (or while the browser can't
+ *   make one).
  *
  * The last method is guarded (`last_link`), and every change needs a sign-in from the last
  * 5 minutes (`StepUp`). An Apple Hide My Email account gets a notice at the top. The footnote says
  * every change is recorded and emailed.
  *
- * Not here yet, for want of an API: **Make primary**, a passkey's **Rename**, the products each
- * method brought in and the products that know the person through a method (see PX-13's brief).
- * **Link an existing account** is PX-15's (`LinkAccounts`), so neither the header nor the Hide My
- * Email notice links to it until that screen exists.
+ * **Make primary**, **Rename** and the product count are PX-W19's (`RowTools`): they read
+ * `productCount` on an email and `name` on a passkey, which only a Worker with PX-W19 sends, so
+ * an older Worker gets the page without them.
+ *
+ * Not here yet, for want of an API: the products that know the person through a method (see
+ * PX-13's brief). **Link an existing account** is PX-15's (`LinkAccounts`), so neither the header
+ * nor the Hide My Email notice links to it until that screen exists.
  */
 export function SignInMethods({
   account,
