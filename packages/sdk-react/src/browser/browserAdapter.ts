@@ -212,10 +212,7 @@ import {
   browserLocalConfigBackend,
   type ConfigStorage,
 } from "../core/localConfig.js";
-import {
-  storageNamespace,
-  storeNamespace,
-} from "../core/storeNamespace.js";
+import { storageNamespace, storeNamespace } from "../core/storeNamespace.js";
 import {
   buildDownloadUrl,
   buildInstallUrl,

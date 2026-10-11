@@ -23,4 +23,3 @@ export function storeNamespace(product: string, baseUrl?: string): string {
   const suffix = storageNamespace(baseUrl);
   return suffix === "" ? product : `${product}${suffix}`;
 }
-
