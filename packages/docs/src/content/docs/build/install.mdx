@@ -1,0 +1,136 @@
+---
+title: "Install the SDKs and the CLI"
+description: "Route the Polaris Key feed for your package manager, then install the pkey CLI and your SDK."
+type: "how-to"
+sdks: ["node", "react", "python", "swift", "kotlin", "godot"]
+lastReviewed: "2026-10-11"
+---
+
+import Requires from "../../../components/docs/Requires.astro";
+import SdkPicker from "../../../components/docs/SdkPicker.astro";
+import InstallSteps from "../../../components/docs/InstallSteps.astro";
+
+Install the CLI and one SDK from Polaris Key's own feeds on `pkg.plrs.im`. They are published there and nowhere else: not npmjs, PyPI, Maven Central, the Swift Package Index, Docker Hub or the Godot Asset Library. Each block below sends only Polaris Key's package names to the feed, so a public package with the same name can't take their place.
+
+<Requires sdk={["Node 22.13 or later"]} />
+
+| SDK                                          | Ecosystem | Name on the feed               | Feed                                           |
+| -------------------------------------------- | --------- | ------------------------------ | ---------------------------------------------- |
+| Node, React, client-core, the CLI and others | npm       | `@polaris-key/*`               | `https://pkg.plrs.im/npm/polaris-key/`         |
+| Python                                       | PyPI      | `polaris-key`                  | `https://pkg.plrs.im/pypi/polaris-key/simple/` |
+| Swift                                        | SwiftPM   | `polaris-key.PolarisKey`       | `https://pkg.plrs.im/swift/polaris-key`        |
+| Kotlin and the Godot Android binding         | Maven     | `im.plrs.key:polaris-key-*`    | `https://pkg.plrs.im/maven/polaris-key/`       |
+| Godot add-on                                 | Godot     | `polaris_key`                  | `https://pkg.plrs.im/godot/polaris-key/`       |
+| The `pkey` CLI as an image                   | OCI       | `pkg.plrs.im/polaris-key/pkey` | `https://pkg.plrs.im/v2/`                      |
+
+The platform's feeds are public: no account and no token.
+
+## Install
+
+1. **CLI** Route the `@polaris-key` scope to the feed and install the CLI.
+2. **CLI** Pick your SDK, route its feed, and install it.
+3. **CLI** Run `pkey help`.
+
+### The CLI
+
+<InstallSteps sdk="cli" />
+
+In a Node project, put the routing line in the project's `.npmrc`, install the CLI there and run it through your package manager: `npx pkey` with npm, `pnpm exec pkey`, `yarn pkey` or `bunx pkey`. For any other app, put the routing line in `~/.npmrc`, add `--global` to the install and run `pkey` directly. A bare `npx pkey` before the CLI is installed resolves that name from npmjs, not the feed.
+
+### Your SDK
+
+<SdkPicker />
+
+<InstallSteps sdk="node" />
+<InstallSteps sdk="react" />
+<InstallSteps sdk="python" />
+<InstallSteps sdk="swift" />
+<InstallSteps sdk="kotlin" />
+<InstallSteps sdk="godot" />
+
+For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. The SDK's floors are macOS 15, iOS 18, tvOS 18 and visionOS 2. SwiftPM also fetches the SDK's two dependencies, `zstd` and `Sparkle`, from GitHub. For Godot, search for "Polaris Key" in the **AssetLib** tab, install it, then enable it under **Project → Project Settings → Plugins**. The add-on lands in `res://addons/polaris_key/`.
+
+## Check it works
+
+You should see the CLI's commands. In a Node project, run it as `npx pkey help` or the form for your package manager:
+
+```sh title="Terminal"
+pkey help
+```
+
+## Notes by client
+
+### Age gates
+
+Some clients skip a version until it reaches a minimum age. Behind a gate, an install picks the newest version that is old enough, and the whole set waits together. To take each `@polaris-key` version as it ships, exempt the scope:
+
+| Client      | Setting                       | Default                    | Exempt the scope                                                                            |
+| ----------- | ----------------------------- | -------------------------- | ------------------------------------------------------------------------------------------- |
+| pnpm 11     | `minimumReleaseAge` (minutes) | `1440`, one day            | `minimumReleaseAgeExclude: ["@polaris-key/*"]` in `pnpm-workspace.yaml`                     |
+| pnpm 10.16+ | `minimumReleaseAge` (minutes) | off                        | the same                                                                                    |
+| Yarn 4      | `npmMinimalAgeGate` (minutes) | one day in recent releases | `npmPreapprovedPackages: ["@polaris-key/*"]` in `.yarnrc.yml`                               |
+| npm         | `min-release-age` (days)      | off                        | `min-release-age-exclude[]=@polaris-key/*` in `.npmrc`                                      |
+| Bun         | `minimumReleaseAge` (seconds) | off                        | `minimumReleaseAgeExcludes` in `bunfig.toml`, each package by name (a pattern matches none) |
+
+### Python: pip, uv and Poetry
+
+Name the feed as an explicit index for that one project, never as an extra index. pip can't route one project to one index: with two indexes it takes the highest version from either, so a public `polaris-key` could win. The generated pip line installs the package alone, without its dependencies, so install those from your usual index first. The SDK needs Python 3.9 or later and three packages (`zstandard` only below Python 3.14, where the standard library has its own):
+
+```sh title="Terminal"
+pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"
+```
+
+The uv and Poetry blocks resolve the dependencies from your default index, because the feed is an explicit index for `polaris-key` only.
+
+### Kotlin
+
+| Coordinate                                                   | What                                                                                                                   |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `polaris-key-sdk`                                            | The umbrella `PolarisKeyClient` (JVM library); pulls in the modules below                                              |
+| `polaris-key-core`                                           | Verification, trust, the verified cache and transport                                                                  |
+| `polaris-key-{license,config,identity,release,update,packs}` | One service module each; each depends on `polaris-key-core` only                                                       |
+| `polaris-key-platform-play`, `polaris-key-platform-direct`   | The Android platform AAR, one per flavour: Play In-App Updates and Asset Delivery, or the PackageInstaller self-update |
+| `polaris-key-android-play`, `polaris-key-android-direct`     | The Kotlin SDK's Android glue, one per flavour                                                                         |
+| `polaris-key-ui`                                             | The Jetpack Compose UI kit over `polaris-key-sdk`                                                                      |
+| `polaris-key-billing`                                        | Play Billing purchases and restores as license flags                                                                   |
+
+Pick one platform flavour per build. Play forbids self-update, so the two flavours are a policy boundary.
+
+### Versions
+
+Every SDK carries the server's version, in lockstep: Polaris Key `0.9.0` publishes every SDK at `0.9.0`. Each push to `main` also publishes a pre-release on the `main` channel: `0.9.1-main.<N>`, or `0.9.1.dev<N>` for Python. A pre-release is never npm's `latest`, Maven's `RELEASE` or the image's `latest`. Ask for one by version or by tag, for example `npm install @polaris-key/node@beta`.
+
+### The pkey image
+
+`pkey` is also an image for `linux/amd64` and `linux/arm64`. Mount the project at `/work`:
+
+```sh title="Terminal"
+docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest validate
+```
+
+`latest` is the newest stable release. `beta` is the newest tagged pre-release or stable release. `main` is the newest build of `main`. Each version tag never moves.
+
+### Builds of main are pruned once released
+
+When a version is published on `stable`, the platform's feeds prune the builds of `main` at or below it: `<next>-main.<N>`, or `<next>.dev<N>` for Python. Stable and beta versions are never touched. A pruned build leaves every listing and no longer installs, and its version is never published again. Pin a stable or beta release instead.
+
+### Private feeds
+
+A product's own feeds can require a registry token (`pkeyr_…`). Keep it in an environment variable and print the setup for any client:
+
+```sh title="Terminal"
+pkey feeds setup --ecosystem <ecosystem> --owner <slug> --token-env PKEY_REGISTRY_TOKEN
+```
+
+The Godot editor sends no credentials. Its token goes in the feed URL, which only the console shows.
+
+## If it isn't working
+
+- [pkey CLI](/docs/reference/cli/): every command and flag.
+- [All SDKs](/docs/build/sdks/): each SDK's own setup.
+
+## Next steps
+
+- [Your first product](/docs/start/first-product/)
+- [Choose your integration](/docs/start/choose-your-integration/)
+- [All SDKs](/docs/build/sdks/)

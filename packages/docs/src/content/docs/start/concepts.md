@@ -1,715 +1,157 @@
 ---
-title: "Concepts & terminology"
-description: "The canonical glossary for the Worker, the SDKs, the console and the docs — services, devices, documents, trust, and the config model."
-sidebar:
-  order: 2
+title: "Concepts and glossary"
+description: "The words the console, the portal and these docs use, the identifiers they keep in code and on the wire, and the nouns behind documents, devices and keys."
+type: "concept"
+lastReviewed: "2026-10-10"
 ---
 
-This is the source of truth for the vocabulary used across the Worker, the SDKs, the admin
-panel, and the docs. When code and this glossary disagree, this glossary wins — open a PR to
-reconcile. Consistent names are a feature: they make the system learnable across six languages.
-
-The page has two layers. [UI words](#ui-words-and-the-identifiers-they-keep) are what the console,
-the portal and the docs' prose call a concept. The rest of the page defines the **identifiers**
-that code, manifests and the wire use. A UI word can change without renaming an identifier, so no
-rename in the UI ever touches the wire.
+This is the canonical glossary. When code and this page disagree, this page wins: open a pull request to reconcile them. The console, the portal and the docs' prose use one word per concept and one concept per word, spelled in US English and sentence case. A word in the first column is what a reader sees. The identifier in the third column is what code, manifests and the wire call it. Identifiers keep their names when a word changes.
 
 ## UI words and the identifiers they keep
 
-The console, the portal and the docs' prose use **one word per concept and one concept per word**.
-Each row names the identifier the word stands for, and that identifier keeps its name. Where the
-storage is still being built, the row names the identifier its work package adds, marked
-_planned_, and says where the concept lives until then.
-
-UI words are spelled the way the console and the portal show them: US English and sentence case
-("license", "Release track").
-
 ### Products and features
 
-| UI word          | What it means                                                                                                                                                                                                                                                                                                                                                                                                                                            | Identifier (kept)                                                                                                                                                                     | Not in the UI                                                         |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Feature**      | A group of services the operator turns on for a product: **Licensing** (`license`), **Managed config** (`config`), **Ship builds** (`release` and `distribution`, with **In-app updates**, `update`, as its switch), **Sign-in** (`identity`), **Cloud Sync** (`sync`) and **Commerce** (`commerce`, requires Licensing). A feature turns on only while the features it requires are on, and turning one off turns its dependents off in the same change | the slugs in `products.services_json` and `tools/services.json`; the grouping is `console.group` there (planned, ST-38); the `commerce` row of `tools/services.json` (planned, CM-29) | "module", "service", `--modules`                                      |
-| **Integration**  | The product page that shows how to connect each feature, with live verification                                                                                                                                                                                                                                                                                                                                                                          | `GET /manage/api/products/<slug>/integration` (planned, ST-40 and ST-41)                                                                                                              | Setup checklist, Connect your app, quick starts, Welcome, launch path |
-| **Verified**     | A feature on a platform has answered an SDK request with a 2xx once its console prerequisites are met; where no SDK request exists, a CI package publish or an updater's first check                                                                                                                                                                                                                                                                     | `sdk_sightings.services_ok` (planned, ST-40)                                                                                                                                          | "Setup complete"                                                      |
-| **Setup choice** | An explicit choice a setup surface records: a skipped step, "not using this channel", Integration hidden. Step completion is computed from facts, never stored                                                                                                                                                                                                                                                                                           | the product setting `core.setup` (planned, ST-39)                                                                                                                                     | setup state                                                           |
+| UI word              | What it means                                                                                                                                                                              | Identifier (kept)                                  | Not in the UI          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ---------------------- |
+| **Product**, **app** | The product is the record in Polaris Key: the console's product, the manifest, the API. The app is the developer's build that embeds an SDK, and what consumers use                        | `slug`                                             | "app" for the record   |
+| **Feature**          | A group of services you turn on for a product: **Licensing**, **Managed config**, **Ship builds**, **Sign-in**, **Cloud Sync**. A feature turns on only while the features it needs are on | the service slugs in `modules` and `services_json` | "module", "capability" |
 
 ### Licensing
 
-| UI word                    | What it means                                                                                                                                                                | Identifier (kept)                                                                                                                                                                                               | Not in the UI                                                             |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **License in an account**  | A license whose holder is an account                                                                                                                                         | `licenses.account_id` set: holder `assigned` with `inAccount` (`licenseHolder()`, list filter `inAccount`)                                                                                                      | owned, bound, sub-keyed                                                   |
-| **Waiting license**        | A license assigned to an email that no account has verified yet; an account that verifies the address takes it in                                                            | `licenses.email` set and `licenses.account_id` null (list filter `waiting`)                                                                                                                                     | pending holder                                                            |
-| **Floating license**       | A license with no holder: whoever has its key activates devices                                                                                                              | `licenses.account_id` and `licenses.email` both empty (`isFloatingLicense()`, list filter `floating`)                                                                                                           | unbound                                                                   |
-| **Automatic grant**        | The portal's source label for a license or add-on the access policy issued: at sign-in, through Discover, by a domain or claim rule. The one place "grant" appears in the UI | `licenses.origin = 'oidc'`                                                                                                                                                                                      | "From signing in" as a source, "Automatic grant"                          |
-| **Tier**                   | A named license template. Every license has one (planned, LX-33)                                                                                                             | `tiers`, `licenses.tier_id`                                                                                                                                                                                     | "plan"                                                                    |
-| **Add-on**                 | A sub-license: a template whose instances a license holds. An in-app purchase, DLC, a feature pack, a seat pack, a consumable                                                | the instances: `grants` (LX-08), each naming its template in `grants.addon_id`; the template: `licensing.addons[]` and the License-owned addons table (planned, LX-35)                                          | "grant", store mapping, "addon license" ("sub-license" is a docs synonym) |
-| **Entitlement**            | A named right a device gets from its license                                                                                                                                 | catalog `flag` rows (`ConfigKind`), delivered in the license document's `entitlements`; authored as `licensing.entitlements[]` (planned, LX-34)                                                                 | "flag", the config overrides tab                                          |
-| **Limits**                 | License metadata: device limit, offline days, release tracks, version window, fingerprint mode, resolved license > tier > platform default                                   | `resolveLicenseTerms` in `core/licensing/terms.ts` (planned, LX-32); today the tier's `policy_*` columns and the license's `device_limit`, `max_offline_days`, `channels_json`, `min_version` and `max_version` | "terms", "policy", "effective policy"                                     |
-| **Duration**               | How long a license runs and what happens at its end: lifetime, fixed, trial, version-scoped, renewing, keeps the last version                                                | `licenses.expires_at` and the tier's `policy_expiry_days`; `on_expiry` (planned, LX-41)                                                                                                                         | "term", expiry alone                                                      |
-| **Trial**                  | A fixed duration that converts to a tier at its end                                                                                                                          | `on_expiry = 'tier:<id>'` and the subscription status `trialing` (planned, LX-41)                                                                                                                               | trial license                                                             |
-| **Keeps the last version** | After it lapses, the license still runs the last version released while it was active                                                                                        | `onExpiry: keepVersion` and `licenses.fallback_version` (planned, LX-41)                                                                                                                                        | perpetual fallback                                                        |
-| **Subscription**           | A renewing source attached to a license or add-on, from any provider                                                                                                         | Core `subscriptions` (planned, LX-41)                                                                                                                                                                           | commerce subscription                                                     |
-| **Access policy**          | Who gets a license automatically                                                                                                                                             | the setting `license.access` and the manifest's `licensing.access` (planned, LX-36); today `license.autoIssue` and the `groupRoleMap` in `identity.oidc`                                                        | auto-issue, group map, sync-tier, email domains                           |
-| **Access**                 | The product page that answers who gets what, automatically and to download                                                                                                   | a page over `license.access`, `dist_access` and the Discover visibility in `storefront.polarisKey.*` (planned, P2-10)                                                                                           | Enrollment, License settings, Distribution → Access                       |
+| UI word                   | What it means                                                                                                                                        | Identifier (kept)                                                                 | Not in the UI                   |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------- |
+| **License in an account** | A license whose holder is an account                                                                                                                 | list filter `inAccount`                                                           | owned, bound                    |
+| **Waiting license**       | A license assigned to an email no account has verified yet. An account that verifies the address takes it in                                         | list filter `waiting`                                                             | pending holder                  |
+| **Floating license**      | A license with no holder: whoever has its key activates devices                                                                                      | list filter `floating`                                                            | unbound                         |
+| **Automatic grant**       | The portal's label for a license the access policy issued. The only use of "grant"                                                                   | origin `oidc`                                                                     | "From signing in"               |
+| **Tier**                  | A named license template                                                                                                                             | `tiers`, `tier_id`                                                                | plan                            |
+| **Add-on**                | A sub-license: an in-app purchase, DLC, feature pack, seat pack or consumable                                                                        | `grants`, `addon_id`                                                              | grant, store mapping            |
+| **Entitlement**           | A named right a device gets from its license                                                                                                         | catalog `flag` entries                                                            | flag                            |
+| **Limits**                | Device limit, offline days, release tracks, version window, fingerprint mode. The license wins over its tier, and the tier over the platform default | `device_limit`, `max_offline_days`, `channels_json`, `min_version`, `max_version` | terms, policy, effective policy |
+| **Duration**              | How long a license runs                                                                                                                              | `expires_at`                                                                      | term, perpetual                 |
+| **Access policy**         | Who gets a license automatically                                                                                                                     | `license.autoIssue`, `groupRoleMap`                                               | auto-issue, enrollment settings |
 
 ### Managed config
 
-| UI word                                     | What it means                                                          | Identifier (kept)                                                                                                     | Not in the UI                                                |
-| ------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| **Profile**                                 | A named set of config and secret values: **Default** plus one per tier | `profiles`, with the id `default` reserved (planned, ST-42 and U-28)                                                  | config profile, license profiles                             |
-| **Setting** / **Secret** / **Minted token** | The three config entry types                                           | the catalog `kind`: `config` / `secret` / a `secret` with `delivery: edgeMint`                                        | "config" as a type, `secret: true`, edge-mint, half-secrets  |
-| **Editable** / **Read-only** / **Hidden**   | A setting's visibility in the app                                      | `ManagementState`: `default` / `enforced` / `hidden` (`managementDefault` in the catalog, `state` in a managed entry) | default, enforced and hidden as UI words; "management state" |
+| UI word                                   | What it means                                                      | Identifier (kept)                                                      | Not in the UI                 |
+| ----------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- | ----------------------------- |
+| **Profile**                               | A named set of config and secret values: Default plus one per tier | `profiles`                                                             | license profile               |
+| **Setting**, **Secret**, **Minted token** | The three config entry types                                       | catalog `kind`: `config`, `secret`, `secret` with `delivery: edgeMint` | edge-mint, "config" as a type |
+| **Editable**, **Read-only**, **Hidden**   | A setting's visibility in the app                                  | `ManagementState`: `default`, `enforced`, `hidden`                     | management state              |
 
-### Ship builds and commerce
+### Ship builds
 
-| UI word                            | What it means                                                                                                                                                | Identifier (kept)                                                                                                                                 | Not in the UI                               |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| **Channel** (distribution channel) | A place builds reach customers: a store, a package manager, a sideload source, the web, Polaris Key's own downloads                                          | `outlet`: `dist_outlets`, the `outlets` of `.pkey/distribution`, the outlet id (`direct` for Polaris Key)                                         | "outlet", "storefront" for a delivery place |
-| **Storefront**                     | The selling facet of a channel: App Store, Google Play, Steam, Microsoft Store, itch.io, Polaris Key                                                         | the `storefront` facet of a `tools/channels.json` entry (planned, A-19); today the store adapters in `core/storefront/` and `dist_store_products` | commerce settings, store bridge             |
-| **Sales**                          | The storefront tab of a channel page                                                                                                                         | a tab over the storefront facet and `/<product>/distribution/commerce/*` (planned, A-22 and CM-23); today Distribution → Commerce                 | Commerce page, "Selling"                    |
-| **Offer** / **SKU**                | What is sold / its product id on one storefront                                                                                                              | `dist_offers` (planned, CM-20's plan, built by LX-11) / `dist_store_products`                                                                     | store product mapping, `grants_json`        |
-| **Install source**                 | A third-party catalog a customer adds: an AltStore source, an F-Droid repository, Obtainium, a Scoop bucket, Flathub                                         | the channel catalog's `customerAction` (planned, A-19); today the storefront feeds in `services/distribution/feeds/`                              | "storefront feed"                           |
-| **Release track**                  | `stable`, `beta`, `dev` and the product's own lanes a release joins; a store's testing lane (a TestFlight group, a Play track, a Steam branch) maps from one | `channel`: `release_channel_policy`, `X-PKey-Channel`, the `channels` entitlement, `BUILT_IN_CHANNELS`                                            | update channel, the "Channels" page, track  |
-| **Packages**                       | The package feeds on `pkg.plrs.im` (the navigation word)                                                                                                     | `registry`: the `dist_registry_*` tables                                                                                                          | "Package feeds", "Outlets & feeds"          |
-| **Updates**                        | The update feeds and the updater setup (the navigation word)                                                                                                 | the `update` service                                                                                                                              | "Feed"                                      |
-| **Pack**                           | A content deliverable for a game or app                                                                                                                      | the deliverable kind `pack`                                                                                                                       | content pack                                |
+| UI word                            | What it means                                                                                                       | Identifier (kept)                       | Not in the UI                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------- |
+| **Channel** (distribution channel) | A place builds reach customers: a store, a package manager, a sideload source, the web, Polaris Key's own downloads | `outlet`; `direct` is Polaris Key's own | "outlet"                        |
+| **Storefront**                     | The selling side of a channel: App Store, Google Play, Steam, Microsoft Store, itch.io, Polaris Key                 | store adapters                          | storefront for a delivery place |
+| **Offer**, **SKU**                 | What is sold; its id on one storefront                                                                              | `dist_store_products`                   | store product mapping           |
+| **Install source**                 | A catalog a customer adds: AltStore, F-Droid, Obtainium, a Scoop bucket, Flathub                                    | storefront feeds                        | storefront feed                 |
+| **Release track**                  | `stable`, `beta`, `dev` and your own lanes a release joins                                                          | `channel`, `X-PKey-Channel`             | update channel                  |
+| **Packages**, **Updates**          | The package feeds on `pkg.plrs.im`; the update feeds and updater setup                                              | `registry`; the `update` service        | Feed                            |
+| **Pack**                           | A content deliverable for a game or app                                                                             | deliverable kind `pack`                 | content pack                    |
 
 ### Sign-in, accounts and the console
 
-| UI word                          | What it means                                                                                              | Identifier (kept)                                                                                                              | Not in the UI                                                            |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| **Connection**                   | An upstream sign-in provider, configured once                                                              | `identity_connections` (planned, I-30); today the `PLATFORM_OIDC_*` variables and the product setting `identity.oidc`          | platform OIDC, custom issuer, product IdP                                |
-| **Sign-in surface**              | A place a person signs in to a product: the web card, a native redirect, a device code, a store            | the sign-in routes: `/api/signin/*` and `/<product>/identity/auth/*` (`auth/device/*` for a device code)                       | sign-in channel                                                          |
-| **Screen name**                  | The account's public name, with per-source suggestions                                                     | `accounts.display_name`                                                                                                        | "Your name"                                                              |
-| **Member** / **Role** / **Area** | A console user (anyone with a role binding) / a built-in permission set / a stable permission id on routes | the area ids on admin routes (`core/rbac/areas.ts`) and `console_role_bindings` (planned, ST-31); today `PLATFORM_ADMIN_GROUP` | admin group, sidebar section                                             |
-| **Personal token**               | An account's token, either packages-only or admin                                                          | `account_tokens`, prefix `pkeyp_` (planned, F-33 and ST-34)                                                                    | the console cookie for the CLI (`PKEY_ADMIN_COOKIE`), per-license tokens |
-| **Service token**                | A machine credential                                                                                       | `ci_tokens` (`pkeyci_`); an existing owner-bound `registry_tokens` row (`pkeyr_`) until it expires                             | product token                                                            |
+| UI word                        | What it means                                                                      | Identifier (kept)                             | Not in the UI   |
+| ------------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------- | --------------- |
+| **Connection**                 | An upstream sign-in provider, configured once                                      | `PLATFORM_OIDC_*`, `identity.oidc`            | custom issuer   |
+| **Sign-in surface**            | A place a person signs in: the web card, a native redirect, a device code, a store | `/api/signin/*`, `/<product>/identity/auth/*` | sign-in channel |
+| **Screen name**                | The account's public name                                                          | `accounts.display_name`                       | "Your name"     |
+| **Member**, **Role**, **Area** | A console user; a built-in permission set; a stable permission id                  | area ids on admin routes                      | admin group     |
+| **Service token**              | A machine credential                                                               | `pkeyci_`                                     | product token   |
 
 ### One meaning each
 
-- **terms** — legal terms only: the terms a product asks people to accept
-  (`identity.requireTerms`), the record of who accepted which version
-  (`account_terms_acceptances`), and Polaris Key's own terms and privacy policy. A license's
-  metadata is its **Limits** and how long it runs is its **Duration**; the identifier
-  `resolveLicenseTerms` keeps its name.
-- **Channel** — a distribution channel only. A release's lanes are **Release tracks**, whose
-  identifier stays `channel`, and a store's testing lane maps from a release track rather than
-  being named on its own.
-- **Storefront** — the selling facet of a channel, never a place builds are delivered.
-- **Sign-in surface** — a place a person signs in. Never a "sign-in channel".
-- **Feature** — a product-level group of services, six of them: Licensing, Managed config, Ship
-  builds, Sign-in, Cloud Sync and Commerce. "Capability" is not a UI word; the identifiers that use
-  it (`outletCapabilities`, `/api/capabilities`) keep it.
-- **Profile** — still taken twice (rule 4): the managed-config set above and `DocProfile` in the
-  signed payload. A person's public name is their **Screen name**.
+- **terms**: legal terms only. A license's metadata is its **Limits**, and how long it runs is its **Duration**.
+- **Channel**: a distribution channel only. A release's lanes are **Release tracks**.
+- **Storefront**: the selling side of a channel, never a place builds are delivered.
+- **Sign-in surface**: a place a person signs in, never a "sign-in channel".
+- **Feature**: a product-level group of services. "Capability" is not a UI word.
+- **Profile**: a named set of config values. A person's public name is their **Screen name**.
 
 ### Console copy rules
 
-Four words leave every console string, because the UI names each of those things with another
-word:
+Four words leave every console string, because the UI names each of those things with another word:
 
-| Leaves the UI     | The UI says                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------- |
-| "outlet"          | **Channel**                                                                                         |
-| "storefront feed" | **Install source**                                                                                  |
-| "grant"           | **Add-on**, or a plain verb (give, add). The portal's **Automatic grant** label is the one kept use |
-| "capability"      | the feature, the switch, or what the channel allows                                                 |
+| Leaves the UI     | The UI says                                                                                   |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| "outlet"          | **Channel**                                                                                   |
+| "storefront feed" | **Install source**                                                                            |
+| "grant"           | **Add-on**, or a plain verb (give, add). The portal's **Automatic grant** is the one kept use |
+| "capability"      | The feature, the switch, or what the channel allows                                           |
 
-The identifiers keep them (`outlet`, `dist_outlets`, `grants`, `outletCapabilities`), and a code
-span in copy is an identifier, not a word. `packages/admin/test/copyLint.test.ts` reads the
-console's copy (JSX text, and the string and template literals that read as prose) and fails on a
-new use. The strings that predate it are recorded in `packages/admin/test/copy.debt.json`, which
-only shrinks: the packages that rebuild those pages rename them.
-
-## The suite: Core and services
-
-Polaris Key is **seven opt-in services** over an always-on **Core** substrate. A product turns on
-only what it needs, and what it left off does not exist for it. That is what lets one app take
-signed settings without taking licensing, and another take a release feed without taking either.
-
-- **[Core](/docs/services/core/)** — the substrate every product gets and no product can switch
-  off: the product registry, the **Device** principal (registration, `pkeyt_` tokens,
-  list/rename/deauthorize, fingerprints, facts), trust & signing, discovery, rate limiting, the
-  error taxonomy, audit, and manifest-ingest dispatch. Core is not a service and never appears in
-  an enablement set; a product that enables nothing still registers devices and serves its JWKS.
-- **service** — one of exactly seven opt-in units, each addressed by a singular **slug**. The slug
-  is the worker directory (`packages/worker/src/services/<slug>/`), the route namespace
-  (`/<product>/<slug>/…`), the SDK sub-client (where one exists), and the console section, so
-  there is one word per unit in code. The console groups the services into **Features**
-  ([UI words](#ui-words-and-the-identifiers-they-keep); planned, ST-38), and an eighth slug,
-  `commerce`, which requires `license`, is planned (CM-29). The services are declared once, as rows
-  of `tools/services.json`:
-  - **[license](/docs/services/license/)** — activation and enrollment, the license document,
-    licenses and keys, tiers, fingerprint and auto-issue policy.
-  - **[config](/docs/services/config/)** — the catalog (schema), the config document, profiles,
-    edge-mint secret delivery.
-  - **[release](/docs/services/release/)** — GitHub sync, channel resolution, artifacts,
-    changelog, install script: the release truth store. It answers _what exists?_
-  - **[distribution](/docs/services/distribution/)** — how every release of every deliverable
-    reaches devices and outlets, and what state it is in there: outlets, transports,
-    availability, rollouts. It answers _how does it reach devices, and is it there yet?_ (The
-    word means only this service — never "release + update".)
-  - **[update](/docs/services/update/)** — the appcast, `/version`, eligibility: the feed that
-    tells an installed copy what to do next. It answers _what should this device do next?_
-    `update → release` is the only sanctioned cross-service import; every other pair talks
-    through Core (the **descriptor hooks**, below).
-  - **[identity](/docs/services/identity/)** — product OIDC, browser sessions, the customer
-    portal.
-  - **[sync](/docs/services/sync/)** — **Cloud Sync**: a signed-in person's settings, saves and
-    other records, with their files, synced across their devices. It requires `config` and
-    `identity`.
-
-### Enablement
-
-- **`services_json`** — the column on `products` that records which services a product runs, and
-  the **single authority** for that answer. Every slug is present with an explicit boolean, plus
-  an optional `registration` key:
-
-  ```json
-  {
-    "license": { "enabled": true },
-    "config": { "enabled": true },
-    "release": { "enabled": false },
-    "distribution": { "enabled": false },
-    "update": { "enabled": false },
-    "identity": { "enabled": false },
-    "sync": { "enabled": false },
-    "registration": "open"
-  }
-  ```
-
-  A record that is not fully understood — bad JSON, an unknown slug with a malformed value, a non-boolean `enabled`, a
-  `registration` outside the three policies — is discarded **whole** and read as the defaults
-  (`license` + `config` on, the rest off), never partially honoured: half-honouring a typo is how
-  it turns into a silently disabled service. The defaults are also what a product that has never
-  declared anything gets, which is exactly how every product behaved before the column existed.
-
-- **`services_source`** — who owns that column: `manifest` (a resync re-applies `.pkey/product`)
-  or `admin` (an operator claimed it live). The guard is the `UPDATE`'s own `WHERE` clause, so a
-  push cannot quietly undo a 3am toggle. `POST …/services/revert` hands ownership back and does
-  nothing else — the live values stay put until the next resync re-applies the manifest. Same
-  machinery as `fingerprint_policy_source` and `auto_issue_source`.
-
-**The four projections.** Enablement used to be re-derived by four surfaces, each guessing from
-the presence of some child row, so the discovery document could advertise a service whose routes
-404ed. All four now read the one column and infer nothing:
-
-- **route mounting** — Core checks the flag _before_ consulting the service descriptor, so a
-  disabled service's code never runs: it cannot read a row, write an audit entry, or spend a
-  rate-limit token. Disabled, unregistered, and no-such-route return one identical 404, because
-  telling them apart is the reconnaissance being refused.
-- **the discovery document** — `/<product>/.well-known/polaris.json` carries a `services` object
-  keyed by the six slugs. An enabled service contributes its own fragment; a disabled one is
-  `{"enabled": false}` and nothing else, so a disabled service's endpoints cannot be read out of
-  a public document.
-- **the admin product view** — one projection (`serviceStateOf`) stamps `services`,
-  `registration`, `effectiveRegistration`, and `servicesSource` onto the row the console shell
-  already loads, so the nav is drawn from enablement rather than appearing after the page it
-  frames.
-- **portal capabilities** — `/api/capabilities` and the portal's release listing conjoin the
-  per-product portal toggles with `services_json`. Gating only the capability would hide the nav
-  item while leaving the endpoint enumerating a non-Release product's releases to anyone who
-  deep-links it; the nav is a courtesy, the listing is the disclosure.
-
-**Coherence.** An enablement set is validated as a set, not flag by flag — every one of these
-faults is a _relationship_ between two toggles, so no single flag can be blamed for it. The
-enablement API (`PATCH /manage/api/products/<slug>/services`) refuses all four, and returns
-stable codes rather than prose so the API, the console, and the manifest validator can each
-render them their own way:
-
-- `distribution_requires_release` — Distribution on with Release off. Distribution delivers what
-  Release says exists; with Release off there is nothing to deliver.
-- `update_requires_distribution` — Update on with Distribution off. The feed would answer every
-  client with an empty document rather than an error, which is a silent failure. Together with
-  the rule above it implies Release is on whenever Update is, so the older
-  `update_requires_release` is retired.
-- `registration_requires_identity` — a declared `requires-identity` policy with Identity off.
-  There is no login to stand behind, so the product has taken registration away rather than
-  restricted it.
-- `config_without_activation` — Config on, License off, and a declared `requires-license` policy.
-  That closes the only mint path such a product has, leaving the service enabled and unreachable.
-
-Manifest ingest enforces its own share of these; see
-[Authoring the manifest](/docs/build/manifest/) for which are errors there and which are
-warnings, and [The service model](/docs/start/service-model/) for where each rule is applied.
-
-### Device registration policy
-
-- **registration policy** — `devices.registration`, one of `open`, `requires-identity`, or
-  `requires-license`. It decides who may mint a device token at `POST /<product>/devices/register`
-  — a **Core** route that exists under every policy, because a device is substrate, not a
-  licensing concept.
-  - `open` — mint for any caller. Rate-limited by edge IP, fingerprint optional.
-  - `requires-identity` — same endpoint, but only for a caller carrying a live product browser
-    session. Core cannot answer "is a human signed in to this product", so it asks the Identity
-    descriptor through a narrow predicate rather than importing the service.
-  - `requires-license` — refuse permanently. Activation and enrollment are the only mint paths,
-    which is the pre-suite behavior.
-
-  Every refusal is the same `403 registration_closed`. A caller learns that it may not register
-  and nothing about why: distinguishing the policies, or an expired session from an absent one,
-  would let a prober map which products run which services.
-
-- **derived default** — the policy is optional, and undeclared means "follow the services", not
-  "somebody chose `open`". The derivation is `requires-license` if License is enabled, else
-  `requires-identity` if Identity is, else `open` — ordered by how much the product already knows
-  about the caller. Undeclared is stored as _absent_ rather than resolved at ingest, so a product
-  that later turns License off moves to the derived `open` instead of staying pinned to a value
-  nobody wrote. The policy lives inside `services_json` rather than in a column of its own
-  precisely because its default is a function of the same value; reading a policy from one place
-  while deriving its default from another is how the two drift.
-
-### The old module vocabulary
-
-A `.pkey/product` `modules:` block may still use the pre-suite names. The parser translates them
-to service slugs and stores only slugs, so no manifest in the field has to be rewritten on the
-day the server learns the new words, and a block may mix the two vocabularies:
-
-`licensing → license` · `config → config` · `releases → release + distribution + update` ·
-`oidc → identity` · `edgeMint → config`
-
-The two non-obvious rows: `releases` meant "this product distributes software", which the suite
-splits into the truth store (Release), delivery (Distribution) and the feed (Update) — mapping it
-to `release` alone would take the appcast away from every product already serving one. And `edgeMint` is a secret-delivery
-_capability_ of Config, not a unit of its own, so declaring it turns Config on.
-
-### Descriptor hooks
-
-A service may import only Core and itself (the one exception is `update → release`). When one
-service needs another's state, it asks **Core**, which asks the service that provides it:
-
-- **`releaseCatalog`** (provided by Release) — deliverables, releases, builds, artifact records,
-  channel policy and yanks, read-only.
-- **`delivery`** (provided by Distribution) — transports, availability and, later, rollout and
-  delivery URLs per outlet.
-- **`outletCapabilities`** (provided by Distribution) — what one outlet permits.
-- **`licenseProvenance`** (provided by License) — where each licence came from: the store
-  purchases granted onto it, or the developer, sign-in or free auto-issue that minted it.
-
-A hook answers `null` while the service that provides it is off for the product — its code never
-runs — and the consumer degrades explicitly. A hook never writes: a write across services would
-be an import in disguise.
+The identifiers keep them (`outlet`, `dist_outlets`, `grants`, `outletCapabilities`). A code span in copy is an identifier, not a word.
 
 ## Core nouns
 
-- **product** — one tenant of Polaris Key, addressed by its `slug` (e.g. `djdl`). Every D1 row,
-  KV key, signature, and admin route is product-scoped. (Not "app" or "gateway".)
-- **license** — an access contract for one product that carries entitlements, optionally attached
-  to an **account** (with no account and no email it is a **floating license**; with an email that
-  no account has verified yet it is **waiting**). Created manually by an admin or minted on OIDC
-  sign-in.
-  Has a status, optional tier/profile, optional expiry, and per-license entitlement overrides
-  (config and secrets for a customer are **account overrides**).
-- **key** — a `pkey_<product>_…` activation secret a user redeems to activate a device. Shown to the
-  user exactly once; stored only as a (peppered) hash.
-- **device** — an authorized install of the product, bound to a per-device bearer token
-  (`pkeyt_…`). The data layer, APIs, SDKs, docs, and UI all use **device**. A device is a **Core**
-  principal, not a licensing one: under an `open` or `requires-identity` registration policy a
-  device holds a token with no license behind it, and still fetches config documents.
-- **tier** — a named license template: an optional profile plus limits (default expiry, device
-  limit, and — from the channels work — default upgrade channels and version window). (Not "plan".)
-- **profile** — a reusable managed-payload baseline that a tier or license can attach.
-- **channel** — a named release stream a build belongs to and a license may be granted, one
-  vocabulary for the license build gate, Release and every SDK (WIRE-CONTRACT-V3 §5.1): `stable`
-  (always granted), `beta`, `pr-<n>` (one pull request; a `pr` grant covers every PR), a
-  product's manual channels, and `dev`, the gate's pseudo-channel for `0.0.0-dev*` builds (Release
-  has none). `staging` is the legacy spelling of `beta` and `latest` names `stable`; both are
-  accepted, and no SDK sends them. Names match `^[a-z0-9][a-z0-9-]{0,63}$`. A license's channels
-  are the `channels` entitlement. The UI word is **Release track**: in the UI, **Channel** means a
-  distribution channel (an `outlet`).
-- **entitlement** — a named right or value a device gets from its license (the `flag` config
-  kind), e.g. `polarisVpn`, `channels`, `app.minVersion`. Entitlements ride the **license** document and
-  only it; the config document carries no grant data.
-- **enrollment** — a keyless activation that auto-issues a license under a product's auto-issue
-  policy. Distinct from **activation**, which redeems a `pkey_…` key.
-- **origin** — how a license came into existence: `admin` (an operator created it), `oidc`
-  (minted on sign-in), or `enroll` (auto-issued, keyless, bound to a machine). The portal labels an
-  `oidc` license's source **Automatic grant**.
-- **auto-issue policy** — a product's opt-in to issuing licenses without a credential. Names
-  the tier, and a **mode**: `anonymous` (opens `POST /<product>/license/enroll`), `oidcDefault`
-  (an authenticated user matching no IdP group lands on that tier instead of a 403), or `both`.
-  Off unless a product opts in; a policy naming no tier counts as off. The UI word is **Access
-  policy**; LX-36 replaces this setting with `license.access`.
-- **claim / migrate** — the two merge outcomes when a signed-in identity meets an auto-issued
-  license. _Claim_: the identity is attached to the same row, so devices and local state
-  survive. _Migrate_: the identity already had a license, so the enrolled row's devices move
-  onto it and the enrolled row is retired. The only merge is the device-code holder's opt-in at
-  `/device/poll`, after the device was shown the signed-in identity (`confirmIdentity` →
-  `confirm` → `attachLicense`); a sign-in alone merges nothing. See
-  [attaching the device's anonymous license](/docs/services/identity/device-flow/#attaching-the-devices-anonymous-license) and
-  [claim and migrate](/docs/services/license/enrollment/#claim-and-migrate).
-- **re-licensing** — changing a license's `tier_id`. Running clients pick up the new
-  entitlements on their next license-document refresh; nothing is pushed. A downgrade below the
-  active device count **grandfathers** existing devices and refuses new activations until the
-  count drops.
-
-## The Polaris Key account
-
-One person, one account, across every product (layer 1 of the Identity design; Amendment A2 of
-the suite spec). The account is platform-level: it exists for every product, whatever the
-product's Identity toggle says. The Identity **service** gates only signing in _through_ a product.
-
-- **account** (Polaris Key account) — one person, global across products: a status, a primary
-  verified email, personal details, and its sign-in methods. Its id is internal to the Worker and
-  never reaches a developer, who sees **pairwise subjects** only. Replaces the portal account.
-- **sign-in method** (or **link**) — one verified `(issuer, subject)` attached to exactly one
-  account: an email address, the platform IdP, and later Apple, Google, Steam, a passkey or a
-  native platform identity. A tenant-scoped one (Game Center, Play Games, EOS, Apple's per-team
-  id) is recognised only inside products of its scope. Connecting or removing one needs a sign-in
-  no older than five minutes; the last one cannot be removed.
-- **Library** — the licenses attached to an account, across products (the portal's default page).
-- **floating license** — a license with no holder: no account and no email
-  (`isFloatingLicense()`). It works on devices exactly as an attached one does, and the portal
-  offers to add it to a Library.
-- **waiting license** — a license assigned to an email that no account has verified yet. An account
-  that verifies the address takes it in, while the product's auto-link is on and unless that
-  account removed it before (`onAccountEmailVerified`).
-- **key entry** — someone typing or pasting a license key to use it, counted per license while the
-  product's Identity service is on. It counts only when it enrols a new device (an app activation
-  or a browser key session) or when it adds the key to an account in the portal. Entering the key
-  again on a device already using it, signing in, enrolling and refreshing a token never count.
-- **key-entry limit** — how many key entries a product allows per license that is in no account
-  (`identity.keyEntry.limit`: 1 to 100, default 10, never unlimited while Identity is on). Past it,
-  and only while the platform's key-entry refusals are on, a new device is refused with
-  `key_entry_limit` and a link to add the key to an account; devices already using the key keep
-  working. "Key entries", never "activations".
-- **pairwise subject** — the opaque id (`ps_…`) one product sees for one account: random, stored,
-  different for every product, never the account id. After an account merge the absorbed
-  account's subject stays valid as an alias of the survivor's.
-- **account × product data** — what an account holds for one product: managed config overrides
-  and Cloud Sync data, keyed by the pairwise subject. Merges and deletions reach it through Core's
-  subject-store registry.
-- **personal details** — the account's name, picture and locale. The public name
-  (`accounts.display_name`) is the **Screen name** in the UI. ("Profile" keeps its managed-payload
-  meaning; the portal's "Profile" section label is UI copy, not a domain noun.)
-
-## Device identity
-
-- **fingerprint** — the set of per-component hashes a device reports about its hardware. Raw
-  hardware values are hashed on-device and never transmitted.
-- **component** — one hashed hardware signal within a fingerprint: `machineUuid` (the
-  **anchor**), `boardSerial`, `cpuModel`, `primaryMac`, `bootVolumeUuid`, `ramBucket`,
-  `machineModel`. A component that cannot be read is omitted, never substituted.
-- **hwid** — the composite hash over a device's present components, in canonical order; the
-  coarse dedupe key. The server always recomputes it and never trusts the client's copy.
-- **drift** — how many components differ between a device's stored and presented fingerprint.
-  A component that was stored and is now missing or different counts as drift; a _newly_
-  reported one does not, so an SDK upgrade that learns to read more components is free.
-- **fingerprint mode** — per-tier enforcement strength, falling back to the product default:
-  `off` (collect, never enforce) · `lenient` (4) · `normal` (2, the default) · `strict` (0, and
-  a fingerprint becomes mandatory). A matching anchor widens a non-zero tolerance by one.
-- **device facts** — a device's current software snapshot: OS, runtime, hardware summary, and
-  probe results. Overwritten on each report; no history is kept.
-- **probe** — a product-declared check for a companion application, answered by the client as
-  present/absent plus an optional version. There is no full installed-application enumeration.
-- **trust level** — how much the Worker trusts that a device is a genuine store install: `basic`
-  (every device, and the expected level for web, desktop and sideloaded builds) or `attested`
-  (the device proved itself with Apple App Attest or Google Play Integrity against a fresh
-  challenge, `POST /<product>/devices/attest`). It lives on the device row only, never in a signed
-  document or the device token. An operator's **trust policy** can require `attested` for
-  edge-mint, gated delivery and commerce claims, audited only until the policy enforces it. Code
-  says `trust_level`, never "tier": **tier** is a licence tier. See
-  [device trust levels](/docs/services/core/device-trust/).
-
-Note that **profile** is already taken twice — the reusable managed-payload baseline above, and
-`DocProfile` in the signed payload. Do not overload it a third time for device data.
+- **product**: one tenant of Polaris Key, addressed by its `slug`. Every row, key, signature and admin route is product-scoped.
+- **license**: an access contract for one product. It carries entitlements and optionally belongs to an account. An admin creates it, or sign-in mints it.
+- **key**: the `pkey_<product>_…` secret a person redeems to activate a device. It is shown once and stored only as a hash.
+- **device**: an authorized install of the product, bound to a bearer token (`pkeyt_…`). A device belongs to Core, not to licensing: with an `open` or `requires-identity` policy it holds a token with no license behind it.
+- **profile**: a reusable managed-payload baseline that a tier or license attaches.
+- **entitlement**: a named right or value a device gets from its license, for example `channels` or `app.minVersion`. Entitlements ride the license document only.
+- **enrollment**: a keyless activation that auto-issues a license under the product's access policy. **Activation** redeems a `pkey_…` key.
+- **origin**: how a license came to exist: `admin`, `oidc` (minted at sign-in) or `enroll`.
+- **re-licensing**: changing a license's tier. Running clients pick up the change at their next license-document refresh. A downgrade below the active device count keeps existing devices and refuses new activations until the count drops.
+- **account**: one person across every product, with a primary verified email and its sign-in methods. Developers see a **pairwise subject** (`ps_…`) instead of the account id.
+- **fingerprint**: per-component hashes a device reports about its hardware. Raw values are hashed on the device and never sent.
 
 ## Config model
 
-- **config / secret / flag** — the three `ConfigKind`s of a catalog entry. `config` → plaintext
-  client setting; `secret` → redacted, delivered in the signed config document (the SDK caches it in a `0600` file; only the device token is in the OS keyring); `flag` → an entitlement.
-  The UI words are **Setting**, **Secret** and **Minted token** (a `secret` with
-  `delivery: edgeMint`); a `flag` is an **Entitlement**.
-- **management state** — per-value enforcement (the UI words are **Editable**, **Read-only** and
-  **Hidden**), one of:
-  - **default** — the server suggests a value; the client (user/local override or environment)
-    may override it.
-  - **enforced** — the server value wins and the client cannot override it (shown read-only).
-  - **hidden** — `enforced` **and** withheld from user-facing enumeration (still applied
-    internally).
-- **scope** — where a catalog key is meaningful (the `UiHints.scopes` field): one or more of
-  `profile`, `license`, `device`, `user` (`user` is a hint; where a synced setting roams is its
-  `user.sync`).
-- **manifest** — the files in a product's repo that describe it: `schema` (the config catalog),
-  `product` (metadata + enabled services + registration policy + OIDC + tiers + provisioning),
-  and `release` (release config + minters), each in JSON or YAML. They live in exactly one
-  directory, **`.pkey/`** — there is no second candidate directory and no fallback between two.
+A catalog entry has one of three kinds: `config` (a plaintext setting), `secret` (delivered in the signed config document) and `flag` (an entitlement). Effective config merges layers in this order, later layers winning:
 
-## Cloud Sync data
-
-The nouns of the Cloud Sync service (slug `sync`). Product copy and the console say "Cloud Sync";
-SDKs name the namespace `cloudSync` (`cloud_sync` in Python and GDScript), never `sync`, which
-already means the document sync.
-
-- **Cloud Sync** — the service that stores and syncs a person's settings, records and files for
-  one product. It is off by default and requires Config and Identity: there is no Cloud Sync
-  without signing in through the product.
-- **synced setting** — any Editable catalog `config` key (one whose `managementDefault` is not
-  `enforced` or `hidden`). Its chosen value fills the device's `local` slot and, with Cloud Sync,
-  roams to the person's other devices. An optional `user` block tunes it: `sync` (`user`,
-  `platform` or `local`, which keeps the value on the device), `conflict` (`lastWrite`, `max`,
-  `min` or `merge`) and `listed`. Replaces **user setting**, and its `device` scope, which no
-  longer exist.
-- **open setting** — a key the catalog does not declare, set by the game itself. It syncs as a
-  `user`-scope `lastWrite` value of at most 8 KiB, sharing the person's settings budget (256 keys,
-  64 KiB). An app treats its value as untrusted input.
-- **account override** (user-level managed config) — an operator-authored managed-payload layer
-  for one account on one product. It replaces the licence override for config and secrets on
-  every product; a licence keeps its entitlement overrides. A device gets the layer of the
-  account signed in on it, else of its licence's owner; an unowned (floating) licence has none.
-- **collection** — a namespace of **records** the catalog's `cloudSync` block declares, held for
-  the Cloud Sync principal. "Collection" is the code word; `saves` and `session` are its
-  templates.
-- **record** — one JSON value in a collection, keyed by id, at most 64 KiB. A record may carry
-  one **file**.
-- **file** — the bytes attached to a record (a save's data, for example), stored with its older
-  versions.
-- **saves template** — the collection template for save slots: 16 slots per person, each record
-  holding `playtime`, `progress`, `chapter`, `formatVersion` and a `thumbnail`, plus one file.
-- **save** — a record of the `saves` template, which may carry one file.
-- **Cloud Sync data** — the umbrella for the settings, records and files held in Cloud Sync. With
-  the account override it makes up the account × product data.
-- **Cloud Sync quota** — how many bytes of Cloud Sync data a person may keep on a product: the
-  entitlement `pkey.cloudSync.bytes`, read from the anchor licence of the device that writes (256
-  MiB when nothing sets it; 1 MiB and no files without a licence). Lowering it deletes nothing.
-- **Cloud Sync principal** — whose Cloud Sync data it is: the account signed in on the device, as
-  the product's pairwise subject; the same account the licensing model calls the holder. A device
-  activated with a licence key has no Cloud Sync principal and keeps its settings on the device.
-  (Plain **principal** keeps its meaning: the device principal.)
-
-## Release model
-
-The release truth store's nouns (see [Truth store](/docs/services/release/truth-store/)). "App"
-here names only the deliverable kind `app`, the product's own executable; it is never a synonym
-for product.
-
-- **deliverable** — something a product releases: its `app` (kind `app`, id `app`), a pack
-  (kind `pack`, with a pack type) or a package (kind `package`, see [Packages](#packages)). Ids are lower-case, dot-separated segments of at most 64
-  characters (`app`, `diceroll.core3d`). Every release belongs to exactly one deliverable, and
-  carries a **seq**: its position in that deliverable's publication order (not version order, so
-  a backport can have a higher seq than a newer version).
-- **build** — one compiled form of a release for a (platform, arch, format), with a **build
-  number** (iOS `CFBundleVersion`, Android `versionCode`, MSIX four-part, Sparkle
-  `sparkle:version`). Platforms are `macos`, `ios`, `android`, `windows`, `linux`, `web`; arches
-  `arm64`, `x86_64`, `universal`, `armv7`, `wasm32`, `any` (`universal` and `any` match every
-  arch).
-- **platform** — the OS family a running binary was built for, as a client sends it in
-  `X-PKey-Platform` (WIRE-CONTRACT-V4 §5.2): `macos`, `ios` (iPadOS too), `tvos`, `visionos`,
-  `watchos`, `android`, `windows`, `linux` or `web`. An SDK maps its runtime's own spelling
-  (`darwin`, `win32`, `Windows`) to these through one table, and omits the header for a spelling
-  the table lacks. `tvos`, `visionos` and `watchos` are header values only: builds, outlets and
-  the update feed use the six build platforms above.
-- **arch** — the CPU architecture a running binary was built for, sent in `X-PKey-Arch`:
-  `arm64`, `x86_64`, `armv7` or `wasm32`. A browser sends none. (`universal` and `any` are
-  artifact values, never header values.)
-- **SDK id** — which SDK made a request, sent in `X-PKey-SDK`: `node`, `react`, `python`,
-  `swift` or `godot`. The SDK's version travels separately, in `X-PKey-SDK-Version`.
-- **artifact role** — what an artifact (a file of a build, or a sidecar) is for: `payload`,
-  `files-index`, `chunk-index`, `chunk-bundle`, `delta`, `signature` or `checksum`. A pack
-  release's objects take `payload` (the whole payload), `files-index`, `files-gaps`, `delta`,
-  `patch`, `patch-data` or `chunk-index` (a variant's `pkey-chunks/1` chunk index). A pack's
-  chunk bundles are blobs held by the pack's uploads, not artifacts, so `chunk-bundle` is an app
-  artifact role only.
-- **promote / pin / yank** — move a channel's pointer to a release (which makes it a member of
-  the channel) / freeze the channel at its pointer / make a release unservable except through an
-  explicit pin. A yank never deletes anything, and a release deleted on GitHub is not a yank.
-  "Yank", not "revoke": keys and licenses revoke.
-- **channel policy** — the per-deliverable, per-channel record of pointer, pin, included
-  channels, **minimum supported** version (the device floor the signed feed will carry) and the
-  critical flag. Owned by the manifest until an operator or CI changes it, then by `admin` until
-  it is reverted — the `services_source` precedent. Not the same as a release **channel floor**,
-  the sync's anti-rollback high-water mark.
-- **download ticket** — a capability for ONE release file that the customer portal hands a
-  browser: `v1.<kid>.<exp>.<mac>`, appended as `?ticket=` to the file's canonical bytes-host URL
-  when a portal download token is redeemed, after every portal check. It is bound to the
-  product, release, file name and SHA-256, lives at most 120 seconds, may be reused inside that
-  window (so `Range` and resume work), carries no account, and is honoured on the bytes host only.
-  The Velopack package route also mints one, for a device whose bearer passes that file's own
-  access check, because Velopack drops `Authorization` on redirects.
-  It is not a grant (the word S-19 keeps for the reasons someone holds an entitlement), and it is
-  not a CI upload ticket (the short-lived R2 credentials of trusted publishing, which upload under
-  `staging/<product>/<ticketId>/`).
-
-### Packs
-
-Content packs are deliverables like the app (see [Packs](/docs/services/release/packs/)).
-
-- **pack** — a deliverable of kind `pack`: data the app loads at run time (a Godot resource pack,
-  `godot.pck`, or a directory of files, `files.tree`), declared in `.pkey/release` under its
-  **pack id** (`diceroll.core3d`, never `app`). A pack carries data only, never code.
-- **pack release** — one release of a pack, which IS its CI-signed record (`kind: pack`): the
-  pack type, the **variants** and every object they name, each pinned by SHA-256 and length.
-- **variant** — one form of a pack release for a combination of axis values (`texture`,
-  `locale`, `quality`); its **variant key** is `axis=value` pairs sorted and joined with `;`
-  (`locale=fr;texture=astc`), empty for an unvaried pack. A device picks the variant it can use.
-- **payload** — the bytes a variant installs: one file (a container such as a PCK) or a tree of
-  files. Its `sha256` is the file's, or a tree's **tree digest**.
-- **files index** — `pkey-files/1`, the hash-pinned list of a variant's files, each with its own
-  stored blob, so a device can update file by file. The Worker reads one at a time, at most
-  8 MiB.
-- **binding** — how app releases bind a pack: **pinned** (each app release pins the exact pack
-  release it ships with), **compatible** (the newest release whose `requires.contentApi` range
-  holds the app's contentApi) or **standalone** (the newest release, whatever the contentApi).
-- **contentApi** — an integer the app declares for the content shape its code expects
-  (`deliverables.app.content.contentApi`), stamped into every app release. The **live levels**
-  of a channel are the contentApi values of the app releases it serves at or above its floor.
-- **pin** — the exact pack release an app release names in its signed `content.pins`; Release
-  mirrors pins into `release_pins` and never edits them. A yank stops new pins only.
-- **embedded baseline** — a pack (`baseline: embedded`) that app builds ship inside them, so a
-  store build is playable offline; a build's `embeds` lists the packs it ships.
-- **marker** — `pkey-marker/1`, the compact pack record beside an embedded payload, so the build
-  can verify what it ships offline.
-- **content stamp** — `pkey-content/1`, the app record's `content` embedded in every build: how
-  the running build learns its own pins without the network.
-- **hold** — a compatible pack release an app release keeps in its signed `content.holds`
-  instead of the resolved one; mirrored into `release_holds`.
-- **pack set** — the pack releases active in a running build; its **pack set id** (`packSetId`)
-  is what a device reports. Release also stores **resolved** pack sets over the compatible and
-  standalone packs, per (channel, contentApi level, platform, **engine** of the live builds — empty
-  when they declare none), with the same id function. They are stored as one row per **group**
-  (packs sharing variant axes, merged across dependencies and conflicts) and per combination of
-  that group's axes; a device's resolved set is one row per group, the one its variant projects
-  onto. A pack nothing satisfies there is listed as **unsatisfied** with a reason; a pack is left
-  out only when the packs its own dependencies and conflicts link it to cannot keep it.
-- **pack floor** — the lowest pack release a channel resolves for one contentApi line ("foes ≥
-  1.3.4 for contentApi 3"), set by an operator, so a fix can be backported to an older line.
-- **delivery gate** — the licence flag (`entitlement`) of a pack's own `dist_access` row, set by
-  an operator: the only thing that gates a pack. `.pkey/release` may assert it, never set it.
-
-### Packages
-
-A package is a library or image that other software installs from a **package feed**; our own
-SDKs are packages of the system product. Packages never reach a device through Polaris Key's
-device-facing routes.
-
-- **package (deliverable kind)** — a deliverable of kind `package`, declared in `.pkey/release`
-  with an **ecosystem** (`npm`, `pypi`, `swift`, `maven`, `oci` or `godot`), a **name** in that
-  ecosystem's grammar (`@scope/name`, `scope.Name`, `groupId:artifactId`, …) and an `artifacts`
-  map of file-name globs. A product may declare packages and no app.
-- **package version** — one release of a package, `<deliverable>@<version>`, published by `pkey
-release publish --deliverable <id>`. It is never signed (no release record), and its version is
-  **unique forever**: a yanked or deprecated version stays, as a tombstone, and is never
-  published again. Its files and the metadata `pkey` extracted from them are stored by Release;
-  the Worker never unpacks a package.
-- **package feed** — Distribution's serving of one ecosystem's packages for one owner (product)
-  on `pkg.plrs.im`, in that ecosystem's own registry protocol. Feeds are operator-owned settings
-  (never manifest-writable): an owner's **package feeds** switch, a **namespace** per feed (the
-  only names it takes, against dependency confusion), a size ceiling, and the platform's
-  per-ecosystem kill switch. Not an **outlet** (which delivers an app) and not an install source
-  (once called a storefront feed). The navigation word is **Packages**.
-- **system product** — `polaris-key`, the platform's own product, which owns the platform
-  packages. Only the package-feeds bootstrap creates it; it cannot be created by hand, deleted or
-  renamed, and the console keeps it out of the product switcher.
-
-## Distribution model
-
-Distribution's nouns (see [Distribution](/docs/services/distribution/)). The service ships them as
-vocabulary first; the records arrive with the distribution manifest and the packages after it.
-
-- **outlet** — a venue a build reaches players through, and that owns (or delegates) its updates:
-  `direct`, `app-store`, `testflight`, `play`, `steam`, `itch`, `ms-store`, `flathub`, `web`, …
-  Not "surface" (a Release/Update route kind) and not "distribution" (the service). The UI word
-  is **Channel** (a distribution channel); "outlet" never appears in the UI. A channel's selling
-  facet is its **Storefront**.
-- **the Polaris Key outlet (id `direct`)** — the developer's own downloads, served by Polaris Key:
-  `dl.plrs.im`, the download page, and the Scoop and Homebrew feeds. Everything a person reads
-  calls it "Polaris Key" (a package-managed install reads "Polaris Key · via Homebrew"); every
-  identifier keeps `direct`: the outlet id and kind, signed feeds, the corpus, the SDK constants,
-  the Android build flavour and the Godot adapter.
-- **transport** — how a deliverable's bytes arrive on an outlet: `pkey-cdn` (Polaris Key's own
-  CDN, the default), `embedded`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`,
-  `flatpak-ext`, `web`. One deliverable, many transports.
-- **availability** — "release V of deliverable D is live on outlet O since T": a distribution
-  record, the answer to "is it in the store yet?".
-- **submission** — a build's review lifecycle at a store outlet (App Store Connect, Play,
-  Microsoft Store states).
-- **rollout** — percentage exposure of a release on one outlet; distribution state, carried into
-  Update's feed. Distinct from a **channel** (a release track), which is Release's.
-- **listing** — store-page metadata (name, subtitle, description, icon, screenshots, category)
-  that feeds storefront sources and the download page. The **shared listing** is a product's one
-  listing, entered once or imported, from which every store's listing is projected and graded in
-  a fit report; `.pkey/distribution` `listing` is one of its import sources.
-- **outlet capabilities** — what an outlet permits: `binaryUpdates` (`self` | `store` | `none`),
-  `codeUpdates`, `dataUpdates`, `channelSwitch`, `commerce`, `downloadedScripts`. The
-  security-relevant bits are operator-owned, never manifest-writable. An identifier only: the UI
-  says what the channel allows.
-- **registry token** — the credential a client of a non-public package feed presents on the
-  registry host: `pkeyr_…`, always expiring, bound to one product, and either owner-bound (minted
-  in the console) or licence-bound (minted by a licensee in the portal, or by an operator for
-  one). A token reads; an owner-bound one may also **publish** (F-22: native clients such as
-  `npm publish` and `twine`, named feeds only, at most 30 days). A **Godot editor URL** token is the narrow variant the Godot editor carries
-  in its URL. Not a device token (`pkeyt_`) and not a licence key (`pkey_`), neither of which a
-  registry accepts.
-
-## Layering & precedence
-
-Effective managed config is computed server-side by merging payload layers
-`catalog defaults → tier(profile) → license(profile) → store grants → license overrides →
-account overrides → device overrides` (later layers win; this is legitimate admin authority). A
-licence keeps only its **entitlement overrides**; config and secrets for a customer are its
-**account overrides**, which reach the devices signed in to that account and the licence-key
-devices of licences it owns. An unowned (floating) licence has no account override layer. Until
-the licence-override migration runs, a licence's config and secret overrides are still read, below
-the account's (U-03). On the **client**, a value's source is resolved as:
-
-```
-enforced | hidden (remote)  >  user/local override  >  environment  >  remote default  >  schema default
+```text title="Server layers"
+catalog defaults → tier profile → license profile → store grants
+  → license overrides → account overrides → device overrides
 ```
 
-So an `enforced`/`hidden` value always comes from the server; a `default` value can be overridden
-locally or by environment variables.
+On the client, a value's source resolves in this order:
+
+```text title="Client precedence"
+enforced or hidden (remote) > user or local override > environment
+  > remote default > schema default
+```
+
+An `enforced` or `hidden` value always comes from the server. A `default` value can be overridden on the device.
 
 ## Signed documents
 
-Wire contract v3 replaced the one fused document with **two**, one per service, so a product can
-take either without the other. Both carry the same envelope — `iss` (`key.plrs.im`), `aud` (the
-product slug), `deviceId`, `issuedAt`, `expiresAt`, `graceUntil` — and are domain-separated by
-their JOSE `typ`, which is rejected when unknown or missing.
+Each service issues its own signed document, and a client derives the license status from the license document.
 
-- **license document** (`pkey-license+jws`, `GET /<product>/license/document`) — `licenseId`, an
-  optional `profile` (`DocProfile`), and `entitlements`. Tier and admin policy arrives in
-  `entitlements` as enforced entries — `license.tier`, `license.tierLabel`, `channels`,
-  `app.minVersion`, `app.maxVersion`, `deviceLimit` — beside the catalog's `flag` keys.
-- **config document** (`pkey-config+jws`, `GET /<product>/config/document`) — `config`, `secrets`,
-  and the catalog's `schemaVersion` (the product's, not the wire's). It carries no license fields
-  at all: a product with Config on and License off issues one to any registered device, which is
-  the wire-level guarantee that the services are independent.
-- **trust manifest** (`pkey-trust+jws`, `GET /<product>/.well-known/polaris-trust.jws`) — the key
-  set. Always verified against **pinned keys only**, on both the network and the reload path.
-- **offline bundle** (`pkey-bundle+jws`) — an operator-minted, device-bound file for air-gapped
-  installs: `bundleId`, `deviceId`, `docs` (a license document, a config document, or both), and
-  the trust manifest. Imported all-or-nothing — the bundle verifies against pins, then its trust
-  manifest, then each inner document, and only then is the cache written — so no partial import
-  exists. A verified bundle satisfies activation with no `pkeyt_` token anywhere.
-- **channel feed** (`pkey-feed+jws`, wire contract v4, `GET /<product>/update/<channel>/feed.jws`)
-  — a device-less document, signed by the product key, that says what each platform of one
-  canonical channel should run: per platform target, the pinned **release record** (by hash,
-  `seq` and version), the platform's floor and, per outlet, what is live there. Its `seq` grows
-  per (product, channel), and a client refuses a lower one (a rollback); it is stale after its
-  TTL plus the clock skew, and a stale feed never updates anything.
-- **release record** (`pkey-release+jws`, wire contract v4, `GET /<product>/release/records/<sha256>`)
-  — a release's descriptor (builds, artifacts with sizes and digests) signed in CI by a
-  **release key**, fetched by the SHA-256 of its exact bytes, which the feed pins, and checked
-  against that hash before any signature work.
+| Document       | Type               | Carries                                                                  |
+| -------------- | ------------------ | ------------------------------------------------------------------------ |
+| License        | `pkey-license+jws` | `licenseId`, an optional profile, `entitlements`                         |
+| Config         | `pkey-config+jws`  | `config`, `secrets`, the catalog's `schemaVersion`                       |
+| Trust manifest | `pkey-trust+jws`   | The key set, verified against pinned keys only                           |
+| Offline bundle | `pkey-bundle+jws`  | A device-bound license and config document, imported whole or not at all |
+| Channel feed   | `pkey-feed+jws`    | What each platform of a release track should run                         |
+| Release record | `pkey-release+jws` | A release's builds and artifacts, signed in CI                           |
 
-**License status** is the terminal gate state a client renders: `ok`, `grace`, `expired`,
-`revoked`, `needs-activation`, `version-too-old`, `version-too-new`, `channel-not-entitled`, and
-**`not-applicable`** — returned when the product does not enable License. `isUsable` is true for
-`ok`, `grace`, and `not-applicable`, so a config-only or release-only product boots usable rather
-than claiming it needs an activation it will never have. Status is never carried in a document;
-the client derives it.
+**License status** is the state a client renders: `ok`, `grace`, `expired`, `revoked`, `needs-activation`, `version-too-old`, `version-too-new`, `channel-not-entitled` and `not-applicable`. The last applies when the product doesn't enable License, and it counts as usable.
 
-## Trust & keys
+## Trust and keys
 
-- **release key** — an Ed25519 key held by a product's CI that signs its release records. The
-  app pins its release keys separately from its product keys, a release key is never a product
-  key, and the Worker never holds one, so the Worker alone cannot ship bytes no release key
-  signed (the two-signer model). Not a **signing key**.
-- **signing key** — a per-product Ed25519 keypair. The private key is envelope-encrypted at rest
-  in D1 under the platform **KEK** (a single Worker secret) and never leaves the Worker. The
-  public key is served at `/<product>/.well-known/jwks.json` and pinned by SDKs.
-- **edge-mint / minter** — a per-product recipe that mints a short-lived third-party token
-  (e.g. an Apple MusicKit developer token); described by `alg`, claims template, key, and audience.
-  The UI word is **Minted token**. Edge-minting belongs to **Config**, not a service of its own: a
-  catalog secret selects it with `delivery: edgeMint`, and the routes are
-  `/<product>/config/mint/<id>/{token,auth}`.
+- **signing key**: a per-product Ed25519 key. Its private half is sealed at rest and never leaves the Worker. Its public half is served at `/<product>/.well-known/jwks.json` and pinned by SDKs.
+- **release key**: an Ed25519 key held by the product's CI that signs release records. The Worker never holds one, so it can't ship bytes no release key signed.
+- **minter**: a recipe that mints a short-lived third-party token. The UI word is **Minted token**.
+
+## Cloud Sync data
+
+**Cloud Sync** stores a signed-in person's settings, records and files for one product. It needs Config and Identity. A **synced setting** is an editable catalog `config` key. A **record** is one JSON value in a **collection**, and a **save** is a record of the `saves` collection template. The SDKs name the namespace `cloudSync`.
+
+## Release model
+
+A **deliverable** is something a product releases: its app, a **pack** or a package. Each release belongs to one deliverable and has a position, its `seq`, in that deliverable's publication order. A **build** is one compiled form of a release for a platform, architecture and format. To **promote**, **pin** or **yank** is to move a release track's pointer, freeze it, or withdraw a release. A yank never deletes anything.
+
+### Packs
+
+A pack is a deliverable of kind `pack`: data the app loads at run time, never code. A **pack release** is its CI-signed record. A **variant** is one form of it for a combination of axis values such as `texture` or `locale`.
+
+### Packages
+
+A package is a library or image that other software installs from a **package feed**. The SDKs are packages of the platform's own product, `polaris-key`. Each package version is unique forever.
+
+## Distribution model
+
+An **outlet** is a venue a build reaches players through. The UI word is **Channel**. A **transport** is how a deliverable's bytes arrive on an outlet. **Availability** says that release V is live on outlet O. A **rollout** is the percentage of devices that see a release on one outlet.

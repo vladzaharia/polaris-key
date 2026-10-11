@@ -58,7 +58,7 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     name: "InstallSteps",
     file: "InstallSteps.astro",
     summary: "Registry routing, then the install, from the CLI's feedsSetup().",
-    props: ["sdk: SdkId"],
+    props: ['sdk: SdkId | "cli"'],
   },
   {
     name: "StatesToHandle",
