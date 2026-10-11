@@ -270,9 +270,10 @@ export const COMMANDS: readonly PkeyCommand[] = [
     rows: [
       ["dev", "Run a local Polaris Key with a seeded product and test keys"],
       [
-        "dev expire|disable|revoke|restore|fill-seats key",
-        "Put a test key in a state",
+        "dev expire|disable|revoke|restore key",
+        "Change a test key's state",
       ],
+      ["dev fill-seats key", "Fill a test key's device limit"],
       ["dev config name json", "Set a config value on the test keys"],
       ["dev release version", "Publish a signed release"],
       ["dev offline|online", "Drop requests, or answer them again"],
