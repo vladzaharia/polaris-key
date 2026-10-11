@@ -19,6 +19,42 @@ export interface PortalMe {
 /** The sign-in providers the login card can show (PORTAL.md §4.1), in display order. */
 export type PortalProvider = "apple" | "google" | "steam";
 
+/** A sign-in connection the card can offer (I-30): its id names `/login/sso/<id>`. */
+export interface PortalConnection {
+  id: string;
+  label: string;
+}
+
+/**
+ * I-30: where an address's domain routes (identifier-first routing). The email start answers it
+ * for a DNS-verified domain of an active connection, and an enforced domain's refusals carry it.
+ */
+export interface PortalSsoNext {
+  kind: "sso";
+  connection: PortalConnection;
+  /** The domain gets no email code or sign-in link: the connection is the only way in. */
+  enforced: boolean;
+}
+
+const CONNECTION_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** `x` as a `next: {kind: "sso"}` member, or `undefined` when it is anything else. */
+export function readSsoNext(x: unknown): PortalSsoNext | undefined {
+  if (typeof x !== "object" || x === null) return undefined;
+  const o = x as { kind?: unknown; connection?: unknown; enforced?: unknown };
+  if (o.kind !== "sso" || typeof o.connection !== "object" || !o.connection)
+    return undefined;
+  const c = o.connection as { id?: unknown; label?: unknown };
+  if (typeof c.id !== "string" || !CONNECTION_ID_RE.test(c.id))
+    return undefined;
+  if (typeof c.label !== "string" || !c.label.trim()) return undefined;
+  return {
+    kind: "sso",
+    connection: { id: c.id, label: c.label.trim() },
+    enforced: o.enforced === true,
+  };
+}
+
 export interface PortalCapabilities {
   auth: {
     oidc: boolean;
@@ -33,6 +69,11 @@ export interface PortalCapabilities {
      * provider row renders only when the list is present and non-empty.
      */
     providers?: PortalProvider[];
+    /**
+     * I-30: the platform connections for customers besides the seeded one (that one is `oidc`),
+     * each a "Continue with <label>" button to `/login/sso/<id>`. Absent on an older Worker.
+     */
+    connections?: PortalConnection[];
   };
   /**
    * The product named by `?product=`, for the login card's context header (G1/G28). Not sent by
@@ -923,6 +964,8 @@ export interface PortalEmailSent {
   codeLength?: number;
   /** Seconds before "Send a new code" is accepted (the card's countdown). */
   resendIn?: number;
+  /** I-30: the address's domain routes to a connection; nothing was sent. */
+  next?: PortalSsoNext;
 }
 
 export class PortalApiError extends Error {
@@ -935,6 +978,8 @@ export class PortalApiError extends Error {
    * `too_large`, `unsupported_type` …). Copy is chosen from it, never from `message`.
    */
   reason?: string;
+  /** I-30: an enforced domain's refusal names the connection to use instead. */
+  next?: PortalSsoNext;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -980,6 +1025,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let triesLeft: number | undefined;
     let retryAfter: number | undefined;
     let reason: string | undefined;
+    let next: PortalSsoNext | undefined;
     try {
       const body = (await res.json()) as {
         error?: string;
@@ -987,12 +1033,14 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
         triesLeft?: unknown;
         retryAfter?: unknown;
         reason?: unknown;
+        next?: unknown;
       };
       code = body.error;
       message = body.message;
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
       if (typeof body.reason === "string") reason = body.reason;
+      next = readSsoNext(body.next);
     } catch {
       // non-JSON response
     }
@@ -1001,6 +1049,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (triesLeft !== undefined) error.triesLeft = triesLeft;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (reason !== undefined) error.reason = reason;
+    if (next) error.next = next;
     throw error;
   }
   const text = await res.text();
@@ -1046,12 +1095,16 @@ export const portalApi = {
    * I-07's identifier-first email start: one email with a 6-digit code and a sign-in link
    * (SIGN-IN.md §3.4). `/api/magic/start` is the older alias of the same route.
    */
-  startEmailSignIn: async (email: string) => {
+  startEmailSignIn: async (email: string): Promise<PortalEmailSent> => {
     const out = await call<PortalEmailSent>("/api/signin/email/start", {
       method: "POST",
       // Never the carried license key (carriedKey.ts).
       body: JSON.stringify({ email, returnTo: returnUrl() }),
     });
+    // I-30: a routed start sent nothing, so this tab has no code to wait for yet.
+    const next = readSsoNext(out?.next);
+    if (next) return { ...out, next };
+    if (out && "next" in out) delete out.next;
     signInPending = true;
     return out;
   },

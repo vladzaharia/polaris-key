@@ -1,6 +1,13 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  KeyRound,
+  Mail,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
 import { t, tParts } from "../../lib/copy.js";
@@ -9,7 +16,9 @@ import {
   portalApi,
   PortalApiError,
   type PortalCapabilities,
+  type PortalConnection,
   type PortalEmailSent,
+  type PortalSsoNext,
 } from "../api.js";
 import { CardHeader, LoginCard } from "../components/signin/LoginCard.js";
 import { ProviderRow } from "../components/signin/ProviderRow.js";
@@ -40,6 +49,14 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
  * - **KeyStep** (the on-ramp): the key field; Continue keeps the key in `#/?activate=` and moves
  *   on to sign-in, after which the Activate dialog opens with it filled in (the same round trip
  *   as `/activate#key=…`).
+ * - **SsoStep** (I-30, mockup `identity.sign-in-routes` pins 1 and 2): the address's domain is
+ *   DNS-verified by a connection, so the email start sent nothing and answered `next`. The
+ *   address as a chip with **Change**, the organization's name as the heading, **Continue to
+ *   <Organization>** (`/login/sso/<id>` with the address as `login_hint`) and, unless the domain
+ *   requires the connection, **Email me a code instead** (the resend sends the first code). An
+ *   enforced refusal later (a code sent before the domain was enforced) lands here too.
+ * - The methods step lists the Worker's other platform connections (`auth.connections`) as
+ *   "Continue with <label>" buttons.
  *
  * Copy is the kit copy catalog's `signin.*` strings (§5.2) through `t()`; the few sentences it does
  * not word yet are written here under the key they will take.
@@ -50,6 +67,8 @@ type Step =
   /** The code was right but its account can't sign in (§3.13, Account disabled): a dead end
    *  for that address, so the step ends here (PS-05 review M3). */
   | { kind: "refused"; email: string }
+  /** I-30: the address's domain routes to a connection (`next` from the start or a refusal). */
+  | { kind: "sso"; email: string; next: PortalSsoNext }
   | { kind: "key" };
 
 /** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
@@ -74,6 +93,16 @@ function productFromUrl(): string | null {
 function returnTo(): string {
   return returnUrl();
 }
+
+/** I-30: a connection's sign-in, with the typed address as the IdP's `login_hint` when there is one. */
+function connectionHref(id: string, email?: string): string {
+  const hint = email && EMAIL_RE.test(email) ? email : null;
+  return `/login/sso/${encodeURIComponent(id)}?${
+    hint ? `login_hint=${encodeURIComponent(hint)}&` : ""
+  }return_to=${encodeURIComponent(returnTo())}`;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The key the on-ramp (or an `/activate#key=…` link) is carrying through sign-in, if valid. */
 function useCarriedKey(): string | null {
@@ -101,8 +130,15 @@ export function SignInPage(): React.ReactElement {
         ? "This account can't sign in"
         : step.kind === "key"
           ? t("signin.link.key")
-          : t("signin.methods.titleApp"),
+          : step.kind === "sso"
+            ? step.next.connection.label
+            : t("signin.methods.titleApp"),
   );
+  /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
+  const ssoKey =
+    step.kind === "sso"
+      ? `sso:${step.next.connection.id}:${step.next.enforced ? "only" : "first"}`
+      : null;
 
   const ctx = caps.data?.product;
   const header = ctx ? (
@@ -118,7 +154,7 @@ export function SignInPage(): React.ReactElement {
     ? "loading"
     : caps.error
       ? "unreachable"
-      : step.kind;
+      : (ssoKey ?? step.kind);
 
   return (
     <LoginCard header={header} stepKey={stepKey} direction={direction}>
@@ -132,6 +168,28 @@ export function SignInPage(): React.ReactElement {
           resendIn={step.resendIn}
           onChangeEmail={() => go({ kind: "methods" }, "back")}
           onRefused={() => go({ kind: "refused", email: step.email })}
+          onRouted={(next) => go({ kind: "sso", email: step.email, next })}
+          onExpired={() =>
+            go(
+              {
+                kind: "methods",
+                email: step.email,
+                // signin.code.expiredRestart (PX-W4): no catalog key yet
+                notice: "That sign-in has expired. Continue to get a new code.",
+              },
+              "back",
+            )
+          }
+        />
+      ) : step.kind === "sso" ? (
+        <SsoStep
+          email={step.email}
+          next={step.next}
+          onChangeEmail={() => go({ kind: "methods" }, "back")}
+          onCode={(resendIn) =>
+            go({ kind: "code", email: step.email, resendIn })
+          }
+          onRouted={(next) => go({ kind: "sso", email: step.email, next })}
           onExpired={() =>
             go(
               {
@@ -163,7 +221,13 @@ export function SignInPage(): React.ReactElement {
           context={ctx ?? null}
           initialEmail={step.email}
           notice={step.notice}
-          onSent={(email, resendIn) => go({ kind: "code", email, resendIn })}
+          onSent={(email, sent) =>
+            go(
+              sent?.next
+                ? { kind: "sso", email, next: sent.next }
+                : { kind: "code", email, resendIn: resendDelay(sent) },
+            )
+          }
           onKey={() => go({ kind: "key" })}
         />
       )}
@@ -295,7 +359,8 @@ function MethodsStep({
   initialEmail?: string;
   /** Why the card came back here (an expired sign-in), shown under the title. */
   notice?: string;
-  onSent: (email: string, resendIn: number) => void;
+  /** The start's answer: a code was sent, or (`next`) the domain routes to a connection. */
+  onSent: (email: string, sent: PortalEmailSent | undefined) => void;
   onKey: () => void;
 }): React.ReactElement {
   const [email, setEmail] = React.useState(initialEmail ?? "");
@@ -305,6 +370,7 @@ function MethodsStep({
   const errorId = React.useId();
   const carried = useCarriedKey();
   const providers = caps.auth.providers ?? [];
+  const connections = caps.auth.connections ?? [];
   const magic = caps.auth.magic;
   const oidc = caps.auth.oidc;
   const ssoLabel = t("signin.provider.continue", {
@@ -312,7 +378,7 @@ function MethodsStep({
   });
   const ssoHref = `/login?return_to=${encodeURIComponent(returnTo())}`;
 
-  if (!magic && !oidc && providers.length === 0) {
+  if (!magic && !oidc && providers.length === 0 && connections.length === 0) {
     return (
       <>
         <Title>Sign-in is turned off</Title>
@@ -331,7 +397,7 @@ function MethodsStep({
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     const value = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    if (!EMAIL_RE.test(value)) {
       setInvalid(true);
       setError(t("signin.email.invalid"));
       return;
@@ -340,8 +406,7 @@ function MethodsStep({
     setError(null);
     setSending(true);
     try {
-      const out = await portalApi.startEmailSignIn(value);
-      onSent(value, resendDelay(out));
+      onSent(value, await portalApi.startEmailSignIn(value));
     } catch (err) {
       setError(startErrorText(err));
       if (err instanceof PortalApiError && err.status === 422) setInvalid(true);
@@ -416,7 +481,20 @@ function MethodsStep({
           </Button>
         </form>
       ) : null}
-      {(providers.length > 0 || oidc) && magic ? <Divider /> : null}
+      {(providers.length > 0 || oidc || connections.length > 0) && magic ? (
+        <Divider />
+      ) : null}
+      {connections.length > 0 ? (
+        <div className="space-y-3">
+          {connections.map((c) => (
+            <ConnectionButton
+              key={c.id}
+              connection={c}
+              href={connectionHref(c.id, email.trim())}
+            />
+          ))}
+        </div>
+      ) : null}
       <ProviderRow
         providers={providers}
         // I-06's start route is GET /login/<provider>; the row renders only once the Worker
@@ -466,6 +544,32 @@ function MethodsStep({
   );
 }
 
+/**
+ * A platform connection on the methods step (I-30): one labelled, full-width button, drawn like
+ * the provider row's buttons (mockup `identity.sign-in`'s store-account button). A long name wraps.
+ */
+function ConnectionButton({
+  connection,
+  href,
+}: {
+  connection: PortalConnection;
+  href: string;
+}): React.ReactElement {
+  return (
+    <a
+      href={href}
+      onClick={() => stashCarriedKey()}
+      data-connection={connection.id}
+      className="pk-pressable flex min-h-[3.25rem] w-full items-center justify-center gap-2.5 rounded-md border border-border bg-hover px-4 py-2 text-center font-medium text-fg-strong hover:border-border-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+    >
+      <Building2 aria-hidden className="size-5 shrink-0 text-fg-muted" />
+      <span className="min-w-0 break-words">
+        {t("signin.provider.continue", { provider: connection.label })}
+      </span>
+    </a>
+  );
+}
+
 function Divider(): React.ReactElement {
   return (
     <div className="flex items-center gap-3 text-sm text-fg-muted" aria-hidden>
@@ -495,6 +599,7 @@ function CodeStep({
   resendIn,
   onChangeEmail,
   onRefused,
+  onRouted,
   onExpired,
 }: {
   email: string;
@@ -503,6 +608,8 @@ function CodeStep({
   onChangeEmail: () => void;
   /** The code was right, but its account can't sign in (the verify answered 403). */
   onRefused: () => void;
+  /** I-30: the address's domain now requires its connection (a refusal carried `next`). */
+  onRouted: (next: PortalSsoNext) => void;
   /** The sign-in itself is gone (the resend answered `signin_expired`): back to the email. */
   onExpired: () => void;
 }): React.ReactElement {
@@ -535,7 +642,12 @@ function CodeStep({
       await portalApi.verifySignInCode(value);
       await qc.invalidateQueries({ queryKey: portalKeys.me });
     } catch (err) {
-      // The verify's only 403: a right code for an account that can't sign in (the Worker's
+      // I-30: the domain requires its connection now (enforced after this code was sent).
+      if (err instanceof PortalApiError && err.next) {
+        onRouted(err.next);
+        return;
+      }
+      // The verify's other 403: a right code for an account that can't sign in (the Worker's
       // `forbidden`, §3.13). Another code or a resend would end the same way.
       if (err instanceof PortalApiError && err.status === 403) {
         onRefused();
@@ -578,6 +690,10 @@ function CodeStep({
       setWait(resendDelay(out));
       focusCode();
     } catch (err) {
+      if (err instanceof PortalApiError && err.next) {
+        onRouted(err.next);
+        return;
+      }
       if (err instanceof PortalApiError && err.code === "signin_expired") {
         onExpired();
         return;
@@ -703,6 +819,144 @@ function CodeStep({
           {t("signin.code.differentEmail")}
         </QuietLink>
       </QuietLinks>
+    </>
+  );
+}
+
+/**
+ * The typed address above a step that depends on it (mockup `identity.sign-in-routes`), with
+ * **Change** back to the email step. A long address truncates; the full one is its title.
+ */
+function IdChip({
+  email,
+  onChange,
+}: {
+  email: string;
+  onChange: () => void;
+}): React.ReactElement {
+  return (
+    <div className="flex">
+      <div className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border py-0.5 pl-3 pr-1 text-sm text-fg">
+        <span className="min-w-0 truncate" title={email}>
+          {email}
+        </span>
+        <button
+          type="button"
+          onClick={onChange}
+          aria-label="Change email"
+          className="inline-flex min-h-8 shrink-0 items-center rounded-full px-2 font-medium text-accent-fg hover:underline"
+        >
+          {t("signin.consent.change")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * I-30's routed step (see the module comment): the connection first, the email code second
+ * unless the domain requires the connection.
+ */
+function SsoStep({
+  email,
+  next,
+  onChangeEmail,
+  onCode,
+  onRouted,
+  onExpired,
+}: {
+  email: string;
+  next: PortalSsoNext;
+  onChangeEmail: () => void;
+  /** The first code went out (the resend's answer): on to the code step. */
+  onCode: (resendIn: number) => void;
+  /** The domain became enforced while the card was open. */
+  onRouted: (next: PortalSsoNext) => void;
+  onExpired: () => void;
+}): React.ReactElement {
+  const { connection, enforced } = next;
+  const domain = email.slice(email.lastIndexOf("@") + 1);
+  const [sending, setSending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const sendCode = async (): Promise<void> => {
+    if (sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      onCode(resendDelay(await portalApi.resendSignInCode()));
+    } catch (err) {
+      if (err instanceof PortalApiError && err.next) {
+        onRouted(err.next);
+        return;
+      }
+      if (err instanceof PortalApiError && err.code === "signin_expired") {
+        onExpired();
+        return;
+      }
+      setError(startErrorText(err));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <>
+      <IdChip email={email} onChange={onChangeEmail} />
+      <div className="space-y-2">
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden
+            className="grid size-8 shrink-0 place-items-center rounded-md bg-hover text-fg-muted"
+          >
+            <Building2 className="size-5" />
+          </span>
+          <Title>{connection.label}</Title>
+        </div>
+        <p className="text-fg-muted">
+          {enforced
+            ? // signin.sso.required (I-30): no catalog key yet
+              `${connection.label} requires its own sign-in for ${domain} addresses.`
+            : // signin.sso.first (I-30): no catalog key yet
+              `${domain} signs in through ${connection.label}.`}
+        </p>
+      </div>
+      <div className="space-y-3">
+        <Button
+          asChild
+          size="lg"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+        >
+          <a
+            href={connectionHref(connection.id, email)}
+            onClick={() => stashCarriedKey()}
+          >
+            {/* signin.sso.continue (I-30): no catalog key yet */}
+            <span className="min-w-0 break-words">
+              Continue to {connection.label}
+            </span>
+            <ArrowRight aria-hidden />
+          </a>
+        </Button>
+        {enforced ? null : (
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-12 w-full text-base font-semibold"
+            loading={sending}
+            iconStart={<Mail aria-hidden />}
+            onClick={() => void sendCode()}
+          >
+            {/* signin.sso.code (I-30): no catalog key yet */}
+            Email me a code instead
+          </Button>
+        )}
+        {error ? (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        ) : null}
+      </div>
     </>
   );
 }
