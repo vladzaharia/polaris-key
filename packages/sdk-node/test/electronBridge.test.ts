@@ -181,6 +181,42 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     });
   });
 
+  it("returns v4 activation kinds without folding them into error", async () => {
+    const answers = [
+      json({ error: { code: "fingerprint_required" } }, 403),
+      json({ error: { code: "enroll_disabled" } }, 403),
+      json(
+        {
+          error: { code: "hardware_mismatch" },
+          drift: 2,
+          changed: ["cpu", "board"],
+        },
+        403,
+      ),
+      json({ error: { code: "license_suspended" } }, 403),
+    ];
+    const { bridge } = await setup(
+      { "POST /djdl/license/activate": () => answers.shift()! },
+      null,
+    );
+    expect(await bridge.submitKey("KEY-1")).toEqual({
+      kind: "fingerprint-required",
+    });
+    expect(await bridge.submitKey("KEY-2")).toEqual({
+      kind: "enroll-disabled",
+    });
+    expect(await bridge.submitKey("KEY-3")).toEqual({
+      kind: "hardware-mismatch",
+      drift: 2,
+      changed: ["cpu", "board"],
+    });
+    expect(await bridge.submitKey("KEY-4")).toMatchObject({
+      kind: "refused",
+      code: "license_suspended",
+      status: 403,
+    });
+  });
+
   it("answers only the allowlisted invoke verbs, with the host's code on refusal", async () => {
     const { bridge } = await setup();
     expect(DEFAULT_INVOKE_VERBS).toContain("release.installUrl");
