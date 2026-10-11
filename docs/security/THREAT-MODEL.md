@@ -3465,21 +3465,26 @@ callback claims, migrates and disables nothing, so a hit is not a path to the vi
 either. Before that fix, one hit every 7 hours at the ceiling was one captured anonymous license
 every 7 hours. There is
 deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
-product out of sign-in. Residual, unowned: sharding a product's own rate-limit Durable Object
-(R10-04a is fixed for the
-platform-global `_portal` and `_admin` limiters only; see the single-use store section below).
+product out of sign-in. Residual, unowned: a product's own `RateLimitDO` is still one object per
+product. R10-04a shards only the platform-global `_portal` and `_admin` limiters
+(`core/rateLimit.ts` `SHARDED_LIMITERS`); `email*` buckets are separately sharded in every
+limiter, but the device-code buckets use the product's one object.
 
-**Remote phishing (RFC 8628 §5.4) — closed for device-code flows: R1-07, rooted in R8-03.** The flow's starter can still complete the confirmation step without a browser and
-forward the resulting IdP sign-in to a victim, but the confirmation now sets a `__Host-pk_lcb`
-binder cookie on the confirming browser (the starter's own curl jar) and stores its hash on the
-flow. `handleAuthCallback` requires that cookie before it claims the flow, so the victim's browser,
-which never held it, is refused (400) and the flow is not consumed; the starter's poll stays
-pending. The same binder now covers every product browser flow (`/auth/start` sets it for any
-issuer, not only `provider: platform`) and the admin console's sign-in (`__Host-pkey_admin_flow`).
-Regression tests: `R8-oidc.test.ts` › `FIXED (R1-07 / R8-03): the starter confirms its own flow…`,
-the binder cases in `identityBinders.test.ts`, and `R1-control-plane.test.ts` › `R1-01b`. What stays
-true: a starter who phishes a victim into the _starter's own_ browser (the victim is on the
-starter's machine) is a different attack that no cookie can see.
+**Remote phishing (RFC 8628 §5.4) — forwarded authorize URL closed; residual R1-07 open,
+rooted in R8-03.** A starter can confirm without a browser and forward the resulting IdP URL,
+but confirmation now sets a `__Host-pk_lcb` binder on the confirming browser and stores its
+peppered hash. `handleAuthCallback` requires that binder before claiming the flow, so a victim
+browser that never held it receives 400 without consuming the flow; the starter's poll stays
+pending. The same binder covers every product browser flow (`/auth/start` sets it for any issuer)
+and the admin console sign-in. Regression tests: `R8-oidc.test.ts` ›
+`FIXED (R1-07 / R8-03): the starter confirms its own flow…`, the binder cases in
+`identityBinders.test.ts`, and `R1-control-plane.test.ts` › `R1-01b`.
+
+What remains open is a browser/person mismatch: the victim can confirm the
+`verificationUriComplete` link in their own browser (or be phished into the starter's browser).
+That browser legitimately holds the binder, while the starter still holds the device code and
+chooses the P1-07 attach in `/device/poll`. A cookie cannot establish that the device-code holder
+is the person who completed IdP sign-in.
 
 **What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled
@@ -3542,18 +3547,15 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   turned a flow the Worker refuses (`error`) into a claim or migrate onto the victim's strict
   licence.
 
-PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
-migrate)` assert the gap; `P1-07 (R1-07 bound)`, `P1-07 (R1-07 bound, dormant devices)` and the three `P1-07 (R1-07 bound,
-claim)` / `P1-07 (R1-07 bound, migrate)` tests (dormant devices on a claim, the identity's tier
-rather than the enroll tier, the destination's stored tier rather than a larger mapped one, an
-operator `deviceLimit` override that survives sign-in) assert the seat-limit refusal, and
-`P1-07 (R1-07, claim on a strict tier)`, `P1-07 (R1-07, migrate on a strict tier)` and `P1-07
-(R1-07, migrate onto a strict stored tier)` assert that nothing merges when the mint would be
-refused. `licenseMerge.test.ts` and `enroll.test.ts` (`LX-03: …`) assert the seat-checked
-move, the refusal in one piece, and that grants, purchases and the binding follow the merge.
-Binding the
-callback to the confirming browser (below) closes all of it, because the device-code holder is
-then again the person who signed in.
+PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and
+`OPEN (R1-07 / R8-03, P1-07 migrate)` assert this remaining, binder-satisfied case: the callback
+browser holds the flow binder, but the starter holding the device code accepts the attach. The
+`P1-07 (R1-07 bound)` and `P1-07 (R1-07 bound, dormant devices)` families, including claim and
+migrate cases, assert the seat-limit refusal; `P1-07 (R1-07, claim on a strict tier)`,
+`P1-07 (R1-07, migrate on a strict tier)` and
+`P1-07 (R1-07, migrate onto a strict stored tier)` assert that nothing merges when the mint is
+refused. `licenseMerge.test.ts` and `enroll.test.ts` (`LX-03: …`) assert the seat-checked move,
+the refusal in one piece, and that grants, purchases and the binding follow the merge.
 
 So the confirmation page and its CSRF token protect only flows the attacker did _not_ start
 (cross-site forgery against someone else's flow, above). Typing the user code does not close
@@ -3563,15 +3565,14 @@ product and shows the device label and user code — but the label is `deviceNam
 `/device/start`, client-supplied display text a phisher sets to anything — so it is a speed bump,
 not a control.
 
-This is **not** inherent to the device-authorization grant. In RFC 8628 the user authenticates in
-the same browser session that entered the code; Polaris does not yet bind the IdP callback to
-the browser that confirmed, which is R8-03 (no flow on any surface is bound to the visitor's
-browser; since I-17 the portal's single sign-on is the exception, see "Moving end users off the
-platform IdP"). R1-07 was **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
-GET self-confirm, the framable page and the device code in the URL, not the starter's ability to
-confirm. The browser binder (2026-10-08) closed the rest: the confirmation `303` sets a `__Host-`
-`SameSite=Lax` binder cookie that `handleAuthCallback` requires, which makes the `Origin: null`
-question moot.
+This is **not** inherent to the device-authorization grant. RFC 8628 expects the user to
+authenticate in the browser session that entered the code. Polaris now binds every browser flow
+to that browser: `/auth/start` and device confirmation set the binder, and
+`handleAuthCallback` requires its peppered hash (`services/identity/oidc.ts`). R1-07 was
+**Fixed-partial** in the 2026-08-26 audit: R8-02 and P1-06 closed GET self-confirm, the framable
+page and the device code in the URL. The browser binder added on 2026-10-08 closes the forwarded
+authorize-URL form and makes the `Origin: null` question moot; it does not prove that the
+binder-holder owns the device code.
 
 **The licence chooser's binder (I-26, 2026-10-05).** On a `provider: platform` product, a person
 whose Polaris Key account already owns a usable licence for the product is no longer auto-issued
@@ -3598,17 +3599,15 @@ starter's device. The chooser therefore applies the fix direction above, for thi
   <label>") and the security email to every verified address. Nothing is written before the
   explicit "Replace and continue".
 
-Residual (open, owned by I-08 / PX-W13): the cookie binds the browser that _started or confirmed_
-the flow, not the person who owns the device. In the plain R1-07 pattern the starter confirms
-with curl and holds the cookie, so the victim's callback is refused. In the
-`verificationUriComplete` variant, though, the starter sends the victim the confirmation link:
-the victim confirms **in their own browser**, receives the binder, signs in, and is shown the
-chooser — and could bind one of their purchased licenses to the starter's device. The only speed
-bump is the device label, which the chooser and the confirmation page show (marked "Named by the
-device" on the chooser) but which is client-supplied `deviceName` text the starter chooses.
-Closing it needs the device-code holder and the browser bound together, which is I-08's login
-card with PX-W13's `__Host-pk_req` binder. Flows outside the trigger (no linked account, no
-usable license, `provider: custom`) keep the R1-07 behaviour described above. Pinned by
+Residual (open, owned by I-08 and I-37; PX-W13's `__Host-pk_req` binder is done): the cookie
+binds the browser that _started or confirmed_ the flow, not the person who owns the device. In
+the plain R1-07 pattern the starter confirms with curl and holds the cookie, so the victim's
+callback is refused. In the `verificationUriComplete` variant, though, the starter sends the
+victim the confirmation link: the victim confirms **in their own browser**, receives the binder
+and signs in. The starter still has the device code and can then accept the attach. The device
+label is only a speed bump because `deviceName` is client-supplied. Closing this needs I-08's
+browser-side Continue binding and I-37's explicit “Sign in on <device>?” confirmation; flows
+outside the chooser trigger retain this residual too. Pinned by
 `test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
 
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
