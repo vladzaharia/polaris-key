@@ -7,6 +7,7 @@ in this repo, not from memory.
 
 **Lens:** what happens when things go wrong. Rotation, revocation, compromise recovery,
 outages, backups, incident response.
+
 > **Status on main (2026-10-11).** This is a historical review of `lewd-owl` at
 > `bd26e0b`; the KEK conclusion below is superseded. `platform/keyvault.ts` now implements
 > `PLATFORM_KEK_KEYS`/`PLATFORM_KEK_ACTIVE`, accepts legacy `PLATFORM_KEK` as an open-only
@@ -16,7 +17,6 @@ outages, backups, incident response.
 > [`RUNBOOK.md`](../../RUNBOOK.md#rotating-platform_kek), including the unknown-old-key path.
 > `KEY_HASH_PEPPER` versioning, per-tenant webhook secrets and the admin-group cookie lag remain
 > open; this status note does not close them.
-
 
 **Headline.** Polaris Key is built to a genuinely high standard for the happy path and for
 _deliberate_ attack. It has almost no machinery for the _unhappy_ path. Every failure I traced
@@ -168,13 +168,13 @@ Two aggravating factors:
 bounded rotation.
 
 ### 1.2 Leaked `PLATFORM_KEK`
+
 > **Superseded on main.** A leaked KEK remains an offline, platform-wide compromise, but
 > containment no longer requires taking product routes down. The keyring opens every configured
 > kid while sealing under its active kid (`platform/keyvault.ts`), and the step-up-gated
 > `POST /manage/api/products/kek` sweep re-seals stored values
 > (`console/handlers/products.ts`). Follow the current RUNBOOK procedure, rotate each product
 > signing key and re-enter product secrets that were readable to the leaked KEK.
-
 
 **Detection: none.** The attack is entirely offline: obtain a D1 dump (or a Cloudflare API token
 with D1 read), decrypt `product_keys.enc_private_json` and `product_secrets.enc_value_json`

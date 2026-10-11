@@ -17,6 +17,7 @@ its documentation advertises ("every product is a tenant").
 
 Overall grade: **C−**. Excellent per-request isolation, essentially no compromise
 compartmentalisation.
+
 > **Status on main (2026-10-11).** This is a historical review of `lewd-owl` at
 > `bd26e0b`. The reviewed no-keyring conclusion is superseded:
 > `platform/keyvault.ts` implements an active KEK keyring with a legacy open-only member and
@@ -30,7 +31,6 @@ compartmentalisation.
 > Still open: the GitHub webhook secret is global, the legacy bare-string installation-token
 > fallback can mint an installation-wide token if a future caller uses it, and the root admin
 > group remains cached in an eight-hour console cookie.
-
 
 | #   | Question                                        | Grade                                                          |
 | --- | ----------------------------------------------- | -------------------------------------------------------------- |
@@ -58,6 +58,7 @@ Read the "crosses tenants?" column first. Only two rows are contained.
 | 5   | **One admin session** (stolen cookie or forged `ADMIN_SESSION_SECRET`) | Same as row 4 for the 8-hour session lifetime. Sessions are stateless HMAC — there is **no revocation list**, so a stolen cookie is valid until `exp` and rotating `ADMIN_SESSION_SECRET` is the only kill switch (and it logs out every admin). CSRF + `SameSite=Strict` protect against cross-site abuse, not against theft.                                                                                                                                                                                                        | **Yes — all tenants.**                                                                                                                                                         | `core/console/session.ts:29-30`, `core/console/session.ts:1-19`, `console/api.ts:154-166`                                                                     |
 | 6   | **`PLATFORM_KEK`**                                                     | Decrypt **every** tenant's Ed25519 private signing key and **every** product secret in one `SELECT * FROM product_keys` + `product_secrets`. AAD is metadata binding, not a second factor — the attacker knows `product`/`kind`/`id` from the same rows. Also un-rotatable without downtime (see §2).                                                                                                                                                                                                                                 | **Yes — total platform compromise.** Every product's config-signing forgeable simultaneously.                                                                                  | `keyvault.ts:3-7`, `keyvault.ts:67-83`, `keyvault.ts:135-138`, `env.ts:16-18`                                                                                 |
 | 7   | **`GITHUB_WEBHOOK_SECRET`**                                            | Forge a `push` for **any** `owner/repo` and trigger `resyncRepo` on every product linked to it — i.e. row 3's full config-rewrite primitive against every tenant, not just one. Worse: the forged `after` is passed straight through as GitHub's `?ref=`, and **`resyncRepo` never checks that the ref is the default-branch head**. So the attacker can pin the resync to _any_ ref in the victim's repo — an unmerged PR branch, an old tag — meaning anyone who can push a branch (not merge one) becomes a config-rewrite gadget. | **Yes — all tenants with a linked repo.**                                                                                                                                      | `githubWebhook.ts:106-124`, `githubWebhook.ts:164-172`, `resync.ts:73-124`, `github.ts:168-180`, `docs/DEPLOYMENT.md:151-155`                                 |
+
 > **Matrix update on main.** Row 6 still correctly describes the blast radius of a KEK leak, but
 > its “un-rotatable” conclusion is superseded by the active-keyring and re-seal sweep noted
 > above. Row 7 remains open for the one global webhook secret, but its arbitrary-ref claim is
@@ -66,18 +67,17 @@ Read the "crosses tenants?" column first. Only two rows are contained.
 > head. Row 5 now has self-logout revocation (`core/console/sessionRevocation.ts`), although
 > removal from the IdP group remains delayed by the eight-hour cookie.
 
-
 ### Two more platform-wide credentials the brief did not list
 
 | Compromised                                           | Blast radius                                                                                                                                                                                                                                                                                   | Evidence                                                               |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | **`KEY_HASH_PEPPER`**                                 | A single HMAC pepper for every product's license-key _and_ device-token hashes. With a D1/KV dump, one pepper lets an attacker confirm guessed credentials for all tenants at once — and license keys are self-identifying (`pkey_<product>_…`), so the dump is pre-sorted by tenant for them. | `crypto.ts:73-90`, `crypto.ts:31-33`, `env.ts:20`                      |
 | **GitHub App private key** (`GITHUB_APP_PRIVATE_KEY`) | One App across all tenants. Installation tokens are minted with **no `repositories` / `permissions` body**, so an org-wide install yields a token good for every repo in that org, held in KV for 55 minutes.                                                                                  | `githubApp.ts:127-131`, `githubApp.ts:218-221`, `githubApp.ts:232-237` |
+
 > **Status on main.** `getInstallationToken` now requests `repositories: [repo]` plus a
 > read-only permission body (`services/release/githubApp.ts`). Its only unscoped attempt is a
 > legacy bare-string overload; all current callers pass `{ owner, repo }`. That fallback remains
 > latent hardening work, rather than the installation-wide default described above.
-
 
 ### New finding: the GitHub token cache key is product-confused
 
@@ -100,12 +100,12 @@ tenant" is silently violated. Today the leaked token is org-wide anyway (row 7 a
 _marginal_ damage is small; the moment installation tokens are correctly scoped per repo, this
 becomes a live cross-tenant credential-confusion bug. Fix it before fixing the scoping, or the
 scoping fix will be defeated by the cache.
+
 > **Fixed on main.** The cache key is now
 > `gh:install:<installation>:token:<owner>/<repo>` (`platform/kv.ts`), and
 > `installationTokenSlot` seals the same scope into its AAD
 > (`services/release/githubApp.ts`). A repository-scoped token cannot alias another requested
 > scope in cache.
-
 
 ### Availability blast radius
 
@@ -117,11 +117,11 @@ The buckets themselves are keyed by IP / account so an attacker cannot lock anot
 but the throughput ceiling of one DO is now the throughput ceiling of every tenant's customer
 portal simultaneously. That is a noisy-neighbour coupling, not a security bug — but it is a
 blast-radius one.
+
 > **Fixed for the global limiters.** `_portal` and `_admin` are each selected across 32 shards
 > by `core/rateLimit.ts` `rateLimitShard`, so this global noisy-neighbour bottleneck no longer
 > exists. A product's own non-email limiter remains one tenant-scoped object; that is a separate
 > availability bound, not the cross-tenant one reviewed here.
-
 
 ---
 
@@ -129,11 +129,11 @@ blast-radius one.
 
 **Grade: D+.** The single KEK is a defensible engineering call. The _un-rotatable_ single KEK is
 not, and that is the part that earns the grade.
+
 > **Superseded on main.** A single root KEK remains a total-platform confidentiality boundary,
 > but it is no longer un-rotatable. `platform/keyvault.ts` loads
 > `PLATFORM_KEK_KEYS`/`PLATFORM_KEK_ACTIVE`, keeps legacy `PLATFORM_KEK` open-only during
 > migration, and the console's `/products/kek` sweep moves sealed values to the active kid.
-
 
 ### What is actually good here
 

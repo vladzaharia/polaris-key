@@ -734,6 +734,7 @@ set is always safe. Do not go back to `PLATFORM_KEK` alone once anything has bee
 the new kid (the sweep, or any admin write after step 2): those values would go dark. After step
 6 the old key is gone for good, and so is every D1 backup, bookmark or `wrangler rollback` target
 from before step 4: restored, their blobs carry the legacy kid and cannot be opened.
+
 ## Key compromise
 
 Treat a suspected compromise as an incident: record the first plausible exposure time, preserve
@@ -777,6 +778,7 @@ cookie; groups are copied into the cookie for its eight-hour lifetime.
    ```
 
    Then sign in afresh at `/manage` and confirm `GET /manage/api/me` returns 200.
+
 4. Review the exposure window in Platform → Activity and every affected product's activity log.
    A genuine console callback writes `admin.signin` to `platform_audit`
    (`console/auth.ts`); a forged cookie does not. An action whose `actor_sub` has no recent
