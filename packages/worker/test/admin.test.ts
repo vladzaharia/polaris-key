@@ -1501,6 +1501,33 @@ describe("admin services enablement", () => {
     });
   });
 
+  it("records Ship builds turned on, and the cascade of turning Release off, as one audit row each (ST-38)", async () => {
+    const w = await world();
+    await call(w, "PATCH", "", {
+      services: {
+        release: { enabled: true },
+        distribution: { enabled: true },
+        update: { enabled: true },
+      },
+    });
+    await call(w, "PATCH", "", { services: { release: { enabled: false } } });
+    const rows = (await listAudit(w.db, "djdl", { limit: 20 })).filter(
+      (r) => r.action === "product.services.update",
+    );
+    // Three slugs written by one PATCH are one audited batch, not one row per slug, and the two
+    // dependents the second PATCH takes with Release share its row.
+    expect(rows).toHaveLength(2);
+    const summaries = rows.map((r) => r.summary ?? "");
+    expect(summaries).toContainEqual(
+      expect.stringContaining("license, config, release, distribution, update"),
+    );
+    expect(summaries).toContainEqual(
+      expect.stringContaining(
+        "distribution, update turned off with what they require",
+      ),
+    );
+  });
+
   it("PATCH preserves a slug from a newer build it does not know (P0-08)", async () => {
     const w = await world();
     await setServices(
