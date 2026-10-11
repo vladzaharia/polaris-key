@@ -11,7 +11,7 @@ operator runs from a terminal.
 
 The `@polaris-key` packages are published to Polaris Key's npm feed only (not npmjs). Route the
 scope to it once, in the project's `.npmrc` (Yarn, Bun and the rest:
-[Installing the SDKs from the feeds](/docs/build/install-from-feeds/)):
+[Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/)):
 
 ```ini
 @polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
@@ -134,7 +134,7 @@ validation immediately, with no separate setup step. The path climbs out of `.pk
 `node_modules`, **not** a URL: the schemas' canonical `$id`s live on the docs site, which sits
 behind the platform-admin session gate and which an editor cannot fetch, so the schemas ship
 as files inside the `@polaris-key/manifest` npm package instead and the header points at that
-copy. See [JSON Schema & editor setup](/docs/build/manifest/json-schema/) for the full editor
+copy. See [JSON Schema & editor setup](https://key.plrs.im/docs/build/manifest/json-schema/) for the full editor
 story, including wiring VS Code's `json.schemas`/`yaml.schemas` settings for a monorepo that
 keeps `.pkey/` somewhere other than one level under `node_modules`.
 
@@ -200,7 +200,7 @@ with the `message` for people, and the exit code is `1`. Every non-ASCII charact
 `\u` escape. Human output (everything without `--json`) may change between releases; scripts read
 `--json`.
 
-The full code list is at [Manifest validation codes](/docs/reference/validation-codes/).
+The full code list is at [Manifest validation codes](https://key.plrs.im/docs/reference/validation-codes/).
 
 ### `pkey distribution outlet-ids`
 
@@ -218,7 +218,7 @@ $ pkey distribution outlet-ids --outlet ms-store
 build, that entry's `msixFamilyName`; an absent id is left out. With no `.pkey/distribution` it
 prints `{}` and exits `0` for any `--outlet`. With one, the manifest must validate and declare the
 outlet, or the command exits `1` with the reason on stderr. See
-[Distribution: outlets, transports and listing](/docs/build/manifest/distribution/).
+[Distribution: outlets, transports and listing](https://key.plrs.im/docs/build/manifest/distribution/).
 
 ### `pkey doctor`
 
@@ -307,8 +307,8 @@ pkey mirror --lang kotlin --catalog catalog.json --package com.acme.catalog --ch
 
 Mints one **offline activation bundle** (`POST /manage/api/products/<slug>/bundles`) and
 writes it to a file — the operator half of the air-gapped activation flow described in
-[Going offline](/docs/build/offline/) and, at the protocol level, in
-[Offline bundles](/docs/build/wire/bundles/). `--device` and `--grace-days` are validated
+[Going offline](https://key.plrs.im/docs/features/licensing/offline/) and, at the protocol level, in
+[Offline bundles](https://key.plrs.im/docs/reference/protocol/bundles/). `--device` and `--grace-days` are validated
 locally (32 base64url characters; an integer 1–365) before any network call, and the output
 path is checked for a collision before **and** after the mint, because a mint is an audited,
 non-free server-side event — discovering the output file already exists only after minting

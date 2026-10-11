@@ -1,6 +1,24 @@
 {
   "name": "@polaris-key/jws",
   "version": "0.0.0",
+  "description": "The frozen Polaris Key EdDSA (Ed25519) compact-JWS encoder and strict verifier every artifact on the wire is signed and checked with.",
+  "keywords": [
+    "polaris-key",
+    "jws",
+    "jwt",
+    "eddsa",
+    "ed25519",
+    "webcrypto"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/shared-jws"
+  },
+  "homepage": "https://key.plrs.im/docs/reference/protocol/envelope/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",

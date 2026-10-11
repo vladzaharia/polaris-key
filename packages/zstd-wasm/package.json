@@ -2,6 +2,23 @@
   "name": "@polaris-key/zstd-wasm",
   "version": "0.0.0",
   "description": "libzstd 1.5.7 for wasm32: a decoder (one frame, optionally with a raw-content prefix, window-checked before decoding) and, under ./encoder, the lazy-delta --patch-from encoder.",
+  "keywords": [
+    "polaris-key",
+    "zstd",
+    "zstandard",
+    "wasm",
+    "delta",
+    "patch-from"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/zstd-wasm"
+  },
+  "homepage": "https://github.com/vladzaharia/polaris-key/tree/main/packages/zstd-wasm#readme",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT AND BSD-3-Clause",
   "type": "module",
   "sideEffects": false,

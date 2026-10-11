@@ -1,134 +1,83 @@
 # Polaris Key
 
-A reusable, multi-product **licensing + remotely-managed-config + release-delivery**
-platform — a single Cloudflare Worker at `key.plrs.im` plus SDKs for **Node, React, Python,
-Swift, Godot and Kotlin**. An always-on **Core** substrate (product registry, the device principal, trust
-and signing, discovery, rate limiting, audit) carries seven services a product opts into one
-at a time: **License** (activation, tiers, entitlements), **Config** (signed config/secret
-delivery, edge token minting), **Release** (GitHub-connected release truth, artifacts,
-changelogs), **Distribution** (how releases reach devices and outlets: transports,
-availability, rollouts), **Update** (Sparkle appcasts, version feeds), **Identity** (OIDC,
-browser sessions, customer portal), and **Cloud Sync** (per-person saves and settings across
-devices; it requires Config and Identity). Release, Distribution and Update form a chain —
-release ← distribution ← update — and read one another only through Core's descriptor hooks. Any product registers as data (no worker redeploy) and enables
-only what it uses — Config serves any registered device with no licence in the picture.
-Extracted and generalized from DJDL's baked-in system; djdl is the first product.
+Licensing, remotely managed config and release delivery for apps and games: one Cloudflare Worker
+at `key.plrs.im` and SDKs for Node, React, Python, Swift, Godot and Kotlin. Products register as
+data (a `.pkey/` manifest, no redeploy) and turn on only the services they use. Every document
+the Worker signs is a compact EdDSA JWS that each SDK verifies offline, byte for byte alike.
 
-## Monorepo layout
+An always-on **Core** (product registry, device principal, trust and signing, discovery, rate
+limiting, audit) carries seven opt-in services: **License**, **Config**, **Release**,
+**Distribution**, **Update**, **Identity** and **Cloud Sync**. The concepts page defines the
+terms: [Concepts](https://key.plrs.im/docs/start/concepts/).
+
+## Start here
+
+| You want to…                        | Start at                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Use an SDK** in your app          | [Install from the feeds](https://key.plrs.im/docs/build/install/), then your SDK's README: [`sdk-node`](packages/sdk-node), [`sdk-react`](packages/sdk-react), [`sdks/python`](sdks/python), [`sdks/swift`](sdks/swift), [`sdks/godot`](sdks/godot), [`sdks/kotlin`](sdks/kotlin). Runnable samples: [`examples/`](examples) |
+| **Run a product** on the platform   | [Your first product](https://key.plrs.im/docs/start/first-product/), the [`.pkey/` manifest](https://key.plrs.im/docs/build/manifest/) and the [`pkey` CLI](packages/cli). Operating the Worker: [`docs/RUNBOOK.md`](docs/RUNBOOK.md), [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)                                            |
+| **Change the platform** (this repo) | [`AGENTS.md`](AGENTS.md) (the rules and the green gate), [`CONTRIBUTING.md`](CONTRIBUTING.md), then the README of the directory you are changing                                                                                                                                                                             |
+
+Report a vulnerability through [`SECURITY.md`](SECURITY.md).
+
+## Layout
 
 ```
 packages/
-  shared-protocol/   @polaris-key/protocol     — per-service wire types (subpath exports)
-  shared-jws/        @polaris-key/jws          — frozen EdDSA compact-JWS encode/verify
-  shared-catalog/    @polaris-key/catalog      — data-driven config catalog + Ajv validation
-  shared-manifest/   @polaris-key/manifest     — `.pkey/` manifest parsing + validation
-  client-core/       @polaris-key/client-core  — isomorphic verify/trust/gate/clock floor
-  worker/            @polaris-key/worker       — the Worker (core/ + services/<slug>/)
-  admin/             @polaris-key/admin        — the admin SPA (React + Vite)
-  cli/               @polaris-key/cli          — the `pkey` CLI (manifests, bundle mint)
-  sdk-node/          @polaris-key/node         — full client + CLI adapters
-  sdk-react/         @polaris-key/react        — browser-OIDC + desktop-over-node + login UI
+  shared-protocol/   @polaris-key/protocol     per-service wire types
+  shared-jws/        @polaris-key/jws          frozen EdDSA compact-JWS encode/verify
+  shared-catalog/    @polaris-key/catalog      config catalog + value validation
+  shared-manifest/   @polaris-key/manifest     `.pkey/` manifest parsing, validation, schemas
+  client-core/       @polaris-key/client-core  isomorphic verify/trust/gate/clock floor
+  ui-core/           @polaris-key/ui-core      the JS UI kits' headless layer
+  elements/          @polaris-key/elements     the UI kit as web components
+  worker/            @polaris-key/worker       the Worker: platform/, core/, services/<slug>/, console/
+  admin/             @polaris-key/admin        the admin SPA and customer portal
+  cli/               @polaris-key/cli          the `pkey` CLI
+  sdk-node/          @polaris-key/node         Node SDK and CLI adapters
+  sdk-react/         @polaris-key/react        React SDK and login UI
+  docs/              @polaris-key/docs         the docs site served at /docs
+  brand/             @polaris-key/brand        design tokens, fonts, marks, launch-kit assets
+  ui-qa/             @polaris-key/ui-qa        UI-kit visual QA and lints
+  zstd-wasm/         @polaris-key/zstd-wasm    libzstd for wasm32, decoder and delta encoder
 sdks/
-  python/            polaris-key (PyPI)        — full client + CLI adapters
-  swift/             PolarisKey (SwiftPM)      — native CryptoKit + SwiftUI login
-  godot/             Godot addon               — pure-GDScript client, PKeyBoot + UI kit, packs
-  kotlin/            Gradle build              — JVM :core + service modules + :sdk umbrella + corpus
-                                               runner; Android :platform (the backend Godot binds),
-                                               :android glue and the Compose :ui kit
-conformance/         corpus/v2 (one signer's golden vectors) + the Node and browser runners
-tools/               sign-corpus.ts (+ corpus/) · gen-mirrors.ts · gen-services.ts + services.json (the service table)
-products/            per-product data (catalog.json + product.json) + gen-seed
-docs/                CONCEPTS · ADOPTER-GUIDE · CONFIG-AUTHORING · RUNBOOK · DEPLOYMENT
-                     security/ (threat model, wire contract v4, audit + findings)
+  python/            polaris-key (PyPI)
+  swift/             PolarisKey (SwiftPM)
+  godot/             the Godot addon
+  kotlin/            the Gradle build: JVM modules, Android backend and Compose kit
+conformance/         corpus/v2 golden vectors, parity registry, HTTP transcripts, runners
+tools/               generators (the registry is tools/generators.ts), parity check, corpus signer
+products/            per-product catalog and manifest fixtures
+actions/publish/     the polaris-key/publish GitHub Action
+examples/            runnable samples
+docs/                RUNBOOK, DEPLOYMENT, PRIVACY; security/ (threat model, wire contract); research/
 ```
 
-## The frozen wire contract
+`pnpm-workspace.yaml` lists the JS workspace. `tools/package-metadata.test.ts` and
+`tools/root-readme.test.ts` keep this block and every published package's metadata true.
 
-Every signed artifact is a compact **JWS (EdDSA / Ed25519)**:
+## Docs by door
 
-```
-header       = {"alg":"EdDSA","typ":<typ>,"kid":<kid>}   (key order fixed)
-signingInput = base64url(utf8(JSON(header))) "." base64url(utf8(JSON(payload)))
-signature    = Ed25519 over the ASCII bytes of signingInput
-compact JWS  = signingInput "." base64url(signature)
-```
+| Door       | For                                        | Where                                                                                                |
+| ---------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Developers | Integrating an SDK, writing a manifest, CI | [`key.plrs.im/docs`](https://key.plrs.im/docs/start/): `start/`, `build/`, `features/`, `reference/` |
+| Operate    | Console members and platform admins        | `packages/docs/src/content/docs/operate/`, behind a console session                                  |
+| Help       | People using an app built on Polaris Key   | `packages/docs/src/content/docs/help/`                                                               |
+| Contribute | Working on this repo                       | `packages/docs/src/content/docs/contribute/` (admin tier), and [`AGENTS.md`](AGENTS.md)              |
 
-The verifying key is selected by the header `kid` from a trust set (never from the
-document); `alg` is asserted `EdDSA` before any signature math. Wire v4 domain-separates
-six artifacts by `typ`. Licence and config documents share one envelope (`iss` + `aud` +
-`deviceId` + `issuedAt` / `expiresAt` / `graceUntil`): `pkey-license+jws` carries the grants
-and `pkey-config+jws` carries config + secrets, so a config document mentions no licence at
-all. `pkey-trust+jws` is the trust manifest, `pkey-bundle+jws` the offline activation bundle,
-and `pkey-feed+jws` the device-less channel feed that says what each platform should run. The
-sixth, `pkey-release+jws`, is a release record signed in CI by a **release key** — never a
-product key — and verified only against the release keys the app pins, so the Worker alone can
-never ship bytes no release key signed. Every verifier is equally strict about Ed25519
-encodings, JSON, numbers and depth, and decides every integer claim from its token. The
-encoding is pinned byte-for-byte by `conformance/corpus/v2/cases.json`, which **every SDK and
-the worker verify identically** — that is how seven languages agree on the wire.
-`docs/security/WIRE-CONTRACT-V4.md` is the normative spec.
-
-## Architecture at a glance
-
-- **Multi-tenant, product-scoped:** every D1 row, KV key, DO shard, and signature is scoped
-  by a product slug; the URL is `key.plrs.im/<product>/…`. Storage is KV (hot-path token/key
-  lookups) + D1 (relational metadata, release state, account/device records).
-- **One enablement authority:** `products.services_json` says which services a product runs,
-  fed by its `.pkey/product` manifest. Route mounting, discovery, the console nav and portal
-  capabilities are all projections of it, so they cannot drift apart; a service the product
-  has not enabled 404s rather than 403s — from the outside it does not exist.
-- **Data-driven schema + tiers:** a product's config/secret/flag catalog and tiers/profiles
-  are data; the effective config is `tier(profile) → license → device`.
-- **Identity activation + provisioning hooks:** browser sign-in at `/<product>/identity/auth/*`
-  mints/locates a license by subject; verified claims drive entitlements + host-allowlisted
-  secrets.
-- **Edge-mint + releases:** generic per-product token minting (Apple MusicKit) under Config at
-  `/<product>/config/mint/*`, and GitHub-App releases split across Release (truth: sync,
-  channels, artifacts, changelogs), Distribution (delivery to devices and outlets) and Update
-  (the feed: Sparkle appcasts, `/version`, eligibility).
+Every wire-format rule is in [`docs/security/WIRE-CONTRACT-V4.md`](docs/security/WIRE-CONTRACT-V4.md);
+the threat model is [`docs/security/THREAT-MODEL.md`](docs/security/THREAT-MODEL.md).
 
 ## Develop
 
 ```sh
 pnpm install
-pnpm build              # build all packages
-pnpm typecheck
-pnpm test               # all JS/TS suites (incl. conformance + worker + SDKs + admin)
-pnpm test:browser       # the corpus in Chromium (needs `playwright install chromium` once)
-pnpm gen --check          # every generator's drift gate (CI)
-( cd sdks/python && .venv/bin/python -m pytest )   # Python SDK
-( cd sdks/swift && swift test )                    # Swift SDK
-sdks/godot/tools/run_tests.sh                      # Godot SDK (GODOT_BIN, optional GODOT_TEMPLATE)
-( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true test checkModuleBoundaries )  # Kotlin SDK JVM modules (JDK 17)
+pnpm build
+pnpm test
+pnpm gen --check    # every generator's drift gate
 ```
 
-Run the JS suites on **Node 22** (`mise exec node@22 -- pnpm test`), the version CI pins. The
-worker suite drives D1 through the native `better-sqlite3`, so a newer Node major leaves it
-unbuildable and the whole worker package fails to collect.
-
-Operations: `docs/RUNBOOK.md`. Onboarding a product: `the docs site (`/docs/build/onboarding/`)`.
-Production bootstrap: `docs/DEPLOYMENT.md`.
-
-## Tests
-
-~2,990 tests across the stack, all green: worker 1044, python 472, sdk-node 299, admin 259,
-sdk-react 247, swift 195, conformance 132, shared-catalog 110, client-core 81,
-shared-manifest 62, shared-jws 46, cli 33, plus protocol/tools. The worker count includes the
-per-lane attack suites (`packages/worker/test/attack/`), which turn the findings of a
-point-in-time security audit into regression tests: a fix that quietly comes
-undone is a red build rather than a rediscovery.
-
-## Documentation
-
-The full docs site (`packages/docs`, Astro Starlight) is served by the worker itself at
-`key.plrs.im/docs`. There is no public docs origin: it is gated behind the same platform-admin
-session as the console, so an unauthenticated visit redirects into sign-in at `/manage` and
-returns you to the page you wanted. It carries the long-form operator and adopter material —
-the runbook, deployment, config authoring, every service in depth, the generated reference
-tables — that this README only summarizes.
-
-`docs/security/` (threat model, the wire contract spec, audit findings) and `SECURITY.md`
-(vulnerability disclosure) are repo-only; they are not published to the gated site.
-
-Agents start at [`AGENTS.md`](AGENTS.md), the canonical, vendor-neutral entrypoint; human
-contributors start at [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Run the JS suites on **Node 22** (`mise exec node@22 -- pnpm test`): the Worker suite drives D1
+through the native `better-sqlite3`, which a newer Node major cannot build. The other toolchains
+(Python, Swift, Godot, Kotlin), the full green gate and the rules every change follows are in
+[`AGENTS.md`](AGENTS.md).

@@ -1,6 +1,23 @@
 {
   "name": "@polaris-key/manifest",
   "version": "0.0.0",
+  "description": "Parse and validate Polaris Key .pkey/ manifests (product, catalog, release, distribution), with their JSON Schemas.",
+  "keywords": [
+    "polaris-key",
+    "manifest",
+    "json-schema",
+    "validation",
+    "pkey"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/shared-manifest"
+  },
+  "homepage": "https://key.plrs.im/docs/build/manifest/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",

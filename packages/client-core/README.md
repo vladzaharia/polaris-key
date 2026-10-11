@@ -7,10 +7,10 @@ identical implementation runs inside [`@polaris-key/node`](../sdk-node), inside
 and keyrings belong to the hosts that consume it — this package never opens a socket, never
 touches a filesystem, and never reads `process.env`.
 
-It verifies the frozen wire contract v3 compact-JWS envelope (Ed25519 / EdDSA), evaluates the
+It verifies the frozen wire contract v4 compact-JWS envelope (Ed25519 / EdDSA), evaluates the
 license gate, resolves layered config, merges trust sets, and verifies offline activation
 bundles — the same rules the cross-language conformance corpus pins across Node, React, Python,
-Swift, Godot and Kotlin. See `docs/security/WIRE-CONTRACT-V3.md` for the normative spec; this package is a
+Swift, Godot and Kotlin. See `docs/security/WIRE-CONTRACT-V4.md` for the normative spec; this package is a
 _correct_ implementation of it, not the definition.
 
 ## Why one implementation
@@ -33,7 +33,7 @@ same rules. They are proven identical to this package's behaviour by running the
 
 The `@polaris-key` packages are published to Polaris Key's npm feed only (not npmjs). Route the
 scope to it once, in the project's `.npmrc` (Yarn, Bun and the rest:
-[Installing the SDKs from the feeds](/docs/build/install-from-feeds/)):
+[Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/)):
 
 ```ini
 @polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
@@ -60,9 +60,9 @@ pulling the barrel (`sideEffects: false`, so an unused subpath costs nothing eit
 | `@polaris-key/client-core/trust`      | `verifyTrustManifest`, `mergeTrust`                                                                                               | trust-manifest verification and the two-tier pinned-then-discovered merge                                                                                                      |
 | `@polaris-key/client-core/bundle`     | `verifyBundle`, `inspectBundle`, `MAX_BUNDLE_BYTES`                                                                               | offline activation bundle verification, all-or-nothing, in wire-contract §7's numbered order                                                                                   |
 | `@polaris-key/client-core/gate`       | `licenseState`, `isUsable`                                                                                                        | the license gate state machine over a cached document + the clock floor                                                                                                        |
-| `@polaris-key/client-core/config`     | `resolveValue`, `resolveSource`, `listUserEntries`                                                                                | layered config resolution (WIRE-CONTRACT-V3 §2.2.1, `config-matrix.json`)                                                                                                      |
+| `@polaris-key/client-core/config`     | `resolveValue`, `resolveSource`, `listUserEntries`                                                                                | layered config resolution (WIRE-CONTRACT-V4 §2.2.1, `config-matrix.json`)                                                                                                      |
 | `@polaris-key/client-core/headers`    | `canonicalPlatform`, `canonicalArch`                                                                                              | a runtime's platform/arch spelling to its canonical header value (§5.2, `headers.json`)                                                                                        |
-| `@polaris-key/client-core/semver`     | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                                 | client-side semver + the build-channel family (WIRE-CONTRACT-V3 §5.1)                                                                                                          |
+| `@polaris-key/client-core/semver`     | `parseSemver`, `compareSemver`, `channelForVersion`, `isDevBuild`                                                                 | client-side semver + the build-channel family (WIRE-CONTRACT-V4 §5.1)                                                                                                          |
 | `@polaris-key/client-core/claims`     | `CLOCK_SKEW_SECONDS`, `MAX_GRACE_SECONDS`, `REFRESH_MARGIN_SECONDS`                                                               | the shared claim-validation constants every implementation must agree on                                                                                                       |
 | `@polaris-key/client-core/clock`      | `highWaterMark`, `effectiveNow`                                                                                                   | the monotonic clock floor: `max(issuedAt)` over every re-verified artifact                                                                                                     |
 | `@polaris-key/client-core/errors`     | `PolarisError`                                                                                                                    | the one error type, carrying the server's machine-readable code                                                                                                                |
@@ -83,7 +83,7 @@ pulling the barrel (`sideEffects: false`, so an unused subpath costs nothing eit
 
 `verifyDoc` runs the frozen `@polaris-key/jws` path (encoded-length caps, strict base64url,
 duplicate-key rejection, verify-before-parse, `kid` selected only from the caller's trust set),
-then asserts the full wire-contract v3 claim set on top: `aud`, `iss` (always the literal
+then asserts the full wire-contract v4 claim set on top: `aud`, `iss` (always the literal
 `key.plrs.im`, never derived from the caller's base URL), `deviceId`, the freshness window
 with a 300s clock skew, and a `graceUntil` bounded to `issuedAt + MAX_GRACE_SECONDS` (365
 days) — applied at **verify** time, not only by the gate, so an over-generous document never
@@ -116,10 +116,11 @@ persist, because a refusal returns no documents at all.
 ### Gate (`gate.ts`)
 
 `licenseState` computes the renderable status from `{ licenseServiceEnabled, activation, doc,
-now, highWaterMark, blocked, lastSyncUnauthorized }`. Two v3 rules sit ahead of the (otherwise
-unchanged) v2 state machine: a product with the license service disabled reports
-`not-applicable` before any other check runs, and `activation` — an online token _or_ a
-verified bundle import — replaces v2's boolean `hasToken`. `isUsable` is true for `ok`,
+now, highWaterMark, blocked, lastSyncUnauthorized }`. Two rules of the wire contract's gate
+function (V4 §5) sit ahead of the (otherwise unchanged) state machine: a product with the
+license service disabled reports `not-applicable` before any other check runs, and
+`activation` — an online token _or_ a verified bundle import — replaces the boolean
+`hasToken`. `isUsable` is true for `ok`,
 `grace` and `not-applicable`.
 
 ### Update (`feed.ts`, `record.ts`, `decide.ts`, `check.ts`) — wire v4
@@ -241,7 +242,7 @@ Isomorphic on purpose: the environment is an injected lookup table, never `proce
 here, so the same function resolves config inside a browser bundle (a host without an
 environment passes `{}`). This module owns the dot-to-`__` mapping (`run.concurrency` →
 `${envPrefix}run__concurrency`) every host's `PKEY_CONFIG_*` convention builds on, and the
-environment-value rule (WIRE-CONTRACT-V3 §2.2.1 rule 2): a value is parsed only when the raw
+environment-value rule (WIRE-CONTRACT-V4 §2.2.1 rule 2): a value is parsed only when the raw
 string is one strict JSON text (no duplicate names, no lone surrogate, no U+0000 in a member
 name, every number zero or of magnitude 10^−307 up to below 10^308, at most 64 levels deep),
 and is otherwise the raw string. Reading a variable never throws. Every layer reads own
@@ -252,7 +253,7 @@ the document's entries minus `hidden`, each with its resolved value.
 
 `canonicalPlatform` and `canonicalArch` map a runtime's report (`darwin`, `x64`, …) through
 `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` from `@polaris-key/protocol/core`, after ASCII case
-folding, to the WIRE-CONTRACT-V3 §5.2 value, or `null` when the spelling has none (the host
+folding, to the WIRE-CONTRACT-V4 §5.2 value, or `null` when the spelling has none (the host
 then omits the header).
 
 ### Clock (`clock.ts`)
@@ -286,7 +287,7 @@ all fail closed by returning `null` (or a tagged refusal), so a call site that f
 `parseSemver`/`compareSemver` order versions exactly as the Worker does (pinned by the
 conformance corpus), so a client-side "is this build too old" check and the server's build gate
 cannot disagree about the same version string. `channelForVersion` matches the Worker's function
-of the same name (WIRE-CONTRACT-V3 §5.1 rule 2): `dev`, `beta` (for `0.0.0-beta*` and the legacy
+of the same name (WIRE-CONTRACT-V4 §5.1 rule 2): `dev`, `beta` (for `0.0.0-beta*` and the legacy
 `0.0.0-staging*`), `pr` or `stable`. It returns the coarse family an SDK sends as
 `X-PKey-Channel`; only the Worker narrows a PR build to `pr-<n>`. Clients never compute the
 build gate itself: they record the Worker's 403.
