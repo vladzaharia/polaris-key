@@ -507,6 +507,8 @@ export const TABLE_OWNERS = {
     "account_tombstones",
     // SEC-WP-04: the progress record of an account erasure that has not finished.
     "account_erasures",
+    // I-11: a holder's cancellable, fourteen-day account-deletion request.
+    "account_deletions",
     "subject_events",
     "account_sessions",
     "account_product_grants",

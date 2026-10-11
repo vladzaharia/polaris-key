@@ -116,6 +116,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/sessions", ["get"]],
     ["/api/sessions/{sessionId}", ["delete"]],
     ["/api/sessions/sign-out-everywhere", ["post"]],
+    // I-11: account deletion stays reversible for fourteen days before the hard-erasure sweep.
+    ["/api/me", ["get", "delete"]],
+    ["/api/me/deletion/cancel", ["post"]],
     // PX-W16 (G32, G33): Account → Profile and picture uploads.
     ["/api/me/profile", ["get", "patch"]],
     ["/api/me/profile/picture", ["post"]],

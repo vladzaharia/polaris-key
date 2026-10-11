@@ -1,5 +1,4 @@
 import * as React from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Trash2 } from "lucide-react";
 import {
   useMotionPreference,
@@ -15,7 +14,11 @@ import { ProfileCard } from "../components/ProfileCard.js";
 import { SignInMethods } from "../components/account/SignInMethods.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
 import { SectionCard } from "../components/product/Card.js";
-import { signOutQuietly, useDeleteAccount, useSessions } from "../data.js";
+import {
+  useCancelAccountDeletion,
+  useDeleteAccount,
+  useSessions,
+} from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { focusSectionHeading } from "../focus.js";
 import {
@@ -294,19 +297,28 @@ function ThemeSwatch({
 }
 
 /**
- * Your data: Delete account behind a typed confirmation (the email). Download my data waits for
- * I-15's export.
+ * Your data: typed confirmation schedules an erasure after a 14-day grace period. The holder can
+ * keep using the account and cancel until cron claims the due request.
  */
 function YourData({ account }: { account: PortalAccount }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const [typed, setTyped] = React.useState("");
   const del = useDeleteAccount();
-  const qc = useQueryClient();
+  const cancel = useCancelAccountDeletion();
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const inputId = React.useId();
   const target = account.email || account.name;
   const matches = typed.trim().toLowerCase() === target.toLowerCase();
+  const scheduled = account.deletion
+    ? {
+        at: new Date(account.deletion.dueAt * 1000),
+        label: new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(account.deletion.dueAt * 1000)),
+      }
+    : null;
   React.useEffect(() => {
     if (open) headingRef.current?.focus();
   }, [open]);
@@ -317,27 +329,68 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
       title="Your data"
       subtitle="Deleting your account doesn't cancel your licenses: they stay with each developer and you can add them again."
     >
-      {open ? (
+      {scheduled ? (
+        <div
+          role="status"
+          className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4"
+        >
+          <h3 className="font-medium text-fg-strong">
+            Your account is scheduled for deletion
+          </h3>
+          <p className="text-sm text-fg">
+            Your account will be erased on{" "}
+            <time dateTime={scheduled.at.toISOString()}>{scheduled.label}</time>.
+            You can cancel the deletion before then.
+          </p>
+          <p className="text-sm text-fg">
+            Until then, you can keep using your account. Your licenses stay with
+            each developer and can be added to a new account later.
+          </p>
+          {cancel.error ? (
+            <p role="alert" className="text-sm text-danger">
+              {portalErrorCopy(cancel.error).title}.{" "}
+              {portalErrorCopy(cancel.error).description}
+            </p>
+          ) : null}
+          <Button
+            variant="outline"
+            loading={cancel.isPending}
+            onClick={() =>
+              cancel.mutate(undefined, {
+                onSuccess: () => {
+                  toast.success("Account deletion was cancelled", {
+                    description: "Your account will remain active.",
+                  });
+                },
+              })
+            }
+          >
+            Cancel scheduled deletion
+          </Button>
+        </div>
+      ) : open ? (
         <div className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4">
           <h3
             ref={headingRef}
             tabIndex={-1}
             className="font-medium text-fg-strong outline-none"
           >
-            Delete your Polaris Key account?
+            Schedule your Polaris Key account for deletion?
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
             <li>
-              Your account, its email addresses and its links to licenses are
-              erased.
+              Your account will stay active for 14 days, then its data and links
+              to licenses will be erased.
+            </li>
+            <li>
+              You can cancel the deletion any time before the 14-day period
+              ends.
             </li>
             <li>
               Licenses stay with each developer. Add them again with a new
               account.
             </li>
-            <li>
-              We'll email {account.email} to confirm. This can't be undone.
-            </li>
+            <li>We'll email {account.email} to confirm the schedule.</li>
           </ul>
           <div className="space-y-1.5">
             <label
@@ -380,16 +433,17 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               onClick={() =>
                 del.mutate(undefined, {
                   onSuccess: () => {
-                    toast.success("Your account was deleted", {
-                      description: "We sent a confirmation to your email.",
+                    setOpen(false);
+                    setTyped("");
+                    toast.success("Your account is scheduled for deletion", {
+                      description:
+                        "We sent a confirmation to your email. You can cancel it for 14 days.",
                     });
-                    window.history.replaceState(null, "", "/#/");
-                    signOutQuietly(qc);
                   },
                 })
               }
             >
-              Delete my account
+              Schedule deletion
             </Button>
           </div>
         </div>

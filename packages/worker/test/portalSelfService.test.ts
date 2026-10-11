@@ -683,7 +683,7 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
   });
 });
 
-describe("irreversible self-service needs a recent sign-in", () => {
+describe("account lifecycle changes need a recent sign-in", () => {
   async function stale() {
     const db = makeTestDb();
     const env = portalEnv(new KvMock());
@@ -695,10 +695,11 @@ describe("irreversible self-service needs a recent sign-in", () => {
     return { db, env, licenseId, old };
   }
 
-  it("DELETE /api/me, licence removal and registry-token mint answer 401 step_up_required", async () => {
+  it("DELETE /api/me, cancellation, licence removal and registry-token mint answer 401 step_up_required", async () => {
     const { db, env, licenseId, old } = await stale();
     for (const [method, path] of [
       ["DELETE", "/api/me"],
+      ["POST", "/api/me/deletion/cancel"],
       ["DELETE", `/api/licenses/djdl/${licenseId}`],
       ["POST", `/api/licenses/djdl/${licenseId}/registry-tokens`],
     ] as const) {
@@ -714,11 +715,17 @@ describe("irreversible self-service needs a recent sign-in", () => {
     ).toBe(200);
   });
 
-  it("a fresh sign-in erases the account", async () => {
+  it("a fresh sign-in schedules the account deletion", async () => {
     const { db, env } = await stale();
     const fresh = await portalSession(env, db, "fresh@example.com");
+    const res = await call(env, db, "DELETE", "/api/me", fresh, undefined, NOW);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, scheduled: true });
     expect(
-      (await call(env, db, "DELETE", "/api/me", fresh, undefined, NOW)).status,
-    ).toBe(200);
+      await db.first(
+        "SELECT id FROM accounts WHERE id = ? AND status = 'active'",
+        fresh.accountId,
+      ),
+    ).toBeTruthy();
   });
 });

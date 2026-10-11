@@ -9,7 +9,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { makeTestDb } from "./helpers.js";
-import { NOW, seedProduct } from "./seed.js";
+import { NOW, makeEnv, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import {
@@ -31,6 +31,12 @@ import { CONNECTOR_EVENT_RETENTION_SECONDS } from "../src/services/distribution/
 import { portalAudit } from "../src/services/identity/portal/repo.js";
 import { createHash } from "node:crypto";
 import { asR2, R2Mock } from "./r2Mock.js";
+import { KvMock } from "./kvMock.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import {
+  ACCOUNT_DELETION_GRACE_SECONDS,
+  scheduleAccountDeletion,
+} from "../src/services/identity/accounts/lifecycle.js";
 import { enableServices } from "./releaseRoutesFixture.js";
 import {
   BLOB_LOCK_AGE_SECONDS,
@@ -830,5 +836,54 @@ describe("scheduled() blob collector (P4-14)", () => {
       blobGcSettings({ BLOB_GC_GRACE_DAYS: "nope" } as unknown as Env)
         .graceSeconds,
     ).toBe(DEFAULT_GC_GRACE_SECONDS);
+  });
+});
+
+describe("scheduled account deletion", () => {
+  it("starts hard erasure only at the due tick and remains idempotent", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), []);
+    await seedProduct(db, "djdl");
+    const account = await getOrCreateAccountByEmail(
+      db,
+      "erase@example.com",
+      NOW,
+    );
+    await scheduleAccountDeletion(db, account.id, NOW);
+
+    const before = await runScheduledMaintenance(
+      db,
+      NOW + ACCOUNT_DELETION_GRACE_SECONDS - 1,
+      env,
+    );
+    expect(before.failures).toEqual({});
+    expect(before.counts.accountDeletions).toBe(0);
+    expect(
+      await db.first("SELECT id FROM accounts WHERE id = ?", account.id),
+    ).toBeTruthy();
+
+    const due = await runScheduledMaintenance(
+      db,
+      NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+      env,
+    );
+    expect(due.failures).toEqual({});
+    expect(due.counts.accountDeletions).toBe(1);
+    expect(
+      await db.first("SELECT id FROM accounts WHERE id = ?", account.id),
+    ).toBeNull();
+    expect(
+      await db.first(
+        "SELECT id FROM account_tombstones WHERE id = ?",
+        account.id,
+      ),
+    ).toBeTruthy();
+
+    const repeated = await runScheduledMaintenance(
+      db,
+      NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+      env,
+    );
+    expect(repeated.counts.accountDeletions).toBe(0);
   });
 });

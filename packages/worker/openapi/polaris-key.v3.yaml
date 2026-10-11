@@ -12933,6 +12933,112 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me:
+    get:
+      operationId: getPortalAccount
+      tags: [portal]
+      summary: The signed-in account and a CSRF token
+      description: >
+        The portal cookie identifies the account. `deletion` is null until its holder schedules
+        deletion; then it gives the original request and irreversible hard-erasure deadline.
+      responses:
+        "200":
+          description: Account settings identity and this session's CSRF token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account, csrf]
+                properties:
+                  account:
+                    type: object
+                    required: [id, name, email, avatarUrl, deletion]
+                    properties:
+                      id: { type: string }
+                      name: { type: string }
+                      email: { type: string }
+                      avatarUrl: { type: [string, "null"] }
+                      deletion:
+                        oneOf:
+                          - type: "null"
+                          - type: object
+                            required: [requestedAt, dueAt]
+                            properties:
+                              requestedAt: { type: integer }
+                              dueAt: { type: integer }
+                  csrf: { type: string }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    delete:
+      operationId: schedulePortalAccountDeletion
+      tags: [portal]
+      summary: Schedule the signed-in account for deletion
+      description: >
+        Needs `X-PKey-Portal-CSRF` and a sign-in no older than five minutes. The account remains
+        active for fourteen days, during which a repeated request preserves the original deadline
+        and `POST /api/me/deletion/cancel` can cancel it. At the deadline cron conditionally claims
+        the request and starts resumable hard erasure; account data, sessions and links then go.
+      responses:
+        "200":
+          description: Scheduled (or already scheduled with its original deadline).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, scheduled, deletionDueAt]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  scheduled: { type: boolean, enum: [true] }
+                  deletionDueAt: { type: integer }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many account lifecycle changes (five per minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/deletion/cancel:
+    post:
+      operationId: cancelPortalAccountDeletion
+      tags: [portal]
+      summary: Cancel a pending account deletion
+      description: >
+        Needs `X-PKey-Portal-CSRF` and a sign-in no older than five minutes. It is idempotent
+        while no deletion is pending. Once the deadline or cron's atomic claim wins, it answers
+        `409 deletion_in_progress` and cannot stop hard erasure.
+      responses:
+        "200":
+          description: Cancelled, or there was no pending deletion.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`deletion_in_progress`: the deadline passed or cron claimed the request."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many account lifecycle changes (five per minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   # ── The account's passkeys (I-16, PORTAL.md §4.26): the settings list, adding and removing.
   # Session-authenticated by the portal cookie; mutations need the `X-PKey-Portal-CSRF` header.
   /api/me/passkeys:

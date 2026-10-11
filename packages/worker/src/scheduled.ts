@@ -67,6 +67,7 @@ import {
   stuckErasures,
   sweepErasures,
 } from "./services/identity/accounts/deletion.js";
+import { sweepAccountDeletions } from "./services/identity/accounts/lifecycle.js";
 import { overrideMigrationNightly } from "./core/ops/overrideMigration.js";
 import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
@@ -422,9 +423,12 @@ export async function runScheduledMaintenance(
     await catchUpLegacyAccounts(db);
     return 0;
   });
-  // SEC-PRV-1: erasures a store hook failed on are resumed (also on the 15-minute tick, behind
-  // their back-off); one that keeps failing is reported here so the Operations page shows it.
-  if (env) await runErasureSweep(report, env, db, now, true);
+  // I-11: due requests first enter the resumable erasure state machine, then incomplete erasures
+  // retry under their own back-off. Both runs are bounded and fault-isolated.
+  if (env) {
+    await runAccountDeletionSweep(report, env, db, now);
+    await runErasureSweep(report, env, db, now, true);
+  }
   // U-03: the licence-override migration's daily inventory (until the run), its report past 90
   // days and, once the report window has passed, the licences' emptied config and secrets columns
   // (`core/ops/overrideMigration.ts`). The run itself is never started here: it is the owner's.
@@ -531,6 +535,28 @@ export async function runLazyDeltaSweep(
  */
 export const MAINTENANCE_CRON = "17 3 * * *";
 export const CONNECTOR_POLL_CRON = "*/15 * * * *";
+
+/**
+ * I-11: start hard erasure for account deletions whose fourteen-day grace period elapsed. The
+ * lifecycle helper conditionally claims each request, so an account holder's cancellation and
+ * this cron tick cannot both win.
+ */
+export async function runAccountDeletionSweep(
+  report: MaintenanceReport,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<void> {
+  await step(report, "accountDeletions", async () => {
+    const r = await sweepAccountDeletions({
+      db,
+      env,
+      now,
+      origin: env.CONSOLE_ORIGIN ?? "",
+    });
+    return r.started;
+  });
+}
 
 /**
  * The account-erasure retry sweep (SEC-PRV-1, `services/identity/accounts/deletion.ts`): resume
@@ -734,11 +760,13 @@ export async function handleScheduled(
   const report = poll
     ? await runConnectorPolls(env, db, now)
     : await runScheduledMaintenance(db, now, env);
-  // A failed attempt on the poll tick is re-scheduled by the sweep itself; only the nightly tick
-  // reports stuck erasures (the Operations page reads a poll tick's failures as connector ones).
+  // Due account deletions and failed erasures are resumed on each connector-poll tick. Their
+  // failures wait for the nightly report so the Operations page reads this tick as connector work.
   if (poll) {
     const erasure: MaintenanceReport = { counts: {}, failures: {} };
+    await runAccountDeletionSweep(erasure, env, db, now);
     await runErasureSweep(erasure, env, db, now, false);
+    report.counts["accountDeletions"] = erasure.counts["accountDeletions"] ?? 0;
     report.counts["erasures"] = erasure.counts["erasures"] ?? 0;
   }
   const registry: MaintenanceReport = { counts: {}, failures: {} };

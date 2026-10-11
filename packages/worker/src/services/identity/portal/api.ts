@@ -67,7 +67,6 @@ import {
   releaseServiceEnabled,
   syncAccountLicenseLinks,
   createPortalDownloadToken,
-  deletePortalAccount,
   type PortalArtifactRow,
   type PortalLicenseRow,
   type PortalReleaseRow,
@@ -79,6 +78,11 @@ import {
   portalSessionFromRequest,
   type PortalSession,
 } from "./session.js";
+import {
+  accountDeletionSchedule,
+  cancelAccountDeletion,
+  scheduleAccountDeletion,
+} from "../accounts/lifecycle.js";
 import { handleMagicStart } from "./auth.js";
 import { portalStepUpGate } from "./stepUpGate.js";
 import { licenseGrants } from "./entitlements.js";
@@ -122,7 +126,11 @@ import {
   sendNotice,
   sendSecurityNotice,
 } from "./email.js";
-import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
+import {
+  accountDeletionCancelledNotice,
+  accountDeletionScheduledNotice,
+  downloadLinkEmail,
+} from "./notices.js";
 import { platformSignInEnded } from "../accounts/platformMigration.js";
 import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { handleProductDownloads } from "./downloads.js";
@@ -596,37 +604,16 @@ async function handleMe(
       // I-07, PX-W16: the picture in use, re-encoded and served same-origin (256 px; `-96` for
       // the small one); null shows initials. `GET /api/me/profile` has the rest.
       avatarUrl: avatarUrl(account.avatar_key ?? null),
+      deletion: await accountDeletionSchedule(db, session.accountId),
     },
     csrf: session.csrf,
   });
 }
 
 /**
- * `DELETE /api/me` — the account holder erases their own portal account.
- *
- * R11-09: there was no delete endpoint of any kind, so `portal_accounts.primary_email` and
- * `portal_account_emails.email` were unerasable through the API — right-to-erasure existed only
- * as an operator with D1 shell access. The awkward part is structural and is called out in the
- * finding: `portal_account_emails.email` is the row's PRIMARY KEY, so there is no way to record
- * "this address was erased" that does not re-store the address. `deletePortalAccount` therefore
- * deletes the row outright, which is the honest reading of erasure rather than a compromise.
- *
- * Three gates, all already in place upstream, all load-bearing here:
- *
- * - AUTHENTICATED. `handlePortalApi` resolves the session before dispatch and this handler only
- *   ever erases `session.accountId` — there is no id in the path or the body, so there is no
- *   parameter to tamper with and no way to aim it at somebody else's account.
- * - CSRF. `DELETE` is a mutation, so the `X-PKey-Portal-CSRF` check in `handlePortalApi` runs
- *   before this is reached. Without it a cross-site `fetch` with `SameSite=Lax`... would in fact
- *   be blocked by the cookie — but Lax is a defence against a class of navigation, not a
- *   substitute for a token, and account deletion is the one action with no undo.
- * - RATE LIMITED. Charged against this account's own budget, which for a destructive
- *   self-service action is about bounding retries and accidental double-submits.
- *
- * The notice email is sent BEFORE the delete, because afterwards there is no address to send it
- * to — the address is exactly what was erased. The session cookie is cleared on the way out; the
- * signed cookie would in any case stop validating on the next request, since `requireSession`
- * re-reads `portal_accounts` and the row is gone.
+ * `DELETE /api/me` schedules the holder's own account for hard erasure after the grace period.
+ * The request has no account parameter: authentication, CSRF and the fresh-sign-in gate bind it
+ * to this session's account only. Repeating it preserves the original deadline.
  */
 async function handleMeDelete(
   req: Request,
@@ -648,35 +635,86 @@ async function handleMeDelete(
     5,
   );
   if (limited) return limited;
-  // Every verified address hears about it, like any security change (PORTAL.md §6.3): the
-  // recipients are read here, while the rows that name them still exist.
-  await sendSecurityNotice(
-    env,
-    db,
-    session.accountId,
-    account.primary_email ?? session.email,
-    accountDeletedNotice({ origin: new URL(req.url).origin }),
-    now,
-  );
-  const result = await deletePortalAccount(
+  const { schedule, created } = await scheduleAccountDeletion(
     db,
     session.accountId,
     now,
+  );
+  if (created) {
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.account.deletion.schedule",
+      targetKind: "account",
+      targetId: session.accountId,
+      summary: "Scheduled account deletion",
+      now,
+    });
+    await sendSecurityNotice(
+      env,
+      db,
+      session.accountId,
+      account.primary_email ?? session.email,
+      accountDeletionScheduledNotice({
+        origin: new URL(req.url).origin,
+        dueAt: schedule.dueAt,
+      }),
+      now,
+    );
+  }
+  return portalJson({
+    ok: true,
+    scheduled: true,
+    deletionDueAt: schedule.dueAt,
+  });
+}
+
+/** Cancel a pending erasure before its deadline. A claim or deadline makes it irreversible. */
+async function handleMeDeletionCancel(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  now: number,
+): Promise<Response> {
+  const account = await getPortalAccount(db, session.accountId);
+  if (!account) return unauthorized();
+  const stale = portalStepUpGate(session, now);
+  if (stale) return stale;
+  const limited = await requireActionRateLimit(
+    req,
     env,
-    new URL(req.url).origin,
+    session,
+    "portalAccountDelete",
+    now,
+    5,
   );
-  // SEC-PRV-1: the account is closed either way (no session, no sign-in). `erasing: true` says a
-  // store hook failed and the retry sweeper is still finishing the erasure; the data is not
-  // readable through any API meanwhile.
-  return portalJson(
-    {
-      ok: true,
-      deleted: session.accountId,
-      ...(result.erasing ? { erasing: true } : {}),
-    },
-    200,
-    { "set-cookie": buildPortalClearCookie() },
-  );
+  if (limited) return limited;
+  const outcome = await cancelAccountDeletion(db, session.accountId, now);
+  if (outcome === "in_progress")
+    return err(
+      409,
+      "deletion_in_progress",
+      "account deletion has already begun",
+    );
+  if (outcome === "cancelled") {
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.account.deletion.cancel",
+      targetKind: "account",
+      targetId: session.accountId,
+      summary: "Cancelled account deletion",
+      now,
+    });
+    await sendSecurityNotice(
+      env,
+      db,
+      session.accountId,
+      account.primary_email ?? session.email,
+      accountDeletionCancelledNotice({ origin: new URL(req.url).origin }),
+      now,
+    );
+  }
+  return portalJson({ ok: true });
 }
 
 /**
@@ -1461,15 +1499,23 @@ async function dispatchPortalApi(
     if (!presented || !constantTimeEqual(presented, session.csrf))
       return forbidden("csrf");
   }
-  // Erasure is dispatched BEFORE the per-request link sweep: re-deriving license links for an
-  // account that is about to be deleted is pure waste, and it is the one request where a
-  // failure in that sweep must not be able to block the account holder from deleting.
+  // Scheduling and cancellation are dispatched before the per-request link sweep. Re-deriving
+  // links cannot make either account lifecycle action safer and must not block it.
   if (
     segments.length === 1 &&
     segments[0] === "me" &&
     req.method === "DELETE"
   ) {
     return handleMeDelete(req, env, db, session, now);
+  }
+  if (
+    segments.length === 3 &&
+    segments[0] === "me" &&
+    segments[1] === "deletion" &&
+    segments[2] === "cancel" &&
+    req.method === "POST"
+  ) {
+    return handleMeDeletionCancel(req, env, db, session, now);
   }
   // PX-W14: the approver's half. Rate-limited per ACCOUNT alone (not account and client IP, as
   // `requireActionRateLimit` keys it) before any code is looked up, so the budget is the bound on

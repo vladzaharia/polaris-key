@@ -589,7 +589,23 @@ export function useRemoveLicense(product: string) {
 }
 
 export function useDeleteAccount() {
-  return useMutation({ mutationFn: () => portalApi.deleteMe() });
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => portalApi.deleteMe(),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: portalKeys.me });
+    },
+  });
+}
+
+export function useCancelAccountDeletion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => portalApi.cancelDeletion(),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: portalKeys.me });
+    },
+  });
 }
 
 /**

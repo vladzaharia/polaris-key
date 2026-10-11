@@ -3,6 +3,8 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   ACCOUNT,
+  DAY,
+  NOW_S,
   axeViolations,
   fetchedRequests,
   mockFetch,
@@ -88,15 +90,18 @@ describe("Account v1 (PX-07)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("deletes the account only after the email is typed", async () => {
-    let deleted = false;
+  it("schedules deletion only after the email is typed, then lets the holder cancel", async () => {
+    let deletion: { requestedAt: number; dueAt: number } | null = null;
     mockFetch({
       ...signedIn(),
-      "/api/me": () =>
-        deleted ? { status: 401 } : { account: ACCOUNT, csrf: "c" },
+      "/api/me": () => ({ account: { ...ACCOUNT, deletion }, csrf: "c" }),
       "DELETE /api/me": () => {
-        deleted = true;
-        return { ok: true, deleted: ACCOUNT.id };
+        deletion = { requestedAt: NOW_S, dueAt: NOW_S + 14 * DAY };
+        return { ok: true, scheduled: true, deletionDueAt: deletion.dueAt };
+      },
+      "POST /api/me/deletion/cancel": () => {
+        deletion = null;
+        return { ok: true };
       },
     });
     renderPortal();
@@ -105,11 +110,11 @@ describe("Account v1 (PX-07)", () => {
       within(data).getByRole("button", { name: "Delete account" }),
     );
     const heading = within(data).getByRole("heading", {
-      name: "Delete your Polaris Key account?",
+      name: "Schedule your Polaris Key account for deletion?",
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     const confirm = within(data).getByRole("button", {
-      name: "Delete my account",
+      name: "Schedule deletion",
     }) as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);
     await userEvent.type(
@@ -129,9 +134,25 @@ describe("Account v1 (PX-07)", () => {
     await userEvent.click(confirm);
     await waitFor(() => expect(fetchedRequests()).toContain("DELETE /api/me"));
     expect(
-      await screen.findByRole("heading", { level: 1, name: /Sign in/ }),
+      await within(data).findByRole("heading", {
+        name: "Your account is scheduled for deletion",
+      }),
     ).toBeTruthy();
-    expect(await screen.findByText("Your account was deleted")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "We sent a confirmation to your email. You can cancel it for 14 days.",
+      ),
+    ).toBeTruthy();
+
+    await userEvent.click(
+      within(data).getByRole("button", { name: "Cancel scheduled deletion" }),
+    );
+    await waitFor(() =>
+      expect(fetchedRequests()).toContain("POST /api/me/deletion/cancel"),
+    );
+    expect(
+      await within(data).findByRole("button", { name: "Delete account" }),
+    ).toBeTruthy();
   });
 
   it("keeps the account with Keep my account", async () => {

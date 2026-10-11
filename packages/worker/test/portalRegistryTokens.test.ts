@@ -27,6 +27,10 @@ import {
   lookupRegistryCredential,
 } from "../src/core/registry/registryTokens.js";
 import { handlePortalApi } from "./portalHarness.js";
+import {
+  ACCOUNT_DELETION_GRACE_SECONDS,
+  sweepAccountDeletions,
+} from "../src/services/identity/accounts/lifecycle.js";
 
 const SLUG = "acme";
 let db: Db;
@@ -217,7 +221,7 @@ describe("portal package access (Q3)", () => {
     expect((await call("POST", "", { label: "x" })).status).toBe(403);
   });
 
-  it("erasing the portal account revokes every token it minted", async () => {
+  it("hard erasure after the grace period revokes every token it minted", async () => {
     await setFeed("licensed");
     const minted = (await (
       await call("POST", "", { label: "laptop" })
@@ -238,6 +242,12 @@ describe("portal package access (Q3)", () => {
       NOW,
     );
     expect(me.status).toBeLessThan(300);
+    await sweepAccountDeletions({
+      db,
+      env,
+      now: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+      origin: "",
+    });
     forgetRegistryTokens();
     expect(
       (await lookupRegistryCredential(env, db, minted.token)).resolved,

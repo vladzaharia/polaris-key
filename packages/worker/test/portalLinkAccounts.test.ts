@@ -23,6 +23,10 @@ import {
   pruneAccountMerges,
   undoMerge,
 } from "../src/services/identity/accounts/mergeUndo.js";
+import {
+  ACCOUNT_DELETION_GRACE_SECONDS,
+  sweepAccountDeletions,
+} from "../src/services/identity/accounts/lifecycle.js";
 import type { Db } from "../src/db/types.js";
 import { EMAIL_ISSUER } from "../src/services/identity/accounts/repo.js";
 
@@ -924,12 +928,21 @@ describe("undo within 72 hours", () => {
     expect(res.status).toBe(404);
   });
 
-  it("keeps no snapshot past the window, nor past the survivor's deletion", async () => {
+  it("keeps no snapshot past the window, nor after the survivor's hard erasure", async () => {
     const w = await seededWorld();
     const { a, mergeId } = await joined(w);
     expect(await pruneAccountMerges(w.db, NOW + 60)).toBe(0);
-    // Deleting the survivor deletes its join records.
+    // Scheduling leaves the active account and its 72-hour merge snapshot intact.
     expect((await a.d.send("DELETE", "/api/me")).status).toBe(200);
+    expect(
+      await w.db.first("SELECT id FROM account_merges WHERE id = ?", mergeId),
+    ).toBeTruthy();
+    await sweepAccountDeletions({
+      db: w.db,
+      env: w.env,
+      now: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+      origin: "",
+    });
     expect(
       await w.db.first("SELECT id FROM account_merges WHERE id = ?", mergeId),
     ).toBeNull();
