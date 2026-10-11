@@ -359,3 +359,49 @@ stubs out of the sitemap). Skipping the build and editing either output by hand 
 - Console help links live in exactly two tables (`packages/admin/src/console/nav.ts` and
   `packages/admin/src/lib/docsLinks.ts`) and are gated against the built slug manifest. Renaming
   a page means updating those tables in the same change.
+
+## Commands
+
+Prefix every JS/TS command with `mise exec node@22 --`. A newer Node major makes
+`better-sqlite3` fail to build, so the worker suite fails to collect instead of failing at the
+relevant change.
+
+## Working
+
+Prefer a background job that reports on exit to a sleep-and-poll loop. If polling is unavoidable,
+use short intervals tied to an exit status or final log line. Never sleep "just in case"; do
+independent work while a job runs.
+
+## Testing
+
+Keep a work package well under an hour. Tests are a means, not the work: run scoped tests while
+building and run the gate once at hand-off.
+
+Use `$PKEY_LEAD/gate.sh` for the scoped gate. `$PKEY_LEAD` is the lead directory set in the owner's
+shell profile; `_mockups/` is its sibling. The gate retries a failed step once on its own. Fix the
+failure, then rerun only that step with `GATE_ONLY=<n>` or `GATE_FROM=<n>`; never rerun the whole
+gate for one failure.
+
+If untouched code passes on retry, record the timing flake and move on. Never raise timeouts to
+get green.
+
+## Review
+
+Reviewers never run the gate; the builder did. A fix round reruns only the failing steps and
+affected tests.
+
+Reviewers never block on conflicts with current `main`. Diff from the branch's merge base and note
+the conflict for the lead.
+
+A review gets at most one fix round. If re-review still blocks, return the branch to the lead.
+
+## Hand-off
+
+Merge `main` at most once, right before hand-off. Do not re-merge after review because `main`
+moved.
+
+Name each D1 migration `00XX_<name>.sql`. The lead assigns its number at merge time; state that in
+your report.
+
+Finish clean: stop every background job before reporting. Do not hand back with a shell, server,
+container or watcher still running.
