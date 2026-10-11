@@ -13913,6 +13913,9 @@ a.card:focus-visible {
   width: 100%;
   max-width: 1080px;
 }
+.docs-body.single {
+  grid-template-columns: minmax(0, 1fr);
+}
 .docs[data-density="comfortable"] {
   --docs-prose-size: 16px;
   --docs-prose-line: 26px;
