@@ -384,10 +384,12 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
               {
                 id: "state",
                 label: "State",
-                options: ["halted", "paused", "active", "complete"].map((s) => ({
-                  value: s,
-                  label: statusOf("rollout", s).label,
-                })),
+                options: ["halted", "paused", "active", "complete"].map(
+                  (s) => ({
+                    value: s,
+                    label: statusOf("rollout", s).label,
+                  }),
+                ),
               },
               {
                 id: "outlet",

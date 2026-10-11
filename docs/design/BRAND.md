@@ -500,6 +500,17 @@ the warning status (amber), and the danger status keeps the red end of the warm 
   config yellow. Status colours are never drawn in a service accent. The filled primary button is the
   exception: it stays the neutral action ink (B2). Kits keep their platform look with the product
   accent.
+- Selected nav is the `subtle` fill plus a 3 px solid marker on the inline-start edge and
+  `text-strong` at weight 500. The marker passes 3:1 against the sidebar ground (WCAG 1.4.11) and the
+  selection is never colour alone; never a solid accent pill. Count badges keep their own status
+  colour inside the selected item.
+- The section header rule is the 3 px accent rule on the workspace canvas
+  ([§7.6](#76-console-density-and-layout-data-heavy-tables)); the one section identifier per page
+  header is the flat tile of [§7.8](#78-service-icon-tile).
+- Light-theme rules, markers and tiles use the theme `solid` (3:1), not a brighter display fill;
+  whether a decorative `display` fill is added for the tile is UK-58's decision.
+- Ship builds is one identity: Release cyan on Releases, Release tracks, Rollouts, Channels,
+  Packages, Updates and Health. Update tangerine and Packs orange are marketing and docs only.
 
 ---
 
@@ -845,7 +856,7 @@ is nothing to browse. It never lists owners, packages or versions.
 - Leave ¼-glyph clear space around marks and lockups.
 - Use the compact lockup when the full one would shrink the mark below 48 px.
 - Reserve gold for signing keys, signed records and verified signatures.
-- Use the Star Cut for the delivery family and the bytes host; the Pinned K for everything else.
+- Use the Star Cut for the delivery family and the bytes host; the Pinned K for everything else (Commerce included).
 - Keep the focus ring visible, in the accent of the service the element references (core violet on core screens).
 - Use the tokens; add a token (in `source.ts`, with tests) rather than a one-off hex.
 
