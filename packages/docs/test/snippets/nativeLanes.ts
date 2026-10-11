@@ -209,6 +209,17 @@ const KOTLIN_SAMPLE = join(
 );
 const JDK = "temurin-17.0.20+8";
 
+const KOTLIN_PRELUDE = `package docs.prelude
+
+import im.plrs.key.sdk.PolarisKeyClient
+
+/** The client a block uses without building one (the quickstart builds it). */
+lateinit var client: PolarisKeyClient
+
+/** What the player typed into the key field. */
+val userEnteredKey: String = ""
+`;
+
 function androidSdk(): boolean {
   const home = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT;
   if (home && existsSync(home)) return true;
@@ -260,7 +271,7 @@ export function kotlinFile(code: string, pkg: string): string {
   const body = hasDecl
     ? rest.join("\n")
     : `suspend fun docsBlock() {\n${rest.map((l) => `    ${l}`).join("\n")}\n}`;
-  return `package ${pkg}\n\n${imports.join("\n")}\n\n${body}\n`;
+  return `package ${pkg}\n\nimport docs.prelude.*\n${imports.join("\n")}\n\n${body}\n`;
 }
 
 async function gradleKotlin(
@@ -277,6 +288,12 @@ async function gradleKotlin(
   );
   mkdirSync(join(root, "config"), { recursive: true });
   writeFileSync(join(root, "config/PolarisConfig.kt"), sample);
+  // The app-side names a block may use without declaring them (`client`, `userEnteredKey`).
+  mkdirSync(join(root, "prelude"), { recursive: true });
+  writeFileSync(
+    join(root, "prelude/Prelude.kt"),
+    KOTLIN_PRELUDE,
+  );
   const byFile = new Map<string, { s: Snippet; offset: number }>();
   snippets.forEach((s, i) => {
     const pkg = `docs.block${String(i).padStart(4, "0")}`;
@@ -359,8 +376,10 @@ export function godotBin(): string | null {
 export const godotSkipReason = (): string | null =>
   godotBin() ? null : "no godot on PATH (set GODOT_BIN)";
 
+// A block is a script when it declares a member that only a script body can hold; `var` and `const`
+// alone are as often locals of a statement fragment, so they do not make it one.
 const GD_DECL =
-  /^(?:static\s+)?(?:func|extends|class_name|signal|enum|const|var|class|@)\b/;
+  /^(?:static\s+)?(?:func|extends|class_name|signal|enum|class)\b|^@/;
 
 /** A GDScript block as a script: statement-only fragments become the body of a function. */
 export function gdFile(code: string): { text: string; offset: number } {
@@ -585,6 +604,9 @@ export function exportsOf(lang: NativeLang): Set<string> {
 }
 
 export function skipReasonOf(lang: NativeLang): string | null {
+  // The JS job leaves the native lanes to their own CI jobs: PKEY_DOCS_SKIP_LANES=swift,kotlin,gdscript.
+  if ((process.env.PKEY_DOCS_SKIP_LANES ?? "").split(",").includes(lang))
+    return "left to its own CI job (PKEY_DOCS_SKIP_LANES)";
   return lang === "swift"
     ? swiftSkipReason()
     : lang === "kotlin"

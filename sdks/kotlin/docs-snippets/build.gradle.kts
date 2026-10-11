@@ -4,6 +4,8 @@
 // a desktop or CLI app declares it. No sources are committed; not published.
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
 }
 
 kotlin {
@@ -15,4 +17,7 @@ dependencies {
     implementation(project(":sdk"))
     implementation(project(":desktop"))
     implementation(project(":zstd"))
+    // The Compose Desktop recipe (build/sdks/kotlin/your-own-ui, "Compose Desktop").
+    implementation(compose.desktop.currentOs)
+    implementation(compose.material3)
 }

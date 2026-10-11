@@ -37,4 +37,7 @@ dependencies {
     implementation(project(":ui"))
     implementation(project(":billing"))
     implementation(project(":zstd"))
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.material3)
+    implementation(libs.androidx.activity.compose)
 }

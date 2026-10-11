@@ -45,7 +45,11 @@ jobs:
             echo "::error::the size budget did not fail when exceeded"; exit 1
           fi
       - run: pnpm typecheck
+      # The docs snippet lane's Swift, Kotlin and GDScript blocks compile in the `docs-snippets` jobs
+      # below, each on the toolchain it needs; this job runs the TypeScript and Python lanes.
       - run: pnpm test
+        env:
+          PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
       # Adapter conformance (A-18a, notes/S-15 §6.6): every storefront and feed adapter against the
       # shared contract, and every write of each store's pinned vendor spec classified (allowed or
       # denied with a reason). `pnpm test` runs these too; this step names them, so a failing
@@ -493,6 +497,71 @@ jobs:
   # (no signing, no remote repository). P6-08: :packs decodes zstd through zstd-jni, whose Android
   # natives must be 16 KB page aligned; tools/check_16k_alignment.py reads every ELF PT_LOAD of the
   # pinned zstd-jni AAR's .so files (arm64-v8a and x86_64 must align; 32-bit ABIs are reported).
+  # SP-45b: the docs snippet lane for Kotlin and GDScript (packages/docs/test/snippets/nativeLanes.ts).
+  # Every ```kotlin and ```gdscript block on a covered docs page compiles against the real SDK: the
+  # JVM blocks in sdks/kotlin :docs-snippets, the `android` blocks in :docs-snippets-android (the
+  # runner's Android SDK), the GDScript blocks in a headless Godot project with the addon linked.
+  # A deliberately broken block must fail each lane, and a covered page may name only symbols the SDK
+  # exports. PKEY_DOCS_LANES makes a lane that cannot run a failure instead of a skip.
+  docs-snippets:
+    name: Docs snippets (Kotlin, Godot)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          set +o pipefail
+          yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
+          "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/pkey-godot/4.7.2
+          key: pkey-godot-4.7.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      - run: sdks/godot/tools/fetch_godot.sh 4.7.2 "$HOME/.cache/pkey-godot/4.7.2"
+      - name: Kotlin and GDScript lanes
+        working-directory: packages/docs
+        env:
+          PKEY_DOCS_LANES: kotlin,gdscript
+          PKEY_DOCS_SKIP_LANES: swift
+        run: GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" pnpm exec vitest run test/snippets/snippets.test.ts -t "kotlin lane|gdscript lane|Godot class names"
+
+  # SP-45b: the Swift half of the docs snippet lane, on the macOS runner Swift 6 needs.
+  docs-snippets-swift:
+    name: Docs snippets (Swift)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: swift --version
+      - name: Swift lane
+        working-directory: packages/docs
+        env:
+          PKEY_DOCS_LANES: swift
+          PKEY_DOCS_SKIP_LANES: kotlin,gdscript
+        run: pnpm exec vitest run test/snippets/snippets.test.ts -t "swift lane"
+
   kotlin:
     name: Kotlin SDK (JVM modules + conformance runner)
     runs-on: ubuntu-latest

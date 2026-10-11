@@ -1053,7 +1053,7 @@ import polarisKey from "./polaris-key.json"; // the generated config module
 ```html
 <!-- Any web page, Angular, Vue, Svelte, htmx (2 lines; the module injects its own styles and fonts) -->
 <script type="module" src="https://key.plrs.im/elements/1/pk.js"></script>
-<pk-gate product="tidewater" config='{"product":"tidewater",…}'
+<pk-gate config='{"product":"tidewater",…}'
   ><my-app></my-app
 ></pk-gate>
 ```
@@ -1061,7 +1061,7 @@ import polarisKey from "./polaris-key.json"; // the generated config module
 ```swift
 // SwiftUI, iOS 18+ / macOS 15+, Liquid Glass on 26 (3 lines)
 import PolarisKeyUI
-let client = PolarisKey.client(product: "tidewater")   // reads PolarisKey.plist
+let client = try await PolarisKeyClient.fromConfig()   // reads polaris-key.json from the app bundle
 WindowGroup { ContentView().polarisKeyGate(client) }
 // macOS: also adds the Settings pane and the menu commands
 Settings { PolarisKeySettings(client) }
@@ -1070,12 +1070,12 @@ Settings { PolarisKeySettings(client) }
 ```kotlin
 // Compose (Android, Desktop) (3 lines)
 import im.plrs.key.ui.PolarisKeyGate
-val client = PolarisKey.client(context, product = "tidewater")
+val client = PolarisKeyClient.fromConfig(context)   // reads assets/polaris-key.json
 setContent { PolarisKeyGate(client) { App() } }
 ```
 
 ```gdscript
-# Godot: the autoload reads polaris_key.tres; one call before the main scene (1 line)
+# Godot: the autoload reads res://polaris-key.json; one call before the main scene (1 line)
 await PolarisKey.boot()
 ```
 
@@ -1083,7 +1083,7 @@ await PolarisKey.boot()
 # Qt (PySide6 or PyQt6) (3 lines)
 from polaris_key import Client
 from polaris_key.ui.qt import run_gate
-run_gate(Client(product="tidewater"), main_window)  # shows the gate until licensed
+run_gate(Client.from_config(), main_window)  # reads polaris-key.json; shows the gate until licensed
 ```
 
 ```ts
@@ -1092,9 +1092,12 @@ registerPolarisKey({ ipcMain, client }); // main
 exposePolarisKey(); // preload
 ```
 
-The constructor names follow each SDK. Every kit takes a `client` built the same way, and the React
-kit takes the generated config module and the elements take `product` plus a `config` attribute
-(SETUP.md D18; there is no publishable key or other credential). The gate fixes today's lifecycle traps:
+The constructor names follow each SDK. Every client is built from the product's `polaris-key.json`
+(`fromConfig()`, Python `from_config()`; Godot's autoload reads the file itself), the React kit takes
+the generated config module and the elements take a `config` attribute. There is no `product` prop,
+publishable key or other credential (SETUP.md D18). Until the config document lands, the shipped
+start is the generated `PolarisConfig` module and its `clientOptions()` (the SDK pages show it). The
+gate fixes today's lifecycle traps:
 
 - it starts itself (Compose `gate.start()`, KO);
 - it never flashes the sign-in card before the real state loads (SW);
