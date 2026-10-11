@@ -97,6 +97,11 @@ export const MOVED_TABS: ReadonlyMap<string, ProductPageId> = new Map<
   ProductPageId
 >([
   ["overview", "overview"],
+  // ST-08: Services, Presentation and Keys & secrets became tabs of the product settings hub
+  // (`settings/features`, `settings/presentation`, `settings/keys`). No redirect, no alias.
+  ["services", "services"],
+  ["presentation", "presentation"],
+  ["keys", "keys"],
   ["secrets", "keys"],
   ["licenses", "licenses"],
   ["tiers", "tiers"],

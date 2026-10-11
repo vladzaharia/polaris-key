@@ -380,7 +380,9 @@ describe("New product", () => {
     await userEvent.click(
       within(welcome).getByRole("link", { name: /Set 2 missing secrets/ }),
     );
-    await waitFor(() => expect(window.location.hash).toBe("#/p/linked/keys"));
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/linked/settings/keys"),
+    );
   });
 
   it("checks the repository's shape before asking the server", async () => {

@@ -596,7 +596,7 @@ describe("the Feeds overview", () => {
       within(main())
         .getByRole("link", { name: "Open Services" })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/services");
+    ).toBe("#/p/djdl/settings/features");
     expect(
       within(nav())
         .queryAllByRole("link", { name: "Package feeds" })
@@ -1126,7 +1126,7 @@ describe("the package record", () => {
 
 describe("Core → Services: the package feeds switch", () => {
   it("is its own section and saves on its own; turning it off asks first", async () => {
-    const log = boot("#/p/djdl/services", {
+    const log = boot("#/p/djdl/settings/features", {
       extra: {
         ...feedRoutes(),
         ...product(true),
@@ -1142,7 +1142,7 @@ describe("Core → Services: the package feeds switch", () => {
         },
       },
     });
-    await heading("Services");
+    await screen.findByRole("heading", { level: 2, name: "Services" });
     const section = await within(await mainReady()).findByRole("region", {
       name: "Package feeds",
     });

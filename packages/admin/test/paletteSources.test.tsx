@@ -147,7 +147,7 @@ describe("SDK actions (UX-59)", () => {
     ]);
     expect(items.every((i) => i.matchOnly)).toBe(true);
     expect(items.find((i) => i.label === "Trust pins")?.href).toBe(
-      "#/p/djdl/keys",
+      "#/p/djdl/settings/keys",
     );
     expect(sdkActions(null)).toEqual([]);
   });
@@ -287,7 +287,9 @@ describe("the palette in the console", () => {
       expect(groupLabels(dialog, "Actions")[0]).toMatch(/^Turn on Release/),
     );
     await userEvent.keyboard("{Enter}");
-    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/services"));
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/settings/features"),
+    );
     await waitFor(() =>
       expect(document.activeElement?.id).toBe("service-release"),
     );

@@ -25,7 +25,10 @@ describe("AttentionList", () => {
             object: <a href="#/p/northwind">{LONG}</a>,
             objectTitle: LONG,
             reason: "Missing required secret OIDC_CLIENT_SECRET",
-            action: { label: "Set secret", href: "#/p/northwind/keys" },
+            action: {
+              label: "Set secret",
+              href: "#/p/northwind/settings/keys",
+            },
           },
         ]}
       />,

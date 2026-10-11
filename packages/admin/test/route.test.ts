@@ -129,7 +129,7 @@ describe("every page parses and round-trips", () => {
     expect(r.home()).toBe("#/");
     expect(r.products()).toBe("#/products");
     expect(r.overview("djdl")).toBe("#/p/djdl");
-    expect(r.keys("djdl")).toBe("#/p/djdl/keys");
+    expect(r.keys("djdl")).toBe("#/p/djdl/settings/keys");
     expect(r.license("djdl", "lic_1", "keys")).toBe(
       "#/p/djdl/license/licenses/lic_1/keys",
     );
@@ -208,7 +208,15 @@ describe("section roots redirect to the section's first page", () => {
     // ADMIN.md §2.5: old hash → the new address the moved page links to (id and query kept).
     const OLD: [string, string][] = [
       ["#/p/djdl/overview", "#/p/djdl"],
-      ["#/p/djdl/secrets", "#/p/djdl/keys"],
+      ["#/p/djdl/secrets", "#/p/djdl/settings/keys"],
+      // ST-08: three Core pages became tabs of the settings hub.
+      ["#/p/djdl/keys", "#/p/djdl/settings/keys"],
+      [
+        "#/p/djdl/keys?secret=OIDC_CLIENT_SECRET",
+        "#/p/djdl/settings/keys?secret=OIDC_CLIENT_SECRET",
+      ],
+      ["#/p/djdl/services", "#/p/djdl/settings/features"],
+      ["#/p/djdl/presentation", "#/p/djdl/settings/presentation"],
       ["#/p/djdl/licenses", "#/p/djdl/license/licenses"],
       ["#/p/djdl/licenses/lic_1", "#/p/djdl/license/licenses/lic_1"],
       [
@@ -460,6 +468,8 @@ describe("the nav model (nav.ts)", () => {
       "keys",
       "activity",
       "settings",
+      "settings-members",
+      "settings-all",
       "licenses",
       "tiers",
       "enrollment",

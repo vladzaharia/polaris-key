@@ -42,7 +42,7 @@ describe("Enrollment", () => {
       within(reg)
         .getByRole("link", { name: "Change in Services" })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/services");
+    ).toBe("#/p/djdl/settings/features");
     expect(within(reg).queryByRole("radio")).toBeNull();
   });
 

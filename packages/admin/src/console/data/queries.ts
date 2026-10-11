@@ -157,6 +157,9 @@ export const qk = {
   productSettings: (slug: string, area: string) =>
     product(slug, "core", "settings", area),
   productSettingsAll: (slug: string) => product(slug, "core", "settings"),
+  /** ST-08: every row-backed setting of the product in one read (Settings → All settings). */
+  productSettingsEvery: (slug: string) =>
+    product(slug, "core", "settings", "every"),
 
   // config
   catalog: (slug: string) => product(slug, "config", "catalog"),

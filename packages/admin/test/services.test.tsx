@@ -101,7 +101,8 @@ const ALL_ON = {
 };
 const CHAIN_OFF = { release: false, distribution: false, update: false };
 
-const mount = () => renderAt("#/p/djdl/services", <ServicesPage slug="djdl" />);
+const mount = () =>
+  renderAt("#/p/djdl/settings/features", <ServicesPage slug="djdl" />);
 const sw = (name: string) =>
   screen.getByRole("switch", { name: new RegExp(name) });
 
