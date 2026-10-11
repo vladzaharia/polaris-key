@@ -72,13 +72,18 @@ export function passkeyProvider(
 }
 
 /**
- * A passkey's name (PORTAL.md §4.26 "provider name"): its provider by AAGUID, else the browser it
- * was added from, else "Passkey".
+ * A passkey's name (PORTAL.md §4.26): the one its holder gave it, else its provider by AAGUID,
+ * else the browser it was added from, else "Passkey".
  */
 export function passkeyName(
-  p: Pick<PortalPasskey, "aaguid" | "addedFrom">,
+  p: Pick<PortalPasskey, "aaguid" | "addedFrom" | "name">,
 ): string {
-  return passkeyProvider(p.aaguid)?.name ?? (p.addedFrom?.trim() || "Passkey");
+  return (
+    p.name?.trim() ||
+    passkeyProvider(p.aaguid)?.name ||
+    p.addedFrom?.trim() ||
+    "Passkey"
+  );
 }
 
 /** The account's providers by name, in the provider row's order. */
@@ -88,7 +93,7 @@ export const PROVIDER_NAME: Record<PortalProvider, string> = {
   steam: "Steam",
 };
 
-function plural(n: number, one: string, many: string): string {
+export function plural(n: number, one: string, many: string): string {
   return n === 1 ? `1 ${one}` : `${n} ${many}`;
 }
 

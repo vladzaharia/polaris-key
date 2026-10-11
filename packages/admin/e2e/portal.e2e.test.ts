@@ -9,6 +9,7 @@ import {
 } from "./portalHarness.js";
 import {
   MARA_METHODS,
+  MARA_METHODS_W19,
   PROFILE_STEAM,
   profileRoutes,
   UPLOAD_ASSET,
@@ -760,6 +761,109 @@ describe("Account → Sign-in methods (PX-13, §4.26)", () => {
       expect(
         await o.page.evaluate(() => document.activeElement?.textContent),
       ).toBe("Accounts");
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+});
+
+describe("Account → Sign-in methods: Make primary and Rename (PX-W19)", () => {
+  const FRESH = {
+    authenticatedAt: Date.UTC(2026, 9, 1, 12) / 1000,
+    freshUntil: Date.UTC(2026, 9, 1, 12, 5) / 1000,
+    fresh: true,
+    maxAgeSeconds: 300,
+  };
+
+  it("shows what each address brought in, makes the second one primary and renames a passkey", async () => {
+    let primary = false;
+    let name: string | null = "Work laptop";
+    const sent: unknown[] = [];
+    const view = () => ({
+      ...MARA_METHODS_W19,
+      stepUp: FRESH,
+      primaryEmail: primary
+        ? "mara.f@proton.me"
+        : MARA_METHODS_W19.primaryEmail,
+      emails: [...MARA_METHODS_W19.emails]
+        .map((e) => ({
+          ...e,
+          primary: primary
+            ? e.email === "mara.f@proton.me"
+            : e.email === MARA_METHODS_W19.primaryEmail,
+        }))
+        .sort((a, b) => Number(b.primary) - Number(a.primary)),
+      passkeys: MARA_METHODS_W19.passkeys.map((p, i) =>
+        i === 1 ? { ...p, name } : p,
+      ),
+    });
+    const o = await open("three", "/#/account/methods", {
+      routes: {
+        "GET /api/me/methods": () => ({ body: view() }),
+        "POST /api/me/methods/lnk_mail2/primary": () => {
+          primary = true;
+          return { body: view() };
+        },
+        "PATCH /api/me/passkeys/cGFzc2tleS0xcGFzc3dvcmQ": (req) => {
+          sent.push(req.postDataJSON());
+          name = (sent.at(-1) as { name: string | null }).name;
+          return { body: { passkeys: view().passkeys } };
+        },
+      },
+    });
+    try {
+      await h1(o.page, "Account");
+      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      await region.getByText(/brought in 2 products/).waitFor();
+      await region.getByText(/brought in 1 product\b/).waitFor();
+      await shoot(o.page, "account-methods-w19-desktop-dark");
+      await region
+        .getByRole("button", { name: "Make mara.f@proton.me primary" })
+        .click();
+      await o.page
+        .getByText("mara.f@proton.me is now your primary email")
+        .first()
+        .waitFor();
+      await region
+        .getByRole("button", { name: "Make mara@fennick.studio primary" })
+        .waitFor();
+      expect(
+        await o.page.evaluate(() => document.activeElement?.textContent),
+      ).toBe("Email · sign in with a code");
+      await region
+        .getByRole("button", { name: "Rename the Work laptop passkey" })
+        .click();
+      const field = region.getByRole("textbox", { name: "Name" });
+      await field.waitFor();
+      await shoot(o.page, "account-methods-w19-rename-desktop-dark");
+      await field.fill("");
+      await region.getByRole("button", { name: "Save" }).click();
+      await o.page.getByText("The name was cleared").first().waitFor();
+      expect(sent).toEqual([{ name: null }]);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("asks to confirm it's you first when the sign-in is stale", async () => {
+    const o = await open("three", "/#/account/methods", {
+      routes: { "GET /api/me/methods": { body: MARA_METHODS_W19 } },
+    });
+    try {
+      await h1(o.page, "Account");
+      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      await region
+        .getByRole("button", { name: "Make mara.f@proton.me primary" })
+        .click();
+      await region
+        .getByRole("group", { name: "Confirm it's you first" })
+        .waitFor();
+      await shoot(o.page, "account-methods-w19-stepup-desktop-dark");
+      expect(o.requests).not.toContain(
+        "POST /api/me/methods/lnk_mail2/primary",
+      );
       expect(await o.violations()).toEqual([]);
     } finally {
       await o.close();

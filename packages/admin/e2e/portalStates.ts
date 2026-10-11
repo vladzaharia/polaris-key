@@ -1186,9 +1186,14 @@ export const PENDING: PendingState[] = [
   { section: "4.24", title: "Approve a new device", wp: ["PX-15"] },
   {
     section: "4.26",
-    title:
-      "Account: connected products, Download my data, Make primary, passkey Rename (need their API)",
+    title: "Account: connected products, Download my data (need their API)",
     wp: ["PX-13 follow-up"],
+  },
+  {
+    section: "4.26",
+    title:
+      "Account → Sign-in methods: Make primary, passkey Rename, products per email (API and controls built; linux baselines and UX review not recorded yet)",
+    wp: ["PX-W19"],
   },
   {
     section: "4.29",

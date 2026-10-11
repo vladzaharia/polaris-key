@@ -845,6 +845,7 @@ describe("passkey removal and the settings list", () => {
       passkeys: [
         {
           id: auth.id,
+          name: null,
           methodId: link!.id,
           createdAt: NOW,
           lastUsedAt: NOW + 60,

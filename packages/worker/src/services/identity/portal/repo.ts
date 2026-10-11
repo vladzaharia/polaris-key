@@ -610,6 +610,30 @@ export async function listPortalLicenses(
   );
 }
 
+/**
+ * How many distinct products each address brought in (PX-W19): the account's licences whose own
+ * email is that address (case-insensitive, the licence email LX-26 attaches by), leaving out
+ * deleted and portal-off products as the Library does. One grouped query for every address;
+ * keys are lower-cased.
+ */
+export async function productCountsByEmail(
+  db: Db,
+  accountId: string,
+): Promise<Map<string, number>> {
+  const rows = await db.all<{ email: string; n: number }>(
+    `SELECT lower(l.email) AS email, COUNT(DISTINCT l.product) AS n
+       FROM licenses l
+       JOIN products p ON p.slug = l.product
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+      WHERE l.account_id = ? AND l.email IS NOT NULL
+        AND COALESCE(p.status, 'active') != 'deleted'
+        AND COALESCE(s.portal_enabled, 1) = 1
+      GROUP BY lower(l.email)`,
+    accountId,
+  );
+  return new Map(rows.map((r) => [r.email, r.n]));
+}
+
 export async function getPortalLicense(
   db: Db,
   accountId: string,

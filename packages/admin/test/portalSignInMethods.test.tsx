@@ -248,7 +248,7 @@ describe("Sign-in methods (PX-13)", () => {
         `Changing a method asks you to confirm it's you. Every change is recorded and emailed to ${ACCOUNT.email}.`,
       ),
     ).toBeTruthy();
-    // No Make primary or Rename until the Worker has them (PX-13's brief).
+    // A Worker without PX-W19's fields (`productCount`, `name`) offers neither Make primary nor Rename.
     expect(
       within(region).queryByRole("button", { name: /Make primary|Rename/ }),
     ).toBeNull();
@@ -1152,5 +1152,172 @@ describe("Sign-in methods model (PX-13)", () => {
     expect(stepUpFresh(stepUp, 1290)).toBe(false);
     expect(stepUpFresh({ ...stepUp, fresh: false }, 1000)).toBe(false);
     expect(stepUpFresh(undefined, 1000)).toBe(false);
+  });
+});
+
+describe("Make primary and Rename (PX-W19)", () => {
+  const FRESH = {
+    authenticatedAt: NOW_S - 30,
+    freshUntil: NOW_S + 270,
+    fresh: true,
+    maxAgeSeconds: 300,
+  };
+  function withCounts(over: Partial<PortalMethods> = {}): PortalMethods {
+    const v = maraMethods(over);
+    v.emails[0]!.productCount = 2;
+    v.emails[1]!.productCount = 1;
+    v.passkeys[0]!.name = null;
+    return v;
+  }
+
+  it("says what each address brought in, and offers Make primary on the others only", async () => {
+    mockFetch(routes(withCounts()));
+    renderPortal();
+    const region = await methodsRegion();
+    expect(within(region).getByText(/brought in 2 products/)).toBeTruthy();
+    expect(within(region).getByText(/brought in 1 product\b/)).toBeTruthy();
+    expect(
+      within(region).getAllByRole("button", { name: /^Make .* primary$/ }),
+    ).toHaveLength(1);
+    expect(
+      within(region).getByRole("button", {
+        name: "Make mara.f@proton.me primary",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("makes an address primary at once with a fresh sign-in, and the list re-renders from the answer", async () => {
+    const after = withCounts({
+      stepUp: FRESH,
+      primaryEmail: "mara.f@proton.me",
+    });
+    after.emails = [
+      { ...after.emails[1]!, primary: true },
+      { ...after.emails[0]!, primary: false },
+    ];
+    let done = false;
+    mockFetch(
+      routes(withCounts({ stepUp: FRESH }), {
+        "GET /api/me/methods": () =>
+          done ? after : withCounts({ stepUp: FRESH }),
+        "POST /api/me/methods/lnk_mail2/primary": () => {
+          done = true;
+          return after;
+        },
+      }),
+    );
+    renderPortal();
+    const region = await methodsRegion();
+    await userEvent.click(
+      within(region).getByRole("button", {
+        name: "Make mara.f@proton.me primary",
+      }),
+    );
+    await waitFor(() =>
+      expect(fetchedRequests()).toContain(
+        "POST /api/me/methods/lnk_mail2/primary",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        within(region).getByRole("button", {
+          name: `Make ${ACCOUNT.email} primary`,
+        }),
+      ).toBeTruthy(),
+    );
+  });
+
+  it("asks to confirm it's you first on a stale session, and Cancel hands focus back", async () => {
+    mockFetch(routes(withCounts()));
+    renderPortal();
+    const region = await methodsRegion();
+    const button = within(region).getByRole("button", {
+      name: "Make mara.f@proton.me primary",
+    });
+    await userEvent.click(button);
+    await within(region).findByRole("heading", {
+      name: "Make mara.f@proton.me primary?",
+    });
+    await within(region).findByText("Confirm it's you first");
+    expect(await axeViolations()).toEqual([]);
+    expect(fetchedRequests()).not.toContain(
+      "POST /api/me/methods/lnk_mail2/primary",
+    );
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Cancel" }),
+    );
+    const again = await within(region).findByRole("button", {
+      name: "Make mara.f@proton.me primary",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(again));
+  });
+
+  it("names a passkey, keeps the input when the save fails, and clears the name", async () => {
+    const named = withCounts({ stepUp: FRESH });
+    named.passkeys[0]!.name = "Work laptop";
+    let calls = 0;
+    mockFetch(
+      routes(withCounts({ stepUp: FRESH }), {
+        "PATCH /api/me/passkeys/Y3JlZC0x": (init?: RequestInit) => {
+          calls += 1;
+          if (calls === 1)
+            return {
+              status: 422,
+              body: {
+                error: "bad_request",
+                message: "Use 1 to 64 characters.",
+              },
+            };
+          return {
+            body: { passkeys: [] },
+            sent: JSON.parse(String(init?.body)),
+          };
+        },
+      }),
+    );
+    renderPortal();
+    const region = await methodsRegion();
+    await userEvent.click(
+      within(region).getByRole("button", {
+        name: "Rename the iCloud Keychain passkey",
+      }),
+    );
+    const field = await within(region).findByRole("textbox", { name: "Name" });
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.type(field, "Work laptop");
+    await userEvent.click(within(region).getByRole("button", { name: "Save" }));
+    await within(region).findByText("Use 1 to 64 characters.");
+    expect((field as HTMLInputElement).value).toBe("Work laptop");
+    await userEvent.click(within(region).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls).toBe(2));
+    const patch = vi
+      .mocked(fetch)
+      .mock.calls.filter(([, init]) => init?.method === "PATCH");
+    expect(JSON.parse(String(patch[1]![1]!.body))).toEqual({
+      name: "Work laptop",
+    });
+  });
+
+  it("shows a given name as the passkey's title", async () => {
+    const view = withCounts();
+    view.passkeys[0]!.name = "Work laptop";
+    mockFetch(routes(view));
+    renderPortal();
+    const region = await methodsRegion();
+    expect(within(region).getByText("Work laptop")).toBeTruthy();
+    expect(
+      within(region).getByRole("button", {
+        name: "Rename the Work laptop passkey",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("names a passkey by what its holder called it first", () => {
+    expect(
+      passkeyName({ aaguid: ICLOUD, addedFrom: "Safari", name: "Work laptop" }),
+    ).toBe("Work laptop");
+    expect(passkeyName({ aaguid: null, addedFrom: null, name: null })).toBe(
+      "Passkey",
+    );
   });
 });
