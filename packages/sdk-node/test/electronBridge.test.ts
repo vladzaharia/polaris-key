@@ -8,8 +8,10 @@
 // of drifting.
 
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import ts from "typescript";
 import type {
   BridgeOidcBegin,
   BridgeState,
@@ -285,6 +287,55 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
       ipcRenderer: ipcPair().ipcRenderer,
     });
     expect(Object.keys(exposed)).toEqual(["polarisKey"]);
+  });
+
+  it("requires every adapter invoke pair in the v4 host allowlist", () => {
+    const root = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "..",
+      "sdk-react",
+      "src",
+    );
+    const calls = new Set<string>();
+    for (const file of [
+      join(root, "desktop", "desktopAdapter.ts"),
+      join(root, "core", "presentation.ts"),
+    ]) {
+      const source = ts.createSourceFile(
+        file,
+        readFileSync(file, "utf8"),
+        ts.ScriptTarget.Latest,
+        true,
+      );
+      const visit = (node: ts.Node): void => {
+        if (ts.isCallExpression(node)) {
+          const expression = ts.isNonNullExpression(node.expression)
+            ? node.expression.expression
+            : node.expression;
+          const name = ts.isPropertyAccessExpression(expression)
+            ? expression.name.text
+            : ts.isIdentifier(expression)
+              ? expression.text
+              : "";
+          const offset = name === "invoke" ? 0 : name === "invokeV4" ? 2 : null;
+          if (offset !== null) {
+            const service = node.arguments[offset];
+            const method = node.arguments[offset + 1];
+            if (
+              service !== undefined &&
+              method !== undefined &&
+              ts.isStringLiteral(service) &&
+              ts.isStringLiteral(method)
+            )
+              calls.add(`${service.text}.${method.text}`);
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    }
+    expect([...calls].sort()).toEqual([...DEFAULT_INVOKE_VERBS].sort());
   });
 });
 

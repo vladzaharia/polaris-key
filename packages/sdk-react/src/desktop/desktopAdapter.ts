@@ -271,18 +271,23 @@ export class DesktopAdapter implements PolarisAdapter {
       read: () => ({}),
       persistent: () => true,
       write: async (_next, { key, value }) => {
-        const [method, args] =
-          value === undefined
-            ? (["clear", { key }] as const)
-            : (["set", { key, value }] as const);
         try {
-          await this.invokeV4(
-            Feature.configLocal,
-            "device-local config overrides",
-            "config",
-            method,
-            args,
-          );
+          if (value === undefined)
+            await this.invokeV4(
+              Feature.configLocal,
+              "device-local config overrides",
+              "config",
+              "clear",
+              { key },
+            );
+          else
+            await this.invokeV4(
+              Feature.configLocal,
+              "device-local config overrides",
+              "config",
+              "set",
+              { key, value },
+            );
         } catch (e) {
           throw localConfigError(e);
         }
