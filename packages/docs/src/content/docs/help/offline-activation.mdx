@@ -1,0 +1,80 @@
+---
+title: "Activate a computer without internet"
+description: "Activate an app on a computer with no internet by sending a code and opening a file."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-10-11"
+sidebar:
+  order: 4
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+Some apps can be activated on a computer with no internet. The app shows a request code. You send
+the code to the app's developer, and you open the activation file they send back.
+
+<Callout type="caution" title="Important">
+  Only the app's developer can make an activation file. Polaris Key cannot make
+  one for you.
+</Callout>
+
+## Before you start
+
+Only some apps offer this. If **Activate offline** is not on the app's welcome screen, ask the
+developer. You also need a device with internet to send the code and receive the file, and a way to
+move the file to the offline computer, such as a USB drive.
+
+## Activate the computer
+
+Your app may look different.
+
+1. In the app on the offline computer, select **Activate offline**.
+2. Find the request code under **Offline activation**.
+3. Select **Copy code**, or write the code down.
+4. On a device with internet, send the code to the app's developer. The request code is not your
+   license key.
+5. Copy the activation file you get back to the offline computer.
+6. In the app, select **Load file…** and choose the file.
+7. If the app shows **Activate**, select it.
+
+You can also drop the file onto the window, or paste its text into **Paste the activation text
+here**. Some apps activate when the file loads, and some also show the request code as a QR code. On
+a Mac, the button reads **Load File…** and other buttons use capital letters too.
+
+In a terminal app, run its `offline-request` command to see the request code, then run its
+`import-bundle` command with the file.
+
+## How long it works
+
+The file works only on the computer that showed the code.
+
+- Open the file within 30 days of when it was made.
+- The offline period starts when the developer makes the file, not when you open it.
+- The app keeps working for the number of days the developer chose, or until the license ends if
+  that comes first. It can show **Offline** while it does.
+- When the time runs out, it says **License expired**. Ask for a new file. If the license itself has
+  ended, ask the developer to renew it first.
+
+## If the app refuses the file
+
+The app can say:
+
+- **Activation file not valid**: the file is damaged, was made for another app or computer, has
+  expired, or holds a license that is no longer valid.
+- **Activation file not trusted**: the app does not trust who made the file.
+
+Ask the app's developer for a new file, and tell them which message you saw. For the exact words,
+see [All messages](/docs/help/messages/).
+
+## Check it worked
+
+The app shows **Activated from the offline file.**
+
+## Undo
+
+In a terminal app, run its `deactivate` command to remove the activation from that computer. To
+activate it again, load the file again, or ask for a new one if the file no longer works.
+
+## Still need help?
+
+If you do not know who to ask, read [Get help with an app](/docs/help/contact/).

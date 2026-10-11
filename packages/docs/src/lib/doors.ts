@@ -101,7 +101,26 @@ export const DOOR_TREES: readonly DoorTree[] = [
         ],
       },
       { label: "Sign in", items: leaves("help/sign-in") },
-      { label: "Devices", items: leaves("help/devices") },
+      {
+        label: "Your library",
+        items: leaves(
+          "help/library",
+          "help/add-a-license",
+          "help/discover",
+          "help/lost-key",
+          "help/license-status",
+          "help/remove-from-library",
+        ),
+      },
+      {
+        label: "Devices",
+        items: leaves(
+          "help/devices",
+          "help/new-computer",
+          "help/device-limit",
+          "help/offline-activation",
+        ),
+      },
       { label: "Cloud Sync", items: leaves("help/sync") },
       { label: "Your data", items: leaves("help/your-data") },
       {

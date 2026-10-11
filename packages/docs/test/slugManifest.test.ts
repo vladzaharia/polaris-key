@@ -55,12 +55,24 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
   });
 
   it("records frontmatter and anchors", () => {
-    const stub = manifest.pages["/docs/help/add-a-license/"]!;
-    expect(stub.status).toBe("stub");
-    expect(stub.type).toBe("help");
-    expect(stub.anchors).toEqual(
-      expect.arrayContaining(["license_owned", "email_mismatch"]),
+    const page = manifest.pages["/docs/help/add-a-license/"]!;
+    expect(page.status).toBe("shipped");
+    expect(page.type).toBe("help");
+    expect(page.anchors).toEqual(
+      expect.arrayContaining([
+        "license_owned",
+        "email_mismatch",
+        "key_entry_limit",
+      ]),
     );
+  });
+
+  it("records a stub's status and type", () => {
+    const stubs = Object.values(manifest.pages).filter(
+      (p) => p.status === "stub",
+    );
+    expect(stubs.length).toBeGreaterThan(0);
+    for (const stub of stubs) expect(stub.type).toBeDefined();
   });
 
   it("records where a moved page forwards", () => {
@@ -71,7 +83,11 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
 
   it("drops stubs from the sitemap", () => {
     const sitemap = readFileSync(join(dist, "sitemap-0.xml"), "utf8");
-    expect(sitemap).not.toContain("/docs/help/add-a-license/");
+    const stubs = Object.entries(manifest.pages)
+      .filter(([, page]) => page.status === "stub")
+      .map(([route]) => route);
+    expect(stubs.length).toBeGreaterThan(0);
+    for (const route of stubs) expect(sitemap).not.toContain(`${route}</loc>`);
     expect(sitemap).toContain("/docs/help/activate/");
   });
 
