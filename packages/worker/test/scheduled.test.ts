@@ -14,6 +14,7 @@ import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import {
   AUDIT_RETENTION_SECONDS,
+  CONNECTOR_POLL_CRON,
   PRUNE_BATCH_ROWS,
   REQUIRED_INDEXES,
   assertRequiredIndexes,
@@ -34,10 +35,13 @@ import { asR2, R2Mock } from "./r2Mock.js";
 import { KvMock } from "./kvMock.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
+  ACCOUNT_DELETION_CLAIM_SECONDS,
   ACCOUNT_DELETION_GRACE_SECONDS,
   scheduleAccountDeletion,
 } from "../src/services/identity/accounts/lifecycle.js";
 import { enableServices } from "./releaseRoutesFixture.js";
+import { getAccountRow } from "../src/services/identity/accounts/repo.js";
+import { recordErasure } from "../src/services/identity/accounts/erasureLedger.js";
 import {
   BLOB_LOCK_AGE_SECONDS,
   DEFAULT_GC_GRACE_SECONDS,
@@ -823,6 +827,23 @@ describe("scheduled() blob collector (P4-14)", () => {
     expect(r2.has(key)).toBe(false);
   });
 
+  it("never sweeps the erasure ledger: its objects are in no blob_objects row, and the collector deletes only those", async () => {
+    const { db, r2, env } = await gcWorld();
+    const swept = `blobs/sha256/${hex("swept")}`;
+    await seedObject(db, r2, swept);
+    r2.seed(
+      "erasures/acct_gone",
+      new TextEncoder().encode(
+        '{"v":1,"accountId":"acct_gone","erasedAt":1700000000}',
+      ),
+    );
+    await runScheduledMaintenance(db, PAST_LOCK, env);
+    const r = await runScheduledMaintenance(db, PAST_LOCK + GRACE, env);
+    expect(r.counts.blobSweep).toBe(1);
+    expect(r2.has(swept)).toBe(false);
+    expect(r2.has("erasures/acct_gone")).toBe(true);
+  });
+
   it("blobGcSettings: the grace period defaults to 30 days and is never under one day", () => {
     expect(blobGcSettings({} as Env)).toEqual({
       enabled: true,
@@ -843,6 +864,8 @@ describe("scheduled account deletion", () => {
   it("starts hard erasure only at the due tick and remains idempotent", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), []);
+    // The erasure ledger (I-11): an erasure is recorded in the bucket before D1 changes.
+    env.BLOBS = asR2(new R2Mock());
     await seedProduct(db, "djdl");
     const account = await getOrCreateAccountByEmail(
       db,
@@ -885,5 +908,202 @@ describe("scheduled account deletion", () => {
       env,
     );
     expect(repeated.counts.accountDeletions).toBe(0);
+  });
+});
+
+describe("scheduled erasure ledger replay (I-11)", () => {
+  /** The ledger replay's reach: D1, and a bucket the ledger lives in. */
+  function ledgerWorld(r2 = new R2Mock()) {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), []);
+    env.BLOBS = asR2(r2);
+    return { db, env, r2 };
+  }
+
+  /** A pre-I-05 portal account with no row in the account model: what the legacy catch-up copies. */
+  const PORTAL_ACCOUNT_SQL = `INSERT INTO portal_accounts (id, status, display_name, primary_email, created_at, modified_at)
+       VALUES (?, 'active', 'Ada', 'ada@example.com', ?, ?)`;
+  /** A Db whose closing batch of an erasure fails, as a D1 outage does. */
+  function refusingErasure(db: Db): Db {
+    return {
+      ...db,
+      all: db.all.bind(db),
+      first: db.first.bind(db),
+      run: db.run.bind(db),
+      runChanges: db.runChanges.bind(db),
+      batch: async (statements) => {
+        if (statements.some((s) => s.sql.includes("SET status = 'deleted'")))
+          throw new Error("D1 down");
+        return db.batch(statements);
+      },
+    };
+  }
+
+  it("the nightly replay runs before the legacy catch-up: a portal account the ledger names is never copied back", async () => {
+    const { db, env } = ledgerWorld();
+    await recordErasure(env, "acct_legacy", NOW);
+    await db.run(PORTAL_ACCOUNT_SQL, "acct_legacy", NOW, NOW);
+
+    const report = await runScheduledMaintenance(db, NOW + 60, env);
+    expect(report.failures).toEqual({});
+    // One repair: the tombstone. Had the catch-up run first it would have copied the account
+    // and the replay would have erased it again (two repairs, and a receipt).
+    expect(report.counts.erasureLedger).toBe(1);
+    expect(
+      await db.first(
+        "SELECT id FROM account_tombstones WHERE id = 'acct_legacy' AND merged_into IS NULL",
+      ),
+    ).toBeTruthy();
+    expect(
+      await db.first("SELECT id FROM accounts WHERE id = 'acct_legacy'"),
+    ).toBeNull();
+    expect(
+      await db.first(
+        "SELECT id FROM portal_audit WHERE action = 'portal.account.delete'",
+      ),
+    ).toBeNull();
+
+    // The control: the same portal row with no ledger record IS copied into the account model.
+    const control = ledgerWorld();
+    await control.db.run(PORTAL_ACCOUNT_SQL, "acct_legacy", NOW, NOW);
+    await runScheduledMaintenance(control.db, NOW + 60, control.env);
+    expect(
+      await control.db.first(
+        "SELECT id FROM accounts WHERE id = 'acct_legacy'",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("the nightly replay re-erases an account a restore brought back, through the real state machine", async () => {
+    const { db, env } = ledgerWorld();
+    const account = await getOrCreateAccountByEmail(
+      db,
+      "restored@example.com",
+      NOW,
+    );
+    await recordErasure(env, account.id, NOW);
+
+    const report = await runScheduledMaintenance(db, NOW + 60, env);
+    expect(report.failures).toEqual({});
+    expect(report.counts.erasureLedger).toBe(2); // the tombstone, then the account
+    expect(await getAccountRow(db, account.id)).toBeNull();
+    expect(
+      await db.first(
+        "SELECT id FROM account_tombstones WHERE id = ?",
+        account.id,
+      ),
+    ).toBeTruthy();
+    // Nothing is left to do: the next pass repairs nothing.
+    expect(
+      (await runScheduledMaintenance(db, NOW + 120, env)).counts.erasureLedger,
+    ).toBe(0);
+  });
+
+  it("a re-erasure that fails is reported by opaque id, fails the step, and the other steps still run", async () => {
+    const { db, env } = ledgerWorld();
+    const account = await getOrCreateAccountByEmail(
+      db,
+      "restored@example.com",
+      NOW,
+    );
+    await recordErasure(env, account.id, NOW);
+    const failing = refusingErasure(db);
+
+    const report = await runScheduledMaintenance(failing, NOW + 60, env);
+    expect(Object.keys(report.failures)).toEqual(["erasureLedger"]);
+    expect(report.failures.erasureLedger).toBe(
+      `1 erasure ledger repair(s) failed: ${account.id} (reapply: D1 down)`,
+    );
+    expect(report.counts.accountsCatchUp).toBe(0);
+
+    // The cron invocation fails, naming the step and the id and nothing else about the person.
+    await expect(handleScheduled(env, failing)).rejects.toThrow(
+      `erasureLedger: 1 erasure ledger repair(s) failed: ${account.id} (reapply: D1 down)`,
+    );
+  });
+
+  it("the connector tick replays the ledger too; its failure waits for the nightly report", async () => {
+    const ok = ledgerWorld();
+    const account = await getOrCreateAccountByEmail(
+      ok.db,
+      "restored@example.com",
+      NOW,
+    );
+    await recordErasure(ok.env, account.id, NOW);
+    const report = await handleScheduled(ok.env, ok.db, CONNECTOR_POLL_CRON);
+    expect(report.counts.erasureLedger).toBe(2);
+    expect(await getAccountRow(ok.db, account.id)).toBeNull();
+
+    const bad = ledgerWorld();
+    const stuck = await getOrCreateAccountByEmail(
+      bad.db,
+      "restored@example.com",
+      NOW,
+    );
+    await recordErasure(bad.env, stuck.id, NOW);
+    const failing = refusingErasure(bad.db);
+    const tick = await handleScheduled(bad.env, failing, CONNECTOR_POLL_CRON);
+    expect(tick.failures).toEqual({});
+    expect(tick.counts.erasureLedger).toBe(0);
+    expect((await getAccountRow(bad.db, stuck.id))?.status).toBe("active");
+    await expect(handleScheduled(bad.env, failing)).rejects.toThrow(
+      /erasureLedger: .*acct_/,
+    );
+  });
+
+  it("an unreadable ledger fails the nightly step with its cause, never silently", async () => {
+    class DownList extends R2Mock {
+      override async list(): Promise<R2Objects> {
+        throw new Error("R2 5xx on list");
+      }
+    }
+    const { db, env } = ledgerWorld(new DownList());
+    const report = await runScheduledMaintenance(db, NOW, env);
+    expect(report.failures.erasureLedger).toBe("R2 5xx on list");
+    expect(report.counts.accountsCatchUp).toBe(0);
+    await expect(handleScheduled(env, db)).rejects.toThrow(
+      "erasureLedger: R2 5xx on list",
+    );
+    // The connector tick is not failed for it.
+    expect(
+      (await handleScheduled(env, db, CONNECTOR_POLL_CRON)).failures,
+    ).toEqual({});
+  });
+
+  it("a due deletion whose ledger write fails is reported by the nightly step and finishes on a later tick", async () => {
+    class Outage extends R2Mock {
+      down = true;
+      override async put(...args: Parameters<R2Mock["put"]>) {
+        if (this.down) throw new Error("R2 5xx");
+        return super.put(...args);
+      }
+    }
+    const r2 = new Outage();
+    const { db, env } = ledgerWorld(r2);
+    const account = await getOrCreateAccountByEmail(
+      db,
+      "erase@example.com",
+      NOW,
+    );
+    await scheduleAccountDeletion(db, account.id, NOW);
+    const due = NOW + ACCOUNT_DELETION_GRACE_SECONDS;
+
+    const refused = await runScheduledMaintenance(db, due, env);
+    expect(refused.failures.accountDeletions).toMatch(
+      /erasure ledger unavailable.*R2 5xx/,
+    );
+    expect((await getAccountRow(db, account.id))?.status).toBe("active");
+    expect(r2.keys()).toEqual([]);
+
+    r2.down = false;
+    const later = await runScheduledMaintenance(
+      db,
+      due + ACCOUNT_DELETION_CLAIM_SECONDS,
+      env,
+    );
+    expect(later.failures).toEqual({});
+    expect(later.counts.accountDeletions).toBe(1);
+    expect(await getAccountRow(db, account.id)).toBeNull();
+    expect(r2.keys()).toEqual([`erasures/${account.id}`]);
   });
 });

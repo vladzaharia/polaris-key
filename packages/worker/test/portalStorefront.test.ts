@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import { portalHooksFor } from "./portalHarness.js";
 import type { Env } from "../src/platform/env.js";
@@ -1017,6 +1018,8 @@ describe("library entries (GET /api/library, GET /api/products/<p>, DELETE /api/
       { account_id: other },
     ]);
 
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    w.env.BLOBS = asR2(new R2Mock());
     await deletePortalAccount(w.db, other, NOW, w.env);
     expect(await w.db.all("SELECT account_id FROM library_entries")).toEqual(
       [],

@@ -15,6 +15,7 @@ import { bindAdminFlow } from "./flowBinderHelper.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -96,6 +97,8 @@ async function setIdentity(db: Db, slug: string, on: boolean): Promise<void> {
 async function world(): Promise<World> {
   const db = makeTestDb();
   const env = makeEnv(new KvMock(), []);
+  // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+  env.BLOBS = asR2(new R2Mock());
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   const sent: Array<{ to: string; subject: string }> = [];

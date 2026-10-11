@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
+import { restoreDb, snapshotDb } from "./d1Restore.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -44,13 +46,28 @@ import {
   getAccountRow,
   insertLink,
 } from "../src/services/identity/accounts/repo.js";
+import {
+  ErasureLedgerError,
+  erasureKey,
+  recordErasure,
+} from "../src/services/identity/accounts/erasureLedger.js";
+import {
+  ACCOUNT_DELETION_CLAIM_SECONDS,
+  ACCOUNT_DELETION_GRACE_SECONDS,
+  accountDeletionSchedule,
+  cancelAccountDeletion,
+  scheduleAccountDeletion,
+  sweepAccountDeletions,
+} from "../src/services/identity/accounts/lifecycle.js";
 import { runScheduledMaintenance } from "../src/scheduled.js";
 
 const EMAIL = "erase-me@example.com";
 
-async function world() {
+async function world(r2 = new R2Mock()) {
   const db = makeTestDb();
   const env = makeEnv(new KvMock(), []);
+  // The erasure ledger (I-11) lives in the bucket: an erasure is recorded there before D1 changes.
+  env.BLOBS = asR2(r2);
   const ctx = (now = NOW): AccountContext => ({
     db,
     env,
@@ -98,7 +115,7 @@ async function world() {
     NOW + 3600,
     NOW,
   );
-  return { db, env, ctx, id: r.account.id, subject: attached.subject };
+  return { db, env, r2, ctx, id: r.account.id, subject: attached.subject };
 }
 
 const count = async (db: Db, sql: string, ...p: string[]) =>
@@ -835,5 +852,355 @@ describe("I-11: erasure anonymises the product audit rows that name the person",
       "utf8",
     );
     expect(oidc).toContain(`action: "${SIGNIN_LICENSE_CHOSEN_ACTION}"`);
+  });
+});
+
+// ── I-11: the erasure ledger, written ahead and replayed after a restore ─────────────────────
+
+/** A bucket whose writes can be made to fail, and that shows D1 at the moment of each write. */
+class LedgerBucket extends R2Mock {
+  failWrites = false;
+  beforeWrite: (key: string) => Promise<void> = async () => {};
+  override async put(...args: Parameters<R2Mock["put"]>) {
+    await this.beforeWrite(args[0]);
+    if (this.failWrites) throw new Error("R2 5xx: the bucket is unavailable");
+    return super.put(...args);
+  }
+}
+
+const ledgerText = async (r2: R2Mock, accountId: string) =>
+  await ((await r2.get(erasureKey(accountId))) as R2ObjectBody).text();
+
+describe("I-11: the erasure is recorded outside D1 before anything irreversible happens", () => {
+  it("writes the record BEFORE any D1 change, and the record is the opaque id and a time, nothing else", async () => {
+    const r2 = new LedgerBucket();
+    const w = await world(r2);
+    const seen: Array<Record<string, unknown>> = [];
+    r2.beforeWrite = async (key) => {
+      const named = await rowsNaming(w.db, w.id);
+      seen.push({
+        key,
+        status: (await getAccountRow(w.db, w.id))!.status,
+        sessions: named.sessions,
+        progress: named.erasures,
+      });
+    };
+    expect(await deletion.deleteAccount(w.ctx(), w.id)).toEqual({ ok: true });
+    // When R2 was written, the account was still whole.
+    expect(seen).toEqual([
+      { key: `erasures/${w.id}`, status: "active", sessions: 1, progress: 0 },
+    ]);
+    // The bucket holds that one object, and no email, name or product is in it.
+    expect(r2.keys()).toEqual([`erasures/${w.id}`]);
+    const raw = await ledgerText(r2, w.id);
+    expect(raw).toBe(JSON.stringify({ v: 1, accountId: w.id, erasedAt: NOW }));
+    expect(raw).not.toContain(EMAIL);
+    expect(raw).not.toContain("acme");
+    expect((await r2.head(`erasures/${w.id}`))?.httpMetadata?.contentType).toBe(
+      "application/json",
+    );
+  });
+
+  it("an unavailable ledger refuses the erasure with D1 untouched; the retry completes it", async () => {
+    const r2 = new LedgerBucket();
+    const w = await world(r2);
+    const calls: string[] = [];
+    registerSubjectStore("steady", {
+      merge: async () => {},
+      delete: async () => {
+        calls.push("steady");
+      },
+    });
+    const before = await snapshotDb(w.db);
+    r2.failWrites = true;
+    await expect(deletion.deleteAccount(w.ctx(), w.id)).rejects.toThrow(
+      ErasureLedgerError,
+    );
+    // Not a row, not a session, not a registry token changed; no store was asked to delete.
+    expect(await snapshotDb(w.db)).toEqual(before);
+    expect(calls).toEqual([]);
+    expect(r2.keys()).toEqual([]);
+    r2.failWrites = false;
+    expect(await deletion.deleteAccount(w.ctx(NOW + 60), w.id)).toEqual({
+      ok: true,
+    });
+    expect(calls).toEqual(["steady"]);
+    expect(r2.keys()).toEqual([`erasures/${w.id}`]);
+    expect(await getAccountRow(w.db, w.id)).toBeNull();
+  });
+
+  it("an unbound BLOBS bucket refuses the erasure the same way", async () => {
+    const w = await world();
+    delete w.env.BLOBS;
+    const before = await snapshotDb(w.db);
+    await expect(deletion.deleteAccount(w.ctx(), w.id)).rejects.toThrow(
+      /BLOBS bucket is not bound/,
+    );
+    expect(await snapshotDb(w.db)).toEqual(before);
+  });
+
+  it("an account that does not exist is not recorded", async () => {
+    const w = await world();
+    expect(await deletion.deleteAccount(w.ctx(), "acct_missing")).toEqual({
+      ok: false,
+    });
+    expect(w.r2.keys()).toEqual([]);
+  });
+
+  it("a retry, a double invoke and the sweeper never rewrite the record: the first one stands", async () => {
+    const w = await world();
+    registerSubjectStore("flaky", {
+      merge: async () => {},
+      delete: async () => {
+        throw new Error("down");
+      },
+    });
+    await deletion.deleteAccount(w.ctx(NOW), w.id);
+    const first = await w.r2.head(`erasures/${w.id}`);
+    await deletion.deleteAccount(w.ctx(NOW + 5), w.id);
+    await deletion.sweepErasures(w.ctx(NOW + 2 * 3600));
+    expect((await w.r2.head(`erasures/${w.id}`))?.etag).toBe(first?.etag);
+    expect(JSON.parse(await ledgerText(w.r2, w.id)).erasedAt).toBe(NOW);
+    expect(w.r2.keys()).toEqual([`erasures/${w.id}`]);
+  });
+
+  it("a request that is only scheduled is not recorded, cancelled or not; the due claim records it", async () => {
+    const w = await world();
+    await scheduleAccountDeletion(w.db, w.id, NOW);
+    expect(w.r2.keys()).toEqual([]);
+    expect(await cancelAccountDeletion(w.db, w.id, NOW + 60)).toBe("cancelled");
+    expect(w.r2.keys()).toEqual([]);
+    await scheduleAccountDeletion(w.db, w.id, NOW + 120);
+    const due = NOW + 120 + ACCOUNT_DELETION_GRACE_SECONDS;
+    expect(await sweepAccountDeletions(w.ctx(due - 1))).toEqual({
+      attempted: 0,
+      started: 0,
+    });
+    expect(w.r2.keys()).toEqual([]);
+    expect(await sweepAccountDeletions(w.ctx(due))).toEqual({
+      attempted: 1,
+      started: 1,
+    });
+    expect(w.r2.keys()).toEqual([`erasures/${w.id}`]);
+    expect(await getAccountRow(w.db, w.id)).toBeNull();
+  });
+
+  it("a due deletion that cannot be recorded keeps its request and is claimed again after its lease", async () => {
+    const r2 = new LedgerBucket();
+    const w = await world(r2);
+    await scheduleAccountDeletion(w.db, w.id, NOW);
+    const due = NOW + ACCOUNT_DELETION_GRACE_SECONDS;
+    r2.failWrites = true;
+    await expect(sweepAccountDeletions(w.ctx(due))).rejects.toThrow(
+      ErasureLedgerError,
+    );
+    expect((await getAccountRow(w.db, w.id))?.status).toBe("active");
+    expect(await accountDeletionSchedule(w.db, w.id)).not.toBeNull();
+    // The lease holds the claim, so nothing is hammered while R2 is down...
+    expect(await sweepAccountDeletions(w.ctx(due + 60))).toEqual({
+      attempted: 0,
+      started: 0,
+    });
+    // ...and once it is back the next claim completes the erasure.
+    r2.failWrites = false;
+    expect(
+      await sweepAccountDeletions(w.ctx(due + ACCOUNT_DELETION_CLAIM_SECONDS)),
+    ).toEqual({ attempted: 1, started: 1 });
+    expect(await getAccountRow(w.db, w.id)).toBeNull();
+    expect(r2.keys()).toEqual([`erasures/${w.id}`]);
+  });
+
+  it("an erasure an older Worker closed is recorded before its first hook; a failing ledger runs no hook", async () => {
+    const r2 = new LedgerBucket();
+    const w = await world(r2);
+    const calls: string[] = [];
+    registerSubjectStore("steady", {
+      merge: async () => {},
+      delete: async () => {
+        calls.push("steady");
+      },
+    });
+    await w.db.run("UPDATE accounts SET status = 'deleted' WHERE id = ?", w.id);
+    r2.failWrites = true;
+    expect(await deletion.sweepErasures(w.ctx(NOW + 60))).toEqual({
+      completed: 0,
+      attempted: 1,
+    });
+    expect(calls).toEqual([]);
+    expect(
+      await w.db.first(
+        "SELECT attempts, failed_step, lease_until FROM account_erasures WHERE account_id = ?",
+        w.id,
+      ),
+    ).toEqual({ attempts: 1, failed_step: "ledger", lease_until: 0 });
+    expect(await getAccountRow(w.db, w.id)).not.toBeNull();
+    r2.failWrites = false;
+    expect(await deletion.sweepErasures(w.ctx(NOW + 2 * 3600))).toEqual({
+      completed: 1,
+      attempted: 1,
+    });
+    expect(calls).toEqual(["steady"]);
+    expect(r2.keys()).toEqual([`erasures/${w.id}`]);
+  });
+});
+
+describe("I-11: a D1 restore does not resurrect an erased account", () => {
+  it("the replay recreates the tombstone, closes the restored account and erases what the restore brought back", async () => {
+    const w = await world();
+    await w.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject, bound_by, token_hash)
+       VALUES ('acme', 'dev-1', 'lic-1', 'authorized', ?, ?, ?, 'signin', 'th-dev-1')`,
+      NOW,
+      NOW,
+      w.subject,
+    );
+    const live = await rowsNaming(w.db, w.id);
+    expect(live).toMatchObject({ accounts: 1, subjects: 1, sessions: 1 });
+
+    // The bookmark. The erasure completes after it.
+    const bookmark = await snapshotDb(w.db);
+    expect(await deletion.deleteAccount(w.ctx(NOW + 100), w.id)).toEqual({
+      ok: true,
+    });
+    const tombstone = (db: Db) =>
+      db.first(
+        "SELECT id, email_hash, merged_into FROM account_tombstones WHERE id = ?",
+        w.id,
+      );
+    expect(await tombstone(w.db)).toEqual({
+      id: w.id,
+      email_hash: null,
+      merged_into: null,
+    });
+
+    // Time Travel restores the bookmark: D1 rewinds, the bucket does not.
+    await restoreDb(w.db, bookmark);
+    expect(await tombstone(w.db)).toBeNull();
+    expect(await rowsNaming(w.db, w.id)).toEqual(live);
+    expect(w.r2.keys()).toEqual([`erasures/${w.id}`]);
+
+    // The residual: nothing on the request path knows the ledger, so until the next replay tick
+    // the restored account signs in again.
+    const during = await signIn(
+      w.db,
+      { issuerKey: "email", subject: EMAIL, kind: "email" },
+      NOW + 150,
+    );
+    expect(during.status).toBe("signed_in");
+    if (during.status === "signed_in") expect(during.account.id).toBe(w.id);
+
+    // What both cron ticks run.
+    expect(await deletion.replayErasures(w.ctx(NOW + 200))).toEqual({
+      scanned: 1,
+      tombstoned: 1,
+      reapplied: 1,
+      deferred: 0,
+      mirrored: 0,
+      more: false,
+      failures: [],
+    });
+    expect(await getAccountRow(w.db, w.id)).toBeNull();
+    const after = await rowsNaming(w.db, w.id);
+    expect(after).toEqual(
+      Object.fromEntries(Object.keys(after).map((k) => [k, 0])),
+    );
+    expect(await tombstone(w.db)).toEqual({
+      id: w.id,
+      email_hash: null,
+      merged_into: null,
+    });
+    expect(
+      (
+        await w.db.first<{ subject: string | null }>(
+          "SELECT subject FROM devices WHERE device_id = 'dev-1'",
+        )
+      )?.subject ?? null,
+    ).toBeNull();
+    // The record is the one the erasure wrote: the replay never rewrites it.
+    expect(JSON.parse(await ledgerText(w.r2, w.id))).toEqual({
+      v: 1,
+      accountId: w.id,
+      erasedAt: NOW + 100,
+    });
+    // The person signing in again is a fresh account, not the restored one.
+    const again = await signIn(
+      w.db,
+      { issuerKey: "email", subject: EMAIL, kind: "email" },
+      NOW + 300,
+    );
+    expect(again.status).toBe("signed_in");
+    if (again.status === "signed_in") expect(again.account.id).not.toBe(w.id);
+  });
+
+  it("a second pass over a consistent state changes nothing", async () => {
+    const w = await world();
+    const bookmark = await snapshotDb(w.db);
+    await deletion.deleteAccount(w.ctx(NOW + 100), w.id);
+    await restoreDb(w.db, bookmark);
+    await deletion.replayErasures(w.ctx(NOW + 200));
+    const settled = await snapshotDb(w.db);
+    const writes = w.r2.putAttempts.length;
+    expect(await deletion.replayErasures(w.ctx(NOW + 300))).toEqual({
+      scanned: 1,
+      tombstoned: 0,
+      reapplied: 0,
+      deferred: 0,
+      mirrored: 0,
+      more: false,
+      failures: [],
+    });
+    expect(await snapshotDb(w.db)).toEqual(settled);
+    expect(w.r2.putAttempts).toHaveLength(writes);
+  });
+
+  it("an erasure interrupted after the ledger write is finished by the replay", async () => {
+    const w = await world();
+    // The Worker died between the record and the closing batch: R2 names the account, D1 never moved.
+    await recordErasure(w.env, w.id, NOW);
+    expect((await getAccountRow(w.db, w.id))?.status).toBe("active");
+    expect(await deletion.replayErasures(w.ctx(NOW + 60))).toMatchObject({
+      scanned: 1,
+      tombstoned: 1,
+      reapplied: 1,
+      failures: [],
+    });
+    expect(await getAccountRow(w.db, w.id)).toBeNull();
+  });
+
+  it("a restored account whose store hook fails is closed and left to the sweeper's back-off", async () => {
+    const w = await world();
+    let failing = true;
+    registerSubjectStore("flaky", {
+      merge: async () => {},
+      delete: async () => {
+        if (failing) throw new Error("DO unavailable");
+      },
+    });
+    await recordErasure(w.env, w.id, NOW);
+    // A hook failure is pending work, not a replay failure.
+    expect(await deletion.replayErasures(w.ctx(NOW + 60))).toMatchObject({
+      reapplied: 1,
+      failures: [],
+    });
+    expect((await getAccountRow(w.db, w.id))?.status).toBe("deleted");
+    const progress = () =>
+      w.db.first(
+        "SELECT attempts, failed_step, next_attempt_at FROM account_erasures WHERE account_id = ?",
+        w.id,
+      );
+    const waiting = await progress();
+    expect(waiting).toMatchObject({ attempts: 1, failed_step: "store:flaky" });
+    // While it is erasing the replay leaves it alone: its attempts and back-off are the sweeper's.
+    expect(await deletion.replayErasures(w.ctx(NOW + 120))).toMatchObject({
+      reapplied: 0,
+      failures: [],
+    });
+    expect(await progress()).toEqual(waiting);
+    failing = false;
+    expect(await deletion.sweepErasures(w.ctx(NOW + 2 * 3600))).toEqual({
+      completed: 1,
+      attempted: 1,
+    });
+    expect(await getAccountRow(w.db, w.id)).toBeNull();
   });
 });

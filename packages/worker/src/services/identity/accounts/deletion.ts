@@ -34,6 +34,11 @@ import {
 import { portalAudit } from "../portal/repo.js";
 import { stmtScrubAccountAudit } from "./accountAudit.js";
 import { detachLicense } from "./claim.js";
+import {
+  recordErasure,
+  replayErasureLedger,
+  type ReplayResult,
+} from "./erasureLedger.js";
 import { stmtSubjectEvent } from "./events.js";
 import { endLicenseLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
@@ -173,6 +178,12 @@ function failure(step: string, e: unknown): ErasureFailure {
  * Erase an account (right to erasure; S-16 §5.5) as a resumable, idempotent state machine
  * (SEC-PRV-1):
  *
+ *   0. LEDGER. The id is recorded on the erasure ledger (`erasureLedger.ts`: create-only, in R2,
+ *      so outside D1) BEFORE any D1 change: a D1 restore rewinds the tombstone together with the
+ *      account, and the ledger is what {@link replayErasures} re-applies the deletion from. A
+ *      record that cannot be made durable throws here with the account untouched, and the due
+ *      request is claimed again after its lease. This is the first irreversible step, so a
+ *      request that is merely scheduled (and still cancellable) never reaches it.
  *   1. ERASING. One batch flips `accounts.status` to `deleted` (every reader refuses anything but
  *      `active`, so no session and no sign-in works), kills the sessions and writes the
  *      `account_erasures` progress row. The pairwise subjects, links and licences stay, because
@@ -188,20 +199,55 @@ function failure(step: string, e: unknown): ErasureFailure {
  *      them), then the progress row. The product `audit` rows that name the person as actor
  *      (`accountAudit.ts`) are anonymised first in the same batch, ahead of the statements that
  *      delete the links and detach the licences their scope reads. What remains is an id-only
- *      tombstone (a restore from backup can re-apply the deletion) and one `portal.account.delete`
- *      receipt with no email, name or product. `subject.deleted` goes to the developer of each
- *      product, carrying the licence ids.
+ *      tombstone and one `portal.account.delete` receipt with no email, name or product.
+ *      `subject.deleted` goes to the developer of each product, carrying the licence ids.
  *
- * The retry sweeper ({@link sweepErasures}) resumes every unfinished erasure on the cron ticks.
- * Calling this again on an account already erasing resumes it, so a double invoke is harmless.
+ * The retry sweeper ({@link sweepErasures}) resumes every unfinished erasure on the cron ticks,
+ * recording the ledger first for one an older Worker closed. {@link replayErasures} re-applies the
+ * ledger after a D1 restore. Calling this again on an account already erasing resumes it, so a
+ * double invoke is harmless.
  */
 export async function deleteAccount(
   ctx: AccountContext,
   accountId: string,
 ): Promise<ErasureResult> {
-  const { db, now } = ctx;
-  const row = await getAccountRow(db, accountId);
+  const row = await getAccountRow(ctx.db, accountId);
   if (!row) return { ok: false };
+  // WRITE-AHEAD: nothing below runs unless the ledger durably names the account.
+  await recordErasure(ctx.env, accountId, ctx.now);
+  return beginErasure(ctx, accountId);
+}
+
+/**
+ * Re-run the erasure of an account the ledger already names because a D1 restore brought it back
+ * ({@link replayErasures}). The record exists, so nothing is written to R2; everything else is
+ * `deleteAccount`: the account is closed, then erased, idempotently.
+ */
+async function reapplyErasure(
+  ctx: AccountContext,
+  accountId: string,
+): Promise<ErasureResult> {
+  if (!(await getAccountRow(ctx.db, accountId))) return { ok: false };
+  return beginErasure(ctx, accountId);
+}
+
+/**
+ * One bounded pass over the erasure ledger (`erasureLedger.ts`): the D1 tombstone of every erased
+ * account is recreated, an account a restore brought back is re-erased, and an erasure tombstone
+ * the ledger lacks is copied into it. Run by both cron ticks, before the legacy catch-up.
+ */
+export function replayErasures(ctx: AccountContext): Promise<ReplayResult> {
+  return replayErasureLedger(ctx, (accountId) =>
+    reapplyErasure(ctx, accountId),
+  );
+}
+
+/** Step 1, the closing batch, then the first attempt of steps 2 and 3 (the ledger names it). */
+async function beginErasure(
+  ctx: AccountContext,
+  accountId: string,
+): Promise<ErasureResult> {
+  const { db, now } = ctx;
   await db.batch([
     {
       // The birth date (I-33) goes at once: nothing the erasure still has to do reads it.
@@ -225,7 +271,7 @@ export async function deleteAccount(
   ]);
   // This isolate's 30-second resolution cache; other isolates' entries expire within 30 s.
   forgetRegistryTokens();
-  return runErasure(ctx, accountId);
+  return runErasure(ctx, accountId, true);
 }
 
 /** Take the erasure's lease; false when another attempt holds it. */
@@ -246,10 +292,16 @@ async function claimErasure(
   );
 }
 
-/** One attempt of steps 2 and 3. Never throws for a hook failure: it records it. */
+/**
+ * One attempt of steps 2 and 3. Never throws for a hook failure: it records it. `ledgered`: the
+ * caller knows the ledger names the account (`deleteAccount`, the replay). Any other entry (the
+ * retry sweeper, which also adopts an erasure an older Worker closed) records it first, as the
+ * attempt's first step, and no hook runs unless that holds.
+ */
 async function runErasure(
   ctx: AccountContext,
   accountId: string,
+  ledgered = false,
 ): Promise<ErasureResult> {
   const { db, env, now } = ctx;
   if (!(await claimErasure(ctx, accountId))) {
@@ -268,6 +320,15 @@ async function runErasure(
       failures.push(failure(step, e));
     }
   };
+  if (!ledgered) {
+    await attempt("ledger", async () => {
+      await recordErasure(env, accountId, now);
+    });
+    if (failures.length > 0) {
+      await recordErasureFailure(db, accountId, now, failures);
+      return { ok: true, erasing: true };
+    }
+  }
   type Subject = { product: string; subject: string };
   const done = new Set<string>();
   const readSubjects = () =>
@@ -521,8 +582,9 @@ function commitStatements(
 /**
  * The retry sweeper (SEC-PRV-1), run by both cron ticks: adopt `status = 'deleted'` accounts that
  * have no progress row (an erasure a Worker before SEC-WP-04 left half done), then resume up to
- * {@link ERASURE_SWEEP_MAX} erasures whose back-off elapsed and whose lease is free. Returns how
- * many it completed; an erasure that fails again is re-scheduled, not thrown.
+ * {@link ERASURE_SWEEP_MAX} erasures whose back-off elapsed and whose lease is free (each is
+ * recorded on the ledger first, unless `deleteAccount` did). Returns how many it completed; an
+ * erasure that fails again is re-scheduled, not thrown.
  */
 export async function sweepErasures(
   ctx: AccountContext,

@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SqliteDb } from "../src/db/sqlite.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { insertLicense } from "../src/core/repo.js";
 import { loadProduct } from "../src/core/products.js";
@@ -600,6 +601,8 @@ describe("migrations 0068 on a production-shaped copy", () => {
       const { raw, db } = await productionShaped();
       applyI05(raw);
       const env = makeEnv(new KvMock(), ["acme"]) as Env;
+      // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+      env.BLOBS = asR2(new R2Mock());
       const ctx: Ctx = { db, env, now: NOW, origin: "" };
       const owner = () =>
         raw

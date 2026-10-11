@@ -8,6 +8,7 @@ import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -242,6 +243,8 @@ describe("portal package access (Q3)", () => {
       NOW,
     );
     expect(me.status).toBeLessThan(300);
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    env.BLOBS = asR2(new R2Mock());
     await sweepAccountDeletions({
       db,
       env,

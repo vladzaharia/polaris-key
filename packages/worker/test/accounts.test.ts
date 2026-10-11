@@ -11,6 +11,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import {
   makeEnv,
   mkReq,
@@ -79,6 +80,8 @@ interface World {
 async function world(): Promise<World> {
   const db = makeTestDb();
   const env = makeEnv(new KvMock(), []);
+  // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+  env.BLOBS = asR2(new R2Mock());
   const sent: Array<{ to: string; subject: string }> = [];
   env.EMAIL = {
     send: async (m: { to: string; subject: string }) => {

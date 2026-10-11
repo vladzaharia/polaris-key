@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import {
   makeEnv,
   mkReq as mkLicReq,
@@ -993,6 +994,8 @@ describe("portal account deletion scheduling (DELETE /api/me)", () => {
   it("starts the existing hard-erasure state machine only after the grace period", async () => {
     const db = makeTestDb();
     const env = portalEnv();
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    env.BLOBS = asR2(new R2Mock());
     const session = await portalSession(env, db);
     await db.run(
       `INSERT INTO portal_audit
@@ -1071,9 +1074,9 @@ describe("portal account deletion scheduling (DELETE /api/me)", () => {
       NOW,
     );
     const dueAt = NOW + ACCOUNT_DELETION_GRACE_SECONDS;
-    expect(
-      await claimDueAccountDeletion(db, session.accountId, dueAt),
-    ).toBe(true);
+    expect(await claimDueAccountDeletion(db, session.accountId, dueAt)).toBe(
+      true,
+    );
     const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
     const { token, session: freshSession } = await issuePortalSessionRow(
       env,

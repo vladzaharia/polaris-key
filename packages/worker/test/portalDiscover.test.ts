@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import { writeListing } from "./listingWrites.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -926,6 +927,8 @@ describe("the stored groups claim (migrations/0071)", () => {
 describe("erasing the account anonymises what its Discover claims wrote to the product audit (I-11)", () => {
   it("replaces the claim's actor, name, email and summary, and touches no one else's rows", async () => {
     const env = portalEnv();
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    env.BLOBS = asR2(new R2Mock());
     const db = makeTestDb();
     await freeProduct(db, "mossgarden");
     await freeProduct(db, "fernwick");

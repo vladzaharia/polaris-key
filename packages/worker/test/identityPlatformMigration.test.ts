@@ -25,6 +25,7 @@ import {
 } from "jose";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -1309,6 +1310,8 @@ describe("claim at next sign-in through a provider: platform product", () => {
         const account = await platformLinkedAccount(db, SUB);
         const cookie = await browserSessionSignIn();
         expect((await sessionRead(cookie)).authenticated).toBe(true);
+        // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+        env.BLOBS = asR2(new R2Mock());
         expect(await deleteAccount(ctx(), account)).toEqual({ ok: true });
         expect(
           await count(

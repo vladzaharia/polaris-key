@@ -343,7 +343,8 @@ describe("profile import", () => {
       { db: w.db, env: w.env, now: NOW, origin: "https://key.plrs.im" },
       row.id,
     );
-    expect(w.r2.keys()).toEqual([]);
+    // Every picture is gone; what remains is the erasure's own id-only ledger record (I-11).
+    expect(w.r2.keys()).toEqual([`erasures/${row.id}`]);
     expect(
       (await d.send("GET", `/media/avatar/${row.avatar_key}`)).status,
     ).toBe(404);
