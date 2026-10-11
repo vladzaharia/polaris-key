@@ -1,0 +1,71 @@
+/* Tidewater's own shell. The kit styles itself (in @layer polaris-key, scoped to its roots), so
+   nothing here reaches into it. */
+:root {
+  color-scheme: dark light;
+  font-family: Rubik, system-ui, sans-serif;
+  background: #0d1416;
+  color: #e6efee;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    background: #f4f7f7;
+    color: #142022;
+  }
+}
+body {
+  margin: 0;
+}
+.app {
+  min-block-size: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.app-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-block-end: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+.app-name {
+  margin-inline-end: auto;
+}
+.app-bar nav {
+  display: flex;
+  gap: 1rem;
+}
+.app-bar a {
+  color: inherit;
+  text-decoration: none;
+  padding-block: 0.5rem;
+}
+.app-bar a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 0.35em;
+}
+.app-bar button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  min-block-size: 2.75rem;
+  cursor: pointer;
+}
+.app-main {
+  padding: 1.5rem 1.25rem 3rem;
+  max-inline-size: 48rem;
+  inline-size: 100%;
+  box-sizing: border-box;
+  margin-inline: auto;
+}
+.app-main h1 {
+  margin-block: 0 1rem;
+  font-weight: 600;
+}
+.settings {
+  display: grid;
+  gap: 1.5rem;
+}

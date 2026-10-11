@@ -49,26 +49,24 @@ point and links to the kit's current docs.
   <TabItem label="React">
     <KitStatus kit="react" />
 
-    `branding`, `colorScheme` and `theme` on `<PolarisKeyProvider>`: `theme.tokens` and
-    `theme.lightTokens` (every colour, radius and the font, as `--pk-*` variables), `theme.copy`,
-    `theme.logo` and `theme.poweredBy`. An accent needs its label colour and focus ring set with it
-    (`accentText`, `ring`): the kit does not resolve contrast yet. The
-    [framework page](/docs/build/ui/frameworks/react/#theming) has the table.
+    `<PolarisKeyTheme theme={…}>` around any kit component, and each component's `theme` over it:
+    `preset`, `colorScheme`, `accent` (always through the resolver), `radius`, `density`, `motion`,
+    `ambient`, `product`, `iconSrc`, `bundle`, `presentation`, `locale`, `copy`, `poweredBy` and
+    `platform`. Beyond the theme: the `data-part` and `data-key` attributes, the `data-state` and
+    `data-theme` of the `.pk-root` element, and `--pk-*` variables scoped to it, never `:root`. The
+    kit's rules sit in the `@layer polaris-key` cascade layer, so host CSS wins without
+    `!important`; React and the web components share one stylesheet and one `data-part` contract.
+    The [framework page](/docs/build/ui/frameworks/react/#theming) has the table.
 
-    **Product presentation (shipped).** With no `theme.copy.productName`, accent or `theme.logo`,
-    the kit uses the product's presentation from discovery: its name (bidi-isolated), `accentDark`
-    in the dark scheme, else `accent`, else a colour derived from the icon, else ink; and the
-    verified icon in place of the monogram. `usePresentation()` reads it in your own components,
-    and `adapter.presentationSource()` is the seam other kits take. The browser fetches the icon
-    without credentials or redirects, checks its SHA-256 and shows it as a `blob:` URL, so a page
-    with a Content-Security-Policy needs `img-src blob:` and `connect-src` for the image origin
+    **Product presentation.** Inside `<PolarisKeyProvider>` the kit reads the adapter's
+    `presentationSource()` with no code: the product's name (bidi-isolated), `accentDark` in the
+    dark scheme, else `accent`, else a colour derived from the icon, else ink; and the verified
+    icon in place of the monogram. `theme.presentation` names another source, and `null` draws
+    none. `usePresentation()` reads it in your own components. The browser fetches the icon without
+    credentials or redirects, checks its SHA-256 and shows it as a `blob:` URL, so a page with a
+    Content-Security-Policy needs `img-src blob:` and `connect-src` for the image origin
     (`https://img.plrs.im`); a blocked icon falls back to the monogram. Desktop apps reuse the
     host's Node cache over the bridge.
-
-    **Planned:** the `polarisKeyTheme({ … })` helper, the stable `pk-*` class names and
-    `data-part` attributes inside the `@layer polaris-key` cascade layer so host CSS wins without
-    `!important`, and `--pk-*` variables scoped to the provider element. React and the web
-    components then share one `styles.css` and one `data-part` contract.
 
   </TabItem>
   <TabItem label="Web components">
