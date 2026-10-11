@@ -22,6 +22,12 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}ui/frameworks/terminal-python.mdx`, language: "python" },
   { path: `${BUILD}quickstart/python.md`, language: "python" },
   { path: `${BUILD}sdks/python/your-own-ui.md`, language: "python" },
+  { path: `${BUILD}quickstart/kotlin.md`, language: "kotlin" },
+  { path: `${BUILD}sdks/kotlin/your-own-ui.md`, language: "kotlin" },
+  { path: `${BUILD}ui/frameworks/compose.mdx`, language: "kotlin" },
+  { path: `${BUILD}quickstart/swift.md`, language: "swift" },
+  { path: `${BUILD}sdks/swift/your-own-ui.md`, language: "swift" },
+  { path: `${BUILD}ui/frameworks/swiftui.mdx`, language: "swift" },
 ];
 
 export function coveredLanguage(file: string): Covered["language"] | null {

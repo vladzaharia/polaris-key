@@ -8,6 +8,18 @@ import type { NativeLang } from "./nativeLanes";
 
 export const IGNORED: Record<NativeLang, Set<string>> = {
   swift: new Set([
+    // SwiftPM products and modules, not symbols.
+    "PolarisKey",
+    "PolarisKeyUI",
+    "PolarisKeyUICore",
+    "PolarisKeyUpdate",
+    "PolarisKeyPacks",
+    "PolarisKeyCore",
+    "PolarisKeyConfig",
+    "PolarisKeyLicense",
+    "PolarisKeyIdentity",
+    "PolarisKeyRelease",
+    "PolarisKeyPlatform",
     "WindowGroup",
     "ObservableObject",
     "AsyncStream",

@@ -134,8 +134,9 @@ PolarisKey.state_changed.connect(func(s): print(s["status"]))
 `needs-activation` or a block reason, or `not-applicable` for a product without License, where
 `is_licensed()` is true. `is_entitled(name)` is true only while the gate is usable: a revoked
 or expired licence unlocks nothing, even though `get_entitlements()` still reads the last verified
-values (S-19 G11). A 401 during a
-sync re-acquires the token once.
+values. A 401 during a sync re-acquires the token once. `expired` appears once a licence's
+end passes: the player sees "Connect to renew" and Try again, and no screen tells a key holder
+apart from a wrong key yet.
 
 `r.kind` sorts every activation outcome: `ok`, `device-limit` (`limit`, `device_count`),
 `unauthorized`, `fingerprint-required`, `enroll-disabled`, `enroll-claimed`, `license-disabled`,
@@ -156,8 +157,11 @@ PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
 var minted := await PolarisKey.config.mint_token("leaderboard")   # edge-mint for third-party APIs
 ```
 
-Precedence, the player's saved values, the `PKEY_CONFIG_*` environment layer and secrets are in
-[Config](#config-polariskeyconfig).
+Remote values arrive with each sync: at boot, then on every `PolarisKey.sync()` and, when
+`refresh_interval_seconds` is above zero, on that timer (the default is off: sync on focus or on a
+menu open yourself). `config_changed(keys)` fires when a value changes. `config.fetch_schema()`
+reads the catalog's schema for an editor of your own. Precedence, the player's saved values, the
+`PKEY_CONFIG_*` environment layer and secrets are in [Config](#config-polariskeyconfig).
 
 ### Devices
 
@@ -167,8 +171,9 @@ await PolarisKey.devices.rename("Living-room PC")
 await PolarisKey.devices.register()                  # keyless registration, for a product without License
 ```
 
-The device id is derived on the device; hardware values are hashed on the device and never sent
-(`fingerprint_enabled`, `probes`). A device report follows every sync.
+The device id is derived on the device, and hardware values are hashed there: only the hashes
+leave it, never the raw values (`fingerprint_enabled`, `probes`). A device report follows every
+sync; it carries those hashes, the device name and the build's facts, and nothing else.
 
 ### Identity
 
@@ -263,8 +268,9 @@ PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
 ```
 
 The options, their variables and defaults are in [Build stamp and setup dock](#build-stamp-and-setup-dock-p1-11).
-A build with packs also ships `pkey_packs/*` (add it to the preset's "Filters to export non-resource
-files"). The `polaris-key/publish` GitHub Action publishes the release after your export and
+`polaris_key_config.gd` and `polaris_key.tres` export by default. Add `tests/*` to the preset's
+"Filters to exclude" if the project holds the SDK's own tests. A build with packs also ships `pkey_packs/*` (add it
+to the preset's "Filters to export non-resource files"). The `polaris-key/publish` GitHub Action publishes the release after your export and
 signing steps.
 
 ## UI kit and theming
