@@ -1901,13 +1901,30 @@ polaris-key-deltas-<env>`).
 
 ## CI gates
 
-`.github/workflows/ci.yml` runs on PRs and `main` pushes:
+`.github/workflows/ci.yml` runs on PRs and `main` pushes. **`CI OK` is the one required check**
+(branch protection: require it and nothing else); it passes when every job passed or was skipped
+by scope.
 
-- JS/TS build, typecheck, tests, lint.
-- Conformance corpus drift check with `pnpm gen corpus --check`.
-- Admin build.
-- Python SDK tests on Ubuntu and macOS.
-- Swift SDK tests on macOS.
+- `js` always runs: JS/TS build, typecheck, tests (the adapter conformance suites included),
+  lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
+  gates), the admin build and the docs link check.
+- The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the
+  Swift SDK and Apple plugin on one macOS job, Kotlin, Android, Godot) run when a changed path is
+  one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs (the
+  contract, the shared packages, `tools/`, `.github/`, the lockfile). The `changes` job decides
+  this through `tools/ci-scope.mjs`; the lead's `gate.sh` asks the same script
+  (`node tools/ci-scope.mjs touches <lane> --worktree`), so a lane runs for the same files in
+  both. A new lane or matrix is one entry in that file and one job in `ci.yml`
+  (`tools/ci-scope.test.ts` fails when the two disagree).
+- A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
+  4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes run every lane
+  and the full matrix (Python on macOS too, all four Linux Godot engines and the Windows and macOS
+  smokes, Kotlin desktop on macOS and Windows, emulator API 34).
+- `ci.yml`, `native-desktop.yml` and `feed-closure.yml` set up pnpm, Node and the install through the
+  composite action `.github/actions/setup-js`. The release and secret-holding workflows
+  (`deploy.yml`, `publish-sdks.yml`, `npm-repair.yml`, `sync-worker-secrets.yml`) keep their steps
+  inline: `npm-repair.yml` checks out an old tag that has no local action, and
+  `syncWorkerSecretsWorkflow.test.ts` and `releaseWorkflows.test.ts` pin those steps to commit SHAs.
 
 A red conformance job means the wire contract changed without regenerating and committing
 the corpus.

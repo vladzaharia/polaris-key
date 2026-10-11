@@ -46,6 +46,13 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQT-02**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections from the code (2026-10-11)
+
+- Setup blocks: 21 repeated pnpm, Node and install sequences were found, not 17 (ci.yml 9, native-desktop.yml 2, feed-closure.yml 1 and the release workflows). The composite action `.github/actions/setup-js` (inputs `node-version`, `install`, `install-args`) replaces the ones in `ci.yml`, `native-desktop.yml` and `feed-closure.yml`. `deploy.yml`, `publish-sdks.yml`, `npm-repair.yml` and `sync-worker-secrets.yml` keep theirs inline: `npm-repair.yml` checks out an old tag, and the two workflow tests pin those steps to commit SHAs.
+- `gate.sh` is not in the repository (`/Users/vlad/Repos/pk-wt/_lead/gate.sh`, the lead's). The repository side is `tools/ci-scope.json` and `tools/ci-scope.mjs`; gate.sh changes its `touches` calls to `node tools/ci-scope.mjs touches <lane> --worktree` (lanes `docs`, `python`, `swift`, `godot`) in place of its `SHARED` regex. That edit is the lead's and is not part of this branch.
+- `ci.yml` now has a `changes` job, lane gates on every job but `js`, the `js` docs link check gated on lane `docs`, matrices read from the scope file (PR: the floor and the latest; main: full) and `ci-ok` (name `CI OK`), the one check branch protection should require. The old `swift` job is merged into `apple`; `releaseWorkflows.test.ts` still pins `jobs.apple` on macos-26. The duplicated "Adapter conformance and spec classification" step is removed (`pnpm test` runs those suites); the transcript check named in the audit already runs only inside `pnpm gen --check`.
+- Human input after merge: repository settings, branch protection `Require status checks`: replace the per-job checks with `CI OK`. Not done here.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

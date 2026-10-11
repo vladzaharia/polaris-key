@@ -10,21 +10,56 @@ on:
 permissions:
   contents: read
 
+# One required check: `CI OK` (the ci-ok job at the end). Which jobs a pull request runs is decided
+# once, by the `changes` job from tools/ci-scope.json (the same map the lead's gate.sh reads through
+# tools/ci-scope.mjs): a lane runs when a changed path is one of its `paths` or a `shared` input;
+# the `js` job always runs. A pull request runs the floor and the latest of each matrix, `main`
+# (and any non-PR run) every lane and the full matrix. A skipped lane counts as passed in `ci-ok`;
+# a failed or cancelled one does not.
 jobs:
-  js:
-    name: JS/TS (build · typecheck · test · conformance)
+  changes:
+    name: Changes (which lanes run)
     runs-on: ubuntu-latest
+    outputs:
+      # One per lane and matrix of tools/ci-scope.json (tools/ci-scope.test.ts checks the list).
+      workerd: ${{ steps.scope.outputs.workerd }}
+      node-floor: ${{ steps.scope.outputs.node-floor }}
+      browser: ${{ steps.scope.outputs.browser }}
+      console: ${{ steps.scope.outputs.console }}
+      ui-kits: ${{ steps.scope.outputs.ui-kits }}
+      react-kit: ${{ steps.scope.outputs.react-kit }}
+      python: ${{ steps.scope.outputs.python }}
+      swift: ${{ steps.scope.outputs.swift }}
+      kotlin: ${{ steps.scope.outputs.kotlin }}
+      android: ${{ steps.scope.outputs.android }}
+      godot: ${{ steps.scope.outputs.godot }}
+      docs: ${{ steps.scope.outputs.docs }}
+      python-matrix: ${{ steps.scope.outputs.python-matrix }}
+      kotlin-desktop-matrix: ${{ steps.scope.outputs.kotlin-desktop-matrix }}
+      kotlin-emulator-matrix: ${{ steps.scope.outputs.kotlin-emulator-matrix }}
+      godot-matrix: ${{ steps.scope.outputs.godot-matrix }}
     steps:
+      # The whole history: the pull request's changed files are the diff against its base branch.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # No `version:` here — the action reads `packageManager` from package.json.
-      # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
-      # which is why every CI run in this repo failed at step 2 until 2026-08-26.
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - id: scope
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # tools/ci-scope.mjs has no dependencies: plain Node, no install. Outside a pull request
+        # BASE_REF is empty and every lane runs.
+        run: node tools/ci-scope.mjs ci --event "$GITHUB_EVENT_NAME" --base "origin/$BASE_REF" --github-output
+
+  js:
+    name: JS/TS (build · typecheck · test · conformance)
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
       # The docs snippet lane (packages/docs/test/snippets) compiles every Python code block on a
       # covered docs page against the SDK with mypy, so it needs the SDK's own venv.
       - uses: actions/setup-python@v5
@@ -46,12 +81,9 @@ jobs:
           fi
       - run: pnpm typecheck
       - run: pnpm test
-      # Adapter conformance (A-18a, notes/S-15 §6.6): every storefront and feed adapter against the
-      # shared contract, and every write of each store's pinned vendor spec classified (allowed or
-      # denied with a reason). `pnpm test` runs these too; this step names them, so a failing
-      # adapter is legible at a glance and the check is part of this required job.
-      - name: Adapter conformance and spec classification
-        run: pnpm --filter @polaris-key/worker exec vitest run test/storefront/ test/ascWriteGate.test.ts test/feedAdapters.test.ts
+      # `pnpm test` includes the adapter conformance suites (A-18a, notes/S-15 §6.6: test/storefront/,
+      # test/ascWriteGate.test.ts, test/feedAdapters.test.ts): every storefront and feed adapter
+      # against the shared contract, every write of each store's pinned vendor spec classified.
       - run: pnpm lint
       # Every drift gate, from the generator registry (tools/generators.ts): the signed conformance
       # corpus, the HTTP transcripts, the service table, the SDK constants, the platform inventory,
@@ -65,8 +97,10 @@ jobs:
       # The docs site is built by `pnpm build` (turbo); assembling proves the worker's
       # single [assets] root composes from both frontends before any deploy does it.
       - run: pnpm --filter @polaris-key/worker assemble
-      # Internal-link integrity across the built docs site (paths + anchors).
-      - run: pnpm --filter @polaris-key/docs check:links
+      # Internal-link integrity across the built docs site (paths + anchors); when a change can
+      # reach the site (tools/ci-scope.json lane docs).
+      - if: needs.changes.outputs.docs == 'true'
+        run: pnpm --filter @polaris-key/docs check:links
 
   # The `js` job above runs every suite under `environment: "node"`. Node permits the runtime
   # code generation workerd forbids, so it is structurally incapable of catching the class of
@@ -80,15 +114,12 @@ jobs:
   # being buried in a 700-test log.
   workerd:
     name: Worker smoke (real workerd)
+    needs: changes
+    if: needs.changes.outputs.workerd == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-js
       # The worker imports the workspace packages from their built `dist`, so they must exist
       # before workerd boots.
       - run: pnpm build
@@ -112,6 +143,8 @@ jobs:
   # the docs site) has to build on it.
   node-floor:
     name: Node floor (engines.node)
+    needs: changes
+    if: needs.changes.outputs.node-floor == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -148,14 +181,14 @@ jobs:
   # leaves this package out (it needs a Playwright browser), which is why it is its own job.
   browser:
     name: Browser conformance (Chromium)
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
+          install: "false"
       - run: >-
           pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
           --filter=@polaris-key/conformance-node...
@@ -172,16 +205,16 @@ jobs:
   # a failure the actual and diff images are uploaded.
   console:
     name: Console and portal (Chromium, CSP, axe, visual)
+    needs: changes
+    if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
+          install: "false"
       # The e2e harness imports the Worker's own security headers and media proxy, so the Worker's
       # dependencies install and build too (core/devices.ts imports @polaris-key/client-core,
       # whose entry is its built dist).
@@ -207,17 +240,16 @@ jobs:
   # their own equivalents in their lanes.
   ui-kits:
     name: UI kits (modernity lint, string lint, report)
+    needs: changes
+    if: needs.changes.outputs.ui-kits == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter=@polaris-key/ui-qa...
+          install-args: --frozen-lockfile --filter=@polaris-key/ui-qa...
       - run: pnpm ui:lint
       - run: pnpm ui:report
       - run: pnpm --filter @polaris-key/ui-qa test:e2e
@@ -237,17 +269,16 @@ jobs:
   # In Playwright's image, like the console job, so the Chromium build is pinned.
   react-kit:
     name: React kit (Chromium, responsive)
+    needs: changes
+    if: needs.changes.outputs.react-kit == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter=@polaris-key/react...
+          install-args: --frozen-lockfile --filter=@polaris-key/react...
       - run: pnpm exec turbo run build --filter=@polaris-key/react^...
       - run: pnpm --filter @polaris-key/react test:browser
 
@@ -257,16 +288,16 @@ jobs:
   # the test step points HOME back at /root (Playwright's documented container setup).
   browser-firefox:
     name: Browser conformance (Firefox, Linux)
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
+          install: "false"
       - run: >-
           pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
           --filter=@polaris-key/conformance-node...
@@ -284,14 +315,14 @@ jobs:
   # Ed25519 fallback in shared-jws/client-core, which is a plan-mode change.
   browser-webkit:
     name: Browser conformance (WebKit, macOS)
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
+          install: "false"
       - run: >-
           pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
           --filter=@polaris-key/conformance-node...
@@ -304,17 +335,13 @@ jobs:
   # prints the interpreter and the cryptography (with its OpenSSL) and httpx versions first.
   python:
     name: Python SDK (${{ matrix.python }}, ${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            python: "3.9"
-          - os: ubuntu-latest
-            python: "3.14"
-          - os: macos-14
-            python: "3.12"
+      # PR: CPython 3.9 and 3.14 on Linux; main adds the current one on macOS (tools/ci-scope.json).
+      matrix: ${{ fromJSON(needs.changes.outputs.python-matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@v7
@@ -335,45 +362,12 @@ jobs:
         working-directory: sdks/python
         run: .venv/bin/python -m pytest -q
 
-  swift:
-    name: Swift SDK
-    # macos-14 ships Swift 5.10, but sdks/swift/Package.swift declares
-    # `swift-tools-version: 6.0` and `swiftLanguageMode(.v6)`, so this job failed with
-    # "package 'swift' is using Swift tools version 6.0.0 but the installed version is
-    # 5.10.0" on every run. macos-15 ships Swift 6.x.
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Echo the toolchain so a future runner-image bump fails loudly and legibly rather
-      # than looking like a source error.
-      - run: swift --version
-      # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the swiftui source rules of
-      # packages/ui-qa/rules/kit-rules.json. Zero dependencies, so plain Node runs it; it fails on any
-      # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
-      - name: UI kit source lint (swiftui)
-        run: node packages/ui-qa/bin/kit-lint.mjs --kit=swiftui
-      - run: swift test --package-path sdks/swift
-      # P4-07: packs (PolarisKeyPacks, linking libzstd) and the update client that carries
-      # `update.packs` build for iOS without Sparkle, whose product is conditioned to macOS.
-      - name: iOS build (packs, update, platform)
-        working-directory: sdks/swift
-        # P5-05: PolarisKeyPlatform compiles here with Xcode 16.4 (Swift 6.1) because its Xcode 26+
-        # SDK code (AssetPackManager and the 26.4 Background Assets methods) is behind
-        # `#if compiler(>=6.3)`; this step proves the guards hold. The macos-26 job below compiles
-        # the guarded code.
-        # Warnings are errors for the P5-05 targets only: with SWIFT_TREAT_WARNINGS_AS_ERRORS the
-        # clang importer's libzstd configuration-macro warnings fail PolarisKeyPacks (measured
-        # with Xcode 26.6), which is not this job's concern.
-        run: |
-          for scheme in PolarisKeyPacks PolarisKeyUpdate; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
-          for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
-          done
-
+  # The Swift SDK and the Apple platform plugin on one macOS job (P0-43; the old `swift` job ran the
+  # same `swift test` and a subset of the iOS builds below on macos-15). First the swift kit's
+  # modernity lint (UI-KITS.md §7.3, UK-15: the swiftui source rules of
+  # packages/ui-qa/rules/kit-rules.json; zero dependencies, so plain Node runs it; it fails on any
+  # hit beyond the debt ledger packages/ui-qa/rules/kit-debt.json and on stale debt).
+  #
   # P5-05: the Apple platform plugin with the Xcode 26 SDK. macos-26 (arm64, GA) ships Xcode
   # 26.0.1 to 26.6 (26.6 the default) and the iOS 26.2, 26.4 and 26.5 simulator runtimes. Xcode
   # is PINNED to 26.6 and the job fails unless the compiler is Swift 6.3 or later: the
@@ -387,7 +381,9 @@ jobs:
   # `xcrun ba-package` and the platform transports suite (`transports`) beside the stub tests. No
   # Apple account, certificate or App Store Connect is used.
   apple:
-    name: Apple plugin (macos-26)
+    name: Swift SDK and Apple plugin (macos-26)
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
     runs-on: macos-26
     timeout-minutes: 45
     defaults:
@@ -395,6 +391,11 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install: "false"
+      - name: UI kit source lint (swiftui)
+        run: node packages/ui-qa/bin/kit-lint.mjs --kit=swiftui
       - name: Xcode 26.6, Swift 6.3 or later
         run: sdks/swift/tools/select-xcode-26.sh
       - name: Boot the iOS simulator for the hosted tests
@@ -441,12 +442,8 @@ jobs:
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
           XCODEGEN="$RUNNER_TEMP/xcodegen/bin/xcodegen" sdks/swift/PlatformHostTests/run.sh
       # P5-08: `pkey transport apple-ba package` against the real `xcrun ba-package` (the other
-      # tests use an exec seam). No App Store Connect key: the upload runs against a fake.
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: pnpm
+      # tests use an exec seam). No App Store Connect key: the upload runs against a fake. Node
+      # and pnpm come from the setup step at the top.
       - name: pkey transport apple-ba package (real xcrun ba-package)
         run: |
           pnpm install --frozen-lockfile
@@ -495,6 +492,8 @@ jobs:
   # pinned zstd-jni AAR's .so files (arm64-v8a and x86_64 must align; 32-bit ABIs are reported).
   kotlin:
     name: Kotlin SDK (JVM modules + conformance runner)
+    needs: changes
+    if: needs.changes.outputs.kotlin == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -540,12 +539,14 @@ jobs:
   # stand in for the real-keyring contract (core also declares PKEY_KEYRING_TESTS a Test input).
   kotlin-desktop:
     name: Kotlin SDK JVM desktop (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.kotlin == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-15, windows-latest]
+      # PR: Linux (the real Secret Service); main adds macOS and Windows (tools/ci-scope.json).
+      matrix: ${{ fromJSON(needs.changes.outputs.kotlin-desktop-matrix) }}
     defaults:
       run:
         shell: bash
@@ -621,6 +622,8 @@ jobs:
   # graphics, no emulator), lint and assembleRelease, and the local publication.
   android:
     name: Android platform AAR + Godot binding + Compose UI kit + Android glue
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -709,6 +712,8 @@ jobs:
   # carry zstd-jni's 16 KB-aligned Android natives, never the desktop JAR's (check_apks.sh).
   kotlin-consumer:
     name: Kotlin SDK consumer app (${{ matrix.toolchain }} toolchain)
+    needs: changes
+    if: needs.changes.outputs.kotlin == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -766,12 +771,14 @@ jobs:
   # refused clearly, and the pack decoder present in the `packs` flavour only.
   kotlin-emulator:
     name: Kotlin SDK on the Android emulator (API ${{ matrix.api-level }})
+    needs: changes
+    if: needs.changes.outputs.kotlin == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        api-level: [24, 34, 36]
+      # PR: the minSdk and the newest; main adds API 34 (tools/ci-scope.json).
+      matrix: ${{ fromJSON(needs.changes.outputs.kotlin-emulator-matrix) }}
     defaults:
       run:
         shell: bash
@@ -837,6 +844,8 @@ jobs:
   # default 300 s per step: PKEY_TEST_TIMEOUT gives each step 900 s, as the local gate does.
   godot:
     name: ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.godot == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     defaults:
@@ -844,41 +853,12 @@ jobs:
         shell: bash
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: "Godot SDK (4.7.2 editor + release template)"
-            os: ubuntu-latest
-            godot: "4.7.2"
-            template: "--template"
-            suites: ""
-          - name: "Godot SDK (4.6.3 editor + release template)"
-            os: ubuntu-latest
-            godot: "4.6.3"
-            template: "--template"
-            suites: ""
-          - name: "Godot SDK (4.5.2 editor + release template)"
-            os: ubuntu-latest
-            godot: "4.5.2"
-            template: "--template"
-            suites: ""
-          - name: "Godot SDK (4.4.1 editor, floor)"
-            os: ubuntu-latest
-            godot: "4.4.1"
-            template: ""
-            suites: ""
-          # Editor smoke legs (P1-05): the Windows and macOS fingerprint readers on a real
-          # machine. The platform suite asserts the anchor and the MachineGuid / IOPlatformUUID
-          # device id; the devices suite runs the readers over the committed captures.
-          - name: "Godot SDK (4.7.2 editor, Windows smoke)"
-            os: windows-latest
-            godot: "4.7.2"
-            template: ""
-            suites: "platform,devices"
-          - name: "Godot SDK (4.7.2 editor, macOS smoke)"
-            os: macos-14
-            godot: "4.7.2"
-            template: ""
-            suites: "platform,devices"
+      # PR: the newest editor with its release template and the 4.4.1 floor; main runs all four
+      # Linux engines and the Windows and macOS editor smokes (tools/ci-scope.json). The
+      # editor smoke legs (P1-05) run the Windows and macOS fingerprint readers on a real machine:
+      # the platform suite asserts the anchor and the MachineGuid / IOPlatformUUID device id; the
+      # devices suite runs the readers over the committed captures.
+      matrix: ${{ fromJSON(needs.changes.outputs.godot-matrix) }}
     steps:
       # windows-latest's system git sets core.autocrlf=true; check out byte for byte (LF) so the
       # bash tools, the pin file and the corpus the suites verify reach the job as committed.
@@ -911,3 +891,41 @@ jobs:
         with:
           name: godot-logs-${{ matrix.godot }}-${{ matrix.os }}
           path: sdks/godot/build/logs/
+
+  # The one required check. `always()` so it reports when a lane failed or was skipped: a lane the
+  # `changes` job left out counts as passed; a failed or cancelled one does not. `changes` and
+  # `js` have to have run, or an outage in either would turn every other job into a skip and pass.
+  ci-ok:
+    name: CI OK
+    if: ${{ always() }}
+    needs:
+      [
+        changes,
+        js,
+        workerd,
+        node-floor,
+        browser,
+        console,
+        ui-kits,
+        react-kit,
+        browser-firefox,
+        browser-webkit,
+        python,
+        apple,
+        kotlin,
+        kotlin-desktop,
+        android,
+        kotlin-consumer,
+        kotlin-emulator,
+        godot,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e '
+            (.changes.result == "success" and .js.result == "success")
+            and all(.[]; .result == "success" or .result == "skipped")' >/dev/null \
+            || { echo "::error::a CI job failed, was cancelled, or changes/js did not run"; exit 1; }
