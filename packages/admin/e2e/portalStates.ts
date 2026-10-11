@@ -74,6 +74,31 @@ const NIGHTFALL_CONTEXT = {
     modules: { licensing: true, claim: true, releases: true },
   },
 };
+/** I-30: a platform connection whose verified domain the typed address is at. */
+const LAKESIDE = { id: "conn_lakeside", label: "Lakeside University" };
+/** I-30: the email start for a routed domain (`enforced`: the connection is the only way in). */
+const routedStart = (enforced: boolean) => ({
+  "POST /api/signin/email/start": {
+    body: {
+      ok: true,
+      expiresIn: 600,
+      codeLength: 6,
+      resendIn: 0,
+      next: { kind: "sso", connection: LAKESIDE, enforced },
+    },
+  },
+});
+const WITH_CONNECTION = {
+  body: {
+    auth: {
+      oidc: false,
+      magic: true,
+      providers: ["apple", "google"],
+      connections: [LAKESIDE],
+    },
+    modules: { licensing: true, claim: true, releases: true },
+  },
+};
 const SERVER_ERROR = { status: 500, body: { error: "internal" } };
 const MOSSGARDEN = {
   slug: "mossgarden",
@@ -282,6 +307,51 @@ export const SHIPPED: ShippedState[] = [
     path: "/",
     routes: { "/api/capabilities": "abort" },
     ready: (p) => h1(p, "Can't reach Polaris Key"),
+  },
+  // §4.1 Where the address goes (I-30; mockup identity.sign-in-routes pins 1 and 2).
+  {
+    section: "4.1",
+    id: "signin-sso-required",
+    title: "Login card, the address's domain requires its connection",
+    scenario: "signedOut",
+    path: "/",
+    routes: routedStart(true),
+    ready: async (p) => {
+      await typeEmail(p, "dana@example.edu");
+      await h1(p, "Lakeside University");
+      await p
+        .getByRole("link", { name: "Continue to Lakeside University" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-sso-first",
+    title: "Login card, the connection first, the email code second",
+    scenario: "signedOut",
+    path: "/",
+    routes: routedStart(false),
+    ready: async (p) => {
+      await typeEmail(p, "sam.ito@students.example.edu");
+      await h1(p, "Lakeside University");
+      await p
+        .getByRole("button", { name: "Email me a code instead" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-connections",
+    title: "Login card with a connection and the provider row",
+    scenario: "signedOut",
+    path: "/",
+    routes: { "/api/capabilities": WITH_CONNECTION },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Key");
+      await p
+        .getByRole("link", { name: "Continue with Lakeside University" })
+        .waitFor();
+    },
   },
   // §4.2 Product context (PX-05).
   {

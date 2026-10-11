@@ -22,6 +22,9 @@ The portal offers up to two ways in, and a product may offer either or both:
 
 If neither option appears, the product hasn't turned on portal sign-in.
 
+A work or school email can take you to your organization's sign-in instead. See
+[Sign in with your work account](/docs/help/work-account/).
+
 ## Your licenses
 
 Once you're in, the portal groups every license it can find for your account by product, and for

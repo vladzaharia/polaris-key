@@ -42,33 +42,38 @@ for the portal and, through the passthrough, for every app. It is identifier-fir
 first, then the methods. Its Worker half lives in `services/identity/card/`; the card's screens
 are the portal SPA's.
 
-| Route                                   | What it does                                                                |
-| --------------------------------------- | --------------------------------------------------------------------------- |
-| `GET /login`                            | Begins platform OIDC and 302s to the IdP.                                   |
-| `GET /callback`                         | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
-| `POST /api/signin/email/start`          | Emails a 6-digit code and a magic link, bound to this browser.              |
-| `POST /api/signin/email/verify`         | Redeems the code in the browser that asked; a new address may finish first. |
-| `POST /api/signin/email/resend`         | Sends a new code and link for this browser's sign-in.                       |
-| `GET /magic/verify`                     | The magic link's landing page. Consumes nothing.                            |
-| `POST /magic/verify`                    | The landing page's button: signs in here, or confirms the asking browser.   |
-| `POST /api/signin/flow`                 | The asking browser's poll after the link was confirmed on another device.   |
-| `GET`/`POST /api/signin/confirm-email`  | FinishStep: the email gate, profile and terms of every new account.         |
-| `POST /api/signin/confirm-email/verify` | The gate's code, for a typed or unverified address.                         |
-| `POST /api/signin/confirm-email/join`   | Takes the join offer, once both identities are proven.                      |
-| `POST /api/signin/confirm-email/cancel` | Abandons the sign-in.                                                       |
-| `GET /api/signin/confirm-email/picture` | The provider's picture, proxied for the gate.                               |
-| `POST /api/signin/passkey/options`      | A passkey challenge, bound to this browser.                                 |
-| `POST /api/signin/passkey/verify`       | Signs in with the passkey's answer to that challenge, once.                 |
-| `POST /logout`                          | Ends this browser's session, server-side too.                               |
+| Route                                   | What it does                                                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET /login`                            | Begins sign-in through the seeded platform connection; 302s to its IdP.                                 |
+| `GET /callback`                         | Every connection's redirect URI: redeems the code, verifies the ID token, signs in.                     |
+| `POST /api/signin/email/start`          | Emails a 6-digit code and a magic link, bound to this browser, or routes the address to its connection. |
+| `POST /api/signin/email/verify`         | Redeems the code in the browser that asked; a new address may finish first.                             |
+| `POST /api/signin/email/resend`         | Sends a new code and link for this browser's sign-in.                                                   |
+| `GET /magic/verify`                     | The magic link's landing page. Consumes nothing.                                                        |
+| `POST /magic/verify`                    | The landing page's button: signs in here, or confirms the asking browser.                               |
+| `POST /api/signin/flow`                 | The asking browser's poll after the link was confirmed on another device.                               |
+| `GET`/`POST /api/signin/confirm-email`  | FinishStep: the email gate, profile and terms of every new account.                                     |
+| `POST /api/signin/confirm-email/verify` | The gate's code, for a typed or unverified address.                                                     |
+| `POST /api/signin/confirm-email/join`   | Takes the join offer, once both identities are proven.                                                  |
+| `POST /api/signin/confirm-email/cancel` | Abandons the sign-in.                                                                                   |
+| `GET /api/signin/confirm-email/picture` | The provider's picture, proxied for the gate.                                                           |
+| `POST /api/signin/passkey/options`      | A passkey challenge, bound to this browser.                                                             |
+| `POST /api/signin/passkey/verify`       | Signs in with the passkey's answer to that challenge, once.                                             |
+| `POST /logout`                          | Ends this browser's session, server-side too.                                                           |
 
 `POST /api/magic/start` is the older name of the email start and runs the same handler.
 
-**OIDC.** `/login` uses the same `platformOidcConfig` a `platform`-provider product uses (see
-[Product OIDC](/docs/services/identity/oidc/)) — the portal and every platform-issuer product
-share one IdP client and one trust boundary. The console has its own client (`ADMIN_OIDC_*`),
-so operators and customers do not share one. Rate-limited to 20 requests per minute per IP; PKCE,
-`state`, and `nonce` follow the same shape as the product flow, with the redirect URI fixed to
-`<origin>/callback` rather than a product-scoped path.
+**OIDC.** The card signs in through **connections**: upstream OpenID Connect providers held in
+`identity_connections` (see [Connections](/docs/operate/platform/connections/#sign-in-connections)).
+`/login` starts the seeded platform connection, `platform-sso`, which the `PLATFORM_OIDC_*` trio
+became; `/login/sso/<id>` starts any other active platform connection whose audience covers
+customers (below). Both run on the Worker's one relying-party client (`core/oidc/client.ts`):
+discovery, the JWKS cache, PKCE, `state`, `nonce`, the RFC 9207 `iss` check and ID-token
+verification, every fetch gated to the issuer's hosts. The flow is single-use and bound to the
+browser that started it (a 10-minute `__Host-pkey_sso` cookie), and the redirect URI is
+`<origin>/callback` for every connection. The console has its own client (`ADMIN_OIDC_*`), so
+operators and customers do not share one. Both starts share 20 requests per minute per client
+network.
 
 **Email code and magic link.** `POST /api/signin/email/start` takes `{ "email": "…",
 "turnstileToken"?: "…", "returnTo"?: "…" }`. It opens a flow bound to this browser (a 10-minute
@@ -213,6 +218,76 @@ genuine same-origin top-level navigation — not a cross-site `<img>` or link. T
 `GET` this replaced was a logout-CSRF: the cookie is `SameSite=Lax`, which is a defense against a
 class of cross-site request, not a substitute for a real token
 (the R1 audit findings, `R1-03`).
+
+### Work and school addresses
+
+An address whose domain belongs to an organization goes to that organization's sign-in instead of
+an email code. The email start routes it when the domain is **DNS-verified** by an **active
+platform connection** whose audience covers customers. Matching is exact: a verified
+`example.edu` never routes `students.example.edu` or `example.edu.evil.net`, and a domain that is
+not plain ASCII never routes. An unverified domain (its TXT record missing, or not yet checked)
+gets the email code like any other address. How a domain is verified, and the daily re-check that
+unverifies it when its record goes, is in
+[Connections](/docs/operate/platform/connections/#sign-in-connections).
+
+`POST /api/signin/email/start` then sends nothing and adds `next` to the usual answer:
+
+```json
+{
+  "ok": true,
+  "expiresIn": 600,
+  "codeLength": 6,
+  "resendIn": 0,
+  "next": {
+    "kind": "sso",
+    "connection": { "id": "lakeside", "label": "Lakeside University" },
+    "enforced": false
+  }
+}
+```
+
+- **Not enforced.** The start opens the flow (the `__Host-pkey_signin` cookie) without mailing.
+  The card offers **Continue to Lakeside University** first and **Email me a code instead**,
+  which calls `POST /api/signin/email/resend`: the routed flow has sent nothing, so its first code
+  has no 60-second wait. A start with `"method": "code"` skips the route and mails at once.
+- **Enforced.** The domain gets no email code and no magic link. The start opens no flow and
+  sets no cookie, `"method": "code"` included. The resend and the code's verify refuse with
+  `403 auth_method_disabled` and the same `next`, and the link's page answers 403 "Sign in with
+  Lakeside University for this email address.", even for a code or link mailed before the domain
+  was enforced. Passkeys and the account's other sign-in methods still sign the account in.
+
+The answer depends on the domain only, never on whether an account uses the address, so it says
+no more than that the domain uses single sign-on. The start's rate limits and Turnstile check
+apply before routing.
+
+**Connection buttons.** `/api/capabilities` lists the other active platform connections whose
+audience covers customers as `auth.connections`, each `{ "id", "label" }`, and the card shows each
+as **Continue with &lt;label&gt;**. The seeded connection is not in the list: it is the card's
+single sign-on button (`auth.oidc`). While portal sign-in or single sign-on is off,
+`auth.connections` is empty and `auth.oidc` is false.
+
+**Starting.** A button and a routed address both go to `/login/sso/<id>` with `return_to` and,
+for a routed address, `login_hint` (passed to the IdP only when it is a well-formed address). An
+unknown or disabled connection, a product's connection and an operators-only one all get the same
+404 page, "Sign-in is unavailable. Try again later.". The scope is `openid email profile`, plus
+`groups` when the connection's claim map names a groups claim.
+
+**Finishing.** `/callback` redeems the code through the one client, maps the ID token through the
+connection's claim map, and hands the identity to the email gate like any other front door. Its
+session's `amr` is `["connection:<id>"]`.
+
+- **Which addresses it vouches for.** A platform connection vouches for `email_verified` only for
+  an address inside one of its verified domains, exactly, and only when the ID token says so.
+  Any other address gets the gate's code, like a typed one.
+- **Linking to an existing account.** When the connection vouches for the address, the identity
+  has no link yet, and exactly one account has that address verified (an active one), the
+  identity is linked to that account at once: the account gets an email naming the connection,
+  and an `account.link.auto` audit row is written. Every other case goes through the
+  email gate as before, its join offer included.
+- **What the link keeps.** Each sign-in replaces the link's `groups_json` (the mapped groups
+  claim: at most 100 well-formed names, de-duplicated) and `claims_json` (the claims access rules
+  may name, each a string, number or boolean, cut to 256 characters). A birth date the claim map
+  offers rides only to FinishStep, never onto the link.
 
 ## The session cookie
 

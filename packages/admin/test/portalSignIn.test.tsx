@@ -737,6 +737,187 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
   });
 });
 
+describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () => {
+  const LAKESIDE = { id: "conn_lakeside", label: "Lakeside University" };
+  const routed = (enforced: boolean) => ({
+    ok: true,
+    expiresIn: 600,
+    codeLength: 6,
+    resendIn: 0,
+    next: { kind: "sso", connection: LAKESIDE, enforced },
+  });
+
+  async function typeAndContinue(email: string): Promise<void> {
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      email,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+  }
+
+  it("a domain that requires its connection: the organization, one Continue, no code", async () => {
+    signedOut(CAPS_ALL, { "POST /api/signin/email/start": routed(true) });
+    renderPortal();
+    await typeAndContinue("dana@example.edu");
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Lakeside University",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    expect(
+      screen.getByText(
+        "Lakeside University requires its own sign-in for example.edu addresses.",
+      ),
+    ).toBeTruthy();
+    const go = screen.getByRole("link", {
+      name: "Continue to Lakeside University",
+    });
+    const href = new URL(go.getAttribute("href")!, "http://localhost");
+    expect(href.pathname).toBe("/login/sso/conn_lakeside");
+    expect(href.searchParams.get("login_hint")).toBe("dana@example.edu");
+    expect(href.searchParams.get("return_to")).toBeTruthy();
+    expect(go.className).toContain("bg-accent");
+    expect(
+      screen.queryByRole("button", { name: "Email me a code instead" }),
+    ).toBeNull();
+    expect(screen.getByText("dana@example.edu")).toBeTruthy();
+    expect(document.title).toBe("Lakeside University · Polaris Key");
+    expect(await axeViolations()).toEqual([]);
+    // Change goes back to the email step.
+    await userEvent.click(screen.getByRole("button", { name: "Change email" }));
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in to Polaris Key",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("a domain that allows the code: the connection first, Email me a code instead through the resend", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/start": routed(false),
+      "POST /api/signin/email/resend": {
+        ok: true,
+        expiresIn: 600,
+        codeLength: 6,
+        resendIn: 60,
+      },
+    });
+    renderPortal();
+    await typeAndContinue("sam.ito@students.example.edu");
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Lakeside University",
+    });
+    expect(
+      screen.getByText(
+        "students.example.edu signs in through Lakeside University.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Continue to Lakeside University" }),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Email me a code instead" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Check your email",
+      }),
+    ).toBeTruthy();
+    expect(fetchedRequests()).toContain("POST /api/signin/email/resend");
+    expect(screen.getByText(/Send a new code in 1:00/)).toBeTruthy();
+  });
+
+  it("an enforced refusal of a code moves to the connection", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/verify": {
+        status: 403,
+        body: {
+          error: "auth_method_disabled",
+          message: "Sign in with Lakeside University for this email address.",
+          next: { kind: "sso", connection: LAKESIDE, enforced: true },
+        },
+      },
+    });
+    renderPortal();
+    await typeAndContinue("dana@example.edu");
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "6-digit code" }),
+      "123456",
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Lakeside University",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { name: "This account can't sign in" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Email me a code instead" }),
+    ).toBeNull();
+  });
+
+  it("ignores a malformed next and stays on the code", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/start": {
+        ok: true,
+        resendIn: 60,
+        next: { kind: "sso", connection: { id: "../x", label: "Evil" } },
+      },
+    });
+    renderPortal();
+    await typeAndContinue("mara@fennick.studio");
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Check your email",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("lists the other connections as Continue with <label>, with the typed address as the hint", async () => {
+    signedOut({
+      ...CAPS_ALL,
+      auth: { ...CAPS_ALL.auth, connections: [LAKESIDE] },
+    });
+    renderPortal();
+    const link = await screen.findByRole("link", {
+      name: "Continue with Lakeside University",
+    });
+    expect(link.getAttribute("href")).toMatch(
+      /^\/login\/sso\/conn_lakeside\?return_to=/,
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Email" }),
+      "dana@example.edu",
+    );
+    const hinted = new URL(link.getAttribute("href")!, "http://localhost");
+    expect(hinted.searchParams.get("login_hint")).toBe("dana@example.edu");
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("a card with only a connection is not turned off", async () => {
+    signedOut({
+      ...CAPS_ALL,
+      auth: { oidc: false, magic: false, connections: [LAKESIDE] },
+    });
+    renderPortal();
+    expect(
+      await screen.findByRole("link", {
+        name: "Continue with Lakeside University",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { name: "Sign-in is turned off" }),
+    ).toBeNull();
+  });
+});
+
 describe("ProviderRow (§4.1)", () => {
   const hrefFor = (p: string) => `/x/${p}`;
   it("is one row, Apple · Google · Steam, logo only and named", () => {
