@@ -109,7 +109,7 @@ export function createIdp(facts: IdpFacts, opts: { autoApprove: boolean }) {
       return page(
         "Sign in",
         `<h1>Sign in with the dev identity provider</h1>
-<p>A fake provider run by pkey dev. Nobody is verified.</p>
+<p>A fake provider run by pkey dev. Its one person is made up, and its address counts as verified.</p>
 <div class="who"><b>${esc(facts.person.name)}</b>${esc(facts.person.email)}</div>
 <form method="post" action="/__idp/authorize">${fields}
 <div class="row"><button class="go" name="result" value="approve">Approve</button><button name="result" value="deny">Deny</button></div></form>
@@ -148,6 +148,9 @@ export function createIdp(facts: IdpFacts, opts: { autoApprove: boolean }) {
           exp: t + 300,
           nonce: pending.nonce,
           ...facts.person,
+          // The dev provider vouches for its own made-up address, so the Worker's verifier, which
+          // trusts an email only when `email_verified === true`, keeps it. Production is untouched.
+          email_verified: true,
         },
         facts.pem,
         facts.kid,
