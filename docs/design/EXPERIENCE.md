@@ -357,6 +357,10 @@ Mockup: [storyboard](experience/13-story-setup-desktop-dark.png), frames 1–2.
   2.3). Update needs Distribution, which needs Release. Turning on Update says "Also turns on
   Distribution and Release" and does it; turning on Release turns on nothing else. Turning off X
   lists what goes with it (its dependents) in an L1 confirm.
+  _Superseded by ST-38's requirement rule (owner, 2026-10-07/08): a service turns on only while
+  what it requires is on, and nothing is pulled on with it (a blocked switch names what it needs).
+  Ship builds is the one feature that writes Release, Distribution and Update together. Turning
+  off still lists the dependents and turns them off in the same write._
 - **Save model (S-18 §4.9): each service switch saves on its own.** Turning one on is L0 (an undo
   toast that names what came on with it); turning one off is L1. There is no Services save bar.
   The switches live in the hub's Services & registration area, each row with a one-line purpose.

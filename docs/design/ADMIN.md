@@ -1819,8 +1819,8 @@ include config (when Config is on). The result is a `OneTimeSecretPanel` with a 
 
 **Enrollment (T4).** Sections:
 
-1. **Registration.** A read-out of declared vs enforced, plus **Change in Services** as a button
-   (FPP-2).
+1. **Registration.** A read-out of the enforced policy, derived from the services and never
+   declared, plus **Change in Services** as a button (FPP-2).
 2. **Fingerprint policy.** A mode `RadioCards` (Off, Lenient, Normal, Strict) replaces the switch
    plus mode (FPP-1). A per-section `SourceBadge`. Revert lists both the fingerprint policy and
    auto-issue (FPP-3).

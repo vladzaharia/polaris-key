@@ -1317,6 +1317,9 @@ app. Releases are signed by a separate CI release key." (UX-59).
    primary is **Turn on <Service>**, inline (L0 with undo toast); the secondary is **About
    <Service>** (docs). The sidebar keeps the Core group open on these pages, so the nav never
    looks empty (SV F3).
+   _Superseded by ST-38's requirement rule: nothing is pulled on. A switch whose requirement is
+   off is blocked and names what it needs; only the Ship builds feature writes Release,
+   Distribution and Update together._
 2. **First run** (`EmptyState kind="first-run"`): when the next step has parts, a guided panel
    (checks, snippet, live waiting row), the pattern of EXPERIENCE mockup 10; otherwise one sentence
    and one action. The action opens the service's setup drawer in place, never a navigation.
