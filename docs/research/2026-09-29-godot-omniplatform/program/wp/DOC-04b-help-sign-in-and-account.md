@@ -73,3 +73,22 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 The role agent sets `--set DOC-04b in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set DOC-04b done`.
+
+## Correction (2026-10-11)
+
+The code differs from this brief and from docs plan §7.1 in these places. The pages say what the code does.
+
+- **Sources moved.** The sign-in UI is `components/signin/{LoginCard,ProviderRow}.tsx` and `pages/SignInPage.tsx`; the account UI is `pages/AccountPage.tsx` and `components/account/*`; the worker code is under `packages/worker/src/services/identity/{card,passkeys,portal,accounts}/`; `REVIEW-NOTES.md` is `docs/legal/REVIEW-NOTES.md` and `SIGN-IN.md` is `docs/design/SIGN-IN.md`.
+- **Passkeys.** The portal uses a passkey only to add one and to **Confirm it's you first**. The sign-in page has no passkey option (nothing calls `navigator.credentials.get` with conditional mediation), so `passkeys` covers add, use (confirm), remove and the last-method guard.
+- **Apple, Google and Steam on the sign-in page.** `GET /api/capabilities` sends no `providers`, so the SPA draws no provider row. `sign-in` leaves it out; **Connect** in Account works and is on `account`.
+- **Approve a sign-in.** The portal's "Approve a new device" (PX-W14) has no screen (PX-15), and "Didn't start this yourself? Cancel it" exists only in the kit catalog. `approve-a-sign-in` documents the Worker's device-code pages: "Connect a device to …", "Authorize …" and **Continue to sign in**.
+- **Join and undo.** The join API and its 72-hour undo exist (PX-W12), but no portal screen offers them (PX-15's `LinkAccounts`; PX-21's email gate step). `join-accounts` covers **Add an email**, **Add your real email** and the `email_in_use` and `link_conflict` messages as the portal words them. Join and undo steps belong to PX-15's package.
+- **Steam.** No code attaches a license through a Steam sign-in (LX-11 and CM-24 are todo), although the library's **Missing a license?** strip says "Add Steam under Sign-in methods". The page says only that **Connect** adds Steam as a way to sign in and points to **Restore purchase**. The strip's copy needs a fix.
+- **Security check.** No widget is rendered and the Turnstile secret is deliberately unset (owner steps, "Already done for you"), so `code-didnt-arrive` quotes the `turnstile_failed` message and describes no check on screen.
+- **Hide My Email.** The Worker refuses Apple relay recipients until `EMAIL_APPLE_RELAY` is `registered` (owner steps 1b.5), so the page says Polaris Key "may not be able to send" to them.
+- **Data export.** None exists. `your-data` says nothing about one and sends "ask for a copy" to **Get help with an app**, which names no Polaris Key address (D4).
+- **Notices.** "A new device signed in" is sent only after a device-login approval (API only), so `secure-your-account` does not promise it for ordinary sign-ins.
+- **Cloud Sync.** The legacy page said deleting the account deletes Cloud Sync data. The Cloud Sync service registers no erasure store, so `delete-account` does not say it.
+- **Style guide against the lint.** The style guide defines a passkey with "fingerprint", which Help's word list refuses; `passkeys` says "face or PIN".
+- **Legacy anchors.** The rewrite removed `#signing-in`, `#downloading-releases`, `#package-access` and `#deleting-your-account` from `help/sign-in`, so one link each moved in `help/messages/index`, `help/update`, `features/ship-builds/packages/index` and `help/sync`.
+- **Owner placeholders.** Support and privacy addresses and counsel sign-off are already items 8f.1 and 8f.2 of the owner's checklist (`~/Downloads/polaris-key-owner-steps.md`). The Apple relay registration (1b.5) and the Help text that depends on it are recorded as 8f.3 there.
