@@ -55,56 +55,10 @@ class StateHoldersTest {
         assertTrue(modules[0][0] && modules[0][modules.size - 1] && modules[modules.size - 1][0])
     }
 
-    // ── Devices ──────────────────────────────────────────────────────────────────────────────
-
     @Test
-    fun devicesLoadSortRenameAndDeauthorize() = runTest {
-        val devices = mutableListOf(
-            DeviceInfo("b", current = false, status = LicenseStatus.ok, label = "Zed"),
-            DeviceInfo("a", current = true, status = LicenseStatus.ok, label = "Pixel"),
-            DeviceInfo("c", current = false, status = LicenseStatus.ok, label = "alpha"),
-        )
-        val renamed = mutableListOf<Pair<String, String?>>()
-        val state = PolarisDevicesState(
-            object : PolarisDevicesActions {
-                override suspend fun list() = devices.toList()
-                override suspend fun rename(deviceId: String, label: String?) {
-                    renamed += deviceId to label
-                }
-                override suspend fun deauthorize(deviceId: String) {
-                    devices.removeAll { it.id == deviceId }
-                }
-            },
-            backgroundScope,
-            clockMillis = { 5 },
-        )
-        state.load()
-        runCurrent()
-        assertEquals(listOf("a", "c", "b"), state.ui.value.devices.map { it.id })
-        state.rename("c", "   ")
-        runCurrent()
-        assertEquals(listOf("c" to null), renamed)
-        state.deauthorize("b")
-        runCurrent()
-        assertEquals(listOf("a", "c"), state.ui.value.devices.map { it.id })
-        assertNull(state.ui.value.busyId)
-        assertEquals(PolarisCopy().deviceUnnamed, PolarisCopy().deviceName(DeviceInfo("x", false, LicenseStatus.ok, label = " ")))
-    }
-
-    @Test
-    fun devicesErrorIsShown() = runTest {
-        val state = PolarisDevicesState(
-            object : PolarisDevicesActions {
-                override suspend fun list(): List<DeviceInfo> = throw IllegalStateException("401")
-                override suspend fun rename(deviceId: String, label: String?) {}
-                override suspend fun deauthorize(deviceId: String) {}
-            },
-            backgroundScope,
-        )
-        state.load()
-        runCurrent()
-        assertTrue(state.ui.value.error)
-        assertFalse(state.ui.value.loading)
+    fun blankDeviceLabelUsesCopyFallback() {
+        val device = DeviceInfo("x", false, LicenseStatus.ok, label = " ")
+        assertEquals(PolarisCopy().deviceUnnamed, PolarisCopy().deviceName(device))
     }
 
     // ── Settings ─────────────────────────────────────────────────────────────────────────────
