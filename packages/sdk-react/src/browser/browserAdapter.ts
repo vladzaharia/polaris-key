@@ -189,11 +189,7 @@ import {
 } from "../core/crash.js";
 import type { BootAttempt, BootGuard } from "../core/bootGuard.js";
 import type { InstallOptions, InstallOutcome } from "../core/install.js";
-import {
-  hasWaitingWorker,
-  pageServiceWorker,
-  type SwContainer,
-} from "./serviceWorkerUpdate.js";
+import type { SwContainer } from "./serviceWorkerUpdate.js";
 import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
 import { classifyActivation } from "../core/activation.js";
 import { activationError } from "../core/activationError.js";
@@ -567,10 +563,16 @@ export class BrowserAdapter implements PolarisAdapter {
         ? indexedDbOfflineStore()
         : opts.offlineStore;
     this.updateConfig = opts.update ?? null;
-    this.swContainer =
-      opts.serviceWorker?.container === undefined
-        ? pageServiceWorker()
-        : opts.serviceWorker.container;
+    if (opts.serviceWorker?.container === undefined) {
+      try {
+        this.swContainer =
+          typeof navigator === "undefined" || !("serviceWorker" in navigator)
+            ? null
+            : navigator.serviceWorker;
+      } catch {
+        this.swContainer = null;
+      }
+    } else this.swContainer = opts.serviceWorker.container;
     this.swReload = opts.serviceWorker?.reload;
     this.bootGuardOptions = opts.bootGuard;
     this.updateOutlet = null;
@@ -2199,7 +2201,16 @@ export class BrowserAdapter implements PolarisAdapter {
             this.bootGuardOptions?.storage,
           ),
           record: (event, input) => this.recordUpdateEvent(event, input),
-          staged: () => hasWaitingWorker(this.swContainer),
+          staged: async () => {
+            if (!this.swContainer) return false;
+            try {
+              return (
+                (await this.swContainer.getRegistration())?.waiting != null
+              );
+            } catch {
+              return false;
+            }
+          },
           ...(this.bootGuardOptions?.rollback
             ? { rollback: this.bootGuardOptions.rollback }
             : {}),
