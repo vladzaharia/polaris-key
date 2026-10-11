@@ -14,6 +14,14 @@ export interface FeedTarget {
   namespace: string[];
   /** The package to install. */
   package: string;
+  /**
+   * The version `feedsSetup()` writes into the install line, where the client takes a range. Only
+   * Swift has one: without it the generated line is `from: "1.0.0"`, which matches no release
+   * while the feed's newest is 0.9.x. `from:` takes the newest release at or above it and below
+   * the next major, so the line stays valid as 0.9 patches ship. Move it with the version line
+   * (the 1.0 readiness review).
+   */
+  version?: string;
 }
 
 export const FEEDS: Readonly<Record<InstallTarget, FeedTarget>> = {
@@ -32,6 +40,7 @@ export const FEEDS: Readonly<Record<InstallTarget, FeedTarget>> = {
     ecosystem: "swift",
     namespace: ["scope=polaris-key"],
     package: "polaris-key.PolarisKey",
+    version: "0.9.0",
   },
   kotlin: {
     ecosystem: "maven",

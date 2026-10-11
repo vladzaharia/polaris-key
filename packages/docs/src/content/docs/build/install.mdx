@@ -3,7 +3,7 @@ title: "Install the SDKs and the CLI"
 description: "Route the Polaris Key feed for your package manager, then install the pkey CLI and your SDK."
 type: "how-to"
 sdks: ["node", "react", "python", "swift", "kotlin", "godot"]
-lastReviewed: "2026-10-10"
+lastReviewed: "2026-10-11"
 ---
 
 import Requires from "../../../components/docs/Requires.astro";
@@ -35,7 +35,7 @@ The platform's feeds are public: no account and no token.
 
 <InstallSteps sdk="cli" />
 
-Put the routing line in the project's `.npmrc`. Outside a Node project, put it in `~/.npmrc` and add `--global` to the install. Run the CLI through your package manager (`pnpm exec pkey`) or as `pkey` when it's global. A bare `npx pkey` resolves that name from npmjs, not the feed.
+In a Node project, put the routing line in the project's `.npmrc`, install the CLI there and run it through your package manager: `npx pkey` with npm, `pnpm exec pkey`, `yarn pkey` or `bunx pkey`. For any other app, put the routing line in `~/.npmrc`, add `--global` to the install and run `pkey` directly. A bare `npx pkey` before the CLI is installed resolves that name from npmjs, not the feed.
 
 ### Your SDK
 
@@ -48,11 +48,11 @@ Put the routing line in the project's `.npmrc`. Outside a Node project, put it i
 <InstallSteps sdk="kotlin" />
 <InstallSteps sdk="godot" />
 
-For Swift, add the `PolarisKey` product to your target's dependencies after the package. For Godot, search for "Polaris Key" in the **AssetLib** tab, install it, then enable it under **Project → Project Settings → Plugins**. The add-on lands in `res://addons/polaris_key/`.
+For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. The SDK's floors are macOS 15, iOS 18, tvOS 18 and visionOS 2. SwiftPM also fetches the SDK's two dependencies, `zstd` and `Sparkle`, from GitHub. For Godot, search for "Polaris Key" in the **AssetLib** tab, install it, then enable it under **Project → Project Settings → Plugins**. The add-on lands in `res://addons/polaris_key/`.
 
 ## Check it works
 
-You should see the CLI's commands:
+You should see the CLI's commands. In a Node project, run it as `npx pkey help` or the form for your package manager:
 
 ```sh title="Terminal"
 pkey help

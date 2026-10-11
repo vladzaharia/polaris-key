@@ -3,7 +3,7 @@ title: "Your first product"
 description: "Create a product in the console, install the CLI and an SDK, generate the config file, and activate a test license from your app."
 type: "quickstart"
 sdks: ["node", "react", "python", "swift", "kotlin", "godot"]
-lastReviewed: "2026-10-10"
+lastReviewed: "2026-10-11"
 ---
 
 import Requires from "../../../components/docs/Requires.astro";
@@ -24,11 +24,11 @@ You end with an app that unlocks on a test license and a device listed in the co
 
 1. The **Platform admin** role in the console. Creating a product needs it.
 2. Node 22.13 or later. The `pkey` CLI runs on it, whatever language your app uses.
-3. An app project for your SDK. An empty directory works.
+3. A project for your SDK, in its own directory: `npm init -y` starts a Node one and `swift package init --type executable` a Swift one.
 
 ## 1. Create the product
 
-**Console** Open **Products → New product**. Keep **Start from** on **Nothing**. Enter the name `Tidewater Studio` and the slug `tidewater`, then select **Create Tidewater Studio**. The slug is permanent and appears in keys and URLs, so use your own for a real product.
+**Console** Open the console at `https://key.plrs.im/manage/` (on a platform at its own address, `/manage/` on that address) and sign in. Open **Products → New product**. Keep **Start from** on **Nothing**. Enter the name `Tidewater Studio`. The form fills in the slug `tidewater-studio`: replace it with `tidewater`, then select **Create Tidewater Studio**. The slug is permanent and appears in keys and URLs, so use your own for a real product.
 
 You should see **Tidewater Studio is ready** on the product's **Overview**, with its signing key.
 
@@ -44,7 +44,7 @@ You should see the **License** switch on.
 
 <InstallSteps sdk="cli" />
 
-Outside a Node project, put the routing line in `~/.npmrc` and add `--global` to the install. Run the CLI as `pkey`, or through your package manager (`pnpm exec pkey`) in a Node project. Never run `npx pkey` without installing the CLI first: that name resolves from npmjs.
+In a Node project, put the routing line in the project's `.npmrc`, install the CLI there and run it through your package manager: `npx pkey` with npm, `pnpm exec pkey`, `yarn pkey` or `bunx pkey`. For any other app, put the routing line in `~/.npmrc`, add `--global` to the install and run `pkey` directly. Never run `npx pkey` before the CLI is installed: that name resolves from npmjs.
 
 <SdkPicker />
 
@@ -57,9 +57,11 @@ Outside a Node project, put the routing line in `~/.npmrc` and add `--global` to
 
 For Python, the pip block installs the package alone, so install its dependencies from your usual index first: `pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"`. The uv and Poetry blocks resolve them for you.
 
-Other package managers and age gates are on **Install the SDKs and the CLI**. The product's **Overview** shows the same lines under **SDK quick start**.
+For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. SwiftPM also fetches the SDK's two dependencies, `zstd` and `Sparkle`, from GitHub.
 
-You should see the commands listed by:
+Other package managers and age gates are on **Install the SDKs and the CLI**. The product's **Overview** shows the same lines for the SDK you pick under **SDK quick start**.
+
+You should see the commands listed by `pkey help`. In a Node project, run it as `npx pkey help` or the form for your package manager:
 
 ```sh title="Terminal"
 pkey help
@@ -73,7 +75,7 @@ pkey help
 pkey sdk --lang <lang> --product <slug> --write
 ```
 
-Replace `<slug>` with the slug from step 1. For a console that isn't at `key.plrs.im`, add `--base-url <console origin>`. The table gives `<lang>` for each SDK and the file it writes:
+Replace `<slug>` with the slug from step 1. For a platform that isn't at `key.plrs.im`, add `--base-url <console origin>`: the console's address without `/manage/`. The table gives `<lang>` for each SDK and the file it writes:
 
 | SDK    | `<lang>` | File written            |
 | ------ | -------- | ----------------------- |
@@ -84,9 +86,12 @@ Replace `<slug>` with the slug from step 1. For a console that isn't at `key.plr
 | Kotlin | `kotlin` | `PolarisConfig.kt`      |
 | Godot  | `godot`  | `polaris_key_config.gd` |
 
+The file lands in the current directory. For Swift, run the command in your target's folder (`Sources/<Target>`), or add `--out Sources/<Target>/PolarisConfig.swift`, so the target compiles it.
+
 You should see the file written and each pin's key id and SHA-256 fingerprint:
 
 ```text title="Output"
+warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.
 Product tidewater at https://key.plrs.im
 Services: license, config
 Trust pins (compare each fingerprint with the console before you ship):
@@ -95,7 +100,7 @@ Release keys: none
 Wrote /path/to/polaris.config.ts
 ```
 
-Compare each key id with the one under **Signing keys** on **Core → Keys & secrets**. A product with one signing key also prints a warning to stage a second before you ship.
+The pins are the product's public signing keys. The console shows the key itself, not its fingerprint, so open the generated file and compare each key with the **Public key** under **Signing keys** on **Core → Keys & secrets**. The warning appears because a new product has one signing key: stage a second before you ship, so the first can be revoked.
 
 ## 5. Gate the app
 
@@ -110,11 +115,11 @@ Compare each key id with the one under **Signing keys** on **Core → Keys & sec
 
 **Choose your integration** compares the two lanes.
 
-You should see the app report that it needs activation.
+You should see the app stay locked: the client's license status is `needs-activation`, and a drop-in kit shows its activation prompt.
 
 ## 6. Issue a test license and activate it
 
-**Console** Open **License → Licenses** and select **Create license**. Enter a name and an email such as `test@example.com`, select **Continue to terms**, then select **Create license**. Copy the license key: the console shows it once.
+**Console** Open **License → Licenses** and select **Create license**. Enter any name and an email such as `test@example.com`, select **Continue to terms**, then select **Create license**. Copy the license key, or tick **I've stored it**: the console shows it once.
 
 **App** Enter the key where the app asks for it.
 
@@ -126,6 +131,8 @@ A product with a signing key and License on. A config file that pins that key. A
 
 ## If it isn't working
 
+- `pkey: command not found`: the CLI is installed in a project, so run it through your package manager (step 3).
+- `pkey sdk` reports a 404: check the slug, and add `--base-url <console origin>` if your platform isn't at `key.plrs.im`.
 - [Wire error codes](/docs/reference/error-codes/): the code in the app's error.
 - [Web clients and CORS](/docs/build/web-apps/): browser apps.
 - [pkey CLI](/docs/reference/cli/): every flag of `pkey sdk`.

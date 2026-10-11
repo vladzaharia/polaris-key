@@ -27,20 +27,22 @@ interface Snippet {
 }
 
 /** Exactly what the component asks of `feedsSetup()`. */
+function ask(target: InstallTarget) {
+  const feed = FEEDS[target];
+  return {
+    ecosystem: feed.ecosystem,
+    owner: "polaris-key",
+    namespace: feed.namespace,
+    package: feed.package,
+    ...(feed.version ? { version: feed.version } : {}),
+  };
+}
+
 function render(target: InstallTarget): {
   ecosystem: string;
   snippets: Snippet[];
 } {
-  const feed = FEEDS[target];
-  return JSON.parse(
-    feedsSetup({
-      ecosystem: feed.ecosystem,
-      owner: "polaris-key",
-      namespace: feed.namespace,
-      package: feed.package,
-      json: true,
-    }),
-  );
+  return JSON.parse(feedsSetup({ ...ask(target), json: true }));
 }
 
 /** The package and ecosystem each target must install, from the SDKs' own manifests. */
@@ -147,13 +149,7 @@ describe("InstallSteps FEEDS mapping", () => {
 
   it("the CLI's own text output carries the same code as the JSON the component reads", () => {
     for (const target of TARGETS) {
-      const feed = FEEDS[target];
-      const text = feedsSetup({
-        ecosystem: feed.ecosystem,
-        owner: "polaris-key",
-        namespace: feed.namespace,
-        package: feed.package,
-      });
+      const text = feedsSetup(ask(target));
       for (const s of render(target).snippets)
         expect(text, `${target}/${s.id}`).toContain(s.code);
     }
@@ -194,5 +190,92 @@ describe("InstallSteps FEEDS mapping", () => {
       const got = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
       expect(got, page).toEqual(want);
     }
+  });
+
+  it("the Swift block asks for a release that exists: a 0.9 floor, never the generated 1.0.0", () => {
+    const line = render("swift").snippets.find((s) => s.id === "package-swift");
+    expect(line?.code).toBe(
+      '.package(id: "polaris-key.PolarisKey", from: "0.9.0")',
+    );
+    // Why the version is passed: the generator's own default is a 1.0.0 floor no release matches.
+    const bare = feedsSetup({
+      ecosystem: "swift",
+      owner: "polaris-key",
+      namespace: FEEDS.swift.namespace,
+      package: FEEDS.swift.package,
+    });
+    expect(bare).toContain('from: "1.0.0"');
+  });
+
+  it("both pages wire the Swift package the way its manifest declares it", () => {
+    const pkg = readFileSync(
+      join(here, "..", "..", "..", "sdks", "swift", "Package.swift"),
+      "utf8",
+    );
+    const block = /^\s+platforms:\s*\[([^\]]*)\]/m.exec(pkg)?.[1] ?? "";
+    const floors = Object.fromEntries(
+      [...block.matchAll(/\.(macOS|iOS|tvOS|visionOS)\(\.v(\d+)\)/g)].map(
+        (m) => [m[1], m[2]],
+      ),
+    );
+    expect(Object.keys(floors).sort()).toEqual([
+      "iOS",
+      "macOS",
+      "tvOS",
+      "visionOS",
+    ]);
+    // The umbrella product the pages tell a target to depend on, and the two packages it pulls.
+    expect(pkg).toMatch(
+      /\.library\(name: "PolarisKey", targets: \["PolarisKey"\]\)/,
+    );
+    const deps = [
+      ...pkg.matchAll(
+        /\.package\(url: "https:\/\/github\.com\/[^/]+\/([^"]+)"/g,
+      ),
+    ]
+      .map((m) => m[1])
+      .sort();
+    expect(deps).toEqual(["Sparkle", "zstd"]);
+    const sentence = `macOS ${floors.macOS}, iOS ${floors.iOS}, tvOS ${floors.tvOS} and visionOS ${floors.visionOS}`;
+    // The install page names every floor; the first-product page, under its word budget, names
+    // the one a macOS command-line package needs.
+    expect(read("src/content/docs", "build/install.mdx")).toContain(
+      `floors are ${sentence}`,
+    );
+    for (const page of ["build/install.mdx", "start/first-product.mdx"]) {
+      const text = read("src/content/docs", page);
+      expect(text, page).toContain(`platforms: [.macOS(.v${floors.macOS})]`);
+      expect(text, page).toContain(
+        `.product(name: "PolarisKey", package: "${FEEDS.swift.package}")`,
+      );
+      expect(text, page).toContain("`zstd` and `Sparkle`");
+      expect(text, page).toContain(".swiftpm/configuration/registries.json");
+    }
+  });
+
+  it("both pages give the four ways to run a project's own pkey", () => {
+    for (const page of ["build/install.mdx", "start/first-product.mdx"]) {
+      const text = read("src/content/docs", page);
+      for (const form of [
+        "npx pkey",
+        "pnpm exec pkey",
+        "yarn pkey",
+        "bunx pkey",
+      ])
+        expect(text, `${page}: ${form}`).toContain(`\`${form}\``);
+    }
+  });
+
+  it("the first-product page opens the console where the worker mounts it", () => {
+    const router = readFileSync(
+      join(here, "..", "..", "worker", "src", "router.ts"),
+      "utf8",
+    );
+    expect(router).toMatch(
+      /path === "\/manage" \|\| path\.startsWith\("\/manage\/"\)\)\s*return \{ kind: "adminSpa" \}/,
+    );
+    expect(read("src/content/docs", "start/first-product.mdx")).toContain(
+      "https://key.plrs.im/manage/",
+    );
   });
 });
