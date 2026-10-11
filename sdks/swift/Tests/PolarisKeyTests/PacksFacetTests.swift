@@ -141,7 +141,9 @@ final class PacksFacetTests: XCTestCase {
         }
     }
 
-    private var root: URL { work.appendingPathComponent("data/djdl/packs") }
+    /// The packs directory of the `https://key.example` client below: that is not production's host,
+    /// so its product directory carries the host (`djdl@key.example`), not the bare product.
+    private var root: URL { work.appendingPathComponent("data/djdl@key.example/packs") }
 
     private func client(
         stamp: PackStampSource?, embedded: [EmbeddedPack] = [], token: Bool = true,

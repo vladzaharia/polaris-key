@@ -9,8 +9,10 @@ extends RefCounted
 #                Play did not make, the direct plugin build, and a mobile build without the plugin.
 #                None of them touches the network.
 #   ios          challenge, App Attest over SHA-256(requestHash) with the key id kept in the
-#                Keychain, the attest body, a key lost to a reinstall re-attested with a fresh key
-#                in the same call, server_unavailable keeping the generated key
+#                Keychain under the SDK's state namespace (the product on production, the product
+#                and host on any other origin), the attest body, a key lost to a reinstall
+#                re-attested with a fresh key in the same call, server_unavailable keeping the
+#                generated key
 #   android      the play.cloudProjectNumber from the challenge (or PKeyOptions'), the token for the
 #                requestHash verbatim, the attest body, a missing project number
 #   errors       the server's codes verbatim (rate_limited, attestation_unavailable,
@@ -35,6 +37,7 @@ func run(t: PKeyTestContext) -> void:
 	PKeyApple.reset_launch()
 	await _unsupported(t)
 	await _ios(t)
+	await _ios_origins(t)
 	await _android(t)
 	await _errors(t)
 	for n in _nodes:
@@ -199,7 +202,8 @@ func _ios(t: PKeyTestContext) -> void:
 	PKeyApple.reset_launch()
 	var fake := PKeyFakeAppleNative.new()
 	devices.apple = _apple(fake)
-	var account := "%s/%s" % [F["product"], PKeyDevices.APP_ATTEST_ACCOUNT]
+	# The fake server listens on a loopback port, so the SDK's state namespace carries that host.
+	var account := "%s@127.0.0.1_%d/%s" % [F["product"], server.port, PKeyDevices.APP_ATTEST_ACCOUNT]
 
 	var r: PKeyResult = await devices.attest()
 	t.check("ios: attested", r.ok and r.detail == {"trust_level": "attested", "kind": "app-attest", "attested_at": int(F["now"])}, str(r))
@@ -248,6 +252,45 @@ func _ios(t: PKeyTestContext) -> void:
 	t.check("ios: TestFlight attests, from the launch's distributor read", r.ok and not fake.calls.any(func(q): return q.get("op") == "distributor"), str(r))
 	PKeyApple.reset_launch()
 	sdk.queue_free()
+
+
+## The App Attest key id's Keychain item is named for the SDK's state namespace, so a local control
+## plane never reads, replaces or deletes the key production attested: the production origin keeps
+## the historical `<product>/app_attest_key`, any other origin adds its host. The item a first
+## attestation writes is the one the next one reads (a stored key is reused, not regenerated) and
+## the one a lost key is deleted from.
+func _ios_origins(t: PKeyTestContext) -> void:
+	for c in [
+		["production", "https://key.plrs.im", String(F["product"])],
+		["local control plane", "http://localhost:8787", "%s@localhost_8787" % F["product"]],
+	]:
+		var item := "%s/%s" % [c[2], PKeyDevices.APP_ATTEST_ACCOUNT]
+		var sdk := PKeyTestFixtures.new_sdk()
+		var cr: PKeyResult = sdk.configure(PKeyTestFixtures.options(c[1], PKeyMemoryStore.new(F["device_id"], TOKEN), [F["now"]], F["product"], F["trust"], F["version"]))
+		if not t.check("ios origin (%s): configure succeeds" % c[0], cr.ok, str(cr)):
+			sdk.queue_free()
+			continue
+		PKeyApple.reset_launch()
+		var fake := PKeyFakeAppleNative.new()
+		sdk.devices.apple = _apple(fake)
+		var r: PKeyResult = await sdk.devices._app_attest(sdk.core, REQUEST_HASH)
+		var key := str(fake.attest_keys[0]) if fake.attest_keys.size() > 0 else ""
+		t.check("ios origin (%s): the generated key id is kept under the Keychain name %s" % [c[0], item], r.ok and key != "" and fake.keychain == {item: key}, str(fake.keychain))
+		fake.calls.clear()
+		r = await sdk.devices._app_attest(sdk.core, REQUEST_HASH)
+		var attests := fake.calls.filter(func(q): return q.get("op") == "app_attest_attest")
+		t.check("ios origin (%s): the next attestation reads that item and reuses the key" % c[0], r.ok and attests.size() == 1 and attests[0].get("keyId") == key and fake.keychain == {item: key}, str(attests))
+		# The system lost the key (a reinstall, a restore): its item is deleted by the same name and
+		# the fresh key is written back there.
+		fake.attest_keys.clear()
+		fake.calls.clear()
+		r = await sdk.devices._app_attest(sdk.core, REQUEST_HASH)
+		var fresh := str(fake.attest_keys[0]) if fake.attest_keys.size() > 0 else ""
+		var deletes := fake.calls.filter(func(q): return q.get("op") == "kc_delete")
+		t.check("ios origin (%s): a lost key is deleted from that item and replaced there" % c[0], r.ok and fresh != "" and fresh != key and fake.keychain == {item: fresh} \
+				and deletes.size() == 1 and deletes[0].get("product") == c[2] and deletes[0].get("account") == PKeyDevices.APP_ATTEST_ACCOUNT, str(deletes))
+		PKeyApple.reset_launch()
+		sdk.queue_free()
 
 
 # ── Android ──────────────────────────────────────────────────────────────────────────────

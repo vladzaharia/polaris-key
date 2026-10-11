@@ -467,7 +467,9 @@ func _direct(t: PKeyTestContext) -> void:
 	t.check("direct: …and is a no-op without one", not PKeyApkUpdate.cleanup(dir))
 	var sup := PKeyUpdaterTestSupport.new()
 	var inst := PKeyUpdaterTestSupport.install("p506_apk_cleanup", PackedByteArray([1, 2, 3]), "android")
-	var stale: String = String(inst["user"]).path_join(PKeyUpdaterTestSupport.PRODUCT).path_join("updates/apk")
+	# No server runs here, so the launch configures the SDK against 127.0.0.1:9 and the SDK keeps its
+	# state under that host's namespace (`<product>@<host>_<port>`), not the bare product's.
+	var stale: String = String(inst["user"]).path_join("%s@127.0.0.1_9" % PKeyUpdaterTestSupport.PRODUCT).path_join("updates/apk")
 	DirAccess.make_dir_recursive_absolute(stale)
 	PKeyUpdaterTestSupport.write(stale.path_join("update.apk"), apk)
 	PKeyUpdaterTestSupport.write(stale.path_join("update.apk.part"), PackedByteArray([9]))
