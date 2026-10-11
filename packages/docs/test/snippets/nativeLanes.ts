@@ -266,7 +266,9 @@ export function kotlinFile(code: string, pkg: string): string {
       l,
     ),
   );
-  const imports = lines.filter(isHeader).filter((l) => !/^\s*package\s/.test(l));
+  const imports = lines
+    .filter(isHeader)
+    .filter((l) => !/^\s*package\s/.test(l));
   const rest = lines.filter((l) => !isHeader(l));
   const body = hasDecl
     ? rest.join("\n")
@@ -290,10 +292,7 @@ async function gradleKotlin(
   writeFileSync(join(root, "config/PolarisConfig.kt"), sample);
   // The app-side names a block may use without declaring them (`client`, `userEnteredKey`).
   mkdirSync(join(root, "prelude"), { recursive: true });
-  writeFileSync(
-    join(root, "prelude/Prelude.kt"),
-    KOTLIN_PRELUDE,
-  );
+  writeFileSync(join(root, "prelude/Prelude.kt"), KOTLIN_PRELUDE);
   const byFile = new Map<string, { s: Snippet; offset: number }>();
   snippets.forEach((s, i) => {
     const pkg = `docs.block${String(i).padStart(4, "0")}`;
@@ -333,9 +332,7 @@ async function gradleKotlin(
   }
   if (r.code !== 0 && failures.length === 0)
     failures.push(
-      harnessFailure(
-        `gradle :${module}:${task} failed: ${r.out.slice(-1200)}`,
-      ),
+      harnessFailure(`gradle :${module}:${task} failed: ${r.out.slice(-1200)}`),
     );
   return failures;
 }
@@ -356,7 +353,7 @@ export async function compileKotlin(snippets: Snippet[]): Promise<Failure[]> {
         ...(await gradleKotlin(
           android,
           "docs-snippets-android",
-          "compileDebugKotlin",
+          "compileDirectDebugKotlin",
         )),
       );
   }
@@ -366,6 +363,10 @@ export async function compileKotlin(snippets: Snippet[]): Promise<Failure[]> {
 // ── GDScript ───────────────────────────────────────────────────────────────────────────────────
 
 const GODOT_SAMPLE = join(GODOT_DIR, "tests/sdk_config/polaris_key_config.gd");
+const GODOT_CATALOG_SAMPLE = join(
+  GODOT_DIR,
+  "tests/config/catalog_generated.gd",
+);
 
 export function godotBin(): string | null {
   const env = process.env.GODOT_BIN;
@@ -433,7 +434,14 @@ export async function compileGodot(snippets: Snippet[]): Promise<Failure[]> {
     symlinkSync(join(GODOT_DIR, "addons"), join(dir, "addons"));
     writeFileSync(join(dir, "project.godot"), GODOT_PROJECT);
     writeFileSync(join(dir, "harness.gd"), GODOT_HARNESS);
-    writeFileSync(join(dir, "polaris_key_config.gd"), readFileSync(GODOT_SAMPLE));
+    writeFileSync(
+      join(dir, "polaris_key_config.gd"),
+      readFileSync(GODOT_SAMPLE),
+    );
+    writeFileSync(
+      join(dir, "catalog_generated.gd"),
+      readFileSync(GODOT_CATALOG_SAMPLE),
+    );
     const owner = new Map<string, { s: Snippet; offset: number }>();
     snippets.forEach((s, i) => {
       const name = `b${String(i).padStart(4, "0")}.gd`;
@@ -477,8 +485,13 @@ export async function compileGodot(snippets: Snippet[]): Promise<Failure[]> {
       seen.add(k);
       return true;
     });
-    if (unique.length === 0 && /Traceback|Could not find|Failed to load/.test(r.out))
-      unique.push(harnessFailure(`the Godot lane did not run: ${r.out.slice(0, 600)}`));
+    if (
+      unique.length === 0 &&
+      /Traceback|Could not find|Failed to load/.test(r.out)
+    )
+      unique.push(
+        harnessFailure(`the Godot lane did not run: ${r.out.slice(0, 600)}`),
+      );
     return unique;
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -519,7 +532,11 @@ export function kotlinExports(): Set<string> {
     /\b(?:class|object|interface|fun|val|var|typealias)\s+(?:<[^>]*>\s*)?(?:[\w.]+\.)?`?(\w+)/g;
   for (const f of walkFiles(KOTLIN_DIR, ".kt")) {
     const rel = relative(KOTLIN_DIR, f);
-    if (/(^|\/)(src\/(test|androidTest|testFixtures)|samples|docs-snippets)/.test(rel))
+    if (
+      /(^|\/)(src\/(test|androidTest|testFixtures)|samples|docs-snippets)/.test(
+        rel,
+      )
+    )
       continue;
     const src = readFileSync(f, "utf8");
     for (const m of src.matchAll(decl)) names.add(m[1] ?? "");
@@ -534,7 +551,8 @@ export function godotExports(): Set<string> {
   const names = new Set<string>(["PolarisKey"]);
   for (const f of walkFiles(join(GODOT_DIR, "addons/polaris_key"), ".gd")) {
     const src = readFileSync(f, "utf8");
-    for (const m of src.matchAll(/^class_name\s+(\w+)/gm)) names.add(m[1] ?? "");
+    for (const m of src.matchAll(/^class_name\s+(\w+)/gm))
+      names.add(m[1] ?? "");
     for (const m of src.matchAll(/^\s*(?:static\s+)?func\s+(\w+)/gm))
       names.add(m[1] ?? "");
     for (const m of src.matchAll(/^\s*signal\s+(\w+)/gm)) names.add(m[1] ?? "");
@@ -542,6 +560,32 @@ export function godotExports(): Set<string> {
       names.add(m[1] ?? "");
     for (const m of src.matchAll(/^\s*class\s+(\w+)/gm)) names.add(m[1] ?? "");
   }
+  for (const n of godotThemeAndNativeNames()) names.add(n);
+  return names;
+}
+
+/**
+ * The PKey names that are not `class_name`s but are still real: the theme types the kit styles (the
+ * keys of `VARIATIONS` and the `LAYOUT_TYPE` theme type) and the GDExtension classes the native
+ * plugins register in C++.
+ */
+function godotThemeAndNativeNames(): Set<string> {
+  const names = new Set<string>();
+  const theme = readFileSync(
+    join(GODOT_DIR, "addons/polaris_key/ui/theme/pkey_ui_theme.gd"),
+    "utf8",
+  );
+  const variations =
+    /const VARIATIONS := \{([\s\S]*?)\n\}/.exec(theme)?.[1] ?? "";
+  for (const m of variations.matchAll(/"(\w+)"\s*:/g)) names.add(m[1] ?? "");
+  for (const m of theme.matchAll(/^const LAYOUT_TYPE := &"(\w+)"/gm))
+    names.add(m[1] ?? "");
+  for (const ext of [".cpp", ".mm"])
+    for (const f of walkFiles(join(GODOT_DIR, "native"), ext))
+      for (const m of readFileSync(f, "utf8").matchAll(
+        /GDREGISTER_CLASS\((\w+)\)/g,
+      ))
+        names.add(m[1] ?? "");
   return names;
 }
 
@@ -551,6 +595,7 @@ export function godotClassNames(): Set<string> {
   for (const f of walkFiles(join(GODOT_DIR, "addons/polaris_key"), ".gd"))
     for (const m of readFileSync(f, "utf8").matchAll(/^class_name\s+(\w+)/gm))
       names.add(m[1] ?? "");
+  for (const n of godotThemeAndNativeNames()) names.add(n);
   return names;
 }
 
@@ -579,17 +624,19 @@ export function nativeMentions(
       let name: string | null = null;
       if (lang === "swift") {
         if (PASCAL.test(last) || /^polarisKey[A-Z]\w*$/.test(last)) name = last;
-        else if (call && /^[a-z]+[A-Z]\w*$/.test(call[2] ?? "")) name = call[2] ?? null;
+        else if (call && /^[a-z]+[A-Z]\w*$/.test(call[2] ?? ""))
+          name = call[2] ?? null;
       } else if (lang === "kotlin") {
         if (PASCAL.test(last)) name = last;
-        else if (call && /^[a-z]+[A-Z]\w*$/.test(call[2] ?? "")) name = call[2] ?? null;
+        else if (call && /^[a-z]+[A-Z]\w*$/.test(call[2] ?? ""))
+          name = call[2] ?? null;
       } else {
         if (/^PKey[A-Z]\w*$/.test(last) || last === "PolarisKey") name = last;
         else if (call && (call[2] ?? "").includes("_")) name = call[2] ?? null;
-        else if (call && /^(PolarisKey|PKey\w+)\.$/.test(call[1] ?? "")) name = call[2] ?? null;
+        else if (call && /^(PolarisKey|PKey\w+)\.$/.test(call[1] ?? ""))
+          name = call[2] ?? null;
       }
-      if (name && !IGNORED[lang].has(name))
-        out.push({ name, line, text: raw });
+      if (name && !IGNORED[lang].has(name)) out.push({ name, line, text: raw });
     }
   }
   return out;
@@ -614,7 +661,10 @@ export function skipReasonOf(lang: NativeLang): string | null {
       : godotSkipReason();
 }
 
-export function compileOf(lang: NativeLang, snippets: Snippet[]): Promise<Failure[]> {
+export function compileOf(
+  lang: NativeLang,
+  snippets: Snippet[],
+): Promise<Failure[]> {
   return lang === "swift"
     ? compileSwift(snippets)
     : lang === "kotlin"

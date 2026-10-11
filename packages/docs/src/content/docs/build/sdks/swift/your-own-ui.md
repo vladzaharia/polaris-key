@@ -309,7 +309,7 @@ let client = try await testClient()
 print(await client.status().status)  // needs-activation: nothing is cached
 ```
 
-Ready-made doubles (`TestSigner`, `ScriptedTransport`) that sign documents and script answers are
-planned. Until then, sign test documents with a key whose public half you pin. For views,
+Ready-made doubles (`TestSigner`, `ScriptedTransport`) are planned, to sign documents and script answers.
+Until then, sign test documents with a key whose public half you pin. For views,
 `PolarisKeyPreview(.named(.welcome, "default")!)` draws any kit state with no client at all, and
 `PolarisKeyGateModel(preview:)` holds one still for a snapshot.

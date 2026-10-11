@@ -18,6 +18,20 @@ exactly one copy to keep current. The rest of the Kotlin SDK is on the
 
 <KitFacts kit="compose" />
 
+## Piecemeal
+
+`PolarisKeyApp(client) { }` is the one call. To place the screens yourself, hold a
+`PolarisGateState(client.gateActions(), scope)` and call its `start()`; then:
+
+- `PolarisGate(state) { }` gates your content and shows the right screen for the license.
+- `PolarisActivationScreen` is the activation form on its own, drawn from the state's `activation`
+  flow.
+- `PolarisDevices(PolarisDevicesState(client.devicesActions(), scope))` lists, renames and removes
+  devices.
+- `PolarisGraceBanner` is the offline-grace banner, for a screen that shows it over your content.
+- `rememberPolarisLicense()` reads the live license state anywhere under `PolarisKeyApp` or
+  `PolarisKeyProvider`.
+
 ## Baselines
 
 The kit's Roborazzi baselines, matched to the [component catalog](/docs/build/ui/components/):

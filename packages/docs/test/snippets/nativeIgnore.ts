@@ -40,8 +40,13 @@ export const IGNORED: Record<NativeLang, Set<string>> = {
     "NSApplicationDelegate",
     "SPUUserDriver",
     "SPUUpdater",
+    "ButtonStyle", // a SwiftUI type, not Polaris Key's
   ]),
   kotlin: new Set([
+    // The names `pkey sdk` generates into the reader's own project (the config object and its options).
+    "PolarisConfig",
+    "clientOptions",
+    "CompletableFuture", // a JDK type
     "StateFlow",
     "SharedFlow",
     "MaterialTheme",
@@ -71,5 +76,13 @@ export const IGNORED: Record<NativeLang, Set<string>> = {
     "AssetLib",
     "GodotEnv",
     "StringName",
+    // Godot engine API (Node, Control, Dictionary, String, OS), not Polaris Key's.
+    "get_display_safe_area",
+    "set_anchors_and_offsets_preset",
+    "set_meta",
+    "get_space_left",
+    "get_error",
+    "simplify_path",
+    "to_native",
   ]),
 };

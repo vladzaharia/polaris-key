@@ -28,6 +28,10 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}quickstart/swift.md`, language: "swift" },
   { path: `${BUILD}sdks/swift/your-own-ui.md`, language: "swift" },
   { path: `${BUILD}ui/frameworks/swiftui.mdx`, language: "swift" },
+  { path: "sdks/godot/README.md", language: "gdscript" },
+  { path: `${BUILD}quickstart/godot.md`, language: "gdscript" },
+  { path: `${BUILD}sdks/godot/your-own-ui.md`, language: "gdscript" },
+  { path: `${BUILD}ui/frameworks/godot.mdx`, language: "gdscript" },
 ];
 
 export function coveredLanguage(file: string): Covered["language"] | null {

@@ -111,7 +111,8 @@ export const UI_KITS: readonly UiKit[] = [
   {
     id: "swiftui",
     label: "SwiftUI",
-    framework: "SwiftUI (iOS, iPadOS, macOS; visionOS and tvOS later)",
+    framework:
+      "SwiftUI (iOS and iPadOS; the Mac pass, visionOS and tvOS planned)",
     sdk: "Swift",
     tier: "must",
     package: "PolarisKeyUI",

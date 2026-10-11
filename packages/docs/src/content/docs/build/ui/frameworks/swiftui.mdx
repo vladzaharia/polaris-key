@@ -27,16 +27,24 @@ The kit is two products of the `polaris-key.PolarisKey` package in Polaris Key's
 ([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)). The package's floors are
 iOS 18, macOS 15, tvOS 18 and visionOS 2.
 
-```swift
-dependencies: [
-    .package(id: "polaris-key.PolarisKey", from: "0.1.0")
-],
-targets: [
-    .target(name: "MyApp", dependencies: [
-        .product(name: "PolarisKeyUI", package: "polaris-key.PolarisKey"),      // the views
-        .product(name: "PolarisKeyUICore", package: "polaris-key.PolarisKey"),  // no SwiftUI
-    ])
-]
+```text
+// Package.swift
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "MyApp",
+    platforms: [.iOS(.v18), .macOS(.v15)],
+    dependencies: [
+        .package(id: "polaris-key.PolarisKey", from: "0.1.0")
+    ],
+    targets: [
+        .target(name: "MyApp", dependencies: [
+            .product(name: "PolarisKeyUI", package: "polaris-key.PolarisKey"),      // the views
+            .product(name: "PolarisKeyUICore", package: "polaris-key.PolarisKey"),  // no SwiftUI
+        ])
+    ]
+)
 ```
 
 The kit bundles Rubik and JetBrains Mono (both OFL) and registers them itself.
@@ -44,9 +52,21 @@ The kit bundles Rubik and JetBrains Mono (both OFL) and registers them itself.
 ## The one-line flow
 
 ```swift
+import PolarisKey
 import PolarisKeyUI
+import SwiftUI
 
-WindowGroup { ContentView().polarisKeyGate(client) }
+struct MyScene: Scene {
+    let client: PolarisKeyClient
+
+    var body: some Scene {
+        WindowGroup { ContentView().polarisKeyGate(client) }
+    }
+}
+
+struct ContentView: View {
+    var body: some View { Text("Licensed") }
+}
 ```
 
 `.polarisKeyGate` starts the client, shows the product's icon until the first check answers (never
@@ -54,10 +74,29 @@ the sign-in screen during a cached-session check), re-renders on `client.events`
 the scene becomes active. It takes `KitGateOptions` for what the build offers (key entry, offline
 activation, a trial) and how sign-in presents (`signInPresentation: .inline`, the default, or
 `.sheet`; `replace: .inline` or `.browser`). An app that opens sign-in from its own menu uses the
-sheet:
+sheet. The app holds a `PolarisKeyGateModel` and gives it to `PolarisKeyGate(model:)`:
 
 ```swift
-.polarisKeySignIn(isPresented: $signingIn, model: model)
+import PolarisKey
+import PolarisKeyUI
+import PolarisKeyUICore
+import SwiftUI
+
+struct MyApp: View {
+    @State private var model: PolarisKeyGateModel
+    @State private var signingIn = false
+
+    init(client: PolarisKeyClient) {
+        _model = State(initialValue: PolarisKeyGateModel(client: client))
+    }
+
+    var body: some View {
+        PolarisKeyGate(model: model) {
+            Button("Sign in") { signingIn = true }
+                .polarisKeySignIn(isPresented: $signingIn, model: model)
+        }
+    }
+}
 ```
 
 ## Piecemeal
@@ -80,6 +119,10 @@ A `PolarisKeyStyle` replaces or wraps one component's body the way a `ButtonStyl
 component's state, copy lines and actions in its configuration:
 
 ```swift
+import PolarisKey
+import PolarisKeyUI
+import SwiftUI
+
 struct MyWelcome: PolarisKeyStyle {
     func makeBody(configuration: PolarisKeyStyleConfiguration) -> some View {
         VStack {
@@ -89,7 +132,13 @@ struct MyWelcome: PolarisKeyStyle {
     }
 }
 
-ContentView().polarisKeyGate(client).welcomeStyle(MyWelcome())
+struct StyledApp: View {
+    let client: PolarisKeyClient
+
+    var body: some View {
+        Text("Licensed").polarisKeyGate(client).welcomeStyle(MyWelcome())
+    }
+}
 ```
 
 ## Headless
@@ -102,11 +151,19 @@ copy lines with their arguments, and its actions); `KitCopy` formats a line in a
 A UI of your own binds to the model, or fills `KitInputs` from its own state and calls `KitStates`.
 
 ```swift
-let screen = KitStates.activate(model.inputs)
-switch screen.state {
-case .parsed: Text(KitCopy.bundled.format(screen.line("part.keyField.forProduct")!, locale: "en"))
-case .deviceLimit: /* the neutral callout, and Replace a device */
-default: EmptyView()
+import PolarisKeyUICore
+
+@MainActor
+func keyFieldLine(model: PolarisKeyGateModel) -> String? {
+    let screen = KitStates.activate(model.inputs)
+    switch screen.state {
+    case .parsed:
+        return KitCopy.bundled.format(screen.line("part.keyField.forProduct")!, locale: "en")
+    case .deviceLimit:
+        return nil  // the neutral callout, and Replace a device
+    default:
+        return nil
+    }
 }
 ```
 
