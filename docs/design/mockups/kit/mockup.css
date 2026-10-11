@@ -13908,6 +13908,11 @@ a.card:focus-visible {
   --docs-prose-line: 24px;
   position: relative;
 }
+.docs .docs-content.home {
+  display: block;
+  width: 100%;
+  max-width: 1080px;
+}
 .docs[data-density="comfortable"] {
   --docs-prose-size: 16px;
   --docs-prose-line: 26px;
@@ -15623,10 +15628,9 @@ a.card:focus-visible {
      <div class="feature-rows-head" aria-hidden="true"><span>Feature</span><span>Status</span></div> */
 .feature-rows-head {
   display: grid;
-  grid-template-columns: var(--card-media) minmax(0, 3fr) minmax(
-      15rem,
-      2fr
-    ) auto;
+  grid-template-columns:
+    var(--card-media) minmax(0, 3fr) minmax(15rem, 2fr)
+    auto;
   align-items: center;
   column-gap: var(--sp-3);
   min-height: var(--row-h-head);
@@ -15665,10 +15669,9 @@ a.card:focus-visible {
 }
 .feature-row {
   display: grid;
-  grid-template-columns: var(--card-media) minmax(0, 3fr) minmax(
-      15rem,
-      2fr
-    ) auto;
+  grid-template-columns:
+    var(--card-media) minmax(0, 3fr) minmax(15rem, 2fr)
+    auto;
   align-items: start;
   column-gap: var(--sp-3);
   row-gap: var(--sp-4);
