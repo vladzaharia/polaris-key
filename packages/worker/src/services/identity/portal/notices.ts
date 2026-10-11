@@ -371,6 +371,23 @@ export function accountDeletionCancelledNotice(input: {
   });
 }
 
+/** The account was deleted at the holder's request (sent before the rows go). */
+export function accountDeletedNotice(input: {
+  origin: string;
+}): NoticeMessage {
+  return buildNotice({
+    subject: "Your Polaris Key account has been deleted",
+    paragraphs: [
+      "Your Polaris Key account, its email addresses and its sign-in methods have been erased, as you asked.",
+      "Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.",
+    ],
+    footer:
+      "You are receiving this because your Polaris Key account was deleted. " +
+      "We sent it to every verified email on the account.",
+    origin: input.origin,
+  });
+}
+
 // ── Accounts (I-05) ──────────────────────────────────────────────────────────────────────────
 
 /** A unix time as a readable UTC instant for a notice: "2026-10-04 14:34 UTC". */
