@@ -1611,7 +1611,7 @@
         },
         {
           "id": "email_mismatch",
-          "title": "Email doesn't match"
+          "title": "Email not verified"
         },
         {
           "id": "key_entry_limit",
