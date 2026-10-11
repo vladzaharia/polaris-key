@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Button } from "../../../ui/Button.js";
+import { t } from "../../../lib/copy.js";
 import { Input } from "../../../ui/Input.js";
 import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
@@ -154,7 +155,7 @@ export function MakePrimaryTool({
               }}
             />
             <Button variant="outline" onClick={close}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
@@ -234,7 +235,7 @@ export function RenamePasskeyTool({
         setOpen(true);
       }}
     >
-      Rename
+      {t("devices.rename")}
     </Button>
   );
   const panel = (
@@ -300,11 +301,11 @@ export function RenamePasskeyTool({
           ) : null}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={close}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             {askFirst ? null : (
               <Button type="submit" loading={mutation.isPending}>
-                Save
+                {t("common.save")}
               </Button>
             )}
           </div>
