@@ -6,7 +6,8 @@ extension PacksClient: UpdateContentSource {
     }
 
     public func bootPackLists() async throws -> (required: [String], essential: [String]) {
-        try await bootOptions()
+        let lists = try bootOptions()
+        return (lists.requiredPacks, lists.essentialPacks)
     }
 
     public func bootFetchStage(send: @escaping @Sendable (BootEvent) -> Void) async throws
