@@ -114,7 +114,7 @@ docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest validate
 
 When a version is published on `stable`, the platform's feeds prune the builds of `main` and `dev` at or below it: `<next>-main.<N>` and `<next>-dev.<N>`, or `<next>.dev<N>` for Python, OCI tags included. Stable and beta versions are never touched, and neither are builds of a newer version. A pruned build leaves every listing and no longer installs, and its version is never published again. Pin a stable or beta release instead.
 
-A product's own feeds prune by default. Before the first cleanup, the feeds send a one-time dry-run notice that lists what would go, and `GET` on the retention endpoint shows it. To keep these builds, an operator sets `release.packages.prunePrereleases` to `false` through the Feeds API (`PUT /manage/api/products/<slug>/distribution/feeds/retention`). The full rules are in the [Help article on packages](/docs/help/packages/).
+A product's own feeds prune by default. Before the first cleanup, the feeds send a one-time dry-run notice that lists what would go, and `GET` on the retention endpoint shows it. To keep these builds, an operator sets `release.packages.prunePrereleases` to `false` in the retention settings of the Feeds API. The full rules are in the [Help article on packages](/docs/help/packages/).
 
 ### Private feeds
 
