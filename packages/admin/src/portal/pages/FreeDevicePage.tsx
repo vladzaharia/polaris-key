@@ -19,7 +19,7 @@ import type {
   PortalProduct,
   PortalProductDevice,
 } from "../api.js";
-import { FlowCard, FocusedFlow } from "../components/FocusedFlow.js";
+import { FocusedFlow, TaskFrame } from "../components/FocusedFlow.js";
 import { SeatMeter } from "../components/SeatMeter.js";
 import { ErrorPanel } from "../components/States.js";
 import {
@@ -232,39 +232,44 @@ function FreeDevice({
       <strong className="text-fg-strong">{t("signin.retry")}</strong>.
     </>
   ) : null;
-  const card = (children: React.ReactNode) => (
-    <FlowCard
+  const identityMeta =
+    limit > 0
+      ? `${inUse} of ${limit} ${limit === 1 ? "device" : "devices"} in use`
+      : null;
+  const card = (title: React.ReactNode, children: React.ReactNode) => (
+    <TaskFrame
       slug={product.product}
       name={name}
       developer={pres.developer}
       tint={pres.tint}
       iconUrl={pres.iconUrl}
-      headerUrl={pres.headerUrl}
+      task="Device access"
+      title={title}
+      identityMeta={identityMeta}
+      aside={limit > 0 ? <SeatMeter inUse={inUse} limit={limit} /> : null}
     >
       {children}
-    </FlowCard>
+    </TaskFrame>
   );
 
   if (removed) {
     return card(
-      <div className="mt-2 space-y-4">
-        <h1
-          ref={headingRef}
-          tabIndex={-1}
-          className="flex items-center gap-3 text-headline font-medium leading-tight text-fg-strong outline-none"
+      <h1
+        ref={headingRef}
+        tabIndex={-1}
+        className="flex text-page-title-sm font-semibold leading-tight text-fg-strong outline-none desk:text-page-title short:text-page-title-sm"
+      >
+        <span
+          aria-hidden
+          className="mr-3 mt-1 inline-flex size-7 shrink-0 items-center justify-center text-success"
         >
-          {/* The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
-              first-time moment. It sits in a ring the size of the icon it replaces. */}
-          <span
-            aria-hidden
-            className="inline-flex size-7 shrink-0 items-center justify-center text-success"
-          >
-            <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-current">
-              <SuccessCheck size={14} />
-            </span>
+          <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-current">
+            <SuccessCheck size={14} />
           </span>
-          {removed} was removed
-        </h1>
+        </span>
+        {removed} was removed
+      </h1>,
+      <div className="space-y-4">
         <p className="text-fg">
           {name} now has a free device.
           {tryAgain}
@@ -276,15 +281,14 @@ function FreeDevice({
 
   if (!full) {
     return card(
-      <div className="mt-2 space-y-4">
-        <h1
-          ref={titleRef}
-          tabIndex={-1}
-          className="text-headline font-medium leading-tight text-fg-strong outline-none"
-        >
-          Your license has a free device
-        </h1>
-        {limit > 0 ? <SeatMeter inUse={inUse} limit={limit} /> : null}
+      <h1
+        ref={titleRef}
+        tabIndex={-1}
+        className="text-page-title-sm font-semibold leading-tight text-fg-strong outline-none desk:text-page-title short:text-page-title-sm"
+      >
+        Your license has a free device
+      </h1>,
+      <div className="space-y-4">
         <p className="text-fg">
           {limit > 0
             ? `${inUse} of ${limit} ${limit === 1 ? "device is" : "devices are"} in use, so ${target} can be added.`
@@ -308,16 +312,14 @@ function FreeDevice({
   };
 
   return card(
-    <div className="mt-2 space-y-4">
-      <h1
-        ref={titleRef}
-        tabIndex={-1}
-        className="text-headline font-medium leading-tight text-fg-strong outline-none desk:text-headline-lg"
-      >
-        Your license is on {inUse} of {limit}{" "}
-        {limit === 1 ? "device" : "devices"}
-      </h1>
-      <SeatMeter inUse={inUse} limit={limit} />
+    <h1
+      ref={titleRef}
+      tabIndex={-1}
+      className="text-page-title-sm font-semibold leading-tight text-fg-strong outline-none desk:text-page-title short:text-page-title-sm"
+    >
+      {t("signin.choice.freeDevice")}
+    </h1>,
+    <div className="space-y-4">
       <p id="free-lede" className="text-fg">
         To use {name} on{" "}
         {forDevice ? (
@@ -339,8 +341,6 @@ function FreeDevice({
           label: (
             <span className="font-medium text-fg-strong">{deviceName(d)}</span>
           ),
-          // "Least recent" is plain text in the meta, not a pill: pills are for issues
-          // (FLOWS.md §2 C20, P-6).
           description: [
             deviceOsName(d.platform),
             d.appVersion,
@@ -354,7 +354,10 @@ function FreeDevice({
         }))}
       />
       {pickedDevice ? (
-        <p className="flex gap-3 rounded-lg border border-border px-4 py-3 text-sm text-fg">
+        <p
+          id="free-consequence"
+          className="flex gap-3 text-sm text-fg-muted"
+        >
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
             {name} on {deviceName(pickedDevice)} will ask to activate next time
@@ -368,27 +371,28 @@ function FreeDevice({
           {portalErrorCopy(remove.error).description}
         </p>
       ) : null}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button asChild size="lg" variant="outline" className="h-12">
-          <a href={returnUrl ?? href.product(product.product)}>
-            {t("signin.cancel")}
-          </a>
-        </Button>
-        <Button
-          size="lg"
-          className="h-12 font-medium sm:flex-1"
-          loading={remove.isPending}
-          disabledReason={
-            pickedDevice ? undefined : "Choose a device to remove"
-          }
-          onClick={onRemove}
-        >
-          {/* The primary names what it does (§2 C5): this flow only frees the seat, so
-              nothing "continues" (§4.25, FLOWS.md P-6). */}
-          {pickedDevice
-            ? `Remove ${deviceName(pickedDevice)}`
-            : "Remove a device"}
-        </Button>
+      <div className="sticky bottom-0 -mx-1 border-t border-border bg-surface-page px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 desk:static desk:mx-0 desk:border-0 desk:bg-transparent desk:p-0">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button asChild size="lg" variant="outline" className="h-12">
+            <a href={returnUrl ?? href.product(product.product)}>
+              {t("signin.cancel")}
+            </a>
+          </Button>
+          <Button
+            size="lg"
+            className="h-12 font-medium sm:flex-1"
+            loading={remove.isPending}
+            disabledReason={
+              pickedDevice ? undefined : "Choose a device to remove"
+            }
+            aria-describedby={pickedDevice ? "free-consequence" : undefined}
+            onClick={onRemove}
+          >
+            {pickedDevice
+              ? `Remove ${deviceName(pickedDevice)}`
+              : "Remove a device"}
+          </Button>
+        </div>
       </div>
       {support ? (
         <p className="text-sm text-fg-muted">
