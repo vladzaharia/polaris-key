@@ -650,98 +650,98 @@ export function PackRecord({
         </Callout>
       ) : null}
       <div className="pk-vt-tabpanel">
-      {current === "releases" ? (
-        <div className="space-y-4">
-          {currentPerChannel.length ? (
-            <p className="text-sm text-fg">
-              <span className="text-fg-muted">Current per channel: </span>
-              {currentPerChannel.map((c, i) => (
-                <React.Fragment key={c.channel}>
-                  {i ? " · " : null}
-                  {c.channel} <span className="font-mono">{c.version}</span>
-                </React.Fragment>
-              ))}
-            </p>
-          ) : null}
-          <DataTable<PackReleaseDto>
-            id="pack-releases"
-            caption={`Releases of ${id}`}
-            data={releases}
-            columns={columns}
-            getRowId={(x) => x.releaseId}
-            rowLabel={(x) => x.version}
-            rowHref={(x) =>
-              productPage(slug, "deliverables", {
-                id,
-                tab: "releases",
-                query: { release: x.releaseId },
-              })
-            }
-            linkComponent={Link}
-            rowActions={rowActions}
-            state={tableState}
-            onStateChange={setTableState}
-            search={{
-              placeholder: "Search versions",
-              columns: ["version", "channel"],
-            }}
-            pagination={{ mode: "client" }}
-            loading={releasesQuery.isPending}
-            error={releasesQuery.error}
-            onRetry={() => void releasesQuery.refetch()}
-            mobile="cards"
-            empty={
-              <EmptyState
-                kind="first-run"
-                title="No releases yet"
-                description="CI publishes pack releases; none has been published for this pack."
-              />
-            }
-          />
-          <ReleaseDrawer
+        {current === "releases" ? (
+          <div className="space-y-4">
+            {currentPerChannel.length ? (
+              <p className="text-sm text-fg">
+                <span className="text-fg-muted">Current per channel: </span>
+                {currentPerChannel.map((c, i) => (
+                  <React.Fragment key={c.channel}>
+                    {i ? " · " : null}
+                    {c.channel} <span className="font-mono">{c.version}</span>
+                  </React.Fragment>
+                ))}
+              </p>
+            ) : null}
+            <DataTable<PackReleaseDto>
+              id="pack-releases"
+              caption={`Releases of ${id}`}
+              data={releases}
+              columns={columns}
+              getRowId={(x) => x.releaseId}
+              rowLabel={(x) => x.version}
+              rowHref={(x) =>
+                productPage(slug, "deliverables", {
+                  id,
+                  tab: "releases",
+                  query: { release: x.releaseId },
+                })
+              }
+              linkComponent={Link}
+              rowActions={rowActions}
+              state={tableState}
+              onStateChange={setTableState}
+              search={{
+                placeholder: "Search versions",
+                columns: ["version", "channel"],
+              }}
+              pagination={{ mode: "client" }}
+              loading={releasesQuery.isPending}
+              error={releasesQuery.error}
+              onRetry={() => void releasesQuery.refetch()}
+              mobile="cards"
+              empty={
+                <EmptyState
+                  kind="first-run"
+                  title="No releases yet"
+                  description="CI publishes pack releases; none has been published for this pack."
+                />
+              }
+            />
+            <ReleaseDrawer
+              slug={slug}
+              deliverable={id}
+              release={releases.find((x) => x.releaseId === selected)}
+              onClose={() => setSelected("")}
+            />
+          </div>
+        ) : null}
+        {current === "channels" ? (
+          channelsQuery.isPending ? (
+            <PageSkeleton template="record" label="channels" />
+          ) : channelsQuery.error ? (
+            <ErrorState
+              error={channelsQuery.error}
+              onRetry={() => void channelsQuery.refetch()}
+            />
+          ) : (
+            <DeliverableLanes
+              slug={slug}
+              deliverable={id}
+              channels={lanes?.channels ?? []}
+              platforms={lanes?.platforms ?? []}
+            />
+          )
+        ) : null}
+        {current === "delivery" ? (
+          <PackGateForm
             slug={slug}
-            deliverable={id}
-            release={releases.find((x) => x.releaseId === selected)}
-            onClose={() => setSelected("")}
+            deliverable={decl}
+            distributionOn={distributionOn}
           />
-        </div>
-      ) : null}
-      {current === "channels" ? (
-        channelsQuery.isPending ? (
-          <PageSkeleton template="record" label="channels" />
-        ) : channelsQuery.error ? (
-          <ErrorState
-            error={channelsQuery.error}
-            onRetry={() => void channelsQuery.refetch()}
-          />
-        ) : (
-          <DeliverableLanes
-            slug={slug}
-            deliverable={id}
-            channels={lanes?.channels ?? []}
-            platforms={lanes?.platforms ?? []}
-          />
-        )
-      ) : null}
-      {current === "delivery" ? (
-        <PackGateForm
-          slug={slug}
-          deliverable={decl}
-          distributionOn={distributionOn}
-        />
-      ) : null}
-      {current === "files" ? (
-        releasesQuery.isPending ? (
-          <PageSkeleton template="table" label="releases" />
-        ) : releasesQuery.error ? (
-          <ErrorState
-            error={releasesQuery.error}
-            onRetry={() => void releasesQuery.refetch()}
-          />
-        ) : (
-          <FilesTab slug={slug} deliverable={id} releases={releases} />
-        )
-      ) : null}
+        ) : null}
+        {current === "files" ? (
+          releasesQuery.isPending ? (
+            <PageSkeleton template="table" label="releases" />
+          ) : releasesQuery.error ? (
+            <ErrorState
+              error={releasesQuery.error}
+              onRetry={() => void releasesQuery.refetch()}
+            />
+          ) : (
+            <FilesTab slug={slug} deliverable={id} releases={releases} />
+          )
+        ) : null}
       </div>
       <PolicyDialog
         slug={slug}
