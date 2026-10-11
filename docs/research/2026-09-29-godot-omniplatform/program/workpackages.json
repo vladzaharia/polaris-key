@@ -5090,23 +5090,33 @@
     },
     {
       "id": "I-37",
-      "title": "Device-code explicit confirm: 'Sign in on <device>?'",
+      "title": "Device-code phishing boundary (R1-07/R8-03)",
       "phase": "I",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.3, 0.6],
+      "estimateWeeks": [0.6, 1.0],
       "deps": ["I-08"],
-      "planMode": false,
-      "gates": ["portal-e2e", "ui-snapshots"],
-      "humanInputs": [],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "threat-model",
+        "workerd",
+        "portal-e2e",
+        "ui-snapshots"
+      ],
+      "humanInputs": [
+        "owner approval: device-holder proof, legacy-flow policy and generic refusal copy"
+      ],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
-        "Brand transition B9 (program/BRAND-TRANSITION.md)",
-        "section changes auth-12, auth-13"
+        "docs/security/THREAT-MODEL.md: R1-07/R8-03 Remote phishing",
+        "plans/I-04.md §2.4/G (device-code passthrough)",
+        "plans/I-37.md (awaiting owner approval)"
       ],
       "brief": "wp/I-37-device-code-explicit-confirm.md",
-      "status": "todo"
+      "status": "awaiting-approval"
     },
     {
       "id": "I-38",
