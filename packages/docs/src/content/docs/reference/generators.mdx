@@ -197,6 +197,16 @@ Parity gate: every SDK's parity.json against the feature registry.
 - Reads: `tools/parity-check.ts`, `tools/capabilities.ts`, `conformance/parity/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `sdks/**/tests/**`, `{sdks,packages}/*/test/**`.
 - Writes: none (a checker).
 
+### ux-rows
+
+UX-row gate: every UX-* id in the design specs is mapped and marked from uxRows.
+
+- Run: check only.
+- Check: `pnpm gen ux-rows`.
+- Underlying: `pnpm exec tsx tools/ux-rows-check.ts`.
+- Reads: `tools/ux-rows-check.ts`, `docs/research/2026-10-07-dx-consolidation/backlog-changes.json`, `docs/research/2026-09-29-godot-omniplatform/program/workpackages.json`, `docs/design/{EXPERIENCE,SETUP,FLOWS,SIGN-IN,ADMIN,PORTAL}.md`.
+- Writes: none (a checker).
+
 ### graph-index
 
 Omniplatform program INDEX.md from workpackages.json.

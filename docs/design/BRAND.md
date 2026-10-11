@@ -910,8 +910,8 @@ map it follows.
 | `font-sans` (system)                                           | `--pk-font-sans` (Rubik) + `fonts.css`                             |                                                          |
 
 `tools/services.json`'s old `console.accent` keys `key` (License) and `id` (Identity) are retired:
-since the console migration (ADMIN.md §7.2, chunk 1) every `console.accent` is the service slug,
-so `data-service` carries the same ids this package keys its accents by.
+the console migration made every `console.accent` a service slug, so `data-service` carries the
+same ids this package keys its accents by.
 
 ---
 

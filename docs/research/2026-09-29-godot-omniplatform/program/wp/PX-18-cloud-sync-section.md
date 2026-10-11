@@ -1,16 +1,16 @@
 # PX-18 Portal Cloud Sync section (absorbs PX-W11)
 
-| Field       | Value                                                                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [PX-04](PX-04-product-page-today.md), [U-05](U-05-cloud-sync-do.md), [U-12](U-12-privacy-settings-portal.md)                                                                             |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                   |
-| Role        | `pkey-implementer`                                                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                                                       |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
-| Human input | none                                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                           |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                               |
+| Depends on  | [PX-04](PX-04-product-page-today.md), [U-05](U-05-cloud-sync-do.md), [U-12](U-12-privacy-settings-portal.md)                                                                         |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                               |
+| Role        | `pkey-implementer`                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                   |
+| Gates       | the AGENTS.md green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
+| Human input | none                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                            |
 
 ## Consolidation 2026-10-07
 
@@ -34,13 +34,13 @@ Products with Cloud Sync show `CloudSyncCard` (storage bar, data classes, per-de
 
 ## Why
 
-Cloud Sync lives on the product page only ([PORTAL.md §4.20](../../../../design/PORTAL.md#420-product-page)). PORTAL.md sizes this M (2–4 agent-days); the owner approved the design on 2026-10-04.
+Cloud Sync lives on the product page only ([PORTAL.md §4.4](../../../../design/PORTAL.md#44-product-pages-and-focused-flows)). The package brief is the scoped delivery record.
 
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md`.
-- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §11.3](../../../../design/PORTAL.md#113-phase-b-features-on-the-new-api-s-16-and-s-17) (this package's row) and [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order).
-- [PORTAL.md §4.20](../../../../design/PORTAL.md#420-product-page), [PORTAL.md §10.2](../../../../design/PORTAL.md#102-gaps-the-worker-must-close)
+- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work) (this package's row) and [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work).
+- [PORTAL.md §4.4](../../../../design/PORTAL.md#44-product-pages-and-focused-flows), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)
 - `wp/U-12-privacy-settings-portal.md`
 - `docs/design/BRAND.md` and `@polaris-key/brand`; the console kit in `packages/admin/src/ui/`.
 
@@ -52,7 +52,7 @@ Cloud Sync lives on the product page only ([PORTAL.md §4.20](../../../../design
 
 **Out** (and where it belongs instead):
 
-- Anything not in PORTAL.md's row for this package (→ the PX package that owns it, per §11).
+- Anything outside this brief belongs to its owning work package in the program graph.
 
 ## Design notes
 
@@ -108,7 +108,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
 - [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
 - [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
