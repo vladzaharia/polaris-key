@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14](PX-14-passthrough-header.md), [PX-15](PX-15-after-sign-in.md), [PX-21](PX-21-email-gate-ui.md)                                                                                                           |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                                                                                       |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components; THREAT-MODEL                                                   |
+| Gates       | the AGENTS.md green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components; THREAT-MODEL                                                       |
 | Human input | none                                                                                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                |
 
@@ -88,13 +88,13 @@ The login card is identifier-first with the usual-method hint from the `pk_last_
 
 ## Why
 
-The full sign-in experience ([PORTAL.md §4.1](../../../../design/PORTAL.md#41-the-login-card)); providers must ship together with the email gate (PX-21, [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order)). PORTAL.md sizes this M (2–4 agent-days); the owner approved the design on 2026-10-04.
+The full sign-in experience ([PORTAL.md §4.1](../../../../design/PORTAL.md#41-sign-in)); providers must ship together with the email gate (PX-21, [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)). The package brief is the scoped delivery record.
 
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md`.
-- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §11.3](../../../../design/PORTAL.md#113-phase-b-features-on-the-new-api-s-16-and-s-17) (this package's row) and [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order).
-- [PORTAL.md §4.1](../../../../design/PORTAL.md#41-the-login-card), [PORTAL.md §4.3](../../../../design/PORTAL.md#43-known-account-you-usually-sign-in-with-steam), [PORTAL.md §4.4](../../../../design/PORTAL.md#44-enter-the-code), [PORTAL.md §4.5](../../../../design/PORTAL.md#45-use-a-license-key), [PORTAL.md §4.6](../../../../design/PORTAL.md#46-key-entry-the-account-upgrade-skippable-then-forced), [PORTAL.md §10.2](../../../../design/PORTAL.md#102-gaps-the-worker-must-close), [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order)
+- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work) (this package's row) and [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work).
+- [PORTAL.md §4.1](../../../../design/PORTAL.md#41-sign-in), [PORTAL.md §4.1](../../../../design/PORTAL.md#41-sign-in), [PORTAL.md §4.1](../../../../design/PORTAL.md#41-sign-in), [PORTAL.md §4.1](../../../../design/PORTAL.md#41-sign-in), [PORTAL.md §4.1](../../../../design/PORTAL.md#41-sign-in), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)
 - `docs/design/BRAND.md` and `@polaris-key/brand`; the console kit in `packages/admin/src/ui/`.
 
 ## Scope
@@ -113,7 +113,7 @@ The full sign-in experience ([PORTAL.md §4.1](../../../../design/PORTAL.md#41-t
 - **License keys** are the real format `pkey_<product>_<22 base64url>`; `KeyField` never groups or changes case and trims whitespace only.
 - **Email field autocomplete:** wave 1 (PX-05) ships `autocomplete="email"`; with passkeys this changes to `username webauthn` (§4.1) so conditional UI can offer them.
 - **THREAT-MODEL note (G30):** the hint is never derived from a server lookup (no enumeration).
-- **Dependency ids.** PORTAL.md §10.3 and §11 were written against the first revision of phase I; the graph maps them onto the re-cut S-16 ids (see README §8, phase PX): portal I-06 → I-05 (accounts, links, pairwise subjects), I-05 and I-20 (Google, Apple) and I-12's web Steam → I-06, I-08 (email login) → I-07, I-14 (passkeys) → I-16, I-13 (native redirect) → I-15, I-15 (sessions) → I-07, I-16 (per-product issuer) → I-08 for layer 1 (I-21 later), S-17 → U-05.
+- **Dependency ids.** The retired PORTAL work-package table was written against the first revision of phase I; the graph maps them onto the re-cut S-16 ids (see README §8, phase PX): portal I-06 → I-05 (accounts, links, pairwise subjects), I-05 and I-20 (Google, Apple) and I-12's web Steam → I-06, I-08 (email login) → I-07, I-14 (passkeys) → I-16, I-13 (native redirect) → I-15, I-15 (sessions) → I-07, I-16 (per-product issuer) → I-08 for layer 1 (I-21 later), S-17 → U-05.
 
 ## Screen acceptance (brand transition, 2026-10-09)
 
@@ -179,7 +179,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
 - [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
 - [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
