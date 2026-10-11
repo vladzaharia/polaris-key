@@ -29,6 +29,14 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/CM-29.md`](../plans/CM-29.md) §10: adopts the requirement rule and replaces the pull-on behaviour. Commerce is the sixth feature row, with §3.4's attention state. Adds `console.group`.
 
+## Corrections (verified against the code, 2026-10-11)
+
+- Scope: the Scope bullet was cut off at "service-off state for every service …" (a tool truncation). Its tail, "page (UX-66). Release-only products are reported, never migrated.", is restored. Cloud Sync no longer "turns on config and identity": under the requirement rule it needs both already on, and the console blocks its switch while either is off (`sync_requires_config`, `sync_requires_identity`); nothing is pulled on with it.
+- Anonymous entry: `license.access` and its Anonymous devices row belong to LX-36 (todo). At this commit the console has no such row and the validator ignores a `licensing.access` key. This package removes the declared registration policy only, so the validator message, the docs and the upgrade page name neither `licensing.access` nor an anonymous-devices replacement, and do not offer `autoIssue` as an equivalent: `open` registration mints a device token with no licence, while auto-issue enrolment issues a licence. The "one home" clause in Scope stays open for LX-36.
+- Switch label: the console's package switch reads **Packages** (`tools/services.json`), not "Package feeds".
+- Upgrade to 0.9 (acceptance): not met. The changelog collection and its `replaces` rows (docs plan §2, §3.5, §10 item 7) are DOC-12a's (todo; it waits for DOC-05a): `packages/docs/src/content.config.ts` exports only `docs` and `runbook`, `reference/changelog/` is a hidden stub, and no generator writes the upgrade table. Interim: `build/upgrade-to-0-9` carries hand-written rows for the removed manifest field `devices.registration` (surface `manifest`) and the removed `registration` key of the services `PATCH` body, and of its responses (surface `console`, the nearest of the plan's five), and notes the `core.registration` settings-registry key. When DOC-12a lands, add the changelog entry (`type: removed`, version 0.9.0, services `license` and `identity`) with those `replaces` rows and let the generated table replace the hand-written one.
+- Polaris Key storefront visibility: Scope lists it among the feature rows' switches, but its setting does not exist yet. PS-12 (todo) replaces `storefront.polarisKey.listed`, `.audience` and `.offerPaths` with one `storefront.polarisKey.visibility` setting and builds its control. At this commit those settings are edited in the Polaris Key storefront panel (`PolarisKeyPanel`), and the Ship builds row carries In-app updates and Packages only (`tools/services.json`). PS-12 adds the visibility switch to the row the `products.features` mockup places it on. Commerce's row, its "a storefront is ready" fact and its attention state wait for CM-29, as the Consolidation section says.
+
 ## Goal
 
 Service table: six features; one service-off state (absorbs DC-12), as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -49,7 +57,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- tools/services.json gains console.group and each feature's switches; gen services emits them to the console only (SDK constants byte-identical). The Services area shows Licensing, Managed config, Ship builds (release + distribution, In-app updates on by default), Sign-in and Cloud Sync (turns on config and identity); each feature row holds its own switches (Package feeds, Customer portal, Polaris Key storefront visibility, Minted tokens) and its facts as status (Commerce: a storefront is ready); the registration policy is always derived (a declared value is a validator error that names this replacement) and the per-slug state is read-only under Advanced; anonymous entry has one home, the Anonymous devices row of license.access; one data-driven service-off state for every service …
+- tools/services.json gains console.group and each feature's switches; gen services emits them to the console only (SDK constants byte-identical). The Services area shows Licensing, Managed config, Ship builds (release + distribution, In-app updates on by default), Sign-in and Cloud Sync (requires config and identity to be on already; its switch is blocked until both are, and nothing is turned on with it); each feature row holds its own switches (Package feeds, Customer portal, Polaris Key storefront visibility, Minted tokens) and its facts as status (Commerce: a storefront is ready); the registration policy is always derived (a declared value is a validator error that names this replacement) and the per-slug state is read-only under Advanced; anonymous entry has one home, the Anonymous devices row of license.access; one data-driven service-off state for every service page (UX-66). Release-only products are reported, never migrated.
 
 **Out** (and where it belongs instead):
 
@@ -121,7 +129,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [ ] Turning on Ship builds writes release, distribution and update in one audited batch
 - [ ] One service-off component
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): `features/` labels and `src/lib/features.ts` replaced by `console.group`; `operate/console/products`; the coherence-rule table.
-- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
+- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7). **Not met (2026-10-11):** the changelog collection is DOC-12a's; see Corrections.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
