@@ -55,6 +55,7 @@ include(":release")
 include(":update")
 include(":packs")
 include(":sdk")
+include(":ui-core")
 // The opt-in native zstd decoder for :packs (SP-50): no code, a JVM and an Android variant.
 include(":zstd")
 // The JVM desktop start, PolarisKeyDesktop, with the OS keyring (SP-50).

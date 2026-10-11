@@ -212,5 +212,10 @@ commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/chec
   `PolarisKeyClient.presentationSource` are available; this kit needs no local presentation seam.
 - Confirmed that UK-02a already generates the nine Compose Resources locale tables under
   `ui/src/commonMain/composeResources/`; they are intentionally inert until this module is KMP.
-- Next: establish the Compose-free headless artifact and the KMP source-set/toolchain foundation
-  before moving any screens, then run every `ui-matrix.json` family through that headless layer.
+- Added the Compose-free `:ui-core` JVM artifact. `PolarisGateState`, its SDK adapter and its
+  StateFlow contract now live there; the existing Compose gate consumes that artifact unchanged.
+  `PolarisGateStateTest` verifies status streaming, local key validation, activation, refusal and
+  refresh outside any Compose runtime.
+- Verified this slice with `./gradlew --offline :ui-core:test :ui:compileDebugKotlin` under JDK 17.
+- Next: move the remaining existing state holders into `:ui-core`, then add the full
+  `ui-matrix.json` presentation core before the KMP source-set cutover.
