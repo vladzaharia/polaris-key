@@ -23,7 +23,7 @@ extends RefCounted
 # --dev --url <origin> --write --out <a file outside this tree>`, and has `node` on PATH:
 #
 #   PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/polaris_key_config.gd \
-#   PKEY_DEV_APPROVE=packages/cli/scripts/dev-approve.mjs PKEY_TEST_SUITES=dev_live \
+#   PKEY_DEV_APPROVE="$PWD/packages/cli/scripts/dev-approve.mjs" PKEY_TEST_SUITES=dev_live \
 #   sdks/godot/tools/run_tests.sh
 #
 # Each group is a file under res://tests/dev_live/ with `func run(t: PKeyTestContext, bed:

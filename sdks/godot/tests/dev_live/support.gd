@@ -243,6 +243,7 @@ func write_stamp(version: String) -> String:
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return ""
+	var engine := Engine.get_version_info()
 	f.store_string(JSON.stringify({
 		"pkeyBuild": 1,
 		"product": info.get("product", ""),
@@ -250,8 +251,8 @@ func write_stamp(version: String) -> String:
 		"build": 1,
 		"outlet": "direct",
 		"channel": "stable",
-		"engine": "godot-4.7",
-		"engineVersion": "4.7.2-stable (official)",
+		"engine": "godot-%d.%d" % [engine["major"], engine["minor"]],
+		"engineVersion": String(engine["string"]),
 		"platform": "macos",
 		"arch": "arm64",
 		"format": "zip",

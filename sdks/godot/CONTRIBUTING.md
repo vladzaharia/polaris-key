@@ -271,7 +271,10 @@ CI (`.github/workflows/ci.yml`, job `godot`) runs four Linux legs, one per suppo
 4.4.1 editor (the floor). All must print the same corpus SHA-256. A new engine gets a leg (its
 editor and template pinned in `tools/godot.sha512`) before the README's tested matrix names it. Two editor smoke legs on `windows-latest` and `macos-14` run the
 `platform` and `devices` suites, so the Windows and macOS readers find their anchor on a real
-machine.
+machine. Each Linux leg also starts a fresh `pkey dev` (`packages/cli/scripts/start-dev-ci.mjs`),
+checks it, and passes the three `PKEY_DEV_*` variables to the `run_tests.sh` step, so the `ci`
+selection's `dev_live` suite runs against it in the editor and again from the exported pack; the
+smoke legs select other suites, and a job that runs `ci` without a server skips `dev_live`.
 
 ## The runner protocol
 
