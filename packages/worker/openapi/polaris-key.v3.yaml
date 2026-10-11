@@ -20342,7 +20342,16 @@ components:
       additionalProperties: false
       description: A passkey's display facts. Never its credential id, key or user handle.
       required:
-        [methodId, createdAt, lastUsedAt, transports, synced, aaguid, addedFrom]
+        [
+          methodId,
+          createdAt,
+          lastUsedAt,
+          transports,
+          synced,
+          aaguid,
+          addedFrom,
+          name,
+        ]
       properties:
         methodId: { type: string }
         createdAt: { type: integer }
@@ -20351,6 +20360,7 @@ components:
         synced: { type: [boolean, "null"] }
         aaguid: { type: [string, "null"] }
         addedFrom: { type: [string, "null"] }
+        name: { type: [string, "null"] }
     PortalExportSession:
       type: object
       additionalProperties: false

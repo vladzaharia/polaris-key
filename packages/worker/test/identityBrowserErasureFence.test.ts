@@ -916,7 +916,7 @@ describe("I-11 fence: createBrowserSession", () => {
   const UNAVAILABLE = {
     ok: false,
     status: 503,
-    code: "unavailable",
+    code: "erasure_ledger_unavailable",
     message: "try again",
   };
 
@@ -1215,7 +1215,7 @@ describe("I-11 fence: the device wire (attach and subject)", () => {
   }
 
   const ACCOUNT_REQUIRED = { error: { code: "account_required" } };
-  const UNAVAILABLE = { error: { code: "unavailable" } };
+  const UNAVAILABLE = { error: { code: "erasure_ledger_unavailable" } };
 
   it("a device bound to an erased then restored account: attach 403 account_required, subject null; the same after the replay", async () => {
     const { ada, bob } = await world();

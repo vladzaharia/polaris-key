@@ -268,6 +268,8 @@ export interface ExportedPasskey {
   synced: boolean | null;
   aaguid: string | null;
   addedFrom: string | null;
+  /** The name the account gave the passkey; null when it has none. */
+  name: string | null;
 }
 
 export interface ExportedSession {

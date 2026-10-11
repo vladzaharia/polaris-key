@@ -43,6 +43,7 @@ public enum ErrorCode {
     public static let disabled = "disabled"
     public static let oidcError = "oidc_error"
     public static let unavailable = "unavailable"
+    public static let erasureLedgerUnavailable = "erasure_ledger_unavailable"
     public static let identityDisabled = "identity_disabled"
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailUnavailable = "email_unavailable"
@@ -207,6 +208,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "disabled",
     "oidc_error",
     "unavailable",
+    "erasure_ledger_unavailable",
     "identity_disabled",
     "auth_method_disabled",
     "email_unavailable",
@@ -371,6 +373,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "disabled": "wire",
     "oidc_error": "wire",
     "unavailable": "wire",
+    "erasure_ledger_unavailable": "wire",
     "identity_disabled": "wire",
     "auth_method_disabled": "wire",
     "email_unavailable": "wire",

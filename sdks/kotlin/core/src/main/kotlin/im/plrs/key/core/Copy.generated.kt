@@ -56,6 +56,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "disabled" to CopyEntry("Sign-in unavailable", "Sign-in isn't turned on for this app."),
     "oidc_error" to CopyEntry("Sign-in failed", "Sign-in didn't finish. Try again."),
     "unavailable" to CopyEntry("Sign-in unavailable", "Sign-in isn't available right now. Try again in a few minutes."),
+    "erasure_ledger_unavailable" to CopyEntry("Account check unavailable", "We couldn't confirm your account's status right now. Try again in a few minutes."),
     "identity_disabled" to CopyEntry("Sign-in unavailable", "Sign-in through this app is turned off. Your installs and licenses keep working."),
     "auth_method_disabled" to CopyEntry("Sign-in method unavailable", "That sign-in method is turned off. Choose another one."),
     "email_unavailable" to CopyEntry("Email sign-in unavailable", "Email sign-in isn't available right now. Choose another sign-in method."),

@@ -971,7 +971,7 @@ describe("the email gate's completion of an existing account (gatePass)", () => 
     const res = await d.send("POST", GATE, { choice: "provider" });
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({
-      error: "unavailable",
+      error: "erasure_ledger_unavailable",
       message: expect.any(String),
     });
     expect(bucket.heads).toContain(erasureKey(account));

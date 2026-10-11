@@ -858,6 +858,7 @@ describe("GET /api/me/export", () => {
         synced: true,
         aaguid: "00000000-0000-0000-0000-000000000000",
         addedFrom: "Safari on macOS",
+        name: null,
       },
     ]);
     expect(doc.sessions).toHaveLength(2);

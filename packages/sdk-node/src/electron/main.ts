@@ -22,6 +22,7 @@ import { copy } from "../core/copy.js";
 import type { SignInPrompt } from "../identity/client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import type { FeedKind } from "../update/client.js";
+import type { UpdateDecision } from "@polaris-key/protocol/update";
 import {
   BRIDGE_METHODS,
   DEFAULT_BRIDGE_CHANNEL,
@@ -403,6 +404,8 @@ export function exposePolarisBridge(
     if (f) clearTimeout(f.timer);
     flows.delete(id);
   };
+  // The restart an install staged, applied by `update.restart` (the function cannot cross IPC).
+  let pendingRestart: (() => Promise<void>) | null = null;
 
   const invokeVerbs: Record<string, (args: unknown) => Promise<unknown>> = {
     "devices.list": async () => client.listDevices(),
@@ -437,6 +440,38 @@ export function exposePolarisBridge(
       if (typeof b.skipVersion === "string" || b.skipVersion === null)
         o.skipVersion = b.skipVersion as string | null;
       return client.update.decide(o);
+    },
+    "update.install": async (a) => {
+      const decision = bag(a).decision;
+      if (typeof decision !== "object" || decision === null)
+        throw new BridgeRefusal(
+          "invalid-arguments",
+          "decision must be an update decision.",
+        );
+      const outcome = await client.update.install(decision as UpdateDecision);
+      // Any install clears a restart left pending from an earlier one.
+      pendingRestart = null;
+      if (outcome.kind === "restartRequired") {
+        pendingRestart = outcome.restart;
+        return { kind: outcome.kind, version: outcome.version };
+      }
+      return outcome;
+    },
+    "update.restart": async () => {
+      const restart = pendingRestart;
+      if (!restart)
+        throw new BridgeRefusal(
+          "invalid-arguments",
+          "no install is staged to restart into.",
+        );
+      pendingRestart = null;
+      await restart();
+      return null;
+    },
+    "update.markBootAttempt": async () => client.update.markBootAttempt(),
+    "update.confirmBoot": async () => {
+      await client.update.confirmBoot();
+      return null;
     },
     "core.presentationIcon": async (a) => {
       const b = bag(a);

@@ -45,6 +45,7 @@ public object ErrorCode {
     public const val disabled: String = "disabled"
     public const val oidcError: String = "oidc_error"
     public const val unavailable: String = "unavailable"
+    public const val erasureLedgerUnavailable: String = "erasure_ledger_unavailable"
     public const val identityDisabled: String = "identity_disabled"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailUnavailable: String = "email_unavailable"
@@ -209,6 +210,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "disabled",
     "oidc_error",
     "unavailable",
+    "erasure_ledger_unavailable",
     "identity_disabled",
     "auth_method_disabled",
     "email_unavailable",
@@ -373,6 +375,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "disabled" to "wire",
     "oidc_error" to "wire",
     "unavailable" to "wire",
+    "erasure_ledger_unavailable" to "wire",
     "identity_disabled" to "wire",
     "auth_method_disabled" to "wire",
     "email_unavailable" to "wire",

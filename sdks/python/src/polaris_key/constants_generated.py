@@ -184,6 +184,7 @@ class ErrorCode:
     DISABLED: Final = "disabled"
     OIDC_ERROR: Final = "oidc_error"
     UNAVAILABLE: Final = "unavailable"
+    ERASURE_LEDGER_UNAVAILABLE: Final = "erasure_ledger_unavailable"
     IDENTITY_DISABLED: Final = "identity_disabled"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_UNAVAILABLE: Final = "email_unavailable"
@@ -348,6 +349,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "disabled",
     "oidc_error",
     "unavailable",
+    "erasure_ledger_unavailable",
     "identity_disabled",
     "auth_method_disabled",
     "email_unavailable",
@@ -514,6 +516,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "disabled": "wire",
         "oidc_error": "wire",
         "unavailable": "wire",
+        "erasure_ledger_unavailable": "wire",
         "identity_disabled": "wire",
         "auth_method_disabled": "wire",
         "email_unavailable": "wire",

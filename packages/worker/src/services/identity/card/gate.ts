@@ -1018,7 +1018,7 @@ async function gatePass(
     if (ledger === "unavailable")
       return cardJson(
         {
-          error: "unavailable",
+          error: "erasure_ledger_unavailable",
           message: "Sign-in is unavailable right now. Try again in a moment.",
         },
         503,

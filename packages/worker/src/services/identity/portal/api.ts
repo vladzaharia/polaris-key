@@ -326,7 +326,7 @@ async function requireSession(
   // its cookie and tries again.
   const live = await checkAccountSession(env, db, session, now);
   if (live.status === "unavailable")
-    return err(503, "unavailable", "try again");
+    return err(503, "erasure_ledger_unavailable", "try again");
   if (live.status !== "live") return unauthorized();
   return {
     session: { ...session, accountId: live.accountId },
@@ -1880,13 +1880,15 @@ export async function handlePortalDownload(
   // restore brings the account back as `active`). Asked before `getPortalAccount` and again for
   // the survivor of a merge; an unreadable ledger answers 503 and spends nothing.
   const named = await erasureVerdict(env, now, scope.portalAccountId);
-  if (named === "unavailable") return err(503, "unavailable", "try again");
+  if (named === "unavailable")
+    return err(503, "erasure_ledger_unavailable", "try again");
   if (named === "erased") return notFound();
   const account = await getPortalAccount(db, scope.portalAccountId, now);
   if (!account || account.status !== "active") return notFound();
   if (account.id !== scope.portalAccountId) {
     const survivor = await erasureVerdict(env, now, account.id);
-    if (survivor === "unavailable") return err(503, "unavailable", "try again");
+    if (survivor === "unavailable")
+      return err(503, "erasure_ledger_unavailable", "try again");
     if (survivor === "erased") return notFound();
   }
   if (!(await hasLinkedProductLicense(db, account.id, row.product))) {

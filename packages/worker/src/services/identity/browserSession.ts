@@ -191,7 +191,7 @@ export async function createBrowserSession(
       return {
         ok: false,
         status: 503,
-        code: "unavailable",
+        code: "erasure_ledger_unavailable",
         message: "try again",
       };
   }

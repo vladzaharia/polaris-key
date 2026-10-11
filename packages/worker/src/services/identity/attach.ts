@@ -189,7 +189,8 @@ export async function handleIdentityAttach(
     valid.device.subject,
     now,
   );
-  if (holder === "unavailable") return wireError(503, "unavailable");
+  if (holder === "unavailable")
+    return wireError(503, "erasure_ledger_unavailable");
   if (!holder) return wireError(403, ErrorCode.AccountRequired);
   if (!license) return wireError(404, ErrorCode.NotFound);
 
@@ -294,7 +295,8 @@ export async function handleIdentitySubject(
   if (subject) {
     const accountId = await accountForSubject(db, product.slug, subject);
     const ledger = await erasureVerdict(env, now, accountId);
-    if (ledger === "unavailable") return wireError(503, "unavailable");
+    if (ledger === "unavailable")
+      return wireError(503, "erasure_ledger_unavailable");
     if (ledger === "erased") subject = null;
   }
   const body: SubjectResponse = { subject };

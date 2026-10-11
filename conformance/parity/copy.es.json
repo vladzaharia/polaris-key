@@ -137,6 +137,10 @@
       "title": "Inicio de sesión no disponible",
       "message": "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos."
     },
+    "erasure_ledger_unavailable": {
+      "title": "Comprobación de cuenta no disponible",
+      "message": "No pudimos confirmar el estado de tu cuenta en este momento. Vuelve a intentarlo en unos minutos."
+    },
     "identity_disabled": {
       "title": "Inicio de sesión no disponible",
       "message": "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando."

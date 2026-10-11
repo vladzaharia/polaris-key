@@ -466,7 +466,8 @@ export async function handleDeviceLoginPoll(
     record.status === "approved"
       ? await erasureVerdict(env, now, record.accountId)
       : "clear";
-  if (approver === "unavailable") return err(503, "unavailable", "try again");
+  if (approver === "unavailable")
+    return err(503, "erasure_ledger_unavailable", "try again");
   if (approver === "erased")
     return err(403, "account_disabled", "this account cannot sign in");
   // A decision: take the record (at most one poll ever gets it) and answer it.
@@ -483,7 +484,8 @@ export async function handleDeviceLoginPoll(
   // After a merge the approver's account resolves to its survivor: that is the one signed in.
   if (account.id !== taken.accountId) {
     const survivor = await erasureVerdict(env, now, account.id);
-    if (survivor === "unavailable") return err(503, "unavailable", "try again");
+    if (survivor === "unavailable")
+      return err(503, "erasure_ledger_unavailable", "try again");
     if (survivor === "erased")
       return err(403, "account_disabled", "this account cannot sign in");
   }

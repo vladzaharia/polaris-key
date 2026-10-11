@@ -71,6 +71,11 @@ export const DEFAULT_INVOKE_VERBS = [
   "config.set",
   "config.clear",
   "update.journal",
+  // v4 (SP-15 install driver, boot guard)
+  "update.install",
+  "update.restart",
+  "update.markBootAttempt",
+  "update.confirmBoot",
 ] as const;
 
 /** What every handler resolves. */

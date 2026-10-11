@@ -264,7 +264,9 @@ describe("portal session across a restore", () => {
     w.ledger.down = true;
     const down = await me(w, holder);
     expect(down.status).toBe(503);
-    expect(await down.json()).toMatchObject({ error: "unavailable" });
+    expect(await down.json()).toMatchObject({
+      error: "erasure_ledger_unavailable",
+    });
     expect(down.headers.get("set-cookie")).toBeNull();
     // The session row is untouched: not revoked, not refreshed (TOUCH_NOW is past the touch age).
     expect(await snapshotDb(w.db)).toEqual(before);
@@ -284,7 +286,9 @@ describe("portal session across a restore", () => {
     delete w.env.BLOBS;
     const unbound = await me(w, holder);
     expect(unbound.status).toBe(503);
-    expect(await unbound.json()).toMatchObject({ error: "unavailable" });
+    expect(await unbound.json()).toMatchObject({
+      error: "erasure_ledger_unavailable",
+    });
     expect(unbound.headers.get("set-cookie")).toBeNull();
     expect(await snapshotDb(w.db)).toEqual(before);
 
@@ -459,7 +463,9 @@ describe("device-login poll across a restore", () => {
     for (let i = 0; i < 2; i += 1) {
       const down = await pollLogin(w, request);
       expect(down.status).toBe(503);
-      expect(await down.json()).toMatchObject({ error: "unavailable" });
+      expect(await down.json()).toMatchObject({
+        error: "erasure_ledger_unavailable",
+      });
       expect(down.headers.get("set-cookie")).toBeNull();
     }
     // No session row was opened and nothing else was written.
@@ -613,7 +619,9 @@ describe("licensed download across a restore", () => {
     w.ledger.down = true;
     const down = await redeem(w, token, AFTER_CLEAR);
     expect(down.status).toBe(503);
-    expect(await down.json()).toMatchObject({ error: "unavailable" });
+    expect(await down.json()).toMatchObject({
+      error: "erasure_ledger_unavailable",
+    });
     expect(down.headers.get("location")).toBeNull();
     expect(await snapshotDb(w.db)).toEqual(before);
     expect(await spentTokens(w.db)).toBe(0);
