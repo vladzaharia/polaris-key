@@ -1331,7 +1331,7 @@
       "path": "help/your-data",
       "type": "help",
       "title": "Your data and privacy",
-      "description": "What apps read from your device and what developers see.",
+      "description": "Download or remove information from your Polaris Key account and an app.",
       "nearest": "/docs/reference/what-apps-collect/",
       "package": "DOC-04b",
       "pri": "P1"
