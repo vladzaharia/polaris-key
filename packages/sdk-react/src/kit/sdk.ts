@@ -60,6 +60,19 @@ function daysLeft(graceUntil: number | undefined): number | undefined {
   return Math.max(0, Math.ceil((graceUntil - Date.now() / 1000) / 86_400));
 }
 
+/** `graceUntil` (epoch seconds) as the date the person reads, in the kit's locale. */
+function dateOf(epochSeconds: number, locale: string | undefined): string {
+  const at = new Date(epochSeconds * 1000);
+  try {
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(at);
+  } catch {
+    // A locale tag Intl does not know reads in the runtime's own.
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+      at,
+    );
+  }
+}
+
 /** The provider's state as the gate's models read it. */
 export function gateInput(
   state: PolarisState,
@@ -69,6 +82,8 @@ export function gateInput(
     submitted: boolean;
     handle: OidcSignInHandle | null;
     secondsLeft: number | undefined;
+    /** The locale the kit speaks: the dates the models show are formatted in it. */
+    locale?: string;
   },
 ): UiInput {
   const caps = state.capabilities;
@@ -105,7 +120,14 @@ export function gateInput(
         : {
             status: state.status,
             ...(state.status === "grace"
-              ? { graceDaysLeft: daysLeft(state.gate.graceUntil) }
+              ? {
+                  graceDaysLeft: daysLeft(state.gate.graceUntil),
+                  ...(state.gate.graceUntil !== undefined
+                    ? {
+                        graceDate: dateOf(state.gate.graceUntil, extra.locale),
+                      }
+                    : {}),
+                }
               : {}),
             ...(range
               ? {
@@ -156,7 +178,9 @@ function openManage(url: string, returnUrl?: string, key?: string): void {
 }
 
 /** The SDK-driven gate, or `null` outside `<PolarisKeyProvider>` (the gate then takes `input`). */
-export function useSdkGate(opts: { returnUrl?: string } = {}): SdkGate | null {
+export function useSdkGate(
+  opts: { returnUrl?: string; locale?: string } = {},
+): SdkGate | null {
   const ctx = useContext(PolarisContext);
   // The hooks run whether or not a provider exists; with none they hold an inert state.
   const adapter = ctx?.adapter ?? null;
@@ -314,9 +338,16 @@ export function useSdkGate(opts: { returnUrl?: string } = {}): SdkGate | null {
   const input = useMemo(
     () =>
       ctx
-        ? gateInput(state, { step, key, submitted, handle, secondsLeft })
+        ? gateInput(state, {
+            step,
+            key,
+            submitted,
+            handle,
+            secondsLeft,
+            ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
+          })
         : null,
-    [ctx, state, step, key, submitted, handle, secondsLeft],
+    [ctx, state, step, key, submitted, handle, secondsLeft, opts.locale],
   );
   if (!ctx || !input) return null;
   return {

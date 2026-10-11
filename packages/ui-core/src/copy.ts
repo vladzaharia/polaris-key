@@ -237,9 +237,11 @@ export class Copy {
   strings(view: {
     copy: readonly string[];
     args: CopyArgs;
+    keyArgs?: Readonly<Record<string, CopyArgs>>;
   }): Record<string, string> {
     const out: Record<string, string> = {};
-    for (const key of view.copy) out[key] = this.format(key, view.args);
+    for (const key of view.copy)
+      out[key] = this.format(key, view.keyArgs?.[key] ?? view.args);
     return out;
   }
 }

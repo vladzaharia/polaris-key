@@ -8,6 +8,15 @@ no DOM, React or Lit dependency.
   data: the state, the catalog keys it shows, its actions, the arguments its strings take, and
   the design language's decisions for that state (the one primary, the refusal tone, the error
   slot, the initial focus and the link verdict).
+- **Display facts**: a few strings name a value no SDK result carries as text (a tier, a download
+  size, the date grace ends, the app's version). `UiInput` has an optional member for each,
+  holding text its producer formatted for the kit's locale, and a model passes it into the
+  string as it is. ui-core never invents one: a screen drawn without it shows the string's
+  `{name}`, and `test/uiMatrix.test.ts` ("no raw placeholder") names each state that does when
+  it is drawn from its bare corpus row. The byte counts the boot stage carries are numbers, so
+  the model formats them in `UiInput.locale`. A view's `keyArgs` hold the arguments one key takes
+  in place of `args` (the update prompt's "You have {version}" is the installed version, its
+  title the new one).
 - **`SignInModel`**: the one sign-in form's state machine over the SDK primitives of
   `plans/I-04.md` §G.9, with `presentation` and `replace` as inputs. Two ways to let go of it:
   - `dispose()` stops following the session and nothing more: no later answer is applied, and

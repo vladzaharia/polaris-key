@@ -36,7 +36,10 @@ function argsOf(
   key: string,
   extra: Record<string, string | number>,
 ): Record<string, string | number> {
-  const args: Record<string, string | number> = { ...c.view.args, ...extra };
+  const args: Record<string, string | number> = {
+    ...(c.view.keyArgs?.[key] ?? c.view.args),
+    ...extra,
+  };
   const raw = c.copy.raw(key) ?? "";
   const formFactor = c.input.platform?.formFactor ?? "other";
   if (args.thisDevice === undefined && raw.includes("{thisDevice}")) {

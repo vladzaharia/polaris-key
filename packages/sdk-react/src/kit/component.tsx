@@ -180,6 +180,16 @@ function identityKey(o: KitTheme): string {
   return JSON.stringify([o.product, o.accent, o.preset, o.bundle, o.iconSrc]);
 }
 
+/** The locale the kit speaks for `o`, in the order the theme resolves it (`theme.locale`, the
+ *  page's `lang`, the browser's language, English): the gate formats the dates it hands the
+ *  models in it. */
+function themeLocale(o: KitTheme): string {
+  const lang =
+    typeof document !== "undefined" ? document.documentElement.lang : "";
+  const nav = typeof navigator !== "undefined" ? navigator.language : undefined;
+  return o.locale ?? (lang || nav || "en");
+}
+
 /** What a composed component (the gate, the sign-in form) adds to the kit's own handling. */
 export interface KitHooks {
   /** Extra members of a control's `onAction` (the form's device or license id). */
@@ -288,12 +298,13 @@ export function useKit(
     options.iconSrc ?? iconUrl,
   );
 
-  // The input: the host's over what the person did here (a typed key, a picked row).
+  // The input: the host's over what the person did here (a typed key, a picked row), with the
+  // locale the kit speaks: the models format the numbers they are given in it.
   const [local, setLocal] = useState<Partial<UiInput>>({});
-  const input = inputWithIdentity(
-    { ...local, ...(props.input ?? {}) },
-    resolved,
-  );
+  const input: UiInput = {
+    locale: resolved.locale,
+    ...inputWithIdentity({ ...local, ...(props.input ?? {}) }, resolved),
+  };
 
   // The model: created once, its view read in render; the loading timer redraws through it.
   const modelRef = useRef<ViewModel | null>(null);
@@ -566,9 +577,11 @@ function gateScreen(view: View, step: GateStep): ComponentName | null {
  */
 export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   // Inside <PolarisKeyProvider> with no `input`, the gate starts itself from the SDK.
-  const sdk = useSdkGate(
-    props.returnUrl !== undefined ? { returnUrl: props.returnUrl } : {},
-  );
+  const provided = useContext(ThemeContext);
+  const sdk = useSdkGate({
+    ...(props.returnUrl !== undefined ? { returnUrl: props.returnUrl } : {}),
+    locale: themeLocale(mergeThemes(provided, props.theme)),
+  });
   const driven = props.input === undefined && sdk !== null;
   const step: GateStep = driven ? sdk.step : "home";
   const kit = useKit(

@@ -34,13 +34,16 @@ function fixture(
 
 /**
  * The component registry's rows without a ui-matrix family. Keep every input direct: these are
- * state fixtures, not host-service fakes. `About` deliberately relies on the matrix defaults.
+ * state fixtures, not host-service fakes. `About` relies on the matrix defaults for the product's
+ * identity. Each fixture carries the display facts its strings name (the sync time, the app's
+ * version, the store that fixes the channel): ui-core never invents one, so a fixture without it
+ * would draw the string's `{name}`.
  */
 export const DIRECT_COMPONENT_STATE_FIXTURES: readonly ComponentStateFixture[] =
   [
     fixture("CloudSyncStatus", "synced", {
       services: ["sync"],
-      cloudSync: { state: "synced" },
+      cloudSync: { state: "synced", lastSynced: "2 min ago" },
     }),
     fixture("CloudSyncStatus", "syncing", {
       services: ["sync"],
@@ -58,11 +61,13 @@ export const DIRECT_COMPONENT_STATE_FIXTURES: readonly ComponentStateFixture[] =
       services: ["sync"],
       cloudSync: { state: "error", signedIn: false },
     }),
-    fixture("About", "default", {}),
+    fixture("About", "default", {
+      bundle: { slug: "tidewater", name: "Tidewater Studio", version: "2.4.1" },
+    }),
     fixture("ChannelPicker", "default", { services: ["release"] }),
     fixture("ChannelPicker", "locked", {
       services: ["release"],
-      channel: { locked: true },
+      channel: { locked: true, store: "Steam" },
     }),
   ];
 

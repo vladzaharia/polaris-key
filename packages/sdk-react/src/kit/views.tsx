@@ -659,8 +659,11 @@ function licenseRows(c: KitCtx): ReactNode {
         const date = r.expiresAt
           ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
           : "";
+        // An origin naming a store the row does not carry (`LicenseChoiceRow` has none) is left
+        // out, never drawn as "From {store}": the term still says what the license is.
+        const originText = origin && keys.has(origin) ? plain(c, origin) : "";
         const metaArgs = {
-          origin: origin && keys.has(origin) ? plain(c, origin) : "",
+          origin: /\{[A-Za-z]\w*\}/.test(originText) ? "" : originText,
           term: keys.has(term) ? plain(c, term, { date }) : "",
         };
         return (
