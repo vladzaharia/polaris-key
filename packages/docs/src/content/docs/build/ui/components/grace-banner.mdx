@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -49,6 +50,8 @@ Offline grace: the deadline and countdown, Reconnect, and a dismissal that lasts
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** Over the running app inside `.polarisKeyGate`: a glass banner above the bottom safe area with Reconnect and a dismissal for the session; the last day never reads as days left.
 
     **Styled part.** `GraceBannerView(screen:onReconnect:onDismiss:)` and `.graceBannerStyle(_:)`.
@@ -56,6 +59,12 @@ Offline grace: the deadline and countdown, Reconnect, and a dismissal that lasts
     **Headless.** `KitStates.graceBanner(_:)`.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="GraceBanner" />
 
   </TabItem>
 </Tabs>

@@ -1,6 +1,6 @@
 ---
 title: "Compose"
-description: "polaris-key-ui: the Kotlin SDK's Jetpack Compose kit for Android, with Compose Desktop to follow; its facts, its baselines and its reference."
+description: "polaris-key-ui: the Kotlin SDK's Jetpack Compose kit for Android, with Compose Desktop planned; its facts, its baselines and its reference."
 sidebar:
   order: 6
 ---
@@ -24,13 +24,33 @@ exactly one copy to keep current. The rest of the Kotlin SDK is on the
 `PolarisGateState(client.gateActions(), scope)` and call its `start()`; then:
 
 - `PolarisGate(state) { }` gates your content and shows the right screen for the license.
-- `PolarisActivationScreen` is the activation form on its own, drawn from the state's `activation`
-  flow.
-- `PolarisDevices(PolarisDevicesState(client.devicesActions(), scope))` lists, renames and removes
+- `PolarisActivationScreen` is the activation form on its own: give it the state's `activation` value
+  and wire `onKeyChange` and `onActivate` to the state.
+- `PolarisDevices(PolarisDevicesState(client.devicesActions(), scope))` lists, renames and signs out
   devices.
 - `PolarisGraceBanner` is the offline-grace banner, for a screen that shows it over your content.
 - `rememberPolarisLicense()` reads the live license state anywhere under `PolarisKeyApp` or
   `PolarisKeyProvider`.
+
+```kotlin android
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisGate
+import im.plrs.key.ui.PolarisGateState
+import im.plrs.key.ui.gateActions
+
+@Composable
+fun MyGate(client: PolarisKeyClient) {
+    val scope = rememberCoroutineScope()
+    val state = remember(client) { PolarisGateState(client.gateActions(), scope) }
+    LaunchedEffect(state) { state.start() }
+    PolarisGate(state) { Text("Licensed") }
+}
+```
 
 ## Baselines
 

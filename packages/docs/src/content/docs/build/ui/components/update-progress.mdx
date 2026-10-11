@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -52,6 +53,8 @@ Compact download and install progress for app updates and content packs, as a to
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** Not drawn by the drop-in on iOS yet: the content-pack Live Activity follows.
 
     **Styled part.** `UpdateProgressView(screen:fraction:onRetry:)`: the line and a determinate bar for counted bytes only.
@@ -59,6 +62,12 @@ Compact download and install progress for app updates and content packs, as a to
     **Headless.** `KitStates.updateProgress(_:)`: verifying is still downloading; the copy never says installed before the apply.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="UpdateProgress" />
 
   </TabItem>
 </Tabs>

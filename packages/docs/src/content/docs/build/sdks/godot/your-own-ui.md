@@ -64,18 +64,18 @@ func gate_model() -> Dictionary:
 	}
 ```
 
-| `status` or condition | `screen_for()` result | `copy_for()` keys | What to draw |
-| --- | --- | --- | --- |
-| Loading before `start()` | `loading` | `gate_loading` | A non-interactive progress state |
-| `ok`, `not-applicable` | `usable` | None | The game; `not-applicable` means License is off |
-| `grace` with grace allowed | `grace` | None | The game and a non-blocking offline notice |
-| `grace` with grace blocked | `grace-blocked` | `boot_offline_title`, `grace_blocked_body` | Connect and retry |
-| `needs-activation` | `activation` | The activation controller supplies the result copy | Key entry, sign-in, free enrolment, or offline activation |
-| `revoked` | `revoked` | `revoked_title` | Explain that the device was signed out, then offer activation or sign-in |
-| `expired` | `expired` | `expired_title`, `expired_body` | Renew or connect, then retry |
-| `version-too-old` | `update-required` | `version_too_old_title`, `version_too_old_body`, `version_min` | The update action when one is available |
-| `version-too-new`, `channel-not-entitled` | `not-available` | `not_available_title`, `version_too_new_body` or `channel_not_entitled_body` | The availability explanation and retry |
-| Any other status, or a post-activation error | `error` | `gate_error_title`, `gate_error_body` | The error and a way forward |
+| `status` or condition                        | `screen_for()` result | `copy_for()` keys                                                            | What to draw                                                                               |
+| -------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Loading before `start()`                     | `loading`             | `gate_loading`                                                               | A non-interactive progress state                                                           |
+| `ok`, `not-applicable`                       | `usable`              | None                                                                         | The game; `not-applicable` means License is off                                            |
+| `grace` with grace allowed                   | `grace`               | None                                                                         | The game and a non-blocking offline notice                                                 |
+| `grace` with grace blocked                   | `grace-blocked`       | `boot_offline_title`, `grace_blocked_body`                                   | Connect and retry                                                                          |
+| `needs-activation`                           | `activation`          | The activation controller supplies the result copy                           | Key entry, sign-in, free enrolment, or offline activation                                  |
+| `revoked`                                    | `revoked`             | `revoked_title`                                                              | Explain that the device was signed out, then offer activation or sign-in                   |
+| `expired`                                    | `expired`             | `expired_title`, `expired_body`                                              | Ask the player to connect, then `sync(true)`: the cached licence outlived its grace window |
+| `version-too-old`                            | `update-required`     | `version_too_old_title`, `version_too_old_body`, `version_min`               | The update action when one is available                                                    |
+| `version-too-new`, `channel-not-entitled`    | `not-available`       | `not_available_title`, `version_too_new_body` or `channel_not_entitled_body` | The availability explanation and retry                                                     |
+| Any other status, or a post-activation error | `error`               | `gate_error_title`, `gate_error_body`                                        | The error and a way forward                                                                |
 
 `PKeyGateController.is_usable_screen()` is true only for `usable` and `grace`. Do not grant
 entitlements from a stale status: `PolarisKey.is_licensed()` applies the same gate.
@@ -113,6 +113,10 @@ activation refusal key, or the server-code key for `refused`. A device-limit ans
 Replace a device link only when its served `manage_url` is valid. Pass `true` as the fourth
 `manage_link()` argument when rendering a shared-screen QR code: that intentionally omits the key
 fragment.
+
+A key with no entries left comes back `refused` with the code `key_entry_limit`. `message_for()`
+maps it to "This key has no entries left. Add it to your account and sign in instead.", so offer
+sign-in. The result carries no manage link; a `KIND_KEY_ENTRY_LIMIT` with its link is planned.
 
 ## Sign-in: prompt, countdown, and identity
 
@@ -194,6 +198,25 @@ A failed sync leaves verified cached documents in force until their grace deadli
 current `status()` rather than treating `sync_finished` as success. `config_changed(keys)` is on
 `PolarisKey.config`; use it to redraw settings that use managed values.
 
+## Sync and offline
+
+`PolarisKey.sync()` answers a `PKeySyncResult`. Its `ok` is false only when the pass could not run
+at all (`not-configured`, `local-only`): an offline pass is still `ok`, because the verified cache
+keeps the gate answering. Read `classify()` for what happened: `"ok"` when every document was
+answered or none needed fetching, `"offline"` when a request got no answer, `"error"` when an
+answer could not be used. `documents` holds the outcome of each document and `errors` the status
+and code of each one that failed.
+
+```gdscript
+func sync_notice() -> String:
+	var result := await PolarisKey.sync()
+	if not result.ok:
+		return String(result.code)
+	if result.classify() == "offline":
+		return PKeyUiCopy.shared().text("boot_offline_title")
+	return ""
+```
+
 ## Update prompt
 
 `PKeyUpdatePromptController.model()` turns the signed update result into the entire prompt model:
@@ -219,8 +242,49 @@ that is a store page, browser link, native updater, staging operation, or restar
 
 ## Tests
 
-The controllers are static and side-effect-free. Unit test a screen with a small Dictionary, a
-`PKeyActivationResult`, a `PKeySignInPrompt`, a `PKeySignInResult`, or an update result without a
-scene tree. Keep the integration test separate: configure a test `PKeyOptions`, call `start()`,
-then invoke `discover()` and `sync()` through a controlled transport. The shipped addon's
-headless and scene tests are under `sdks/godot/tests/`.
+The controllers are static and have no side effects: test a screen with a small Dictionary, a
+`PKeyActivationResult`, a `PKeySignInPrompt`, a `PKeySignInResult` or an update result, without a
+scene tree. `PKeyGate.license_state()` is the pure function behind `status()`, so a test can put
+the gate in any state without a server:
+
+```gdscript
+extends Node
+
+
+func test_expired_screen() -> void:
+	var state := PKeyGate.license_state({
+		"license_service_enabled": true,
+		"activation": "token",
+		"doc": {"expiresAt": 100, "graceUntil": 200},
+		"now": 300,
+	})
+	assert(state["status"] == "expired")
+	assert(PKeyGateController.screen_for(String(state["status"])) == "expired")
+
+
+func test_device_limit_link() -> void:
+	var result := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, &"device_limit", "", 403)
+	result.manage_url = "https://key.plrs.im/activate?product=acme"
+	assert(PKeyActivationController.manage_link(result, "", "mygame://done") != "")
+```
+
+A test that starts the SDK keeps the disk, the clock and the network out of it:
+
+```gdscript
+const PolarisConfig := preload("res://polaris_key_config.gd")
+
+
+func offline_options() -> PKeyOptions:
+	var opts := PolarisConfig.options()
+	opts.store = PKeyMemoryStore.new()  # nothing touches the disk or the keychain
+	opts.local_only = true              # nothing touches the network
+	opts.build_stamp_path = ""          # ignore an exported game's build stamp
+	opts.now_source = func() -> float: return 1_700_000_000.0
+	return opts
+```
+
+A client with `local_only` never dials, so `sync()` answers `local-only` and its state comes from
+the cache or from `import_bundle()`. The SDK's own tests drive a fake server over loopback
+(`sdks/godot/tests/support/fake_server.gd`); a game's integration test can point `base_url` at
+`http://127.0.0.1:<port>`, which the SDK accepts. Test doubles that drive the real client are
+planned.

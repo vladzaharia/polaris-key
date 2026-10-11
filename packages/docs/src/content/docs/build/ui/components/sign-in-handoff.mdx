@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -54,6 +55,8 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** Step 2 of the form: "Finish in your browser" with the system browser sheet, or the code view with Copy, the address with Copy and the countdown ring; no QR on iPhone or iPad (DL14).
 
     **Styled part.** `SignInHandoffView(screen:request:onCopyLink:)`, `CodeDisplay(code:)` and `CountdownRing(expiresAt:total:)`.
@@ -61,6 +64,12 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
     **Headless.** `KitStates.signInHandoff(_:)`; `KitSignInRequest` carries the public user code and pages, never the poll credential.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="SignInHandoff" />
 
   </TabItem>
 </Tabs>

@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -52,6 +53,8 @@ The account and license settings pane: product and tier, the holder, Manage, dev
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** Sections a host drops into its own `Form` or `List`: the product row, Manage (external link), Devices, Cloud Sync, Updates and Sign out in its own group, confirmed in the system dialog.
 
     **Styled part.** `AccountAndLicenseSection(screen:tier:holder:version:devices:autoUpdate:onManage:onSignOut:onCheckNow:)`.
@@ -59,6 +62,12 @@ The account and license settings pane: product and tier, the holder, Manage, dev
     **Headless.** `KitStates.accountAndLicense(_:)`: with no one signed in it is `key-only`, never another account's holder.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="AccountAndLicense" />
 
   </TabItem>
 </Tabs>

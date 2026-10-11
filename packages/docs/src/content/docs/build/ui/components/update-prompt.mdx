@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -50,13 +51,21 @@ An available, downloading, ready, mandatory, blocked or store update, with its r
 
   </TabItem>
   <TabItem label="SwiftUI">
-    **Drop-in.** A glass banner above the bottom safe area for an optional update; only a mandatory one owns the screen, with no dismissal. The verb follows the outlet (Update on the App Store).
+    <KitStatus kit="swiftui" />
+
+    **Drop-in.** Not drawn by `.polarisKeyGate`: a host places `UpdatePromptView` where it wants the offer, over `PolarisKeyGateModel.updatePrompt`. `client.update.decide()` feeds it through the `updateAvailable` event. An optional update is a banner above the bottom safe area; only a mandatory one owns the screen, with no dismissal. The verb follows the outlet (Update on the App Store).
 
     **Styled part.** `UpdatePromptView(screen:fraction:onUpdate:onLater:)`.
 
     **Headless.** `KitStates.updatePrompt(_:)`.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="UpdatePrompt" />
 
   </TabItem>
 </Tabs>

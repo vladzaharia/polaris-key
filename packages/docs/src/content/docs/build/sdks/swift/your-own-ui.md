@@ -134,9 +134,11 @@ func signIn(_ client: PolarisKeyClient) async -> String {
 }
 ```
 
-`.confirm` appears only when you ask for a confirmation step on `client.identity`. Sign-in needs the
-Identity service; with it off, the call throws `service-unavailable` before any request.
-`await client.signOut()` ends the session.
+`signInWithBrowser()` never returns `.confirm`: that case comes only from
+`waitForSignIn(_:confirmIdentity:)` on `client.identity` with `confirmIdentity: true`, which holds at
+the signed-in identity until the person accepts. Sign-in needs the Identity service; with it off,
+the call throws `service-unavailable` before any request. `try await client.signOut()` ends the
+session.
 
 ## Status, offline and refresh
 
@@ -272,6 +274,11 @@ func updateOffer(_ client: PolarisKeyClient) async throws -> String? {
     }
 }
 ```
+
+`decide()` needs the release keys, and the generated `clientOptions(version:)` leaves
+`pinnedReleaseKeys` out. Call
+`try client.configureUpdate(UpdateClientOptions(pinnedReleaseKeys: PolarisConfig.pinnedReleaseKeys))`
+once, before the first `client.update` call, or `decide()` throws `not-configured`.
 
 On macOS, `PolarisSparkle.start(client:)` follows licence and channel changes and keeps Sparkle's
 feed in step; `SUPublicEDKey` in your `Info.plist` stays the anchor that verifies the payload.

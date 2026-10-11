@@ -41,6 +41,20 @@ export const IGNORED: Record<NativeLang, Set<string>> = {
     "SPUUserDriver",
     "SPUUpdater",
     "ButtonStyle", // a SwiftUI type, not Polaris Key's
+    "LocalizedError", // the Swift standard library's
+    "FileManager",
+    "PublicKey", // CryptoKit's `Curve25519.Signing.PublicKey`
+    "canImport", // a Swift compilation condition
+    "PolarisKeyPlatformC", // a SwiftPM product, not a symbol
+    // Apple platform names the README's platform sections cite.
+    "ProductionSandbox",
+    "SecCodeCopySigningInformation",
+    "AfterFirstUnlock",
+    "AfterFirstUnlockThisDeviceOnly",
+    "AssetPackManager",
+    // The names `pkey sdk` generates into the reader's own project (the config enum and its options).
+    "PolarisConfig",
+    "clientOptions",
   ]),
   kotlin: new Set([
     // The names `pkey sdk` generates into the reader's own project (the config object and its options).

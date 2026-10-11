@@ -110,8 +110,8 @@ are in `addons/polaris_key/ui/` and are pure functions of the state they are giv
 | `PKeySignInController`       | The copy key for how a sign-in ended, the countdown and the identity line      |
 | `PKeyUpdatePromptController` | Whether an update answer shows, its copy keys, its action and whether it locks |
 
-[Your own UI](/docs/build/sdks/godot/your-own-ui/#status-screen-and-copy-key) maps every status to
-its screen and copy keys.
+[Your own UI](/docs/build/sdks/godot/your-own-ui/#gate-status-screen-and-copy-key) maps every status
+to its screen and copy keys.
 
 The view models in `addons/polaris_key/ui/model/` are the port of the shared headless layer. Each
 is a pure function of one input Dictionary and answers the state, the catalog copy keys, the
@@ -145,9 +145,9 @@ system's settings by default (`auto`, from Godot 4.5) and can be forced `on` or 
 Every string the scenes show is a key of `PKeyUiCopy`, in English, passed through `tr()`: translate
 the English defaults with an ordinary Translation, or rename a string with
 `PKeyUiCopy.overrides`, without forking a scene. The generated gettext tables in
-`addons/polaris_key/ui/locale/` are keyed on the shared catalog ids and are read by the view
-models' `copy_format.gd`; the scenes do not load them, so a `.po` file you add to the project does
-not change a scene's text yet.
+`addons/polaris_key/ui/locale/` are keyed on the shared catalog ids and only the view models'
+`copy_format.gd` reads them: the scenes do not load them, so those `.po` files do not translate a
+scene yet.
 
 ## Baselines
 

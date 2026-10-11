@@ -24,7 +24,7 @@ own gets the same states, copy and actions. The rest of the Swift SDK is on the
 ## Install
 
 The kit is two products of the `polaris-key.PolarisKey` package in Polaris Key's Swift registry
-([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)). The package's floors are
+([Installing the SDKs from the feeds](/docs/build/install/)). The package's floors are
 iOS 18, macOS 15, tvOS 18 and visionOS 2.
 
 ```text
@@ -36,7 +36,7 @@ let package = Package(
     name: "MyApp",
     platforms: [.iOS(.v18), .macOS(.v15)],
     dependencies: [
-        .package(id: "polaris-key.PolarisKey", from: "0.1.0")
+        .package(id: "polaris-key.PolarisKey", from: "0.9.3")
     ],
     targets: [
         .target(name: "MyApp", dependencies: [
@@ -69,12 +69,13 @@ struct ContentView: View {
 }
 ```
 
-`.polarisKeyGate` starts the client, shows the product's icon until the first check answers (never
+`.polarisKeyGate` starts its model, shows the product's icon until the first check answers (never
 the sign-in screen during a cached-session check), re-renders on `client.events` and refreshes when
 the scene becomes active. It takes `KitGateOptions` for what the build offers (key entry, offline
-activation, a trial) and how sign-in presents (`signInPresentation: .inline`, the default, or
-`.sheet`; `replace: .inline` or `.browser`). An app that opens sign-in from its own menu uses the
-sheet. The app holds a `PolarisKeyGateModel` and gives it to `PolarisKeyGate(model:)`:
+activation, a trial, restore, enrolment) and how sign-in presents (`signInPresentation: .inline`,
+the default, `.sheet` or `.browser`; `replace: .inline` or `.browser`). An app that opens sign-in
+from its own menu uses the sheet. The app holds a `PolarisKeyGateModel` and gives it to
+`PolarisKeyGate(model:)`:
 
 ```swift
 import PolarisKey

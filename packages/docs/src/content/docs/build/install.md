@@ -242,10 +242,11 @@ Add the feed to the editor's asset library, with no trailing slash:
 | Godot 4.4 to 4.6    | Asset Library → Available URLs | `https://pkg.plrs.im/godot/polaris-key/asset-library/api` |
 | Godot 4.7 and later | `asset_store/available_urls`   | `https://pkg.plrs.im/godot/polaris-key/store/api/v1`      |
 
-Search for "Polaris Key" in the AssetLib tab and install it. The addon lands at
-`res://addons/polaris_key/`; enable it under **Project → Project Settings → Plugins**. Godot 4.6
-and earlier check the download against its SHA-256. Godot 4.7 and later check no hash and rely on
-TLS alone.
+Search for "Polaris Key" in the AssetLib tab and install it. On Godot 4.4 to 4.6, untick **Ignore
+asset root** in the install dialog: it is ticked by default and installs the addon at
+`res://polaris_key/` instead of `res://addons/polaris_key/`, where it belongs. Enable it under
+**Project → Project Settings → Plugins**. Godot 4.6 and earlier check the download against its
+SHA-256. Godot 4.7 and later check no hash and rely on TLS alone.
 
 For scripted installs, GodotEnv takes the entry the feed's index publishes for each version
 (`https://pkg.plrs.im/godot/polaris-key/index.json`):

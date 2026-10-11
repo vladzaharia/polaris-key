@@ -14,10 +14,12 @@ as the quickstart does; every snippet here takes it as a parameter.
 
 ## Threading
 
-Every `suspend` function on the client is main-safe: it moves its own work off the calling thread,
-so call it from `viewModelScope`, `rememberCoroutineScope` or `runBlocking` alike. Cancelling the
-scope cancels a sign-in wait. `close()` is not `suspend`; it stops the client's threads so a JVM
-`main` can exit. From Java, `PolarisKeyFutures(client)` returns `CompletableFuture`s.
+Every `suspend` function on the client is main-safe: it moves its own file and network work off the
+calling thread, so call it from `viewModelScope`, `rememberCoroutineScope` or `runBlocking` alike.
+`client.update.install` is the exception: it runs the platform installer where you call it, and each
+installer keeps its own file work off the main thread. Cancelling the scope cancels a sign-in wait.
+`close()` is not `suspend`; it stops the client's threads so a JVM `main` can exit. From Java,
+`PolarisKeyFutures(client)` returns `CompletableFuture`s.
 
 ## The state model
 
@@ -60,8 +62,9 @@ gate. Times are epoch seconds, except `lastVerifiedAt`, which is milliseconds.
 ## First activation and refusals
 
 `activate` never throws for a refusal: it answers an `ActivationResult` whose type says which.
-`Copy.activationMessage(kind)` is the sentence for each; `Refused` and `Error` carry the server's
-`code`.
+`Copy.activationMessage(kind)` is the sentence for each. Every result but `Ok` carries a `code`: the
+server's, or `network` or `server-error` for `Error`. A `Refused` code reads its own sentence when
+the catalog has one, so the code is its kind.
 
 ```kotlin
 import im.plrs.key.core.Copy
@@ -81,7 +84,7 @@ fun kindOf(r: ActivationResult): String = when (r) {
     is ActivationResult.LicenseExpired -> "license-expired"
     is ActivationResult.AttestationRequired -> "attestation-required"
     is ActivationResult.RateLimited -> "rate-limited"
-    is ActivationResult.Refused -> "refused"
+    is ActivationResult.Refused -> r.code
     is ActivationResult.Error -> "error"
 }
 
@@ -103,15 +106,17 @@ suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
 }
 ```
 
-| Result                                                           | Meaning                                        | Offer                                |
-| ---------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------ |
-| `Unauthorized`                                                   | The key was not accepted                       | Retry                                |
-| `DeviceLimit`                                                    | Every seat is taken                            | `manageUrl`, then retry the same key |
-| `LicenseExpired`, `LicenseDisabled`                              | The license ended or an operator disabled it   | Renew, or contact the developer      |
-| `HardwareMismatch`, `FingerprintRequired`, `AttestationRequired` | The device check failed                        | Retry; `changed` lists what moved    |
-| `EnrollDisabled`, `EnrollClaimed`                                | No free license, or it is on an account        | Key entry, or sign in                |
-| `RateLimited`                                                    | Too many attempts                              | Wait `retryAfterSeconds`             |
-| `Refused`, `Error`                                               | Any other refusal; a network or server failure | Show the copy and `code`             |
+| Result                              | Meaning                                                          | Offer                                                                         |
+| ----------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `Unauthorized`                      | The key was not accepted                                         | Retry                                                                         |
+| `DeviceLimit`                       | Every seat is taken                                              | `manageUrl`, then retry the same key                                          |
+| `LicenseExpired`, `LicenseDisabled` | The license ended or an operator disabled it                     | Renew, or contact the developer                                               |
+| `HardwareMismatch`                  | The hardware moved past the tier's tolerance                     | Retry: it binds the new hardware and takes a seat; `changed` lists what moved |
+| `FingerprintRequired`               | The tier needs a hardware fingerprint this device could not give | Show the copy                                                                 |
+| `AttestationRequired`               | The product needs a verified device                              | `client.devices.attest()`, then retry                                         |
+| `EnrollDisabled`, `EnrollClaimed`   | From `client.enroll()`: no free license, or it is on an account  | Key entry, or sign in                                                         |
+| `RateLimited`                       | Too many attempts                                                | Wait `retryAfterSeconds` when it is set                                       |
+| `Refused`, `Error`                  | Any other refusal; a network or server failure                   | Show the copy and `code`                                                      |
 
 Leave `withKey` out of any QR code you draw: a TV is on view to anyone in the room. A seat is also
 freed from a device that still holds a credential, with `client.deauthorizeDevice(id)`. See the
@@ -136,16 +141,21 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
 }
 ```
 
-`waitForSignIn` paces its polls and stops when its coroutine is cancelled. `licenseUser()` is the
-pairwise subject only; the person's name and email are planned. Anyone holding the code can finish
+`waitForSignIn` paces its polls and stops when its coroutine is cancelled; when it answers `Ready`,
+the token is stored and the first sync is done. `licenseUser()` is the pairwise subject only (it
+ships after `0.9.3`); the person's name and email are planned. Anyone holding the code can finish
 the sign-in elsewhere, so say who signed in. Sign-in needs the Identity service; with it off, every
-call throws `service-unavailable` before any request. `client.deactivate()` ends the session.
+call throws `service-unavailable` before any request. `client.deactivate()` signs this device out and
+asks the server to free its seat.
 
 ## Status, offline and refresh
 
-`start()` and `status()` need no network. `licenseState` is a `StateFlow` of the gate that moves on
-every transition (an activation, a revoke seen by a sync, grace and expiry as the clock moves), and
-`events` carries licence, config, update and pack changes to any number of collectors:
+`start()` and `status()` need no network. `licenseChanges` emits the gate after each transition that
+goes through the client: an activation, a deactivation, a bundle import, and a sync that moved the
+documents or the gate (a revoke it saw, a block, grace or expiry as the clock moved). An unchanged
+state is not emitted again, and nothing ticks between syncs, so read `status()` for the present.
+`licenseState` holds the latest as a `StateFlow`, `null` until the first. `events` carries licence,
+config, update and pack changes to any number of collectors:
 
 ```kotlin
 import im.plrs.key.sdk.PolarisEvent
@@ -154,7 +164,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 fun keepFresh(client: PolarisKeyClient, scope: CoroutineScope) {
-    client.startRefreshLoop() // runs when refreshIntervalSeconds is set; backs off while offline
+    client.startRefreshLoop() // a no-op unless refreshIntervalSeconds is set; start() already calls it
     scope.launch {
         client.events.collect { event ->
             when (event) {
@@ -168,13 +178,15 @@ fun keepFresh(client: PolarisKeyClient, scope: CoroutineScope) {
 }
 ```
 
-Polling is off until you set `refreshIntervalSeconds` on `PolarisKeyClientOptions`. On Android,
-`PolarisKeyLifecycle.install(application, client)` syncs when the app comes to the foreground, once
-a minute at most. A sync that fails offline leaves the last verified documents in force until
-`graceUntil`; `client.storeStatus()` says whether the token is in the Keystore, the OS keyring or a
-`0600` file. A machine with no network activates from a signed file: `client.importBundle(jws)`.
+Polling is off until you set `refreshIntervalSeconds` on `PolarisKeyClientOptions`; a pass that
+fails is tried again on the next tick. On Android, `PolarisKeyLifecycle.install(application, client)`
+syncs when the app comes to the foreground, once a minute at most. A sync that fails offline leaves
+the last verified documents in force until `graceUntil`; `client.storeStatus()` names the `backend`
+that holds the token (`keystore`, `keyring` or `file`, the `0600` file) and, when that is weaker
+than the platform's best, why. A machine with no network activates from a signed file:
+`client.importBundle(jws)`.
 
-On Android, a Compose screen of your own collects the same flow:
+On Android, a Compose screen of your own collects the same two flows:
 
 ```kotlin android
 import androidx.compose.foundation.layout.Column
@@ -183,13 +195,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import im.plrs.key.core.Copy
 import im.plrs.key.core.isUsable
 import im.plrs.key.sdk.PolarisKeyClient
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 
 @Composable
 fun MyGate(client: PolarisKeyClient, content: @Composable () -> Unit) {
-    val state by client.licenseState.collectAsState() // null until the first read
+    val state by remember(client) {
+        flow {
+            emit(client.status()) // the gate now
+            emitAll(client.licenseChanges) // then every transition
+        }
+    }.collectAsState(null) // null until status() answers
     val current = state
     when {
         current == null -> CircularProgressIndicator()
@@ -255,9 +275,10 @@ The words are localised catalog sentences and may change between releases; the s
 
 ## Compose Desktop
 
-Compose Desktop has no kit yet, so this is a recipe: a window that gates its content, with key entry,
-the refusal copy, Replace a device and sign-in. It is one file over the desktop artifact, which
-brings the OS keyring.
+There is no Compose Desktop kit (it is planned), so this is a recipe: a window that gates its
+content, with key entry, the refusal copy, Replace a device and sign-in. It is one file over the
+desktop artifact, which brings the OS keyring. Add the feed as the
+[quickstart](/docs/build/quickstart/kotlin/#install) shows.
 
 ```kts
 // build.gradle.kts
@@ -270,7 +291,7 @@ plugins {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
-    implementation("im.plrs.key:polaris-key-desktop:<version>") // the SDK and the OS keyring
+    implementation("im.plrs.key:polaris-key-desktop:0.9.3") // the SDK and the OS keyring
 }
 
 compose.desktop { application { mainClass = "MainKt" } }
@@ -379,9 +400,9 @@ fun ActivationForm(client: PolarisKeyClient, headline: String) {
 }
 ```
 
-`Copy.activationMessage` takes the result's `code` as its kind; the
-[refusals](#first-activation-and-refusals) section maps a `Refused` result to its own sentence. The
-return URL must be a scheme the OS opens for your app.
+`Copy.activationMessage` takes the result's `code` as its kind, so a `Refused` result reads its own
+sentence when the catalog has one, as in [refusals](#first-activation-and-refusals). The return URL
+must be a scheme the OS opens for your app.
 
 ## Tests
 

@@ -5,8 +5,11 @@ sidebar:
   order: 26
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The release channel choice, locked when the outlet fixes the channel. A locked channel shows its value as text, with the reason.
 
@@ -20,5 +23,11 @@ The release channel choice, locked when the outlet fixes the channel. A locked c
 
 ## In each kit
 
-No kit documents ChannelPicker here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="ChannelPicker" />
+
+  </TabItem>
+</Tabs>
