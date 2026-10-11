@@ -19,7 +19,7 @@ apps never receive it.
 
 ## Sign-in methods
 
-You need at least one sign-in method. Each one is a way into your account.
+You need at least one sign-in method.
 
 - **Add an email** sends a 6-digit code to check the address is yours. Licenses bought with a
   verified email can join your library.
@@ -52,6 +52,6 @@ first. For what apps and Polaris Key hold about you, read
 
 ## Still need help?
 
-If you bought an app with a different email, read
-[Bought with a different email or on Steam?](/docs/help/join-accounts/). For anything else, read
-[Get help with an app](/docs/help/contact/).
+- If you bought an app with a different email, read
+  [Bought with a different email or on Steam?](/docs/help/join-accounts/).
+- For anything else, read [Get help with an app](/docs/help/contact/).

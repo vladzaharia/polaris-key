@@ -31,14 +31,19 @@ across several products. This section covers every surface you might run into, f
 
 ## Sign in and your account
 
+### Sign in
+
 - [Sign in to Polaris Key](/docs/help/sign-in/) — sign in with an email code or link.
 - [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/) — what to check when the email
   with your code is missing.
 - [Use a passkey](/docs/help/passkeys/) — add, use and remove a passkey.
-- [Approve a sign-in on another device](/docs/help/approve-a-sign-in/) — enter the code a TV, game
-  system or terminal shows.
+- [Approve a sign-in on another device](/docs/help/approve-a-sign-in/) — enter the code a TV or
+  game system shows.
 - [Secure your account](/docs/help/secure-your-account/) — what to do after an email asks "Wasn't
   you?".
+
+### Your account and data
+
 - [Your account and sign-in methods](/docs/help/account/) — your profile, appearance, sign-in
   methods and where you're signed in.
 - [Bought with a different email or on Steam?](/docs/help/join-accounts/) — add the email you

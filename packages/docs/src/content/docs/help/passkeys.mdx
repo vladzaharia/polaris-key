@@ -11,8 +11,8 @@ sidebar:
 import HelpMessage from "../../../components/docs/HelpMessage.astro";
 
 A passkey is a sign-in saved on your device and unlocked the way you unlock the device, such as
-with your face or your PIN. In Polaris Key, you use a passkey to confirm it's you before you
-change your account.
+with your face or your PIN. In Polaris Key, you use a passkey to confirm it's you before you add
+or remove a sign-in method.
 
 ## Before you start
 
@@ -23,8 +23,9 @@ sign-in from the last 5 minutes. A passkey made here works only with Polaris Key
 
 1. Open the account menu and select **Sign-in methods**.
 2. Under **Passkeys**, select **Add a passkey**.
-3. If you see **Confirm it's you first**, confirm it's you, then select **Add a passkey** again.
-4. Follow your device's prompt to save the passkey.
+3. If you see **Confirm it's you first**, confirm it's you.
+4. If you confirmed it's you, select **Add a passkey** again.
+5. Follow your device's prompt to save the passkey.
 
 If **Add a passkey** is unavailable, the page says why: add an email first, you already have 20
 passkeys, or this browser can't make passkeys.
@@ -45,16 +46,19 @@ account.
 
 1. Open **Sign-in methods** and find the passkey under **Passkeys**.
 2. Select **Remove** next to it.
-3. If you see **Confirm it's you first**, confirm it's you. Otherwise select the button that
-   starts with **Remove** and names the passkey. Select **Keep it** to stop.
+3. If you see **Confirm it's you first**, confirm it's you. Polaris Key then removes the passkey.
+4. If you don't see it, select the button that starts with **Remove** and names the passkey.
 
-Removing a passkey doesn't delete it from your device. Delete it there too.
+To stop, select **Keep it**. Removing a passkey doesn't delete it from your device. Delete it
+there too.
+
+When you try to remove your last sign-in method, the app can show this message:
 
 <HelpMessage id="last_link" />
 
 Polaris Key keeps at least one way for you to sign in. The last one shows **Only method**, and
-its **Remove** button stays unavailable. Add another sign-in method first, such as an email
-address. The same holds for your only email address.
+its **Remove** or **Disconnect** button stays unavailable. Add another sign-in method first, such
+as an email address. The same holds for your only email address.
 
 ## Still need help?
 
