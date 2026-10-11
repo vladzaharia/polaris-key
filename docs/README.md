@@ -55,10 +55,10 @@ Entry points:
 
 Run the JavaScript commands under Node 22 (see [`AGENTS.md`](../AGENTS.md)).
 
-| Command       | Does                                                                           |
-| ------------- | ------------------------------------------------------------------------------ |
-| `pnpm format` | Check formatting of the markdown and JSON here.                                |
-| `pnpm gen`    | Run the generator registry; `pnpm gen graph-index` rebuilds the program index. |
+| Command       | Does                                                                              |
+| ------------- | --------------------------------------------------------------------------------- |
+| `pnpm format` | Check repository-wide Prettier formatting for TypeScript, TSX, Markdown and JSON. |
+| `pnpm gen`    | Run the generator registry; `pnpm gen graph-index` rebuilds the program index.    |
 
 Generator families that read or write files here (a family regenerates with `pnpm gen <family>`, and `pnpm gen --check` is the drift gate):
 

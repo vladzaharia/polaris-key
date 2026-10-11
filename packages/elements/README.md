@@ -64,6 +64,15 @@ Run the JavaScript commands under Node 22 (see [`AGENTS.md`](../../AGENTS.md)).
 | `pnpm --filter @polaris-key/elements test:visual`                 | Run the visual baselines.                                |
 | `pnpm --filter @polaris-key/elements exec vitest run <test file>` | Run one test file (the path is relative to the package). |
 
+Generator families that read or write files here (a family regenerates with `pnpm gen <family>`, and `pnpm gen --check` is the drift gate):
+
+| Family           | Here it          | Run                       |
+| ---------------- | ---------------- | ------------------------- |
+| `constants`      | reads            | `pnpm gen constants`      |
+| `docs-reference` | reads            | `pnpm gen docs-reference` |
+| `readme-work`    | reads and writes | `pnpm gen readme-work`    |
+| `parity`         | reads            | `pnpm gen parity`         |
+
 <!-- work-on-it:end -->
 
 ## Rules here

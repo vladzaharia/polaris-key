@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
-import { GENERATORS, type Generator } from "./generators.js";
+import { GENERATORS, globToRegExp, type Generator } from "./generators.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const START =
@@ -195,7 +195,10 @@ export const TARGETS: Target[] = [
     dir: "docs",
     packages: [],
     rootScripts: [
-      ["format", "Check formatting of the markdown and JSON here."],
+      [
+        "format",
+        "Check repository-wide Prettier formatting for TypeScript, TSX, Markdown and JSON.",
+      ],
       [
         "gen",
         "Run the generator registry; `pnpm gen graph-index` rebuilds the program index.",
@@ -204,10 +207,31 @@ export const TARGETS: Target[] = [
   },
 ];
 
-/** The literal start of a glob: everything before its first wildcard or brace. */
-function staticPrefix(glob: string): string {
-  const i = glob.search(/[*{?]/);
-  return i < 0 ? glob : glob.slice(0, i);
+/** Whether `glob` can select a path below `dir`. */
+function globTouchesDirectory(glob: string, dir: string): boolean {
+  const pattern = (glob.endsWith("/") ? `${glob}**` : glob)
+    .split("/")
+    .filter(Boolean);
+  const target = dir.split("/").filter(Boolean);
+
+  const visit = (patternIndex: number, targetIndex: number): boolean => {
+    if (targetIndex === target.length) return patternIndex < pattern.length;
+    if (patternIndex === pattern.length) return false;
+
+    const part = pattern[patternIndex] as string;
+    if (part === "**")
+      return (
+        visit(patternIndex + 1, targetIndex) ||
+        visit(patternIndex, targetIndex + 1)
+      );
+
+    return (
+      globToRegExp(part).test(target[targetIndex] as string) &&
+      visit(patternIndex + 1, targetIndex + 1)
+    );
+  };
+
+  return visit(0, 0);
 }
 
 type Relation = "reads" | "writes" | "reads and writes";
@@ -218,12 +242,8 @@ export function familiesFor(
 ): { family: Generator; relation: Relation }[] {
   const rows: { family: Generator; relation: Relation }[] = [];
   for (const family of [...GENERATORS].sort((a, b) => a.order - b.order)) {
-    const reads = family.inputs.some((g) =>
-      staticPrefix(g).startsWith(`${dir}/`),
-    );
-    const writes = family.outputs.some((g) =>
-      staticPrefix(g).startsWith(`${dir}/`),
-    );
+    const reads = family.inputs.some((g) => globTouchesDirectory(g, dir));
+    const writes = family.outputs.some((g) => globTouchesDirectory(g, dir));
     if (reads || writes)
       rows.push({
         family,

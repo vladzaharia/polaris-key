@@ -1,7 +1,7 @@
 {
   "name": "@polaris-key/catalog",
   "version": "0.0.0",
-  "description": "The Polaris Key config catalog: the data model for a product's config, secret and flag entries, and the Ajv validation of their values.",
+  "description": "The Polaris Key config catalog: the data model for a product's config, secret and flag entries, with a dependency-free Draft-07 subset interpreter for their values.",
   "keywords": [
     "polaris-key",
     "managed-config",
@@ -14,7 +14,7 @@
     "url": "git+https://github.com/vladzaharia/polaris-key.git",
     "directory": "packages/shared-catalog"
   },
-  "homepage": "https://key.plrs.im/docs/build/manifest/catalog/",
+  "homepage": "https://key.plrs.im/docs/build/manifest/product/#the-catalog-configentry",
   "bugs": {
     "url": "https://github.com/vladzaharia/polaris-key/issues"
   },

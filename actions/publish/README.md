@@ -23,7 +23,23 @@ on:
     tags: ["v*"]
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build # write files matching .pkey/release to dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: dist
+          if-no-files-found: error
   publish:
+    needs: build
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -33,7 +49,8 @@ jobs:
       - uses: actions/checkout@v4 # the Action reads .pkey/ from the workspace
       - uses: actions/download-artifact@v4
         with:
-          path: dist # your build job's output, one subdirectory per artifact
+          name: release-files
+          path: dist
       - uses: vladzaharia/polaris-key/actions/publish@d49e25a51ecc70e0335075a970b2d35868ec2e38 # v0.9.3
         with:
           product: your-product
@@ -44,6 +61,10 @@ jobs:
 ```
 
 Replace the SHA with the commit of the release you pin, and keep the version comment beside it. Never use a moving tag.
+
+The `build` job is an npm example: replace its install and build commands for your stack, but keep
+the artifact name, the `dist` path and `needs: build` together. Files under `dist` must match the
+artifact rules in `.pkey/release`.
 
 ## Inputs
 

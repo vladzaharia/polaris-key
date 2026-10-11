@@ -17,6 +17,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { applyBlock, TARGETS } from "./gen-readme-work.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -223,5 +224,70 @@ describe("actions/publish/README.md", () => {
 
   it("links the generated Action reference", () => {
     expect(text).toContain("https://key.plrs.im/docs/reference/github-action/");
+  });
+});
+
+interface WorkflowJob {
+  needs?: string;
+  steps?: { uses?: string; with?: Record<string, string> }[];
+}
+
+function minimalWorkflow(text: string): { jobs: Record<string, WorkflowJob> } {
+  const match = text.match(/## Minimal workflow\n\n```yaml\n([\s\S]*?)\n```/);
+  expect(match).not.toBeNull();
+  return parse(match?.[1] ?? "") as { jobs: Record<string, WorkflowJob> };
+}
+
+function workflowJob(text: string, name: string): WorkflowJob {
+  const job = minimalWorkflow(text).jobs[name];
+  if (!job) throw new Error(`missing ${name} job`);
+  return job;
+}
+
+describe("actions/publish/README.md workflow", () => {
+  const text = readFileSync(
+    join(ROOT, "actions", "publish", "README.md"),
+    "utf8",
+  );
+
+  it("carries a named build artifact into the publishing job", () => {
+    const build = workflowJob(text, "build");
+    const publish = workflowJob(text, "publish");
+    expect(build.steps).toContainEqual(
+      expect.objectContaining({
+        uses: "actions/upload-artifact@v4",
+        with: expect.objectContaining({
+          name: "release-files",
+          path: "dist",
+          "if-no-files-found": "error",
+        }),
+      }),
+    );
+    expect(publish.needs).toBe("build");
+    expect(publish.steps).toContainEqual(
+      expect.objectContaining({
+        uses: "actions/download-artifact@v4",
+        with: expect.objectContaining({
+          name: "release-files",
+          path: "dist",
+        }),
+      }),
+    );
+  });
+
+  it("uses the publish Action's release inputs", () => {
+    const steps = workflowJob(text, "publish").steps;
+    expect(steps).toContainEqual(
+      expect.objectContaining({
+        uses: "vladzaharia/polaris-key/actions/publish@d49e25a51ecc70e0335075a970b2d35868ec2e38",
+        with: expect.objectContaining({
+          product: "your-product",
+          tag: "${{ github.ref_name }}",
+          channel: "beta",
+          dir: "dist",
+          "release-key": "${{ secrets.PKEY_RELEASE_KEY }}",
+        }),
+      }),
+    );
   });
 });

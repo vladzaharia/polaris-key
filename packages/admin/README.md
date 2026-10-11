@@ -56,10 +56,14 @@ Run the JavaScript commands under Node 22 (see [`AGENTS.md`](../../AGENTS.md)).
 
 Generator families that read or write files here (a family regenerates with `pnpm gen <family>`, and `pnpm gen --check` is the drift gate):
 
-| Family     | Here it | Run                 |
-| ---------- | ------- | ------------------- |
-| `services` | writes  | `pnpm gen services` |
-| `settings` | writes  | `pnpm gen settings` |
+| Family           | Here it          | Run                       |
+| ---------------- | ---------------- | ------------------------- |
+| `services`       | writes           | `pnpm gen services`       |
+| `constants`      | reads            | `pnpm gen constants`      |
+| `settings`       | writes           | `pnpm gen settings`       |
+| `docs-reference` | reads            | `pnpm gen docs-reference` |
+| `readme-work`    | reads and writes | `pnpm gen readme-work`    |
+| `parity`         | reads            | `pnpm gen parity`         |
 
 <!-- work-on-it:end -->
 

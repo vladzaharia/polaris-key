@@ -62,6 +62,15 @@ Run the JavaScript commands under Node 22 (see [`AGENTS.md`](../../AGENTS.md)).
 | `pnpm ui:lint`                                                 | Run the modernity, string and kit-source lints (needs Chromium). |
 | `pnpm ui:report`                                               | Render the UI kits side by side per state.                       |
 
+Generator families that read or write files here (a family regenerates with `pnpm gen <family>`, and `pnpm gen --check` is the drift gate):
+
+| Family           | Here it          | Run                       |
+| ---------------- | ---------------- | ------------------------- |
+| `constants`      | reads            | `pnpm gen constants`      |
+| `docs-reference` | reads            | `pnpm gen docs-reference` |
+| `readme-work`    | reads and writes | `pnpm gen readme-work`    |
+| `parity`         | reads            | `pnpm gen parity`         |
+
 <!-- work-on-it:end -->
 
 ## Rules here

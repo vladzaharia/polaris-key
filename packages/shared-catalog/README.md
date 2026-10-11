@@ -1,6 +1,6 @@
 # @polaris-key/catalog
 
-The Polaris Key config catalog: the data model for a product's config, secret and flag entries, and the validation of values against each entry's schema, for code that loads a catalog or checks values against it.
+The Polaris Key config catalog: the data model for a product's config, secret and flag entries, with a dependency-free Draft-07 subset interpreter for their values.
 
 ## Install
 
@@ -50,7 +50,7 @@ The validator interprets a Draft-07 subset and never generates code, so it runs 
 
 Authors write the catalog as `.pkey/schema`, not as code; `@polaris-key/manifest` parses and validates that file, and the CLI's `pkey validate` runs it. To read values in an app, use an SDK.
 
-- [The catalog](https://key.plrs.im/docs/build/manifest/catalog/): entries, kinds, schemas and management state.
+- [Catalog entries in the manifest](https://key.plrs.im/docs/build/manifest/product/#the-catalog-configentry): entries, kinds, schemas and management state.
 - [SDKs](https://key.plrs.im/docs/build/sdks/): one page per language.
 - [`@polaris-key/manifest`](https://github.com/vladzaharia/polaris-key/tree/main/packages/shared-manifest#readme)
 
@@ -58,7 +58,7 @@ Depend on this package directly when you load a catalog server-side or in toolin
 
 ## Docs
 
-- [The catalog](https://key.plrs.im/docs/build/manifest/catalog/)
+- [Catalog entries in the manifest](https://key.plrs.im/docs/build/manifest/product/#the-catalog-configentry)
 - [The `.pkey/` manifest](https://key.plrs.im/docs/build/manifest/)
 - [Config document](https://key.plrs.im/docs/reference/protocol/config-document/): how values reach a device.
 - [Validation codes](https://key.plrs.im/docs/reference/validation-codes/)
