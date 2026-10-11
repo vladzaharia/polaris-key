@@ -437,7 +437,10 @@ async function completeConnectionCallback(
     claims,
     await verifiedDomains(db, conn.id),
   );
-  if (!identity.sub.trim()) return signInPage.unverified();
+  // One form of the subject for the lookup, Q1's auto-link and the sign-in below: trimmed, as
+  // `normalizeIdentity` keys every link.
+  const subject = identity.sub.trim();
+  if (!subject) return signInPage.unverified();
   const issuerKey = portalIdentityIssuerKey(conn.issuer);
   if (conn.source === "env") {
     // A pre-I-01 row still keyed by the literal `oidc` is this IdP's subject: re-key it before
@@ -448,7 +451,7 @@ async function completeConnectionCallback(
   const known = await findLink(db, {
     issuerKey,
     tenantScope: "",
-    subject: identity.sub.trim(),
+    subject,
   });
   // I-17's `operators-only`: an unknown subject is refused.
   if (!known && policy.kind === "claim" && policy.linkedOnly) {
@@ -461,7 +464,7 @@ async function completeConnectionCallback(
       {
         connection: conn,
         issuerKey,
-        subject: identity.sub.trim(),
+        subject,
         email: identity.email,
         displayName: identity.displayName,
         origin: new URL(req.url).origin,
@@ -476,7 +479,7 @@ async function completeConnectionCallback(
     {
       identity: {
         issuerKey,
-        subject: identity.sub,
+        subject,
         kind: "oidc",
         email: identity.email,
         emailVerified: identity.emailVerified,

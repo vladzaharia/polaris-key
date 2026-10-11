@@ -1,9 +1,12 @@
 ---
-title: "Store connections"
-description: "The platform's team-level store credentials (App Store Connect, In-App Purchase, Google Play, Microsoft Store, Steam), the shared store settings, the apps list, and assigning an app to a product."
+title: "Connections"
+description: "Store connections (the platform's team-level store credentials, the shared store settings, the apps list, assigning an app to a product) and sign-in connections (OpenID Connect providers, verified email domains, enforcement)."
 sidebar:
   order: 13
 ---
+
+The platform holds two kinds of connection: **store connections**, below, and
+[sign-in connections](#sign-in-connections), the OpenID Connect providers people sign in through.
 
 A **store connection** is one credential per store held by the _platform_, not by a product: the
 App Store Connect team API key, the team In-App Purchase key, the Google Play developer account's
@@ -284,3 +287,59 @@ Connect's own view of the object before and after.
 See also [Secrets & keys](/docs/admin/secrets-and-keys/) for a product's own outlet credentials
 and their pins, and [the KEK keyring](/docs/admin/kek/): the re-seal sweep includes the console
 store credentials.
+
+## Sign-in connections
+
+A **sign-in connection** is an upstream OpenID Connect provider people sign in through: a label,
+an issuer, a client id and secret, an **audience** (`customers` on the sign-in card, `operators`
+in the console, or `both`), a claim map, and the email domains it has proved. Identity owns the
+two tables, `identity_connections` and `identity_connection_domains`, and is their only writer;
+everything else reads them through Core (`core/oidc/connections.ts`). Every connection signs in
+through the Worker's one relying-party client, with discovery, PKCE, `state`, `nonce` and the
+issuer's hosts as the only hosts it dials. What the card does with a connection is in
+[Customer portal](/docs/features/sign-in/customer-portal/#work-and-school-addresses).
+
+The console has no page or admin route for sign-in connections yet, so a deploy has only the
+seeded connection below. Adding a connection, proving its domains and enforcing them come with the
+console's connection screens.
+
+### The seeded platform connection
+
+The `PLATFORM_OIDC_ISSUER`, `PLATFORM_OIDC_CLIENT_ID` and `PLATFORM_OIDC_CLIENT_SECRET` trio
+becomes one row: id `platform-sso`, label "Single sign-on", `source: env`, audience `both`, the
+`groups`, `name` and `picture` claims mapped, no domains. It is written on first need, by
+`/login`, `/callback` or `/api/capabilities` while single sign-on is on, with the client secret
+sealed under `PLATFORM_KEK` (the `_platform` slot, kind `identity-connection`).
+
+- **Once written, the row is the only source.** A later change to the trio does not rewrite it,
+  and the seed never overwrites an existing row.
+- **No usable KEK, no row.** If the client secret cannot be sealed, nothing is written and single
+  sign-on stays off; the next request tries again.
+- **Keep the trio set.** A product whose OIDC provider is `platform` still reads it directly.
+- **The KEK re-seal sweep does not cover this row.** Keep the key that sealed it in the KEK ring.
+
+### Domains
+
+A connection proves each email domain with a DNS TXT record:
+
+| Name                       | Value                              |
+| -------------------------- | ---------------------------------- |
+| `_pkey-challenge.<domain>` | `pkey-domain-verification=<token>` |
+
+The token is random, one per connection and domain, so one connection's record never proves
+another's claim. The Worker reads the record over DNS-over-HTTPS from `cloudflare-dns.com` only.
+
+- **Exact names.** `example.com` and `sub.example.com` are two claims with two records. A domain
+  is plain ASCII, lower case, at least two labels, with no wildcard and no IP literal.
+- **One owner.** Within a scope, one connection at a time holds a verified domain; another
+  connection's proof of it is refused (`taken`).
+- **Re-checked daily.** The nightly maintenance run (`connectionDomains`, 03:17 UTC) asks again
+  for every verified domain. An answer without the token unverifies the domain at once. A
+  resolver error keeps it verified for 72 hours after the last conclusive answer, then
+  unverifies it.
+- **Unverified means nothing.** An unverified domain does not route addresses, vouch for them or
+  enforce anything.
+
+**Enforce** is set per domain. While the domain is verified, its addresses get no email code and
+no magic link on the sign-in card, only the connection; codes and links sent before enforcement
+stop working too. Passkeys and the account's other sign-in methods keep working.
