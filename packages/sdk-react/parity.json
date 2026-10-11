@@ -21,7 +21,7 @@
     },
     "core.bundle": {
       "status": "implemented",
-      "note": "Desktop through the host bridge (protocol v3 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB. The browser runner drives inspectBundle over every bundleCases vector in Chromium, Firefox and WebKit."
+      "note": "Desktop through the Node Electron bridge (protocol v4 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB. The browser runner drives inspectBundle over every bundleCases vector in Chromium, Firefox and WebKit."
     },
     "core.discover": {
       "status": "implemented"
@@ -131,7 +131,7 @@
     },
     "config.mint": {
       "status": "implemented",
-      "note": "SP-R02: bearer mode's GET /<p>/config/mint/<recipe>/token, memory-cached per device token until 30 s before expiry (edge-mint replays through it). Desktop: the renderer half of bridge v4's invoke(\"config\", \"mint\") is in place and is sent only to a host reporting version 4 or later; the Node Electron host is still v3 until SP-N10, so today a desktop renderer gets the typed version N/A."
+      "note": "SP-R02: bearer mode's GET /<p>/config/mint/<recipe>/token, memory-cached per device token until 30 s before expiry (edge-mint replays through it). Desktop: bridge v4's invoke(\"config\", \"mint\", {recipeId}) forwards to the Node Electron host's client.config.mintToken() and answers {token, expiresAt}; a v3 host is refused typed (reason version)."
     },
     "config.mirror": {
       "status": "implemented",
@@ -139,7 +139,7 @@
     },
     "config.local": {
       "status": "implemented",
-      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change; ConfigPanel saves overrides itself."
+      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: bridge v4 forwards set/clear to the Node host's client.config and carries client.config.localValues() on every state; a v3 host is refused typed (reason version). useConfigSetting(key) re-renders on change; ConfigPanel saves overrides itself."
     },
     "config.sync": {
       "status": "planned",
@@ -480,7 +480,7 @@
     },
     "commerce.receipt": {
       "status": "implemented",
-      "note": "SP-16: bearer mode's GET /<p>/distribution/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the renderer half of bridge v4's invoke(\"commerce\", \"binding\" | \"claim\"), with the host's fresh state read after an ok claim, replays commerce-claim through a v4 bridge; it is sent only to a host reporting version 4 or later, and the Node Electron host is still v3 (SP-N10), so today a desktop renderer gets the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
+      "note": "SP-16: bearer mode's GET /<p>/distribution/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the Node Electron v4 host answers invoke(\"commerce\", \"binding\" | \"claim\") over client.commerce, synchronising and pushing fresh state after an ok claim. A v3 host receives the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
     },
     "sync.scenarios": {
       "status": "planned",

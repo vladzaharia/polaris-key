@@ -106,7 +106,8 @@
       "status": "implemented"
     },
     "config.mint": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "client.config.mintToken(recipeId) returns the memory-cached, device-token-bound {token, expiresAt}; @polaris-key/node/electron bridge v4 forwards it as invoke(\"config\", \"mint\", {recipeId})."
     },
     "config.mirror": {
       "status": "implemented",
@@ -185,7 +186,7 @@
     },
     "release.fetch": {
       "status": "implemented",
-      "note": "client.release.fetch(target, {to}): discovery builds route, device bearer and metadata headers, <to>.part resumed with Range and If-Range on the payload SHA-256, size and SHA-256 checked against the verified record before the rename."
+      "note": "client.release.fetch(target, {to}): discovery builds route, device bearer and metadata headers, <to>.part resumed with Range and If-Range on the payload SHA-256, size and SHA-256 checked against the verified record before the rename. Electron bridge v4 accepts only a hash/binary-decision target so the host verifies its own record; it confines renderer `to` below host-owned downloadDir."
     },
     "release.distribution": {
       "status": "implemented",
@@ -422,7 +423,7 @@
     },
     "commerce.receipt": {
       "status": "implemented",
-      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."
+      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04). Electron bridge v4 exposes binding/claim to a trusted renderer, synchronising before its state push after an ok claim."
     },
     "sync.scenarios": {
       "status": "planned",
