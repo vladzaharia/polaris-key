@@ -73,3 +73,16 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 The role agent sets `--set DOC-05a in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set DOC-05a done`.
+
+## Correction (2026-10-11)
+
+The code differs from the brief and the plan in these ways; the pages and the map follow the code.
+
+- **The catalog is bigger than the plan's table.** `conformance/parity/copy.en.json` holds 184 ids (`fallback`, 160 `codes`, 9 `gate`, 14 `activation`) and 108 distinct titles. Plan §7.1 lists about 70 of them and ends "…". Every id now has one home: 106 entries across the seven pages (174 ids) plus a developer-only list of 21 ids under 12 titles. Titles the plan does not name sit where their cause belongs (for example "Activate" and "Activated" under the license key, "License active" and "No license needed" under the license status, "Storage problem" and "Not available here" under Other).
+- **The portal's `errors.ts` has no catalog ids.** It words four download refusals, the step-up code, five HTTP statuses and a default itself. They are mirrored in the new optional `portal` section of `help-messages.json` and addressed as `portal.<key>` (the id grammar and the schema grow by that one group; the shape of `messages` is unchanged). `helpMessages.test.ts` reads `errors.ts` and fails when the mirror and the file disagree, or when an error has no entry.
+- **Two codes the Worker does not answer today.** `license_expired` (an expired license's key is answered `401 unauthorized`: `packages/worker/test/transcripts/scenarios/license.ts:12-15`, `core/licensing/authz.ts:420-421`) and `activation.attestation-required` (activation is not a trust operation: `scenarios/license.ts:16-19`). Their entries say what the catalog title means; the Worker does not produce them yet.
+- **Copy fix filed: "Sign-in cancelled".** The catalog's `codes.cancelled` reads "Sign-in cancelled" / "Sign-in was cancelled." against the US spelling rule. The copy fix is "Sign-in canceled" / "Sign-in was canceled." in `copy.en.json`, regenerated into every SDK's copy module by `pnpm gen constants`. It is not made here: it is a catalog change across seven SDKs. The Help title follows the catalog when it changes.
+- **`components.json`** was used to check which core copy keys the kits show on screen (it names `core.codes.*`, `core.gate.*` and `core.activation.*` keys per state); no data is taken from it.
+- **The scout's lead was off**: it counted about 120 codes; there are 160.
+- **Links.** `help/update.md` linked to the removed "Troubleshooting" anchor `#your-version-is-blocked`; it now links to `help/messages/license-status#gate.version-too-old`. DOC-05c rewrites that page.
+- **Search.** Starlight's right-hand "On this page" lists only Overview on a messages page, because `<HelpMessage>` renders the headings. A table of contents override can list the entries from `helpEntries()` in `src/lib/helpMessages.ts`.

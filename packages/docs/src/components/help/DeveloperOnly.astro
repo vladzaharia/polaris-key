@@ -1,0 +1,60 @@
+---
+/**
+ * The developer-only messages of Other messages (docs plan §7.1): the ones only the app's
+ * developer can fix. Each title is listed with the message the app shows and the ids behind it.
+ * Every id keeps its own anchor (`#<id>`), as a heading's ids do. Rendered from the catalog and
+ * `help-messages.json`, so the titles are never retyped.
+ */
+import {
+  HELP_MESSAGES,
+  KNOWN_ENTRIES,
+  developerOnlyGroups,
+  messageParts,
+} from "../../lib/helpMessages";
+
+const groups = developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES);
+---
+
+<ul class="pk-help-developer">
+  {
+    groups.map((group) => (
+      <li>
+        <strong>{group.title}</strong>
+        {group.messages.map((row) => (
+          <div class="pk-help-developer__message">
+            {row.ids.map((id) => (
+              <span id={id} class="pk-help-developer__anchor" />
+            ))}
+            <blockquote>
+              <p>
+                {messageParts(row.message).map((part) =>
+                  typeof part === "string" ? part : <var>{part.label}</var>,
+                )}
+              </p>
+            </blockquote>
+            <p class="pk-help-developer__codes">
+              <small>
+                {row.ids.length === 1 ? "Code" : "Codes"}:{" "}
+                {row.ids.map((id, i) => (
+                  <>
+                    {i > 0 && ", "}
+                    <code>{id}</code>
+                  </>
+                ))}
+              </small>
+            </p>
+          </div>
+        ))}
+      </li>
+    ))
+  }
+</ul>
+
+<style is:global>
+  .pk-help-developer__codes {
+    color: var(--sl-color-gray-3);
+  }
+  .pk-help-developer__codes code {
+    overflow-wrap: anywhere;
+  }
+</style>

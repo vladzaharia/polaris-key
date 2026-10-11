@@ -1,52 +1,45 @@
 ---
 title: "Messages about your license status"
-description: "What each license status message means and what to do."
+description: "What each message about your license status means, and what to do."
 type: "help-messages"
-status: "stub"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 31
 ---
 
 import HelpMessage from "../../../../components/docs/HelpMessage.astro";
 
-Placeholder page. See [Troubleshooting](/docs/help/messages/) for the nearest live page.
+Find the title an app showed about your license: active, offline, expired, or not covering a version.
 
-<HelpMessage id="license_expired" />
+<HelpMessage id="gate.ok" entry />
 
-<HelpMessage id="gate.expired" />
+<HelpMessage id="gate.grace" entry />
 
-<HelpMessage id="activation.license-expired" />
+<HelpMessage id="gate.expired" entry />
 
-<HelpMessage id="gate.grace" />
+<HelpMessage id="gate.revoked" entry />
 
-<HelpMessage id="gate.revoked" />
+<HelpMessage id="unauthorized" entry />
 
-<HelpMessage id="unauthorized" />
+<HelpMessage id="sync-failed" entry />
 
-<HelpMessage id="sync-failed" />
+<HelpMessage id="refresh-failed" entry />
 
-<HelpMessage id="refresh-failed" />
+<HelpMessage id="local-only" entry />
 
-<HelpMessage id="local-only" />
+<HelpMessage id="gate.version-too-old" entry />
 
-<HelpMessage id="version_blocked" />
+<HelpMessage id="gate.version-too-new" entry />
 
-<HelpMessage id="gate.version-too-old" />
+<HelpMessage id="gate.channel-not-entitled" entry />
 
-<HelpMessage id="gate.version-too-new" />
+<HelpMessage id="not_entitled" entry />
 
-<HelpMessage id="channel_not_allowed" />
+<HelpMessage id="license_invalid" entry />
 
-<HelpMessage id="gate.channel-not-entitled" />
+<HelpMessage id="license_stale" entry />
 
-<HelpMessage id="not_entitled" />
+<HelpMessage id="gate.not-applicable" entry />
 
-<HelpMessage id="release-refused" />
-
-<HelpMessage id="pack-not-entitled" />
+To ask the app's developer, look for **Need help?** on the app's page in your library at key.plrs.im. Say which message you saw, and never send anyone a full license key.

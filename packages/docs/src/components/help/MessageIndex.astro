@@ -1,0 +1,43 @@
+---
+/**
+ * All messages, A to Z (docs plan §7.1): every title a reader can see, each linking to the entry
+ * that explains it. Generated from the catalog and `help-messages.json` on every build, so a new
+ * code appears here the day it is given a home. The titles are the catalog's, never retyped.
+ */
+import {
+  HELP_MESSAGES,
+  KNOWN_ENTRIES,
+  helpMessageUrl,
+  indexRows,
+  type IndexRow,
+} from "../../lib/helpMessages";
+
+const letters = new Map<string, IndexRow[]>();
+for (const row of indexRows(HELP_MESSAGES, KNOWN_ENTRIES)) {
+  const letter = row.title.charAt(0).toUpperCase();
+  letters.set(letter, [...(letters.get(letter) ?? []), row]);
+}
+---
+
+{
+  [...letters].map(([letter, rows]) => (
+    <>
+      <h2 id={`letter-${letter.toLowerCase()}`}>{letter}</h2>
+      <ul class="pk-help-index">
+        {rows.map((row) => (
+          <li>
+            <a href={helpMessageUrl(HELP_MESSAGES, row.id)}>{row.title}</a>
+            <small>{row.pageTitle}</small>
+          </li>
+        ))}
+      </ul>
+    </>
+  ))
+}
+
+<style is:global>
+  .pk-help-index small {
+    display: block;
+    color: var(--sl-color-gray-3);
+  }
+</style>

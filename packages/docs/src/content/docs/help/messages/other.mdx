@@ -1,0 +1,56 @@
+---
+title: "Other messages"
+description: 'What connection, settings and "something went wrong" messages mean, and what to do.'
+type: "help-messages"
+status: "shipped"
+lastReviewed: "2026-10-11"
+sidebar:
+  order: 71
+---
+
+import HelpMessage from "../../../../components/docs/HelpMessage.astro";
+import DeveloperOnly from "../../../../components/help/DeveloperOnly.astro";
+
+Find the title of a connection, settings or "something went wrong" message. These belong to no single task. The last section lists messages that only the app's developer can fix.
+
+<HelpMessage id="network" entry />
+
+<HelpMessage id="portal.status-0" entry />
+
+<HelpMessage id="transport" entry />
+
+<HelpMessage id="timeout" entry />
+
+<HelpMessage id="service-unavailable" entry />
+
+<HelpMessage id="unsupported" entry />
+
+<HelpMessage id="managed_by_admin" entry />
+
+<HelpMessage id="catalog_unavailable" entry />
+
+<HelpMessage id="value_not_representable" entry />
+
+<HelpMessage id="fallback" entry />
+
+<HelpMessage id="not_found" entry />
+
+<HelpMessage id="portal.status-404" entry />
+
+<HelpMessage id="forbidden" entry />
+
+<HelpMessage id="portal.status-403" entry />
+
+<HelpMessage id="portal.status-429" entry />
+
+<HelpMessage id="body_too_large" entry />
+
+<HelpMessage id="store-failed" entry />
+
+## Messages for the app's developer
+
+The app's developer has to fix these. If a message asks you to try again, do that first. If it keeps coming back, tell the developer the title, the code and what you were doing. A few of these appear only in the developer's own tools.
+
+<DeveloperOnly />
+
+To ask the app's developer, look for **Need help?** on the app's page in your library at key.plrs.im. Say which message you saw, and never send anyone a full license key.

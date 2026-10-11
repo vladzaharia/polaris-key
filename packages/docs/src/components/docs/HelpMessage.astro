@@ -1,26 +1,154 @@
 ---
 /**
- * One message entry of a Help messages page (docs plan §7.1, §7.5). The heading is the catalog
- * title, character for character; its anchor is the message id, set here and never slugified.
- * The message follows as the app shows it, then Why you see this and What to do from
- * `help-messages.json`. A copy change reaches Help on the next build.
+ * One message of Help (docs plan §7.1, §7.5). The heading is the catalog title, character for
+ * character; its anchor is the message id, set here and never slugified. Under it come the message
+ * as the app shows it (a placeholder shows what goes there), Why you see this and What to do from
+ * `help-messages.json`, a link to the article that explains more when there is one, and the ids,
+ * in small type, for telling the developer. The titles of the same message in every translated
+ * catalog follow as hidden text, so search finds the entry from a title in another language.
+ *
+ * `<HelpMessage id>` shows that one id, as an article does for the anchors it carries. On a
+ * messages page, `<HelpMessage id entry>` shows the whole entry the id owns: one heading, and one
+ * branch for each distinct message of the title, each id keeping its own anchor. A copy change
+ * reaches Help on the next build.
  */
-import { CATALOG_ENTRIES, HELP_MESSAGES } from "../../lib/helpMessages";
+import AnchorHeading from "@astrojs/starlight/components/AnchorHeading.astro";
+import { getEntry } from "astro:content";
+import {
+  HELP_MESSAGES,
+  KNOWN_ENTRIES,
+  aliasesFor,
+  entryOf,
+  messageParts,
+  textParts,
+  singleOf,
+  type EntryBranch,
+} from "../../lib/helpMessages";
 
 export interface Props {
-  /** A message id: a `codes` key, `gate.<key>`, `activation.<key>` or `fallback`. */
+  /** A message id: a `codes` key, `gate.<key>`, `activation.<key>`, `portal.<key>` or `fallback`. */
   id: string;
+  /** Show the whole entry this id owns: one heading and a branch per distinct message. */
+  entry?: boolean;
 }
 
-const { id } = Astro.props;
-const entry = CATALOG_ENTRIES.get(id);
-if (entry === undefined)
-  throw new Error(`<HelpMessage id="${id}">: no such key in conformance/parity/copy.en.json`);
-const extra = HELP_MESSAGES.messages[id];
+const { id, entry: wholeEntry = false } = Astro.props;
+if (!KNOWN_ENTRIES.has(id))
+  throw new Error(
+    `<HelpMessage id="${id}">: no such key in conformance/parity/copy.en.json or the portal copy of help-messages.json`,
+  );
+
+let title: string;
+let ids: string[];
+let branches: EntryBranch[];
+if (wholeEntry) {
+  const entry = entryOf(HELP_MESSAGES, KNOWN_ENTRIES, id);
+  if (entry === undefined)
+    throw new Error(`<HelpMessage id="${id}" entry>: ${id} is in no entry of help-messages.json`);
+  if (entry.id !== id)
+    throw new Error(
+      `<HelpMessage id="${id}" entry>: ${id} belongs to the entry ${entry.id} owns; show that one`,
+    );
+  ({ title, ids, branches } = entry);
+} else {
+  const one = singleOf(HELP_MESSAGES, KNOWN_ENTRIES, id)!;
+  ({ title } = one);
+  ids = [id];
+  branches = [one.branch];
+}
+
+/** The article link of each branch, unless the article is this page. */
+const here = Astro.url.pathname.replace(/\/?$/, "/");
+const more = await Promise.all(
+  branches.map(async (branch) => {
+    if (branch.article === undefined) return undefined;
+    const href = `/docs/help/${branch.article}/`;
+    if (href === here) return undefined;
+    const page = await getEntry("docs", `help/${branch.article}`);
+    if (page === undefined)
+      throw new Error(`<HelpMessage id="${id}">: the article help/${branch.article} does not exist`);
+    return { href, title: page.data.title };
+  }),
+);
+
+const aliases = aliasesFor(ids);
+/** The portal's copy has no code to tell anyone. */
+const codes = (branch: EntryBranch): string[] =>
+  branch.ids.filter((x) => !x.startsWith("portal."));
 ---
 
-<h2 id={id}>{entry.title}</h2>
-<p class="pk-help-message__text">{entry.message}</p>
-{extra?.why && <p><strong>Why you see this.</strong> {extra.why}</p>}
-{extra?.fix && <p><strong>What to do.</strong> {extra.fix}</p>}
-{extra?.article && <p><a href={`/docs/help/${extra.article}/`}>More about this</a></p>}
+<div class="pk-help-message" data-help-message={id}>
+  <AnchorHeading level={2} id={ids[0]!}>{title}</AnchorHeading>
+  {
+    branches.map((branch, i) => (
+      <div class="pk-help-message__branch">
+        {branch.ids
+          .filter((x) => x !== ids[0])
+          .map((x) => (
+            <span id={x} class="pk-help-message__anchor" />
+          ))}
+        <blockquote class="pk-help-message__shown">
+          <p>
+            {messageParts(branch.message).map((part) =>
+              typeof part === "string" ? part : <var>{part.label}</var>,
+            )}
+          </p>
+        </blockquote>
+        {branch.why && (
+          <p>
+            <strong>Why you see this.</strong>{" "}
+            {textParts(branch.why).map((part) =>
+              typeof part === "string" ? part : <strong>{part.strong}</strong>,
+            )}
+          </p>
+        )}
+        {branch.fix && (
+          <p>
+            <strong>What to do.</strong>{" "}
+            {textParts(branch.fix).map((part) =>
+              typeof part === "string" ? part : <strong>{part.strong}</strong>,
+            )}
+          </p>
+        )}
+        {more[i] && (
+          <p>
+            <strong>More help.</strong> <a href={more[i]!.href}>{more[i]!.title}</a>
+          </p>
+        )}
+        {codes(branch).length > 0 && (
+          <p class="pk-help-message__codes">
+            <small>
+              {codes(branch).length === 1 ? "Code" : "Codes"}:{" "}
+              {codes(branch).map((x, j) => (
+                <>
+                  {j > 0 && ", "}
+                  <code>{x}</code>
+                </>
+              ))}
+            </small>
+          </p>
+        )}
+      </div>
+    ))
+  }
+  {
+    aliases.map((alias) => (
+      <span hidden lang={alias.lang} data-pagefind-weight="6">
+        {alias.title}
+      </span>
+    ))
+  }
+</div>
+
+<style is:global>
+  .pk-help-message__branch + .pk-help-message__branch {
+    border-top: 1px solid var(--sl-color-hairline);
+    padding-top: 1rem;
+  }
+  .pk-help-message__codes {
+    color: var(--sl-color-gray-3);
+  }
+  .pk-help-message__codes code {
+    overflow-wrap: anywhere;
+  }
+</style>

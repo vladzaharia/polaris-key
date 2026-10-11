@@ -121,8 +121,8 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     name: "HelpMessage",
     file: "HelpMessage.astro",
     summary:
-      "One Help message entry: the catalog title as the heading, the id as its anchor.",
-    props: ["id: string"],
+      "One Help message: the catalog title as the heading, the id as its anchor. With entry, the whole entry the id owns.",
+    props: ["id: string", "entry?: boolean"],
   },
   {
     name: "UiLabel",

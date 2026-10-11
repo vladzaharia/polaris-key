@@ -75,13 +75,13 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
     expect(sitemap).toContain("/docs/help/activate/");
   });
 
-  it("renders the Help message stubs with the message id as the anchor", () => {
+  it("renders a Help message with the message id as the anchor, on an indexable page", () => {
     const html = readFileSync(
       join(dist, "help/messages/devices/index.html"),
       "utf8",
     );
     expect(html).toContain('id="activation.device-limit"');
     expect(html).toContain("Device limit reached");
-    expect(html).toContain('content="noindex"');
+    expect(html).not.toContain('content="noindex"');
   });
 });

@@ -1,56 +1,69 @@
 ---
 title: "Messages about downloads and updates"
-description: "What each download and update message means and what to do."
+description: "What each message about a download or an update means, and what to do."
 type: "help-messages"
-status: "stub"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 50
 ---
 
 import HelpMessage from "../../../../components/docs/HelpMessage.astro";
 
-Placeholder page. See [Troubleshooting](/docs/help/messages/) for the nearest live page.
+Find the title an app, or your library, showed when a download or an update did not work.
 
-<HelpMessage id="download_auth_required" />
+<HelpMessage id="download_auth_required" entry />
 
-<HelpMessage id="delivery_gate_missing" />
+<HelpMessage id="delivery_gate_missing" entry />
 
-<HelpMessage id="upstream_rate_limited" />
+<HelpMessage id="upstream_rate_limited" entry />
 
-<HelpMessage id="payload-mismatch" />
+<HelpMessage id="internal_error" entry />
 
-<HelpMessage id="full-corrupt" />
+<HelpMessage id="chunk-bundle-truncated" entry />
 
-<HelpMessage id="delta-artifact-mismatch" />
+<HelpMessage id="payload-mismatch" entry />
 
-<HelpMessage id="file-corrupt" />
+<HelpMessage id="plan-transport-unsupported" entry />
 
-<HelpMessage id="payload-hash-mismatch" />
+<HelpMessage id="plan-insufficient-disk" entry />
 
-<HelpMessage id="chunk-corrupt" />
+<HelpMessage id="plan-no-strategy" entry />
 
-<HelpMessage id="chunk-bundle-truncated" />
+<HelpMessage id="swap-refused" entry />
 
-<HelpMessage id="plan-transport-unsupported" />
+<HelpMessage id="swap-failed" entry />
 
-<HelpMessage id="plan-insufficient-disk" />
+<HelpMessage id="delta-apply-failed" entry />
 
-<HelpMessage id="swap-refused" />
+<HelpMessage id="feed-rejected" entry />
 
-<HelpMessage id="swap-failed" />
+<HelpMessage id="feed_not_composable" entry />
 
-<HelpMessage id="delta-apply-failed" />
+<HelpMessage id="record-rejected" entry />
 
-<HelpMessage id="feed-rejected" />
+<HelpMessage id="delta-base-mismatch" entry />
 
-<HelpMessage id="feed-rollback" />
+<HelpMessage id="fetch-failed" entry />
 
-<HelpMessage id="record-rejected" />
+<HelpMessage id="pack-no-variant" entry />
 
-<HelpMessage id="record-mismatch" />
+<HelpMessage id="chunks-unsupported-version" entry />
+
+<HelpMessage id="files-index-invalid" entry />
+
+<HelpMessage id="files-unsafe-path" entry />
+
+<HelpMessage id="pack-rolled-back" entry />
+
+<HelpMessage id="pack-revoked" entry />
+
+<HelpMessage id="portal.file_not_found" entry />
+
+<HelpMessage id="portal.not_hosted" entry />
+
+<HelpMessage id="portal.license_inactive" entry />
+
+<HelpMessage id="portal.not_entitled" entry />
+
+To ask the app's developer, look for **Need help?** on the app's page in your library at key.plrs.im. Say which message you saw, and never send anyone a full license key.
