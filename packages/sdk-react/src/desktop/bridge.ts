@@ -171,7 +171,7 @@ export type BridgeActivation =
  *   * `("core","boot",opts)` → `{outcome, state, license, decision, emits}`: `client.boot()` in
  *     the host (`consent`, `metered`, `allowOffline`, `allowGrace`, `registration`,
  *     `requiredPacks`; callbacks do not cross), then a state push.
- *   * `("core","crashTags",{deliverable?, build?})` → `{release, environment, outlet}`.
+ *   * `("core","crashTags",{deliverable?, build?})` → `{release, environment, "pkey.outlet"}`.
  *   * `("release","fetch",{target, to})` → `{path, size, sha256, version, buildId}`: the verified
  *     download. `target` is a release record hash, `{sha256, buildId?}` or a `binary` decision
  *     (a record the renderer holds is refused: the host fetches and verifies its own).
