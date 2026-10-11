@@ -46,11 +46,19 @@
  */
 @custom-variant short (@media (max-height: 32rem));
 /*
- * A short desktop (PORTAL.md §4.25): at least 1024 px wide and at most 900 px tall, a laptop
- * window. The focused task frame puts the identity beside the task there, so its action is on the
- * first screen.
+ * The focused task frame's two columns (PORTAL.md §4.25, §8): on a short desktop (at least 1024 px
+ * wide and at most 900 px tall, a laptop window) and on a phone on its side (at least 800 px wide
+ * and at most 512 px tall), the identity sits beside the task, so the task's action is on the
+ * first screen. A tall window, a tablet held upright and a phone held upright keep one column.
  */
-@custom-variant shortdesk (@media (min-width: 64rem) and (max-height: 56.25rem));
+@custom-variant twocol {
+  @media (min-width: 64rem) and (max-height: 56.25rem) {
+    @slot;
+  }
+  @media (min-width: 50rem) and (max-height: 32rem) {
+    @slot;
+  }
+}
 @custom-variant motion-safe {
   @media (prefers-reduced-motion: no-preference) {
     &:where(

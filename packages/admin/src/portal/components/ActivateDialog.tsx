@@ -7,7 +7,9 @@ import {
   MonitorSmartphone,
 } from "lucide-react";
 import { cn } from "../../lib/cn.js";
+import { Avatar } from "./Avatar.js";
 import { Button } from "../../ui/Button.js";
+import { announce } from "../../ui/LiveRegion.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { toast } from "../../ui/toast.js";
 import { Celebration, viewTransition } from "../../ui/motion/index.js";
@@ -135,7 +137,8 @@ export function ActivateDialog({
   const claim = useClaimKey();
   const preview = usePreviewKey();
   const licenses = useLicenses(open);
-  const accountId = useSession().data?.account.id ?? null;
+  const account = useSession().data?.account;
+  const accountId = account?.id ?? null;
   const fieldId = React.useId();
   const noticeId = React.useId();
   /** Set while the page leaves for the login card, so the busy state holds until it unloads. */
@@ -169,9 +172,11 @@ export function ActivateDialog({
   /*
    * Focus follows the step (FLOWS.md §2 C18, P-5): a new step's heading takes focus once it is in
    * the DOM, so a screen reader hears where it is and focus never stays on the dialog itself;
-   * coming back to the key (Back, Change key, a refused claim) puts it on the field. A refusal
-   * (an inline verdict) also puts focus on the field: Continue is disabled until the key
-   * changes, and a disabled button that held focus would drop it to `body`.
+   * coming back to the key (Back, Change key, a refused claim) puts it on the field. After a claim
+   * focus goes to Done's primary action (Open, or Back to the app) with the outcome announced once
+   * (BRAND-TRANSITION B12). A refusal (an inline verdict) also puts focus on the field: Continue
+   * is disabled until the key changes, and a disabled button that held focus would drop it to
+   * `body`.
    */
   const anchorRef = React.useRef<HTMLSpanElement>(null);
   /** The step on screen now (a step change in flight has not landed yet). */
@@ -200,7 +205,14 @@ export function ActivateDialog({
     void handle.updateCallbackDone.then(() => {
       if (stepRef.current.kind !== next.kind) return;
       if (next.kind === "enter") focusField();
-      else focusDialogHeading(anchorRef.current);
+      else if (next.kind === "done") {
+        focusDonePrimary(anchorRef.current);
+        announce(
+          next.already
+            ? `${doneNameOf(next)} is already in your library`
+            : `${doneNameOf(next)} is in your library`,
+        );
+      } else focusDialogHeading(anchorRef.current);
     });
   };
 
@@ -327,9 +339,9 @@ export function ActivateDialog({
 
   const done = step.kind === "done" ? step : null;
   const confirm = step.kind === "confirm" ? step : null;
-  const doneName = done
-    ? (done.product?.name ?? done.license?.productName ?? nameFor(done.slug))
-    : "";
+  const doneNameOf = (d: Extract<Step, { kind: "done" }>): string =>
+    d.product?.name ?? d.license?.productName ?? nameFor(d.slug);
+  const doneName = done ? doneNameOf(done) : "";
   const confirmName = confirm?.preview.product.name ?? "";
 
   const openProduct = (s: string): void => {
@@ -401,6 +413,7 @@ export function ActivateDialog({
                 forDevice={forDevice}
               />
             ) : null}
+            {account ? <AccountRow account={account} /> : null}
             <KeyField
               id={fieldId}
               value={key}
@@ -545,6 +558,53 @@ function RefusalActions({
 }
 
 /**
+ * Which account the key joins (§4.17 step 1): the avatar, the name (only when there is one that
+ * is not the email) and the primary email, wrapping rather than truncating. The avatar is
+ * decorative; the group's label tells a screen reader what the row is.
+ */
+function AccountRow({
+  account,
+}: {
+  account: {
+    name?: string | null;
+    email: string;
+    avatarUrl?: string | null;
+  };
+}): React.ReactElement {
+  const name = account.name?.trim();
+  const named = Boolean(name) && name !== account.email;
+  return (
+    <div
+      role="group"
+      aria-label="Account the license joins"
+      className="flex items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5"
+    >
+      <Avatar
+        name={account.name}
+        email={account.email}
+        picture={account.avatarUrl}
+        size={40}
+      />
+      <div className="flex min-w-0 flex-col gap-0.5 text-sm [overflow-wrap:anywhere]">
+        {named ? (
+          <span dir="auto" className="min-w-0 font-medium text-fg-strong">
+            {name}
+          </span>
+        ) : null}
+        <span
+          className={cn(
+            "min-w-0",
+            named ? "text-fg-muted" : "font-medium text-fg-strong",
+          )}
+        >
+          {account.email}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Who sent the person here, and why (§4.18; SIGN-IN.md §3.9), over the field: the product's icon
  * and "<Product> sent you here." An app at its key-entry limit (`manageUrl` =
  * `/activate?product=…`) gets `signin.key.noEntries`, a `warning` that never blocks (Q-5); a
@@ -640,6 +700,23 @@ function DoneStep({
     appReturn && product.data
       ? allowedReturn(appReturn, product.data.returnTo)
       : null;
+  /*
+   * `Back to <product>` replaces `Open <product>` once the product's declared targets arrive.
+   * Focus was on Open (or fell to the dialog or the page when it went), so it moves to the
+   * replacement; focus the person has put elsewhere stays.
+   */
+  const shownBack = React.useRef(back);
+  React.useLayoutEffect(() => {
+    if (shownBack.current === back) return;
+    shownBack.current = back;
+    const active = document.activeElement;
+    if (
+      !active ||
+      active === document.body ||
+      active.getAttribute("role") === "dialog"
+    )
+      document.querySelector<HTMLElement>("[data-done-primary]")?.focus();
+  }, [back]);
   const lede = back
     ? already
       ? `It was already in your account. Go back to ${name} and sign in.`
@@ -684,7 +761,12 @@ function DoneStep({
             >
               See it in your library
             </Button>
-            <Button asChild size="lg" className="h-11 font-medium">
+            <Button
+              asChild
+              size="lg"
+              className="h-11 font-medium"
+              data-done-primary=""
+            >
               <a href={back}>Back to {name}</a>
             </Button>
           </>
@@ -699,6 +781,7 @@ function DoneStep({
               Activate another
             </Button>
             <Button
+              data-done-primary=""
               size="lg"
               className="h-11 font-medium"
               iconEnd={<ArrowRight aria-hidden />}
@@ -905,6 +988,19 @@ export function ConfirmStep({
       </DialogFooter>
     </>
   );
+}
+
+/**
+ * Focus Done's primary action (`Open <product>`, or `Back to <product>` for an app's return),
+ * marked `data-done-primary`; the heading when there is none. `from` is any element inside the
+ * dialog.
+ */
+function focusDonePrimary(from: HTMLElement | null): void {
+  const primary = from
+    ?.closest('[role="dialog"], [role="alertdialog"]')
+    ?.querySelector<HTMLElement>("[data-done-primary]");
+  if (primary) primary.focus();
+  else focusDialogHeading(from);
 }
 
 /**

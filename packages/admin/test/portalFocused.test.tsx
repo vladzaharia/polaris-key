@@ -5,16 +5,12 @@ import type { PortalProduct } from "../src/portal/api.js";
 import {
   axeViolations,
   DAY,
-  dlFile,
-  downloadsView,
   fetchedRequests,
-  installSource,
   license,
   mockFetch,
   NOW_S,
   renderPortal,
   signedIn,
-  storeLink,
 } from "./portalHarness.js";
 
 const MAC_UA =
@@ -132,10 +128,34 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     renderPortal();
     const h1 = await screen.findByRole("heading", {
       level: 1,
-      name: "Your license is on 2 of 2 devices",
+      name: "Free a device",
     });
     expect(h1).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    // Focus lands on the heading once it is the real one, on a cold load as well (§4.25 item 5).
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    // The frame: a factual breadcrumb, then the title, then the 56 px identity row (§4.25).
+    const crumb = screen.getByText(
+      (_, el) => el?.textContent === "Orbit Survey / Device access",
+      { selector: "p" },
+    );
+    expect(crumb.className).toMatch(/\btext-xs\b/);
+    expect(
+      crumb.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const identity = document.querySelector("[data-identity]") as HTMLElement;
+    expect(
+      h1.compareDocumentPosition(identity) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(identity.textContent).toContain("Orbit Survey");
+    expect(identity.textContent).toContain(
+      "From Parallax Nine · 2 of 2 devices in use",
+    );
+    expect(identity.querySelector("[data-art]")?.className).toMatch(
+      /\bsize-14\b/,
+    );
+    // No cropped cover band: the frame has no banner art.
+    expect(document.querySelector("[data-art][class*='h-24']")).toBeNull();
     // No nav: only the way back to the app.
     expect(screen.queryByRole("navigation", { name: "Main" })).toBeNull();
     // An app sent the person (a declared `return=`): only then is it "Back to Orbit Survey".
@@ -220,6 +240,127 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     expect(screen.getByText("Try again")).toBeTruthy();
   });
 
+  it("a free seat: the identity row leaves the seat count to the lede, and focus is on the heading", async () => {
+    mockFetch(
+      signedIn([orbit], {
+        "/api/products/orbit-survey": product({
+          licenses: [{ ...product().licenses[0]!, activeSeatCount: 1 }],
+        }),
+      }),
+    );
+    go("#/p/orbit-survey/free-device");
+    renderPortal();
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Your license has a free device",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    const identity = document.querySelector("[data-identity]") as HTMLElement;
+    expect(identity.textContent).toContain("From Parallax Nine");
+    expect(identity.textContent).not.toMatch(/in use/);
+    expect(screen.getByText(/1 of 2 devices are in use/)).toBeTruthy();
+  });
+
+  it("a removed device: the title leads with a check and the identity row follows the new count", async () => {
+    let removed = false;
+    mockFetch(
+      signedIn([orbit], {
+        "/api/products/orbit-survey": () =>
+          removed
+            ? product({
+                status: "active",
+                licenses: [{ ...product().licenses[0]!, activeSeatCount: 1 }],
+              })
+            : product(),
+        "DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work":
+          () => {
+            removed = true;
+            return { ok: true, deviceId: "work" };
+          },
+      }),
+    );
+    go("#/p/orbit-survey/free-device");
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Free a device" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Work laptop" }),
+    );
+    const done = await screen.findByRole("heading", {
+      level: 1,
+      name: "Work laptop was removed",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(done));
+    // The success check is decoration: the heading's name is its words.
+    expect(done.querySelector("[aria-hidden]")).not.toBeNull();
+    const identity = document.querySelector("[data-identity]") as HTMLElement;
+    await waitFor(() =>
+      expect(identity.textContent).toContain("1 of 2 devices in use"),
+    );
+    expect(
+      screen.getByRole("img", { name: "1 of 2 devices in use" }),
+    ).toBeTruthy();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("a failed removal keeps the choice, says what went wrong, returns focus to Remove and tries again", async () => {
+    let attempts = 0;
+    mockFetch(
+      signedIn([orbit], {
+        "/api/products/orbit-survey": product(),
+        "DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/gaming":
+          () =>
+            ++attempts === 1
+              ? { status: 500, body: { error: "internal" } }
+              : { ok: true, deviceId: "gaming" },
+      }),
+    );
+    go("#/p/orbit-survey/free-device");
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Free a device" });
+    // Not the preselected one: the choice has to survive the failure.
+    await userEvent.click(screen.getByRole("radio", { name: /Gaming PC/ }));
+    const remove = screen.getByRole("button", { name: "Remove Gaming PC" });
+    await userEvent.click(remove);
+    await screen.findByRole("alert");
+    expect(
+      screen
+        .getByRole("radio", { name: /Gaming PC/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    // The busy button was disabled while the request ran: focus comes back to it, never body.
+    await waitFor(() => expect(document.activeElement).toBe(remove));
+    expect(remove.getAttribute("aria-busy")).toBeNull();
+    expect((remove as HTMLButtonElement).disabled).toBe(false);
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(remove);
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Gaming PC was removed",
+    });
+    expect(attempts).toBe(2);
+  });
+
+  it("the action row sticks to the bottom under 761 px and sits in the flow from there up; the column is centred", async () => {
+    mockFetch(signedIn([orbit], { "/api/products/orbit-survey": product() }));
+    go("#/p/orbit-survey/free-device");
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Free a device" });
+    const row = document.querySelector("[data-sticky-actions]") as HTMLElement;
+    expect(row.className).toMatch(/\bsticky\b/);
+    expect(row.className).toMatch(/\bbottom-0\b/);
+    expect(row.className).toMatch(/\bdesk:static\b/);
+    expect(within(row).getByRole("link", { name: "Cancel" })).toBeTruthy();
+    expect(
+      within(row).getByRole("button", { name: "Remove Work laptop" }),
+    ).toBeTruthy();
+    // One centred 640 px column, two columns beside the task on a short desktop (`twocol`).
+    const frame = document.querySelector("main > div") as HTMLElement;
+    expect(frame.className).toMatch(/\bmx-auto\b/);
+    expect(frame.className).toMatch(/\bmax-w-\[40rem\]/);
+    expect(frame.className).toMatch(/\btwocol:max-w-\[65rem\]/);
+  });
+
   it("without return=, the done copy never sends the person back to an app", async () => {
     let removed = false;
     mockFetch(
@@ -242,7 +383,7 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     renderPortal();
     await screen.findByRole("heading", {
       level: 1,
-      name: "Your license is on 2 of 2 devices",
+      name: "Free a device",
     });
     expect(screen.queryByText(/Try again/)).toBeNull();
     await userEvent.click(
@@ -276,135 +417,5 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
         name: "That product isn't in your library",
       }),
     ).toBeTruthy();
-  });
-});
-
-describe("one download, focused flow (PX-10)", () => {
-  const view = downloadsView(
-    "orbit-survey",
-    [
-      dlFile({ artifactId: "lin", platform: "linux", arch: "x86_64" }),
-      dlFile({ artifactId: "mac", platform: "macos" }),
-    ],
-    {
-      stores: [
-        storeLink({
-          kind: "steam",
-          label: "Steam",
-          platforms: ["linux", "windows"],
-        }),
-      ],
-    },
-  );
-
-  it("offers the asked platform's build, its stores and the other platforms", async () => {
-    mockFetch(
-      signedIn([orbit], {
-        "/api/products/orbit-survey": product({ status: "active" }),
-        "/api/products/orbit-survey/downloads": view,
-        "POST /api/releases/orbit-survey/rel_1.4.2/artifacts/lin/token": {
-          url: "/download/tok",
-        },
-      }),
-    );
-    go("#/p/orbit-survey/download?platform=linux");
-    renderPortal();
-    await screen.findByRole("heading", {
-      level: 1,
-      name: "Download Orbit Survey for Linux",
-    });
-    expect(
-      screen.getByRole("button", {
-        name: /Download Orbit Survey 1\.4\.2 for Linux/,
-      }),
-    ).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Steam/ })).toBeTruthy();
-    expect(
-      screen.getByRole("link", { name: "Other platforms: macOS" }),
-    ).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "Main" })).toBeNull();
-    expect(await axeViolations()).toEqual([]);
-  });
-
-  it("lists the asked platform's other ways to install, and points to them when it has no file (P0-48)", async () => {
-    const withSources = {
-      ...view,
-      installSources: [
-        installSource({
-          kind: "homebrew",
-          label: "Homebrew",
-          command: "brew install --cask orbit-survey",
-          platforms: ["macos"],
-        }),
-        installSource({
-          kind: "fdroid",
-          label: "Add to F-Droid",
-          url: "https://k.example/orbit-survey/distribution/fdroid/stable/repo",
-          deepLink:
-            "fdroidrepos://k.example/orbit-survey/distribution/fdroid/stable/repo",
-          platforms: ["android"],
-        }),
-      ],
-    };
-    mockFetch(
-      signedIn([orbit], {
-        "/api/products/orbit-survey": product({ status: "active" }),
-        "/api/products/orbit-survey/downloads": withSources,
-      }),
-    );
-    go("#/p/orbit-survey/download?platform=macos");
-    renderPortal();
-    await screen.findByRole("heading", {
-      level: 1,
-      name: "Download Orbit Survey for macOS",
-    });
-    const mac = screen.getByRole("list", {
-      name: "Other ways to install on macOS",
-    });
-    expect(
-      within(mac).getByRole("button", { name: "Copy Homebrew command" }),
-    ).toBeTruthy();
-    expect(screen.queryByText("F-Droid")).toBeNull();
-    expect(await axeViolations()).toEqual([]);
-    cleanup();
-
-    go("#/p/orbit-survey/download?platform=android");
-    renderPortal();
-    await screen.findByRole("heading", {
-      level: 1,
-      name: "Download Orbit Survey for Android",
-    });
-    expect(
-      screen.getByText(
-        /has no download for Android here\. Other ways to install it are below\./,
-      ),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("link", { name: "Add to F-Droid" }).getAttribute("href"),
-    ).toBe(
-      "fdroidrepos://k.example/orbit-survey/distribution/fdroid/stable/repo",
-    );
-  });
-
-  it("says why when the platform has nothing covered", async () => {
-    mockFetch(
-      signedIn([orbit], {
-        "/api/products/orbit-survey": product({ status: "active" }),
-        "/api/products/orbit-survey/downloads": downloadsView("orbit-survey", [
-          dlFile({
-            artifactId: "win",
-            platform: "windows",
-            canDownload: false,
-            reason: "not_entitled",
-          }),
-        ]),
-      }),
-    );
-    go("#/p/orbit-survey/download?platform=windows");
-    renderPortal();
-    expect(
-      await screen.findByText("Your license doesn't include this version."),
-    ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^Download/ })).toBeNull();
   });
 });

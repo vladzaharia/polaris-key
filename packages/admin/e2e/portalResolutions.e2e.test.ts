@@ -739,19 +739,21 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     }
   });
 
-  it("short screens: the focused flows drop their art too", async ({
+  it("short screens: the focused flows have no art band and put the identity beside the task", async ({
     expect,
   }) => {
     for (const s of [
       {
         scenario: "twelve" as const,
         path: "/#/p/orbit-survey/free-device?return=orbitsurvey%3A%2F%2Fretry",
-        heading: "Your license is on 2 of 2 devices",
+        heading: "Free a device",
+        action: /^Remove Work laptop$/,
       },
       {
         scenario: "three" as const,
         path: "/#/p/nightfall/download?platform=linux",
-        heading: "Download Nightfall for Linux",
+        heading: "Download Nightfall 1.4.2",
+        action: /^Download for Linux/,
       },
     ]) {
       const o = await portal.open(s.scenario, s.path, {
@@ -760,23 +762,22 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       });
       try {
         await h1(o.page, s.heading);
-        // The flow's card (FocusedFlow's FlowCard): its art strip, then its body with the icon.
-        const card = await o.page.evaluate(() => {
-          const section = document.querySelector(
-            'main section[class*="max-w-[41rem]"]',
-          )!;
-          const icon = section.lastElementChild!.firstElementChild!;
-          return {
-            art: section.firstElementChild!.checkVisibility(),
-            // The icon no longer overlaps: it sits wholly inside the card.
-            iconInside:
-              icon.getBoundingClientRect().top >=
-              section.getBoundingClientRect().top,
-          };
-        });
+        // The frame (FocusedFlow's TaskFrame, PX-29): the identity row is the only art in it, and
+        // from 800 px wide on a short screen it sits beside the task, not above it.
+        const frame = await o.page.evaluate(() => ({
+          art: document.querySelectorAll("[data-art]").length,
+          identityRight: document
+            .querySelector("[data-identity]")!
+            .getBoundingClientRect().right,
+        }));
+        const action = await o.page
+          .getByRole("button", { name: s.action })
+          .first()
+          .boundingBox();
+        expect.soft(frame.art, `art on ${s.path}`).toBe(1);
         expect
-          .soft(card, `the flow card on ${s.path}`)
-          .toEqual({ art: false, iconInside: true });
+          .soft(frame.identityRight, `identity beside the task on ${s.path}`)
+          .toBeLessThanOrEqual(action!.x + 1);
       } finally {
         await o.close();
       }

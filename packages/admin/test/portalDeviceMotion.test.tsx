@@ -717,9 +717,7 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     });
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        within(done).getByRole("heading", {
-          name: "Mossgarden is in your library",
-        }),
+        within(done).getByRole("button", { name: "Open Mossgarden" }),
       ),
     );
     await userEvent.click(
@@ -783,12 +781,10 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     expect(plateMark()?.hasAttribute("data-static")).toBe(true);
     expect(plateMark()?.querySelector(".pk-burst")).toBeNull();
     expect(window.localStorage.getItem(MOMENT)).toBe("1");
-    // The same focus as with motion, and no transition started.
+    // The same focus as with motion (on Open), and no transition started.
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        within(done).getByRole("heading", {
-          name: "Mossgarden is in your library",
-        }),
+        within(done).getByRole("button", { name: "Open Mossgarden" }),
       ),
     );
     expect(fake.starts).toEqual([]);
@@ -960,7 +956,7 @@ describe("FreeDevicePage: the removed device's success draws the check, no spark
       renderPortal();
       await screen.findByRole("heading", {
         level: 1,
-        name: "Your license is on 2 of 2 devices",
+        name: "Free a device",
       });
       const before = fetchedRequests().filter(
         (r) => r === "GET /api/products/orbit-survey",

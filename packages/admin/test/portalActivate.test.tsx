@@ -654,7 +654,7 @@ describe("Activate license modal (PX-06)", () => {
     ).toBeNull();
   });
 
-  it("focus follows the step: the confirm heading, the done heading, and the field on Change key (UX-79)", async () => {
+  it("focus follows the step: the confirm heading, Open after the claim, and the field on Change key (UX-79)", async () => {
     mockFetch({
       ...routes(),
       "POST /api/activate/preview": {
@@ -687,10 +687,8 @@ describe("Activate license modal (PX-06)", () => {
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
     });
-    const doneHeading = within(done).getByRole("heading", {
-      name: "Mossgarden is in your library",
-    });
-    await waitFor(() => expect(document.activeElement).toBe(doneHeading));
+    const open = within(done).getByRole("button", { name: "Open Mossgarden" });
+    await waitFor(() => expect(document.activeElement).toBe(open));
   });
 
   it("a refused Continue puts focus on the field, never on body (UX-79)", async () => {
@@ -956,6 +954,126 @@ describe("Activate license modal (PX-06)", () => {
       name: "Add Mossgarden",
     }) as HTMLButtonElement;
     expect(add.disabled).toBe(false);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  describe("the account the license joins (PX-29)", () => {
+    const PICTURE = `/media/avatar/${"a1".repeat(32)}`;
+
+    function withAccount(account: Record<string, unknown>) {
+      return {
+        ...routes(),
+        "/api/me": { account: { ...ACCOUNT, ...account }, csrf: "csrf-token" },
+      };
+    }
+
+    it("shows the avatar initials, the name and the email on the Enter step, labelled", async () => {
+      mockFetch(routes());
+      renderPortal();
+      const dialog = await openFromHeader();
+      const row = within(dialog).getByRole("group", {
+        name: "Account the license joins",
+      });
+      expect(
+        row.querySelector("[data-avatar]")?.getAttribute("data-avatar"),
+      ).toBe("initials");
+      expect(row.textContent).toBe("MFMara Fennickmara@fennick.studio");
+      expect(within(row).getByText("Mara Fennick").getAttribute("dir")).toBe(
+        "auto",
+      );
+      const items = [...row.querySelectorAll("span, div")].map(
+        (e) => e.className,
+      );
+      expect(items.join(" ")).not.toContain("truncate");
+      expect(await axeViolations()).toEqual([]);
+    });
+
+    it("shows the email alone when the name is empty or the same as the email", async () => {
+      for (const name of [null, "  ", ACCOUNT.email]) {
+        mockFetch(withAccount({ name }));
+        renderPortal();
+        const dialog = await openFromHeader();
+        const row = within(dialog).getByRole("group", {
+          name: "Account the license joins",
+        });
+        expect(row.textContent).toBe("M" + ACCOUNT.email);
+        cleanup();
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("shows the stored picture when the account has one", async () => {
+      mockFetch(withAccount({ avatarUrl: PICTURE }));
+      renderPortal();
+      const dialog = await openFromHeader();
+      const row = within(dialog).getByRole("group", {
+        name: "Account the license joins",
+      });
+      expect(
+        row.querySelector("[data-avatar]")?.getAttribute("data-avatar"),
+      ).toBe("picture");
+      expect(row.querySelector("img")?.getAttribute("src")).toContain(PICTURE);
+      expect(row.querySelector("img")?.getAttribute("alt")).toBe("");
+    });
+
+    it("is only on the Enter step: not on confirm, not on done", async () => {
+      mockFetch({
+        ...routes(),
+        "POST /api/activate/preview": {
+          verdict: "addable",
+          product: PREVIEW_PRODUCT,
+          entries: null,
+        },
+      });
+      renderPortal();
+      await pasteAndContinue(await openFromHeader());
+      const confirm = await screen.findByRole("dialog", {
+        name: "Add Mossgarden to your account?",
+      });
+      expect(
+        within(confirm).queryByRole("group", {
+          name: "Account the license joins",
+        }),
+      ).toBeNull();
+      await userEvent.click(
+        within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      );
+      const done = await screen.findByRole("dialog", {
+        name: "Mossgarden is in your library",
+      });
+      expect(
+        within(done).queryByRole("group", {
+          name: "Account the license joins",
+        }),
+      ).toBeNull();
+    });
+  });
+
+  it("after a claim focus is on Open <product>, and the outcome is announced once (PX-29)", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const spoken: string[] = [];
+    const region = await waitFor(() => {
+      const el = document.getElementById("pk-announcer");
+      expect(el).not.toBeNull();
+      return el!;
+    });
+    new MutationObserver(() => {
+      const text = (region.textContent ?? "").replace(/\u200b/g, "");
+      if (text) spoken.push(text);
+    }).observe(region, { childList: true, characterData: true, subtree: true });
+    const dialog = await openFromHeader();
+    await pasteAndContinue(dialog);
+    const done = await screen.findByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    const open = within(done).getByRole("button", { name: "Open Mossgarden" });
+    await waitFor(() => expect(document.activeElement).toBe(open));
+    // The licenses list refetches while Done is up: nothing is said again, focus stays.
+    // (`Promise.withResolvers` is outside this package's `lib`.)
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    expect(spoken).toEqual(["Mossgarden is in your library"]);
+    expect(document.activeElement).toBe(open);
     expect(await axeViolations()).toEqual([]);
   });
 });

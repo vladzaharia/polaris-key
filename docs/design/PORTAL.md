@@ -809,7 +809,9 @@ page.
    already. They keep working and come with it." (S-24 §10).
 3. **Done:** the art with **In your library**, "Mossgarden is in your library · Download it, see
    your license and manage devices on its page. You won't need the key again.", **Activate another**
-   and **Open Mossgarden** (the product page; focus lands on its `h1`).
+   and **Open Mossgarden** (the product page; focus lands on its `h1`). After a claim focus is on
+   **Open Mossgarden** (on **Back to Mossgarden** when an app sent the person), and the outcome is
+   announced once.
 
 **The license key and its field.** Polaris Key license keys are **not** grouped codes. The real
 format (`packages/worker/src/platform/crypto.ts`, `mintLicenseKey` and `productFromKey`) is
@@ -1070,8 +1072,9 @@ the new session appears in "Where you're signed in".
 
 ![Device limit flow](portal/35-device-limit-desktop-dark.png)
 
-This flow is also the fallback behind the sign-in card's **Free a device** link (§4.8, 2026-10-05). Otherwise it is unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
-devices" with a full red meter; devices as radio cards with the least recently used preselected;
+This flow is also the fallback behind the sign-in card's **Free a device** link (§4.8, 2026-10-05). Otherwise it is unchanged: minimal chrome with **Back to Orbit Survey without changes**; the
+title **Free a device**, with "2 of 2 devices in use" beside the identity row and the seat meter
+(full, and red, at the limit); devices as radio cards with the least recently used preselected;
 consequences; **Remove Work laptop**; then "Go back to Orbit Survey and press Try again". This
 flow only frees the seat. Inside the sign-in card the same situation is **Replace a device**, which
 also binds the waiting device (SIGN-IN.md §3.7).
@@ -1082,15 +1085,19 @@ also binds the waiting device (SIGN-IN.md §3.7).
    "<Product> / Download" (12 px, `text-muted`, factual), and the task title (display step, §0.3).
 2. A product identity row (56 px icon, name, developer) instead of a cover band. Art, if shown, is
    the whole frame, never a slice.
-3. The desktop composition is centred, never a left-pinned half column. On short desktop screens
-   the device list and the consequences with the action sit in two columns, so **Remove** is on the
-   first screen. Under 761 px the action row is sticky.
+3. The desktop composition is centred, never a left-pinned half column: one 640 px column. On a
+   short desktop (at least 1024 px wide, at most 900 px tall) and on a phone on its side (at least
+   800 px wide, at most 512 px tall) the identity sits beside the task in two columns, so
+   **Remove** is on the first screen. Under 761 px the action row is sticky; on a short screen it
+   sits in the flow, where a stuck row would cover a third of the viewport.
 4. The focused download names version, platform, architecture and size before the action, shows
    the middle-truncated SHA-256 with **Copy** and the channel rows in A-26's order for the chosen
    platform, an install hint when the build declares one, and an "Other platforms and
    architectures" disclosure. On phones it says "You're viewing desktop builds." with **Email me the
    download** as the primary, never a desktop Download.
-5. Focus lands on the heading; a return link goes only through `safeReturnTo`.
+5. Focus lands on the heading, on arrival by a link as well as by a route change; a return link
+   goes only through `safeReturnTo` (in the SPA, `allowedReturn`: an origin or app scheme the
+   product declares).
 
 ### 4.26 Account
 
@@ -1512,10 +1519,11 @@ a native validation bubble.
   instead of sticking, and what stuck under it (the section pills) sticks to the top; a section
   jump lands 0.75rem under whatever still sticks, and Tab never leaves focus under it. Art steps
   aside for the task and the icon carries the product's identity: no banner on the product page
-  (the icon beside the name, so the primary action shows on load), on Activate's confirm step
-  (the facts and the key start on the first screen) or on a focused flow's card (Free a device,
-  Download; the icon no longer overlaps). The empty library's star and the one-product hero follow
-  §4.12 and §4.13; a focused flow's device list and action sit in two columns (§4.25).
+  (the icon beside the name, so the primary action shows on load) or on Activate's confirm step
+  (the facts and the key start on the first screen). A focused flow (Free a device, Download) has
+  no banner at any size: its identity row sits beside the task from 800 px wide (§4.25), and its
+  action row stays in the flow. The empty library's star and the one-product hero follow §4.12 and
+  §4.13.
 - **No horizontal page scroll at 360 px**, ever (the render script checks every screen). Only code
   blocks scroll inside themselves. The quality bar checks every screen with pixels at 1440 and
   390 px (and 768 px for the seven key pages), and without at 320, 360, 768, 820, 1024, 844 × 390

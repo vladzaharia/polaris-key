@@ -12,13 +12,14 @@ import {
   ProductIcon,
 } from "../src/portal/components/ProductIcon.js";
 import { ConfirmStep } from "../src/portal/components/ActivateDialog.js";
-import { FlowCard } from "../src/portal/components/FocusedFlow.js";
+import { TaskFrame } from "../src/portal/components/FocusedFlow.js";
 
 /**
  * Product art on the library and the product page: the icon image is its own frame, the card
- * keeps no developer byline, and the status sits on a padded plate over the art. Wherever the
- * icon overlaps the art (library card, focused flow, the activate dialog's confirm), a product
- * without art shows its letter once: on the icon's letter tile, never again on the cover.
+ * keeps no developer byline, and the status sits on a padded plate over the art. Where the icon
+ * overlaps the art (library card, the activate dialog's confirm), a product without art shows its
+ * letter once: on the icon's letter tile, never again on the cover. A focused task's identity
+ * row has no cover to repeat it on (PX-29).
  */
 
 const MAC_UA =
@@ -127,20 +128,26 @@ describe("an art-less cover never repeats the icon's letter", () => {
     expect(fallbacks(card)).toEqual(["D"]);
   });
 
-  it("on a focused flow's card", () => {
+  it("on a focused task's identity row: the icon's letter once, and no cover band", () => {
     render(
-      <FlowCard
+      <TaskFrame
         slug="orbit-survey"
         name="Orbit Survey"
         developer="Parallax Nine"
         tint={null}
         iconUrl={null}
-        headerUrl={null}
+        task="Device access"
+        title="Free a device"
       >
-        <p>Your license is on 2 of 2 devices</p>
-      </FlowCard>,
+        <p>Remove one of these.</p>
+      </TaskFrame>,
     );
-    expect(fallbacks(document)).toEqual(["", "O"]);
+    // One art element in the frame: the 56 px identity icon. A cover band would be a second one.
+    expect(fallbacks(document)).toEqual(["O"]);
+    expect(document.querySelectorAll("[data-art]")).toHaveLength(1);
+    expect(document.querySelector("[data-art='fallback']")?.className).toMatch(
+      /\bsize-14\b/,
+    );
   });
 
   it("on the activate dialog's confirm step", () => {
