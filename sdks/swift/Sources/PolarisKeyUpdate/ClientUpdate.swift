@@ -1,17 +1,12 @@
-// `client.update` and `client.packs` (notes/SDK-PARITY-PASS.md §2.4, SP-S03).
+// `client.update` (notes/SDK-PARITY-PASS.md §2.4, SP-S03).
 //
-// The umbrella `PolarisKey` never links Sparkle or libzstd, so the update client cannot be a
-// stored property of `PolarisKeyClient`. Importing `PolarisKeyUpdate` adds both as properties
-// instead: the first read builds ONE `UpdateClient` over the client's Core, with the release-key
-// pins the client was built with (`PolarisKeyClientOptions.pinnedReleaseKeys`, which
-// `fromBundle()` reads from `PolarisKey.plist`), and every later read returns the same instance.
-// A host that needs other update options (an outlet, packs, methods) calls
-// `configureUpdate(_:)` once, before the first read.
+// The umbrella `PolarisKey` never links Sparkle, packs or libzstd, so the update client cannot
+// be a stored property of `PolarisKeyClient`. Importing `PolarisKeyUpdate` adds it lazily over
+// the client's Core. A packs host passes its `PacksClient` as `UpdateClientOptions.content`.
 
 import Foundation
 import PolarisKey
 import PolarisKeyCore
-import PolarisKeyPacks
 
 /// The attachment key for the update client.
 private final class UpdateAttachment {}
@@ -40,9 +35,9 @@ extension PolarisKeyClient {
         return result
     }
 
-    /// The update client: `check`, `decide`, the channel feed, release records, Sparkle helpers,
-    /// and `packs`. Built on first read from the client's release-key pins; without pins it is
-    /// the check-only client (`decide()` raises `not-configured`, or `invalid-options` when the pins were refused).
+    /// The update client: `check`, `decide`, the channel feed, release records and Sparkle
+    /// helpers. Built on first read from the client's release-key pins; without pins it is the
+    /// check-only client (`decide()` raises `not-configured`, or `invalid-options` when pins fail).
     public nonisolated var update: UpdateClient {
         var fresh = false
         let client = attachments.with { table -> UpdateClient in
@@ -70,40 +65,36 @@ extension PolarisKeyClient {
         return client
     }
 
-    /// The pack facet (`update.packs`).
-    public nonisolated var packs: PacksClient { update.packs }
 }
 
 // ── Boot hooks (§3.4) ───────────────────────────────────────────────────────────────────────
 
 extension PolarisKeyClient {
-    /// Install `client.boot()`'s decide and fetch stages over the update client: the signed
-    /// decision (when release keys are pinned) and the required packs (when the content stamp
-    /// names any). Called by `client.update`'s first read; call again after `configureUpdate`.
+    /// Install `client.boot()`'s signed-decision stage. A packs host supplies content through
+    /// `UpdateClientOptions.content`, whose hooks are composed below without linking packs here.
     public nonisolated func installUpdateBootHooks() {
         let update = self.update
-        let packs = update.packs
-        var hooks = BootHooks()
+        var hooks = bootHooks
         if !pinnedReleaseKeys.isEmpty {
             hooks.decide = {
                 guard let check = try? await update.decide() else { return BootEvent.Decision.none }
                 return bootDecision(check.decision)
             }
         }
-        if packs.configured {
+        if let content = update.content, content.configured {
             hooks.fetch = { send in
                 do {
-                    let r = try await packs.bootFetch(send: send)
-                    return BootFetchAnswer(result: r.result, installed: r.installed)
+                    let result = try await content.bootFetchStage(send: send)
+                    return BootFetchAnswer(result: result.result, installed: result.installed)
                 } catch {
                     return BootFetchAnswer(result: .failed, installed: [])
                 }
             }
             hooks.packOptions = {
-                guard let o = try? await packs.bootOptions() else {
+                guard let lists = try? await content.bootPackLists() else {
                     return BootPackLists(required: [], essential: [])
                 }
-                return BootPackLists(required: o.requiredPacks, essential: o.essentialPacks)
+                return BootPackLists(required: lists.required, essential: lists.essential)
             }
         }
         setBootHooks(hooks)

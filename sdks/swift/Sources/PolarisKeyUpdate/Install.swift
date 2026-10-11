@@ -19,7 +19,6 @@
 import CryptoKit
 import Foundation
 import PolarisKeyCore
-import PolarisKeyPacks
 
 #if os(macOS)
     import AppKit
@@ -193,10 +192,13 @@ extension UpdateClient {
                 UnsupportedReason.outlet,
                 "This build updates through the platform (the OS or its package manager).")
         case .packs(let install, _, _, _):
+            guard let content else {
+                return no(
+                    UnsupportedReason.dependency,
+                    "Add PolarisKeyPacks and configure it as UpdateClientOptions.content to install packs.")
+            }
             do {
-                let installed = try await packs.ensure(install.map(\.pack))
-                return installed.contains { $0.activation == "restart" }
-                    ? .restartRequired : .applied
+                return try await content.installReleases(install) ? .restartRequired : .applied
             } catch {
                 return no(UnsupportedReason.runtime, "The packs could not be installed: \(error)")
             }

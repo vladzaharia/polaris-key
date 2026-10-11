@@ -143,7 +143,7 @@ let package = Package(
         ),
         .target(
             name: "PolarisKeyPacks",
-            dependencies: ["PolarisKeyCore", "libzstd"],
+            dependencies: ["PolarisKeyCore", "PolarisKeyPlatform", "libzstd"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
@@ -158,11 +158,9 @@ let package = Package(
         .target(
             name: "PolarisKeyUpdate",
             dependencies: [
-                // The umbrella, so `import PolarisKeyUpdate` adds `client.update` and
-                // `client.packs` to `PolarisKeyClient` (the umbrella never links Sparkle).
+                // The umbrella adds `client.update` to `PolarisKeyClient`; packs stay optional.
                 "PolarisKey",
                 "PolarisKeyCore",
-                "PolarisKeyPacks",
                 // The one AppDistributor call lives in PolarisKeyPlatform (P5-05).
                 "PolarisKeyPlatform",
                 .product(

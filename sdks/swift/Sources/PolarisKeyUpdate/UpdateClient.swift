@@ -38,12 +38,11 @@
 
 import Foundation
 import PolarisKeyCore
-@_exported import PolarisKeyPacks
 
 /// Wire v4 update inputs. The installed VERSION is `CoreOptions.version`; everything else the
 /// decision needs about this install is here, and is validated when the client is constructed (a
 /// bad value raises `invalid-options`).
-public struct UpdateClientOptions: Sendable, Equatable {
+public struct UpdateClientOptions: Sendable {
     /// `kid` → raw 32-byte Ed25519 release key, base64url (the `TrustSet` encoding): the ONLY keys
     /// a release record verifies against. Two or more are valid at once during a rotation. Empty
     /// ⇒ `decide()` raises `not-configured`; a key that is also a trust pin ⇒ construction raises
@@ -85,10 +84,10 @@ public struct UpdateClientOptions: Sendable, Equatable {
     public var platform: String?
     /// The device's `Arch` value. Default: this binary's (`arm64`, `x86_64`).
     public var arch: String?
-    /// Packs (`update.packs`, plans/P4-01.md §2.6–§2.9): the content stamp, embedded baselines,
-    /// variant preferences and the store directory. Pack records verify against
-    /// `pinnedReleaseKeys`.
-    public var packs: PacksOptions
+    /// Optional packs integration. Supplying a `PacksClient` makes content decisions, revocation
+    /// learning and pack install decisions available; omitting it leaves `decide()` independent of
+    /// packs and libzstd.
+    public var content: (any UpdateContentSource)?
 
     public init(
         pinnedReleaseKeys: TrustSet = [:],
@@ -104,7 +103,7 @@ public struct UpdateClientOptions: Sendable, Equatable {
         engine: String? = nil,
         platform: String? = nil,
         arch: String? = nil,
-        packs: PacksOptions = PacksOptions()
+        content: (any UpdateContentSource)? = nil
     ) {
         self.pinnedReleaseKeys = pinnedReleaseKeys
         self.outlet = outlet
@@ -119,7 +118,7 @@ public struct UpdateClientOptions: Sendable, Equatable {
         self.engine = engine
         self.platform = platform
         self.arch = arch
-        self.packs = packs
+        self.content = content
     }
 
     /// The main bundle's `CFBundleVersion`, when it has one.
@@ -257,10 +256,8 @@ public struct VersionCheck: Sendable, Equatable {
 }
 
 public actor UpdateClient {
-    /// The pack facet (`ensure`, `state`, `registerHandler`, progress events). Cross-platform:
-    /// it lives in PolarisKeyPacks and links no Sparkle.
-    public nonisolated let packs: PacksClient
     let core: CoreContext
+    public nonisolated let content: (any UpdateContentSource)?
     private let configured: ConfiguredUpdate?
     /// Why the client built from `client.update`'s pins is check-only: its options were refused
     /// at construction. `decide()` and `releaseRecord()` raise it instead of `not-configured`, so
@@ -279,18 +276,18 @@ public actor UpdateClient {
     /// `not-configured` on it: they need `UpdateClientOptions.pinnedReleaseKeys`.
     public init(core: CoreContext) {
         self.core = core
+        self.content = nil
         self.configured = nil
         self.configurationError = nil
-        self.packs = PacksClient(core: core, releaseKeys: [:])
     }
 
     /// A check-only client that remembers why its options were refused (`client.update` over
     /// pins that failed `init(core:options:)`).
     init(core: CoreContext, configurationError: PolarisError) {
         self.core = core
+        self.content = nil
         self.configured = nil
         self.configurationError = configurationError
-        self.packs = PacksClient(core: core, releaseKeys: [:])
     }
 
     /// A client for wire v4's signed decision too. Throws `invalid-options` (`PolarisError`) for
@@ -299,24 +296,9 @@ public actor UpdateClient {
     public init(core: CoreContext, options: UpdateClientOptions) throws {
         self.core = core
         let configured = try configure(options, pinnedTrust: core.pinnedTrust)
+        self.content = options.content
         self.configured = configured
         self.configurationError = nil
-        // plans/P4-29.md §2.4 step 1: before any check this process, the menu of the committed
-        // feed of the configured channel, re-verified on the reload path (no freshness: a stale
-        // menu only falls back). No cache or no committed feed is no menu.
-        let platform = configured.options.platform ?? PlatformFamily.updatePlatform
-        self.packs = PacksClient(
-            core: core, releaseKeys: configured.releaseKeys, options: options.packs,
-            loadFeedDeltas: { [core] in
-                guard let platform else { return nil }
-                let committed = reloadFeeds(
-                    await core.updateSlices().feeds, trust: await core.trust, expectedAud: core.product,
-                    platform: platform)
-                for k in boundChannels(core.channel) {
-                    if let cf = committed.feeds[k] { return .some(cf.feed.content.deltas) }
-                }
-                return nil
-            })
     }
 
     /// The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), detecting it first when the
@@ -641,7 +623,7 @@ extension UpdateClient {
         let slices = await core.updateSlices()
         let deviceId = await core.deviceId
         // plans/P4-13.md §2.5: a host with a content stamp runs the content decision.
-        let content = (try? await packs.contentInput()) ?? nil
+        let checkContent = (try? await content?.contentInput()) ?? nil
         let input = UpdateCheckInput(
             channel: channel ?? core.channel, expectedAud: core.product, trust: await core.trust,
             releaseKeys: c.releaseKeys,
@@ -650,7 +632,7 @@ extension UpdateClient {
             installId: deviceId.isEmpty ? nil : deviceId, installed: installed,
             outlet: outlet.outlet, subkind: outlet.subkind, staged: staged,
             skipVersion: skipVersion, methods: c.options.methods, feeds: slices.feeds,
-            releaseRecords: slices.releaseRecords, content: content)
+            releaseRecords: slices.releaseRecords, content: checkContent)
         let feedTemplate = ep?.feed
         let recordTemplate = ep?.record
         let platform = installed.platform
@@ -668,8 +650,8 @@ extension UpdateClient {
             throw raise(error)
         case .ok(let run):
             await core.commitUpdateSlices(feeds: run.feeds, releaseRecords: run.releaseRecords)
-            packs.noteFeedDeltas(run.feed.content.deltas)
-            if let revocations = run.revocations { try await packs.recordRevocations(revocations) }
+            content?.noteFeedDeltas(run.feed.content.deltas)
+            if let revocations = run.revocations { try await content?.recordRevocations(revocations) }
             return run.check
         }
     }
@@ -700,7 +682,7 @@ extension UpdateClient {
             throw raise(error)
         case .ok(let run):
             await core.commitUpdateSlices(feeds: run.feeds)
-            packs.noteFeedDeltas(run.feed.content.deltas)
+            content?.noteFeedDeltas(run.feed.content.deltas)
             return FeedCheck(
                 channel: run.check.channel, feed: run.feed, source: run.check.feed,
                 errors: run.check.errors.filter { $0.code != RECORD_WITHHELD })
