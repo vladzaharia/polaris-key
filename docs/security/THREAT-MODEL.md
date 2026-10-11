@@ -5076,12 +5076,22 @@ version answers `unsupported` (`version`) and installs nothing.
     installer-based driver instead.
 - **The bridge's trust boundary.** `exposePolarisBridge` registers `ipcMain` handlers that any
   renderer loaded with the preload can call: state reads, `refresh`, sign-in, `submitKey`,
-  `signOut`, `importBundle`, `fetchSchema` and an `invoke` allowlist (`DEFAULT_INVOKE_VERBS`:
-  device list, rename, deauthorize and report, update check and decide, release changelog,
-  install URL and download URL).
+  `signOut`, `importBundle`, `fetchSchema` and the v4 `invoke` allowlist
+  (`DEFAULT_INVOKE_VERBS`: the v3 device/update/release reads plus config mint and local writes,
+  commerce binding and claim, discovery/store/device reads, boot, crash tags, verified fetch,
+  download-model/platform reads, updater feed URLs and update-health events).
   - `invoke` answers only the allowlist plus the host's own `invoke.extra` verbs, looked up with
     `Object.hasOwn`, so a prototype key never resolves. Arguments are type-checked before they
     reach the client.
+  - `release.fetch` is the only bridge verb that writes a renderer-named file. Its `to` is
+    **relative** to the host-owned `downloadDir` (the caller passes Electron's
+    `app.getPath("downloads")`); an absolute path, a `..` escape or the directory itself is
+    refused with `invalid-argument`, and a host that configured no directory refuses
+    `not-configured`. The host resolves and returns the resulting path, never accepting a
+    renderer-supplied release record: it looks the record up and verifies it against its pinned
+    release keys before downloading. A renderer cannot create links through this bridge; a local
+    process that can plant a symlink inside the user-writable download directory remains
+    equivalent to local filesystem write access.
   - The device code of a sign-in stays in the main process; the renderer holds a random flow id
     that expires with the code. The token, the keyring and the cache never cross the boundary.
     `BridgeState` carries the verified documents and the sync bookkeeping only.
