@@ -37,14 +37,6 @@ const published = readdirSync(join(ROOT, "packages"), { withFileTypes: true })
   }))
   .filter(({ pkg }) => pkg.private !== true);
 
-/** A docs URL names a page when a content file or an index file answers it. */
-function docsPageExists(url: URL): boolean {
-  const path = url.pathname.replace(/^\/docs\//, "").replace(/\/$/, "");
-  return ["", "/index"].some((tail) =>
-    [".md", ".mdx"].some((ext) => existsSync(join(DOCS, path + tail + ext))),
-  );
-}
-
 describe("published packages", () => {
   it("finds the published packages", () => {
     // A change of layout would otherwise leave nothing to check.
@@ -83,10 +75,16 @@ describe("published packages", () => {
         expect(typeof pkg.homepage).toBe("string");
         const url = new URL(pkg.homepage as string);
         expect(url.protocol).toBe("https:");
-        if (url.hostname === "key.plrs.im")
-          expect(docsPageExists(url), `${url.href} names no docs page`).toBe(
-            true,
+        if (url.hostname === "key.plrs.im") {
+          // A docs URL names a page when a content file or an index file answers it.
+          const page = url.pathname.replace(/^\/docs\//, "").replace(/\/$/, "");
+          const found = ["", "/index"].some((tail) =>
+            [".md", ".mdx"].some((ext) =>
+              existsSync(join(DOCS, page + tail + ext)),
+            ),
           );
+          expect(found, `${url.href} names no docs page`).toBe(true);
+        }
       });
 
       it("has a bugs url", () => {

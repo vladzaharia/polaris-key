@@ -221,6 +221,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `action-bundle`      | `pnpm gen action-bundle`      | The publish Action's committed esbuild bundle of the CLI                          |
 | `docs-reference`     | `pnpm gen docs-reference`     | Docs reference pages generated from the validators, routes, migrations and corpus |
 | `registry-docs`      | `pnpm gen registry-docs`      | This registry as a docs page and the AGENTS.md generated-files table              |
+| `readme-work`        | `pnpm gen readme-work`        | The Work on it block of each internal README                                      |
 | `parity`             | `pnpm gen parity`             | Parity gate: every SDK's parity.json against the feature registry                 |
 | `graph-index`        | `pnpm gen graph-index`        | Omniplatform program INDEX.md from workpackages.json                              |
 | `mirrors`            | `pnpm gen mirrors`            | Typed config mirrors for a product catalog, in five languages                     |
