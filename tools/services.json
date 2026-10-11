@@ -37,7 +37,13 @@
     {
       "id": "sign-in",
       "label": "Sign-in",
-      "switches": []
+      "switches": [
+        {
+          "id": "customer-portal",
+          "label": "Customer portal",
+          "kind": "setting"
+        }
+      ]
     },
     {
       "id": "cloud-sync",

@@ -89,12 +89,12 @@ const SEEDS: Seed[] = [
   },
   // Never declared (NULL): untouched; it reads as the defaults, which have Release off.
   { slug: "defaults", json: null, source: "manifest" },
-  // Release on, with a declared registration policy and an unknown slug: both survive.
+  // Release on, with an unknown slug: it survives.
   {
     slug: "extras",
     json: legacy(
       { release: true, update: true },
-      { zeta: { enabled: true }, registration: "open" },
+      { zeta: { enabled: true } },
     ),
     source: "manifest",
   },
@@ -186,11 +186,10 @@ describe("0033_distribution_backfill", () => {
     }
   });
 
-  it("keeps the declared registration and an unknown slug", async () => {
+  it("keeps an unknown slug", async () => {
     const { raw, db } = await seeded();
     apply(raw, [BACKFILL]);
     const parsed = parseServices((await rows(db)).extras!.json);
-    expect(parsed.registration).toBe("open");
     expect(parsed.unknown).toEqual({ zeta: { enabled: true } });
     expect(parsed.services.update.enabled).toBe(true);
   });

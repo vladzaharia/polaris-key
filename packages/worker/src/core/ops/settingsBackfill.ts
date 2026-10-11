@@ -233,7 +233,6 @@ export type BackfillManifest = Pick<
   | "profiles"
   | "webOrigins"
   | "services"
-  | "registration"
 >;
 
 /** The stored state of one product, read before classifying. */
@@ -1004,17 +1003,13 @@ export function planBackfill(
   // ── the services marker (an existing `*_source` column, S-18 §4.14.1) ──────────────────
   {
     const stored = parseServices(product.services_json ?? null);
-    const servicesView = (
-      services: Record<string, { enabled: boolean }>,
-      registration: unknown,
-    ) => ({
+    const servicesView = (services: Record<string, { enabled: boolean }>) => ({
       enabled: Object.keys(services)
         .filter((s) => services[s]?.enabled)
         .sort(),
-      ...(registration !== undefined ? { registration } : {}),
     });
-    const before = servicesView(stored.services, stored.registration);
-    const declared = servicesView(manifest.services, manifest.registration);
+    const before = servicesView(stored.services);
+    const declared = servicesView(manifest.services);
     const cls: BackfillClass =
       canonical(before) === canonical(declared) ? "equal" : "differs";
     const claimed = product.services_source === "admin";

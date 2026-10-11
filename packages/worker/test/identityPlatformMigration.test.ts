@@ -1076,13 +1076,13 @@ describe("claim at next sign-in through a provider: platform product", () => {
       const COOKIE = "pkey_djdl_session";
 
       beforeEach(async () => {
-        // License, Config and Identity on; registration only behind a product sign-in.
+        // Config and Identity on, License off: registration is derived behind a product sign-in.
         await setServices(
           db,
           "djdl",
           serializeServices({
             services: {
-              license: { enabled: true },
+              license: { enabled: false },
               config: { enabled: true },
               release: { enabled: false },
               distribution: { enabled: false },
@@ -1090,13 +1090,12 @@ describe("claim at next sign-in through a provider: platform product", () => {
               identity: { enabled: true },
               sync: { enabled: false },
             },
-            registration: "requires-identity",
           }),
           "manifest",
           NOW,
         );
         product = (await loadProduct(env, db, "djdl"))!;
-        expect(product.registration).toBe("requires-identity");
+        expect(product.services.identity.enabled).toBe(true);
       });
 
       /** The `return_to` browser flow: the callback answers with the product session cookie. */

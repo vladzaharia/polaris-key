@@ -67,6 +67,7 @@ import {
 import {
   DEFAULT_ENABLED_SERVICES,
   MODULE_SERVICES,
+  SERVICE_REQUIRES,
   SERVICE_SLUGS,
   type ProductModule,
   type ServiceSlug,
@@ -149,7 +150,32 @@ export function validateCatalogCloudSync(input: {
 /** The enablement set a manifest declares, in the shape `products.services_json` stores. */
 export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
 
-/** Who may register a device against this product (design spec §2.3). */
+/**
+ * The requirement rule's codes and messages, one per `requires` edge of the service table
+ * (ST-38). Keys are LITERAL on purpose: rule 9's parity sweep reads codes from source, and
+ * `test/serviceTable.test.ts` fails when an edge has no literal code here.
+ */
+const REQUIREMENT_MESSAGES: ReadonlyMap<string, string> = new Map([
+  [
+    "distribution_requires_release",
+    "The distribution service delivers release artifacts, so release must be enabled too.",
+  ],
+  [
+    "update_requires_distribution",
+    "The update service serves a feed over distribution's delivery state, so distribution must be enabled too.",
+  ],
+  [
+    "sync_requires_config",
+    "Cloud Sync syncs catalog config keys, so config must be enabled too.",
+  ],
+  [
+    "sync_requires_identity",
+    "Cloud Sync needs a signed-in person, so identity must be enabled too.",
+  ],
+]);
+
+/** Who may register a device against this product (design spec §2.3). The policy is derived from
+ *  the services (ST-38); `devices.registration` is a removed field. */
 export const REGISTRATION_POLICIES = [
   "open",
   "requires-identity",
@@ -644,9 +670,6 @@ export interface ParsedManifest {
    * This is the value the manifest used to validate and then throw away.
    */
   services: ManifestServices;
-  /** `devices.registration` — who may register a device (§2.3). Undefined = undeclared; the
-   *  default is derived from the enabled services at the point of use, not baked in here. */
-  registration?: RegistrationPolicy;
   /**
    * `web.origins` — the exact browser origins allowed to read this product's device-facing
    * responses through CORS (P0-05). Always present; `[]` when undeclared, which means no
@@ -1393,7 +1416,8 @@ export function servicesFromModules(
   return out;
 }
 
-/** Read `devices.registration` off a product document, or undefined when undeclared. */
+/** Read `devices.registration` off a product document, or undefined when undeclared. The field
+ *  is removed (ST-38): the policy is derived from the services, so any value is refused. */
 function registrationPolicy(productRoot: Record<string, unknown>): unknown {
   return asRecord(productRoot.devices).registration;
 }
@@ -2800,68 +2824,39 @@ function validateDocuments(
     );
   }
 
-  // The chain is release ← distribution ← update (README §3.2): truth, then delivery, then
-  // decision. Both edges are errors, not warnings: each describes a service that would answer
-  // with an empty document rather than an error — a silent failure. The legacy `releases`
-  // module enables all three by construction, so it trips neither (see MODULE_SERVICES).
-  //
-  // Distribution delivers what Release says exists; with Release off there is nothing to
-  // deliver.
-  if (modules.includes("distribution") && !modules.includes("release")) {
-    add(
-      errors,
-      "product",
-      "/modules/distribution",
-      "distribution_requires_release",
-      "The distribution service delivers release artifacts, so release must be enabled too.",
-    );
-  }
-  // Update tells a device what to do next over what Distribution has delivered. This edge
-  // subsumes the retired `update_requires_release`: Distribution itself requires Release.
-  if (modules.includes("update") && !modules.includes("distribution")) {
-    add(
-      errors,
-      "product",
-      "/modules/update",
-      "update_requires_distribution",
-      "The update service serves a feed over distribution's delivery state, so distribution must be enabled too.",
-    );
-  }
-  // Cloud Sync (plans/U-01.md §0): user settings are catalog `config` keys, and the Cloud Sync
-  // principal is the account signed in through the product's Identity service.
-  if (modules.includes("sync") && !modules.includes("config")) {
-    add(
-      errors,
-      "product",
-      "/modules/sync",
-      "sync_requires_config",
-      "Cloud Sync syncs catalog config keys, so config must be enabled too.",
-    );
-  }
-  if (modules.includes("sync") && !modules.includes("identity")) {
-    add(
-      errors,
-      "product",
-      "/modules/sync",
-      "sync_requires_identity",
-      "Cloud Sync needs a signed-in person, so identity must be enabled too.",
-    );
+  // The requirement rule (ST-38): a service may be on only while every service it requires is on
+  // (`SERVICE_REQUIRES`, generated from tools/services.json). One generic rule for every edge:
+  // the chain release ← distribution ← update (truth, then delivery, then decision; the legacy
+  // `releases` module enables all three by construction, so it trips none), and Cloud Sync's
+  // Config and Identity (plans/U-01.md §0). Each edge is an error, not a warning: it describes a
+  // service that would answer with an empty document rather than an error, a silent failure.
+  // The codes stay literal in `REQUIREMENT_MESSAGES` (rule 9 reads codes from source).
+  for (const slug of SERVICE_SLUGS) {
+    if (!modules.includes(slug)) continue;
+    for (const required of SERVICE_REQUIRES[slug]) {
+      if (modules.includes(required)) continue;
+      const code = `${slug}_requires_${required}`;
+      add(
+        errors,
+        "product",
+        `/modules/${slug}`,
+        code,
+        REQUIREMENT_MESSAGES.get(code) ??
+          `The ${slug} service requires ${required}, so ${required} must be enabled too.`,
+      );
+    }
   }
 
-  // `devices.registration` decides who may mint a device token (design spec §2.3). An
-  // unrecognised value is refused rather than coerced: silently falling back to a default
-  // would answer "requires-licence" with "open" for the one manifest that most meant it.
-  const registration = registrationPolicy(productRoot);
-  if (
-    registration !== undefined &&
-    !isOneOf(registration, REGISTRATION_POLICIES)
-  ) {
+  // `devices.registration` is removed (ST-38; tracks.md rule 6: a removed field is an error that
+  // names its replacement). The policy is derived from the services: requires a licence with
+  // License on, else requires sign-in with Identity on, else open.
+  if (registrationPolicy(productRoot) !== undefined) {
     add(
       errors,
       "product",
       "/devices/registration",
       "invalid_registration_policy",
-      `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}.`,
+      "devices.registration is removed: the registration policy follows the enabled services (License on: requires a licence; else Identity on: requires sign-in; else open). Delete it. Anonymous devices on a licensed product come from licensing.access.",
     );
   }
 
@@ -4577,12 +4572,6 @@ export function parseManifest(
       isString,
     ),
   };
-
-  // Validated above; carried verbatim so the derivation of the default (which depends on the
-  // enabled services) stays with the consumer rather than being frozen at ingest.
-  const registration = registrationPolicy(productRoot);
-  if (isOneOf(registration, REGISTRATION_POLICIES))
-    parsed.registration = registration;
 
   if (productRoot.oidc !== undefined) {
     const provider = isOneOf(oidcRoot.provider, OIDC_PROVIDER_VALUES)

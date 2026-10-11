@@ -122,7 +122,6 @@ function base(): Docs {
         identity: { enabled: true },
         sync: { enabled: true },
       },
-      devices: { registration: "requires-license" },
       web: { origins: ["https://app.acme.example", "http://localhost:8060"] },
       presentation: {
         icon: { src: "./.pkey/art/icon.png", sha256: "a".repeat(64) },
@@ -1527,10 +1526,11 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).modules.sync = { enabled: false }),
   },
   {
+    // Removed (ST-38): the policy follows the services, so any declared value is refused.
     code: "invalid_registration_policy",
     file: "product",
     schema: "rejects",
-    mutate: (d) => (p(d).devices.registration = "invite-only"),
+    mutate: (d) => (p(d).devices = { registration: "requires-license" }),
   },
   {
     code: "config_without_activation",

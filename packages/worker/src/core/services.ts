@@ -15,6 +15,7 @@
 import type { RegistrationPolicy } from "@polaris-key/protocol/core";
 import {
   DEFAULT_ENABLED_SERVICES,
+  SERVICE_REQUIRES,
   SERVICE_SLUGS,
   type ServiceSlug,
 } from "@polaris-key/manifest";
@@ -78,29 +79,18 @@ function isRegistrationPolicy(value: unknown): value is RegistrationPolicy {
 }
 
 /**
- * Everything `products.services_json` carries: the enablement set, plus the product's declared
- * device-registration policy.
+ * Everything `products.services_json` carries: the enablement set.
  *
- * ── WHY REGISTRATION LIVES IN THE SAME COLUMN ───────────────────────────────────────────────
+ * ── THE RETIRED `registration` KEY (ST-38) ──────────────────────────────────────────────────
  *
- * `devices.registration` (wire v3 §6, spec §2.3) is manifest-carried and has to be persisted
- * somewhere, and its DEFAULT is a function of the enablement set — `requires-license` if
- * License is on, else `requires-identity` if Identity is on, else `open`. Reading a policy out
- * of one column while deriving its default from another is how the two drift; a third
- * `products` column for a single three-valued enum is churn for the same answer. So the blob
- * gains a top-level `"registration"` key beside the slugs:
- *
- *     {"license":{"enabled":true},"config":{"enabled":true},"registration":"open"}
- *
- * `registration` is OPTIONAL and stays optional in storage: undeclared means "derive from the
- * services", which is a different thing from "someone chose `open`" — a product that turns
- * License off later must move to the derived `open`, not stay pinned to a value nobody wrote.
- * `resolveRegistration` is the only place that collapses the two.
+ * The blob used to carry a declared device-registration policy beside the slugs
+ * (`"registration":"open"`). The policy is now always derived from the services
+ * (`resolveRegistration`), so nothing writes the key and nothing reads it: a stored one is
+ * tolerated by the parser and dropped by the next write. A product that wants anonymous devices
+ * on a licensed product gets them from `license.access` (LX-36), not from a registration choice.
  */
 export interface ProductServices {
   services: ServicesMap;
-  /** As DECLARED. `undefined` = undeclared; call `resolveRegistration` for the effective value. */
-  registration?: RegistrationPolicy;
   /**
    * Slugs this build does not know, carried through so a round-trip does not delete them. A newer
    * worker may have written a service (e.g. `distribution`) that a rolled-back or not-yet-deployed
@@ -130,9 +120,9 @@ export interface ProductServices {
  *     it back: rolling a worker back past the release that introduced a slug must neither reset
  *     the slugs it does know nor delete the one it does not. Malformed unknown values still
  *     discard the whole record, and `__proto__` is never a slug.
- *   - A well-formed record that simply omits a slug gets that slug's default; one that omits
- *     `registration` gets the derived policy (`resolveRegistration`). Undeclared means "not
- *     stated", which is the same thing the manifest means by it.
+ *   - A well-formed record that simply omits a slug gets that slug's default. Undeclared means
+ *     "not stated", which is the same thing the manifest means by it. A retired `registration`
+ *     key (ST-38) is held to the three policies and otherwise ignored.
  *   - It never throws. Hostile DB content must not be able to 500 a request.
  *
  * Falling back to the DEFAULTS (rather than to all-disabled) is deliberate: this parser sits
@@ -155,13 +145,13 @@ export function parseServices(
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return fallback();
 
   const services = defaults();
-  let registration: RegistrationPolicy | undefined;
   const unknown: Record<string, { enabled: boolean }> = {};
   let hasUnknown = false;
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    // ST-38: the retired declared policy. Still held to its three values (a record we cannot
+    // read is not trusted), then ignored: the policy is derived.
     if (key === "registration") {
       if (!isRegistrationPolicy(value)) return fallback();
-      registration = value;
       continue;
     }
     if (key === "__proto__") return fallback();
@@ -178,7 +168,6 @@ export function parseServices(
   }
   return {
     services,
-    ...(registration === undefined ? {} : { registration }),
     ...(hasUnknown ? { unknown } : {}),
   };
 }
@@ -186,10 +175,8 @@ export function parseServices(
 /**
  * The inverse of `parseServices`: the exact JSON the column stores.
  *
- * Slugs first in canonical order, then any passed-through unknown slugs sorted by key, then
- * `registration` last and only when declared — so a manifest
- * that says nothing about registration writes a column that says nothing about it either, and
- * the derived default keeps tracking the enablement set.
+ * Slugs first in canonical order, then any passed-through unknown slugs sorted by key. The
+ * retired `registration` key is never written (ST-38).
  */
 export function serializeServices(parsed: ProductServices): string {
   const out: Record<string, unknown> = {};
@@ -204,12 +191,12 @@ export function serializeServices(parsed: ProductServices): string {
       out[key] = { enabled: value.enabled };
     }
   }
-  if (parsed.registration !== undefined) out.registration = parsed.registration;
   return JSON.stringify(out);
 }
 
 /**
- * The EFFECTIVE registration policy (wire v3 §6, spec §2.3).
+ * The registration policy (wire v3 §6, spec §2.3), always derived from the services (ST-38: the
+ * policy is not a choice; `devices.registration` is a removed manifest field).
  *
  * The derivation is ordered by how much the product already knows about the caller:
  * a licensed product already has a mint path (activation), so `POST /devices/register` stays
@@ -217,11 +204,7 @@ export function serializeServices(parsed: ProductServices): string {
  * through that; a product with neither has nobody to ask and nothing to protect a seat pool
  * with, so registration is open (rate-limited, never free-for-all).
  */
-export function resolveRegistration(
-  services: ServicesMap,
-  declared?: RegistrationPolicy,
-): RegistrationPolicy {
-  if (declared !== undefined) return declared;
+export function resolveRegistration(services: ServicesMap): RegistrationPolicy {
   if (services.license.enabled) return "requires-license";
   if (services.identity.enabled) return "requires-identity";
   return "open";
@@ -246,9 +229,7 @@ export function serviceStateOf(
   } | null,
 ): {
   services: ServicesMap;
-  /** The DECLARED policy, or `null` when the product is riding the derived default. */
-  registration: RegistrationPolicy | null;
-  /** What the derivation currently produces — what the wire actually enforces. */
+  /** The policy the wire enforces, derived from the services. */
   effectiveRegistration: RegistrationPolicy;
   /** `manifest` (a resync may rewrite it) or `admin` (operator-claimed). */
   source: string;
@@ -256,71 +237,98 @@ export function serviceStateOf(
   const parsed = parseServices(row?.services_json ?? null);
   return {
     services: parsed.services,
-    registration: parsed.registration ?? null,
-    effectiveRegistration: resolveRegistration(
-      parsed.services,
-      parsed.registration,
-    ),
+    effectiveRegistration: resolveRegistration(parsed.services),
     source: row?.services_source ?? "manifest",
   };
 }
 
 /**
- * Coherence rules over an enablement set. Returns stable error CODES (not prose) so the admin
- * API, the manifest validator, and the console can all render them their own way; an empty
- * array means the set is applicable.
- *
- * `registration` is the DECLARED policy, not the resolved one: a derived value cannot be
- * incoherent by construction (it is read off the very set being validated), so validating it
- * would only ever produce noise. Passing `undefined` therefore checks the enablement set alone.
- * The manifest validator owns the "release needs a release block" half at ingest.
+ * The requirement rule's stable codes, one per `requires` edge of the service table, each
+ * `<slug>_requires_<requirement>`. LITERAL on purpose: the admin API, the console and the
+ * manifest validator key off them, rule 9's parity sweep reads codes from source, and
+ * `serviceTable.test.ts` fails when an edge of `tools/services.json` has no literal here.
  */
-export function validateServices(
-  services: ServicesMap,
-  registration?: RegistrationPolicy,
-): string[] {
+export const REQUIREMENT_CODES = [
+  "distribution_requires_release",
+  "update_requires_distribution",
+  "sync_requires_config",
+  "sync_requires_identity",
+] as const;
+
+/** The stable code for `slug` being on while `requirement` is off. */
+export function requirementCode(
+  slug: ServiceSlug,
+  requirement: ServiceSlug,
+): string {
+  return `${slug}_requires_${requirement}`;
+}
+
+/**
+ * The requirement rule over an enablement set (ST-38): a service may be on only while every
+ * service it requires (`SERVICE_REQUIRES`, from `tools/services.json`) is on. One generic rule
+ * for every edge: Release ← Distribution ← Update, and Cloud Sync's Config and Identity. Returns
+ * stable CODES (not prose) so the admin API, the manifest validator and the console can each
+ * render them their own way; an empty array means the set is applicable.
+ *
+ * The registration policy is derived from the same set (`resolveRegistration`), so it can never
+ * be incoherent with it and is not checked here.
+ */
+export function validateServices(services: ServicesMap): string[] {
   const errors: string[] = [];
-  // The chain is release ← distribution ← update (README §3.2): truth, then delivery, then
-  // decision. Distribution moves Release's artifacts to devices and outlets, so with Release off
-  // it has nothing to deliver.
-  if (services.distribution.enabled && !services.release.enabled) {
-    errors.push("distribution_requires_release");
-  }
-  // Update is the FEED that tells a device what to do next, over what Distribution says has
-  // reached it. Update on with Distribution off would serve a feed with no delivery behind it.
-  // This edge SUBSUMES the retired `update_requires_release`: Distribution itself requires
-  // Release, so a set that passes both rules has Release on whenever Update is on.
-  if (services.update.enabled && !services.distribution.enabled) {
-    errors.push("update_requires_distribution");
-  }
-  // Cloud Sync (plans/U-01.md §0): a user setting is a catalog `config` key, so with Config off
-  // there is nothing to sync; and the Cloud Sync principal is the account signed in through the
-  // product, so with Identity off no device could ever have one. Both edges hold in both
-  // directions: Cloud Sync cannot be turned on without them, nor either of them turned off while
-  // Cloud Sync is on.
-  if (services.sync.enabled && !services.config.enabled) {
-    errors.push("sync_requires_config");
-  }
-  if (services.sync.enabled && !services.identity.enabled) {
-    errors.push("sync_requires_identity");
-  }
-  // `requires-identity` says "register, but only behind a product login". With Identity off
-  // there is no login to stand behind, so the endpoint could never say yes to anyone — a
-  // product in this state has silently taken registration away rather than restricted it.
-  if (registration === "requires-identity" && !services.identity.enabled) {
-    errors.push("registration_requires_identity");
-  }
-  // Config with License off is the D-08 shape: devices register, hold `pkeyt_` tokens, and
-  // fetch config documents with no licence anywhere. `requires-license` closes the only mint
-  // path such a product has, so its devices could never obtain a token at all — the service is
-  // enabled and unreachable. (Spec §2.2 generalises the old `config_without_activation`
-  // warning into exactly this error.)
-  if (
-    services.config.enabled &&
-    !services.license.enabled &&
-    registration === "requires-license"
-  ) {
-    errors.push("config_without_activation");
+  for (const slug of SERVICE_SLUGS) {
+    if (!services[slug].enabled) continue;
+    for (const requirement of SERVICE_REQUIRES[slug]) {
+      if (!services[requirement].enabled)
+        errors.push(requirementCode(slug, requirement));
+    }
   }
   return errors;
+}
+
+/** What `applyRequirementRule` settled on. */
+export interface RequirementOutcome {
+  /** The set to write. */
+  services: ServicesMap;
+  /** Slugs turned off because something they require is off, in canonical order. */
+  cascaded: ServiceSlug[];
+  /** `<slug>_requires_<req>` for each slug the patch turns on while a requirement is off. */
+  errors: string[];
+}
+
+/**
+ * Apply a partial enablement patch under the requirement rule (ST-38, plans/CM-29.md §0):
+ *
+ * - a slug the patch turns ON must have every requirement on in the result, or the patch is
+ *   refused with its `<slug>_requires_<req>` code (nothing is pulled on with it);
+ * - turning a requirement OFF turns off every slug that needs it, transitively, in the same
+ *   write: one audited batch, which the console's confirmation names first (`?dryRun=1`);
+ * - turning a requirement back on restores nothing.
+ *
+ * Pure, so the console's dry run and the write agree by construction.
+ */
+export function applyRequirementRule(
+  before: ServicesMap,
+  patch: Partial<Record<ServiceSlug, boolean>>,
+): RequirementOutcome {
+  const services = servicesWhere(
+    (slug) => patch[slug] ?? before[slug].enabled,
+  );
+  const cascaded = new Set<ServiceSlug>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const slug of SERVICE_SLUGS) {
+      if (!services[slug].enabled || patch[slug] === true) continue;
+      if (SERVICE_REQUIRES[slug].some((r) => !services[r].enabled)) {
+        services[slug] = { enabled: false };
+        cascaded.add(slug);
+        changed = true;
+      }
+    }
+  }
+  return {
+    services,
+    cascaded: SERVICE_SLUGS.filter((s) => cascaded.has(s)),
+    errors: validateServices(services),
+  };
 }

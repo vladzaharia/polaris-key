@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/product.schema.json",
   "title": "Polaris Key product manifest (.pkey/product)",
-  "description": "The product document of a .pkey/ manifest: product metadata, enabled services, device-registration policy, licensing tiers/profiles, OIDC, provisioning hooks, fingerprint + auto-issue policy, declared secrets, and (optionally, inlined) the release document. Mirrors validateManifestDocuments in @polaris-key/manifest — the TypeScript validator is authoritative; this schema exists for editor autocomplete and machine consumers, and the schema-parity test keeps the two agreeing. Unknown keys are tolerated everywhere, exactly as the validator tolerates them. NOTE: the $id URL is a canonical identifier, not a fetchable locator (the docs site is auth-gated); editors should reference this file by path — it ships inside the @polaris-key/manifest npm package.",
+  "description": "The product document of a .pkey/ manifest: product metadata, enabled services, licensing tiers/profiles, OIDC, provisioning hooks, fingerprint + auto-issue policy, declared secrets, and (optionally, inlined) the release document. Mirrors validateManifestDocuments in @polaris-key/manifest — the TypeScript validator is authoritative; this schema exists for editor autocomplete and machine consumers, and the schema-parity test keeps the two agreeing. Unknown keys are tolerated everywhere, exactly as the validator tolerates them. NOTE: the $id URL is a canonical identifier, not a fetchable locator (the docs site is auth-gated); editors should reference this file by path — it ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
     "apiVersion": {
@@ -50,8 +50,8 @@
       "type": "object",
       "properties": {
         "registration": {
-          "description": "Who may mint a device token via POST /<product>/devices/register. Default is derived from the enabled services: requires-license if License is on, else requires-identity if Identity is on, else open.",
-          "enum": ["open", "requires-identity", "requires-license"]
+          "$comment": "invalid_registration_policy: removed (ST-38). The registration policy follows the enabled services: requires-license with License on, else requires-identity with Identity on, else open. Delete the field.",
+          "not": {}
         }
       }
     },
