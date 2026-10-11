@@ -176,15 +176,17 @@ export function FeedPage({
           {OFF_REASONS[data.feed.reason]}
         </Callout>
       ) : null}
-      {current === "packages" ? (
-        <PackagesTab scope={scope} eco={eco} detail={data} />
-      ) : current === "setup" ? (
-        <SetupTab eco={eco} detail={data} />
-      ) : current === "settings" ? (
-        <FeedSettingsTab scope={scope} eco={eco} detail={data} />
-      ) : (
-        <ActivityTab scope={scope} eco={eco} />
-      )}
+      <div className="pk-vt-tabpanel">
+        {current === "packages" ? (
+          <PackagesTab scope={scope} eco={eco} detail={data} />
+        ) : current === "setup" ? (
+          <SetupTab eco={eco} detail={data} />
+        ) : current === "settings" ? (
+          <FeedSettingsTab scope={scope} eco={eco} detail={data} />
+        ) : (
+          <ActivityTab scope={scope} eco={eco} />
+        )}
+      </div>
     </div>
   );
 }

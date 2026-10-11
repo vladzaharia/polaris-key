@@ -649,6 +649,7 @@ export function PackRecord({
           refused.
         </Callout>
       ) : null}
+      <div className="pk-vt-tabpanel">
       {current === "releases" ? (
         <div className="space-y-4">
           {currentPerChannel.length ? (
@@ -741,6 +742,7 @@ export function PackRecord({
           <FilesTab slug={slug} deliverable={id} releases={releases} />
         )
       ) : null}
+      </div>
       <PolicyDialog
         slug={slug}
         action={action}
