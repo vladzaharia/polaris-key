@@ -251,8 +251,7 @@
             }
         }
 
-        /// The variable Rubik and JetBrains Mono (UI-KITS.md §2.1), from packages/brand/fonts. The
-        /// static Rubik above stays until the kit's typography moves to the variable face (UK-07).
+        /// One variable Rubik and JetBrains Mono (UI-KITS.md §2.1), from packages/brand/fonts.
         static let fontCopies: [(String, String)] = [
             ("fonts/Rubik-Variable.ttf", "ttf/Rubik-Variable.ttf"),
             ("fonts/JetBrainsMono-Variable.ttf", "ttf/JetBrainsMono-Variable.ttf"),
@@ -262,10 +261,7 @@
 
         static let kitCopies: [(String, String)] = {
             var copies: [(String, String)] = [
-                ("fonts/Rubik-Regular.ttf", "source/fonts/Rubik-Regular.ttf"),
-                ("fonts/Rubik-Bold.ttf", "source/fonts/Rubik-Bold.ttf"),
                 ("fonts/OFL.txt", "source/fonts/OFL.txt"),
-                ("fonts/FONT-NOTICE.txt", "source/fonts/FONT-NOTICE.txt"),
             ]
             for theme in ["dark", "light"] {
                 copies.append(("marks/key-\(theme)-192.png", "01-marks/key/png/\(theme)/key-192.png"))
