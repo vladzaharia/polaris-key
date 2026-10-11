@@ -918,14 +918,14 @@ export const SHIPPED: ShippedState[] = [
       await sectionNavSettled(p);
     },
   },
-  // §4.25 Focused flows (PX-10).
+  // §4.25 Focused flows (PX-10) on the task frame (PX-29).
   {
     section: "4.25",
     id: "device-limit",
     title: "Device limit, focused flow",
     scenario: "twelve",
     path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
-    ready: (p) => h1(p, "Your license is on 2 of 2 devices"),
+    ready: (p) => h1(p, "Free a device"),
   },
   {
     section: "4.25",
@@ -934,7 +934,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "twelve",
     path: "/#/p/orbit-survey/free-device?return=orbitsurvey%3A%2F%2Fretry",
     ready: async (p) => {
-      await h1(p, "Your license is on 2 of 2 devices");
+      await h1(p, "Free a device");
       await p.getByRole("button", { name: "Remove Work laptop" }).click();
       await h1(p, "Work laptop was removed");
     },
@@ -945,7 +945,7 @@ export const SHIPPED: ShippedState[] = [
     title: "Download, focused flow",
     scenario: "three",
     path: "/#/p/nightfall/download?platform=linux",
-    ready: (p) => h1(p, "Download Nightfall for Linux"),
+    ready: (p) => h1(p, "Download Nightfall 1.4.2"),
   },
   // §4.26 Account (PX-07; Sign-in methods and Where you're signed in, PX-13).
   {

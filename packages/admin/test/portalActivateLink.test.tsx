@@ -415,6 +415,19 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
     expect(
       within(dialog).getByText("Starts with pkey_. Case-sensitive."),
     ).toBeTruthy();
+    // The account row sits between the notice and the key field.
+    const row = within(dialog).getByRole("group", {
+      name: "Account the license joins",
+    });
+    expect(row.textContent).toBe("MFMara Fennickmara@fennick.studio");
+    const field = within(dialog).getByRole("textbox", { name: "License key" });
+    expect(
+      dialog.textContent!.indexOf("Mossgarden sent you here.") <
+        dialog.textContent!.indexOf("Mara Fennick"),
+    ).toBe(true);
+    expect(
+      row.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("next=free-device: after the add, straight to the free-device flow for that license, with for= and return=", async () => {
@@ -441,7 +454,7 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
     );
     const h1 = await screen.findByRole("heading", {
       level: 1,
-      name: "Your license is on 2 of 2 devices",
+      name: "Free a device",
     });
     const params = new URLSearchParams(window.location.hash.split("?")[1]);
     expect(window.location.hash.split("?")[0]).toBe(
@@ -483,7 +496,7 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
     await userEvent.click(continueButton(dialog));
     await screen.findByRole("heading", {
       level: 1,
-      name: "Your license is on 2 of 2 devices",
+      name: "Free a device",
     });
     expect(window.location.hash).toBe(
       "#/p/mossgarden/free-device?license=lic_mossgarden",
@@ -584,6 +597,11 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
       name: "Back to Mossgarden",
     });
     expect(back.getAttribute("href")).toBe("mossgarden://signed-in");
+    // The app-return primary takes focus (B12), once the product's targets have arrived.
+    await waitFor(() => expect(document.activeElement).toBe(back));
+    expect(
+      within(done).queryByRole("group", { name: "Account the license joins" }),
+    ).toBeNull();
     expect(done.textContent).toContain(
       "Go back to Mossgarden and sign in. You won't need the key again.",
     );
@@ -661,7 +679,7 @@ describe("a #/?activate= hash written by hand (review fix)", () => {
     );
     await screen.findByRole("heading", {
       level: 1,
-      name: "Your license is on 2 of 2 devices",
+      name: "Free a device",
     });
     expect(window.location.hash).toBe(
       "#/p/mossgarden/free-device?license=lic_mossgarden",

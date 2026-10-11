@@ -114,6 +114,11 @@ export interface OpenOptions {
   forcedColors?: "active" | "none";
   /** Emulate `prefers-contrast` (default: no preference). */
   contrast?: "more" | "no-preference";
+  /**
+   * The browser's user agent (default {@link USER_AGENT}, a Mac): a phone's, to check what the
+   * portal offers a visitor on one (the focused download's Email me the download, PX-29).
+   */
+  userAgent?: string;
 }
 
 export interface PortalHarness {
@@ -155,7 +160,7 @@ export async function startPortal(): Promise<PortalHarness> {
       colorScheme: theme,
       forcedColors: opts.forcedColors ?? "none",
       contrast: opts.contrast ?? "no-preference",
-      userAgent: USER_AGENT,
+      userAgent: opts.userAgent ?? USER_AGENT,
       locale: "en-US",
       timezoneId: "UTC",
       reducedMotion: opts.reducedMotion ?? "reduce",

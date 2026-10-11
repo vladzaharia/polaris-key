@@ -560,9 +560,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
         }
       },
     });
-    await expect
-      .poll(() => focused(page))
-      .toBe("H2:Mossgarden is in your library");
+    await expect.poll(() => focused(page)).toBe("BUTTON:Open Mossgarden");
     await atRest(page);
     let m = await state(page);
     // enter → confirm, confirm → done: two dialog transitions over the panel.
@@ -641,7 +639,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
     await page
       .getByRole("heading", {
         level: 1,
-        name: "Your license is on 2 of 2 devices",
+        name: "Free a device",
       })
       .waitFor();
     await atRest(page);
@@ -747,9 +745,7 @@ describe("reduced motion: every change in scope is an instant swap to the same e
         },
       });
       expect(await running(page), "done").toEqual([]);
-      await expect
-        .poll(() => focused(page))
-        .toBe("H2:Mossgarden is in your library");
+      await expect.poll(() => focused(page)).toBe("BUTTON:Open Mossgarden");
       expect(
         await page
           .getByRole("dialog")

@@ -8,7 +8,11 @@ import { useStartDownload } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
 import { t } from "../../../lib/copy.js";
 
-/** Download one file through a fresh link. `lead` for the recommended build. */
+/**
+ * Download one file through a fresh link. `lead` for the recommended build. The accessible name
+ * is "<label> <product> <version> for <describe>" unless `ariaLabel` words it: a caller whose
+ * `label` already says where ("Download for macOS") passes one that begins with that label.
+ */
 export function DownloadButton({
   product,
   productName,
@@ -17,6 +21,7 @@ export function DownloadButton({
   describe,
   lead = false,
   label = t("boot.consent.download"),
+  ariaLabel,
 }: {
   product: string;
   productName: string;
@@ -26,6 +31,8 @@ export function DownloadButton({
   describe: string;
   lead?: boolean;
   label?: string;
+  /** The accessible name; it must contain `label` (WCAG label in name). */
+  ariaLabel?: string;
 }): React.ReactElement {
   const start = useStartDownload();
   return (
@@ -35,7 +42,10 @@ export function DownloadButton({
       className={lead ? "h-12 px-6" : "h-10"}
       loading={start.isPending}
       iconStart={<Download aria-hidden />}
-      aria-label={`${label} ${productName} ${release.version} for ${describe}`}
+      aria-label={
+        ariaLabel ??
+        `${label} ${productName} ${release.version} for ${describe}`
+      }
       onClick={() =>
         start.mutate(
           {

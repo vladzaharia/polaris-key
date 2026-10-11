@@ -306,7 +306,7 @@ describe("focused flows (PX-10)", () => {
       "/#/p/orbit-survey/free-device?for=Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
       { width: 390, height: 844 },
     );
-    await h1(o.page, "Your license is on 2 of 2 devices");
+    await h1(o.page, "Free a device");
     expect(
       await o.page
         .getByRole("radio", { name: /Work laptop/ })
@@ -333,7 +333,7 @@ describe("focused flows (PX-10)", () => {
       "twelve",
       "/#/p/orbit-survey/free-device?return=https%3A%2F%2Fevil.example%2F",
     );
-    await h1(o.page, "Your license is on 2 of 2 devices");
+    await h1(o.page, "Free a device");
     expect(
       await o.page
         .getByRole("link", { name: "See Orbit Survey in your library" })
@@ -449,7 +449,7 @@ describe("portal flow conformance (UX-79)", () => {
           "/#/p/orbit-survey/free-device?for=Steam%20Deck",
           { width, height: width === 390 ? 844 : 900, theme },
         );
-        await h1(o.page, "Your license is on 2 of 2 devices");
+        await h1(o.page, "Free a device");
         const work = o.page.getByRole("radio", { name: /Work laptop/ });
         expect(await work.innerText()).toMatch(/· least\srecent/);
         await o.page
@@ -875,7 +875,11 @@ describe("main flows", () => {
   it("activates a license from the header and lands on the product page", async () => {
     const o = await open("three", "/");
     await h1(o.page, "Your library");
-    await o.page.getByRole("button", { name: "Activate license" }).click();
+    // The header's action, not the Library's key tile (PX-27) that loads a moment later.
+    await o.page
+      .getByRole("banner")
+      .getByRole("button", { name: "Activate license" })
+      .click();
     const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
     await dialog.waitFor();
     await dialog
@@ -901,9 +905,10 @@ describe("main flows", () => {
       name: "Mossgarden is in your library",
     });
     await done.waitFor();
+    // After a claim focus is on Open (B12, PX-29); the dialog's title names the outcome.
     await expect
       .poll(() => o.page.evaluate(() => document.activeElement?.textContent))
-      .toBe("Mossgarden is in your library");
+      .toBe("Open Mossgarden");
     await shoot(o.page, "activate-done-desktop-dark");
     await done.getByRole("button", { name: "Open Mossgarden" }).click();
     await h1(o.page, "Mossgarden");
@@ -1082,7 +1087,10 @@ describe("main flows", () => {
   it("adds a floating key with its devices: the count on Confirm and on Done (PX-23)", async () => {
     const o = await open("three", "/", { routes: FLOATING_ON_TWO });
     await h1(o.page, "Your library");
-    await o.page.getByRole("button", { name: "Activate license" }).click();
+    await o.page
+      .getByRole("banner")
+      .getByRole("button", { name: "Activate license" })
+      .click();
     const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
     await dialog
       .getByRole("textbox", { name: "License key" })
