@@ -15,15 +15,17 @@ developer sees, and what you can ask for.
 
 - **Computer identifiers**, such as your computer's ID and serial number, its network card address
   and its disk ID. The app scrambles each one on your device. Polaris Key never receives the
-  original values. An app uses them to count your devices against your license, to give a free
-  license to one computer only once, and to notice a changed computer. Apps that run in a web
-  browser don't read them.
+  original values.
+  - An app uses them to count your devices against your license, to give a free license to one
+    computer only once, and to notice a changed computer.
+  - Apps that run in a web browser don't read them.
 - **System details**: your operating system and its version, your computer's model, processor,
   number of processor cores and memory, your language and time zone, and the version of the app.
-  Polaris Key receives these as they are, and the app's developer can see them. They let the
-  developer see which systems the app runs on, check that it works on yours and send it the right
-  settings. Apps that run in a web browser send the kind of operating system, processor cores,
-  memory, language, time zone and the version of the app.
+  Polaris Key receives these as they are, and the app's developer can see them.
+  - They let the developer see which systems the app runs on, check that it works on yours and send
+    it the right settings.
+  - Apps that run in a web browser send the kind of operating system, processor cores, memory,
+    language, time zone and the version of the app.
 - **Your computer's name**, as set in your system settings. It can include your own name, and you
   can change it there. Apps you install usually send it, so you can tell your devices apart in your
   library. The developer sees it too. Apps that run in a web browser send none.
@@ -56,8 +58,8 @@ as the license exists. You can change your account details in
 
 ## Ask about or erase your data
 
-- Polaris Key doesn't publish a privacy address. [Who to contact](/docs/help/contact/) says who to
-  ask about your Polaris Key account.
+- Polaris Key doesn't publish a privacy address. [Get help with an app](/docs/help/contact/) says
+  who to ask about your Polaris Key account.
 - To ask what an app holds about you, such as your licenses and devices, ask the app's developer.
   Ask the developer too if you want it to erase its records.
 - To erase your Polaris Key account, see [Delete your account](/docs/help/delete-account/).
