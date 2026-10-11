@@ -211,6 +211,12 @@ export {
   DesktopAdapter,
   type DesktopAdapterOptions,
 } from "./desktop/desktopAdapter.js";
+// core.local (SP-15): the network-free adapter.
+export {
+  localAdapter,
+  LocalAdapter,
+  type LocalAdapterOptions,
+} from "./local/localAdapter.js";
 export {
   BRIDGE_VERSION,
   resolveBridge,
@@ -329,6 +335,12 @@ export {
   // telemetry.updates (SP-14): adapter.recordUpdateEvent
   type UpdateEventEntry,
   type UpdateEventInput,
+  // update.driver and update.bootguard (SP-15)
+  MAX_FAILED_BOOTS,
+  type BootAttempt,
+  type BootSlots,
+  type InstallOptions,
+  type InstallOutcome,
 } from "./core/index.js";
 
 // ── Generated constants (`pnpm gen constants`, tools/gen-sdk-constants.ts) ──

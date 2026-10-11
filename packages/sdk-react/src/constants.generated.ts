@@ -1597,7 +1597,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.discover": { status: "implemented", service: "core", na: [] },
   "core.presentation": { status: "implemented", service: "core", na: [] },
   "core.sync": { status: "implemented", service: "core", na: [] },
-  "core.local": { status: "planned", service: "core", na: [] },
+  "core.local": { status: "implemented", service: "core", na: [] },
   "core.headers": { status: "implemented", service: "core", na: [] },
   "core.errors": { status: "implemented", service: "core", na: [] },
   "core.caps": { status: "implemented", service: "core", na: [] },
@@ -1706,8 +1706,8 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "update.decide": { status: "implemented", service: "update", na: [] },
   "update.content": { status: "implemented", service: "update", na: [] },
-  "update.driver": { status: "planned", service: "update", na: [] },
-  "update.bootguard": { status: "planned", service: "update", na: [] },
+  "update.driver": { status: "implemented", service: "update", na: [] },
+  "update.bootguard": { status: "implemented", service: "update", na: [] },
   "outlet.detect": { status: "implemented", service: "update", na: [] },
   "crash.tags": { status: "implemented", service: "sdk", na: [] },
   "packs.record": { status: "implemented", service: "release", na: [] },
@@ -1864,4 +1864,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "d8be1c0c66787d246da9a30fbbc4dd62ce47d74ceb042ea1ce6dab9a9087d5fc";
+  "5e39619f12e3f070761b03082188528334dc4b02159c3f903956c1cf319cacbe";

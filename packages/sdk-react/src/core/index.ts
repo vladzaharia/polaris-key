@@ -71,6 +71,18 @@ export {
   type CrashTagsOptions,
 } from "./crash.js";
 export type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
+// update.driver and update.bootguard (SP-15)
+export type { InstallOptions, InstallOutcome } from "./install.js";
+export {
+  BootGuard,
+  MAX_FAILED_BOOTS,
+  bootGuardStorageKey,
+  browserBootSlotStore,
+  type BootAttempt,
+  type BootGuardOptions,
+  type BootSlotStore,
+  type BootSlots,
+} from "./bootGuard.js";
 export type {
   StagedUpdate,
   UpdateCheck,

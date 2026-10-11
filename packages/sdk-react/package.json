@@ -42,6 +42,10 @@
       "types": "./dist/desktop/index.d.ts",
       "default": "./dist/desktop/index.js"
     },
+    "./local": {
+      "types": "./dist/local/index.d.ts",
+      "default": "./dist/local/index.js"
+    },
     "./license": {
       "types": "./dist/license/index.d.ts",
       "default": "./dist/license/index.js"

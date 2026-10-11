@@ -30,6 +30,9 @@ export interface BearerBootDriverOptions {
   status: () => LicenseStatus;
   /** The update decision, when the page configured one. */
   decide?: () => Promise<{ decision: BootDecision; check: UpdateCheck | null }>;
+  /** The boot guard's stage and confirmation (`update.bootguard`), when the page has a version. */
+  guard?: BootDriver["guard"];
+  confirm?: BootDriver["confirm"];
   /** Called after each step that changed the session, so the adapter re-projects. */
   changed?: () => void;
 }
@@ -62,6 +65,8 @@ export function bearerBootDriver(o: BearerBootDriverOptions): BootDriver {
       return bootSyncResult(r);
     },
     status: o.status,
+    ...(o.guard ? { guard: o.guard } : {}),
+    ...(o.confirm ? { confirm: o.confirm } : {}),
     ...(o.decide ? { decide: o.decide } : {}),
   };
 }

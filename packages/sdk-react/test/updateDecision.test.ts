@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature update.feed release.record update.decide telemetry.updates
+// @pkey-feature update.feed release.record update.decide telemetry.updates update.bootguard
 //
 // `decideUpdate()` in both React transports (WIRE-CONTRACT-V4 §2.5, plans/P3-01.md §2.6): what
 // the update-matrix parity suite does not cover — the options refusals, step 1's endpoints, the
@@ -21,6 +21,7 @@ import { memoryStore as bearerMemoryStore } from "../src/browser/bearer/store.js
 import type { OfflineRecord, OfflineStore } from "../src/browser/offline.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisBridge } from "../src/desktop/bridge.js";
+import { bootGuardStorageKey } from "../src/core/bootGuard.js";
 import { PolarisError } from "../src/core/types.js";
 import {
   makeFakeBridge,
@@ -330,6 +331,59 @@ describe("BrowserAdapter.decideUpdate() — update_offered (telemetry.updates, S
       cookie.dispose();
     } finally {
       recorded.mockRestore();
+    }
+  });
+});
+
+describe("BrowserAdapter.boot() — the guard's skipVersion (update.bootguard, SP-15)", () => {
+  it("hands the rolled-back version to decideUpdate, which a web outlet's platform decision never reads: the release is offered again", async () => {
+    // The corpus gives skipVersion one job (update-matrix.json rows 15 and 16, rule 11): it
+    // suppresses a self-updating outlet's code-ready and sidecar-pck. The web outlet is rule 9's
+    // `platform`, decided before the skipped version is read, and the boot adds nothing of its
+    // own, so the README and the guard no longer promise a page never sees a rolled-back
+    // release again. A boot that suppressed it would answer row 15's `boot: optional` as none.
+    const srv = server();
+    const { recordJws, hash, feedJws } = await signedPair();
+    srv.feedBody = feedJws;
+    srv.records.set(hash, () => new Response(recordJws, { status: 200 }));
+    // This page runs 1.4.0 again: 1.5.0 was rolled back, the guard remembers it as skipped, and
+    // the feed still offers it.
+    const slots = new Map<string, string>([
+      [
+        bootGuardStorageKey(PRODUCT),
+        JSON.stringify({
+          current: "1.4.0",
+          previous: "1.3.0",
+          failedBoots: 0,
+          confirmed: true,
+          skipVersion: "1.5.0",
+        }),
+      ],
+    ]);
+    // An update-only product (no licence gate to stop the boot), so the boot reaches `decide`.
+    const adapter = adapterFor(srv, memoryStore({ deviceId: "dev_1" }), {
+      expectServices: services("update"),
+      bootGuard: {
+        storage: {
+          getItem: (k) => slots.get(k) ?? null,
+          setItem: (k, v) => void slots.set(k, v),
+          removeItem: (k) => void slots.delete(k),
+        },
+      },
+    });
+    const decide = vi.spyOn(adapter, "decideUpdate");
+    try {
+      const boot = await adapter.boot({ autoConfirm: false });
+      expect(decide).toHaveBeenCalledExactlyOnceWith({ skipVersion: "1.5.0" });
+      expect(boot.outcome).toBe("ready");
+      expect(boot.decision?.decision).toMatchObject({
+        action: "platform",
+        release: { version: "1.5.0" },
+      });
+      // And the boot machine saw an optional update, as row 15's `boot: optional` has it.
+      expect(boot.emits).toContainEqual({ type: "update_available" });
+    } finally {
+      adapter.dispose();
     }
   });
 });
