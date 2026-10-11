@@ -58,7 +58,6 @@ function product(slug: string, name: string): Record<string, unknown> {
     modifiedAt: NOW - 3600,
     setup: { status: "ok", healthy: true, nextActions: [] },
     services: SERVICES,
-    registration: null,
     effectiveRegistration: "requires-license",
     servicesSource: "manifest",
   };

@@ -33,7 +33,6 @@ const product = {
   createdAt: 1,
   modifiedAt: 1,
   services,
-  registration: null,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
   releaseSource: "github",
