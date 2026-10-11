@@ -320,8 +320,8 @@ describe("License record dialogs (C-20, C-21)", () => {
 
 describe("Controlled confirms return focus (C-5, C-41)", () => {
   it("Services: Escape from Turn off returns focus to the switch", async () => {
-    const { page, errors } = await open("#/p/djdl/services");
-    await title(page, "Services");
+    const { page, errors } = await open("#/p/djdl/settings/features");
+    await title(page, "Settings");
     const sw = page.locator("#service-update");
     await sw.focus();
     await page.keyboard.press("Space");
@@ -362,7 +362,7 @@ describe("Set secret (C-7)", () => {
     for (const width of WIDTHS)
       it(`?secret= preselects the name; first focus on Value (${theme}, ${width})`, async () => {
         const { page, errors } = await open(
-          "#/p/djdl/keys?secret=OIDC_CLIENT_SECRET",
+          "#/p/djdl/settings/keys?secret=OIDC_CLIENT_SECRET",
           { theme, width },
         );
         const drawer = page.getByRole("dialog", {

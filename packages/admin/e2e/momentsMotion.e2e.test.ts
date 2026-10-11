@@ -336,7 +336,7 @@ describe("Keys: the trust window's ring", () => {
     page.locator("[data-countdown-ring] .pk-countdown circle");
 
   it("motion on: one pk-draw over the whole window, started where it stands; the seconds in text", async () => {
-    const page = await open("#/p/djdl/keys");
+    const page = await open("#/p/djdl/settings/keys");
     const strip = page.getByRole("list", { name: "Key rotation" });
     await strip.waitFor();
     const step = strip.getByRole("listitem").nth(1);
@@ -373,7 +373,7 @@ describe("Keys: the trust window's ring", () => {
 
   for (const r of REDUCED)
     it(`${r.label}: no animation; the ring is a still picture of the spent share, the text exact`, async () => {
-      const page = await open("#/p/djdl/keys", {
+      const page = await open("#/p/djdl/settings/keys", {
         motion: r.motion,
         dataMotion: r.dataMotion,
       });
@@ -411,7 +411,7 @@ describe("Keys: the refreshed share's meter and count", () => {
     );
 
   it("motion on: the fill moves by a transform transition and the number counts up to 91 %", async () => {
-    const page = await open("#/p/djdl/keys", { routes });
+    const page = await open("#/p/djdl/settings/keys", { routes });
     await fill(page).waitFor();
     await page.waitForFunction(
       () =>
@@ -436,7 +436,7 @@ describe("Keys: the refreshed share's meter and count", () => {
 
   for (const r of REDUCED)
     it(`${r.label}: the meter and the number are at their value from the start`, async () => {
-      const page = await open("#/p/djdl/keys", {
+      const page = await open("#/p/djdl/settings/keys", {
         routes,
         motion: r.motion,
         dataMotion: r.dataMotion,
