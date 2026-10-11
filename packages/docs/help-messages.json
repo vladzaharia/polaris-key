@@ -206,12 +206,14 @@
       "page": "signing-in",
       "article": "sign-in",
       "why": "Your sign-in to your library at key.plrs.im has ended or isn't valid any more.",
-      "fix": "Sign in again. If you can't sign in, see Get help with an app."
+      "fix": "Sign in again.",
+      "cta": "contact"
     },
     "sign-out-failed": {
       "page": "signing-in",
       "why": "The app couldn't finish signing you out.",
-      "fix": "Try again. Until it works, treat this device as still signed in, and don't leave it unattended if it isn't yours. If it keeps failing, see Get help with an app."
+      "fix": "Try again. Until it works, treat this device as still signed in, and don't leave it unattended if it isn't yours.",
+      "cta": "contact"
     },
     "gate.needs-activation": {
       "page": "license-key",
@@ -414,7 +416,7 @@
       "entry": "device_limit",
       "article": "devices",
       "why": "A license allows a set number of devices at once, and all of them are in use.",
-      "fix": "Free one: choose **Replace a device** in the app when it offers it, remove a device you no longer use from the app's page in your library at key.plrs.im if the app has one, or select **Sign out** in the app on a device you no longer use while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
+      "fix": "Free one of them. Choose **Replace a device** in the app when it offers it. Or remove a device you no longer use from the app's page in your library at key.plrs.im, if the app has one. Or select **Sign out** in the app on a device you no longer use, while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
       "cta": "library"
     },
     "activation.device-limit": {
@@ -828,7 +830,7 @@
       "page": "accounts",
       "entry": "key_entry_limit",
       "why": "A license key that isn't in an account can be entered on a limited number of new devices, and this key has used them all.",
-      "fix": "Add the license to your Polaris Key account, then sign in to the app with that account. After that, a new device signs in instead of entering the key, so add it only if it should be yours. If you can't add it, ask the app's developer."
+      "fix": "Add the license to your Polaris Key account, then sign in to the app with that account. After that, a new device can't use the key and signs in instead. Add the license only if it is yours. If you can't add it, ask the app's developer."
     },
     "activation.key-entry-limit": {
       "page": "accounts",
@@ -1001,7 +1003,8 @@
       "page": "other",
       "entry": "fallback",
       "why": "Your library hit a problem it has no specific message for.",
-      "fix": "Try again. If it keeps happening, see Get help with an app for who to ask about your library or account."
+      "fix": "Try again.",
+      "cta": "contact"
     },
     "not_found": {
       "page": "other",
@@ -1022,12 +1025,14 @@
     "portal.status-403": {
       "page": "other",
       "why": "The request was refused. A fresh copy of the page often fixes it.",
-      "fix": "Reload the page and try again. If it keeps happening, see Get help with an app."
+      "fix": "Reload the page and try again.",
+      "cta": "contact"
     },
     "portal.status-429": {
       "page": "other",
       "why": "You made too many requests in a short time.",
-      "fix": "Wait a minute, then try again. If it keeps happening, see Get help with an app."
+      "fix": "Wait a minute, then try again.",
+      "cta": "contact"
     },
     "body_too_large": {
       "page": "other",

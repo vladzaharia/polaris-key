@@ -43,9 +43,15 @@ export interface Catalog {
   activation: Record<string, CatalogEntry>;
 }
 
-/** The links a message can end with, after What to do (the schema's `cta`). */
-export const CTA_ACTIONS = ["library"] as const;
+/**
+ * The links a message can end with, after What to do (the schema's `cta`): `library` is Open your
+ * library, `contact` is the pointer to who to ask when the fix may not be the reader's alone.
+ */
+export const CTA_ACTIONS = ["library", "contact"] as const;
 export type CtaAction = (typeof CTA_ACTIONS)[number];
+
+/** The Help article the `contact` cta links to (a path under `help/`): who to ask about an app. */
+export const CONTACT_ARTICLE = "contact";
 
 export interface HelpMessage {
   /** A key of `pages`, other than `index`. */
@@ -58,7 +64,7 @@ export interface HelpMessage {
   why?: string;
   /** What to do. On the first id of each distinct on-screen message. */
   fix?: string;
-  /** A link that ends What to do: `library`. On the first id of each distinct on-screen message. */
+  /** A link that ends What to do: `library` or `contact`. On the first id of each distinct on-screen message. */
   cta?: CtaAction;
 }
 
@@ -145,9 +151,10 @@ export function helpMessageUrl(doc: HelpMessagesData, id: string): string {
 }
 
 /**
- * The "More help" link of a message: its article, unless the page showing the message is that
- * article (a link to the page you are on says nothing). `pathname` is the page's path with the
- * site base, with or without its trailing slash.
+ * The link to a Help article (a path under `help/`): the "More help" of a message, and the page the
+ * `contact` cta points at. None when the page showing the message is that article (a link to the
+ * page you are on says nothing). `pathname` is the page's path with the site base, with or without
+ * its trailing slash.
  */
 export function articleHref(
   article: string | undefined,

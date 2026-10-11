@@ -74,9 +74,9 @@
             "type": "string"
           },
           "cta": {
-            "description": "A link that ends What to do: `library` is Open your library. Held like `why`.",
+            "description": "A link that ends What to do: `library` is Open your library, `contact` is Still need help? with a link to Get help with an app. Held like `why`.",
             "type": "string",
-            "enum": ["library"]
+            "enum": ["library", "contact"]
           }
         }
       }

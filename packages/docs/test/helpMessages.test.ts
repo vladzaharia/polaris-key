@@ -15,6 +15,7 @@ import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import {
   CATALOG_ENTRIES,
+  CONTACT_ARTICLE,
   CTA_ACTIONS,
   HELP_MESSAGES,
   KNOWN_ENTRIES,
@@ -98,11 +99,17 @@ const withoutComments = (source: string): string =>
     .split("\n")
     .filter((line) => !/^\s*(?:\/\/|\/\*|\*)/.test(line))
     .join("\n");
+const escapeRegExp = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** A label as a whole word: a string or JSX text, not a piece of an identifier. */
 const wholeWord = (label: string): RegExp =>
-  new RegExp(
-    `(?<![A-Za-z0-9_])${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9_])`,
-  );
+  new RegExp(`(?<![A-Za-z0-9_])${escapeRegExp(label)}(?![A-Za-z0-9_])`);
+/** The title of the page the contact cta links to, from its own frontmatter. */
+const contactTitle = (): string => {
+  const file = fileFor(`help/${CONTACT_ARTICLE}`);
+  if (file === null) throw new Error(`help/${CONTACT_ARTICLE} does not exist`);
+  return String(splitFrontmatter(read(file)).data.title);
+};
 
 describe("message ids", () => {
   it.each([
@@ -799,11 +806,12 @@ describe("entries", () => {
   });
 });
 
-describe("the library link", () => {
+describe("the cta of a message", () => {
   const known = new Map<string, CatalogEntry>([
     ["a", { title: "Same", message: "one" }],
     ["b", { title: "Same", message: "one" }],
     ["c", { title: "Same", message: "two" }],
+    ["d", { title: "Same", message: "three" }],
   ]);
   const doc: HelpMessagesData = {
     version: 1,
@@ -811,7 +819,8 @@ describe("the library link", () => {
     messages: {
       a: { page: "p", entry: "a", why: "Why a", fix: "Fix a", cta: "library" },
       b: { page: "p", entry: "a" },
-      c: { page: "p", entry: "a", why: "Why c", fix: "Fix c" },
+      c: { page: "p", entry: "a", why: "Why c", fix: "Fix c", cta: "contact" },
+      d: { page: "p", entry: "a", why: "Why d", fix: "Fix d" },
     },
     developerOnly: [],
   };
@@ -819,10 +828,12 @@ describe("the library link", () => {
   it("ends the branch that holds it, and no other", () => {
     expect(helpEntries(doc, known)[0]!.branches.map((b) => b.cta)).toEqual([
       "library",
+      "contact",
       undefined,
     ]);
     expect(singleOf(doc, known, "b")!.branch.cta).toBe("library");
-    expect(singleOf(doc, known, "c")!.branch.cta).toBeUndefined();
+    expect(singleOf(doc, known, "c")!.branch.cta).toBe("contact");
+    expect(singleOf(doc, known, "d")!.branch.cta).toBeUndefined();
   });
 
   it("is one of the actions the schema lists", () => {
@@ -839,6 +850,39 @@ describe("the library link", () => {
     for (const [id, message] of Object.entries(HELP_MESSAGES.messages))
       if (message.cta !== undefined)
         expect(CTA_ACTIONS, id).toContain(message.cta);
+  });
+
+  it("is held by one branch of an entry at most, so an entry shows each link once", () => {
+    for (const entry of entries)
+      for (const action of CTA_ACTIONS)
+        expect(
+          entry.branches.filter((b) => b.cta === action).length,
+          `${entry.id}: ${action}`,
+        ).toBeLessThanOrEqual(1);
+  });
+
+  it("has a Help page to go to for the contact link", () => {
+    // The page can still be a stub when this package lands (it ships on its own); the link needs it
+    // to exist, and the build checks the link.
+    expect(
+      fileFor(`help/${CONTACT_ARTICLE}`),
+      `help/${CONTACT_ARTICLE}`,
+    ).not.toBeNull();
+  });
+
+  it("is the only way a Why or What to do names the contact page: as a link, never as plain words", () => {
+    const title = contactTitle();
+    expect(title.length).toBeGreaterThan(0);
+    const plain = Object.entries(HELP_MESSAGES.messages).flatMap(([id, m]) =>
+      (["why", "fix"] as const)
+        .filter((field) =>
+          m[field]?.toLowerCase().includes(title.toLowerCase()),
+        )
+        .map((field) => `${id}.${field}`),
+    );
+    expect(plain, `say it with cta "contact", which links ${title}`).toEqual(
+      [],
+    );
   });
 });
 
@@ -866,6 +910,13 @@ describe("the article link", () => {
 
   it("is none for a message without an article", () => {
     expect(articleHref(undefined, "/docs/help/devices/")).toBeUndefined();
+  });
+
+  it("is the contact page for the contact cta, and none on that page itself", () => {
+    expect(articleHref(CONTACT_ARTICLE, "/docs/help/messages/other/")).toBe(
+      "/docs/help/contact/",
+    );
+    expect(articleHref(CONTACT_ARTICLE, "/docs/help/contact/")).toBeUndefined();
   });
 });
 
@@ -1124,7 +1175,7 @@ describe("validateHelpMessages", () => {
     const doc = base();
     doc.messages.device_limit = { page: "devices", cta: "nonesuch" as never };
     expect(validateHelpMessages(doc, known).join()).toContain(
-      'device_limit: cta "nonesuch" is not one of library',
+      'device_limit: cta "nonesuch" is not one of library, contact',
     );
   });
 
@@ -1381,17 +1432,19 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
     );
 
     it.each(messagePages)(
-      "%s: a branch that holds a cta ends with its library link, and no other branch has one",
+      "%s: a branch that holds a cta ends with its link, and no other branch has one",
       (page) => {
         const text = html(page);
-        const wanted = entries
+        const branches = entries
           .filter((e) => e.page === page)
-          .flatMap((e) => e.branches)
-          .filter((b) => b.cta === "library").length;
+          .flatMap((e) => e.branches);
+        const wanted = (action: string): number =>
+          branches.filter((b) => b.cta === action).length;
+        // Every cta paragraph is one a branch asked for.
         expect(
           text.match(/class="pk-help-message__cta"/g) ?? [],
           page,
-        ).toHaveLength(wanted);
+        ).toHaveLength(wanted("library") + wanted("contact"));
         // The portal root, not `/library`: the portal is one page at the site root that routes by
         // hash (`#/` is the Library), and the Worker serves its shell for `/`, `/index.html`,
         // `/activate` and `/assets/` only (packages/worker/src/router.ts), so `/library` is a 404.
@@ -1400,7 +1453,17 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
             /<p class="pk-help-message__cta"><a class="pk-portal-link" href="\/"[^>]*>Open your library ↗<\/a><\/p>/g,
           ) ?? [],
           page,
-        ).toHaveLength(wanted);
+        ).toHaveLength(wanted("library"));
+        // The contact page, by its own title, as a plain link: it is a page of Help, so no new tab.
+        expect(
+          text.match(
+            new RegExp(
+              `<p class="pk-help-message__cta">Still need help\\? Read <a href="/docs/help/contact/">${escapeRegExp(contactTitle())}</a>\\.</p>`,
+              "g",
+            ),
+          ) ?? [],
+          page,
+        ).toHaveLength(wanted("contact"));
       },
     );
 
@@ -1446,10 +1509,14 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
       const text = decode(html("other"));
       const anchor = (id: string): string =>
         `<span id="${id}" class="pk-help-developer__anchor"></span>`;
+      // The hidden translated titles sit between the anchors and the title.
+      const hidden = String.raw`(?:<span hidden lang="[^"]+" data-pagefind-weight="6">[^<]*</span>)*`;
       for (const group of developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES)) {
         const [first, ...rest] = group.messages;
-        const head = `<li>${first!.ids.map(anchor).join("")}<strong>${group.title}</strong>`;
-        const start = text.indexOf(head);
+        const head = new RegExp(
+          `<li>${first!.ids.map((id) => escapeRegExp(anchor(id))).join("")}${hidden}<strong>${escapeRegExp(group.title)}</strong>`,
+        );
+        const start = text.search(head);
         expect(
           start,
           `${group.title}: its first message's ids come before the title`,
@@ -1468,6 +1535,30 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
             ).toBeLessThan(end);
           }
       }
+    });
+
+    it("ends each developer-only item with its last message: the hidden text comes before the title", () => {
+      // Starlight spaces a list item by its last child, unless that child is a span (an
+      // `li > :last-child:not(span …)` rule), so hidden text at the end of an item would take the
+      // space after it from the message above it.
+      const text = html("other");
+      const from = text.indexOf('<ul class="pk-help-developer">');
+      expect(
+        from,
+        "the developer-only list is on the page",
+      ).toBeGreaterThanOrEqual(0);
+      const items = text
+        .slice(from, text.indexOf("</ul>", from))
+        .split("</li>")
+        .slice(0, -1);
+      expect(items).toHaveLength(
+        developerOnlyGroups(HELP_MESSAGES, KNOWN_ENTRIES).length,
+      );
+      for (const item of items)
+        expect(
+          item.endsWith("</div>"),
+          `an item ends with …${item.slice(-70)}`,
+        ).toBe(true);
     });
 
     it("an article carries a message on its own: the title as heading, the id as anchor, the article link", () => {

@@ -3,9 +3,10 @@
  * One message of Help (docs plan §7.1, §7.5). The heading is the catalog title, character for
  * character; its anchor is the message id, set here and never slugified. Under it come the message
  * as the app shows it (a placeholder shows what goes there), Why you see this and What to do from
- * `help-messages.json`, a link that ends What to do when there is one (the library), a link to the
- * article that explains more when there is one, and the ids, in small type, for telling the
- * developer. The titles of the same message in every translated catalog follow as hidden text, so
+ * `help-messages.json`, a link that ends What to do when there is one (`cta` library), a link to
+ * the article that explains more when there is one, the pointer to who to ask when there is one
+ * (`cta` contact), and the ids, in small type, for telling the developer. The titles of the same
+ * message in every translated catalog follow as hidden text, so
  * search finds the entry from a title in another language.
  *
  * `<HelpMessage id>` shows that one id, as an article does for the anchors it carries. On a
@@ -22,6 +23,7 @@ import { getEntry } from "astro:content";
 import {
   HELP_MESSAGES,
   KNOWN_ENTRIES,
+  CONTACT_ARTICLE,
   aliasesFor,
   articleHref,
   entryOf,
@@ -71,17 +73,25 @@ if (/[&<>]/.test(title))
     `<HelpMessage id="${id}">: the title "${title}" holds & < or >, which the heading would pass on as HTML`,
   );
 
-/** The article link of each branch, unless the article is this page. */
+/** A Help page as a link, unless it is the page showing the message. */
+async function helpLink(
+  article: string,
+): Promise<{ href: string; title: string } | undefined> {
+  const href = articleHref(article, Astro.url.pathname);
+  if (href === undefined) return undefined;
+  const page = await getEntry("docs", `help/${article}`);
+  if (page === undefined)
+    throw new Error(`<HelpMessage id="${id}">: the article help/${article} does not exist`);
+  return { href, title: page.data.title };
+}
+/** The article link of each branch. */
 const more = await Promise.all(
-  branches.map(async (branch) => {
-    const href = articleHref(branch.article, Astro.url.pathname);
-    if (href === undefined) return undefined;
-    const page = await getEntry("docs", `help/${branch.article}`);
-    if (page === undefined)
-      throw new Error(`<HelpMessage id="${id}">: the article help/${branch.article} does not exist`);
-    return { href, title: page.data.title };
-  }),
+  branches.map((branch) => (branch.article === undefined ? undefined : helpLink(branch.article))),
 );
+/** Who to ask, for the branches that end with it. */
+const contact = branches.some((branch) => branch.cta === "contact")
+  ? await helpLink(CONTACT_ARTICLE)
+  : undefined;
 
 const aliases = aliasesFor(ids);
 /** The portal's copy has no code to tell anyone. */
@@ -137,6 +147,9 @@ const codes = (branch: EntryBranch): string[] =>
           <p>
             <strong>More help.</strong> <a href={more[i]!.href}>{more[i]!.title}</a>
           </p>
+        )}
+        {branch.cta === "contact" && contact && (
+          <p class="pk-help-message__cta">Still need help? Read <a href={contact.href}>{contact.title}</a>.</p>
         )}
         {codes(branch).length > 0 && (
           <p class="pk-help-message__codes">
