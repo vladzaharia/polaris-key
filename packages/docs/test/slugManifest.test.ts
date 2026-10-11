@@ -93,9 +93,6 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
     const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
       (m) => new URL(m[1]!).pathname,
     );
-    const stubs = Object.entries(manifest.pages)
-      .filter(([, page]) => page.status === "stub")
-      .map(([route]) => route);
     expect(stubs, "the manifest still lists a stub to check").not.toEqual([]);
     for (const route of stubs) {
       expect(listed, route).not.toContain(route);

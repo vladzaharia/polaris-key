@@ -116,6 +116,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "help/discover",
           "help/lost-key",
           "help/messages/license-key",
+          "help/license-status",
           "help/messages/license-status",
           "help/remove-from-library",
         ),
