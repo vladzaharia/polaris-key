@@ -1,0 +1,16 @@
+{
+  "id": "docs.mobile-menu",
+  "title": "Docs mobile menu",
+  "area": "docs",
+  "surface": "dialog",
+  "packages": ["DOC-02b"],
+  "uxRows": [],
+  "summary": "Open mobile Docs navigation with door tabs, current tree, theme row and moved chrome links.",
+  "compare": [
+    "The open menu exposes Developers, Operate and Help doors.",
+    "The current door tree remains readable on phone.",
+    "Theme offers System, Dark and Light."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -1,0 +1,121 @@
+<div
+  class="docs"
+  data-service="core"
+  data-door="operate"
+  data-density="compact"
+>
+  <header class="docs-top">
+    <button class="btn ghost icon docs-menu" aria-label="Menu">
+      <i class="ic ic-menu lg"></i></button
+    ><a class="docs-brand" href="#"
+      ><i class="pk-mark sm"></i>Polaris Key<span class="docs-tag"
+        >Docs</span
+      ></a
+    >
+    <nav class="docs-doors" aria-label="Docs doors">
+      <a href="#">Developers</a><a class="on" href="#">Operate</a
+      ><a href="#">Help</a>
+    </nav>
+    <div class="docs-search">
+      <i class="ic ic-search"></i><span>Search the docs</span><kbd>⌘K</kbd>
+    </div>
+  </header>
+  <div class="docs-body">
+    <nav class="docs-side" aria-label="Operate">
+      <div class="nav-group">
+        <button class="nav-label" aria-expanded="true">
+          Console<i class="ic ic-chevron-down sm"></i></button
+        ><a class="nav-item" href="#">Overview</a
+        ><a class="nav-item" href="#">Users and accounts</a
+        ><a class="nav-item" href="#">Members and roles</a
+        ><a class="nav-item active" href="#">Help a customer</a>
+      </div>
+    </nav>
+    <div class="docs-content">
+      <article class="docs-main">
+        <header class="docs-header">
+          <div class="docs-eyebrow">Operate › Console</div>
+          <div class="docs-title-row">
+            <h1>Help a customer</h1>
+            <button class="btn outline sm docs-copy" aria-label="Copy page">
+              <i class="ic ic-copy"></i
+              ><span class="copy-label">Copy page</span>
+            </button>
+          </div>
+          <p class="docs-lede">
+            Fix a lost key, changed hardware or a device limit from the console.
+          </p>
+        </header>
+        <div class="docs-requires">
+          <span class="pill sm outline"
+            ><i class="ic ic-shield"></i>Role required: Product admin</span
+          ><span class="pill sm outline"
+            ><i class="svc" data-service="license"></i>Licensing</span
+          >
+        </div>
+        <div class="callout warning">
+          <i class="ic ic-triangle-alert"></i>
+          <div class="grow">
+            <div class="callout-title">Impact</div>
+            <div class="callout-text">
+              Deauthorizing a device signs it out of DJDL. The license stays
+              active.
+            </div>
+          </div>
+        </div>
+        <section class="docs-section">
+          <h2>Free a device for a customer</h2>
+          <ol class="docs-steps">
+            <li class="docs-step">
+              <span class="docs-num">1</span>
+              <div class="docs-step-body">
+                <h2>Find the license</h2>
+                <p>
+                  <a class="btn outline sm" href="#"
+                    >Open Licenses<i class="ic ic-arrow-up-right"></i
+                  ></a>
+                  Search for <strong>kenji@example.com</strong> and open the
+                  DJDL license.
+                </p>
+              </div>
+            </li>
+            <li class="docs-step">
+              <span class="docs-num">2</span>
+              <div class="docs-step-body">
+                <h2>Deauthorize the old device</h2>
+                <p>
+                  Open <strong>Devices</strong>, select
+                  <strong>Booth PC</strong>, then select
+                  <strong>Deauthorize Booth PC</strong>.
+                </p>
+              </div>
+            </li>
+            <li class="docs-step">
+              <span class="docs-num">3</span>
+              <div class="docs-step-body">
+                <h2>Confirm the customer can continue</h2>
+                <p>
+                  The device count drops. Ask the customer to activate DJDL on
+                  the new computer.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </section>
+        <section class="docs-section">
+          <h2>What the customer sees</h2>
+          <a class="docs-card" href="#"
+            ><span class="docs-card-title"
+              ><i class="ic ic-circle-help"></i>Move your license to a new
+              computer<i class="ic ic-arrow-right sm"></i></span
+            >The public Help article for the customer.</a
+          >
+        </section>
+      </article>
+    </div>
+  </div>
+  <footer class="docs-footer">
+    Polaris Key · <a href="#">key.plrs.im</a> · Developer changelog ·
+    Console<span class="end">Last reviewed October 9, 2026</span>
+  </footer>
+</div>

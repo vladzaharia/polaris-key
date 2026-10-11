@@ -1,0 +1,16 @@
+{
+  "id": "docs.operate-guide",
+  "title": "Help a customer",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02a", "DOC-11a"],
+  "uxRows": [],
+  "summary": "Member-facing device-limit walkthrough with role requirement, impact and public customer Help article.",
+  "compare": [
+    "Role and impact appear before the task.",
+    "Console labels are bold and Open Licenses is an outline deep link.",
+    "The public Help article names the customer path."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

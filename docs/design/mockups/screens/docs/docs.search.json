@@ -1,0 +1,16 @@
+{
+  "id": "docs.search",
+  "title": "Search the docs",
+  "area": "docs",
+  "surface": "dialog",
+  "packages": ["DOC-02c", "DOC-03b"],
+  "uxRows": [],
+  "summary": "All-docs command palette opened from Help with door-grouped results and keyboard hints.",
+  "compare": [
+    "The Help scope can widen to All docs.",
+    "Results group by Help, Developers and Operate with paths.",
+    "Phone renders the palette full-screen."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

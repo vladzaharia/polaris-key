@@ -1,0 +1,16 @@
+{
+  "id": "docs.not-found",
+  "title": "Page not found",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02b"],
+  "uxRows": [],
+  "summary": "Docs empty state with one strong line, one muted line, return and search actions.",
+  "compare": [
+    "The empty state uses a stationary star in a subtle icon tile.",
+    "It names the missing page and offers Back to the docs and search.",
+    "No sidebar or active door is implied."
+  ],
+  "status": "mockup",
+  "designReview": null
+}
