@@ -325,9 +325,7 @@ describe("client.update.packs (Node)", () => {
     const [install] = await c.update.packs.ensure(["djdl.l10n"]);
     expect(install!.recordSha256).toBe(v1.recordSha256);
     const dir = await c.update.packs.path("djdl.l10n");
-    expect(dir).toBe(
-      join(packRoot(), "store", "djdl.l10n", v1.treeDigest),
-    );
+    expect(dir).toBe(join(packRoot(), "store", "djdl.l10n", v1.treeDigest));
     expect(await treeOnDisk(dir!, v1.files)).toBe(true);
     expect(progress).toContain("done");
     // The device bearer goes to the control plane's own origin.

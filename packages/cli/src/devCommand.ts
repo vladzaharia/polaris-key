@@ -124,7 +124,11 @@ export async function loadDevBundle(file?: string): Promise<DevBundle> {
     );
   const target =
     file ??
-    path.join(path.dirname(fileURLToPath(import.meta.url)), "dev", "server.mjs");
+    path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "dev",
+      "server.mjs",
+    );
   try {
     return (await import(pathToFileURL(target).href)) as DevBundle;
   } catch (e) {
@@ -225,7 +229,9 @@ export async function serveDev(
       await writeFile(file, `${JSON.stringify(configFile(info), null, 2)}\n`);
       wrote = path.relative(io.cwd, file) || file;
     }
-    io.stdout.write(args.json ? `${JSON.stringify(info)}\n` : banner(info, wrote));
+    io.stdout.write(
+      args.json ? `${JSON.stringify(info)}\n` : banner(info, wrote),
+    );
     await (io.stop ?? new Promise<void>(() => {}));
   } finally {
     await server.close();
@@ -250,9 +256,7 @@ export async function devConfigUrl(cwd: string): Promise<string | null> {
 /** The running server's origin: `--url`, else `polaris-key.json`'s, else the default. */
 async function targetUrl(args: DevArgs, cwd: string): Promise<string> {
   if (args.url) return args.url.replace(/\/+$/, "");
-  return (
-    (await devConfigUrl(cwd)) ?? `http://127.0.0.1:${DEV_DEFAULT_PORT}`
-  );
+  return (await devConfigUrl(cwd)) ?? `http://127.0.0.1:${DEV_DEFAULT_PORT}`;
 }
 
 export async function devInfoFrom(
@@ -298,9 +302,7 @@ export async function controlDev(args: DevArgs, io: DevIo): Promise<number> {
   if ((DEV_KEY_COMMANDS as readonly string[]).includes(sub)) {
     const key = args.positional[0];
     if (!key)
-      throw new Error(
-        `Usage: pkey dev ${sub} <key>  (${DEV_KEYS.join(", ")})`,
-      );
+      throw new Error(`Usage: pkey dev ${sub} <key>  (${DEV_KEYS.join(", ")})`);
     body = { key };
   } else if (sub === "config") {
     const [name, raw] = args.positional;
@@ -337,7 +339,8 @@ export async function controlDev(args: DevArgs, io: DevIo): Promise<number> {
     );
   }
   const answer = (await res.json().catch(() => ({}))) as { message?: string };
-  if (!res.ok) throw new Error(answer.message ?? `${sub} failed (${res.status}).`);
+  if (!res.ok)
+    throw new Error(answer.message ?? `${sub} failed (${res.status}).`);
   io.stdout.write(`${answer.message ?? "done"}\n`);
   return 0;
 }

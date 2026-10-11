@@ -22,7 +22,10 @@ export const DEFAULT_STORE_HOST = "key.plrs.im";
  * default host (production names are unchanged), `<slug>@<host>` for any other base URL, so a
  * `pkey dev` run never reads or overwrites production state on the same machine.
  */
-export function storeNamespace(slug: string, baseUrl: string | undefined): string {
+export function storeNamespace(
+  slug: string,
+  baseUrl: string | undefined,
+): string {
   if (!baseUrl) return slug;
   let host: string;
   try {
