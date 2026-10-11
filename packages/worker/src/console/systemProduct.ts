@@ -88,7 +88,12 @@ export const SYSTEM_FEEDS = [
     ext: {},
   },
   { ecosystem: "oci", namespace: {}, ext: {} },
-  { ecosystem: "godot", namespace: { publisher: "polaris-key" }, ext: {} },
+  // The Asset Library listing's license and compatibility floor (sdks/godot/README.md: 4.4 or later).
+  {
+    ecosystem: "godot",
+    namespace: { publisher: "polaris-key" },
+    ext: { license: "MIT", minGodotVersion: "4.4" },
+  },
   // F-30: crates sit in the owner's own index (no namespace); empty until a Rust SDK ships.
   { ecosystem: "cargo", namespace: {}, ext: {} },
 ] as const;

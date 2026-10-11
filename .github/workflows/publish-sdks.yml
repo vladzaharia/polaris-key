@@ -624,6 +624,8 @@ jobs:
           echo "$(printf '%s\n' "$listing" | grep -vc '/$') files"
           mkdir -p build/feed
           cp "$zip" build/feed/
+          # The listing icon (the Asset Library wants 128x128). It rides beside the zip, never in it.
+          cp packages/brand/kit/01-marks/key/png/dark/key-128.png build/feed/polaris-key-godot-icon.png
       - uses: actions/upload-artifact@v7
         with:
           name: godot-feed

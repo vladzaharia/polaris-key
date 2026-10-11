@@ -20,6 +20,7 @@ import {
   REGISTRY_HOST_TYPES,
   dispatchRegistryHost,
 } from "../../src/core/registry/registryHost.js";
+import { SYSTEM_FEEDS } from "../../src/console/systemProduct.js";
 import { blobKey, recordObject } from "../../src/core/assets/blobs.js";
 import {
   stmtUpsertDeliverable,
@@ -656,6 +657,29 @@ describe("render-on-write, kept fresh", () => {
       string
     >;
     expect(after.category_id).toBe("5");
+  });
+
+  it("the platform feed's bootstrap settings render MIT and a 4.4 floor in both editor shapes", async () => {
+    const system = SYSTEM_FEEDS.find((f) => f.ecosystem === "godot")!;
+    await setFeed({ ext: system.ext });
+    const legacy = (await getJson(`${LEGACY}/asset/${ASSET_ID}`)) as Record<
+      string,
+      string
+    >;
+    expect(legacy.cost).toBe("MIT");
+    expect(legacy.godot_version).toBe("4.4");
+    expect(legacy.icon_url).toBe(
+      `${PKG}${base}/icons/${files["1.1.0"]!.icon}.png`,
+    );
+    const store = (await getJson(
+      `${STORE}/assets/${PUBLISHER}/${NAME}/`,
+    )) as Record<string, unknown>;
+    expect(store.license_type).toBe("MIT");
+    expect(store.thumbnail).toBe(legacy.icon_url);
+    const releases = (await getJson(
+      `${STORE}/releases/${PUBLISHER}/${NAME}/`,
+    )) as Array<Record<string, unknown>>;
+    expect(releases.every((r) => r.min_godot_version === "4.4")).toBe(true);
   });
 
   it("every version yanked: the package leaves the lists and its documents are absent", async () => {
