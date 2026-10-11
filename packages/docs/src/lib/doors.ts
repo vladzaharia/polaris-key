@@ -120,8 +120,8 @@ export const DOOR_TREES: readonly DoorTree[] = [
           sdkPages("node", "Node", true),
           sdkPages("react", "React", true),
           sdkPages("python", "Python", true),
-          sdkPages("swift", "Swift"),
-          sdkPages("kotlin", "Kotlin"),
+          sdkPages("swift", "Swift", true),
+          sdkPages("kotlin", "Kotlin", true),
           sdkPages("godot", "Godot"),
           leaf("build/sdks/index", "All SDKs"),
           {

@@ -77,10 +77,6 @@
       "frontmatter-last-reviewed": 1,
       "future-tense": 1
     },
-    "build/sdks/kotlin": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
     "build/sdks/node/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
@@ -102,10 +98,6 @@
       "frontmatter-last-reviewed": 1
     },
     "build/sdks/react/your-own-ui": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "build/sdks/swift": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },

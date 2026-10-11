@@ -3,6 +3,8 @@ title: "Your own UI (Kotlin)"
 description: "Draw your own screens on the Kotlin SDK: the state model, each call with the words to show, threading, a Compose Desktop recipe, a command-line tool, and tests."
 sidebar:
   order: 2
+type: "reference"
+lastReviewed: "2026-10-11"
 ---
 
 The library returns typed results and draws nothing. This page gives, for each screen you build, the

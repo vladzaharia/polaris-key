@@ -3,6 +3,8 @@ title: "Your own UI (Swift)"
 description: "Draw your own screens on PolarisKey for Swift: the state model, each call with the words to show, an @Observable wrapper, UIKit and AppKit hosts, updates with Sparkle, and tests."
 sidebar:
   order: 2
+type: "reference"
+lastReviewed: "2026-10-11"
 ---
 
 The library returns typed results and draws nothing. This page gives, for each screen you build, the
