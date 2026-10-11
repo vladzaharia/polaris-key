@@ -54,15 +54,17 @@ export function CustomerPortalControl({
         />
       </div>
     );
+  const switchId = "feature-customer-portal";
+  const errorId = `${switchId}-error`;
   return (
     <SettingsRow
       label="Customer portal"
-      htmlFor="feature-customer-portal"
+      htmlFor={switchId}
       help="Lets customers manage their licenses and devices in the portal."
       footer={
         error ? (
           <div className="mt-2 flex items-center gap-3">
-            <span className="text-xs text-danger">
+            <span id={errorId} role="alert" className="text-xs text-danger">
               {errorCopy(error).title}
             </span>
             <Button
@@ -80,9 +82,10 @@ export function CustomerPortalControl({
       }
     >
       <Switch
-        id="feature-customer-portal"
+        id={switchId}
         checked={on}
         readOnly={pending !== null || query.isPending}
+        aria-describedby={error ? errorId : undefined}
         onCheckedChange={(next) => void save(next).catch(() => undefined)}
       />
     </SettingsRow>

@@ -34,11 +34,19 @@ const CreateLicenseDialog = React.lazy(() =>
   ),
 );
 
-/** The DOM id of the control that owns a service. */
-export const serviceSwitchId = (service: ServiceSlug): string => {
-  if (service === "update") return "feature-ship-builds-in-app-updates";
+/**
+ * The DOM id of the control that turns `service` on. Update has its own switch inside Ship builds,
+ * but it is disabled until Distribution is on and a disabled switch cannot take focus: until then
+ * the control is Ship builds' own switch, which turns Release, Distribution and Update on together.
+ */
+export const serviceSwitchId = (
+  service: ServiceSlug,
+  services: NonNullable<ServiceState>,
+): string => {
+  if (service === "update" && missingChain(service, services).length === 0)
+    return "feature-ship-builds-in-app-updates";
   const feature =
-    service === "release" || service === "distribution"
+    service === "release" || service === "distribution" || service === "update"
       ? "ship-builds"
       : service === "license"
         ? "licensing"
@@ -107,7 +115,7 @@ export function turnOnActions(
       matchOnly: true,
       perform: (api) => {
         api.navigate(r.services(slug));
-        focusWhenReady(serviceSwitchId(row.slug));
+        focusWhenReady(serviceSwitchId(row.slug, services));
       },
     };
   });

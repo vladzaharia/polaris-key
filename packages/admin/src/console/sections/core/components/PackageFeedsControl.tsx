@@ -82,22 +82,35 @@ export function PackageFeedsControl({
       </div>
     );
   const blocked = !distributionOn || !featureOn;
+  const switchId = "feature-packages";
+  const requirementId = `${switchId}-requirements`;
+  const errorId = `${switchId}-error`;
+  const describedBy =
+    [blocked ? requirementId : null, failureCopy ? errorId : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
   return (
     <>
       <SettingsRow
         label="Packages"
-        htmlFor="feature-packages"
+        htmlFor={switchId}
         help={
-          blocked
-            ? "Turn on Ship builds to manage packages."
-            : on
-              ? "Packages are available from this product’s registry."
-              : "Packages are kept but no package feed answers installs or updates."
+          blocked ? (
+            <span id={requirementId}>
+              Turn on Ship builds to manage packages.
+            </span>
+          ) : on ? (
+            "Packages are available from this product’s registry."
+          ) : (
+            "Packages are kept but no package feed answers installs or updates."
+          )
         }
         footer={
           failure && failureCopy ? (
             <div className="mt-2 flex items-center gap-3">
-              <span className="text-xs text-danger">{failureCopy.title}</span>
+              <span id={errorId} role="alert" className="text-xs text-danger">
+                {failureCopy.title}
+              </span>
               <Button size="sm" variant="outline" onClick={recover}>
                 {failureCopy.action === "reload" ? "Reload" : "Retry"}
               </Button>
@@ -106,10 +119,11 @@ export function PackageFeedsControl({
         }
       >
         <Switch
-          id="feature-packages"
+          id={switchId}
           checked={on}
           disabled={blocked || query.isPending}
           readOnly={pending !== null}
+          aria-describedby={describedBy}
           onCheckedChange={(next) => {
             if (next) void save(true).catch(() => undefined);
             else setConfirming(true);

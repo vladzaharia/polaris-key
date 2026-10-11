@@ -276,9 +276,15 @@ describe("Services feature groups", () => {
       name: /Customer portal/i,
     });
     await waitFor(() => expect(portalSettings).toHaveBeenCalledWith("djdl"));
+    expect(customerPortal.getAttribute("aria-describedby")).toBeNull();
 
     await user.click(customerPortal);
     expect(await screen.findByText("Something went wrong")).toBeTruthy();
+    // The failure is announced, and the switch that reset is described by it.
+    const alert = screen.getByRole("alert");
+    expect(alert.id).toBe("feature-customer-portal-error");
+    expect(alert.textContent).toBe("Something went wrong");
+    expect(customerPortal.getAttribute("aria-describedby")).toBe(alert.id);
     expect(updatePortalSettings).toHaveBeenLastCalledWith("djdl", {
       portalEnabled: true,
     });
@@ -290,6 +296,8 @@ describe("Services feature groups", () => {
       }),
     );
     expect(updatePortalSettings).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(customerPortal.getAttribute("aria-describedby")).toBeNull();
   });
 
   it("names a package feed version conflict and reloads it", async () => {
@@ -309,8 +317,14 @@ describe("Services feature groups", () => {
     );
     mount();
     const packages = await screen.findByRole("switch", { name: /Packages/i });
+    expect(packages.getAttribute("aria-describedby")).toBeNull();
     await user.click(packages);
     expect(await screen.findByText("This changed on the server")).toBeTruthy();
+    // The failure is announced, and the switch that reset is described by it.
+    const alert = screen.getByRole("alert");
+    expect(alert.id).toBe("feature-packages-error");
+    expect(alert.textContent).toBe("This changed on the server");
+    expect(packages.getAttribute("aria-describedby")).toBe(alert.id);
     const callsBeforeReload = packageFeeds.mock.calls.length;
 
     await user.click(screen.getByRole("button", { name: "Reload" }));
@@ -320,6 +334,8 @@ describe("Services feature groups", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Reload" })).toBeNull(),
     );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(packages.getAttribute("aria-describedby")).toBeNull();
   });
 
   it("links a disabled Cloud Sync switch to its requirement", async () => {
@@ -353,6 +369,17 @@ describe("Services feature groups", () => {
     );
     expect(document.getElementById(requirementId!)?.textContent).toMatch(
       /Needs Distribution/,
+    );
+  });
+
+  it("links a blocked Packages switch to why it is blocked", async () => {
+    mount();
+    const packages = await screen.findByRole("switch", { name: /Packages/i });
+    const requirementId = packages.getAttribute("aria-describedby");
+    expect((packages as HTMLButtonElement).disabled).toBe(true);
+    expect(requirementId).toBe("feature-packages-requirements");
+    expect(document.getElementById(requirementId!)?.textContent).toBe(
+      "Turn on Ship builds to manage packages.",
     );
   });
 });
