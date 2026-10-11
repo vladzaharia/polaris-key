@@ -36,15 +36,15 @@ Pass the printed keys to `activateWithKey`. Every SDK keeps a non-default base U
 
 ## Test keys
 
-| Key                 | What the app sees                       |
-| ------------------- | --------------------------------------- |
-| `ok`                | Activates; `exportPro` entitled         |
-| `expired`           | `unauthorized`                          |
-| `disabled`          | `unauthorized`                          |
-| `revoked`           | `unauthorized`                          |
-| `device-limit-full` | `device_limit`                          |
-| `key-entry-limit`   | `key_entry_limit`                       |
-| `floating`          | Activates; a bulk key in no account     |
+| Key                 | What the app sees                   |
+| ------------------- | ----------------------------------- |
+| `ok`                | Activates; `exportPro` entitled     |
+| `expired`           | `unauthorized`                      |
+| `disabled`          | `unauthorized`                      |
+| `revoked`           | `unauthorized`                      |
+| `device-limit-full` | `device_limit`                      |
+| `key-entry-limit`   | `key_entry_limit`                   |
+| `floating`          | Activates; a bulk key in no account |
 
 ## Change things while it runs
 

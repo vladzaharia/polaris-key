@@ -10,7 +10,10 @@ import type { IdpFacts } from "./world.js";
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    },
   });
 
 const esc = (s: string): string =>
@@ -157,8 +160,7 @@ export function createIdp(facts: IdpFacts, opts: { autoApprove: boolean }) {
       );
       return json({ id_token: idToken, token_type: "Bearer" });
     }
-    if (path === "/.well-known/jwks.json")
-      return json({ keys: [facts.jwk] });
+    if (path === "/.well-known/jwks.json") return json({ keys: [facts.jwk] });
     return json({ error: "not_found" }, 404);
   };
 }

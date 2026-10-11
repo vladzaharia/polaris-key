@@ -60,9 +60,7 @@ export class NodeSqliteDb implements Db {
     sql: string,
     ...params: DbParam[]
   ): Promise<T | null> {
-    return (
-      (this.db.prepare(sql).get(...bind(params)) as T | undefined) ?? null
-    );
+    return (this.db.prepare(sql).get(...bind(params)) as T | undefined) ?? null;
   }
 
   async run(sql: string, ...params: DbParam[]): Promise<void> {

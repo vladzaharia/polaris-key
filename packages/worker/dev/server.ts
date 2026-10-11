@@ -76,7 +76,6 @@ function hostOf(host: string): string {
   return new URL(`http://${host}`).hostname;
 }
 
-
 type IdpHandler = (req: Request, u: URL, path: string) => Promise<Response>;
 
 interface FetchScope {
@@ -120,8 +119,9 @@ function acquireFetchGuard(scope: FetchScope): () => void {
         current?.idpHost === host
           ? current.handleIdp
           : !current
-            ? [...ACTIVE_FETCH_SCOPES].find((candidate) => candidate.idpHost === host)
-                ?.handleIdp
+            ? [...ACTIVE_FETCH_SCOPES].find(
+                (candidate) => candidate.idpHost === host,
+              )?.handleIdp
             : undefined;
       if (idp) {
         const u = new URL(raw);
@@ -170,15 +170,12 @@ function send(
   });
   // A browser sent to this server's fake IdP https name lands on its loopback page instead.
   const to = headers.location;
-  if (
-    idpOrigin &&
-    typeof to === "string" &&
-    to.startsWith(`${idpOrigin}/`)
-  )
+  if (idpOrigin && typeof to === "string" && to.startsWith(`${idpOrigin}/`))
     headers.location = `${origin}/__idp${to.slice(idpOrigin.length)}`;
   const cookies =
-    (r.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ??
-    [];
+    (
+      r.headers as unknown as { getSetCookie?: () => string[] }
+    ).getSetCookie?.() ?? [];
   if (cookies.length) headers["set-cookie"] = cookies;
   res.writeHead(r.status, headers).end(body);
 }
@@ -319,7 +316,10 @@ interface ControlHooks {
 const jsonRes = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    },
   });
 
 /**
@@ -335,7 +335,8 @@ async function control(
   const cmd = url.pathname.slice("/__dev/".length);
   if (req.method === "GET" && cmd === "info")
     return jsonRes({ ...infoOf(world), offline: hooks.offline() });
-  if (req.method !== "POST") return jsonRes({ error: "method_not_allowed" }, 405);
+  if (req.method !== "POST")
+    return jsonRes({ error: "method_not_allowed" }, 405);
   if (!req.headers.get("x-pkey-dev"))
     return jsonRes({ error: "missing_x_pkey_dev" }, 403);
   let args: Record<string, unknown> = {};
@@ -356,8 +357,7 @@ async function control(
       case "restore":
       case "fill-seats": {
         const key = str("key");
-        if (!key)
-          throw new Error(`Name a test key: ${KEY_STATES.join(", ")}.`);
+        if (!key) throw new Error(`Name a test key: ${KEY_STATES.join(", ")}.`);
         message = await (cmd === "fill-seats"
           ? world.fillSeats(key)
           : world[cmd](key));
@@ -373,7 +373,10 @@ async function control(
       case "release": {
         const version = str("version");
         if (!version) throw new Error("Give a version.");
-        message = await world.publishRelease(version, str("channel") ?? "stable");
+        message = await world.publishRelease(
+          version,
+          str("channel") ?? "stable",
+        );
         break;
       }
       case "offline":

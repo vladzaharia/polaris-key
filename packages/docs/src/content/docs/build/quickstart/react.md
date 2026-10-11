@@ -39,12 +39,12 @@ Electron main process, whose `@polaris-key/node` client verifies. [Run Polaris K
 
 ## Choose your path
 
-| Path                        | You write                                                         | Page                                                               |
-| --------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Drop-in                     | `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate>` | [Below](#drop-in-screens)                                          |
-| Compose kit parts           | kit components with `input` and action handlers                    | [React kit](/docs/build/ui/frameworks/react/#piecemeal)            |
-| Your own UI on the hooks    | `useLicenseGate()` and the other hooks                            | [Your own UI](/docs/build/sdks/react/your-own-ui/)                 |
-| Your own UI without React   | the adapter, `subscribe()` and `snapshot()`                       | [Without React](/docs/build/sdks/react/your-own-ui/#without-react) |
+| Path                      | You write                                                         | Page                                                               |
+| ------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Drop-in                   | `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate>` | [Below](#drop-in-screens)                                          |
+| Compose kit parts         | kit components with `input` and action handlers                   | [React kit](/docs/build/ui/frameworks/react/#piecemeal)            |
+| Your own UI on the hooks  | `useLicenseGate()` and the other hooks                            | [Your own UI](/docs/build/sdks/react/your-own-ui/)                 |
+| Your own UI without React | the adapter, `subscribe()` and `snapshot()`                       | [Without React](/docs/build/sdks/react/your-own-ui/#without-react) |
 
 ## Drop-in screens
 
@@ -100,16 +100,16 @@ export function App() {
 
 ## The same eight checkpoints
 
-| #   | Checkpoint         | Drop-in                                                       | Your own UI                                            |
-| --- | ------------------ | ------------------------------------------------------------- | ------------------------------------------------------ |
-| 1   | Install            | above                                                         | above                                                  |
-| 2   | Config             | above                                                         | above                                                  |
-| 3   | First activation   | `PolarisKeyGate`'s sign-in screen takes a key                    | `usePolarisAuth().submitKey(key)`                      |
-| 4   | Each refusal       | The screen keeps the key, says why, and offers Replace a device  | `PolarisError.activation.kind`, `describeError(error)` |
-| 5   | Sign-in            | The kit sign-in screen inside the gate                            | `usePolarisAuth().signInWithOidc()`, then `profile`    |
-| 6   | Status and offline | `PolarisKeyGate` handles usable offline grace                    | `useLicenseGate()`, `useLicense()`                     |
-| 7   | An update offer    | The kit update screen                                             | `useUpdateDecision()`                                  |
-| 8   | Tests              | `<PolarisKeyProvider config={testPolarisKey}>`                   | `browserAdapter({ fetchImpl, … })`                     |
+| #   | Checkpoint         | Drop-in                                                         | Your own UI                                            |
+| --- | ------------------ | --------------------------------------------------------------- | ------------------------------------------------------ |
+| 1   | Install            | above                                                           | above                                                  |
+| 2   | Config             | above                                                           | above                                                  |
+| 3   | First activation   | `PolarisKeyGate`'s sign-in screen takes a key                   | `usePolarisAuth().submitKey(key)`                      |
+| 4   | Each refusal       | The screen keeps the key, says why, and offers Replace a device | `PolarisError.activation.kind`, `describeError(error)` |
+| 5   | Sign-in            | The kit sign-in screen inside the gate                          | `usePolarisAuth().signInWithOidc()`, then `profile`    |
+| 6   | Status and offline | `PolarisKeyGate` handles usable offline grace                   | `useLicenseGate()`, `useLicense()`                     |
+| 7   | An update offer    | The kit update screen                                           | `useUpdateDecision()`                                  |
+| 8   | Tests              | `<PolarisKeyProvider config={testPolarisKey}>`                  | `browserAdapter({ fetchImpl, … })`                     |
 
 For a fixture test, create `const testPolarisKey = { ...polarisKey, adapter };` and pass that same
 configuration to the provider.

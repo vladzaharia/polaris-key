@@ -85,7 +85,10 @@ export function SettingsContent() {
           }
         />
       </section>
-      <section className="settings-part" aria-labelledby="managed-settings-heading">
+      <section
+        className="settings-part"
+        aria-labelledby="managed-settings-heading"
+      >
         <h2 id="managed-settings-heading">Managed settings</h2>
         <Settings input={{ config }} />
       </section>

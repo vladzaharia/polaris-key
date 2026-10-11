@@ -43,9 +43,9 @@ const CATALOG = {
 };
 
 /** The localhost origins a browser app is likely to run on (web.origins accepts exact origins). */
-export const DEV_WEB_ORIGINS: readonly string[] = [3000, 4173, 5173, 8080].flatMap(
-  (p) => [`http://localhost:${p}`, `http://127.0.0.1:${p}`],
-);
+export const DEV_WEB_ORIGINS: readonly string[] = [
+  3000, 4173, 5173, 8080,
+].flatMap((p) => [`http://localhost:${p}`, `http://127.0.0.1:${p}`]);
 
 /** The release deliverable's one build: what a dev release is published for. */
 export const TIDEWATER_BUILD = {

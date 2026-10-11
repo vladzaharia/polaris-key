@@ -140,7 +140,10 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
 
   const releasePair = await generateEd25519();
   const releaseKid = "dev-release-1";
-  const releaseKey = { kid: releaseKid, publicKey: releasePair.publicRawB64url };
+  const releaseKey = {
+    kid: releaseKid,
+    publicKey: releasePair.publicRawB64url,
+  };
 
   // ── The product: the repo's .pkey/, or Tidewater ─────────────────────────────────────────
   const files: Partial<Record<ManifestDocumentName, string>> = opts.manifest
@@ -422,10 +425,13 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
         },
       ],
     };
-    const record = descriptorToRecord(descriptor as unknown as ReleaseDescriptor, {
-      seq,
-      issuedAt: t,
-    });
+    const record = descriptorToRecord(
+      descriptor as unknown as ReleaseDescriptor,
+      {
+        seq,
+        issuedAt: t,
+      },
+    );
     const jws = await signJws(
       record,
       releasePair.privatePkcs8Pem,
@@ -460,7 +466,16 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
       [
         `INSERT INTO release_builds (product, release_id, build_id, platform, arch, format, created_at, modified_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [slug, releaseId, build.id, build.platform, build.arch, build.format, t, t],
+        [
+          slug,
+          releaseId,
+          build.id,
+          build.platform,
+          build.arch,
+          build.format,
+          t,
+          t,
+        ],
       ],
       [
         `INSERT INTO release_records (product, deliverable_id, release_id, seq, kind, record_sha256, kid, jws, ingested_at)
@@ -649,8 +664,9 @@ function releaseBuildOf(
     : never,
 ): { id: string; platform: string; arch: string; format: string } | null {
   const app = manifest.release?.app;
-  const art = (app as { artifacts?: Array<Record<string, unknown>> } | undefined)
-    ?.artifacts?.find((a) => (a.role ?? "payload") === "payload");
+  const art = (
+    app as { artifacts?: Array<Record<string, unknown>> } | undefined
+  )?.artifacts?.find((a) => (a.role ?? "payload") === "payload");
   if (!art) return null;
   return {
     id: String(art.id),
