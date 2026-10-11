@@ -1517,6 +1517,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">Sign-in isn't available right now. Try again in a few minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_title">Account check unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_message">We couldn't confirm your account's status right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_title">Sign-in unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">Sign-in through this app is turned off. Your installs and licenses keep working.</string>

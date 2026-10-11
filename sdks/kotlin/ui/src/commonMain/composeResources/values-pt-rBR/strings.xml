@@ -1527,6 +1527,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">O acesso não está disponível agora. Tente novamente em alguns minutos.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_title">Verificação da conta indisponível</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_message">Não foi possível confirmar a situação da sua conta agora. Tente novamente em alguns minutos.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_title">Acesso indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">O acesso por este app está desativado. Suas instalações e licenças continuam funcionando.</string>

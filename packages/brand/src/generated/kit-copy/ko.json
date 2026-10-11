@@ -679,6 +679,8 @@
   "core.codes.oidc_error.message": "로그인을 완료하지 못했어요. 다시 시도하세요.",
   "core.codes.unavailable.title": "로그인 사용 불가",
   "core.codes.unavailable.message": "지금은 로그인을 사용할 수 없어요. 몇 분 후에 다시 시도하세요.",
+  "core.codes.erasure_ledger_unavailable.title": "계정 확인 불가",
+  "core.codes.erasure_ledger_unavailable.message": "지금은 계정 상태를 확인할 수 없어요. 몇 분 후에 다시 시도하세요.",
   "core.codes.identity_disabled.title": "로그인 사용 불가",
   "core.codes.identity_disabled.message": "이 앱을 통한 로그인이 꺼져 있어요. 설치와 라이선스는 계속 작동해요.",
   "core.codes.auth_method_disabled.title": "로그인 방법 사용 불가",

@@ -4007,6 +4007,16 @@ msgstr "サインインを利用できません"
 msgid "core.codes.unavailable.message"
 msgstr "現在サインインを利用できません。数分後にもう一度お試しください。"
 
+#. Account check unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.title"
+msgstr "アカウントを確認できません"
+
+#. We couldn't confirm your account's status right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.message"
+msgstr "現在アカウントの状態を確認できませんでした。数分後にもう一度お試しください。"
+
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.identity_disabled.title"

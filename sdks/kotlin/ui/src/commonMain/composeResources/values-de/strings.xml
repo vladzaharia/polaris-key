@@ -1517,6 +1517,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_title">Kontoprüfung nicht verfügbar</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_message">Der Status Ihres Kontos konnte gerade nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_title">Anmeldung nicht verfügbar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin.</string>

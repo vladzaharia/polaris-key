@@ -4017,6 +4017,16 @@ msgstr "Anmeldung nicht verfügbar"
 msgid "core.codes.unavailable.message"
 msgstr "Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut."
 
+#. Account check unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.title"
+msgstr "Kontoprüfung nicht verfügbar"
+
+#. We couldn't confirm your account's status right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.message"
+msgstr "Der Status Ihres Kontos konnte gerade nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut."
+
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.identity_disabled.title"
