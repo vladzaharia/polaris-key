@@ -15,18 +15,18 @@ Polaris Key is a suite of opt-in services over an always-on Core, and on Apple p
 division is spent at LINK time: a product that does not ship updates does not link Sparkle, and
 a product with no license service does not carry the gate.
 
-| Product              | Contents                                                                                                                                             | Depends on                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import                                                        | Core, License, Config, Identity, Release  |
-| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles, and wire v4's feed and record verifiers and update decision | —                                         |
-| `PolarisKeyLicense`  | the gate, activation, entitlements                                                                                                                   | Core                                      |
-| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch                                                                  | Core                                      |
-| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                                                                       | Core                                      |
-| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                      |
-| `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, the `PacksClient` facet and its vendored zstd 1.5.7 (macOS **and** iOS); optional      | Core, Platform, Update, vendored libzstd  |
+| Product              | Contents                                                                                                                                             | Depends on                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `PolarisKey`         | `PolarisKeyClient` + `@_exported import` of Core/License/Config/Identity/Release — one import                                                        | Core, License, Config, Identity, Release     |
+| `PolarisKeyCore`     | device principal, trust set, verified cache, clock floor, transport, discovery, bundles, and wire v4's feed and record verifiers and update decision | —                                            |
+| `PolarisKeyLicense`  | the gate, activation, entitlements                                                                                                                   | Core                                         |
+| `PolarisKeyConfig`   | the config document, layered resolution, device facts, edge-mint, the catalog fetch                                                                  | Core                                         |
+| `PolarisKeyIdentity` | device-code sign-in (RFC 8628)                                                                                                                       | Core                                         |
+| `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                         |
+| `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, the `PacksClient` facet and its vendored zstd 1.5.7 (macOS **and** iOS); optional          | Core, Platform, Update, vendored libzstd     |
 | `PolarisKeyUpdate`   | wire v4's `UpdateClient` decision and the Sparkle wiring (**macOS only**); no packs and no zstd                                                      | Core, Platform, Sparkle ≥ 2.9.6 (macOS only) |
-| `PolarisKeyUI`       | the brandable SwiftUI gate, sign-in and offline activation over the `@Observable` `PolarisKeyModel`                                                  | Core, License, Config                     |
-| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                            |
+| `PolarisKeyUI`       | the brandable SwiftUI gate, sign-in and offline activation over the `@Observable` `PolarisKeyModel`                                                  | Core, License, Config                        |
+| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                               |
 
 Platforms: macOS 15+, iOS 18+ (iPadOS and Mac Catalyst take the iOS paths and are built in CI); tvOS 18 and visionOS 2 are declared.
 tvOS, visionOS and watchOS derive the device id from `identifierForVendor`; their platform header
