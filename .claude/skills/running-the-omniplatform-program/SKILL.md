@@ -19,7 +19,7 @@ The program lives in `docs/research/2026-09-29-godot-omniplatform/program/`. Its
 - [ ] Run `node program/check.mjs --ready`. Take from the top, respecting the §5 hotspot rules:
   - one corpus-touching package at a time;
   - protocol changes only inside approved plans;
-  - migrations numbered on rebase.
+  - builders leave migrations as `00XX_<name>.sql`; the lead numbers them at merge.
 - [ ] Skip ✋ packages whose human inputs are missing. Ask for those inputs in one message, grouped by provider.
 - [ ] Send ⚑ (plan-mode) packages to `pkey-wire-planner` first.
 - [ ] Start every other package with the role named in `workpackages.json`. Give the agent:
@@ -34,13 +34,28 @@ The program lives in `docs/research/2026-09-29-godot-omniplatform/program/`. Its
 
 ## When an agent reports
 
-- [ ] Start `pkey-wp-reviewer` on the branch. Send blocking findings back to the same role agent (continue it rather than starting fresh), and repeat until it passes.
+- [ ] Start `pkey-wp-reviewer` on the branch. Send blocking findings back to the same role agent for one fix round. If re-review still blocks, take the branch back rather than starting another loop.
 - [ ] Check that the PR body carries the brief's acceptance checklist, and that the status is `in-review` in `workpackages.json`.
 - [ ] When the reviewer passes it, add the PR's last commit: the brief's hand-off line `check.mjs --set <ID> done`, then prettier on `workpackages.json` and `INDEX.md`. Hand the PR to the human to merge. After the merge:
   - confirm the status reads `done` on the default branch;
   - re-run `--ready`;
   - update any downstream brief whose named interface changed.
 - [ ] Record deviations the agent reported. A scope or estimate change of more than half goes to the human before more work is dispatched on that line.
+
+## Integrating and closing agents
+
+- [ ] Register each launched workflow or agent in `$PKEY_LEAD/active`. `$PKEY_LEAD` is the lead
+      directory set in the owner's shell profile.
+- [ ] Merge a passed branch locally with `$PKEY_LEAD/merge.sh`. It auto-resolves only generated
+      files and stops on any other conflict. Send real conflicts to **one integration agent** for the
+      batch, not back to each builder.
+- [ ] Run `$PKEY_LEAD/gate.sh` once per integration batch. CI on `main` runs the full matrix, and
+      a deploy waits for it.
+- [ ] Run `$PKEY_LEAD/stall-watch.sh` in the background whenever agents run. Act on every quiet,
+      long or unclosed report; resume, stop or re-scope the work, then re-arm the watcher.
+- [ ] Once a hand-back is merged, re-dispatched or filed, stop the agent with `TaskStop` and remove
+      it from `$PKEY_LEAD/active`, unless it is sending that agent more work. After a batch of
+      hand-backs, run `ListAgents` and stop every entry shown as `completed`.
 
 ## Escalate to the human, and pause the affected line, when
 

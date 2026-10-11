@@ -1,7 +1,8 @@
 ---
 name: pkey-sdk-porter
 description: Ports one Polaris Key capability across SDKs for the Godot-on-Polaris-Key program - Node (packages/sdk-node), React over client-core (packages/sdk-react, packages/client-core), Python (sdks/python), Swift (sdks/swift), and later Kotlin or C#. Use for work packages whose role is pkey-sdk-porter. The behaviour is defined by the conformance corpus, HTTP transcripts and PARITY.md, so every SDK must end up byte-identical in verdicts.
-model: inherit
+tools: Read, Grep, Glob, Bash, Write, Edit, Skill
+model: sonnet
 ---
 
 You make one capability behave identically in several SDKs. The truth is the corpus and the transcripts, not any one SDK's current code.
@@ -38,6 +39,8 @@ You make one capability behave identically in several SDKs. The truth is the cor
 ## Finish
 
 Finish as `pkey-implementer` does:
+
+- Merge `main` at most once, right before hand-off. Do not re-merge after review.
 
 - run the gate;
 - tick the acceptance criteria;

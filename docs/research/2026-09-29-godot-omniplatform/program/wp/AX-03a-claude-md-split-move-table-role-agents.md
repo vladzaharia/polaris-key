@@ -46,6 +46,12 @@ Claude Code loads `AGENTS.md` only when it opens it, since `CLAUDE.md` says to r
 - Tier: must (required; gates 1.0 on its deterministic checks only). Wave 1 in the plan's order (§8.4). Model routing (§8.5): Opus 5.5 for the restructure, Sonnet 5.5 for the tests; set the model on every agent call, never inherit.
 - Model routing (plan §8.5): Sonnet 5.5 for implementer, sdk-porter, godot-engineer, spike-runner; Opus 5.5 for wire-planner, wp-reviewer, ux-reviewer. Never inherit.
 - The `AGENTS.md` restructure is judgement work (Opus 5.5).
+- Correction: `.claude/skills/` has no `adding-a-migration`; AX-14 owns that platform skill. The
+  migration placeholder rule belongs in `AGENTS.md` → Hand-off.
+- Correction: `$PKEY_LEAD/owner-steps.md` is absent from the lead directory. This package uses
+  `$PKEY_LEAD` without claiming an owner-checklist link.
+- Correction: the program skill's repeated-review loop conflicted with the one-fix-round rule.
+  A still-blocking re-review returns the branch to the lead.
 
 ## Steps
 
@@ -58,12 +64,12 @@ N/A: no screen or state ships in this package (selected by the overview-04 rule 
 
 ## Acceptance criteria
 
-- [ ] `agents-md.test.ts` finds every moved rule at its destination.
-- [ ] `CLAUDE.md` is under 30 lines and starts with `@AGENTS.md`.
-- [ ] No `/Users/` or `~/` path in a tracked agent, skill or `CLAUDE.md` file.
-- [ ] All seven role agents have `tools:` and an explicit `model:`; none counts the hard rules in prose.
+- [x] `agents-md.test.ts` finds every moved rule at its destination.
+- [x] `CLAUDE.md` is under 30 lines and starts with `@AGENTS.md`.
+- [x] No `/Users/` or `~/` path in a tracked agent, skill or `CLAUDE.md` file.
+- [x] All seven role agents have `tools:` and an explicit `model:`; none counts the hard rules in prose.
 - [ ] Its eval report (plan §7.4) is attached to the hand-off: the suite and arms it should move, and the measured difference with its interval. It never blocks the merge.
-- [ ] Any skill or README it writes or changes is reviewed against the plan's principle 9 (terse: each fact once, in the reader's words).
+- [x] Any skill or README it writes or changes is reviewed against the plan's principle 9 (terse: each fact once, in the reader's words).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
