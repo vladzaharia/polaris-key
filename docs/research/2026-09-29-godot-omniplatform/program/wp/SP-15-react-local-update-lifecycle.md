@@ -62,7 +62,7 @@ P1-09 ported the launch decision to client-core, but React has no slots, no coun
 ## Acceptance criteria
 
 - [x] `@pkey-feature core.local` unit tests prove the adapter never touches the network.
-- [x] `@pkey-feature update.driver` tests cover the service-worker hand-off with a fake registration and the bridge forwarding path; the device proof is a recorded run in a browser and in the Electron sample, noted in the PR.
+- [ ] `@pkey-feature update.driver` tests cover the service-worker hand-off with a fake registration and the bridge forwarding path. Not met: the device proof (a recorded run in a browser and in the Electron sample, noted in the PR) is not recorded. The Electron half is blocked on SP-31 (Node bridge v4 verbs `update.install`, `update.markBootAttempt`, `update.confirmBoot` are not in `packages/sdk-node`).
 - [x] `@pkey-feature update.bootguard` tests replay every guard case of `stage-matrix.json` with persisted slots, rollback and confirmation.
 - [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
 - [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
