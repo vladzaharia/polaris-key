@@ -47,6 +47,12 @@ The owner decided on 2026-10-07 that the consolidation ships as the 0.9 line and
 - The CI step checks the production dependency tree only (for example `pnpm audit --prod --audit-level high`), so a dev-only advisory never blocks a release.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections from the code (2026-10-11)
+
+- `examples/` is outside the pnpm workspace, so `electron` has no lockfile entry: all 20 electron alerts come from the `examples/node-electron/package.json` range (`^38.0.0`). `electron` is a `devDependency` of that private example only, no published package depends on it (`@polaris-key/node` ships its Electron adapters against the caller's `electron`). Fixed by a direct bump to `^44.7.0` (latest `44.7.0`, past every patched version, 39.8.10 and 41.10.6).
+- `smol-toml` is a direct dependency of `@polaris-key/cli` (`1.8.0` → `1.9.1`, exact pin kept). `http-cache-semantics` (no `first_patched_version` in the advisory; `4.3.0` is the latest release), `source-map-js` and `postcss-selector-parser` are transitive under astro/starlight: three `overrides` in `pnpm-workspace.yaml` (pnpm 10 reads overrides there, not from `package.json`): `http-cache-semantics@^4`, `source-map-js@^1`, and `postcss-nested@^6` → `^8.0.1` (the 6.x `postcss-selector-parser` has no patched release; postcss-nested 8 asks `^7.1.4`).
+- The CI step is `pnpm audit --prod --audit-level high` in the `js` job of `ci.yml`.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
