@@ -16,7 +16,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "electron": "^38.0.0",
+    "electron": "^44.7.0",
     "esbuild": "^0.28.1"
   }
 }
