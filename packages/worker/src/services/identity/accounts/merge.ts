@@ -34,6 +34,7 @@
 
 import type { DbStatement } from "../../../db/types.js";
 import { stmtMoveAccountLicenses } from "../../../core/accounts/accountSubjects.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licensing/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/accounts/subjectHooks.js";
 import { randomId } from "../../../platform/crypto.js";
@@ -93,6 +94,12 @@ export async function mergeAccounts(
   const absorbed = await getAccountRow(db, ap.accountId);
   if (!survivor || !absorbed) return { ok: false, reason: "not_found" };
   if (survivor.status !== "active" || absorbed.status !== "active") {
+    return { ok: false, reason: "account_disabled" };
+  }
+  // I-11: a join never involves an account the erasure ledger holds (a D1 restore brings one back
+  // as `active`, and absorbing it would move erased data into a live account); a ledger that
+  // cannot be read refuses the same way.
+  if ((await erasureVerdict(env, now, survivor.id, absorbed.id)) !== "clear") {
     return { ok: false, reason: "account_disabled" };
   }
   const S = survivor.id;

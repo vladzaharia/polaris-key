@@ -101,7 +101,7 @@ async function signedIn(
   db: Db,
   identity: Parameters<typeof signIn>[1],
   now = NOW,
-  opts: Parameters<typeof signIn>[3] = {},
+  opts: Parameters<typeof signIn>[3] = { unfenced: true },
 ) {
   const r = await signIn(db, identity, now, opts);
   if (r.status !== "signed_in")
@@ -209,6 +209,7 @@ describe("signIn(verifiedIdentity)", () => {
       db,
       oidcIdentity("google-1", "ada@example.com"),
       NOW,
+      { unfenced: true },
     );
     expect(r).toEqual({
       status: "join_offer",
@@ -237,12 +238,18 @@ describe("signIn(verifiedIdentity)", () => {
       "UPDATE accounts SET status = 'disabled' WHERE id = ?",
       a.account.id,
     );
-    expect(await signIn(db, emailIdentity("ada@example.com"), NOW)).toEqual({
+    expect(
+      await signIn(db, emailIdentity("ada@example.com"), NOW, {
+        unfenced: true,
+      }),
+    ).toEqual({
       status: "refused",
       reason: "account_disabled",
     });
     expect(
-      await signIn(db, { issuerKey: ISSUER, subject: " ", kind: "oidc" }, NOW),
+      await signIn(db, { issuerKey: ISSUER, subject: " ", kind: "oidc" }, NOW, {
+        unfenced: true,
+      }),
     ).toEqual({ status: "refused", reason: "invalid_identity" });
   });
 
@@ -260,23 +267,30 @@ describe("signIn(verifiedIdentity)", () => {
     const productB = { slug: "game-b", tenantScopes: ["team-b"] };
 
     const a = await signedIn(db, gamecenter("team-a"), NOW, {
+      unfenced: true,
       product: productA,
     });
     // The same subject string under team B is a different identity: it finds no link.
     const b = await signedIn(db, gamecenter("team-b"), NOW, {
+      unfenced: true,
       product: productB,
     });
     expect(b.created).toBe(true);
     expect(b.account.id).not.toBe(a.account.id);
     // Team A's identity presented to team B's product is refused outright.
     expect(
-      await signIn(db, gamecenter("team-a"), NOW, { product: productB }),
+      await signIn(db, gamecenter("team-a"), NOW, {
+        unfenced: true,
+        product: productB,
+      }),
     ).toEqual({
       status: "refused",
       reason: "tenant_scope_mismatch",
     });
     // And a tenant-scoped identity is recognised only inside a product of its scope.
-    expect(await signIn(db, gamecenter("team-a"), NOW)).toEqual({
+    expect(
+      await signIn(db, gamecenter("team-a"), NOW, { unfenced: true }),
+    ).toEqual({
       status: "refused",
       reason: "tenant_scope_mismatch",
     });
@@ -287,9 +301,11 @@ describe("signIn(verifiedIdentity)", () => {
     await seedProduct(db, "acme");
     await seedProduct(db, "other");
     const viaAcme = await signedIn(db, emailIdentity("ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "acme" },
     });
     const viaOther = await signedIn(db, emailIdentity("ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "other" },
     });
     expect(viaAcme.subject).toMatch(PAIRWISE_SUBJECT_PATTERN);
@@ -988,6 +1004,7 @@ describe("the device binding and Core's clearing hook", () => {
     const product = (await loadProduct(w.env, w.db, "djdl"))!;
     const { key, licenseId } = await seedLicenseWithKey(w.db, "djdl");
     const a = await signedIn(w.db, emailIdentity("ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "djdl" },
     });
     await attachLicense(w.ctx(), {
@@ -1079,6 +1096,7 @@ describe("the device binding and Core's clearing hook", () => {
     });
     const product = (await loadProduct(w.env, w.db, "idonly"))!;
     const r = await signedIn(w.db, oidcIdentity("u1", "ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "idonly" },
     });
     const { token, device } = await registerDeviceBinding(

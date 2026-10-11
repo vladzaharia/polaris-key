@@ -46,9 +46,9 @@ import {
   getAccountRow,
   insertLink,
 } from "../src/services/identity/accounts/repo.js";
+import { erasureKey } from "../src/core/accounts/erasureFence.js";
 import {
   ErasureLedgerError,
-  erasureKey,
   recordErasure,
 } from "../src/services/identity/accounts/erasureLedger.js";
 import {
@@ -98,6 +98,7 @@ async function world(r2 = new R2Mock()) {
     db,
     { issuerKey: "email", subject: EMAIL, kind: "email" },
     NOW,
+    { env },
   );
   if (r.status !== "signed_in") throw new Error("sign-in failed");
   const attached = await attachLicense(ctx(), {
@@ -305,6 +306,7 @@ describe("SEC-PRV-1: erasure survives a failing store hook", () => {
       w.db,
       { issuerKey: "email", subject: EMAIL, kind: "email" },
       NOW + 30,
+      { env: w.env },
     );
     expect(again.status).toBe("refused");
     expect((await getAccountRow(w.db, w.id))?.status).toBe("deleted");
@@ -328,6 +330,7 @@ describe("SEC-PRV-1: erasure survives a failing store hook", () => {
       w.db,
       { issuerKey: "email", subject: EMAIL, kind: "email" },
       NOW + 30,
+      { env: w.env },
     );
     expect(again.status).toBe("signed_in");
     if (again.status === "signed_in") expect(again.account.id).not.toBe(w.id);
@@ -1079,15 +1082,17 @@ describe("I-11: a D1 restore does not resurrect an erased account", () => {
     expect(await rowsNaming(w.db, w.id)).toEqual(live);
     expect(w.r2.keys()).toEqual([`erasures/${w.id}`]);
 
-    // The residual: nothing on the request path knows the ledger, so until the next replay tick
-    // the restored account signs in again.
+    // The request-time fence: D1 says `active` again, but the ledger holds the id, so the sign-in
+    // door refuses before it writes anything, from the restore until (and after) the replay.
+    const restored = await snapshotDb(w.db);
     const during = await signIn(
       w.db,
       { issuerKey: "email", subject: EMAIL, kind: "email" },
       NOW + 150,
+      { env: w.env },
     );
-    expect(during.status).toBe("signed_in");
-    if (during.status === "signed_in") expect(during.account.id).toBe(w.id);
+    expect(during).toEqual({ status: "refused", reason: "account_disabled" });
+    expect(await snapshotDb(w.db)).toEqual(restored);
 
     // What both cron ticks run.
     expect(await deletion.replayErasures(w.ctx(NOW + 200))).toEqual({
@@ -1127,6 +1132,7 @@ describe("I-11: a D1 restore does not resurrect an erased account", () => {
       w.db,
       { issuerKey: "email", subject: EMAIL, kind: "email" },
       NOW + 300,
+      { env: w.env },
     );
     expect(again.status).toBe("signed_in");
     if (again.status === "signed_in") expect(again.account.id).not.toBe(w.id);

@@ -101,6 +101,7 @@ import {
 import { handleAccountMethods } from "./methods.js";
 import { handleAccountLink } from "./link.js";
 import { clearDeviceSubjects } from "../../../core/accounts/subjectHooks.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
   handleLibraryEntryRemove,
   libraryView,
@@ -320,9 +321,13 @@ async function requireSession(
   // I-07: the cookie must name a live `account_sessions` row of the account it resolves to. I-05:
   // the id resolves through a merge tombstone (30 days), so a cookie of an absorbed account acts
   // as the survivor (the merge moved its session rows), and every handler below reads the
-  // resolved id.
+  // resolved id. I-11: and that account must not be on the erasure ledger, which a D1 restore
+  // does not rewind; with the ledger unreadable the answer is 503, not 401, so the browser keeps
+  // its cookie and tries again.
   const live = await checkAccountSession(env, db, session, now);
-  if (!live) return unauthorized();
+  if (live.status === "unavailable")
+    return err(503, "unavailable", "try again");
+  if (live.status !== "live") return unauthorized();
   return {
     session: { ...session, accountId: live.accountId },
     sessionIdHash: live.idHash,
@@ -1871,8 +1876,19 @@ export async function handlePortalDownload(
   }
   const scope = parseJsonOr<{ portalAccountId?: string }>(row.scope_json, {});
   if (!scope.portalAccountId) return notFound();
+  // I-11: a token minted for an account the erasure ledger holds is dead whatever D1 says (a
+  // restore brings the account back as `active`). Asked before `getPortalAccount` and again for
+  // the survivor of a merge; an unreadable ledger answers 503 and spends nothing.
+  const named = await erasureVerdict(env, now, scope.portalAccountId);
+  if (named === "unavailable") return err(503, "unavailable", "try again");
+  if (named === "erased") return notFound();
   const account = await getPortalAccount(db, scope.portalAccountId, now);
   if (!account || account.status !== "active") return notFound();
+  if (account.id !== scope.portalAccountId) {
+    const survivor = await erasureVerdict(env, now, account.id);
+    if (survivor === "unavailable") return err(503, "unavailable", "try again");
+    if (survivor === "erased") return notFound();
+  }
   if (!(await hasLinkedProductLicense(db, account.id, row.product))) {
     return notFound();
   }

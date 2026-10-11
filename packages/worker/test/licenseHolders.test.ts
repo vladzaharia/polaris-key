@@ -129,7 +129,7 @@ async function account(
     db,
     { issuerKey: "email", subject: email, kind: "email" },
     NOW,
-    { product: { slug: SLUG } },
+    { unfenced: true, product: { slug: SLUG } },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return { id: r.account.id, subject: r.subject! };

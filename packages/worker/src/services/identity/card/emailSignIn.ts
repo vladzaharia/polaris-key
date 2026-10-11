@@ -625,6 +625,7 @@ async function completeEmailSignIn(
     db,
     { issuerKey: EMAIL_ISSUER, subject: record.email, kind: "email" },
     now,
+    { env },
   );
   if (result.status !== "signed_in" || result.account.status !== "active") {
     const inUse = result.status === "join_offer";

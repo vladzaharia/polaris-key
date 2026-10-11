@@ -193,7 +193,9 @@ async function person(
       emailVerified: true,
     },
     NOW,
-    product ? { product: { slug: product } } : {},
+    product
+      ? { unfenced: true, product: { slug: product } }
+      : { unfenced: true },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return { accountId: r.account.id, linkId: r.linkId };

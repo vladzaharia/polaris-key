@@ -172,7 +172,7 @@ describe("GET /<p>/license/document carries the signed-in subject (V4 §2.1)", (
       db,
       { issuerKey: "email", subject: "grace@account.example", kind: "email" },
       NOW,
-      { product: { slug: "djdl" } },
+      { unfenced: true, product: { slug: "djdl" } },
     );
     if (signedIn.status !== "signed_in") throw new Error("sign-in failed");
     const accountId = signedIn.account.id;

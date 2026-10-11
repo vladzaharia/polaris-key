@@ -361,6 +361,7 @@ describe("migrations 0068 on a production-shaped copy", () => {
         emailVerified: true,
       },
       NOW,
+      { unfenced: true },
     );
     expect(ada).toMatchObject({
       status: "signed_in",
@@ -373,6 +374,7 @@ describe("migrations 0068 on a production-shaped copy", () => {
       db,
       { issuerKey: ISSUER, subject: "user-2", kind: "oidc" },
       NOW,
+      { unfenced: true },
     );
     expect(bob).toMatchObject({
       status: "signed_in",
@@ -385,6 +387,7 @@ describe("migrations 0068 on a production-shaped copy", () => {
         db,
         { issuerKey: "email", subject: "bob@example.com", kind: "email" },
         NOW,
+        { unfenced: true },
       ),
     ).toMatchObject({ status: "signed_in", account: { id: "acct_2" } });
     // The disabled account stays refused.
@@ -393,6 +396,7 @@ describe("migrations 0068 on a production-shaped copy", () => {
         db,
         { issuerKey: "email", subject: "cy@example.com", kind: "email" },
         NOW,
+        { unfenced: true },
       ),
     ).toEqual({ status: "refused", reason: "account_disabled" });
     expect(
@@ -675,6 +679,7 @@ describe("migrations 0068 on a production-shaped copy", () => {
         emailVerified: true,
       },
       NOW,
+      { unfenced: true },
     );
     if (created.status !== "signed_in") throw new Error("sign-in failed");
     await attachLicense(

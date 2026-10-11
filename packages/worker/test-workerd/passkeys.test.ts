@@ -10,6 +10,7 @@ import { D1Db } from "../src/db/d1.js";
 import type { Env as WorkerEnv } from "../src/platform/env.js";
 import { handlePortal } from "../src/services/identity/portal/index.js";
 import { startAccountSession } from "../src/services/identity/portal/accountSessions.js";
+import { recordErasure } from "../src/services/identity/accounts/erasureLedger.js";
 import { PORTAL_CSRF_HEADER } from "../src/services/identity/portal/session.js";
 import {
   ACCOUNT_SESSION_COOKIE,
@@ -70,7 +71,9 @@ class Browser {
 }
 
 let seeded = false;
-async function world(email: string): Promise<{ browser: Browser }> {
+async function world(
+  email: string,
+): Promise<{ browser: Browser; accountId: string }> {
   if (!seeded) {
     await seedProduct(workerEnv, db, "pkdemo", { version: 1, keys: [] });
     seeded = true;
@@ -113,7 +116,7 @@ async function world(email: string): Promise<{ browser: Browser }> {
     cookie.split(";")[0]!.slice(ACCOUNT_SESSION_COOKIE.length + 1),
   );
   browser.csrf = session.csrf;
-  return { browser };
+  return { browser, accountId };
 }
 
 async function enrol(
@@ -196,6 +199,23 @@ describe("passkeys on workerd", () => {
       response: await auth.assert(options, { origin: "https://evil.example" }),
     });
     expect(res.status).toBe(401);
+    expect(card.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+  });
+
+  it("refuses the passkey of an account the erasure ledger holds, as a D1 restore leaves it (I-11)", async () => {
+    const { browser, accountId } = await world("restored@example.com");
+    const auth = await SoftAuthenticator.create();
+    expect((await enrol(browser, auth)).status).toBe(201);
+    // A restore brings the account back `active` with its passkey; only the ledger says it was
+    // erased, so the ledger record is all this test needs to stand in for the restore.
+    expect(await recordErasure(workerEnv, accountId, NOW)).toBe("created");
+    const card = new Browser();
+    const options = await challenge(card);
+    const res = await card.send("POST", "/api/signin/passkey/verify", {
+      response: await auth.assert(options),
+    });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ error: "forbidden" });
     expect(card.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
   });
 });

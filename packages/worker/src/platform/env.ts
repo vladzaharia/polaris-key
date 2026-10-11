@@ -61,11 +61,14 @@ export interface Env {
    * The Core blob store (P2-01, `core/assets/blobs.ts`): one R2 bucket per environment holding
    * content-addressed objects under `blobs/`, `bundles/`, `deltas/`, `gated/` (age-locked) and
    * `staging/` (CI uploads, expired after a day), and `erasures/` (I-11: the account-erasure
-   * ledger, `services/identity/accounts/erasureLedger.ts`, one id-only object per erased account,
-   * never aged out and never deleted by code, so a D1 restore cannot lose it). OPTIONAL on
-   * purpose: an unbound store means "no blob store", every byte route answers not-found, and the
-   * Worker otherwise runs exactly as it did before the binding existed, except that an account
-   * erasure refuses to start (it cannot be recorded on the ledger).
+   * ledger, `core/accounts/erasureFence.ts` and `services/identity/accounts/erasureLedger.ts`, one
+   * id-only object per erased account, never aged out and never deleted by code, so a D1 restore
+   * cannot lose it). OPTIONAL for the byte routes: an unbound store means "no blob store" and every
+   * byte route answers not-found. An environment that serves ACCOUNTS needs it all the same: an
+   * account erasure refuses to start without it (it cannot be recorded on the ledger), and every
+   * request that acts as an account fails closed without it, because the erasure fence cannot be
+   * read (the portal API answers 503, a sign-in is refused, a product browser session reads
+   * signed out).
    * @inventory binding delivery
    */
   BLOBS?: R2Bucket;

@@ -65,7 +65,7 @@ describe("the account id never reaches a developer-facing response (I-05)", () =
       db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
-      { product: { slug: "djdl" } },
+      { unfenced: true, product: { slug: "djdl" } },
     );
     if (signedIn.status !== "signed_in") throw new Error("sign-in failed");
     const accountId = signedIn.account.id;

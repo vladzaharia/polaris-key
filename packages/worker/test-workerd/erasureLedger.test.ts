@@ -18,8 +18,12 @@ import {
   replayErasures,
 } from "../src/services/identity/accounts/deletion.js";
 import {
+  ERASURE_CLEAR_TTL_SECONDS,
   ERASURE_PREFIX,
   erasureKey,
+  erasureVerdict,
+} from "../src/core/accounts/erasureFence.js";
+import {
   recordErasure,
   replayErasureLedger,
 } from "../src/services/identity/accounts/erasureLedger.js";
@@ -193,3 +197,35 @@ describe(
     });
   },
 );
+
+// The fence reads one HEAD of the real binding: null for a missing key, an object for a record.
+// These ids are this describe's own: `beforeEach` empties the ledger, which production never does,
+// and an isolate keeps an `erased` answer for good. That the answers are remembered at all here
+// also shows the binding is the same object on every access, which the per-bucket memory relies on.
+describe("erasureVerdict on R2", LANE, () => {
+  it("is clear until the record exists, then erased, from the real HEAD", async () => {
+    const { e, bucket } = lane();
+    const id = "acct_wd_fence_a";
+    expect(await bucket.head(erasureKey(id))).toBeNull();
+    expect(await erasureVerdict(e, NOW, id)).toBe("clear");
+    // A record another isolate wrote: unseen while the clear answer stands, seen when it ends.
+    await bucket.put(
+      erasureKey(id),
+      `{"v":1,"accountId":"${id}","erasedAt":${NOW}}`,
+    );
+    expect(
+      await erasureVerdict(e, NOW + ERASURE_CLEAR_TTL_SECONDS - 1, id),
+    ).toBe("clear");
+    expect(await erasureVerdict(e, NOW + ERASURE_CLEAR_TTL_SECONDS, id)).toBe(
+      "erased",
+    );
+  });
+
+  it("knows at once an erasure this isolate recorded", async () => {
+    const { e } = lane();
+    const id = "acct_wd_fence_b";
+    expect(await erasureVerdict(e, NOW, id)).toBe("clear");
+    expect(await recordErasure(e, id, NOW)).toBe("created");
+    expect(await erasureVerdict(e, NOW + 1, id)).toBe("erased");
+  });
+});

@@ -22,6 +22,7 @@ import { hashKey } from "../../../platform/crypto.js";
 import { parseJsonStringList } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Env } from "../../../platform/env.js";
 import { getPortalAccount } from "./repo.js";
 import {
@@ -157,27 +158,54 @@ export async function startAccountSession(
   return { cookie: buildPortalSessionCookie(token), session, idHash };
 }
 
+/** What a verified cookie is worth. */
+export type AccountSessionCheck =
+  /** A live session of an active account; `accountId` is the one the cookie resolves to today. */
+  | { status: "live"; accountId: string; idHash: string }
+  /** No session: no row, revoked, expired, held by another account, the account not active, or
+   *  erased (the erasure ledger holds it). The caller answers 401. */
+  | { status: "refused" }
+  /** The erasure ledger could not be read, so nothing is granted and nothing is ended. The caller
+   *  answers 503 and the browser keeps its cookie. */
+  | { status: "unavailable" };
+
 /**
- * The account a verified cookie may act as, or `null`. The cookie's signature was checked by
- * `verifyPortalSession`; this checks the row: present, not revoked, not expired, and held by the
- * account the cookie's id resolves to today. Refreshes `last_seen_at` at most every five minutes.
+ * The account a verified cookie may act as. The cookie's signature was checked by
+ * `verifyPortalSession`; this checks the row: present, not revoked, not expired, held by the
+ * account the cookie's id resolves to today, and that account not on the erasure ledger (a D1
+ * restore rewinds `accounts` and `account_sessions` to before an erasure; the ledger is what a
+ * restore does not touch). Refreshes `last_seen_at` at most every five minutes.
  */
 export async function checkAccountSession(
   env: Env,
   db: Db,
   session: PortalSession,
   now: number,
-): Promise<{ accountId: string; idHash: string } | null> {
-  if (typeof session.sid !== "string" || session.sid === "") return null;
+): Promise<AccountSessionCheck> {
+  if (typeof session.sid !== "string" || session.sid === "")
+    return { status: "refused" };
   const idHash = await sessionIdHash(env, session.sid);
   const row = await db.first<AccountSessionRow>(
     "SELECT * FROM account_sessions WHERE id_hash = ?",
     idHash,
   );
-  if (!row || row.revoked_at !== null || row.expires_at <= now) return null;
+  if (!row || row.revoked_at !== null || row.expires_at <= now)
+    return { status: "refused" };
+  // The cookie's own account is asked about before `getPortalAccount`, which can resolve it
+  // through a merge or copy a legacy row across: nothing is read or written for an erased one.
+  const named = await erasureVerdict(env, now, session.accountId);
+  if (named !== "clear")
+    return { status: named === "erased" ? "refused" : "unavailable" };
   const account = await getPortalAccount(db, session.accountId, now);
-  if (!account || account.status !== "active") return null;
-  if (row.account_id !== account.id) return null;
+  if (!account || account.status !== "active") return { status: "refused" };
+  if (row.account_id !== account.id) return { status: "refused" };
+  // A cookie of an absorbed account acts as the survivor (the merge moved its rows): that is the
+  // account the request would act as, so it is asked about too.
+  if (account.id !== session.accountId) {
+    const resolved = await erasureVerdict(env, now, account.id);
+    if (resolved !== "clear")
+      return { status: resolved === "erased" ? "refused" : "unavailable" };
+  }
   if (now - row.last_seen_at >= SESSION_TOUCH_SECONDS) {
     await db.run(
       "UPDATE account_sessions SET last_seen_at = ? WHERE id_hash = ?",
@@ -185,7 +213,7 @@ export async function checkAccountSession(
       idHash,
     );
   }
-  return { accountId: account.id, idHash };
+  return { status: "live", accountId: account.id, idHash };
 }
 
 export interface AccountSessionView {

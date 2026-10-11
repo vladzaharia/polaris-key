@@ -68,6 +68,7 @@
 
 import { randomId } from "../../../platform/crypto.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
@@ -478,6 +479,11 @@ export async function undoMerge(
   const A = merge.absorbed_id;
   const survivor = await getAccountRow(db, S);
   if (!snap || !survivor || survivor.status !== "active") {
+    return { ok: false, error: "not_found" };
+  }
+  // I-11: an undo rebuilds the absorbed account into a survivor; one the erasure ledger holds (a
+  // D1 restore brings it back as `active`) gets nothing rebuilt, and an unreadable ledger refuses.
+  if ((await erasureVerdict(env, now, S)) !== "clear") {
     return { ok: false, error: "not_found" };
   }
   // The absorbed id must still be this join's tombstone (and not an account again).

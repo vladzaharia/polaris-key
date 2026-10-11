@@ -105,7 +105,7 @@ async function account(db: Db, email: string) {
     db,
     { issuerKey: "email", subject: email, kind: "email" },
     NOW,
-    { product: { slug: SLUG } },
+    { unfenced: true, product: { slug: SLUG } },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return { id: r.account.id, subject: r.subject! };
@@ -700,6 +700,7 @@ describe("syncAccess", () => {
       w.db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (ada.status !== "signed_in") throw new Error(ada.status);
     expect(

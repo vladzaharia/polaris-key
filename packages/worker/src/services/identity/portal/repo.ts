@@ -182,7 +182,8 @@ function signedInAccount(result: SignInResult): PortalAccountRow {
  * The account an email sign-in (a delivered magic link) belongs to, created on first sign-in.
  * A thin wrapper over `signIn` for callers that hold an address the portal itself proved; it
  * throws on a join offer (an address another account uses only as its primary email), which the
- * magic-link handler answers itself.
+ * magic-link handler answers itself. No request reaches it: it signs in `unfenced` (no erasure
+ * ledger is read), so it is for fixtures that build accounts, never for a route.
  */
 export async function getOrCreateAccountByEmail(
   db: Db,
@@ -200,6 +201,7 @@ export async function getOrCreateAccountByEmail(
         displayName: displayName ?? null,
       },
       now,
+      { unfenced: true },
     ),
   );
 }
@@ -238,7 +240,8 @@ export async function rekeyLegacyPortalIdentities(
 /**
  * The account a platform-IdP sign-in belongs to: a thin wrapper over `signIn` (the portal
  * callback calls `signIn` itself). Throws on a join offer: an unknown identity whose verified
- * email another account already uses is never attached to it silently (owner, 2026-10-04).
+ * email another account already uses is never attached to it silently (owner, 2026-10-04). Like
+ * {@link getOrCreateAccountByEmail} it signs in `unfenced`: for fixtures, never for a route.
  */
 export async function getOrCreateAccountByIdentity(
   db: Db,
@@ -266,6 +269,7 @@ export async function getOrCreateAccountByIdentity(
       displayName: input.displayName ?? null,
     },
     now,
+    { unfenced: true },
   );
   const account = signedInAccount(result);
   if (result.status === "signed_in")

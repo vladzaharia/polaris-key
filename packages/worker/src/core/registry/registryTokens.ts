@@ -22,6 +22,13 @@
  * suspension and a product deletion take effect everywhere within the window. A write on this
  * isolate (mint, revoke) drops its cache at once (`forgetRegistryTokens`).
  *
+ * THE ERASURE FENCE (I-11). A token minted from the portal names its account
+ * (`portal_account_id`), and a D1 restore can bring an erased account's unrevoked tokens back. A
+ * lookup of such a row asks the erasure ledger about the account (`core/accounts/erasureFence.ts`)
+ * before it resolves one or writes `last_used_at`: an erased account's token resolves to nothing,
+ * as a revoked one does, and a ledger that cannot be read resolves to nothing for that request and
+ * is not remembered. Tokens no account owns (the console's, an operator's, CI tokens) are not asked.
+ *
  * THE OCI PULL TOKEN (§6.4). `v1.<b64url(claims)>.<b64url(HMAC-SHA256)>` under the secret
  * `REGISTRY_TOKEN_KEY` (`REGISTRY_TOKEN_KEY_PREVIOUS` also verifies, during a rotation). It
  * carries identity only: every OCI request re-resolves its subject through the 30 s cache and
@@ -47,6 +54,7 @@ import { tryParseJson } from "../../platform/json.js";
 import { getLicense, type LicenseRow } from "../repo.js";
 import { CI_TOKEN_PREFIX } from "../ciVocabulary.js";
 import { lookupCiToken } from "../publisher.js";
+import { erasureVerdict } from "../accounts/erasureFence.js";
 import {
   ANONYMOUS,
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -701,6 +709,15 @@ export async function lookupRegistryCredential(
     else throw err;
   }
   if (!row) return { resolved: remember(key, null, nowMs), miss: true };
+  // I-11: a token a person minted for their account dies with it. A D1 restore can bring such a
+  // row back live, so the account is asked about before anything is resolved or written.
+  const ledger = row.portal_account_id
+    ? await erasureVerdict(env, now, row.portal_account_id)
+    : "clear";
+  if (ledger === "erased")
+    return { resolved: remember(key, null, nowMs), miss: true };
+  // Not known either way: nothing for this request, and nothing remembered for the next.
+  if (ledger === "unavailable") return { resolved: null, miss: false };
   return {
     resolved: remember(key, await resolveRow(db, row, now, opts), nowMs),
     miss: false,
@@ -709,9 +726,11 @@ export async function lookupRegistryCredential(
 
 /**
  * An OCI pull token's subject, re-resolved through the cache: `tokenId` (a registry token of
- * `product`) or `ci:<tokenId>` (a CI token of `product`). `null` once revoked or expired.
+ * `product`) or `ci:<tokenId>` (a CI token of `product`). `null` once revoked or expired, or once
+ * the account that minted it is on the erasure ledger (see {@link lookupRegistryCredential}).
  */
 export async function lookupRegistrySubject(
+  env: Env,
   db: Db,
   product: string,
   subject: string,
@@ -764,9 +783,14 @@ export async function lookupRegistrySubject(
     if (err instanceof Error && /no such table/i.test(err.message)) row = null;
     else throw err;
   }
+  // I-11, as in `lookupRegistryCredential`: a token an erased account minted resolves to nothing.
+  const ledger = row?.portal_account_id
+    ? await erasureVerdict(env, now, row.portal_account_id)
+    : "clear";
+  if (ledger === "unavailable") return null; // not remembered: the next request asks again
   return remember(
     key,
-    row ? await resolveRow(db, row, now, opts) : null,
+    row && ledger === "clear" ? await resolveRow(db, row, now, opts) : null,
     nowMs,
   );
 }

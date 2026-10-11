@@ -467,7 +467,9 @@ describe("GET /manage/api/platform/operations", () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
     const dlq = fakeQueue(async () => ({ backlogCount: 2, backlogBytes: 20 }));
+    // A deploy without a blob store: `makeEnv` binds an empty bucket, so unbind it here.
     const env = adminEnv({
+      BLOBS: undefined,
       DELTA_QUEUE: fakeQueue(async () => ({
         backlogCount: 0,
         backlogBytes: 0,

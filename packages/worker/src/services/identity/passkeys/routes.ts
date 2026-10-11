@@ -281,7 +281,7 @@ export async function handlePasskeySignInVerify(
       amr: ["passkey"],
     },
     now,
-    { linkedOnly: true },
+    { env, linkedOnly: true },
   );
   if (result.status !== "signed_in" || result.account.status !== "active") {
     return cardJson(

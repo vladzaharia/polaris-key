@@ -23,10 +23,12 @@ import {
 } from "../src/privacyResidue.js";
 import { catchUpLegacyAccounts } from "../src/services/identity/accounts/legacy.js";
 import {
-  ERASURE_LEDGER_PAGE,
   ERASURE_PREFIX,
-  ErasureLedgerError,
   erasureKey,
+} from "../src/core/accounts/erasureFence.js";
+import {
+  ERASURE_LEDGER_PAGE,
+  ErasureLedgerError,
   recordErasure,
   replayErasureLedger,
   type ReplayBounds,

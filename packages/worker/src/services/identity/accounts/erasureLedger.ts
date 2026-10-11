@@ -39,21 +39,26 @@
  * Every step is idempotent: a pass over a consistent state changes nothing. The pass runs on the
  * 15-minute connector tick and in the nightly maintenance, before the legacy catch-up.
  *
- * WHAT A RESTORE STILL LEAVES OPEN. Nothing blocks a restored account on the request path: from
- * the restore until the next replay tick (at most one connector tick, 15 minutes) its sessions,
- * sign-in and registry tokens work, and a restored account is re-erased at most
- * {@link ERASURE_REPLAY_MAX_REAPPLY} per pass (the rest on the following ticks). The replay is
- * not a restore hook: Cloudflare documents no restore event, so an operator who restores D1 waits
- * for (or triggers) the next tick.
+ * REQUEST TIME. The replay is cleanup, not the fence. A restore brings an erased account back with
+ * its sessions, sign-in methods and package tokens, so each gate that decides on them asks the
+ * fence (`core/accounts/erasureFence.ts`: one `HEAD` of `erasures/<account id>`, remembered per
+ * isolate) before it grants anything, and refuses an erased account from the moment the restore
+ * lands, and refuses too while the ledger cannot be read. The replay then closes the account in D1
+ * and erases its data, at most {@link ERASURE_REPLAY_MAX_REAPPLY} accounts per pass. It is not a
+ * restore hook: Cloudflare documents no restore event, so an operator who restores D1 waits for
+ * (or triggers) the next tick.
  */
 
 import { jsonList } from "../../../core/sqlIn.js";
+import {
+  ERASURE_PREFIX,
+  erasureKey,
+  noteErased,
+} from "../../../core/accounts/erasureFence.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { pk } from "../../../platform/kv.js";
 
-/** Every ledger object lives under this prefix, keyed by the opaque account id and nothing else. */
-export const ERASURE_PREFIX = "erasures/";
 /** The record's `v`. */
 export const ERASURE_RECORD_VERSION = 1;
 
@@ -83,11 +88,6 @@ export class ErasureLedgerError extends Error {
     super(message, options);
     this.name = "ErasureLedgerError";
   }
-}
-
-/** The ledger key of an account. */
-export function erasureKey(accountId: string): string {
-  return `${ERASURE_PREFIX}${accountId}`;
 }
 
 /** The account id a ledger key names, or `null` for a key that is not a ledger record. */
@@ -134,6 +134,8 @@ export async function recordErasure(
       { cause: e },
     );
   }
+  // Record or already recorded, the account is erased from here on: this isolate need not read it.
+  noteErased(env, accountId);
   return stored === null ? "exists" : "created";
 }
 

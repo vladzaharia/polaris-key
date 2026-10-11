@@ -140,6 +140,7 @@ async function account(db: Db, email: string) {
     db,
     { issuerKey: "email", subject: email, kind: "email" },
     NOW,
+    { unfenced: true },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return r.account.id;
