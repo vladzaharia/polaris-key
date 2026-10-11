@@ -1141,25 +1141,33 @@ nothing to bump and no per-SDK tag:
 Owner request 2026-10-06. These decisions were made by the lead under delegated owner authority.
 
 - **What is pruned.** When version V of a package is published on `stable`, the package's
-  `main`-channel prereleases that sort below V are deleted. That means semver `X-main.N` and PEP 440
-  `X.devN` with X ≤ V (`services/release/packages/prune.ts`). Stable and beta versions are never
+  prereleases on the ephemeral channels (`main`, and the built-in `dev` since F-36) that sort below
+  V are deleted. That means semver `X-main.N` (on `main`), `X-dev.N` (on `dev`) and PEP 440
+  `X.devN` (on either) with X ≤ V (`services/release/packages/prune.ts`). A public registry's copy
+  is never reached. Stable and beta versions are never
   touched, prereleases of versions newer than V are never touched, and other packages are never
   touched. A `beta` publish (a prerelease tag) prunes nothing. Only a live stable release sets
   the ceiling: a yanked or deprecated one never does. A candidate that a channel policy points
   at (a promote or pin) is kept. So is any candidate another row names (a revocation, a pack pin
   or hold, a download token). Both show as `kept` in the report. A candidate that became held
   between the plan and its deletion is kept too and listed as `skipped`, never dropped silently.
-- **When.** Once the product opted in (below), the prune runs automatically in the Worker, right
+- **When.** Once retention is on for the product (below), the prune runs automatically in the Worker, right
   after the stable version is committed, for that package only. A failure never fails the publish. It is recorded
   in the product's audit as `package.prune.failed`, with the error. The Worker never logs to the
   console (R12), so the audit is the log. The next stable
   publish retries it, because each run prunes every remaining candidate. The backfill below also
   retries it. Every statement is idempotent, so running it twice is harmless.
 - **The setting.** `release.packages.prunePrereleases` (settings registry; table
-  `release_package_retention`) is OFF by default for a tenant product, which opts in with
-  `PUT /manage/api/products/<slug>/distribution/feeds/retention {"expectedVersion": <n>,
-"prunePrereleases": true}` (audited `feed.retention.update`; `false` turns it off again). The
-  system product (`polaris-key`) is on by default and locked on: a write is refused.
+  `release_package_retention`) is ON by default for every product (F-36), after a one-time
+  dry-run notice. The Release cron (every 15 minutes), or the product's first stable publish,
+  records the notice (`release_package_retention_notices`: what a dry run found, and
+  `starts_at`, a week later; one `package.prune.notice` audit row). Nothing is deleted before
+  `starts_at`. An operator's own value wins at once: `PUT
+/manage/api/products/<slug>/distribution/feeds/retention {"expectedVersion": <n>,
+"prunePrereleases": false}` keeps the builds (audited `feed.retention.update`; `true` opts in
+  without waiting). `GET` on the same path shows `source` and the `notice`. The system product
+  (`polaris-key`) is on by default and locked on: a write is refused. Rolling the CODE back across
+  F-36 leaves cleanup off for a product that never chose (`scripts/rollback/00XX_release_package_retention_notices.down.sql`).
 - **What a prune does.** Versions go in atomic D1 batches of up to 20. For each version, the batch deletes its
   `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows and drops
   its `artifact` blob refs. It writes a tombstone to `release_package_prunes`: ingest refuses to

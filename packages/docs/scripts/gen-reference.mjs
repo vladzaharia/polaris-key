@@ -459,6 +459,7 @@ export const TABLE_OWNERS = {
     "release_native_uploads",
     "release_package_prunes",
     "release_package_retention",
+    "release_package_retention_notices",
     "release_mirrors",
   ],
   distribution: [

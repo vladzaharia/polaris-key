@@ -397,12 +397,12 @@ and fails unless each package shows the version just published. The whole flow i
 | a push to `main` | `<next>-main.<N>` (Python `<next>.dev<N>`) | `main`                                    |
 | a `v*` tag       | the tag's version (`v0.9.0` → `0.9.0`)     | `stable`, or `beta` for a pre-release tag |
 
-### Builds of main are pruned once released
+### Builds of main and dev are pruned once released
 
-Each build of `main` is a prerelease of the next version, so it stops being useful once that
-version ships. When a version is published on `stable`, the platform's own feeds **prune** the
-package's builds of main below it: `<next>-main.<N>` (Python `<next>.dev<N>`) for every `<next>` at or below the
-released version. Stable and beta versions are never touched. Neither are builds of a newer
+Each build of `main`, and of the built-in `dev` track, is a prerelease of the next version, so it
+stops being useful once that version ships. When a version is published on `stable`, the feeds
+**prune** the package's builds of main and dev below it: `<next>-main.<N>` and `<next>-dev.<N>`
+(Python `<next>.dev<N>`, OCI tags included) for every `<next>` at or below the released version. Stable and beta versions are never touched. Neither are builds of a newer
 version, nor any other package. Once `0.9.1` is released, `0.9.1-main.4` and `0.9.0-main.2` are
 gone and `0.9.2-main.1` stays.
 
@@ -414,12 +414,17 @@ version. A lockfile that pins a pruned build of main no longer installs. Pin a s
 release instead: those are never pruned. A pruned version can never be published again, because
 versions stay unique forever.
 
-A product's own feeds follow the same rule once the product opts in through the setting
-`release.packages.prunePrereleases`, which is off by default. An operator turns it on through
-the Feeds admin API: `PUT /manage/api/products/<slug>/distribution/feeds/retention` with
-`{"expectedVersion": <n>, "prunePrereleases": true}`. The platform's own feeds always prune. A
+A product's own feeds follow the same rule by default: `release.packages.prunePrereleases` is on.
+Nothing is deleted at first. A product that never chose gets a one-time dry-run notice (what would
+go, per package, and the day cleanup starts, a week later); the first stable release after that
+day prunes. An operator who wants to keep these builds turns the setting off, and a choice either
+way applies at once, through the Feeds admin API:
+`PUT /manage/api/products/<slug>/distribution/feeds/retention` with
+`{"expectedVersion": <n>, "prunePrereleases": false}`. `GET` on the same path shows the notice.
+The platform's own feeds always prune. Copies on public registries such as npmjs or PyPI.org are
+never cleaned: Polaris Key never deletes there. A
 yanked or deprecated stable release never sets the ceiling: only a live one does.
-Versions released before this rule existed, or before the product opted in, are cleaned up by the
+Versions released before this rule existed, or while it was off, are cleaned up by the
 backfill, `pkey feeds prune --product <slug>`. It is a dry run unless `--apply` is given, and the
 token needs `release:yank`. With `--apply` it exits non-zero if any version failed; running it
 again finishes the rest.

@@ -1,8 +1,8 @@
 /**
- * `pkey feeds prune` (feed retention, owner request 2026-10-06): the backfill of the Worker's
- * automatic prune. For each package of the product (or the one `--deliverable` names), the builds
- * of main below its newest stable release (semver `X-main.N`, PyPI `X.devN`, with X <= that
- * release) are deleted from every feed.
+ * `pkey feeds prune` (feed retention, owner request 2026-10-06; F-36): the backfill of the
+ * Worker's automatic prune. For each package of the product (or the one `--deliverable` names),
+ * the builds of main and dev below its newest stable release (semver `X-main.N` / `X-dev.N`,
+ * PyPI `X.devN`, with X <= that release) are deleted from every feed.
  *
  *   POST /<p>/release/packages/prune  {apply, deliverable?}   `release:yank` (operator-granted)
  *
@@ -47,11 +47,26 @@ interface PrunePackage {
   skipped?: { releaseId?: string; version: string; reason: string }[];
 }
 
+/** Where the automatic cleanup setting stands (an older Worker leaves it out). */
+export interface PruneRetention {
+  source: "system" | "operator" | "default";
+  /** `default` only: the one-time dry-run notice; nothing is pruned automatically before it. */
+  notice: {
+    noticedAt: number;
+    startsAt: number;
+    packages: number;
+    versions: number;
+    bytes: number;
+    freedBytes: number;
+  } | null;
+}
+
 export interface PruneReport {
   ok: true;
   product: string;
   dryRun: boolean;
   prunePrereleases: boolean;
+  retention?: PruneRetention;
   packages: PrunePackage[];
   skipped: { deliverableId: string; reason: string }[];
   totals: {
@@ -107,8 +122,19 @@ export function renderPruneReport(
   const lines: string[] = [];
   const verb = r.dryRun ? "Would prune" : "Pruned";
   lines.push(
-    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`,
+    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic cleanup ${r.prunePrereleases ? "on" : "off"}).`,
   );
+  const notice = r.retention?.notice;
+  if (r.retention?.source === "default") {
+    const day = notice
+      ? new Date(notice.startsAt * 1000).toISOString().slice(0, 10)
+      : null;
+    lines.push(
+      day
+        ? `Automatic cleanup ${r.prunePrereleases ? "turned on" : "turns on"} ${day}: the first stable release after that deletes what is listed here. Nothing is deleted before then. Turn it off in the feed settings to keep these builds.`
+        : "Automatic cleanup is on by default and starts a week after a first dry-run notice; nothing is deleted before then.",
+    );
+  }
   for (const p of r.packages) {
     lines.push(
       `${u(p.ecosystem)} ${u(p.name)}: newest stable ${u(p.stable)}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`,

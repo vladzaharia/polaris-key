@@ -617,8 +617,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
       {
         subs: ["prune"],
         text:
-          "pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below " +
-          "its newest stable release, the backfill of the Worker's automatic feed retention. It " +
+          "pkey feeds prune deletes each package's builds of main and dev (X-main.N, X-dev.N, " +
+          "PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic " +
+          "feed cleanup, which is on by default after a one-time dry-run notice. It " +
           "is a dry run unless --apply: it prints what would go, per package, with counts and " +
           "bytes. With --apply it also lists any version skipped (held since the plan, so kept) " +
           "and exits non-zero if any version failed. The token needs release:yank, which an " +

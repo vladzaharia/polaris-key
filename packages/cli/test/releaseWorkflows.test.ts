@@ -483,7 +483,7 @@ describe("the backstop prune after a stable tag (P0-48, feed retention)", () => 
 
   it("dry-runs and checks the plan before it applies, with the existing rule only", () => {
     const dry = at("Dry run (deletes nothing)");
-    const check = at("The plan holds builds of main only");
+    const check = at("The plan holds builds of main and dev only");
     const apply = at("Apply the prune");
     expect(at("A stable vX.Y.Z tag")).toBeLessThan(dry);
     expect(dry).toBeLessThan(check);
@@ -492,7 +492,7 @@ describe("the backstop prune after a stable tag (P0-48, feed retention)", () => 
     expect(steps[dry]!.run).toContain(
       "node actions/publish/dist/index.js feeds prune --product polaris-key",
     );
-    expect(steps[check]!.run).toContain("-main");
+    expect(steps[check]!.run).toContain("-(main|dev)");
     expect(steps[check]!.run).toContain(".dev");
     for (const i of [check, apply])
       expect(steps[i]!.if).toBe("steps.plan.outputs.skip != 'true'");

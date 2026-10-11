@@ -1237,7 +1237,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "ship",
     label: "Prune builds of main",
     description:
-      "Feed retention: when a package version is published on stable, delete that package's builds of main below it (X-main.N, PyPI X.devN) from every feed. Stable and beta versions are never touched; the bytes are reclaimed once nothing else references them. Off by default: a product opts in. Always on for the platform's own feeds.",
+      "Feed cleanup: when a package version is published on stable, delete that package's builds of main and dev below it (X-main.N, X-dev.N, PyPI X.devN) from every feed. Stable and beta versions are never touched, and copies on public registries are never reached; the bytes are reclaimed once nothing else references them. On by default for every product, after a one-time dry-run notice and a week without deletions; an explicit choice here applies at once.",
     keywords: [
       "retention",
       "prerelease",

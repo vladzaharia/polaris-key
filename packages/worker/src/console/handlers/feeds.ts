@@ -1142,12 +1142,16 @@ async function activity(
 // ── Feed retention ───────────────────────────────────────────────────────────────────────────
 
 /** `GET <base>/retention`: the owner's `release.packages.prunePrereleases`. */
-async function getRetention(db: Db, scope: FeedScope): Promise<Response> {
+async function getRetention(
+  db: Db,
+  scope: FeedScope,
+  now: number,
+): Promise<Response> {
   const owner = await ownerOf(db, scope);
   if (!owner) return notFound();
   return adminJson({
     product: owner.slug,
-    ...(await pruneRetentionOf(db, owner.slug)),
+    ...(await pruneRetentionOf(db, owner.slug, now)),
   });
 }
 
@@ -1203,7 +1207,7 @@ async function putRetention(
   if (outcome !== "written") return settingRefused(outcome);
   return adminJson({
     product: owner.slug,
-    ...(await pruneRetentionOf(db, owner.slug)),
+    ...(await pruneRetentionOf(db, owner.slug, now)),
   });
 }
 
@@ -1273,7 +1277,7 @@ export async function handleFeedsAdmin(
       now,
     );
   if (rest.length === 1 && rest[0] === "retention") {
-    if (method === "GET") return getRetention(db, scope);
+    if (method === "GET") return getRetention(db, scope, now);
     if (method === "PUT")
       return putRetention(req, env, db, session, scope, now);
     return notAllowed();

@@ -1502,11 +1502,14 @@ the only deletion is feed retention's (below), and only of builds of main. A wri
 its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
 `test/adminFeeds.test.ts`.
 
-### Feed retention: pruning builds of main (owner request 2026-10-06)
+### Feed retention: pruning builds of main and dev (owner request 2026-10-06; F-36)
 
-**What it is.** `services/release/packages/prune.ts` deletes a package's `main`-channel
-prereleases once a version at or above them is released. When version V is published on
-`stable`, it deletes semver `X-main.N` and PEP 440 `X.devN` with X ≤ V. This is the one place a
+**What it is.** `services/release/packages/prune.ts` deletes a package's ephemeral-channel
+prereleases (`main`, and the built-in `dev`) once a version at or above them is released. When
+version V is published on `stable`, it deletes semver `X-main.N` (on `main`), `X-dev.N` (on `dev`)
+and PEP 440 `X.devN` (on either) with X ≤ V. A build is a candidate only on the channel its
+spelling belongs to. A copy on a public registry is never reached: the prune is D1 and blob-ref
+work only, with no network client or registry credential. This is the one place a
 package version is ever deleted. The lead made the decisions under delegated owner authority,
 and the operations are in RUNBOOK "Feed retention".
 
@@ -1519,10 +1522,18 @@ and the operations are in RUNBOOK "Feed retention".
 | `POST …/feeds/prune` (admin)       | a platform-admin console session (403 otherwise)                                                                         | the scope's owner's packages                           | `admin:<sub>`           |
 | `PUT …/feeds/retention` (admin)    | the same; refused for the system product                                                                                 | the setting only                                       | `feed.retention.update` |
 
-**Off by default.** `release.packages.prunePrereleases` is off for a tenant product: nothing is
-deleted automatically until a platform admin opts the product in (`PUT …/feeds/retention`, an L1
-confirmation, audited). Only the reserved system product (`polaris-key`) is on by default, and it
-is locked on.
+**On by default, after a notice (F-36, 2026-10-11).** `release.packages.prunePrereleases` is on
+for every product, so this is the trigger that widens: the default flips from opt-in to opt-out.
+The control that replaces the opt-in is a one-time dry-run NOTICE
+(`release_package_retention_notices`, one `package.prune.notice` audit row): the Release cron, or
+the product's first stable publish, records what a dry run found and a start day a week later, and
+nothing is deleted before that day, so the owner can turn it off first (`PUT …/feeds/retention`,
+L0 to turn off, L1 to turn on, audited). A stored value, on or off, is the operator's choice and
+applies at once; no code path writes one for a product that never chose. The notice is written
+once (`ON CONFLICT DO NOTHING`), names no candidate beyond counts and bytes, and itself deletes
+nothing. The reserved system product (`polaris-key`) is on and locked on, with no notice. The
+notice window is a constant (`PRUNE_NOTICE_SECONDS`), not a setting, and no per-channel flag
+exists: which channels are ephemeral is code (`main`, `dev`).
 
 A publisher therefore gains no new power. The automatic prune only removes builds of main below
 a version the publisher was already allowed to publish as the stable release, and the
@@ -8689,7 +8700,7 @@ under a looser policy, a registry route answers CORS or a method other than GET,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
 `authorizeFeedRead` moves after the cache lookup (F-02); feed retention deletes anything but a
 build of main below a stable release, gains a trigger, lets a request name the versions it
-deletes, deletes a blob-store object itself, stops leaving its tombstone, or turns on by default for a tenant product (2026-10-06); a push route that is not Release's, a push
+deletes, deletes a blob-store object itself, stops leaving its tombstone, or deletes before a product's dry-run notice has run its window, or the notice window shortens, or a channel other than `main` and `dev` becomes ephemeral, or a public registry is reached (2026-10-06, F-36); a push route that is not Release's, a push
 credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
 creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
 repository's digest reads (F-23); a new registry
