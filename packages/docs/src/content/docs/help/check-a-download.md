@@ -29,7 +29,7 @@ A terminal is a window where you type commands. Replace `<file>` with the file's
 
 - **macOS:** in Terminal, run `shasum -a 256 <file>`
 - **Linux:** in a terminal, run `sha256sum <file>`
-- **Windows:** use a program you trust that shows a file's SHA-256
+- **Windows:** in PowerShell, run `Get-FileHash <file>`
 
 The two values must match exactly. Capital and small letters count as the same.
 
@@ -39,7 +39,7 @@ The download page links **SHA256SUMS**, a list of the SHA-256 for every file of 
 
 ## Check an Android app's signing key
 
-For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. An app such as AppVerifier shows an installed app's signing certificate. Check the file's SHA-256 first, then install the app.
+For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. An app such as AppVerifier shows an installed app's signing certificate. Get it only from a store you already use. Check the file's SHA-256 first, then install the app.
 
 1. Install the app.
 2. In AppVerifier, find the installed app's signing certificate SHA-256.
@@ -57,4 +57,4 @@ The value for your file is the same as the listed value. For an Android app, the
 
 ## Still need help?
 
-If the values still differ, read [Get help with an app](/docs/help/contact/).
+If the values still differ, don't install the file. Read [Get help with an app](/docs/help/contact/).

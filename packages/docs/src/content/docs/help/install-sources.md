@@ -8,14 +8,14 @@ sidebar:
   order: 8
 ---
 
-Some apps can also be installed through AltStore, SideStore, F-Droid, Obtainium, Scoop or Homebrew. Once you add an app to AltStore, SideStore, F-Droid or Obtainium, that tool finds new versions itself.
+Some apps can also be installed through AltStore, SideStore, F-Droid, Obtainium, Scoop or Homebrew. Once you add an app, AltStore, SideStore, F-Droid and Obtainium find new versions themselves.
 
 Find them under **Other ways to get it** on the app's public download page, or under **Other ways to install** in your library.
 
 ## Before you start
 
 - These are optional. Use one if you already use that tool.
-- Install the tool first, so the add link has an app to open.
+- Install the tool first, so the add link has an app to open. Get it only from its own official site or a store you already use.
 - Only add a source, or run a command, from the app's own download page or your library. Anything else can install something you didn't choose. See [Use the public download page](/docs/help/download/#use-the-public-download-page).
 - These tools can't sign in. An app that needs a license or an account to download isn't offered through them. Download it from your library instead. See [Download your app](/docs/help/download/).
 
@@ -35,7 +35,7 @@ In your library, select **Add to AltStore** or **Add to SideStore** for step 2. 
 2. On the app's download page, find **Add to F-Droid** and select **Open in the app**.
 3. Approve the repository in F-Droid.
 
-In your library, select **Add to F-Droid** for step 2. When the page lists a SHA-256 value for the repository, the link carries it for F-Droid to check. To add the repository by hand, copy the **Repository URL** and that value. If the page says that no SHA-256 value is published, ask the developer before you add it.
+In your library, select **Add to F-Droid** for step 2. When the page lists a SHA-256 value for the repository, the link carries it for F-Droid to check. To add the repository by hand, copy the **Repository URL** and that value. If the page says no SHA-256 value is published, ask the developer first.
 
 ## Obtainium on Android
 
@@ -51,7 +51,7 @@ Some apps list an install command under the system it is for. Copy it from the a
 
 ## When a new version shows up
 
-The page and its sources can take up to 5 minutes to show a new version, and your tool decides how often it looks. If the developer is releasing a new version in stages, or has paused or stopped it, the page, AltStore, SideStore, AltStore PAL, F-Droid and Scoop keep showing the previous version. Obtainium can still offer the new version. A version the developer withdraws disappears from every source.
+The page and its sources can take up to 5 minutes to show a new version. If the developer is releasing a new version in stages, or has paused or stopped it, the page, AltStore, SideStore, AltStore PAL, F-Droid and Scoop keep showing the previous version. Obtainium can still offer the new version. A version the developer withdraws disappears from every source.
 
 ## Check it worked
 
