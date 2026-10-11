@@ -137,7 +137,7 @@ describe("ErrorState", () => {
       />,
     );
     expect(
-      screen.getByText(/Update is a feed over what Distribution delivers/),
+      screen.getByText("In-app updates need Distribution to be on first."),
     ).toBeTruthy();
   });
 

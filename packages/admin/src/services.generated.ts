@@ -186,7 +186,11 @@ export type FeatureId =
 
 /** Every switch or fact a feature's row holds below its own switch. The console renders each
  *  `setting` and `fact` id itself, so a new one is a type error until it does. */
-export type FeatureSwitchId = "minted-tokens" | "in-app-updates" | "packages";
+export type FeatureSwitchId =
+  | "minted-tokens"
+  | "in-app-updates"
+  | "packages"
+  | "customer-portal";
 
 export interface FeatureSwitchRow {
   id: FeatureSwitchId;
@@ -262,7 +266,14 @@ export const FEATURES: readonly FeatureRow[] = [
     icon: "UserRound",
     services: ["identity"],
     primary: ["identity"],
-    switches: [],
+    switches: [
+      {
+        id: "customer-portal",
+        label: "Customer portal",
+        kind: "setting",
+        service: null,
+      },
+    ],
   },
   {
     id: "cloud-sync",

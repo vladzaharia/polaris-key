@@ -8,6 +8,7 @@ import {
   boot,
   productRow,
   resetConsole,
+  servicesResponse,
 } from "./consoleHarness.js";
 import { feedDetail, feedRoutes } from "./feedsFixture.js";
 import { confirmFor } from "../src/lib/actions.js";
@@ -1130,12 +1131,7 @@ describe("Core → Services: the package feeds switch", () => {
       extra: {
         ...feedRoutes(),
         ...product(true),
-        "/manage/api/products/djdl/services": {
-          services: ALL_ON,
-          registration: null,
-          effectiveRegistration: "requires-license",
-          source: "manifest",
-        },
+        "/manage/api/products/djdl/services": servicesResponse(ALL_ON),
         "PUT /manage/api/products/djdl/distribution/package-feeds": {
           ok: true,
           packageFeeds: { enabled: false, version: 3, updatedAt: 1 },
@@ -1143,10 +1139,10 @@ describe("Core → Services: the package feeds switch", () => {
       },
     });
     await heading("Services");
-    const section = await within(await mainReady()).findByRole("region", {
-      name: "Package feeds",
-    });
-    const sw = await within(section).findByRole("switch");
+    const section = await within(await mainReady()).findByText("Packages");
+    const row = (section.closest("[data-section]") ??
+      section.parentElement!) as HTMLElement;
+    const sw = await within(row).findByRole("switch", { name: /Packages/ });
     await waitFor(() => expect(sw.getAttribute("aria-checked")).toBe("true"));
     await userEvent.click(sw);
     // No save bar: the switch's own L1 confirm is the only step.
@@ -1155,7 +1151,7 @@ describe("Core → Services: the package feeds switch", () => {
     ).toBeNull();
     const dialog = await screen.findByRole("alertdialog");
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Turn off package feeds" }),
+      within(dialog).getByRole("button", { name: "Turn off Packages" }),
     );
     await waitFor(() =>
       expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({

@@ -29,7 +29,13 @@ import {
 import type { PaletteItem } from "../src/console/shell/palette/types.js";
 import { parseLocation } from "../src/console/routes.js";
 import { PREF_KEYS } from "../src/console/storage.js";
-import { ALL_ON, NONE, boot, resetConsole } from "./consoleHarness.js";
+import {
+  ALL_ON,
+  NONE,
+  boot,
+  resetConsole,
+  servicesResponse,
+} from "./consoleHarness.js";
 
 /**
  * The palette's source registry and client sources (EXPERIENCE.md §0.3 J-1, UX-06a): actions
@@ -267,17 +273,12 @@ describe("the palette in the console", () => {
         update: { enabled: false },
       },
       extra: {
-        "/manage/api/products/djdl/services": {
-          services: {
-            ...ALL_ON,
-            release: { enabled: false },
-            distribution: { enabled: false },
-            update: { enabled: false },
-          },
-          source: "manifest",
-          registration: null,
-          effectiveRegistration: "requires-license",
-        },
+        "/manage/api/products/djdl/services": servicesResponse({
+          ...ALL_ON,
+          release: { enabled: false },
+          distribution: { enabled: false },
+          update: { enabled: false },
+        }),
       },
     });
     await screen.findByRole("navigation", { name: "Console" });
@@ -289,7 +290,7 @@ describe("the palette in the console", () => {
     await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/services"));
     await waitFor(() =>
-      expect(document.activeElement?.id).toBe("service-release"),
+      expect(document.activeElement?.id).toBe("feature-ship-builds-switch"),
     );
   });
 

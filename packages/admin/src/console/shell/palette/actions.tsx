@@ -34,9 +34,9 @@ const CreateLicenseDialog = React.lazy(() =>
   ),
 );
 
-/** The DOM id of a service's switch on the Services page (`pages/core/Services.tsx`). */
+/** The DOM id of the feature switch that owns a service. */
 export const serviceSwitchId = (service: ServiceSlug): string =>
-  `service-${service}`;
+  `feature-${service === "release" || service === "distribution" || service === "update" ? "ship-builds" : service === "license" ? "licensing" : service === "config" ? "managed-config" : service === "identity" ? "sign-in" : "cloud-sync"}-switch`;
 
 const label = (s: ServiceSlug): string =>
   SERVICE_TABLE.find((row) => row.slug === s)?.label ?? s;

@@ -638,12 +638,6 @@
       "count": 1
     },
     {
-      "rule": "outlet",
-      "file": "services.generated.ts",
-      "text": "How releases reach devices and outlets — transports, availability, and rollouts.",
-      "count": 1
-    },
-    {
       "rule": "storefront-feed",
       "file": "console/sections/distribution/components/RolloutDialogs.tsx",
       "text": "The signed feed, the updater feeds, the storefront feeds and the download page stop offering {…} on {…}.",

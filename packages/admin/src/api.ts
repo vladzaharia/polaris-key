@@ -2004,10 +2004,8 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
     "Distribution delivers what Release says exists — turn on Release first.",
   update_requires_distribution:
     "In-app updates need Distribution to be on first.",
-  sync_requires_config:
-    "Cloud Sync needs Managed config to be on first.",
-  sync_requires_identity:
-    "Cloud Sync needs Sign-in to be on first.",
+  sync_requires_config: "Cloud Sync needs Managed config to be on first.",
+  sync_requires_identity: "Cloud Sync needs Sign-in to be on first.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────
