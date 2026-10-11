@@ -90,7 +90,11 @@ export type WireInstallOutcome =
 export function isWireInstallOutcome(v: unknown): v is WireInstallOutcome {
   if (typeof v !== "object" || v === null) return false;
   const o = v as Record<string, unknown>;
-  if (typeof o.kind !== "string" || !Object.hasOwn(KINDS, o.kind)) return false;
+  if (
+    typeof o.kind !== "string" ||
+    !Object.prototype.hasOwnProperty.call(KINDS, o.kind)
+  )
+    return false;
   switch (o.kind) {
     case "restartRequired":
     case "handedOff":
@@ -100,7 +104,7 @@ export function isWireInstallOutcome(v: unknown): v is WireInstallOutcome {
     default:
       return (
         typeof o.reason === "string" &&
-        Object.hasOwn(REASONS, o.reason) &&
+        Object.prototype.hasOwnProperty.call(REASONS, o.reason) &&
         typeof o.detail === "string"
       );
   }
