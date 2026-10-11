@@ -86,8 +86,9 @@ function isRegistrationPolicy(value: unknown): value is RegistrationPolicy {
  * The blob used to carry a declared device-registration policy beside the slugs
  * (`"registration":"open"`). The policy is now always derived from the services
  * (`resolveRegistration`), so nothing writes the key and nothing reads it: a stored one is
- * tolerated by the parser and dropped by the next write. A product that wants anonymous devices
- * on a licensed product gets them from `license.access` (LX-36), not from a registration choice.
+ * tolerated by the parser and dropped by the next write. Anonymous devices on a licensed product
+ * are not a registration choice either; the access policy that would own them (`license.access`,
+ * LX-36) is planned and not built.
  */
 export interface ProductServices {
   services: ServicesMap;

@@ -9,9 +9,10 @@
  * template). It is its own service with its own toggle, off by default, and it requires Config
  * (a synced setting is a catalog `config` key) and Identity (the Cloud Sync principal is the
  * account signed in on the device, as the product's pairwise subject; there is no Cloud Sync
- * without signing in). `validateServices` refuses the set otherwise (`sync_requires_config`,
- * `sync_requires_identity`), so the console's Services toggle cannot turn Cloud Sync on without
- * both, nor turn Identity or Config off while Cloud Sync is on.
+ * without signing in). `validateServices` refuses a set with Cloud Sync on and either requirement
+ * off (`sync_requires_config`, `sync_requires_identity`), so the console's Services switch cannot
+ * turn Cloud Sync on without both (nothing is pulled on with it), and turning Identity or Config
+ * off turns Cloud Sync off in the same write (`applyRequirementRule`).
  *
  * U-04 landed the slug, the descriptor, its settings slice and its discovery fragment. The device
  * routes under `/<p>/sync` and the per-principal Durable Object are U-05's; records are U-09's and

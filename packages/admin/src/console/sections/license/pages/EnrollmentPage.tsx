@@ -1,8 +1,9 @@
 /**
  * License → Enrollment (ADMIN.md §6.5.3, T4). Three sections:
  *
- * 1. **Registration**: declared vs enforced, read-only, with **Change in Services** (FPP-2). It is
- *    a Core policy derived from the service set; a second control here would split one value.
+ * 1. **Registration**: the enforced policy, read-only, with **Change in Services** (FPP-2). It is
+ *    a Core policy derived from the service set and never declared; a second control here would
+ *    split one value.
  * 2. **Fingerprint policy**: one mode choice (Off, Lenient, Normal, Strict) replaces the switch
  *    plus mode that overlapped (FPP-1); the section's `SourceBadge` says who owns it; Revert
  *    names both effects, the fingerprint policy and auto-issue (FPP-3).

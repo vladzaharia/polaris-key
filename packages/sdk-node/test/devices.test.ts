@@ -222,7 +222,7 @@ describe("devices.register() — the keyless mint path (§6)", () => {
       // mint path, and the endpoint refuses without saying which.
       [403, "registration-closed"],
       [429, "rate-limited"],
-      // No `devices.registration` configured for the product at all.
+      // The endpoint answers not-found: the product is not set up on this server.
       [404, "not-configured"],
     ];
     for (const [code, kind] of ladder) {

@@ -28,7 +28,7 @@
  *
  * ── WHY OPEN REGISTRATION NEEDS AN ACKNOWLEDGEMENT ─────────────────────────────────────────
  *
- * With `registration: "open"` any installation can register and hold a device token; with
+ * With the effective registration `open`, any installation can register and hold a token; with
  * anonymous auto-issue enrolment on, any caller can get a licence and a device token from
  * `POST /<p>/license/enroll`; with Identity on and an OIDC default tier, every account the
  * identity provider signs in gets a licence. Each way an approved recipe is a public token mint
@@ -37,7 +37,7 @@
  *
  * The acknowledgement is stored ON the approval (`open_registration_acknowledged`), not just
  * checked once. All three settings are product state a `.pkey/product` push can change —
- * declare `devices.registration: open`, turn License off so the derived policy is open, enable
+ * turn License and Identity off so the derived policy is open (it cannot be declared), enable
  * anonymous `autoIssue`, or turn on `oidcDefault` — without touching the recipe. The mint route
  * re-checks it on every request: while the mint is public an approval without the
  * acknowledgement does not match, the recipe answers 404, and this list reports it `changed`

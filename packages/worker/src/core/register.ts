@@ -152,8 +152,9 @@ export async function handleRegister(
   // grant. Re-registering an id bound to a real LICENCE must never work: `registerDeviceBinding`
   // rewrites `license_id`, so allowing it would let anyone who knows a licensed device's id
   // evict that device from its seat and drop it to an unlicensed principal — a keyless
-  // deauthorize. Products where both paths can coexist are the reason this is a check and not an
-  // assumption: an operator may set `registration: "open"` on a product that also runs License.
+  // deauthorize. A product that turned License off keeps its licence-bound rows beside its keyless
+  // ones, which is why this is a check and not an assumption: the derived policy is never open
+  // while License is on, but the rows outlive the switch.
   const existing = await getDevice(db, product.slug, deviceId);
   if (existing && existing.license_id !== NO_LICENSE_ID) {
     return registrationClosed();
