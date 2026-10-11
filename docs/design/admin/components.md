@@ -1,8 +1,8 @@
 # Admin component system
 
-Companion to [ADMIN.md](../ADMIN.md) §4. These are the API sketches, states and accessibility
-contracts for every component the redesign builds. Each component consumes `@polaris-key/brand`
-tokens; none defines a color, radius, shadow, duration or font of its own.
+Companion to [ADMIN.md](../ADMIN.md)'s current-state console reference. These are the API sketches,
+states and accessibility contracts for every component the redesign builds. Each component consumes
+`@polaris-key/brand` tokens; none defines a color, radius, shadow, duration or font of its own.
 
 ## Conventions
 
@@ -26,7 +26,7 @@ the brand package's `@theme` export:
 | `bg-signed-solid`, `text-signed-on`, `border-signed-border`               | `signed.*`                   |
 
 If BRAND.md lands different utility names, a one-file alias layer (`ui/theme.css`) maps them, and
-no component changes. ADMIN.md §0.3 has the full consumption contract.
+no component changes. The brand package and console shell provide the consumption contract.
 
 **Accent scoping.** `accent-*` utilities always resolve to the nearest `[data-service]` ancestor's
 family. The shell sets it on the content root and on each sidebar group. A component never names a
@@ -120,7 +120,6 @@ in the brand CSS.
   - The brand package draws this. ADMIN only passes `section`.
   - The bit changes color with a `duration.base` crossfade (none under reduced motion).
   - The star never changes.
-  - See ADMIN.md §2.4 and open question Q1 on the optical cut.
 
 ### 1.3 `ProductSwitcher`
 
@@ -360,7 +359,7 @@ not re-seeded. Instead a `Callout` appears: "This license changed while you were
 **Review changes** / **Discard mine**". The diff opens in a `Drawer`.
 
 **`diff`** produces the minimal PATCH body, with `null` for cleared nullable fields. This fixes
-TIR-1, LDT-2 and PRD-6 at the client. The worker must also accept `null`; see ADMIN.md §7.3, A-3.
+TIR-1, LDT-2 and PRD-6 at the client; the worker must also accept `null`.
 
 ### 3.2 `FormField`
 
@@ -433,7 +432,7 @@ useUnsavedChangesGuard(form.isDirty, {
 });
 ```
 
-- Registers with the router's blocker (ADMIN.md §2.6) and with `beforeunload`.
+- Registers with the router's blocker and with `beforeunload`.
 - Route changes, product switches and tab changes away from a mounted dirty panel prompt with a
   `ConfirmDialog` offering "Keep editing" / "Discard".
 - Fixes SH-6, LDT-4, PRF-6 and the MPE guard gap.
@@ -607,7 +606,7 @@ toast.error(apiError); // ApiError → title + description via errorCopy(), neve
 ```
 
 `errorCopy(error, context)` maps an `ApiError` (status, code, reason, errors, fields) to a title,
-description and next step. ADMIN.md §5.9 has the tables.
+description and next step. Its implementation is the current error-copy reference.
 
 - An unknown code falls back to "The server refused this ({status} {code})." plus a "Copy details"
   button that copies a JSON blob (status, code, reason, path, time) for a support report.
@@ -872,7 +871,7 @@ Hand-rolled SVG, no chart library. All charts follow the repo's `dataviz` guidan
 | `useMe()`                           | TanStack Query `["me"]`. Invalidated by product create and delete (fixes SH-1).                                                                                                |
 | `useProducts()`, `useProduct(slug)` | One query each (the five inline fetchers collapse into this). `useProduct` reads `["products"]` as initial data.                                                               |
 | `queries.ts`                        | Every query key and fetcher in one module, typed: `qk.license(slug, id)` etc.                                                                                                  |
-| `mutations.ts`                      | Every mutation with its **invalidation set** declared beside it (table in ADMIN.md §5.4). A test asserts each mutation declares one (fixes CC-1 to CC-4).                      |
+| `mutations.ts`                      | Every mutation declares its **invalidation set** beside the write. A test asserts that every mutation declares one (fixes CC-1 to CC-4).                                       |
 | `useTableUrlState(id)`              | Reads and writes a table's sort, filters, search and cursor from the hash query.                                                                                               |
 | `useSearchParam(name, codec)`       | Typed hash-query params for page-level state (tab, window, deliverable, drawer id).                                                                                            |
 | `useAttention(slug)`                | Derives sidebar badges and the overview's attention list from already-cached queries (setup, mint recipes, readiness holds, Sentry candidates, expiring licenses). No new API. |

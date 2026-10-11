@@ -49,15 +49,13 @@ needs that help most. Then come the shared system (§1–§9), the consolidation
 pass (§11), the mockups (§12) and the work packages (§13).
 
 **Relationship to the other specs.** [BRAND.md](BRAND.md) stays canonical for tokens, accents,
-marks and type. [ADMIN.md](ADMIN.md) and [PORTAL.md](PORTAL.md) stay canonical for screen-level
-detail this document does not touch. Where they disagree, **this document wins**. §14 lists the
-sections it supersedes; each of those docs now points here.
+marks and type. [ADMIN.md](ADMIN.md) and [PORTAL.md](PORTAL.md) record the current shipped
+console and portal; this document records the wider experience direction and package coverage.
 
 **Source precedence.** Owner decisions and the platform contract govern behaviour; then these
-design docs; then accepted mockups; then the Brand Guide's studies and anatomy proposals (a
-reference edition: [ADMIN §0.5](ADMIN.md#05-source-precedence)); then the old console. A guide study
-enters the program only as a mockup id with status `proposal` until the owner accepts it. No API,
-entitlement or permission is derived from a mockup.
+design docs; then accepted mockups; then the Brand Guide's studies and anatomy proposals; then the
+old console. A guide study enters the program only as a mockup id with status `proposal` until the
+owner accepts it. No API, entitlement or permission is derived from a mockup.
 
 **The owner-approved programs win over this document.** The settings architecture
 ([S-18](../research/2026-09-29-godot-omniplatform/notes/S-18-settings-architecture.md), `ST-*`
@@ -123,7 +121,6 @@ AS 2.2 or PJ B4.
 - [11. The copy pass](#11-the-copy-pass)
 - [12. Mockups](#12-mockups)
 - [13. Implementation plan](#13-implementation-plan)
-- [14. Superseded sections in ADMIN.md and PORTAL.md](#14-superseded-sections-in-adminmd-and-portalmd)
 
 ---
 
@@ -161,13 +158,12 @@ and one sign-in card. The rest is consolidation and copy.
 
 ### 0.2 Console information architecture
 
-The section model stays: it is how products are configured, and ADMIN.md §2.3's rejected moves still
-hold. Two things change: **each concept has one home and every other page links to it** (CL 1),
-and **settings leave the service pages for the S-18 settings hub** (ST-08), which takes most of
-the consolidation the audits asked for. Operational pages keep their sections; their headers link
-to their hub area.
+The section model stays: it is how products are configured. Two things change: **each concept has
+one home and every other page links to it** (CL 1), and **settings leave the service pages for the
+S-18 settings hub** (ST-08), which takes most of the consolidation the audits asked for.
+Operational pages keep their sections; their headers link to their hub area.
 
-**Two contexts** (ST-45; the route ledger is [ADMIN §2.8](ADMIN.md#28-route-ledger-09--10)):
+**Two contexts** (ST-45; the route registry is the implementation source):
 
 - **Platform context** (off a product): Home · Members · Connections · Settings · Packages ·
   Status · Activity. No product sections.
@@ -602,7 +598,7 @@ are optional and wait for a security review (S-18 D10). The console is still bui
 through ST-21's `useCan(capability)`:
 
 - **Hide what cannot apply; disable with a reason what applies but is not allowed** ("Needs the
-  release manager role"), never a silent missing button (ADMIN.md §5.10).
+  release manager role"), never a silent missing button.
 - The palette, attention list and launch path filter by capability: a support operator sees license
   and device actions, not "Halt everywhere".
 - Settings rows the operator cannot write render as read-outs with their SourceBadge.
@@ -960,7 +956,7 @@ customer product name or artwork.
 
 Every page in both apps is built from the same four parts, in order.
 
-1. **Header** (`PageHeader`, the masthead of [ADMIN §2.4](ADMIN.md#24-accent-and-mark-mapping)): one orientation line, then one h1; at most one primary action and two secondaries, the rest in an
+1. **Header** (`PageHeader`, the console masthead): one orientation line, then one h1; at most one primary action and two secondaries, the rest in an
    overflow menu (the license record's "Mint offline bundle…" moves into ⋯, CL 2). No subtitle unless
    §2 allows one; live state (freshness, sync) sits as muted meta text beside the title. Records add a
    back link above the title and an identity line (holder, tier, masked key, cross-links).
@@ -1750,40 +1746,3 @@ flowchart LR
 - Approved packages keep their owners: ST-07/ST-08/ST-09/ST-10/ST-12/ST-14/ST-16/ST-27, LX-14,
   LX-15, PX-17, PX-21 and PX-22 are not re-briefed by this document; it supplies the design detail
   §0.8 names, and their briefs' "Read first" should add EXPERIENCE.md §0.8.
-
-## 14. Superseded sections in ADMIN.md and PORTAL.md
-
-| Doc       | Section                                                     | Superseded by                                                             |
-| --------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
-| ADMIN.md  | §2.2 Global elements                                        | §5.1 (top bar, account menu, palette sources)                             |
-| ADMIN.md  | §2.3 Sections and pages (the page list)                     | §0.2 (sections kept; pages consolidated)                                  |
-| ADMIN.md  | T1 Overview, §6.1 Console home, §6.2 Product overview       | §0.3 J-2, J-3; §4; mockup 05                                              |
-| ADMIN.md  | T4 Settings (rail rule, save bar)                           | S-18 §4.9 (hub, `SettingsRow` v2, save model); §4 for the rail rule       |
-| ADMIN.md  | T6 Flow (wizard) for product creation                       | §0.4 S1                                                                   |
-| ADMIN.md  | T8 State pages                                              | §9                                                                        |
-| ADMIN.md  | §4 Component system (kit split)                             | §3                                                                        |
-| ADMIN.md  | §5.2 Destructive-action policy (patterns)                   | §7 (levels kept, patterns unified)                                        |
-| ADMIN.md  | §5.8 Copy                                                   | §2, §11                                                                   |
-| ADMIN.md  | §6.4 Distribution matrix (as a separate page from Rollouts) | §0.2, §10 C7                                                              |
-| ADMIN.md  | §6.5.2 License record (tab order)                           | §0.5 O1 (with S-19 §7.11's Entitlements and Grants tabs)                  |
-| ADMIN.md  | §6.5.1 Create license dialog (S-24)                         | notes/S-24 §8: the New license wizard (LX-29); holder column §8.8 (LX-30) |
-| ADMIN.md  | §6.7 Keys & secrets (scope)                                 | §10 C10                                                                   |
-| ADMIN.md  | §6.8 Activity (client-side search)                          | §0.5 O6                                                                   |
-| ADMIN.md  | §6.9 Settings (Services as a page)                          | S-18 §4.9 (product settings hub); §10 C3                                  |
-| ADMIN.md  | §2.3 Distribution Storefronts and Listing rows (A-18j)      | §0.4 S5 (A-18j's flow kept, nav evolved)                                  |
-| ADMIN.md  | §6.10 Customer portal                                       | PORTAL.md, as amended here                                                |
-| PORTAL.md | §4.1 The login card (component ownership, footer line)      | §8 (measures and steps kept)                                              |
-| PORTAL.md | §4.2 Product context (header copy)                          | §8, §11.1                                                                 |
-| PORTAL.md | §4.12 Library empty (footer advice)                         | §11.2                                                                     |
-| PORTAL.md | §4.20 Product page (lead, status chips, Get it)             | §0.6 P3–P4, mockup 09                                                     |
-| PORTAL.md | §4.26 Account (Appearance, Sign out, Delete)                | §0.6 P5 (Profile and `Avatar` stay PX-22's, §4.30)                        |
-| PORTAL.md | §4.17 Confirm and Done, §4.20 origins, §4.26 Remove (S-24)  | notes/S-24 §10 (PX-23)                                                    |
-| PORTAL.md | §5.1–5.3 Components and status model                        | §3, §7                                                                    |
-| PORTAL.md | §6.1 Copy rules                                             | §2, §11                                                                   |
-
-**Sign-in:** [SIGN-IN.md](SIGN-IN.md) supersedes §0.6 P1, §8 and §11.1's sign-in rows here, and the
-PORTAL.md and ADMIN.md sign-in sections, where they differ.
-
-**Not superseded:** PORTAL.md §3.2's phone bottom bar (Activate as the middle pill), §4.17–§4.19
-(Activate, PX-17), §4.29 (email gate, PX-21) and §4.30 (Profile, PX-22) stand as approved; this
-document places them in the shared card and adds copy around them. S-18 and S-19 stand as decided.
