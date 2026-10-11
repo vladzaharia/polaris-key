@@ -416,7 +416,7 @@
       "entry": "device_limit",
       "article": "devices",
       "why": "A license allows a set number of devices at once, and all of them are in use.",
-      "fix": "Free one of them. Choose **Replace a device** in the app when it offers it. Or remove a device you no longer use from the app's page in your library at key.plrs.im, if the app has one. Or select **Sign out** in the app on a device you no longer use, while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
+      "fix": "Free one of them. Select **Replace a device** in the app when it offers it. Or remove a device you no longer use from the app's page in your library at key.plrs.im, if the app has one. Or select **Sign out** in the app on a device you no longer use, while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
       "cta": "library"
     },
     "activation.device-limit": {
