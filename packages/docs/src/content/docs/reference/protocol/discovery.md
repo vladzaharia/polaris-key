@@ -24,7 +24,7 @@ It is assembled by Core from the service registry, and it is **unsigned**.
   "baseUrl": "https://<host>",
 
   "core": {
-    "registration": "open", // the EFFECTIVE policy, derived or declared
+    "registration": "open", // the effective policy, derived from enabled services
     "compat": { "min": "…", "max": "…" },
     "endpoints": {
       "discovery": "https://<host>/<slug>/.well-known/polaris.json",
@@ -82,8 +82,7 @@ policy could ever say yes — under `requires-license` the endpoint answers a fl
 and publishing a URL that is defined never to work is how a client ends up implementing a retry
 loop against a wall.
 
-`registration` carries the **effective** policy: the declared value if the product declared one,
-otherwise the derivation from the enablement set. See
+`registration` carries the **effective** policy derived from the enablement set. See
 [the device principal](/docs/services/core/device-principal/) for the derivation.
 
 ## Presentation

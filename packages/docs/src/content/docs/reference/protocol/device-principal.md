@@ -51,56 +51,21 @@ The check is a well-formedness gate, not authentication. What it buys is that th
 into a primary key, a KV key, and a signed document's `deviceId` claim is bounded, opaque, and
 free of separators.
 
-## Registration policies
+## Registration policy
 
-`devices.registration` is one of three values, stored inside `products.services_json` beside
-the enablement flags.
+The registration policy is derived from the enabled service set; it is not stored or declared
+separately:
 
-| Policy              | `POST /<p>/devices/register` behaviour                                        |
-| ------------------- | ----------------------------------------------------------------------------- |
-| `open`              | Mint for any caller. Rate-limited by edge IP; fingerprint optional.           |
-| `requires-identity` | Same endpoint, but only for a caller carrying a live product browser session. |
-| `requires-license`  | Refuse permanently. Activation and enrollment are the only mint paths.        |
+| Effective policy | When it applies | `POST /<p>/devices/register` behaviour |
+| ---------------- | --------------- | -------------------------------------- |
+| `requires-license` | License is enabled | Refuse permanently. Activation and enrollment are the mint paths. |
+| `requires-identity` | License is off and Identity is enabled | Requires a live product browser session. |
+| `open` | License and Identity are both off | Mint for any caller. Rate-limited by edge IP; fingerprint optional. |
 
-### The derived default
-
-The policy is optional, and undeclared means "follow the services", not "somebody chose
-`open`":
-
-```
-requires-license   if License is enabled
-requires-identity  else if Identity is enabled
-open               otherwise
-```
-
-The order is by how much the product already knows about the caller. A licensed product
-already has a mint path, so the keyless door stays shut; an identity product can authenticate
-a human, so registration is possible but must go through that; a product with neither has
-nobody to ask and nothing to protect a seat pool with.
-
-Undeclared is stored as **absent**, never resolved at ingest. A product that later turns
-License off therefore moves to the derived `open` instead of staying pinned to a value nobody
-wrote. The policy lives in the same column as the enablement set precisely because its default
-is a function of that set — reading a policy from one place while deriving its default from
-another is how the two drift.
-
-Two of the coherence rules the enablement API applies
-(`PATCH /manage/api/products/<slug>/services`) turn on the registration policy, and both reject
-by stable code:
-
-- `registration_requires_identity` — a declared `requires-identity` with Identity off. There is
-  no login to stand behind, so the product has taken registration away rather than restricted
-  it.
-- `config_without_activation` — Config on, License off, and a declared `requires-license`. That
-  closes the only mint path such a product has.
-
-:::caution
-`validateServices` runs on the **admin** path only. Manifest ingest goes straight to
-serialization, so a repo-authored `devices.registration: requires-identity` on an
-identity-disabled product reaches storage unvalidated. The runtime check inside
-`authorizeRegistration` — enablement first, then descriptor, then hook, failing closed at each
-step — is what actually stands between that and a minted token.
-:::
+The ordering follows how much the product knows about the caller: a licensed product already has a
+mint path, an identity product can authenticate a person, and a product with neither has nobody to
+ask. The effective value is recomputed whenever the service set changes and is returned as
+`effectiveRegistration` by the admin services API. It is never a manifest field or a PATCH input.
 
 ## `POST /<p>/devices/register`
 

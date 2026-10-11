@@ -1,6 +1,6 @@
 ---
 title: "Registering a product"
-description: "Products are data: the .pkey/ manifest, the modules and devices.registration switches, and how a product reaches the registry."
+description: "Products are data: the .pkey/ manifest, its service declaration, and how a product reaches the registry."
 sidebar:
   order: 3.5
 ---
@@ -14,18 +14,17 @@ add a product.
 `.pkey/` is the only manifest directory — there is no second location and no per-file
 fallback, so there is never a question of which copy of a document won.
 
-`product.{json,yaml,yml}` also carries the two suite-level switches:
+`product.{json,yaml,yml}` declares services in `modules.<service>.enabled`. The current services
+are `license`, `config`, `release`, `distribution`, `update`, `identity`, and `sync`; an omitted
+block defaults to License and Config. Requirements are validated as a set: Distribution requires
+Release, Update requires Distribution, and Cloud Sync requires Config and Identity. A manifest
+with an enabled dependent and disabled requirement is refused as
+`<service>_requires_<requirement>`.
 
-- `modules.<service>.enabled` — which of `license`, `config`, `release`, `distribution`, `update`,
-  `identity` this product runs. `update` requires `distribution`, which requires `release`. Undeclared means license + config, which is the pre-suite behaviour. The
-  legacy names (`licensing`, `releases`, `oidc`, `edgeMint`) still work.
-- `devices.registration` — `open` | `requires-identity` | `requires-license`, who may mint a
-  device token at `POST /<product>/devices/register`. Undeclared derives it from the enabled
-  services: `requires-license` if License is on, else `requires-identity` if Identity is on,
-  else `open`.
-
-Both land in the `products.services_json` column, manifest-owned until an operator claims them
-through `PATCH /manage/api/products/<slug>/services`.
+The manifest declaration is persisted in `products.services_json`, manifest-owned until an
+operator changes services through `PATCH /manage/api/products/<slug>/services`. Device
+registration is derived from that service set, not declared in the manifest: License makes it
+license-required; otherwise Identity makes it identity-required; otherwise it is open.
 
 > **Identity is now flag-gated.** A product's `/<product>/identity/*` surface answers only when
 > `identity` is enabled — an `oidc_config` row no longer turns it on by itself. A product that

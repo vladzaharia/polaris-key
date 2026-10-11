@@ -13,4 +13,11 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [SDKs](/docs/build/sdks/) for the nearest live page.
+## Service registration
+
+| Replaces                               | Replacement                                                                                                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.pkey/product` `devices.registration` | Enable License for licence registration, Identity for sign-in registration, or neither for open registration. The policy is derived from that service set. |
+
+Remove `devices.registration` from every manifest. It is not a deprecated alias: the validator
+rejects it and names the service-state replacement.

@@ -328,12 +328,11 @@ least once since `since`, latest first, each `{ licenseId, count, devices, lastA
 
 The **Enrollment** page has three sections.
 
-**Registration** is shown read-only: what is enforced now and what is declared, with **Change in
-Services**. It's a Core policy derived from the enabled service set (or explicitly declared), and
-editing it here would be a second control over a value that already has one; see
-[Services & enablement](/docs/admin/services-enablement/). It's shown here because you can't
-reason about fingerprinting without first knowing whether a device can reach the point where a
-fingerprint matters.
+**Registration** is shown read-only: the effective policy follows the enabled service set, and
+editing it here would be a second control over a value that already has one. See
+[Services & enablement](/docs/admin/services-enablement/). It is shown because you cannot reason
+about fingerprinting without first knowing whether a device can reach the point where a fingerprint
+matters.
 
 **Fingerprint policy** is one choice of mode, each with its own tolerated-drift count (see
 [Fingerprints](/docs/services/core/fingerprints/#modes-and-tolerances) for the exact numbers and

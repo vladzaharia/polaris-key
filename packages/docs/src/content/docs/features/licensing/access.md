@@ -38,6 +38,10 @@ and has four fields:
 | `mode`             | `anonymous`, `oidcDefault`, or `both`.                                   |
 | `rateLimitPerHour` | Per-IP enrollment ceiling. `0` disables the limit. Defaults to 10.       |
 
+In the console, **Licensing → Access → Anonymous devices** is the one home for this policy.
+It controls anonymous enrollment; it does not change device registration, which is derived from
+the enabled License and Identity services.
+
 The three modes open different doors:
 
 - **`anonymous`** opens `POST /<product>/license/enroll` — this page.

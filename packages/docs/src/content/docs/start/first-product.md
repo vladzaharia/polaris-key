@@ -23,9 +23,9 @@ Three rules apply to every goal, and skipping them is the usual first failure:
 - **Only `enabled: true` counts, and an all-false block is not "nothing".** A `modules` block where
   no entry is `true` — like a missing block — falls back to the defaults, **License + Config**. To
   run one service, name that one service and leave the others out.
-- **Leave `devices.registration` undeclared unless you mean it.** Undeclared tracks the derivation
-  (`requires-license` if License is on, else `requires-identity` if Identity is, else `open`), so
-  turning a service off later moves the policy with it. Declaring a value pins it forever.
+- **Registration follows the services.** License makes device registration license-required;
+  otherwise Identity makes it identity-required; with neither service it is open. There is no
+  registration field to add to the manifest.
 
 `pkey init` scaffolds the files and `pkey validate` checks them before you push; `pkey validate`
 prints the enabled services in slug vocabulary, so it is also the check that your `modules` block
@@ -112,11 +112,9 @@ With License and Identity both off, registration derives to **`open`**: any call
 `pkeyt_` device token at `POST /acme/devices/register`, rate-limited by edge IP, fingerprint
 optional. That token is all `GET /acme/config/document` needs.
 
-:::caution[Do not declare `requires-license` here]
-Config on, License off, and a declared `requires-license` policy is refused as
-`config_without_activation`: it closes the only mint path such a product has, leaving the service
-enabled and unreachable.
-:::
+The policy is derived from the service set, so this Config-only product is reachable through open,
+rate-limited registration. There is no registration value to declare or to make Config
+unreachable.
 
 **Endpoints that light up:**
 
@@ -223,8 +221,8 @@ mode is a console setting, not a manifest one. See [Update](/docs/services/updat
 
 ## Goal: everything
 
-Every service except Cloud Sync, the closed registration policy, and the full manifest set. This
-is the shape `djdl` — the first Polaris Key product — actually ships.
+Every current service except Cloud Sync, with the full manifest set. This is the shape `djdl` —
+the first Polaris Key product — actually ships.
 
 ```yaml
 # .pkey/product.yaml
@@ -238,8 +236,6 @@ modules:
   distribution: { enabled: true }
   update: { enabled: true }
   identity: { enabled: true }
-devices:
-  registration: requires-license
 oidc:
   provider: platform
   redirectUris:
@@ -259,10 +255,8 @@ POST /acme/identity/session/license
      /acme/identity/auth/device/{start,verify,poll}
 ```
 
-`requires-license` is declared here rather than derived. With License on, the derivation would
-produce the same answer today — but declaring it says "this is the policy", not "this is whatever
-the services imply", which is the right posture for a product that will never want keyless
-registration.
+With License on, the effective registration policy is `requires-license`. It remains derived, so
+if a later manifest turns License off the effective policy follows the remaining enabled services.
 
 Verify the result says what you meant before you integrate anything:
 
@@ -347,18 +341,18 @@ splits into the truth store, delivery, and the feed. A manifest that declares no
 nothing is `enabled: true` — runs **license + config**, which is what every product ran before the
 suite existed.
 
-`devices.registration` says who may mint a device token at `POST /<p>/devices/register`:
+Device registration follows the service set: with License on, activation or enrollment is the
+device mint path; with License off and Identity on, a live product sign-in is required; with both
+off, registration is open and rate-limited. The effective policy is read-only on the product
+state; it is not declared in `.pkey/product`.
 
-| Value               | Behaviour                                                                |
-| ------------------- | ------------------------------------------------------------------------ |
-| `open`              | keyless, rate-limited, optional fingerprint; mints a `pkeyt_` token      |
-| `requires-identity` | the same endpoint, but only behind a valid product identity session      |
-| `requires-license`  | `403 registration_closed`; activation/enrollment are the only mint paths |
+Requirements are validated generically. Distribution requires Release, Update requires
+Distribution, and Cloud Sync requires Config and Identity. A manifest that enables a dependent
+without its requirement is refused as `<service>_requires_<requirement>`. Turning a requirement
+off in the console cascades to enabled dependents in the same change; turning it back on does not
+restore them.
 
-Leaving it undeclared is meaningfully different from choosing a value: an undeclared product
-tracks the derivation — `requires-license` if License is on, else `requires-identity` if Identity
-is on, else `open` — so turning License off later moves it rather than leaving it pinned to a
-policy nobody wrote. djdl declares every service except Cloud Sync, and the closed policy:
+djdl declares every current service except Cloud Sync:
 
 ```jsonc
 {
@@ -370,20 +364,8 @@ policy nobody wrote. djdl declares every service except Cloud Sync, and the clos
     "update": { "enabled": true },
     "identity": { "enabled": true },
   },
-  "devices": { "registration": "requires-license" },
 }
 ```
-
-Four coherence rules are enforced on the manifest and the admin API alike. Release, Distribution
-and Update form a chain: `distribution` without `release` is an error
-(`distribution_requires_release`), and `update` without `distribution` is an error
-(`update_requires_distribution`) — the feed would answer every client with an empty document
-rather than a failure. `requires-identity`
-without Identity is an error (`registration_requires_identity`): there is no login to stand
-behind, so the endpoint could never say yes. Config with License off **and** `requires-license`
-declared is an error (`config_without_activation`) — the service is enabled and its devices have
-no way to obtain a token; the manifest validator also warns on the softer form, Config enabled
-with neither License nor Identity.
 
 Services can also be changed live: `PATCH /manage/api/products/djdl/services` claims the column
 for `admin`, after which a `.pkey/` push no longer rewrites it, and `POST …/services/revert`

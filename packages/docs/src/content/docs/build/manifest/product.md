@@ -29,11 +29,11 @@ next to `schema.json`. The files are the **manifest baseline**: they describe in
 defaults. Runtime admin changes such as secrets, license/device overrides, live service toggles,
 and operator policy overrides live separately in Polaris Key and are preserved across resync.
 
-| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                                                                |
-| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                                                              |
-| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, device registration policy, OIDC, profiles, tiers, provisioning hooks (**required**)                                       |
-| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `release_deliverables` + `edge_mint_config` rows                                        | release provider coordinates + channel/install/appcast/edge-mint settings + the app deliverable and its artifact map (required only when releases are enabled) |
+| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                                                           |
+| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                                                         |
+| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, OIDC, profiles, tiers, provisioning hooks (**required**)                                                              |
+| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `release_deliverables` + `edge_mint_config` rows                                        | release provider coordinates + channel/install/appcast/edge-mint settings + the app deliverable and its artifact map (required when releases are enabled) |
 
 The fourth, optional file — **distribution** (`distribution.{json,yaml,yml}`, mapping to
 `dist_outlets` + `dist_transports`) — declares the product's outlets, their store identities,
@@ -199,21 +199,17 @@ validate` prints it and link and resync accept it); the platform setting
   it into an error after a window of two minor releases or 60 days, whichever is later. Either
   way, the sign-in card shows such a product by its slug in a neutral frame.
 
-## Enabled services: `modules` + `devices.registration`
+## Enabled services: `modules`
 
-Polaris Key is seven opt-in services — **license, config, release, distribution, update,
-identity, sync** — over an
-always-on Core substrate (see [Concepts & terminology](/docs/start/concepts/)). `.pkey/product` declares which of them the
-product runs, and that declaration is persisted verbatim into `products.services_json`, the
-single authority every other surface projects from. It used to be validated and then thrown
-away, which is how four surfaces each ended up re-deriving enablement from the presence of some
-child row.
+Polaris Key's opt-in services — **license, config, release, distribution, update, identity, sync**
+— run over an always-on Core substrate. `.pkey/product` declares which services the product runs,
+and that declaration is persisted into `products.services_json`, the single authority every other
+surface projects from.
 
 ```jsonc
 {
-  // Every entry is `{ "enabled": <boolean> }`; a key present with `enabled` anything other than
-  // literal `true` counts as off. Unknown module names are ignored rather than fatal — a
-  // manifest naming a service this build has not heard of is not a reason to refuse the product.
+  // Every entry is `{ "enabled": <boolean> }`. Unknown module names are ignored so a manifest
+  // can survive a newer service table; known services are validated as one set.
   "modules": {
     "license": { "enabled": true },
     "config": { "enabled": true },
@@ -222,67 +218,47 @@ child row.
     "update": { "enabled": true },
     "identity": { "enabled": true },
   },
-
-  "devices": {
-    // Who may mint a device token at POST /<product>/devices/register (a Core route, present
-    // under every policy). OPTIONAL — omit it to follow the services.
-    //   open              → any caller, rate-limited by edge IP, fingerprint optional
-    //   requires-identity → only behind a live product browser session
-    //   requires-license  → refused; activation/enrollment are the only mint paths
-    "registration": "requires-license",
-  },
 }
 ```
 
 **Defaults.** A manifest with no `modules` block — or one whose every entry is off — gets
-`license` + `config` enabled and the rest off, which is exactly how every product behaved before
-the block was persisted. `devices.registration` is optional and stays optional in storage:
-undeclared means "derive from the services" (`requires-license` if license is on, else
-`requires-identity` if identity is, else `open`), which is a different thing from someone having
-chosen `open`. A product that later turns license off must move to the derived `open`, not stay
-pinned to a value nobody wrote.
+`license` + `config` enabled and the rest off, which is how every product behaved before the
+block was persisted.
+
+**Requirements.** The service table declares the following requirements:
+
+| Service      | Requires     | Refusal                         |
+| ------------ | ------------ | ------------------------------- |
+| Distribution | Release      | `distribution_requires_release` |
+| Update       | Distribution | `update_requires_distribution`  |
+| Cloud Sync   | Config       | `sync_requires_config`          |
+| Cloud Sync   | Identity     | `sync_requires_identity`        |
+
+A manifest with an enabled dependent and a disabled requirement is refused. The console follows
+the same rule: turning a requirement off cascades to enabled dependents in one audited change, but
+turning it back on does not restore them. Individual service controls do not pull requirements on;
+enable each one first, or use a feature action such as **Ship builds**, which explicitly writes
+Release, Distribution and Update together.
+
+**Device registration is derived.** It is not a `product` manifest setting. The effective policy
+is `requires-license` when License is on; otherwise `requires-identity` when Identity is on;
+otherwise `open`. See [The device principal](/docs/reference/protocol/device-principal/) for the
+wire behavior.
 
 **The legacy vocabulary still parses, and is deprecated.** The pre-suite module names are
-translated to service slugs at ingest and only slugs are stored, so a manifest in the field does
-not have to be rewritten on the day the server learns the new words, and one block may mix both
-spellings. `pkey validate` warns on each legacy name with `deprecated_spelling` (see
-[Deprecated spellings](#deprecated-spellings)):
+translated to service slugs at ingest and only slugs are stored:
 
-| Declared    | Enables                               | Note                                                                                                                                          |
-| ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `licensing` | `license`                             | rename                                                                                                                                        |
-| `releases`  | `release` + `distribution` + `update` | the old module meant "distributes software"; mapping it to `release` alone would take the appcast away from every product already serving one |
-| `oidc`      | `identity`                            | rename                                                                                                                                        |
-| `edgeMint`  | `config`                              | edge-minting is a secret-**delivery** capability of Config, not a unit of its own                                                             |
+| Declared    | Enables                               | Note                                                                                      |
+| ----------- | ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `licensing` | `license`                             | rename                                                                                    |
+| `releases`  | `release` + `distribution` + `update` | the old module meant "distributes software", so it maps to the complete Ship builds chain |
+| `oidc`      | `identity`                            | rename                                                                                    |
+| `edgeMint`  | `config`                              | edge-minting is a secret-**delivery** capability of Config, not a unit of its own         |
 
-**Validation at ingest.** `parseManifest` aggregates every error before it refuses, and a refusal
-applies nothing:
-
-- `distribution_requires_release` — **error**. Distribution delivers what Release says exists,
-  so Distribution on with Release off has nothing to deliver.
-- `update_requires_distribution` — **error**. Update's feed tells a device what to do next over
-  what Distribution delivered, so Update on with Distribution off would answer every client with
-  an empty document rather than an error. A `releases` manifest can never trip either rule: the
-  mapping brings the whole chain with it. A manifest naming `release` and `update` without
-  `distribution` does trip this one. (These two replaced `update_requires_release`, which they
-  imply.)
-- `invalid_registration_policy` — **error**. An unrecognised `devices.registration` is refused
-  rather than coerced; silently falling back to a default would answer "requires-license" with
-  "open" for the one manifest that most meant it.
-- `config_without_activation` — **warning**, when `config` is on with neither `license` nor
-  `identity`. It stays a warning because a config-only product issuing config documents to
-  registered devices is the wire-level proof that the services are independent, not a mistake.
-  The enablement API applies the same code as a hard **error** for the one combination that is
-  genuinely unreachable — `config` on, `license` off, and a declared `requires-license` policy,
-  which closes the only mint path such a product has.
-- `registration_requires_identity` is enforced by the enablement API
-  (`PATCH /manage/api/products/<slug>/services`), not at manifest ingest.
-
-**Live toggles.** Services can also be changed from the admin panel; a live edit claims the
+**Live changes.** Services can also be changed from the admin panel; a live edit claims the
 column (`services_source` flips `manifest` → `admin`) so a later push cannot silently turn a
-service back on, nor re-open registration after an operator closed it. "Revert to manifest" flips
-ownership back and changes nothing else — the manifest re-applies on the next resync, not
-immediately, so the operator's escape hatch never depends on a GitHub round trip that can fail.
+service back on. **Revert to manifest** flips ownership back and changes nothing else; the
+manifest re-applies at the next resync.
 
 ### Synced settings and Cloud Sync records
 
@@ -954,11 +930,11 @@ Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntr
 
 Admins set **management state + values** (per license/device) and operational runtime
 overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a re-sync. A
-re-sync updates the manifest baseline from `.pkey/`: product metadata, service enablement +
-registration policy, fingerprint and auto-issue policy, catalog shape, OIDC baseline, release
-baseline, profiles, tiers, provisioning, and edge-mint recipes. The three operator-claimable
-blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`) are skipped while an
-admin owns them, and so is the trusted-publisher policy once claimed. The licensing settings and
+re-sync updates the manifest baseline from `.pkey/`: product metadata, service enablement,
+fingerprint and auto-issue policy, catalog shape, OIDC baseline, release baseline, profiles,
+tiers, provisioning, and edge-mint recipes. The three operator-claimable blocks
+(`services_source`, `fingerprint_policy_source`, `auto_issue_source`) are skipped while an admin
+owns them, and so is the trusted-publisher policy once claimed. The licensing settings and
 `oidc.syncTierOnSignIn` are claimed one setting at a time, and the resync result lists each
 claimed one it left alone.
 

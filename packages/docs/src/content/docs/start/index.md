@@ -25,11 +25,11 @@ two — and it holds up to three independent documents. The base name selects th
 extension is a pure format preference, tried `.json`, then `.yaml`, then `.yml`, resolved per
 document, so a repo may keep `product.yaml` next to `schema.json`.
 
-| File      | What it carries                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------- |
-| `schema`  | the config catalog: `schemaVersion` plus `entries[]`                                              |
-| `product` | metadata, **which services this product runs**, device registration policy, OIDC, profiles, tiers |
-| `release` | release-provider coordinates, channels, install/appcast settings, edge-mint recipes               |
+| File      | What it carries                                                                     |
+| --------- | ----------------------------------------------------------------------------------- |
+| `schema`  | the config catalog: `schemaVersion` plus `entries[]`                                |
+| `product` | metadata, **which services this product runs**, OIDC, profiles, tiers               |
+| `release` | release-provider coordinates, channels, install/appcast settings, edge-mint recipes |
 
 Everything the manifest declares is a _baseline_. Runtime admin state — secret values,
 per-license and per-device overrides, operator-claimed policy blocks — lives in Polaris Key and

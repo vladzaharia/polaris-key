@@ -15,8 +15,7 @@ The one place is a single column, **`products.services_json`**.
 
 ## The column
 
-`services_json` records the enablement set and — because its default is a function of that same
-set — the product's declared device registration policy:
+`services_json` records the enablement set:
 
 ```json
 {
@@ -26,37 +25,21 @@ set — the product's declared device registration policy:
   "distribution": { "enabled": false },
   "update": { "enabled": false },
   "identity": { "enabled": false },
-  "sync": { "enabled": false },
-  "registration": "open"
+  "sync": { "enabled": false }
 }
 ```
 
-Every slug is written with an explicit boolean, in canonical order, and `registration` is written
-**last and only when declared**. Storing it as absent rather than resolved is the point: undeclared
-means "follow the services", which is a different fact from "somebody chose `open`".
+Every known slug is written with an explicit boolean in canonical order. The parser is strict
+_and_ fail-safe: structurally invalid JSON, a malformed known or unknown service entry, or a
+non-boolean `enabled` discards the whole record and reads the defaults rather than partly honoring
+a typo. A well-formed unknown slug is carried through unchanged, so a rollback does not delete a
+newer service it cannot interpret. A well-formed record that omits a known slug gets that slug's
+default.
 
-The parser is strict _and_ fail-safe, and the two are not in tension. The column is a TEXT blob
-read on every product-scoped request, and its content could be a stale row, a hand-edit in the D1
-console, or the output of a future writer this build has never seen. So:
-
-- Anything structurally wrong — not JSON, not an object, an array, a non-object entry, an `enabled` that is not a boolean, a `registration` outside the three
-  policies — **discards the whole record** and reads as the defaults. Never a partial merge:
-  half-honouring a typo is how it turns into a silently disabled service. One rule for the whole
-  blob, including `registration` — a second, softer tolerance for one key inside the same value
-  is exactly the inconsistency that gets misremembered later.
-- An unrecognised slug whose value is a well-formed `{ "enabled": boolean }` is a service a newer
-  build wrote. It never affects enablement or registration, and it is carried through and written
-  back unchanged (sorted by key, after the known slugs), so rolling a worker back past the release
-  that introduced a slug neither resets the slugs it knows nor deletes the one it does not. A
-  malformed unrecognised value still discards the whole record.
-- A well-formed record that simply omits a slug gets that slug's default.
-- It never throws. Hostile database content must not be able to `500` a request.
-
-The **defaults are `license` + `config` on, the rest off** — not all-disabled. This parser sits in
-front of the routes every existing product already serves, so the safe direction is "behave
-exactly as this product behaved before the column existed". Note what the defaults then derive for
-registration: License defaults on, so an unreadable record lands on `requires-license`, the closed
-policy that was the only behaviour before any of this existed.
+The **defaults are `license` + `config` on, the rest off** — not all-disabled. That preserves the
+behavior of products created before the column existed. Device registration is then derived from
+the resulting set: License produces `requires-license`; otherwise Identity produces
+`requires-identity`; otherwise it is `open`.
 
 ## Where the value comes from: the manifest
 
@@ -137,9 +120,9 @@ service's endpoints cannot be read out of a public document. This is also the SD
 capability-negotiation source, and it is fail-closed: a discovery document loaded this session
 wins, else the app's configured `expectedServices`, else the suite default — never all-true.
 
-**3. The console nav.** One projection (`serviceStateOf`) stamps `services`, `registration`,
-`effectiveRegistration` and `servicesSource` onto the row the console shell already loads, and the
-same projection serves `GET /manage/api/products/<slug>/services`. The shell needs the answer
+**3. The console nav.** One projection (`serviceStateOf`) stamps `services`,
+`effectiveRegistration`, and `servicesSource` onto the row the console shell already loads, and
+the same projection serves `GET /manage/api/products/<slug>/services`. The shell needs the answer
 before it can decide which nav sections exist at all, so the nav is drawn from enablement rather
 than appearing after the page it frames. See
 [Service enablement in the console](/docs/admin/services-enablement/).
@@ -150,42 +133,28 @@ item while leaving the endpoint enumerating a non-Release product's releases to 
 deep-links it — the nav is a courtesy, the listing is the disclosure, so the flag has to bind both
 or it binds neither.
 
-## Coherence rules
+## Requirements and cascades
 
-An enablement set is validated **as a set**, not flag by flag: every one of these faults is a
-_relationship_ between two toggles, so no single flag can be blamed for it. Validation returns
-stable error **codes**, not prose, so the admin API, the console and the manifest validator can
-each render them their own way.
+An enablement set is validated **as a set**. Requirements are declared in the service table, so
+the stable refusal code is mechanically `<service>_requires_<requirement>` rather than a
+hand-written special case:
 
-| Code                             | The fault                                                            | Why it is refused                                                                                                                                      |
-| -------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `distribution_requires_release`  | Distribution on, Release off                                         | Distribution delivers what Release says exists; with Release off there is nothing to deliver.                                                          |
-| `update_requires_distribution`   | Update on, Distribution off                                          | Update's feed tells a device what to do next over what Distribution delivered. It would answer every client with an empty document — a silent failure. |
-| `registration_requires_identity` | a declared `requires-identity` policy with Identity off              | there is no login to stand behind, so the endpoint could never say yes to anyone; the product has taken registration away rather than restricted it.   |
-| `config_without_activation`      | Config on, License off, **and** a declared `requires-license` policy | that closes the only mint path such a product has, leaving the service enabled and unreachable.                                                        |
-| `sync_requires_config`           | Cloud Sync on, Config off                                            | a synced setting is a catalog `config` key; with Config off there is nothing to sync.                                                                  |
-| `sync_requires_identity`         | Cloud Sync on, Identity off                                          | the Cloud Sync principal is the account signed in through the product; with Identity off no device could ever have one.                                |
+| Code                            | The fault                    | Why it is refused                     |
+| ------------------------------- | ---------------------------- | ------------------------------------- |
+| `distribution_requires_release` | Distribution on, Release off | Distribution has nothing to deliver.  |
+| `update_requires_distribution`  | Update on, Distribution off  | A feed has no delivery behind it.     |
+| `sync_requires_config`          | Cloud Sync on, Config off    | There are no Config settings to sync. |
+| `sync_requires_identity`        | Cloud Sync on, Identity off  | Cloud Sync has no signed-in person.   |
 
-The rules are not all enforced in the same place, and the difference matters when you are
-debugging a manifest that pushed cleanly but behaves oddly:
+Manifest ingest and `PATCH …/services` both refuse an enabled dependent without every
+requirement. Turning a requirement off instead cascades to all enabled dependents, transitively,
+in one audited change; turning the requirement back on does not re-enable those dependents. The
+console does not pull prerequisites on for an individual service: a switch whose requirement is
+off stays disabled and names what it needs. The one feature action that writes several services is
+**Ship builds**, which sends Release, Distribution and Update together.
 
-- **Manifest ingest** refuses `distribution_requires_release`, `update_requires_distribution`,
-  `sync_requires_config` and `sync_requires_identity` as errors, refuses an unrecognised
-  `devices.registration` outright (`invalid_registration_policy`) rather than coercing it, and
-  **warns** on the softer form of `config_without_activation` — Config on with neither License nor
-  Identity. That stays a warning on purpose: a config-only product issuing config documents to
-  registered devices is the wire-level proof that the services are independent, not a mistake.
-- **The enablement API** (`PATCH …/services`) applies all six as hard errors, including
-  `registration_requires_identity`, which manifest ingest does not check at all.
-
-That gap is why the runtime registration check is load-bearing rather than a redundant second
-opinion: a repo-authored `requires-identity` policy on an identity-disabled product reaches the
-database, and the only thing standing between it and a minted device token is Core re-asking the
-Identity descriptor at request time — a question that fails closed at every step.
-
-The chain **Release ← Distribution ← Update** replaced the single `update_requires_release` rule,
-which the two edges together imply (Distribution itself requires Release). That code is retired
-and is never emitted.
+The chain **Release ← Distribution ← Update** therefore still implies that Update needs Release,
+without a separate `update_requires_release` rule.
 
 ## Services read one another through Core
 
@@ -206,43 +175,21 @@ every accessor **fails closed**: while the providing service is off it returns `
 provider's code never runs. Hooks are read-only — a cross-service write would be an import in
 disguise.
 
-## Registration policy and its derived default
+## Registration policy
 
-`devices.registration` decides who may mint a device token at
-`POST /<product>/devices/register` — a **Core** route that exists under every policy, because a
-device is substrate, not a licensing concept.
+Core derives the registration policy from the service set; no manifest or console control declares
+it:
 
-| Policy              | Behaviour                                                                        |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `open`              | mint for any caller; rate-limited by edge IP, fingerprint optional               |
-| `requires-identity` | the same endpoint, but only for a caller carrying a live product browser session |
-| `requires-license`  | refuse permanently; activation and enrollment are the only mint paths            |
+| Policy              | When it applies                        | Behaviour                                             |
+| ------------------- | -------------------------------------- | ----------------------------------------------------- |
+| `requires-license`  | License is enabled                     | Activation and enrollment are the only mint paths.    |
+| `requires-identity` | License is off and Identity is enabled | Registration requires a live product browser session. |
+| `open`              | License and Identity are both off      | Any caller may register, rate-limited by edge IP.     |
 
-Every refusal is the same `403 registration_closed`. A caller learns that it may not register and
-nothing about why — distinguishing the policies, or an expired session from an absent one, would
-let a prober map which products run which services.
-
-Core cannot answer "is a human signed in to this product", so for `requires-identity` it asks the
-Identity descriptor through a **narrow predicate** rather than importing the service. The contract
-is a yes/no; everything about what a refusal looks like stays Core's.
-
-The policy is optional, and undeclared means "follow the services":
-
-```
-requires-license  if License is enabled
-requires-identity else, if Identity is enabled
-open              otherwise
-```
-
-The order is by how much the product already knows about the caller. A licensed product already
-has a mint path, so keyless registration stays shut; an identity product can authenticate a human,
-so registration is possible but must go through that; a product with neither has nobody to ask and
-nothing to protect a seat pool with, so registration is open — rate-limited, never a free-for-all.
-
-Because undeclared is stored as absent, **a product that later turns License off moves to the
-derived `open`** instead of staying pinned to a value nobody wrote. That is the whole reason the
-policy lives inside `services_json` rather than in a column of its own: reading a policy from one
-place while deriving its default from another is how the two drift.
+Every refusal is `403 registration_closed`, without revealing why. For the identity-required
+case, Core asks the Identity descriptor through a narrow predicate rather than importing the
+service. The current result is exposed as `effectiveRegistration`; it changes with the validated
+service set and is never a caller-provided policy.
 
 ## Related
 

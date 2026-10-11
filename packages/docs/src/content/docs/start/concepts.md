@@ -26,12 +26,12 @@ UI words are spelled the way the console and the portal show them: US English an
 
 ### Products and features
 
-| UI word          | What it means                                                                                                                                                                                                                                                                                                                                                                                                                                            | Identifier (kept)                                                                                                                                                                     | Not in the UI                                                         |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Feature**      | A group of services the operator turns on for a product: **Licensing** (`license`), **Managed config** (`config`), **Ship builds** (`release` and `distribution`, with **In-app updates**, `update`, as its switch), **Sign-in** (`identity`), **Cloud Sync** (`sync`) and **Commerce** (`commerce`, requires Licensing). A feature turns on only while the features it requires are on, and turning one off turns its dependents off in the same change | the slugs in `products.services_json` and `tools/services.json`; the grouping is `console.group` there (planned, ST-38); the `commerce` row of `tools/services.json` (planned, CM-29) | "module", "service", `--modules`                                      |
-| **Integration**  | The product page that shows how to connect each feature, with live verification                                                                                                                                                                                                                                                                                                                                                                          | `GET /manage/api/products/<slug>/integration` (planned, ST-40 and ST-41)                                                                                                              | Setup checklist, Connect your app, quick starts, Welcome, launch path |
-| **Verified**     | A feature on a platform has answered an SDK request with a 2xx once its console prerequisites are met; where no SDK request exists, a CI package publish or an updater's first check                                                                                                                                                                                                                                                                     | `sdk_sightings.services_ok` (planned, ST-40)                                                                                                                                          | "Setup complete"                                                      |
-| **Setup choice** | An explicit choice a setup surface records: a skipped step, "not using this channel", Integration hidden. Step completion is computed from facts, never stored                                                                                                                                                                                                                                                                                           | the product setting `core.setup` (planned, ST-39)                                                                                                                                     | setup state                                                           |
+| UI word          | What it means                                                                                                                                                                                                                                                                                                                                                                                              | Identifier (kept)                                                                                      | Not in the UI                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| **Feature**      | A group of services the operator turns on for a product: **Licensing** (`license`), **Managed config** (`config`), **Ship builds** (`release` and `distribution`, with **In-app updates**, `update`, as its switch), **Sign-in** (`identity`), and **Cloud Sync** (`sync`). A feature turns on only while the services it requires are on, and turning one off turns its dependents off in the same change | the slugs in `products.services_json` and `tools/services.json`; the grouping is `console.group` there | "module", "service", `--modules`                                      |
+| **Integration**  | The product page that shows how to connect each feature, with live verification                                                                                                                                                                                                                                                                                                                            | `GET /manage/api/products/<slug>/integration` (planned, ST-40 and ST-41)                               | Setup checklist, Connect your app, quick starts, Welcome, launch path |
+| **Verified**     | A feature on a platform has answered an SDK request with a 2xx once its console prerequisites are met; where no SDK request exists, a CI package publish or an updater's first check                                                                                                                                                                                                                       | `sdk_sightings.services_ok` (planned, ST-40)                                                           | "Setup complete"                                                      |
+| **Setup choice** | An explicit choice a setup surface records: a skipped step, "not using this channel", Integration hidden. Step completion is computed from facts, never stored                                                                                                                                                                                                                                             | the product setting `core.setup` (planned, ST-39)                                                      | setup state                                                           |
 
 ### Licensing
 
@@ -97,9 +97,10 @@ UI words are spelled the way the console and the portal show them: US English an
   being named on its own.
 - **Storefront** — the selling facet of a channel, never a place builds are delivered.
 - **Sign-in surface** — a place a person signs in. Never a "sign-in channel".
-- **Feature** — a product-level group of services, six of them: Licensing, Managed config, Ship
-  builds, Sign-in, Cloud Sync and Commerce. "Capability" is not a UI word; the identifiers that use
-  it (`outletCapabilities`, `/api/capabilities`) keep it.
+- **Feature** — a product-level group of services. The console and docs use the five groups
+  generated from `console.group`: Licensing, Managed config, Ship builds, Sign-in and Cloud Sync.
+  "Capability" is not a UI word; the identifiers that use it (`outletCapabilities`,
+  `/api/capabilities`) keep it.
 - **Profile** — still taken twice (rule 4): the managed-config set above and `DocProfile` in the
   signed payload. A person's public name is their **Screen name**.
 
@@ -123,47 +124,37 @@ only shrinks: the packages that rebuild those pages rename them.
 
 ## The suite: Core and services
 
-Polaris Key is **seven opt-in services** over an always-on **Core** substrate. A product turns on
-only what it needs, and what it left off does not exist for it. That is what lets one app take
-signed settings without taking licensing, and another take a release feed without taking either.
+Polaris Key is an always-on **Core** substrate plus opt-in services. A product turns on only what
+it needs, and what it leaves off does not exist for it.
 
 - **[Core](/docs/services/core/)** — the substrate every product gets and no product can switch
   off: the product registry, the **Device** principal (registration, `pkeyt_` tokens,
   list/rename/deauthorize, fingerprints, facts), trust & signing, discovery, rate limiting, the
   error taxonomy, audit, and manifest-ingest dispatch. Core is not a service and never appears in
   an enablement set; a product that enables nothing still registers devices and serves its JWKS.
-- **service** — one of exactly seven opt-in units, each addressed by a singular **slug**. The slug
-  is the worker directory (`packages/worker/src/services/<slug>/`), the route namespace
-  (`/<product>/<slug>/…`), the SDK sub-client (where one exists), and the console section, so
-  there is one word per unit in code. The console groups the services into **Features**
-  ([UI words](#ui-words-and-the-identifiers-they-keep); planned, ST-38), and an eighth slug,
-  `commerce`, which requires `license`, is planned (CM-29). The services are declared once, as rows
-  of `tools/services.json`:
+- **service** — an opt-in unit addressed by a singular **slug**. The slug is the Worker directory
+  (`packages/worker/src/services/<slug>/`), route namespace (`/<product>/<slug>/…`), SDK
+  sub-client where one exists, and console section. The service table groups existing services into
+  five console features: Licensing, Managed config, Ship builds, Sign-in and Cloud Sync.
   - **[license](/docs/services/license/)** — activation and enrollment, the license document,
     licenses and keys, tiers, fingerprint and auto-issue policy.
   - **[config](/docs/services/config/)** — the catalog (schema), the config document, profiles,
     edge-mint secret delivery.
   - **[release](/docs/services/release/)** — GitHub sync, channel resolution, artifacts,
-    changelog, install script: the release truth store. It answers _what exists?_
-  - **[distribution](/docs/services/distribution/)** — how every release of every deliverable
-    reaches devices and outlets, and what state it is in there: outlets, transports,
-    availability, rollouts. It answers _how does it reach devices, and is it there yet?_ (The
-    word means only this service — never "release + update".)
-  - **[update](/docs/services/update/)** — the appcast, `/version`, eligibility: the feed that
-    tells an installed copy what to do next. It answers _what should this device do next?_
-    `update → release` is the only sanctioned cross-service import; every other pair talks
-    through Core (the **descriptor hooks**, below).
-  - **[identity](/docs/services/identity/)** — product OIDC, browser sessions, the customer
+    changelog, install script: the release truth store.
+  - **[distribution](/docs/services/distribution/)** — delivery to devices and channels:
+    transports, availability and rollouts.
+  - **[update](/docs/services/update/)** — the appcast, `/version`, eligibility, and the feed
+    that tells an installed copy what to do next.
+  - **[identity](/docs/services/identity/)** — product OIDC, browser sessions, and the customer
     portal.
   - **[sync](/docs/services/sync/)** — **Cloud Sync**: a signed-in person's settings, saves and
-    other records, with their files, synced across their devices. It requires `config` and
-    `identity`.
+    other records, with their files, synced across devices.
 
 ### Enablement
 
 - **`services_json`** — the column on `products` that records which services a product runs, and
-  the **single authority** for that answer. Every slug is present with an explicit boolean, plus
-  an optional `registration` key:
+  the **single authority** for that answer. Every known slug is present with an explicit boolean:
 
   ```json
   {
@@ -173,105 +164,66 @@ signed settings without taking licensing, and another take a release feed withou
     "distribution": { "enabled": false },
     "update": { "enabled": false },
     "identity": { "enabled": false },
-    "sync": { "enabled": false },
-    "registration": "open"
+    "sync": { "enabled": false }
   }
   ```
 
-  A record that is not fully understood — bad JSON, an unknown slug with a malformed value, a non-boolean `enabled`, a
-  `registration` outside the three policies — is discarded **whole** and read as the defaults
-  (`license` + `config` on, the rest off), never partially honoured: half-honouring a typo is how
-  it turns into a silently disabled service. The defaults are also what a product that has never
-  declared anything gets, which is exactly how every product behaved before the column existed.
+  A record that is not fully understood is discarded whole and read as the defaults (License and
+  Config on, the rest off), never partially honoured. A malformed flag must not silently disable a
+  service.
 
 - **`services_source`** — who owns that column: `manifest` (a resync re-applies `.pkey/product`)
-  or `admin` (an operator claimed it live). The guard is the `UPDATE`'s own `WHERE` clause, so a
-  push cannot quietly undo a 3am toggle. `POST …/services/revert` hands ownership back and does
-  nothing else — the live values stay put until the next resync re-applies the manifest. Same
-  machinery as `fingerprint_policy_source` and `auto_issue_source`.
+  or `admin` (an operator changed it live). `POST …/services/revert` returns ownership to the
+  manifest and leaves the live values in place until the next resync.
 
-**The four projections.** Enablement used to be re-derived by four surfaces, each guessing from
-the presence of some child row, so the discovery document could advertise a service whose routes
-404ed. All four now read the one column and infer nothing:
+**The four projections.** Route mounting, discovery, the admin product view, and portal
+capabilities all read this one service set. A disabled route, unknown product and misspelled path
+share a 404; discovery gives a disabled service `{"enabled": false}` and no endpoint list; the
+console removes its navigation section; and portal capability and listing checks conjoin their
+own state with the same set.
 
-- **route mounting** — Core checks the flag _before_ consulting the service descriptor, so a
-  disabled service's code never runs: it cannot read a row, write an audit entry, or spend a
-  rate-limit token. Disabled, unregistered, and no-such-route return one identical 404, because
-  telling them apart is the reconnaissance being refused.
-- **the discovery document** — `/<product>/.well-known/polaris.json` carries a `services` object
-  keyed by the six slugs. An enabled service contributes its own fragment; a disabled one is
-  `{"enabled": false}` and nothing else, so a disabled service's endpoints cannot be read out of
-  a public document.
-- **the admin product view** — one projection (`serviceStateOf`) stamps `services`,
-  `registration`, `effectiveRegistration`, and `servicesSource` onto the row the console shell
-  already loads, so the nav is drawn from enablement rather than appearing after the page it
-  frames.
-- **portal capabilities** — `/api/capabilities` and the portal's release listing conjoin the
-  per-product portal toggles with `services_json`. Gating only the capability would hide the nav
-  item while leaving the endpoint enumerating a non-Release product's releases to anyone who
-  deep-links it; the nav is a courtesy, the listing is the disclosure.
+**Requirements.** Requirements are data in the service table. An enabled service must have every
+required service on, and a manifest or API request that does not is refused as
+`<service>_requires_<requirement>`:
 
-**Coherence.** An enablement set is validated as a set, not flag by flag — every one of these
-faults is a _relationship_ between two toggles, so no single flag can be blamed for it. The
-enablement API (`PATCH /manage/api/products/<slug>/services`) refuses all four, and returns
-stable codes rather than prose so the API, the console, and the manifest validator can each
-render them their own way:
+| Service      | Requires     | Code                            |
+| ------------ | ------------ | ------------------------------- |
+| Distribution | Release      | `distribution_requires_release` |
+| Update       | Distribution | `update_requires_distribution`  |
+| Cloud Sync   | Config       | `sync_requires_config`          |
+| Cloud Sync   | Identity     | `sync_requires_identity`        |
 
-- `distribution_requires_release` — Distribution on with Release off. Distribution delivers what
-  Release says exists; with Release off there is nothing to deliver.
-- `update_requires_distribution` — Update on with Distribution off. The feed would answer every
-  client with an empty document rather than an error, which is a silent failure. Together with
-  the rule above it implies Release is on whenever Update is, so the older
-  `update_requires_release` is retired.
-- `registration_requires_identity` — a declared `requires-identity` policy with Identity off.
-  There is no login to stand behind, so the product has taken registration away rather than
-  restricted it.
-- `config_without_activation` — Config on, License off, and a declared `requires-license` policy.
-  That closes the only mint path such a product has, leaving the service enabled and unreachable.
-
-Manifest ingest enforces its own share of these; see
-[Authoring the manifest](/docs/build/manifest/) for which are errors there and which are
-warnings, and [The service model](/docs/start/service-model/) for where each rule is applied.
+Turning a requirement off turns off enabled dependents transitively in the same audited change;
+turning it back on does not restore them. Requirements are not pulled on by an individual
+client-side service switch: a switch whose requirement is off stays disabled and names what it
+needs. The one feature action that writes several services is Ship builds, which sends Release,
+Distribution and Update together.
 
 ### Device registration policy
 
-- **registration policy** — `devices.registration`, one of `open`, `requires-identity`, or
-  `requires-license`. It decides who may mint a device token at `POST /<product>/devices/register`
-  — a **Core** route that exists under every policy, because a device is substrate, not a
-  licensing concept.
-  - `open` — mint for any caller. Rate-limited by edge IP, fingerprint optional.
-  - `requires-identity` — same endpoint, but only for a caller carrying a live product browser
-    session. Core cannot answer "is a human signed in to this product", so it asks the Identity
-    descriptor through a narrow predicate rather than importing the service.
-  - `requires-license` — refuse permanently. Activation and enrollment are the only mint paths,
-    which is the pre-suite behavior.
+Device registration is derived from the enabled services, rather than declared in the manifest or
+console:
 
-  Every refusal is the same `403 registration_closed`. A caller learns that it may not register
-  and nothing about why: distinguishing the policies, or an expired session from an absent one,
-  would let a prober map which products run which services.
+| Effective policy    | When it applies                    | `POST /<product>/devices/register`               |
+| ------------------- | ---------------------------------- | ------------------------------------------------ |
+| `requires-license`  | License is on                      | Refuses; activation and enrollment mint devices. |
+| `requires-identity` | License is off and Identity is on  | Requires a live product browser session.         |
+| `open`              | Neither License nor Identity is on | Mints for any caller, rate-limited by edge IP.   |
 
-- **derived default** — the policy is optional, and undeclared means "follow the services", not
-  "somebody chose `open`". The derivation is `requires-license` if License is enabled, else
-  `requires-identity` if Identity is, else `open` — ordered by how much the product already knows
-  about the caller. Undeclared is stored as _absent_ rather than resolved at ingest, so a product
-  that later turns License off moves to the derived `open` instead of staying pinned to a value
-  nobody wrote. The policy lives inside `services_json` rather than in a column of its own
-  precisely because its default is a function of the same value; reading a policy from one place
-  while deriving its default from another is how the two drift.
+Every refusal is `403 registration_closed`, without revealing why. The effective value is returned
+for observation on the services API and product view; it is not a policy callers can set.
 
 ### The old module vocabulary
 
-A `.pkey/product` `modules:` block may still use the pre-suite names. The parser translates them
-to service slugs and stores only slugs, so no manifest in the field has to be rewritten on the
-day the server learns the new words, and a block may mix the two vocabularies:
+A `.pkey/product` `modules:` block may still use pre-suite names. The parser translates them to
+service slugs and stores only slugs:
 
 `licensing → license` · `config → config` · `releases → release + distribution + update` ·
 `oidc → identity` · `edgeMint → config`
 
-The two non-obvious rows: `releases` meant "this product distributes software", which the suite
-splits into the truth store (Release), delivery (Distribution) and the feed (Update) — mapping it
-to `release` alone would take the appcast away from every product already serving one. And `edgeMint` is a secret-delivery
-_capability_ of Config, not a unit of its own, so declaring it turns Config on.
+`releases` maps to the Ship builds chain because the old module meant distribution as well as the
+truth store and feed. `edgeMint` maps to Config because minted tokens are Config secret delivery,
+not a service of their own.
 
 ### Descriptor hooks
 
