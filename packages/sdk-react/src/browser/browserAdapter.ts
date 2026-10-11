@@ -175,20 +175,15 @@ import {
   type DownloadModel,
   type ThisPlatform,
 } from "./distribution.js";
-import {
-  bootDecisionOf,
-  runBoot,
-  type BootDriver,
-  type BootResult,
-  type BootRunOptions,
-} from "../core/boot.js";
+import type { BootDriver, BootResult, BootRunOptions } from "../core/boot.js";
 import {
   crashTagsFor,
   type CrashTags,
   type CrashTagsOptions,
 } from "../core/crash.js";
-import type { BootAttempt, BootGuard } from "../core/bootGuard.js";
+import type { BootAttempt } from "../core/bootGuard.js";
 import type { InstallOptions, InstallOutcome } from "../core/install.js";
+import type { BrowserBootGuard } from "./bootGuard.js";
 import type { SwContainer } from "./serviceWorkerUpdate.js";
 import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
 import { classifyActivation } from "../core/activation.js";
@@ -487,11 +482,10 @@ export class BrowserAdapter implements PolarisAdapter {
   /** The re-verified offline state (device id + imported bundle), once loaded. */
   private offlineState: OfflineState | null = null;
   private readonly updateConfig: BrowserUpdateConfig | null;
-  /** The update driver's service worker, and the reload after the hand-off. */
-  private readonly swContainer: SwContainer | null;
-  private readonly swReload: (() => void) | undefined;
+  /** The update driver's service-worker options, resolved only when an update is used. */
+  private readonly sw: BrowserAdapterOptions["serviceWorker"];
   /** The boot guard, built on first use: most page loads never count a launch. */
-  private guard_: Promise<BootGuard> | null = null;
+  private guard_: Promise<BrowserBootGuard> | null = null;
   private readonly bootGuardOptions: BrowserAdapterOptions["bootGuard"];
   private readonly updateOutlet: ResolvedOutlet | null;
   private readonly updateDetected: DetectedOutlet | null;
@@ -563,17 +557,7 @@ export class BrowserAdapter implements PolarisAdapter {
         ? indexedDbOfflineStore()
         : opts.offlineStore;
     this.updateConfig = opts.update ?? null;
-    if (opts.serviceWorker?.container === undefined) {
-      try {
-        this.swContainer =
-          typeof navigator === "undefined" || !("serviceWorker" in navigator)
-            ? null
-            : navigator.serviceWorker;
-      } catch {
-        this.swContainer = null;
-      }
-    } else this.swContainer = opts.serviceWorker.container;
-    this.swReload = opts.serviceWorker?.reload;
+    this.sw = opts.serviceWorker;
     this.bootGuardOptions = opts.bootGuard;
     this.updateOutlet = null;
     this.updateDetected = null;
@@ -1951,7 +1935,10 @@ export class BrowserAdapter implements PolarisAdapter {
       const check = await this.decideUpdate({
         skipVersion: (await this.guard()).skipVersion(),
       });
-      return { decision: bootDecisionOf(check), check };
+      return {
+        decision: check.decision.action === "none" ? "none" : "optional",
+        check,
+      };
     };
   }
 
@@ -1978,7 +1965,9 @@ export class BrowserAdapter implements PolarisAdapter {
           ...(decide ? { decide } : {}),
         })
       : this.cookieBootDriver(fresh, decide);
-    const run = runBoot(driver, opts);
+    const run = import("../core/boot.js").then(({ runBoot }) =>
+      runBoot(driver, opts),
+    );
     if (fresh) this.loading = run.then(() => undefined);
     const result = await run;
     if (this.bearer) this.applyBearer();
@@ -2163,10 +2152,10 @@ export class BrowserAdapter implements PolarisAdapter {
       await import("./serviceWorkerInstall.js");
     return installViaServiceWorker(
       {
-        container: this.swContainer,
+        container: this.sw?.container,
         record: (event, input) => this.recordUpdateEvent(event, input),
         currentVersion: this.version ?? null,
-        ...(this.swReload ? { reload: this.swReload } : {}),
+        ...(this.sw?.reload ? { reload: this.sw.reload } : {}),
       },
       decision,
       opts,
@@ -2176,13 +2165,11 @@ export class BrowserAdapter implements PolarisAdapter {
   /** The boot guard's launch decision (update.bootguard); `boot()` calls it as its guard stage.
    *  Needs the page's `version`: the guard counts launches of a build. */
   async markBootAttempt(): Promise<BootAttempt> {
-    this.requireVersion();
     return (await this.guard()).markBootAttempt();
   }
 
   /** Mark this launch healthy (update.bootguard). */
   async confirmBoot(): Promise<void> {
-    this.requireVersion();
     return (await this.guard()).confirmBoot();
   }
 
@@ -2191,40 +2178,21 @@ export class BrowserAdapter implements PolarisAdapter {
     return (await this.guard()).skipVersion();
   }
 
-  private guard(): Promise<BootGuard> {
-    this.guard_ ??= import("../core/bootGuard.js").then(
-      ({ BootGuard, browserBootSlotStore }) =>
-        new BootGuard({
-          version: this.version ?? "",
-          store: browserBootSlotStore(
-            this.product,
-            this.bootGuardOptions?.storage,
-          ),
+  private guard(): Promise<BrowserBootGuard> {
+    this.guard_ ??= import("./bootGuard.js").then(
+      ({ BrowserBootGuard }) =>
+        new BrowserBootGuard({
+          product: this.product,
+          version: this.version,
+          storage: this.bootGuardOptions?.storage,
+          container: this.sw?.container,
           record: (event, input) => this.recordUpdateEvent(event, input),
-          staged: async () => {
-            if (!this.swContainer) return false;
-            try {
-              return (
-                (await this.swContainer.getRegistration())?.waiting != null
-              );
-            } catch {
-              return false;
-            }
-          },
           ...(this.bootGuardOptions?.rollback
             ? { rollback: this.bootGuardOptions.rollback }
             : {}),
         }),
     );
     return this.guard_;
-  }
-
-  private requireVersion(): void {
-    if (this.version === undefined)
-      throw new PolarisError(
-        "not-configured",
-        "The boot guard counts launches of a build: pass `version` to the adapter.",
-      );
   }
 
   dispose(): void {

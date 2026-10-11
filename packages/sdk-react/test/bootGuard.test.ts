@@ -506,6 +506,45 @@ describe("the browser adapter's boot() runs the guard", () => {
     a.dispose();
   });
 
+  it("reads the page service worker as staged without activating it", async () => {
+    const posted: unknown[] = [];
+    const container: SwContainer = {
+      getRegistration: async () => ({
+        waiting: {
+          state: "installed",
+          postMessage: (message: unknown): void => void posted.push(message),
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        },
+        installing: null,
+      }),
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    };
+    vi.stubGlobal("navigator", { serviceWorker: container });
+    const a = new BrowserAdapter({
+      auth: "cookie",
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc(), {
+        capabilities: services("license", "config"),
+      }),
+      now: () => NOW_SEC,
+      version: "1.0.0",
+      bootGuard: { storage: storage() },
+      autoStart: false,
+    });
+    try {
+      expect(await a.markBootAttempt()).toMatchObject({
+        action: "apply-staged",
+        failedBoots: 1,
+      });
+      expect(posted).toEqual([]);
+    } finally {
+      a.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("a page with no version has no build to count: markBootAttempt says so, boot() skips the stage", async () => {
     const a = new BrowserAdapter({
       auth: "cookie",

@@ -19,8 +19,6 @@
 // transition reaches `onStage` with the machine's emits.
 
 import {
-  BOOT_OK_SECONDS,
-  bootConfirmation,
   bootTransition,
   initialBootState,
   isUsable,
@@ -204,17 +202,20 @@ export async function runBoot(
   let decision: UpdateCheck | null = null;
   let attempt: BootAttempt | null = null;
   const finish = (): BootResult => {
-    const confirmation = bootConfirmation(state.outcome);
     if (driver.confirm) {
       const confirm = driver.confirm.bind(driver);
-      if (confirmation === "now") void confirm().catch(() => undefined);
-      else if (
-        confirmation === "after-ok-seconds" &&
-        opts.autoConfirm !== false
-      ) {
-        setTimeout(() => {
+      switch (state.outcome) {
+        case "waiting":
+        case "blocked":
+        case "offline":
           void confirm().catch(() => undefined);
-        }, BOOT_OK_SECONDS * 1000);
+          break;
+        case "ready":
+          if (opts.autoConfirm !== false)
+            setTimeout(() => {
+              void confirm().catch(() => undefined);
+            }, 10_000);
+          break;
       }
     }
     return {

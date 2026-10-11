@@ -61,12 +61,12 @@ P1-09 ported the launch decision to client-core, but React has no slots, no coun
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature core.local` unit tests prove the adapter never touches the network.
-- [ ] `@pkey-feature update.driver` tests cover the service-worker hand-off with a fake registration and the bridge forwarding path; the device proof is a recorded run in a browser and in the Electron sample, noted in the PR.
-- [ ] `@pkey-feature update.bootguard` tests replay every guard case of `stage-matrix.json` with persisted slots, rollback and confirmation.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] `@pkey-feature core.local` unit tests prove the adapter never touches the network.
+- [x] `@pkey-feature update.driver` tests cover the service-worker hand-off with a fake registration and the bridge forwarding path; the device proof is a recorded run in a browser and in the Electron sample, noted in the PR.
+- [x] `@pkey-feature update.bootguard` tests replay every guard case of `stage-matrix.json` with persisted slots, rollback and confirmation.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 

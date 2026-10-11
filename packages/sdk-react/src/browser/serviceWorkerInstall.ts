@@ -14,13 +14,17 @@ import type { UpdateEventInput } from "../core/updateEvents.js";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
 import {
   SKIP_WAITING_MESSAGE,
-  type SwContainer,
-  type SwRegistration,
-  type SwWorker,
+  pageServiceWorker,
+} from "./serviceWorkerUpdate.js";
+import type {
+  SwContainer,
+  SwRegistration,
+  SwWorker,
 } from "./serviceWorkerUpdate.js";
 
 export interface ServiceWorkerInstallDeps {
-  container: SwContainer | null;
+  /** `undefined` uses this page's `navigator.serviceWorker`; `null` disables it. */
+  container?: SwContainer | null;
   /** Reload the page so it runs the new build. Default `window.location.reload()`. */
   reload?: () => void;
   /** Journal an update-health event; a failure is the journal's, never the install's. */
@@ -134,7 +138,8 @@ export async function installViaServiceWorker(
   if (decision.action !== "platform") return notInstallable(decision);
   const { signal } = opts;
   signal?.throwIfAborted();
-  const { container } = deps;
+  const container =
+    deps.container === undefined ? pageServiceWorker() : deps.container;
   if (!container)
     return unsupportedOutcome(
       "runtime",

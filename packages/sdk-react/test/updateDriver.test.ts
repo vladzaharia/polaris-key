@@ -332,6 +332,35 @@ describe("update.driver on web: the service-worker hand-off", () => {
     a.dispose();
   });
 
+  it("the browser adapter discovers the page service worker when no container is configured", async () => {
+    const waiting = new FakeWorker("installed");
+    const container = new FakeContainer({ waiting, installing: null });
+    const reload = vi.fn();
+    vi.stubGlobal("navigator", { serviceWorker: container });
+    const a = browserAdapter({
+      auth: "cookie",
+      productSlug: "acme",
+      fetchImpl: makeFakeFetch(makeDoc(), {
+        capabilities: services("license", "config", "update"),
+      }),
+      now: () => NOW_SEC,
+      version: "1.0.0",
+      serviceWorker: { reload },
+      autoStart: false,
+    });
+    try {
+      expect(await a.installUpdate(platform)).toMatchObject({
+        kind: "handedOff",
+        version: "1.1.0",
+      });
+      expect(waiting.posted).toEqual([SKIP_WAITING_MESSAGE]);
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      a.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("the browser adapter with no service worker answers unsupported", async () => {
     const a = browserAdapter({
       auth: "cookie",
