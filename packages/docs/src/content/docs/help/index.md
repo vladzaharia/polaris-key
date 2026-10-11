@@ -22,13 +22,31 @@ across several products. This section covers every surface you might run into, f
 | Page                                               | What it covers                                                                                            |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | [Activation](/docs/users/activation/)              | The four ways to get a product running: a license key, signing in, free enrollment, or an offline bundle. |
-| [The customer portal](/docs/users/portal/)         | Signing in on the web, your licenses, claiming a key, downloads, and deleting your account.               |
 | [Devices](/docs/users/devices/)                    | What counts as a device, seat limits, and renaming or disconnecting one.                                  |
 | [Cloud Sync](/docs/help/sync/)                     | How settings and saves follow you between devices, and what its messages mean.                            |
 | [Updates](/docs/users/updates/)                    | How new versions reach you, and why an old build might ask you to update.                                 |
 | [Downloads and app stores](/docs/users/downloads/) | Adding an AltStore, SideStore or F-Droid source, Obtainium, and Scoop.                                    |
 | [Troubleshooting](/docs/users/troubleshooting/)    | Common activation, device, and sign-in problems, explained.                                               |
 | [Privacy](/docs/users/privacy/)                    | What the product collects from your device, and why.                                                      |
+
+## Sign in and your account
+
+- [Sign in to Polaris Key](/docs/help/sign-in/) — sign in with an email code or link.
+- [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/) — what to check when the email
+  with your code is missing.
+- [Use a passkey](/docs/help/passkeys/) — add, use and remove a passkey.
+- [Approve a sign-in on another device](/docs/help/approve-a-sign-in/) — enter the code a TV, game
+  system or terminal shows.
+- [Secure your account](/docs/help/secure-your-account/) — what to do after an email asks "Wasn't
+  you?".
+- [Your account and sign-in methods](/docs/help/account/) — your profile, appearance, sign-in
+  methods and where you're signed in.
+- [Bought with a different email or on Steam?](/docs/help/join-accounts/) — add the email you
+  bought with.
+- [Delete your account](/docs/help/delete-account/) — what happens when you delete it, and the
+  steps.
+- [Your data and privacy](/docs/help/your-data/) — what apps read from your device and what
+  developers see.
 
 Not every product turns on every surface described here — a license key might be all one product
 ever asks for, while another adds sign-in, a portal, and auto-updates on top. If a page describes

@@ -1,0 +1,69 @@
+---
+title: "Your sign-in code didn't arrive"
+description: "What to check when the email with your sign-in code is missing."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-10-11"
+sidebar:
+  order: 2
+---
+
+import HelpMessage from "../../../components/docs/HelpMessage.astro";
+
+A sign-in code comes by email and works for 10 minutes. If you can't find it, check these in
+order.
+
+## Find the email
+
+1. Look in your spam or junk folder for an email from **Polaris Key**. Its subject starts with
+   **Your Polaris Key code**.
+2. Check the address on the **Check your email** page. A typo sends the code to someone else. To
+   fix it, select **Use a different email**.
+3. Wait for the **Send a new code in** countdown to finish, then select **Send a new code**. The
+   new code replaces the old one. The old code and link stop working.
+
+To tell a real email from a fake one, read [Emails from Polaris Key](/docs/help/emails/).
+
+## Why no email comes
+
+Polaris Key limits sign-in emails. When a limit applies, the page looks the same as when an email
+is sent.
+
+- One sign-in sends up to 5 emails, the first one included. After that the page says **No more
+  codes can be sent for this sign-in. The latest code still works.**
+- One email address gets up to 5 codes an hour and 20 a day.
+- After 10 wrong codes in an hour, new codes stop for 15 minutes.
+- An address that bounced email before, or reported it as spam, can be blocked.
+
+If you asked for several codes, wait an hour before you try again. If your address was blocked,
+use a different one.
+
+## Apple Hide My Email
+
+Apple's **Hide My Email** gives an address that ends in privaterelay.appleid.com. Polaris Key may
+not be able to send email to it. Use your real email address instead.
+
+## If the code is wrong or expired
+
+Each code allows 5 tries. After that the page says **Too many tries. Send a new code.** A code
+older than 10 minutes shows **That code has expired. Send a new code.**
+
+<HelpMessage id="email_unavailable" />
+
+The sign-in page words this as **We can't send email right now. Try another way to sign in.**
+Try again later. If you use Hide My Email, use your real email address instead.
+
+<HelpMessage id="turnstile_failed" />
+
+This check runs before a code is sent, so no code is on its way. Reload the page, then ask for a
+code again.
+
+<HelpMessage id="rate_limited" />
+
+The sign-in page words this as **Too many codes. Try again in a few minutes.** Wait a few minutes
+before you ask for another code.
+
+## Still need help?
+
+Never send anyone your sign-in code. If none of this helps, read
+[Get help with an app](/docs/help/contact/).
