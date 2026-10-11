@@ -72,10 +72,11 @@ beforeAll(async () => {
   link.rel = "stylesheet";
   link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
   document.head.append(link);
-  const { promise, resolve } = Promise.withResolvers<void>();
-  link.addEventListener("load", resolve, { once: true });
-  link.addEventListener("error", resolve, { once: true });
-  await promise;
+  // ES2023 is the package's public type target, before Promise.withResolvers().
+  await new Promise<void>((resolve) => {
+    link.addEventListener("load", () => resolve(), { once: true });
+    link.addEventListener("error", () => resolve(), { once: true });
+  });
 });
 
 
