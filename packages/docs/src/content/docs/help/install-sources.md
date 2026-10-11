@@ -15,9 +15,9 @@ Find them under **Other ways to get it** on the app's public download page, or u
 ## Before you start
 
 - These are optional. Use one if you already use that tool.
-- Install the tool first, so the add link has an app to open. Get it only from its own official site or a store you already use.
+- Get the tool itself only from its own official site or a store you already use.
 - Only add a source, or run a command, from the app's own download page or your library. Anything else can install something you didn't choose. See [Use the public download page](/docs/help/download/#use-the-public-download-page).
-- These tools can't sign in. An app that needs a license or an account to download isn't offered through them. Download it from your library instead. See [Download your app](/docs/help/download/).
+- These tools can't sign in. An app that needs a license or an account to download isn't offered through them. Download it from your library instead.
 
 ## AltStore and SideStore on iPhone and iPad
 
@@ -40,14 +40,14 @@ In your library, select **Add to F-Droid** for step 2. When the page lists a SHA
 ## Obtainium on Android
 
 1. Install Obtainium.
-2. On the app's download page, find **Add to Obtainium** and select **Open in the app**. It opens Obtainium with the app's details filled in.
+2. On the app's download page, find **Add to Obtainium** and select **Open in the app**.
 3. If the link doesn't open Obtainium, select **Open via obtainium.imranr.dev**.
 
 In your library, select **Add to Obtainium** for step 2.
 
 ## Scoop, Homebrew and other commands
 
-Some apps list an install command under the system it is for. Copy it from the app's own download page or your library, then run it in a terminal. It installs the app, so don't run a command you don't understand.
+Some apps list an install command under the system it is for. Copy it from the app's own download page or your library, then run it in a terminal. It installs the app, so don't run a command you don't understand. If you don't already use Scoop or Homebrew, skip this and download the file from your library instead ([Download your app](/docs/help/download/)).
 
 ## When a new version shows up
 
@@ -59,7 +59,7 @@ The app appears in the tool you added it to. To check a downloaded file, see [Ch
 
 ## Undo
 
-In AltStore, SideStore, F-Droid or Obtainium, remove the app or the source. For an app you installed with a command, remove it with the tool that installed it.
+In AltStore, SideStore, F-Droid or Obtainium, remove the app or the source. For an app you installed with a command, run that tool's uninstall command, or ask the app's developer.
 
 ## Still need help?
 

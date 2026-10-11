@@ -29,19 +29,19 @@ The library shows your phone's store, such as **Get it on the App Store** or **G
 ## Other places to get the app
 
 - **Other ways to install** lists tools such as AltStore and Scoop. See [Install from AltStore, F-Droid, Obtainium or Scoop](/docs/help/install-sources/).
-- If a file says **Get it from Steam**, or names another store or the developer, your library doesn't host it, but your license covers it. Use only the link shown next to that file in your library.
+- If a file says **Get it from Steam**, or names another store or the developer, your library doesn't host it, but your license covers it. Use only the link shown next to that file in your library, if there is one. If not, ask the developer.
 
 ## Use the public download page
 
 A developer can share a page that anyone can open. Its address is exactly `dl.plrs.im`, then a `/` and a path. A look-alike such as `dl.plrs.im.example.com` isn't the app's download page.
 
-- It leads with one button for your device, such as **Download for macOS**, or lists every system if it can't tell.
+- It leads with one button for your device, such as **Download for macOS**.
 - **Other ways to get it** lists other stores, entries such as **Add to AltStore**, and install commands. **Download from Polaris Key** lists the app's files.
 - While the developer releases a new version in stages, or has paused or stopped it, the page keeps offering the previous version.
 
 ## If a download doesn't work
 
-A file your license doesn't cover shows **Not included** and a reason. A download that can't start shows **The download didn't start** and a line that says why. The last two rows appear inside an app.
+A file your license doesn't cover shows **Not included** and a reason. A download that can't start shows **The download didn't start** and a line saying why. The last two rows appear inside an app.
 
 | You see                                                                      | What it means and what to do                                                                                                                                                                         |
 | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -49,7 +49,7 @@ A file your license doesn't cover shows **Not included** and a reason. A downloa
 | **Your license doesn't include this version**                                | The update period may have ended. Download a version it covers, or ask the developer about extending your license. An expired or turned-off license shows this too: see **Needs an active license**. |
 | **Not available here yet**                                                   | Ask the developer for another way to get it.                                                                                                                                                         |
 | **The download didn't start** with **A newer release may have replaced it.** | Reload the page to see the current downloads.                                                                                                                                                        |
-| **Any other line**, or no message                                            | Try the button again. If it still fails, see [Get help with an app](/docs/help/contact/).                                                                                                            |
+| Any other line, or no message                                                | Try the button again. If it still fails, see [Get help with an app](/docs/help/contact/).                                                                                                            |
 | **Sign in to download**                                                      | Sign in or activate a license, then try again. See [Activate your app](/docs/help/activate/).                                                                                                        |
 | **Download unavailable**                                                     | The developer hasn't set up this download. Ask the developer.                                                                                                                                        |
 

@@ -22,7 +22,7 @@ Polaris Key takes no payment, so it can't refund an app. The app's developer or 
 
 ## Billing and cancellations
 
-Polaris Key doesn't charge you, so it has nothing for you to cancel. The name on your receipt or card statement shows whether you paid a store or the developer. To change or stop a charge, or to ask for a refund, ask that one. Removing an app from your library doesn't cancel or refund it.
+Polaris Key doesn't charge you, so it has nothing for you to cancel. To change or stop a charge, or to ask for a refund, ask the store you paid, or the developer if you paid them directly. Not sure which? See [Get help with an app](/docs/help/contact/). Removing an app from your library doesn't cancel or refund it.
 
 ## Still need help?
 

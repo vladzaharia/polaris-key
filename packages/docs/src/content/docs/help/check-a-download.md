@@ -25,7 +25,7 @@ Have the file you downloaded, and the app's download page or your library, open.
 
 ## Get your file's value
 
-A terminal is a window where you type commands. Replace `<file>` with the file's name, in quotes if it has spaces. The file needs to be in the folder you run the command from.
+A terminal is a window where you type commands. Terminals usually open in your home folder and browsers usually save to Downloads, so first type `cd Downloads` and press Enter (macOS, Linux and PowerShell). If you saved the file somewhere else, use that folder instead. Replace `<file>` with the file's name, in quotes if it has spaces.
 
 - **macOS:** in Terminal, run `shasum -a 256 <file>`
 - **Linux:** in a terminal, run `sha256sum <file>`
@@ -39,9 +39,9 @@ The download page links **SHA256SUMS**, a list of the SHA-256 for every file of 
 
 ## Check an Android app's signing key
 
-For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. An app such as AppVerifier shows an installed app's signing certificate. Get it only from a store you already use. Check the file's SHA-256 first, then install the app.
+For an Android app, **Signing keys** on the download page lists the keys the developer signs with, each with a SHA-256 value. An app such as AppVerifier shows an installed app's signing certificate. Install AppVerifier (or a similar app) only from its own official site or a store you already use.
 
-1. Install the app.
+1. If you downloaded a file, check its SHA-256 first, then install the app you are checking. If a store or a tool such as Obtainium installed it for you, go to step 2.
 2. In AppVerifier, find the installed app's signing certificate SHA-256.
 3. Compare it with the matching entry under **Signing keys**:
    - **Android sideload signing certificate**: for a file you downloaded from the page or installed with a tool such as Obtainium.

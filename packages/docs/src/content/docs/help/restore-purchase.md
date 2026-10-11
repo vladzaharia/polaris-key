@@ -30,7 +30,7 @@ On a Mac, buttons use capital letters, such as **Restore Purchase**. For other w
 Your library at [key.plrs.im](https://key.plrs.im) lists an app once a license for it is linked to your account. If you bought in a store and the app is missing, look under **Missing a license?** in your library.
 
 - **Steam:** add Steam to your account.
-  1. Sign in at [key.plrs.im](https://key.plrs.im).
+  1. Sign in at [key.plrs.im](https://key.plrs.im). If you have never signed in, use the sign-in option the page offers. If none matches your purchase, see [Get help with an app](/docs/help/contact/).
   2. Open the account menu and select **Sign-in methods**.
   3. Under **Accounts**, select **Connect** next to **Steam**.
   4. If the page says **Confirm it's you first**, confirm with the method it offers.
