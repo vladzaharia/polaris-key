@@ -5372,10 +5372,16 @@ ID-token check has the portal's `maxTokenAge`, `clockTolerance` and `requiredCla
 portal and product browser sessions compare their CSRF tokens in constant time.
 
 **Residual.** The revocation read fails open if the store is unreachable (the 8 h expiry still
-bounds it). Group membership is re-read from config, not from the IdP, so an operator removed
-only at the IdP keeps access until sign-out or expiry. Portal sessions sign with `PORTAL_SESSION_SECRET` only (no fallback to
-the admin secret; see §2, "Required secrets fail closed") and are already revocable
-(`account_sessions`).
+bounds it), and so does a change of `KEY_HASH_PEPPER`: the mark's address is an HMAC of the subject
+under the pepper, so a new pepper cannot find any existing mark and a signed-out cookie that has
+not expired verifies again with the groups it carried. Nothing in the Worker ties the two secrets
+together, so the control is procedural: a pepper change always sets a new `ADMIN_SESSION_SECRET`
+in the same `wrangler secret bulk`, which fails every older cookie on its signature before any
+mark is read (RUNBOOK, "Compromised `KEY_HASH_PEPPER`"). Group membership is re-read from config,
+not from the IdP, so an operator removed only at the IdP keeps access until sign-out or expiry.
+Portal sessions sign with `PORTAL_SESSION_SECRET` only (no fallback to the admin secret; see §2,
+"Required secrets fail closed") and are already revocable (`account_sessions`); a new pepper finds
+none of their rows, so they fail closed.
 
 ### Moving end users off the platform IdP (I-17)
 

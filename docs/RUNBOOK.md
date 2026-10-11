@@ -133,6 +133,10 @@ cd packages/worker
 npx wrangler secret put <NAME> --env prod
 ```
 
+`KEY_HASH_PEPPER` is not rotated with that command. A new pepper cannot find any console sign-out
+mark, so signed-out admin cookies work again until they expire. It changes only together with a
+new `ADMIN_SESSION_SECRET`, in one `wrangler secret bulk` ("Compromised `KEY_HASH_PEPPER`").
+
 `PLATFORM_KEK` protects sealed product signing keys and product secrets in D1. It is the only
 secret whose misconfiguration is **silent**: every `open()` throws, `loadProduct` returns
 `null`, and every product route serves **404 with no log line** — an outage indistinguishable
@@ -748,7 +752,9 @@ Prefer a forward deployment of trusted code. If a rollback is unavoidable, ident
 rotated after its target version, immediately re-apply each from escrow with `wrangler secret
 put` or `wrangler secret bulk`, then perform the secret-specific verification below. Keep a
 pre-rotation cookie or webhook delivery only as a verification fixture; never keep compromised
-secret material.
+secret material. Two secrets are exceptions. Never re-apply an earlier `ADMIN_SESSION_SECRET`:
+generate another. Re-apply `KEY_HASH_PEPPER` only together with that new value, in one
+`wrangler secret bulk` ("Compromised `KEY_HASH_PEPPER`").
 
 ### Compromised session secret
 
@@ -807,13 +813,118 @@ data-access incident first: rotate Cloudflare credentials, audit D1/KV access, a
 short-lived flows expire.
 
 There is no safe in-place rotation today. Changing the pepper invalidates device-token,
-licence-key, CI-token, registry-token, portal-session and single-use-flow hashes; it also makes
-existing admin logout marks unreachable. Licence-key plaintext is shown once and is not stored, so
-old keys cannot be re-hashed. A forced rotation is a planned, owner-approved platform-wide
-credential reissue: set the new pepper, mint and distribute replacement keys through each
-licence's Keys API, have devices re-activate or sign in again, and reissue CI and registry tokens.
-Take a D1 Time Travel bookmark first, escrow the old pepper, and do not begin without a customer
-communication and recovery plan. `KEY_HASH_PEPPER` versioning and dual-read remain open work.
+licence-key, CI-token, registry-token, portal-session and single-use-flow hashes. Licence-key
+plaintext is shown once and is not stored, so old keys cannot be re-hashed. A forced rotation is a
+planned, owner-approved platform-wide credential reissue, and it **replaces `ADMIN_SESSION_SECRET`
+in the same update**. Do not begin without a customer communication and recovery plan.
+`KEY_HASH_PEPPER` versioning and dual-read remain open work.
+
+**Why the session secret changes with the pepper.** The console cookie is verified with
+`ADMIN_SESSION_SECRET` alone and stays valid for eight hours (`core/console/session.ts`). Signing
+out does not change the cookie: it writes a per-operator "revoked at" mark to the single-use store,
+at an address that is an HMAC of the operator's subject under `KEY_HASH_PEPPER`, and a mark the
+check cannot find, because it is missing or the store is unreachable, reads as "not revoked"
+(`core/console/sessionRevocation.ts`). A new pepper addresses different records, so every existing
+mark is lost. With the session secret unchanged, each cookie that was signed out, or revoked as
+stolen, and has not yet expired verifies again, with the groups it carries (Superadmin, for an
+operator in `PLATFORM_ADMIN_GROUP`), for the rest of its eight hours. A new session secret removes
+the dependency on any mark: an older cookie fails its signature check before the store is read.
+Portal cookies need no such step. Each names an `account_sessions` row by an HMAC of its random id
+under the pepper (`services/identity/portal/accountSessions.ts`), so a new pepper finds no row and
+they fail closed.
+
+Forced reissue, in this order:
+
+1. **Prepare.** Have the owner's approval and the customer communication in place, take a D1 Time
+   Travel bookmark, and escrow the current pepper. Tell every console operator that step 4 signs
+   them out.
+
+2. **Generate both values** into a file outside the repository. Worker secrets are write-only, so
+   copy `KEY_HASH_PEPPER` into the escrow (a password manager plus an offline copy) and confirm you
+   can read it back before applying anything. The session secret needs no escrow; if it is ever
+   lost, generate another.
+
+   ```sh
+   cd packages/worker
+   F=$(mktemp)    # created mode 0600
+   printf '{"KEY_HASH_PEPPER":"%s","ADMIN_SESSION_SECRET":"%s"}\n' \
+     "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > "$F"
+   ```
+
+3. **Make a signed-out cookie to test with**, immediately before applying: sign in at `/manage`,
+   copy the `__Host-pkey_admin` cookie from the browser's developer tools, and sign out in the
+   console.
+
+   ```sh
+   BASE=https://<host>/manage/api
+   STALE="cookie: __Host-pkey_admin=…"      # the cookie you copied before signing out
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$STALE"
+   # 401
+   ```
+
+   Anything but 401 means the sign-out did not register: stop. The cookie proves something only
+   until its eight hours end.
+
+4. **Apply both in one request.**
+
+   ```sh
+   npx wrangler secret bulk "${F:?}" --env <env> && rm -f "$F"
+   ```
+
+   Wrangler must report both `KEY_HASH_PEPPER` and `ADMIN_SESSION_SECRET` as successfully created.
+   One `bulk` call sends both in a single request, so no deployed version holds one new secret and
+   one old (DEPLOYMENT.md §4 relies on the same property for the console client's secrets). Two
+   `wrangler secret put` calls deploy two versions and leave that gap: with the pepper first, every
+   signed-out cookie works again; with the session secret first, so does any cookie that was signed
+   in and out before the pepper followed. If the call fails, fix the cause and run the same command
+   again, and delete the file if you stop. Do not split the call.
+
+5. **Verify.** Nothing from before may return, and the new pair must work:
+
+   ```sh
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$STALE"
+   # 401 (a pepper-only change would give 200)
+   curl -fsS https://<host>/api/capabilities >/dev/null && echo up
+   # up, not 500 server_misconfigured
+   ```
+
+   If `STALE` answers 200, the session secret did not change: before anything else, run
+   `openssl rand -hex 32 | npx wrangler secret put ADMIN_SESSION_SECRET --env <env>` and check
+   again. Then sign in afresh at `/manage`, copy the new cookie, and check that a sign-out holds
+   under the new pepper:
+
+   ```sh
+   NEW="cookie: __Host-pkey_admin=…"
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$NEW"
+   # 200
+   CSRF=$(curl -fsS "$BASE/me" -H "$NEW" | jq -er .csrf)
+   curl -fsS -X POST "$BASE/logout" -H "$NEW" -H "X-PKey-CSRF: $CSRF"
+   # {"ok":true,"revoked":true}
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$NEW"
+   # 401
+   ```
+
+   `"revoked":false` means the store could not record the sign-out and the cookie still works:
+   treat the environment as unverified and do not continue.
+
+6. **Reissue.** Sign in again, then mint and distribute replacement keys through each licence's
+   Keys API, have devices re-activate or sign in again, and reissue CI and registry tokens. Do this
+   only now: a key minted earlier was hashed under the old pepper and would not match.
+
+**Going back.** Returning to the old pepper, whether by abandoning the reissue or by restoring the
+D1 bookmark (its rows hold the old pepper's hashes), is also a pepper change. Write the escrowed
+old `KEY_HASH_PEPPER` and a newly generated `ADMIN_SESSION_SECRET` to a new file, as in step 2, and
+repeat steps 3 to 5. Set back alone, the old pepper cannot find the marks written under the new
+one, so cookies signed out in between work again.
+
+**Never set an earlier `ADMIN_SESSION_SECRET` by hand.** Next to the new pepper it revives every
+unexpired cookie it signed, signed-out ones included, and a leaked one lets its holder forge
+sessions again. A `wrangler rollback` past this change restores the old pepper and the old session
+secret together ("Key compromise" above). The marks written under the old pepper are reachable
+again, so nothing signed out before the change comes back, but both secrets are un-rotated. If the
+reissue should stand, apply the new `KEY_HASH_PEPPER` from escrow and a freshly generated
+`ADMIN_SESSION_SECRET` in one `wrangler secret bulk` and verify again. Eight hours after the
+change, every cookie signed before it has expired on its own.
 
 ### Compromised GitHub webhook secret
 
