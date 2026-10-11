@@ -54,7 +54,7 @@ conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and
 tools/               sign-corpus.ts (the corpus driver) over corpus/<family>.ts + corpus/reference/ ·
                      gen-mirrors.ts (front end over cli/src/mirrors.ts) · parity-check.ts · gen-transcripts.mjs ·
                      gen-services.ts + services.json · gen-sdk-constants.ts ·
-                     ci-scope.json + ci-scope.mjs (which CI lanes a change runs; ci.yml and gate.sh read it)
+                     ci-scope.json + ci-scope.mjs (which CI lanes a change runs; ci.yml reads it; the lead's local gate.sh is not yet switched to it)
 actions/publish/     the polaris-key/publish GitHub Action (committed dist/ bundle of the CLI)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
