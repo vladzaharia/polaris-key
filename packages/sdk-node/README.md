@@ -121,8 +121,8 @@ Without a driver a `store` decision opens its listing and a `binary` one answers
 ## Electron
 
 One line on each side, and `@polaris-key/react`'s `DesktopAdapter` works unchanged in the
-renderer (PolarisBridge v3: state, refresh, sign-in, key entry, sign-out, `invoke`, schema,
-offline bundles, pushed `stateChanged`):
+renderer (PolarisBridge v4: state, refresh, sign-in/key entry, sign-out, schema/offline bundles,
+pushed `stateChanged`, and the allowlisted client verbs):
 
 ```ts
 // main
@@ -140,9 +140,11 @@ const client = await PolarisKeyClient.create({
   store: new SafeStorageStore("djdl", app.getPath("userData"), { safeStorage }),
 });
 // Without `allowSender` the bridge answers the top frame of the app's own origin only
-// (set `appOrigin` when the window loads a remote https page).
+// (set `appOrigin` when the window loads a remote https page). release.fetch writes only under
+// this host-owned directory; renderers pass a relative filename, never an absolute path.
 exposePolarisBridge(client, {
   ipcMain,
+  downloadDir: app.getPath("downloads"),
   allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,
 });
 
@@ -150,9 +152,11 @@ exposePolarisBridge(client, {
 import "@polaris-key/node/electron/preload";
 ```
 
-The device code of a sign-in never leaves the main process, and `invoke` answers only the verbs
-the React adapter uses (devices, update check/decide, release links, report) unless the host adds
-more with `invoke: { extra }`. `SafeStorageStore` encrypts the token with Electron's
+The device code of a sign-in never leaves the main process, and `invoke` answers only the v4
+verbs the React adapter uses (device/update/release/config/commerce/core reads and actions) unless
+the host adds more with `invoke: { extra }`. `release.fetch` accepts a release hash or binary
+decision and a path relative to `downloadDir`; the host verifies its own release record and
+refuses absolute or escaping destinations. `SafeStorageStore` encrypts the token with Electron's
 `safeStorage`; `status()` reports `keyring-unavailable` before `app.whenReady()`, without a
 secret store or on Linux's `basic_text`, and `keyring-error` when the stored token no longer
 decrypts.
