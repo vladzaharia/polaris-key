@@ -13,4 +13,5 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [Using a Polaris Key product](/docs/help/) for the nearest live page.
+Placeholder page. To download or remove an app's data, or get a support code, see
+[Your data and privacy](/docs/help/your-data/).

@@ -13,4 +13,5 @@ head:
       content: noindex
 ---
 
-Placeholder page. See [The customer portal](/docs/help/sign-in/) for the nearest live page.
+Placeholder page. For the 14-day deletion period and **Keep my account**, see
+[Your data and privacy](/docs/help/your-data/).
