@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { packSetId, type PackHandler } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/index.js";
+import { storeNamespace } from "../src/core/slug.js";
 import {
   DirPackStorage,
   measureFile,
@@ -294,6 +295,9 @@ async function client(o: {
   });
 }
 
+const packRoot = () =>
+  join(work, "data", storeNamespace(PRODUCT, srv.base), "packs");
+
 async function treeOnDisk(
   dir: string,
   files: Record<string, Uint8Array>,
@@ -322,7 +326,7 @@ describe("client.update.packs (Node)", () => {
     expect(install!.recordSha256).toBe(v1.recordSha256);
     const dir = await c.update.packs.path("djdl.l10n");
     expect(dir).toBe(
-      join(work, "data", PRODUCT, "packs", "store", "djdl.l10n", v1.treeDigest),
+      join(packRoot(), "store", "djdl.l10n", v1.treeDigest),
     );
     expect(await treeOnDisk(dir!, v1.files)).toBe(true);
     expect(progress).toContain("done");
@@ -636,7 +640,7 @@ describe("state.json that cannot be trusted (Node)", () => {
     srv.packs = [v1];
     let c = await client({ stamp: [v1] });
     await c.update.packs.ensure(["djdl.l10n"]);
-    const root = join(work, "data", PRODUCT, "packs");
+    const root = packRoot();
     const dir = (await c.update.packs.path("djdl.l10n"))!;
     c.close();
     await writeFile(join(root, "state.json"), '{"v":1,"active":{"djdl');
@@ -664,7 +668,7 @@ describe("state.json that cannot be trusted (Node)", () => {
     srv.packs = [v1];
     let c = await client({ stamp: [v1] });
     await c.update.packs.ensure(["djdl.l10n"]);
-    const root = join(work, "data", PRODUCT, "packs");
+    const root = packRoot();
     const good = await readFile(join(root, "state.json"), "utf8");
     c.close();
     // A directory where the file should be: reading it fails with EISDIR, not ENOENT.
@@ -745,7 +749,7 @@ describe("DirPackStorage.list never answers a partial listing (round 3)", () => 
       await c.update.packs.ensure(["djdl.l10n", "djdl.extra"]);
       const dirA = (await c.update.packs.path("djdl.l10n"))!;
       c.close();
-      const root = join(work, "data", PRODUCT, "packs");
+      const root = packRoot();
       await writeFile(join(root, "state.json"), '{"v":1,"act');
       const packDir = join(root, "store", "djdl.l10n");
       await chmod(packDir, 0o000);
@@ -846,7 +850,7 @@ describe("client.update.decide() with packs (plans/P4-13.md §2.5, §2.6)", () =
       reason: "revoked-content",
     });
     // Persisted beside the pack state, the flag first; the release no longer runs.
-    const root = join(work, "data", PRODUCT, "packs");
+    const root = packRoot();
     const revs = JSON.parse(
       await readFile(join(root, "revocations.json"), "utf8"),
     );
@@ -969,7 +973,7 @@ describe("client.update.packs and chunk sync (P4-11)", () => {
       handlers: [BLOB],
     });
     await c.update.packs.ensure([v1.packId]);
-    const root = join(work, "data", PRODUCT, "packs");
+    const root = packRoot();
     expect(
       Buffer.compare(
         await readFile(join(root, "index", v1.indexSha256)),
