@@ -10,7 +10,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { BridgeState, PolarisBridge } from "@polaris-key/react/desktop";
+import type {
+  BridgeOidcBegin,
+  BridgeState,
+  PolarisBridge,
+} from "@polaris-key/react/desktop";
 import type { PolarisKeyClientOptions } from "../src/client.js";
 import {
   DEFAULT_INVOKE_VERBS,
@@ -152,6 +156,29 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
       kind: "expired",
     });
     off();
+  });
+
+  it("passes the renderer device name and answers v4 sign-in fields", async () => {
+    let body: Record<string, unknown> | null = null;
+    const { bridge } = await setup(
+      {
+        "POST /djdl/identity/auth/device/start": (req) => {
+          body = JSON.parse(req.body!) as Record<string, unknown>;
+          return json(START);
+        },
+      },
+      "pkeyt_seed",
+      { host: { deviceName: "Host default" } },
+    );
+    const begin = (await bridge.beginSignIn({
+      deviceName: "Renderer name",
+    })) satisfies BridgeOidcBegin;
+    expect(body).toMatchObject({ deviceName: "Renderer name" });
+    expect(begin).toMatchObject({
+      verificationUri: START.verificationUri,
+      expiresAt: expect.any(Number),
+      interval: START.interval,
+    });
   });
 
   it("answers only the allowlisted invoke verbs, with the host's code on refusal", async () => {
