@@ -231,7 +231,9 @@ describe("the palette in the console", () => {
     await user.click(
       await within(dialog).findByRole("option", { name: /^Turn on Update/ }),
     );
-    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/services"));
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/settings/features"),
+    );
     const updates = await screen.findByRole("switch", {
       name: /In-app updates/i,
     });

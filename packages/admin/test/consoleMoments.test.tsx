@@ -134,7 +134,8 @@ const banner = (key: string): HTMLElement | null =>
   document.querySelector<HTMLElement>(`[data-moment="${key}"]`);
 
 const overview = () => renderAt("#/p/djdl", <OverviewPage slug="djdl" />);
-const keysPage = () => renderAt("#/p/djdl/keys", <KeysPage slug="djdl" />);
+const keysPage = () =>
+  renderAt("#/p/djdl/settings/keys", <KeysPage slug="djdl" />);
 const home = () => renderAt("#/", <Home />);
 
 const attentionList = (): HTMLElement =>

@@ -228,6 +228,51 @@ describe("A-3: product PATCH clears the admin group and refuses a blank name", (
   });
 });
 
+describe("ST-08: product PATCH sets the web origins", () => {
+  it("writes the list, reads it back on the product and audits it", async () => {
+    const w = await world();
+    const res = await w.call("PATCH", "", {
+      webOrigins: ["https://app.example.com", "http://localhost:5173"],
+    });
+    expect(res.status).toBe(200);
+    expect(
+      JSON.parse((await getProduct(w.db, SLUG))!.web_origins_json!),
+    ).toEqual(["https://app.example.com", "http://localhost:5173"]);
+    const read = (await (await w.call("GET", "")).json()) as {
+      product: { webOrigins: string[] };
+    };
+    expect(read.product.webOrigins).toEqual([
+      "https://app.example.com",
+      "http://localhost:5173",
+    ]);
+    expect(
+      (await listAudit(w.db, SLUG, { action: "product.update" })).length,
+    ).toBe(1);
+  });
+
+  it("an empty list clears them", async () => {
+    const w = await world();
+    await w.call("PATCH", "", { webOrigins: ["https://a.example"] });
+    const res = await w.call("PATCH", "", { webOrigins: [] });
+    expect(res.status).toBe(200);
+    expect((await getProduct(w.db, SLUG))?.web_origins_json).toBeNull();
+  });
+
+  it.each([
+    ["a path", ["https://a.example/x"]],
+    ["a wildcard", ["https://*.example.com"]],
+    ["plain http off localhost", ["http://a.example"]],
+    ["a repeat", ["https://a.example", "https://a.example"]],
+    ["not a list", "https://a.example"],
+  ])("refuses %s with the field named", async (_name, webOrigins) => {
+    const w = await world();
+    const res = await w.call("PATCH", "", { webOrigins });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { fields: string[] } };
+    expect(body.error.fields).toEqual(["webOrigins"]);
+  });
+});
+
 interface KeyRow {
   kid: string;
   status: string;

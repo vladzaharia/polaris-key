@@ -110,6 +110,8 @@ export type ProductPageId =
   | "keys"
   | "activity"
   | "settings"
+  | "settings-members"
+  | "settings-all"
   // license
   | "licenses"
   | "tiers"
@@ -229,6 +231,19 @@ export interface NavSection {
   items: NavPage[];
 }
 
+/**
+ * The product settings hub's areas, in tab order (ST-08, `#/p/<slug>/settings/<area>`). Each is a
+ * product page of Core; only `settings` (General) is a sidebar item, and the rest are its tabs.
+ */
+export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
+  "settings",
+  "services",
+  "presentation",
+  "keys",
+  "settings-members",
+  "settings-all",
+];
+
 /** A feed page's route tabs (F-11), the first the default. */
 export const FEED_TABS = ["packages", "setup", "settings", "activity"] as const;
 /** A package record's route tabs (F-11). */
@@ -255,10 +270,11 @@ export const SECTIONS: NavSection[] = [
       {
         page: "services",
         label: "Services",
-        path: "services",
+        path: "settings/features",
         icon: Blocks,
         docs: "/docs/operate/console/products/",
-        inNav: true,
+        // A tab of the settings hub (ST-08), not a sidebar item.
+        inNav: false,
       },
       {
         page: "devices",
@@ -289,18 +305,18 @@ export const SECTIONS: NavSection[] = [
         // HA-06: the images Polaris Key hosts for the product (icon, listing art, store slots).
         page: "presentation",
         label: "Presentation",
-        path: "presentation",
+        path: "settings/presentation",
         icon: Image,
         docs: "/docs/operate/console/presentation/",
-        inNav: true,
+        inNav: false,
       },
       {
         page: "keys",
         label: "Keys & secrets",
-        path: "keys",
+        path: "settings/keys",
         icon: LockKeyhole,
         docs: "/docs/operate/console/keys-and-secrets/",
-        inNav: true,
+        inNav: false,
       },
       {
         page: "activity",
@@ -319,6 +335,22 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/operate/console/products/",
         inNav: true,
         shortcut: "s",
+      },
+      {
+        page: "settings-members",
+        label: "Members",
+        path: "settings/members",
+        icon: UsersRound,
+        docs: "/docs/operate/console/products/",
+        inNav: false,
+      },
+      {
+        page: "settings-all",
+        label: "All settings",
+        path: "settings/all",
+        icon: ListTree,
+        docs: "/docs/operate/console/products/",
+        inNav: false,
       },
     ],
   },

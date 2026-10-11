@@ -19,7 +19,11 @@ import {
 } from "../nav.js";
 import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
-import type { GlobalPageId, ProductPageId } from "../nav.js";
+import {
+  SETTINGS_HUB_PAGES,
+  type GlobalPageId,
+  type ProductPageId,
+} from "../nav.js";
 import { Tooltip } from "../../ui/Tooltip.js";
 import { PolarisMark } from "@polaris-key/brand/react";
 
@@ -236,7 +240,12 @@ function useRailSwap(rail: boolean): boolean {
 /** A page is active itself, or as the parent of the page shown (New product → Products). */
 function isActivePage(activePage: PageId | null, page: string): boolean {
   return (
-    activePage === page || (activePage === "product-new" && page === "products")
+    activePage === page ||
+    (activePage === "product-new" && page === "products") ||
+    // The settings hub's tabs are Settings (ST-08).
+    (page === "settings" &&
+      activePage !== null &&
+      SETTINGS_HUB_PAGES.includes(activePage as ProductPageId))
   );
 }
 

@@ -159,7 +159,7 @@ function cases(): Case[] {
     },
     {
       name: "dialog:set-secret",
-      hash: "#/p/djdl/keys",
+      hash: "#/p/djdl/settings/keys",
       act: async (page) => {
         await page.getByRole("button", { name: "Set secret" }).first().click();
         await page.getByRole("dialog").first().waitFor();

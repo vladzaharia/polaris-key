@@ -177,7 +177,7 @@ function usage(over: Partial<AssetUsageDto> = {}): AssetUsageDto {
 }
 
 const mount = () =>
-  renderAt("#/p/djdl/presentation", <PresentationPage slug="djdl" />);
+  renderAt("#/p/djdl/settings/presentation", <PresentationPage slug="djdl" />);
 
 /** The settings row whose label is `label`. */
 async function row(label: string): Promise<HTMLElement> {

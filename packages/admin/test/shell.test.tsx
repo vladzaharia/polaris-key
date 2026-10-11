@@ -123,15 +123,17 @@ describe("sections by enablement (D-15)", () => {
     expect(within(nav()).queryByRole("link", { name: "Feed" })).toBeNull();
   });
 
-  it("keeps Core → Services reachable for a product that runs nothing", async () => {
+  it("keeps Core → Settings reachable for a product that runs nothing, and Services is its tab", async () => {
     boot("#/p/djdl", { services: NONE });
     await ready();
     await waitFor(() => expect(sectionHeaders()).toEqual(["Core"]));
     expect(
       within(nav())
-        .getByRole("link", { name: "Services" })
+        .getByRole("link", { name: "Settings" })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/services");
+    ).toBe("#/p/djdl/settings");
+    // ST-08: Services is no sidebar item; it is a tab of the settings hub.
+    expect(within(nav()).queryByRole("link", { name: "Services" })).toBeNull();
   });
 
   it("shows every group while enablement is unknown", async () => {
@@ -675,7 +677,7 @@ describe("state pages (T8)", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Enable Release" }).getAttribute("href"),
-    ).toBe("#/p/djdl/services");
+    ).toBe("#/p/djdl/settings/features");
   });
 
   it("gates a record deep link on its collection's section", async () => {
@@ -808,7 +810,7 @@ describe("state pages (T8)", () => {
         "#/p/djdl/secrets",
         "This page moved to Core\u00a0→\u00a0Keys & secrets",
         "Go to Keys & secrets",
-        "#/p/djdl/keys",
+        "#/p/djdl/settings/keys",
       ],
       [
         "#/p/djdl/overview",

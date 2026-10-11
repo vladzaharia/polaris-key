@@ -23,7 +23,7 @@ export function ScrollTable({
       role="region"
       aria-label={label}
       tabIndex={0}
-      className="overflow-x-auto"
+      className="relative overflow-x-auto"
     >
       <table className={className}>
         <caption className="sr-only">{caption}</caption>

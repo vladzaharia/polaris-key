@@ -249,7 +249,7 @@ describe("Home", () => {
       reason: "Secret missing",
       service: "identity",
       short: "Secret missing",
-      action: { label: "Fix", href: "#/p/djdl/keys" },
+      action: { label: "Fix", href: "#/p/djdl/settings/keys" },
     };
     const { container } = render(
       <ProductCard
@@ -384,7 +384,7 @@ describe("Home", () => {
       within(list)
         .getByRole("link", { name: /Set secret/ })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/keys");
+    ).toBe("#/p/djdl/settings/keys");
     expect(
       within(list)
         .getByRole("link", { name: /Review recipe/ })
