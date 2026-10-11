@@ -11,7 +11,7 @@ sidebar:
 A device is a computer, phone or tablet where you activated an app. Your library shows which devices
 use each license, and you can remove one you no longer use.
 
-<h2 id="seat-limits">The device limit</h2>
+## <a id="seat-limits"></a>The device limit
 
 Your license allows a limited number of devices at once, and the developer sets the number. On the
 app's page in your library, **Devices** shows how many are in use, such as "2 of 3 devices in use".
