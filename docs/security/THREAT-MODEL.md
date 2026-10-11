@@ -7722,6 +7722,36 @@ be disabled.
   double delete audits once) naming tier, origin, the account's pairwise subject (never the
   global account id) and the device count.
 
+### Personal-data export and per-product removal act on the caller's own account (I-11)
+
+`GET /api/me/export`, `GET /api/products/<product>/export` and
+`DELETE /api/products/<product>/data` take no account, subject or licence identifier: the session
+names the account, so there is nothing for a caller to substitute.
+
+- **Gates.** A portal session; the `X-PKey-Portal-CSRF` header, on the two GETs as on the DELETE,
+  because they hand over personal data and the SPA's download always sends it; a sign-in no older
+  than five minutes; and a per-account rate limit (5 a minute for the full export, 10 for a
+  product's export and 5 for a removal, the last two in the product's own shard). A product the
+  account holds nothing in answers the same `404` as one that does not exist, before the step-up
+  and before any rate-limit charge.
+- **Allow-list.** Each document is assembled field by field and published as an OpenAPI schema whose
+  objects all declare `additionalProperties: false`; `portalDataExport.test.ts` validates real
+  documents against it and plants a sentinel in every credential column an export reads. No
+  session id, key (text or hash), device token, registry token (text or hash), passkey credential
+  id, public key or user handle, provider picture reference, consent scope hash, join undo
+  snapshot, licence `overrides_json`, developer audit log or relink record is exported, and a
+  registered store's secret is reported as `configured`, never its value.
+- **Read-only.** An export mints no subject, attaches no licence and writes only its own
+  `portal.account.export` or `portal.product.export` audit row.
+- **Removal.** It runs `removeProductData`: every registered store deletes first, devices lose the
+  binding, and the developer's `subject.deleted` event carries the pairwise subject and licence ids
+  only. The licence stays unless the person also removes it; then it leaves exactly as the
+  library's Remove does (an auto-attach block, package tokens revoked), a licence its key could not
+  bring back is refused with `409 not_removable`, and the next portal request cannot re-attach it.
+- **Residual.** The copy is a plain file on the person's device. The full export names the account
+  id, so a person who hands it to a developer gives them that id (a per-product file never carries
+  it).
+
 ### Account erasure is a resumable state machine (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
 
 `DELETE /api/me` used to flip the account to `deleted` and then run the registered stores' hooks

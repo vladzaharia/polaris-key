@@ -11728,6 +11728,155 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/products/{product}/export:
+    get:
+      operationId: exportPortalProductData
+      tags: [portal]
+      summary: Download what is held for the signed-in account in one product
+      description: >
+        I-11 (S-16 §5.5, "Per-product deletion and export"). The person's own copy of one
+        product's data, as a JSON file (`PortalProductExport`, schema `pkey-product-export/1`;
+        `content-disposition: attachment`, `cache-control: no-store`). It holds only what is held
+        for the person in THIS product: their pairwise subject (the support code) and the ids it
+        replaced, their licences there with each licence's keys' facts, devices and entitlements,
+        what they consented to share with the product, the terms they accepted, the library
+        entry, the licences they removed from the library, the package tokens they minted, the
+        subject's change events, their activity about the product, and every registered store's
+        export for the subject (managed config overrides, entitlement events, later Cloud Sync),
+        in which a secret is named and said to be set, never given. It never holds the account's
+        sign-in methods, sessions, birth date or anything about another product, and never a
+        credential: no key (text or hash), device token, registry token (text or hash), session id
+        or developer identity. Read-only: it never creates a subject. Needs the
+        `X-PKey-Portal-CSRF` header even though it is a GET (it hands over personal data), a
+        sign-in no older than five minutes, and is rate-limited to 10 a minute per account and
+        product, charged after the account is proven to be linked to the product. Audited in the
+        account's history (`portal.product.export`). `404` for a product the account holds
+        nothing in, which is the same answer for a product that does not exist; a product with the
+        portal switched off is still exportable, the person's right does not depend on a toggle.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The export, as a download.
+          headers:
+            Content-Disposition:
+              description: '`attachment; filename="polaris-key-<product>-data.json"`.'
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalProductExport" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/products/{product}/data:
+    delete:
+      operationId: removePortalProductData
+      tags: [portal]
+      summary: Remove the signed-in account's data from one product
+      description: >
+        I-11 (S-16 §5.5, D25). "Remove my data from <Product>": every registered store's data for
+        the account's pairwise subject in the product is deleted (managed config overrides,
+        entitlement events, later Cloud Sync), the devices signed in with that subject lose the
+        binding, the subject and its aliases end, and the developer is told with a
+        `subject.deleted` event that carries only the pairwise subject and the licence ids. The
+        licences stay in the library unless `alsoRemoveLicense=1` asks otherwise: then each
+        licence the account holds in the product leaves the account exactly as
+        `DELETE /api/licenses/{product}/{licenseId}` does it (an auto-attach block keeps it out,
+        the account's package tokens for it are revoked, audited), and only a licence its key can
+        bring back may go: otherwise `409 not_removable` and nothing is written. While a licence
+        stays, the developer can still connect the person to the old records through it, and the
+        next contact with the product mints a fresh subject. The licence itself, the account and
+        its other products are never touched. Needs the `X-PKey-Portal-CSRF` header, a sign-in no
+        older than five minutes, and is rate-limited to 5 a minute per account and product,
+        charged after the account is proven to be linked to the product. `404` for a product the
+        account holds nothing in. Repeating it is harmless: it answers `removed: false` when
+        nothing was left to remove.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: alsoRemoveLicense
+          in: query
+          required: false
+          description: >
+            `1` or `true`: also remove the product's licences from the library. `0`, `false` or
+            absent: keep them. Anything else, or the parameter twice, is `400 bad_request`.
+          schema: { type: string, enum: ["1", "true", "0", "false"] }
+      responses:
+        "200":
+          description: Removed (or nothing was left to remove).
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, product, removed, detachedLicenses]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  product: { type: string }
+                  removed:
+                    type: boolean
+                    description: >
+                      False when there was no subject and no licence left to remove (a repeat, or
+                      a product the account never signed in to).
+                  detachedLicenses:
+                    type: array
+                    items: { type: string }
+                    description: The licence ids that left the library (only with `alsoRemoveLicense`).
+              examples:
+                keptLicense:
+                  value:
+                    ok: true
+                    product: tidewater
+                    removed: true
+                    detachedLicenses: []
+                alsoRemoved:
+                  value:
+                    ok: true
+                    product: tidewater
+                    removed: true
+                    detachedLicenses: [lic_8f2a]
+        "400":
+          description: "`bad_request`: `alsoRemoveLicense` was not `1`, `true`, `0` or `false`, or was repeated."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            `not_removable` (only with `alsoRemoveLicense`): one of the account's licences in the
+            product could never be added back, so it stays. `reason` is `no_active_key` or
+            `key_claim_off` (the product turned off adding a licence by its key, or the portal).
+            Nothing was written.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - type: object
+                    properties:
+                      reason:
+                        type: string
+                        enum: [no_active_key, key_claim_off]
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/signin/requests/{request}:
     get:
       operationId: getSignInRequest
@@ -13036,6 +13185,60 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: Too many account lifecycle changes (five per minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/export:
+    get:
+      operationId: exportPortalAccountData
+      tags: [portal]
+      summary: Download everything held for the signed-in account
+      description: >
+        I-11 (S-16 §5.5, "A full account export covers the account and every product's data for
+        that person"). The person's own copy of their account as a JSON file
+        (`PortalAccountExport`, schema `pkey-account-export/1`; `content-disposition:
+        attachment`, `cache-control: no-store`). It holds the account (its identifier, primary
+        email, times and pending deletion request), the profile with where each value came from,
+        the birth date if the person added one (this export and `GET /api/me/profile` are the only
+        places it is ever answered), every stored picture, every sign-in method with what its
+        provider supplied and, for a single sign-on connection, its groups and claims, the
+        passkeys' display facts, the account's sessions (live ones and a month of ended ones), what
+        the person consented to share with each app, the terms they accepted (a product's, and
+        Polaris Key's own as `_platform`), the library entries and the licences they removed from
+        it, every package token they minted, the account joins still undoable, their activity (up
+        to 5000 rows, newest first; `activityTruncated` says when more exist), and one section per
+        product they hold a licence in or have a pairwise subject for: the subject, the ids it
+        replaced, the licences with their keys' facts, devices and entitlements, the subject's
+        change events and every registered store's export (managed config overrides, entitlement
+        events, later Cloud Sync), in which a secret is named and said to be set, never given.
+        It never holds a credential: no key (text or hash), device token, registry token (text or
+        hash), session id, passkey credential id, public key or user handle, provider picture
+        reference or consent scope hash. Nor the join undo snapshot, the pre-I-05 portal mirror
+        tables, a licence's `overrides_json`, device fingerprints and software facts, store
+        purchase records, the developers' relink history and audit logs, or anything of another
+        person. Read-only. Needs the `X-PKey-Portal-CSRF` header even though it is a GET (it hands
+        over personal data), a sign-in no older than five minutes, and is rate-limited to 5 a
+        minute per account. Audited in the account's history (`portal.account.export`). Allowed
+        while a deletion is pending: that is what the fourteen days are for.
+      responses:
+        "200":
+          description: The export, as a download.
+          headers:
+            Content-Disposition:
+              description: '`attachment; filename="polaris-key-account-data.json"`.'
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalAccountExport" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -19594,6 +19797,614 @@ components:
                             dormant:
                               type: boolean
                               description: Past the dormancy window; holds no seat.
+    # ── The person's own data (I-11): `GET /api/me/export`, `GET /api/products/{product}/export`.
+    # Every object declares `additionalProperties: false`: the schema is the allow-list, and
+    # `test/portalDataExport.test.ts` validates real documents against it, so a column nobody chose
+    # to export cannot appear in one.
+    PortalExportKey:
+      type: object
+      additionalProperties: false
+      description: A licence key's facts. Never the key, never its hash.
+      required: [label, status, createdAt, lastUsedAt]
+      properties:
+        label: { type: [string, "null"] }
+        status: { type: string }
+        createdAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+    PortalExportDevice:
+      type: object
+      additionalProperties: false
+      description: A device on one of the person's licences. Never its token or its fingerprint.
+      required:
+        [
+          deviceId,
+          status,
+          label,
+          platform,
+          arch,
+          appVersion,
+          sdkName,
+          sdkVersion,
+          userAgent,
+          firstSeen,
+          lastSeen,
+        ]
+      properties:
+        deviceId: { type: string }
+        status: { type: string }
+        label:
+          type: [string, "null"]
+          description: "Null when the device is signed in as somebody else's pairwise subject: not this person's data."
+        platform: { type: [string, "null"] }
+        arch: { type: [string, "null"] }
+        appVersion: { type: [string, "null"] }
+        sdkName: { type: [string, "null"] }
+        sdkVersion: { type: [string, "null"] }
+        userAgent: { type: [string, "null"] }
+        firstSeen: { type: integer }
+        lastSeen: { type: integer }
+    PortalExportLicense:
+      type: object
+      additionalProperties: false
+      description: >
+        A licence attached to the account, as the portal shows it. `name` and `email` are the
+        licence's own holder facts (the developer's record of who it was issued to), not the
+        account's. No `overrides_json`, groups, hardware binding or purchase record.
+      required:
+        [
+          id,
+          name,
+          email,
+          status,
+          tier,
+          activatedAt,
+          expiresAt,
+          maxOfflineDays,
+          origin,
+          originStore,
+          channels,
+          minVersion,
+          maxVersion,
+          entitlements,
+          keys,
+          devices,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: [string, "null"] }
+        email: { type: [string, "null"] }
+        status: { type: string }
+        tier: { type: [string, "null"] }
+        activatedAt: { type: integer }
+        expiresAt: { type: [integer, "null"] }
+        maxOfflineDays: { type: [integer, "null"] }
+        origin:
+          type: string
+          enum: [key, store-key, store, developer, signin]
+          description: How it reached the person.
+        originStore: { type: [string, "null"] }
+        channels: { type: array, items: { type: string } }
+        minVersion: { type: [string, "null"] }
+        maxVersion: { type: [string, "null"] }
+        entitlements:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, label, value]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              value: {}
+        keys:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportKey" }
+        devices:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportDevice" }
+    PortalExportSubjectEvent:
+      type: object
+      additionalProperties: false
+      description: A change to the person's pairwise subject, as the developer's pull feed carries it.
+      required: [id, type, at]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [subject.merged, subject.deleted] }
+        at: { type: integer }
+        alias:
+          type: string
+          description: "`subject.merged`: the subject an account join absorbed."
+        licenseIds:
+          type: array
+          items: { type: string }
+          description: "`subject.deleted`: the licences the subject's account held."
+    PortalExportProductRef:
+      type: object
+      additionalProperties: false
+      required: [slug, name]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+    PortalExportMergedSubject:
+      type: object
+      additionalProperties: false
+      required: [subject, mergedAt]
+      properties:
+        subject: { type: string }
+        mergedAt: { type: integer }
+    PortalExportProductSection:
+      type: object
+      additionalProperties: false
+      description: What exists for one product that no other part of the export holds.
+      required:
+        [
+          product,
+          subject,
+          subjectCreatedAt,
+          mergedSubjects,
+          licenses,
+          events,
+          stores,
+        ]
+      properties:
+        product: { $ref: "#/components/schemas/PortalExportProductRef" }
+        subject:
+          type: [string, "null"]
+          description: The person's pairwise id for this product, which is their support code; null before the product was ever contacted for them.
+        subjectCreatedAt: { type: [integer, "null"] }
+        mergedSubjects:
+          type: array
+          description: Earlier ids of the same person in this product, absorbed by an account join.
+          items: { $ref: "#/components/schemas/PortalExportMergedSubject" }
+        licenses:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportLicense" }
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportSubjectEvent" }
+        stores:
+          type: object
+          additionalProperties: true
+          description: >
+            Each registered store's export for the subject, by store name
+            (`config.accountOverrides`, `core.entitlementEvents`, later Cloud Sync). A secret is
+            named and reported as `configured`, never given. `{}` without a subject.
+    PortalExportConsent:
+      type: object
+      additionalProperties: false
+      description: What the person agreed to share with one product at its sign-in consent step.
+      required: [product, claims, grantedAt, modifiedAt]
+      properties:
+        product: { type: string }
+        claims: { type: array, items: { type: string } }
+        grantedAt: { type: integer }
+        modifiedAt: { type: integer }
+    PortalExportTerms:
+      type: object
+      additionalProperties: false
+      description: A terms version the person accepted. `_platform` is Polaris Key's own terms.
+      required: [product, version, url, acceptedAt]
+      properties:
+        product: { type: string }
+        version: { type: string }
+        url: { type: string }
+        acceptedAt: { type: integer }
+    PortalExportLibraryEntry:
+      type: object
+      additionalProperties: false
+      description: An open product added to the library without a licence.
+      required: [product, via, addedAt]
+      properties:
+        product: { type: string }
+        via: { type: string }
+        addedAt: { type: integer }
+    PortalExportRemovedLicense:
+      type: object
+      additionalProperties: false
+      description: A licence the person removed from the library, which stays out of it until its key is added again.
+      required: [product, licenseId, removedAt]
+      properties:
+        product: { type: string }
+        licenseId: { type: string }
+        removedAt: { type: integer }
+    PortalExportPackageToken:
+      type: object
+      additionalProperties: false
+      description: A package token the person minted. Never its text or its hash.
+      required:
+        [
+          product,
+          tokenId,
+          label,
+          hint,
+          scopes,
+          ecosystems,
+          binding,
+          licenseId,
+          presentation,
+          createdAt,
+          expiresAt,
+          lastUsedAt,
+          revokedAt,
+          revokeReason,
+          status,
+        ]
+      properties:
+        product: { type: string }
+        tokenId: { type: string }
+        label: { type: string }
+        hint:
+          type: string
+          description: The text's last four characters, as the portal's own list shows them.
+        scopes: { type: array, items: { type: string } }
+        ecosystems:
+          type: [array, "null"]
+          items: { type: string }
+        binding: { type: string, enum: [owner, license] }
+        licenseId: { type: [string, "null"] }
+        presentation: { type: string, enum: [header, url] }
+        createdAt: { type: integer }
+        expiresAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        revokedAt: { type: [integer, "null"] }
+        revokeReason: { type: [string, "null"] }
+        status: { type: string, enum: [active, expired, revoked] }
+    PortalExportActivity:
+      type: object
+      additionalProperties: false
+      description: One row of the account's activity (the portal's audit trail about the account).
+      required: [at, action, product, targetKind, targetId, summary]
+      properties:
+        at: { type: integer }
+        action: { type: string }
+        product: { type: [string, "null"] }
+        targetKind: { type: [string, "null"] }
+        targetId: { type: [string, "null"] }
+        summary: { type: [string, "null"] }
+    PortalExportSignInMethod:
+      type: object
+      additionalProperties: false
+      description: "A sign-in method. A passkey has no `providerSubject`: its credential id is a credential."
+      required:
+        [
+          id,
+          kind,
+          group,
+          issuer,
+          email,
+          emailVerified,
+          displayName,
+          providerSubject,
+          tenantScoped,
+          connectedAt,
+          lastUsedAt,
+          flag,
+          signedInWith,
+          groups,
+          claims,
+          profileImport,
+        ]
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        group: { type: string, enum: [accounts, email, passkeys] }
+        issuer: { type: [string, "null"] }
+        email: { type: [string, "null"] }
+        emailVerified: { type: boolean }
+        displayName: { type: [string, "null"] }
+        providerSubject: { type: [string, "null"] }
+        tenantScoped: { type: boolean }
+        connectedAt: { type: integer }
+        lastUsedAt: { type: integer }
+        flag: { type: [string, "null"] }
+        signedInWith: { type: array, items: { type: string } }
+        groups: { type: array, items: { type: string } }
+        claims:
+          type: object
+          additionalProperties: { type: string }
+        profileImport:
+          type: object
+          additionalProperties: false
+          description: What the provider supplied at link time.
+          required: [name, locale, picture]
+          properties:
+            name: { type: [string, "null"] }
+            locale: { type: [string, "null"] }
+            picture:
+              oneOf:
+                - { $ref: "#/components/schemas/AvatarView" }
+                - { type: "null" }
+    PortalExportPicture:
+      type: object
+      additionalProperties: false
+      description: "A stored picture: a provider's copy or an upload."
+      required: [asset, origin, bytes, createdAt, url, url96, inUse]
+      properties:
+        asset: { type: string, pattern: "^[0-9a-f]{64}$" }
+        origin: { type: string, enum: [provider, upload] }
+        bytes: { type: integer }
+        createdAt: { type: integer }
+        url: { type: string }
+        url96: { type: string }
+        inUse:
+          type: boolean
+          description: The picture in use, or one a sign-in method's import still points at.
+    PortalExportPasskey:
+      type: object
+      additionalProperties: false
+      description: A passkey's display facts. Never its credential id, key or user handle.
+      required:
+        [methodId, createdAt, lastUsedAt, transports, synced, aaguid, addedFrom]
+      properties:
+        methodId: { type: string }
+        createdAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        transports: { type: array, items: { type: string } }
+        synced: { type: [boolean, "null"] }
+        aaguid: { type: [string, "null"] }
+        addedFrom: { type: [string, "null"] }
+    PortalExportSession:
+      type: object
+      additionalProperties: false
+      description: A browser session of the account. Never its id.
+      required:
+        [
+          createdAt,
+          lastSeenAt,
+          expiresAt,
+          endedAt,
+          browser,
+          signedInWith,
+          current,
+        ]
+      properties:
+        createdAt: { type: integer }
+        lastSeenAt: { type: integer }
+        expiresAt: { type: integer }
+        endedAt: { type: [integer, "null"] }
+        browser: { type: [string, "null"] }
+        signedInWith: { type: array, items: { type: string } }
+        current: { type: boolean }
+    PortalExportProfile:
+      type: object
+      additionalProperties: false
+      description: The profile as `GET /api/me/profile` answers it, without `sources` (each sign-in method's import is on the method).
+      required:
+        [
+          displayName,
+          displayNameSource,
+          explicitName,
+          picture,
+          pictureSource,
+          explicitPicture,
+          locale,
+          birthdate,
+          birthdateSource,
+        ]
+      properties:
+        displayName: { type: [string, "null"] }
+        displayNameSource:
+          oneOf:
+            - { $ref: "#/components/schemas/AccountProfileSource" }
+            - { type: "null" }
+        explicitName: { type: boolean }
+        picture:
+          oneOf:
+            - { $ref: "#/components/schemas/AvatarView" }
+            - { type: "null" }
+        pictureSource:
+          oneOf:
+            - { $ref: "#/components/schemas/AccountProfileSource" }
+            - { type: "null" }
+        explicitPicture: { type: boolean }
+        locale: { type: [string, "null"] }
+        birthdate:
+          type: [string, "null"]
+          description: "`YYYY-MM-DD`, only when the person added or accepted one."
+        birthdateSource:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [kind]
+              properties:
+                kind: { type: string, enum: [user] }
+            - type: object
+              additionalProperties: false
+              required: [kind, connectionId]
+              properties:
+                kind: { type: string, enum: [connection] }
+                connectionId: { type: string }
+            - { type: "null" }
+    PortalAccountExport:
+      type: object
+      additionalProperties: false
+      description: >
+        The full account export (`GET /api/me/export`). Times are epoch seconds. `activity`
+        carries every product's rows too, so a product section holds none.
+      required:
+        [
+          schema,
+          exportedAt,
+          account,
+          profile,
+          pictures,
+          signInMethods,
+          passkeys,
+          sessions,
+          connectedApps,
+          termsAcceptances,
+          library,
+          packageTokens,
+          joins,
+          activity,
+          activityTruncated,
+          products,
+        ]
+      properties:
+        schema: { type: string, enum: [pkey-account-export/1] }
+        exportedAt: { type: integer }
+        account:
+          type: object
+          additionalProperties: false
+          required:
+            [
+              id,
+              status,
+              primaryEmail,
+              primaryEmailVerifiedAt,
+              createdAt,
+              modifiedAt,
+              lastSignInAt,
+              signInNudgeShownAt,
+              deletion,
+            ]
+          properties:
+            id: { type: string }
+            status: { type: string }
+            primaryEmail: { type: [string, "null"] }
+            primaryEmailVerifiedAt: { type: [integer, "null"] }
+            createdAt: { type: integer }
+            modifiedAt: { type: integer }
+            lastSignInAt: { type: [integer, "null"] }
+            signInNudgeShownAt:
+              type: [integer, "null"]
+              description: When the "add another way to sign in" card was last shown.
+            deletion:
+              description: A pending deletion request.
+              oneOf:
+                - type: "null"
+                - type: object
+                  additionalProperties: false
+                  required: [requestedAt, dueAt]
+                  properties:
+                    requestedAt: { type: integer }
+                    dueAt: { type: integer }
+        profile: { $ref: "#/components/schemas/PortalExportProfile" }
+        pictures:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportPicture" }
+        signInMethods:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportSignInMethod" }
+        passkeys:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportPasskey" }
+        sessions:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportSession" }
+        connectedApps:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportConsent" }
+        termsAcceptances:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportTerms" }
+        library:
+          type: object
+          additionalProperties: false
+          required: [entries, removedLicenses]
+          properties:
+            entries:
+              type: array
+              items: { $ref: "#/components/schemas/PortalExportLibraryEntry" }
+            removedLicenses:
+              type: array
+              items: { $ref: "#/components/schemas/PortalExportRemovedLicense" }
+        packageTokens:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportPackageToken" }
+        joins:
+          type: array
+          description: Account joins (`/api/me/link`) still inside, or undone within, their 72-hour window.
+          items:
+            type: object
+            additionalProperties: false
+            required: [joinedAt, undoableUntil, undoneAt]
+            properties:
+              joinedAt: { type: integer }
+              undoableUntil: { type: integer }
+              undoneAt: { type: [integer, "null"] }
+        activity:
+          type: array
+          description: Newest first, at most 5000 rows.
+          items: { $ref: "#/components/schemas/PortalExportActivity" }
+        activityTruncated:
+          type: boolean
+          description: More rows exist than `activity` carries.
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportProductSection" }
+    PortalProductExport:
+      type: object
+      additionalProperties: false
+      description: >
+        One product's export (`GET /api/products/{product}/export`). A product section's members,
+        plus what the account holds about this product alone. Nothing about the account's other
+        products, sign-in methods, sessions or birth date.
+      required:
+        [
+          schema,
+          exportedAt,
+          product,
+          subject,
+          subjectCreatedAt,
+          mergedSubjects,
+          licenses,
+          events,
+          stores,
+          consent,
+          termsAcceptances,
+          libraryEntry,
+          removedLicenses,
+          packageTokens,
+          activity,
+          activityTruncated,
+        ]
+      properties:
+        schema: { type: string, enum: [pkey-product-export/1] }
+        exportedAt: { type: integer }
+        product: { $ref: "#/components/schemas/PortalExportProductRef" }
+        subject:
+          type: [string, "null"]
+          description: The person's pairwise id for this product, which is their support code; null before the product was ever contacted for them.
+        subjectCreatedAt: { type: [integer, "null"] }
+        mergedSubjects:
+          type: array
+          description: Earlier ids of the same person in this product, absorbed by an account join.
+          items: { $ref: "#/components/schemas/PortalExportMergedSubject" }
+        licenses:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportLicense" }
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportSubjectEvent" }
+        stores:
+          type: object
+          additionalProperties: true
+          description: >
+            Each registered store's export for the subject, by store name. `{}` without a
+            subject.
+        consent:
+          oneOf:
+            - type: "null"
+            - { $ref: "#/components/schemas/PortalExportConsent" }
+        termsAcceptances:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportTerms" }
+        libraryEntry:
+          oneOf:
+            - type: "null"
+            - { $ref: "#/components/schemas/PortalExportLibraryEntry" }
+        removedLicenses:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportRemovedLicense" }
+        packageTokens:
+          type: array
+          items: { $ref: "#/components/schemas/PortalExportPackageToken" }
+        activity:
+          type: array
+          description: Newest first, at most 5000 rows.
+          items: { $ref: "#/components/schemas/PortalExportActivity" }
+        activityTruncated: { type: boolean }
     CardEmailSent:
       type: object
       description: >

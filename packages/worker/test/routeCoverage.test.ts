@@ -96,6 +96,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   portalApi: [
     ["/api/library", ["get"]],
     ["/api/products/{product}", ["get"]],
+    // I-11: one product's export, and "Remove my data from this product".
+    ["/api/products/{product}/export", ["get"]],
+    ["/api/products/{product}/data", ["delete"]],
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
@@ -119,6 +122,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // I-11: account deletion stays reversible for fourteen days before the hard-erasure sweep.
     ["/api/me", ["get", "delete"]],
     ["/api/me/deletion/cancel", ["post"]],
+    // I-11: the full account export.
+    ["/api/me/export", ["get"]],
     // PX-W16 (G32, G33): Account → Profile and picture uploads.
     ["/api/me/profile", ["get", "patch"]],
     ["/api/me/profile/picture", ["post"]],

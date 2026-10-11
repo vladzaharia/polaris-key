@@ -292,6 +292,16 @@ What the sections above do not promise, stated plainly:
   licence document for a device an account is signed in on also carries that person's pairwise
   subject for the product (`profile.user`), which is no new personal data: no name, email or
   account id. Once issued they cannot be recalled or erased; they expire with the document.
+- **Export and removal.** `GET /api/me/export` and `GET /api/products/<product>/export` hand the
+  person a JSON copy of their own data (the whole account, or one product), and
+  `DELETE /api/products/<product>/data` removes what is held for them in one product. Each needs a
+  sign-in no older than five minutes and is recorded in the account's activity. An export carries no
+  credential (no key, token, session id or passkey material), none of the developers' own records
+  (audit logs, relink history, purchase records, device fingerprints) and nothing about another
+  person; the birth date is in the full export only. A removal keeps the license unless the person
+  also removes it, and while it stays the developer can still connect them to the old records
+  through it.
+
 - **Erasure.** Account deletion is a resumable state machine (`account_erasures`). There is no
   self-service data export for the person and no `removeProductData` route: an admin exports and
   deletes a person's data per product from the Users page. Data is not encrypted per person

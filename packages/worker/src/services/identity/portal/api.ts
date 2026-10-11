@@ -148,6 +148,11 @@ import {
   handleDeviceLoginStart,
 } from "./deviceLogin.js";
 import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
+import {
+  handleAccountExport,
+  handleProductDataRemove,
+  handleProductExport,
+} from "./dataRoutes.js";
 import { handleProfileApi } from "./profile.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
 
@@ -1494,7 +1499,17 @@ async function dispatchPortalApi(
   const sessionResult = await requireSession(req, env, db, now);
   if (sessionResult instanceof Response) return sessionResult;
   const { session, sessionIdHash } = sessionResult;
-  if (isMutation(req.method)) {
+  // I-11: the two GETs that hand over personal data (`/api/me/export`, `/api/products/<p>/export`)
+  // demand the CSRF header as a change does. The SPA's download always sends it, so a link or a
+  // cross-site navigation cannot start one.
+  const downloadsPersonalData =
+    (segments.length === 2 &&
+      segments[0] === "me" &&
+      segments[1] === "export") ||
+    (segments.length === 3 &&
+      segments[0] === "products" &&
+      segments[2] === "export");
+  if (isMutation(req.method) || downloadsPersonalData) {
     const presented = req.headers.get(PORTAL_CSRF_HEADER);
     if (!presented || !constantTimeEqual(presented, session.csrf))
       return forbidden("csrf");
@@ -1580,7 +1595,23 @@ async function dispatchPortalApi(
   // PX-W16 (G32, G33): Account → Profile, and picture uploads (`profile.ts`).
   if (head === "me" && rest[0] === "profile")
     return handleProfileApi(req, env, db, session, rest, now);
-  if (head === "me") return handleMe(db, session, now);
+  // I-11: the full export (`dataRoutes.ts`). Only `/api/me` itself answers the summary: any other
+  // path below it that no branch above claimed is a 404, never the summary in its place (that is
+  // how a missing export once saved the summary as the person's "account data").
+  if (head === "me" && rest.length === 1 && rest[0] === "export")
+    return handleAccountExport(
+      req,
+      env,
+      db,
+      session,
+      sessionIdHash,
+      now,
+      hooksFor,
+    );
+  if (head === "me" && rest.length === 0) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    return handleMe(db, session, now);
+  }
   if (head === "sessions") {
     return handleSessions(req, env, db, session, sessionIdHash, rest, now);
   }
@@ -1765,6 +1796,23 @@ async function dispatchPortalApi(
     rest[1] === "email-download"
   ) {
     return handleEmailDownload(req, env, db, session, rest[0], now);
+  }
+  // I-11 (S-16 §5.5): this product's export, and "Remove my data from <Product>" (`dataRoutes.ts`).
+  if (
+    head === "products" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "export"
+  ) {
+    return handleProductExport(req, env, db, session, rest[0], now, hooksFor);
+  }
+  if (
+    head === "products" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "data"
+  ) {
+    return handleProductDataRemove(req, env, db, session, rest[0], now);
   }
   return notFound();
 }
