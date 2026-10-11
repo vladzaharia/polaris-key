@@ -222,6 +222,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `docs-reference`     | `pnpm gen docs-reference`     | Docs reference pages generated from the validators, routes, migrations and corpus |
 | `registry-docs`      | `pnpm gen registry-docs`      | This registry as a docs page and the AGENTS.md generated-files table              |
 | `parity`             | `pnpm gen parity`             | Parity gate: every SDK's parity.json against the feature registry                 |
+| `ux-rows`            | `pnpm gen ux-rows`            | UX-row gate: every UX-\* id in the design specs is mapped and marked from uxRows  |
 | `graph-index`        | `pnpm gen graph-index`        | Omniplatform program INDEX.md from workpackages.json                              |
 | `mirrors`            | `pnpm gen mirrors`            | Typed config mirrors for a product catalog, in five languages                     |
 | `sdk-samples`        | `pnpm gen sdk-samples`        | `pkey sdk` configuration samples, one per SDK                                     |

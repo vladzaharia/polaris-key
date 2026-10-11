@@ -330,6 +330,22 @@ export const GENERATORS: Generator[] = [
     write: [tsx("tools/parity-check.ts")],
   },
   {
+    id: "ux-rows",
+    title:
+      "UX-row gate: every UX-* id in the design specs is mapped and marked from uxRows",
+    order: 125,
+    checkOnly: true,
+    fast: true,
+    inputs: [
+      "tools/ux-rows-check.ts",
+      "docs/research/2026-10-07-dx-consolidation/backlog-changes.json",
+      "docs/research/2026-09-29-godot-omniplatform/program/workpackages.json",
+      "docs/design/{EXPERIENCE,SETUP,FLOWS,SIGN-IN,ADMIN,PORTAL}.md",
+    ],
+    outputs: [],
+    write: [tsx("tools/ux-rows-check.ts")],
+  },
+  {
     id: "graph-index",
     title: "Omniplatform program INDEX.md from workpackages.json",
     order: 130,

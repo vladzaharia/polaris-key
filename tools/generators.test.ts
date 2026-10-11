@@ -184,6 +184,7 @@ describe("pnpm gen selection", () => {
       "services",
       "channels",
       "registry-docs",
+      "ux-rows",
     ]);
   });
 
