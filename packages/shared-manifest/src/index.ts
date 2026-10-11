@@ -2849,14 +2849,16 @@ function validateDocuments(
 
   // `devices.registration` is removed (ST-38; tracks.md rule 6: a removed field is an error that
   // names its replacement). The policy is derived from the services: requires a licence with
-  // License on, else requires sign-in with Identity on, else open.
+  // License on, else requires sign-in with Identity on, else open. The message names only that
+  // replacement: the access policy (`licensing.access`) is not built, so nothing may send an
+  // author there.
   if (registrationPolicy(productRoot) !== undefined) {
     add(
       errors,
       "product",
       "/devices/registration",
       "invalid_registration_policy",
-      "devices.registration is removed: the registration policy follows the enabled services (License on: requires a licence; else Identity on: requires sign-in; else open). Delete it. Anonymous devices on a licensed product come from licensing.access.",
+      "devices.registration is removed: the registration policy follows the enabled services (License on: requires a licence; else Identity on: requires sign-in; else open). Delete it.",
     );
   }
 

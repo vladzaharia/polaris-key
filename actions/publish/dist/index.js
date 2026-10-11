@@ -19724,7 +19724,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       "product",
       "/devices/registration",
       "invalid_registration_policy",
-      "devices.registration is removed: the registration policy follows the enabled services (License on: requires a licence; else Identity on: requires sign-in; else open). Delete it. Anonymous devices on a licensed product come from licensing.access."
+      "devices.registration is removed: the registration policy follows the enabled services (License on: requires a licence; else Identity on: requires sign-in; else open). Delete it."
     );
   }
   if (productRoot.presentation !== void 0) {
