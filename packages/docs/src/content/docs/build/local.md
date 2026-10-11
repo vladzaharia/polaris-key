@@ -1,6 +1,8 @@
 ---
 title: "Run Polaris Key locally"
 description: "pkey dev: a local Polaris Key with a seeded product, a test key for every state, a fake sign-in and signed releases, for building and testing without an account."
+type: "how-to"
+lastReviewed: "2026-10-11"
 sidebar:
   order: 6.6
 ---
@@ -11,11 +13,11 @@ loopback only.
 
 ## Start it
 
-Node 22.13 or later:
+1. With Node 22.13 or later, run:
 
-```sh
-pnpm exec pkey dev
-```
+   ```sh
+   pnpm exec pkey dev
+   ```
 
 Without Node, run the image. Publish the port on loopback only:
 
