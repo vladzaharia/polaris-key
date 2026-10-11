@@ -1901,13 +1901,44 @@ polaris-key-deltas-<env>`).
 
 ## CI gates
 
-`.github/workflows/ci.yml` runs on PRs and `main` pushes:
+`.github/workflows/ci.yml` runs on PRs and `main` pushes. **`CI OK` is the one required check**
+(branch protection: require it and nothing else); it passes when every job passed or was skipped
+by scope.
 
-- JS/TS build, typecheck, tests, lint.
-- Conformance corpus drift check with `pnpm gen corpus --check`.
-- Admin build.
-- Python SDK tests on Ubuntu and macOS.
-- Swift SDK tests on macOS.
+- `js` always runs: JS/TS build, typecheck, tests (the adapter conformance suites included),
+  lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
+  gates), the admin build and the docs link check.
+- The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the
+  Swift SDK and Apple plugin on one macOS job, the Swift floor, Kotlin, Android, Godot) run when a
+  changed path is one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs
+  (the contract, the shared packages, `tools/`, `.github/`, the lockfile). A lane's `paths` list
+  what its job reads, not only its own tree: the Python lane names the Python samples under
+  `examples/` and the two cross-SDK fixtures its tests open (`sdks/godot/tests/qr/fixtures.json`,
+  `docs/design/ui-kits/terminal-parity.json`), and a rename counts at its old path and its new one.
+  The `changes` job decides this through `tools/ci-scope.mjs`. The lead's local `gate.sh` does not
+  yet ask that script; it still carries its own regexes until it runs `node tools/ci-scope.mjs touches <lane> --worktree`,
+  so until then a local run can pick different lanes from CI for the same files.
+  A new lane or matrix is one entry in that file and one job in `ci.yml`
+  (`tools/ci-scope.test.ts` fails when the two disagree).
+- A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
+  4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes run every lane
+  and the full matrix (Python on macOS too, all four Linux Godot engines and the Windows and macOS
+  smokes, Kotlin desktop on macOS and Windows, emulator API 34). So does a pull request whose
+  changed files `git` cannot list: every lane, every matrix in full.
+- `swift-floor` keeps the Swift SDK building on the oldest toolchain it supports, Xcode 16.4 (Swift
+  6.1) on macos-15. `PolarisKeyPlatform`'s Xcode 26+ code is behind `#if compiler(>=6.3)`, so
+  `apple` (Xcode 26.6) compiles only the guarded branch and this job compiles the other. It builds
+  the package and the iOS schemes; the package's tests run once, on `apple`. Its lane is the
+  package alone (`sdks/swift/`), where `apple`'s also takes the Godot addon, the CLI and the kit
+  lint. `sdks/swift/tools/select-xcode-16.sh` fails it unless the compiler is Swift 6.0 to 6.2.
+- `ci.yml`, `native-desktop.yml` and `feed-closure.yml` set up pnpm, Node and the install through the
+  composite action `.github/actions/setup-js`. `native-desktop.yml` runs only for its own paths, and
+  its filter lists the composite action too: a change to it changes those jobs
+  (`tools/ci-scope.test.ts` fails when a workflow's path filter leaves out a local action its jobs
+  use). The release and secret-holding workflows (`deploy.yml`, `publish-sdks.yml`,
+  `npm-repair.yml`, `sync-worker-secrets.yml`) keep their steps inline: `npm-repair.yml` checks out
+  an old tag that has no local action, and `syncWorkerSecretsWorkflow.test.ts` and
+  `releaseWorkflows.test.ts` pin those steps to commit SHAs.
 
 A red conformance job means the wire contract changed without regenerating and committing
 the corpus.

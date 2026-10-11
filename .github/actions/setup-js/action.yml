@@ -1,0 +1,34 @@
+name: Set up JS
+description: >-
+  pnpm, Node and the frozen install that every JS job of this repository repeats (P0-43). Run
+  actions/checkout first: a local action is read from the checkout.
+
+# No `version:` for pnpm: pnpm/action-setup reads `packageManager` from package.json, and giving
+# both makes it abort with "Multiple versions of pnpm specified".
+inputs:
+  node-version:
+    description: The Node version setup-node installs.
+    default: "22"
+  install:
+    description: >-
+      "true" runs `pnpm install`; "false" leaves the install to the caller (a job that must check
+      the runtime first, or that installs later).
+    default: "true"
+  install-args:
+    description: Arguments to `pnpm install` (a filter, --ignore-scripts).
+    default: --frozen-lockfile
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+    - if: inputs.install == 'true'
+      shell: bash
+      env:
+        INSTALL_ARGS: ${{ inputs.install-args }}
+      # Unquoted on purpose: the arguments are several words.
+      run: pnpm install $INSTALL_ARGS

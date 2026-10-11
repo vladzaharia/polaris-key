@@ -22,6 +22,8 @@ name: Native desktop plugins
 # notarisation and Store checks are the owner's checklist (notes/S-11 §7). A path filter keeps
 # these 10-20 minute jobs off unrelated changes; they are not required checks. Only first-party
 # actions; every download is pinned (sdks/godot/tools/godot.sha512, sdks/godot/native/deps.env).
+# The composite action the macOS and Windows jobs set up Node with (.github/actions/setup-js) is a
+# trigger too: a change to it changes those jobs as much as an edit of this file does.
 on:
   push:
     branches: [main]
@@ -32,6 +34,7 @@ on:
       - "packages/worker/src/services/update/**"
       - "packages/worker/src/services/release/sparkle.ts"
       - ".github/workflows/native-desktop.yml"
+      - ".github/actions/setup-js/**"
   pull_request:
     paths:
       - "sdks/godot/**"
@@ -40,6 +43,7 @@ on:
       - "packages/worker/src/services/update/**"
       - "packages/worker/src/services/release/sparkle.ts"
       - ".github/workflows/native-desktop.yml"
+      - ".github/actions/setup-js/**"
 
 permissions:
   contents: read
@@ -57,11 +61,9 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
+          install: "false"
       - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/native-${{ env.GODOT_VERSION }}
@@ -101,11 +103,9 @@ jobs:
     steps:
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup-js
         with:
-          node-version: 22
-          cache: pnpm
+          install: "false"
       - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/native-${{ env.GODOT_VERSION }}
