@@ -1,0 +1,137 @@
+<div
+  class="docs"
+  data-service="license"
+  data-door="developers"
+  data-density="compact"
+>
+  <header class="docs-top">
+    <button class="btn ghost icon docs-menu" aria-label="Menu">
+      <i class="ic ic-menu lg"></i></button
+    ><a class="docs-brand" href="#"
+      ><i class="pk-mark sm"></i>Polaris Key<span class="docs-tag"
+        >Docs</span
+      ></a
+    >
+    <nav class="docs-doors" aria-label="Docs doors">
+      <a class="on" href="#">Developers</a><a href="#">Operate</a
+      ><a href="#">Help</a>
+    </nav>
+    <div class="docs-search">
+      <i class="ic ic-search"></i><span>Search the docs</span><kbd>⌘K</kbd>
+    </div>
+  </header>
+  <div class="docs-body">
+    <nav class="docs-side" aria-label="Docs">
+      <div class="nav-group closed">
+        <button class="nav-label" aria-expanded="false">
+          Start here<i class="ic ic-chevron-down sm"></i>
+        </button>
+      </div>
+      <div class="nav-group" data-service="license">
+        <button class="nav-label" aria-expanded="true">
+          Features<i class="ic ic-chevron-down sm"></i></button
+        ><a class="nav-item" href="#"><i class="svc"></i>Licensing</a
+        ><a class="nav-item active" href="#">Add licensing to your app</a
+        ><a class="nav-item" href="#">Manage licenses</a>
+      </div>
+    </nav>
+    <div class="docs-content">
+      <article class="docs-main">
+        <header class="docs-header">
+          <div class="docs-eyebrow">Licensing</div>
+          <div class="docs-title-row">
+            <h1>Add licensing to your app</h1>
+            <button class="btn outline sm docs-copy" aria-label="Copy page">
+              <i class="ic ic-copy"></i
+              ><span class="copy-label">Copy page</span>
+            </button>
+          </div>
+          <p class="docs-lede">
+            Gate your app on a license with a drop-in UI kit or your own UI.
+          </p>
+        </header>
+        <div class="docs-requires">
+          <span class="pill sm outline"
+            ><i class="svc"></i>Requires Licensing</span
+          ><span class="pill sm outline"
+            ><i class="ic ic-code-xml"></i>Swift SDK 0.9 or later</span
+          >
+        </div>
+        <div class="segmented" role="radiogroup" aria-label="SDK">
+          <span>Node</span><span>React</span><span>Python</span
+          ><span class="on" role="radio" aria-checked="true">Swift</span
+          ><span>Kotlin</span><span>Godot</span>
+        </div>
+        <section class="docs-section">
+          <h2>Choose a lane</h2>
+          <nav class="tabs">
+            <a class="tab" href="#">Drop-in UI kit</a
+            ><a class="tab active" href="#">Your own UI</a>
+          </nav>
+          <div class="code">
+            <div class="code-head">
+              <span class="code-file">LicenseGate.swift</span
+              ><button class="btn ghost xs">
+                <i class="ic ic-copy"></i>Copy
+              </button>
+            </div>
+            <pre
+              tabindex="0"
+            ><span class="t-k">if</span> !(<span class="t-k">await</span> client.<span class="t-f">isLicensed</span>()) {
+  <span class="t-f">show</span>(<span class="t-k">await</span> client.<span class="t-f">activate</span>(key: key))
+}</pre>
+          </div>
+        </section>
+        <section class="docs-section">
+          <h2>States to handle</h2>
+          <div
+            class="table-card"
+            role="region"
+            aria-label="Licensing states"
+            tabindex="0"
+          >
+            <table class="table compact stack-phone">
+              <thead>
+                <tr>
+                  <th>State</th>
+                  <th>Copy key</th>
+                  <th>Help URL</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Device limit reached</td>
+                  <td><code>activation.device-limit</code></td>
+                  <td>/help/code/device_limit/</td>
+                </tr>
+                <tr>
+                  <td>No key entries left</td>
+                  <td><code>activation.key-entry-limit</code></td>
+                  <td>/help/code/key_entry_limit/</td>
+                </tr>
+                <tr>
+                  <td>License in another account</td>
+                  <td><code>license_owned</code></td>
+                  <td>/help/code/license_owned/</td>
+                </tr>
+                <tr>
+                  <td>Channel not included</td>
+                  <td><code>channel_not_allowed</code></td>
+                  <td>/help/code/channel_not_allowed/</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="docs-section">
+          <h2>Check it works</h2>
+          <span class="verified">Licensing is Verified on macOS</span>
+        </section>
+      </article>
+    </div>
+  </div>
+  <footer class="docs-footer">
+    Polaris Key · <a href="#">key.plrs.im</a> · Developer changelog ·
+    Console<span class="end">Last reviewed October 9, 2026</span>
+  </footer>
+</div>
