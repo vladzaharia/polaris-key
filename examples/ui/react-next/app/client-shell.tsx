@@ -25,7 +25,11 @@ export function ClientShell({ children }: { children: ReactNode }) {
   const polarisKey = useMemo(() => {
     if (!mounted) return null;
     if (LIVE) {
-      return { ...samplePolarisKey, mode: "browser" as const, version: APP_VERSION };
+      return {
+        ...samplePolarisKey,
+        mode: "browser" as const,
+        version: APP_VERSION,
+      };
     }
 
     return {
@@ -66,7 +70,9 @@ function AppFrame({ children }: { children: ReactNode }) {
             Settings
           </Link>
         </nav>
-        {profile?.name ? <span className="app-profile">{profile.name}</span> : null}
+        {profile?.name ? (
+          <span className="app-profile">{profile.name}</span>
+        ) : null}
         <button type="button" onClick={() => void signOut()}>
           Sign out
         </button>

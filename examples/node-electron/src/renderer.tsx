@@ -1,10 +1,7 @@
 // The renderer: the React kit, unchanged, over the bridge the preload exposed. No credential,
 // keyring or network code runs here.
 import { createRoot } from "react-dom/client";
-import {
-  PolarisKeyProvider,
-  type PolarisKeyConfig,
-} from "@polaris-key/react";
+import { PolarisKeyProvider, type PolarisKeyConfig } from "@polaris-key/react";
 import { PolarisKeyGate } from "@polaris-key/react/kit";
 
 const polarisKey = {
