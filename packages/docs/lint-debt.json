@@ -216,10 +216,6 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "build/ui/frameworks/react": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
     "build/ui/frameworks/terminal-node": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1

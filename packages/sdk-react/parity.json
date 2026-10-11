@@ -140,7 +140,7 @@
     },
     "config.local": {
       "status": "implemented",
-      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change; ConfigPanel saves overrides itself."
+      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change. test/configLocal.test.tsx."
     },
     "config.sync": {
       "status": "planned",
@@ -258,11 +258,11 @@
     },
     "update.decide": {
       "status": "implemented",
-      "note": "client-core decideUpdate/runUpdateCheck; useUpdateDecision and <UpdatePrompt source=\"decision\"> render every v4 action. The browser outlet is web unless the host passes one."
+      "note": "client-core decideUpdate/runUpdateCheck on both adapters (test/updateDecision.test.ts, test/updateMatrixParity.test.ts); useUpdateDecision hands the host the decision and whether it is undismissable, for its own prompt. The browser outlet is web unless the host passes one."
     },
     "update.content": {
       "status": "implemented",
-      "note": "client-core decideUpdate with content; useUpdateDecision exposes the content reason and <UpdatePrompt> renders packs silently and the revoked-content hard stop (boot required). The Node and browser runners drive every contentRows and feedContentCases vector."
+      "note": "client-core decideUpdate with content; useUpdateDecision exposes the content reason (revoked-content stops the boot, content-floor prompts) and the boot value. The Node and browser runners drive every contentRows and feedContentCases vector."
     },
     "update.driver": {
       "status": "planned",
@@ -401,7 +401,7 @@
     },
     "ui.kit.manage": {
       "status": "implemented",
-      "note": "PX-W8: a device-limit refusal stays on PolarisLogin's card (screenFor) as a neutral callout (deviceLimit.heading, deviceLimit.browser) with Replace a device as the one filled action, focused, re-trying the key when the person comes back; a failure that reaches the error screen with the portal link leads with Replace a device beside Try again. test/kitLayout.test.tsx, and test/browser in Chromium at every size."
+      "note": "PX-W8: a device-limit refusal stays on the gate's Activate screen as a neutral callout with Replace a device as the one filled action. It takes focus, opens the validated link with the app's return URL and the typed key, and tries the key again once when the person comes back (test/kitGate.test.tsx). Activate/device-limit, DeviceLimit/default and DeviceLimit/browser-mode render in Chromium at every size, and every DeviceLimit state at 390 and 1440 in both schemes (test/browser/kit.browser.test.tsx)."
     },
     "ui.kit.account": {
       "status": "planned",

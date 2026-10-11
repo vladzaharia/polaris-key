@@ -46,6 +46,21 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
 
+## Breaks for the 0.9 release notes (2026-10-11)
+
+The cutover to the kit removes these from `@polaris-key/react`, with no alias. The replacements are on `@polaris-key/react/kit`: `PolarisKeyGate` calls the SDK itself (so does `SignIn`, given the SDK's primitives), and the other parts draw an `input` and report each control. These are the rows for the changelog entry whose `replaces` builds the Upgrade to 0.9 table (docs plan §3.5, DOC-12a). A component's `*Props` and `*Slots` types go with it.
+
+- `LicenseGate` (root, `/license`) and `PolarisLogin` (root, `/identity`): use `PolarisKeyGate` inside `<PolarisKeyProvider config={polarisKey}>`.
+- `PolarisLogout` (root, `/identity`): use Sign out on `AccountAndLicense`, or `usePolarisAuth().signOut()`.
+- `DeviceManager` (root, `/license`): use `Devices`.
+- `ConfigPanel` and `ConfigRow` (root, `/config`): use `Settings`, over `useManagedConfig()` or `useConfigSetting()`.
+- `UpdatePrompt` (root, `/update`): use `UpdatePrompt` from `/kit`, and `useUpdateDecision()` for your own prompt. The `/update` subpath stays, for the hooks and the packs.
+- `openManageUrl` (root): use `withManageReturn` and `withManageKey`, then the app's own navigation (the Replace-a-device example on the React "Your own UI" page).
+- `usePolarisTheme`, `defaultTheme`, `lightTheme`, `highContrastTheme`, `polarisKeyTheme`, `mergeTheme`, `themeVars`, `baseTokens`, `neutralDarkTokens`, `neutralLightTokens`, `polarisKeyDarkTokens`, `polarisKeyLightTokens` and the types `PolarisTheme`, `PartialTheme`, `PolarisThemeTokens`, `PolarisThemeCopy`, `PolarisBranding`, `PolarisColorScheme`, `PolarisResolvedScheme`, `PoweredByLayout`: use `<PolarisKeyTheme theme={…}>` and `KitTheme`.
+- `PoweredByPolarisKey`: use the theme's `poweredBy` option (`"line"` or `"badge"`) on the kit's screens.
+- `MessageScreen`, `Button`, `Panel`, `TextField` and `useFocusRing`: use the kit's parts, or your own components.
+- `<PolarisKeyProvider>` props `theme`, `branding`, `colorScheme` and `expectServices`: the transport props (`productSlug`, `baseUrl` and the rest) move into `config={polarisKey}`, which takes `expectedServices`; the theme goes on `<PolarisKeyTheme>`.
+
 ## Approved plans (2026-10-08)
 
 These approved plans change this package. Where they differ from the text below, they win.

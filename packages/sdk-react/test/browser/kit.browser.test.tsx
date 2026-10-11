@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit
+// @pkey-feature ui.kit ui.kit.manage
 //
 // The React kit (`@polaris-key/react/kit`) in real Chromium. The responsive scenes cover every
 // UI-KITS §7.1 size in dark and light, and the complete fixture state matrix covers the 390 and

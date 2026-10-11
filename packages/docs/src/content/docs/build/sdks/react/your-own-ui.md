@@ -52,9 +52,10 @@ import { useState, type ReactNode } from "react";
 import {
   copyMessage,
   describeError,
-  openManageUrl,
   useLicenseGate,
   usePolarisAuth,
+  withManageKey,
+  withManageReturn,
   type OidcSignInHandle,
 } from "@polaris-key/react";
 
@@ -110,7 +111,18 @@ function SignIn({ notice }: { notice?: string }) {
       )}
       {auth.error && <p role="alert">{describeError(auth.error)}</p>}
       {manageUrl && (
-        <button type="button" onClick={() => openManageUrl(manageUrl, { key })}>
+        <button
+          type="button"
+          onClick={() => {
+            // Add the page to return to and the key, then open the link in a
+            // new tab so this form and the key in it stay put.
+            const link = withManageKey(
+              withManageReturn(manageUrl, window.location.href),
+              key,
+            );
+            window.open(link, "_blank", "noopener,noreferrer");
+          }}
+        >
           Replace a device
         </button>
       )}
@@ -137,6 +149,12 @@ function SignIn({ notice }: { notice?: string }) {
   );
 }
 ```
+
+`auth.error.manageUrl` is the link that frees a seat, already validated by the SDK.
+`withManageReturn` adds `return=`, the page to come back to, which the portal follows only for an
+origin your product declares. `withManageKey` adds the key as `#key=` on an activate link: a
+fragment no server sees. Open the link from a click, and submit the same key again when the person
+comes back.
 
 The refusal's `activation.kind` says which one: `deviceLimit` (with `limit`, `deviceCount` and
 `manageUrl`), `unauthorized`, `licenseExpired`, `licenseDisabled`, `rateLimited` (with

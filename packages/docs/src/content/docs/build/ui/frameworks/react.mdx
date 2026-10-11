@@ -188,9 +188,14 @@ when it arrives. The locale follows the document's `lang`, then the browser's la
 
 ## Removed legacy components
 
-`LicenseGate`, `PolarisLogin`, `PolarisLogout`, `DeviceManager`, `ConfigPanel` and the old update
-subpath are removed. Import the gate and every interactive surface from
-`@polaris-key/react/kit`.
+The components of earlier releases that styled themselves inline are removed, with no alias: the
+license gate, the login card, the sign-out button, the device manager, the config panel and the
+update prompt. Their replacements are on `@polaris-key/react/kit`: `PolarisKeyGate` is the gate and
+the login, `Devices` the device list, `Settings` the settings pane, `AccountAndLicense` carries Sign
+out, and `UpdatePrompt` draws the update prompt. The `@polaris-key/react/update` subpath stays for
+`useLatestVersion` and `useUpdateDecision`; only its prompt is gone. The helper that opened the
+device-limit link is removed as well: add `withManageReturn` and `withManageKey` to the refusal's
+link and open it yourself, as [Your own UI](/docs/build/sdks/react/your-own-ui/) does.
 
 ## Baselines
 

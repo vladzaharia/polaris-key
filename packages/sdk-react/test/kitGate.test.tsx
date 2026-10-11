@@ -1,10 +1,11 @@
-// @pkey-feature ui.kit license.activate
+// @pkey-feature ui.kit ui.kit.manage license.activate
 //
 // `<PolarisKeyGate>` inside `<PolarisKeyProvider>` starts itself (UI-KITS.md §4.2, DL18): no
 // input, no handlers. It never flashes Welcome while the first state loads, renders the app when
 // the license holds, takes a key through Activate, keeps a device limit as a neutral refusal whose
-// one primary opens the validated link with the return URL and the key, hands a desktop sign-in
-// to the code view, and signs out and retries through the SDK.
+// one primary opens the validated link with the return URL and the key and tries the key again
+// when the person comes back, hands a desktop sign-in to the code view, and signs out and retries
+// through the SDK.
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
@@ -161,6 +162,53 @@ describe("the gate starts itself inside the provider", () => {
     expect(opened.origin).toBe("https://key.plrs.im");
     expect(opened.searchParams.get("return")).toBe("https://app.acme.test/");
     expect(opened.hash).toContain("pkey_acme_KEY");
+    adapter.dispose();
+  });
+
+  it("tries the key again, once, when the person comes back from Replace a device", async () => {
+    vi.spyOn(window, "open").mockImplementation(() => null);
+    const { container, adapter, bridge } = mount(emptyBridgeState(), {
+      submit: () => ({
+        kind: "device-limit",
+        limit: 3,
+        deviceCount: 3,
+        manageUrl: MANAGE,
+      }),
+    });
+    await waitFor(() =>
+      expect(control(container, "welcome.useKey")).not.toBeNull(),
+    );
+    fireEvent.click(control(container, "welcome.useKey")!);
+    const field = await waitFor(() => {
+      const f = container.querySelector<HTMLInputElement>("#pk-key");
+      expect(f).not.toBeNull();
+      return f!;
+    });
+    fireEvent.change(field, { target: { value: "pkey_acme_KEY" } });
+    fireEvent.click(control(container, "activate.submit")!);
+    const primary = await waitFor(() => {
+      const p = root(container)?.querySelector<HTMLElement>(
+        '[data-variant="primary"]',
+      );
+      expect(p?.getAttribute("data-key")).toBe("deviceLimit.title");
+      return p!;
+    });
+    expect(bridge.submitKey).toHaveBeenCalledTimes(1);
+    // The fix takes focus (DL6).
+    await waitFor(() => expect(document.activeElement).toBe(primary));
+
+    // Focus returning before the link was opened retries nothing.
+    window.dispatchEvent(new Event("focus"));
+    expect(bridge.submitKey).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(primary);
+    window.dispatchEvent(new Event("focus"));
+    await waitFor(() => expect(bridge.submitKey).toHaveBeenCalledTimes(2));
+    expect(bridge.submitKey).toHaveBeenLastCalledWith("pkey_acme_KEY");
+
+    // One return is one retry.
+    window.dispatchEvent(new Event("focus"));
+    expect(bridge.submitKey).toHaveBeenCalledTimes(2);
     adapter.dispose();
   });
 
