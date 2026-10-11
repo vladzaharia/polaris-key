@@ -12,5 +12,17 @@
     "The title uses the display step and task tiles stack without horizontal scroll on phone."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "The shared brand pass now gives the public docs home the display hierarchy used by the portal and console family.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The home title inherited the 24/32 article heading at desktop and phone.",
+        "resolution": "Scoped home titles to the 40/48 desktop and 30/36 phone display steps without changing article headings."
+      }
+    ]
+  }
 }

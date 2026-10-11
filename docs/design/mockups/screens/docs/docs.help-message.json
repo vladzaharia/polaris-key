@@ -12,5 +12,11 @@
     "Help uses comfortable prose and an Open your library action."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Consumer error-phone review passed: the exact message, plain-language explanation, recovery action and library route are legible in both themes.",
+    "findings": []
+  }
 }

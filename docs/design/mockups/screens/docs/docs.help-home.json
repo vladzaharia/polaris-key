@@ -12,5 +12,17 @@
     "Comfortable prose is 16/26 and interactive phone controls remain usable."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Consumer phone review passed after the shared home display treatment was restored; task cards remain clear and touch-sized.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The Help home title inherited the 24/32 article heading instead of the home display step.",
+        "resolution": "Scoped home titles to 40/48 on desktop and 30/36 on phone, retaining the comfortable-prose body treatment."
+      }
+    ]
+  }
 }

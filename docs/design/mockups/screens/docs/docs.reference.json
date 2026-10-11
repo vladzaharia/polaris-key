@@ -12,5 +12,22 @@
     "Reference omits the table of contents."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Developer reference review passed after the wide table and shared desktop chrome were corrected.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The wide modifier had no layout rule, leaving an unused table-of-contents track and unnecessary table wrapping.",
+        "resolution": "Wide reference content now uses a single 1100px column without a reserved table-of-contents track."
+      },
+      {
+        "severity": "major",
+        "issue": "The desktop header stopped at search and omitted shared Docs chrome.",
+        "resolution": "Restored Developer changelog, Console and Theme controls."
+      }
+    ]
+  }
 }

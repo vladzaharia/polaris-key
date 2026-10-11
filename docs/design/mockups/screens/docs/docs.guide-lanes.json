@@ -12,5 +12,27 @@
     "The check uses Verified rather than a success pill."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Developer lane review passed after the phone SDK picker, App/Console handoff and shared desktop chrome were corrected.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Six SDK labels overflowed the phone picker.",
+        "resolution": "Phone now retains the selected Swift tab and exposes a compact “5 more” affordance; desktop and tablet retain all SDK labels."
+      },
+      {
+        "severity": "major",
+        "issue": "The guide asserted Verified without showing the App and Console route to Integration.",
+        "resolution": "Added App and Console numbered steps that point from the licensing gate to Integration → Licensing → Verified on macOS; every state row now uses its exact message id in `/docs/help/code/<id>/`."
+      },
+      {
+        "severity": "major",
+        "issue": "The desktop header stopped at search and omitted shared Docs chrome.",
+        "resolution": "Restored Developer changelog, Console and Theme controls."
+      }
+    ]
+  }
 }

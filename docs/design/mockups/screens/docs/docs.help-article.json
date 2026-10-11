@@ -12,5 +12,11 @@
     "Copy page is in the header and Last reviewed appears once in the footer."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Consumer error-phone review passed: the consequence, portal-labelled steps, check, undo and Help route remain readable in both themes.",
+    "findings": []
+  }
 }

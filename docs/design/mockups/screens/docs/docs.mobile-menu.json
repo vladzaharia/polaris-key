@@ -12,5 +12,22 @@
     "Theme offers System, Dark and Light."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Consumer navigation review passed after the current tree and a visible drawer dismissal were restored.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The mobile drawer inherited the global hidden sidebar rule, so its current-door tree disappeared.",
+        "resolution": "Scoped the mobile sidebar override to the drawer so its tree remains visible."
+      },
+      {
+        "severity": "major",
+        "issue": "The only Close menu control sat behind the visible drawer.",
+        "resolution": "Moved the close control into the drawer header."
+      }
+    ]
+  }
 }

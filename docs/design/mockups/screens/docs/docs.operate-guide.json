@@ -12,5 +12,17 @@
     "The public Help article names the customer path."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Brand review passed after the Operate guide regained the shared Docs desktop header controls.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The desktop header stopped at search and omitted shared Docs chrome.",
+        "resolution": "Restored Developer changelog, Console and Theme controls."
+      }
+    ]
+  }
 }

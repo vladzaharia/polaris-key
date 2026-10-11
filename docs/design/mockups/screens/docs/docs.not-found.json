@@ -12,5 +12,11 @@
     "No sidebar or active door is implied."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (rendered consumer, developer and brand lenses)",
+    "date": "2026-10-11",
+    "verdict": "Brand and consumer review passed: the empty state stays neutral, names the missing page and offers only return and search paths.",
+    "findings": []
+  }
 }

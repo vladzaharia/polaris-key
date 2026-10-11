@@ -13792,6 +13792,10 @@ a.card:focus-visible {
     grid-template-columns: minmax(0, 760px);
     padding: var(--sp-8) var(--sp-8) var(--sp-16);
   }
+  .docs[data-door="developers"] .docs-links > a:first-child,
+  .docs[data-door="operate"] .docs-links > a:first-child {
+    display: none;
+  }
   .docs-toc {
     display: none;
   }
@@ -13820,6 +13824,10 @@ a.card:focus-visible {
   }
   .docs-tocbar > .ic:last-child {
     margin-left: auto;
+  }
+  /* The docs menu owns the current door tree on tablet and phone. */
+  .drawer .docs-side {
+    display: flex;
   }
 }
 @container screen (max-width: 639px) {
@@ -13913,6 +13921,13 @@ a.card:focus-visible {
   width: 100%;
   max-width: 1080px;
 }
+.docs .docs-content.wide {
+  grid-template-columns: minmax(0, 1100px);
+}
+.docs .docs-content.home .docs-header h1 {
+  font-size: 40px;
+  line-height: 48px;
+}
 .docs-body.single {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -13968,6 +13983,10 @@ a.card:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
+}
+.docs-sdk-more {
+  display: none;
+  color: var(--pk-text-muted);
 }
 .docs-footer {
   display: flex;
@@ -14083,6 +14102,10 @@ a.card:focus-visible {
     font-size: 24px;
     line-height: 32px;
   }
+  .docs .docs-content.home .docs-header h1 {
+    font-size: 30px;
+    line-height: 36px;
+  }
   .docs-header:has(.docs-title-row) {
     gap: var(--sp-2);
   }
@@ -14093,6 +14116,9 @@ a.card:focus-visible {
     width: 44px;
     height: 44px;
     padding: 0;
+  }
+  .docs-sdk-more {
+    display: inline-flex;
   }
   .docs-shot {
     grid-template-columns: minmax(0, 1fr);
@@ -17253,6 +17279,9 @@ a.card:focus-visible {
     font-size: var(--fs-meta);
   }
   .docs-step-body > h2 {
+    padding-left: calc(24px + var(--sp-2));
+  }
+  .docs-step-body > .docs-requires {
     padding-left: calc(24px + var(--sp-2));
   }
 }
