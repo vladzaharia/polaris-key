@@ -14,11 +14,14 @@ import { ProfileCard } from "../components/ProfileCard.js";
 import { SignInMethods } from "../components/account/SignInMethods.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
 import { SectionCard } from "../components/product/Card.js";
+import { DownloadData } from "../components/DownloadData.js";
 import {
   useCancelAccountDeletion,
   useDeleteAccount,
+  useExportAccountData,
   useSessions,
 } from "../data.js";
+import { ACCOUNT_EXPORT_FILE, YOUR_DATA_COPY } from "../copy/yourData.js";
 import { portalErrorCopy } from "../errors.js";
 import { focusSectionHeading } from "../focus.js";
 import {
@@ -33,11 +36,12 @@ import { t } from "../../lib/copy.js";
  * Account (PORTAL.md §4.26): Profile first (PX-22, §4.30: name and picture, edited in place),
  * Sign-in methods (PX-13 on PX-W12: connect, disconnect with step-up, the last-method guard, the
  * Hide My Email notice), Where you're signed in (PX-13 on I-07's sessions), Appearance, Your data
- * with Delete account behind a typed confirmation, and Sign out (PX-07).
+ * with Download my data (I-11's full export) and Delete account behind a typed confirmation, and
+ * Sign out (PX-07).
  *
  * The section nav lists only what is on the page: Where you're signed in once the Worker answers
- * for sessions. Connected products and Download my data wait for their API (PX-13's brief); until
- * then neither the nav nor the page points at them.
+ * for sessions. Connected products wait for their API (PX-13's brief); until then neither the nav
+ * nor the page points at them. Download my data sits inside Your data, not in a section of its own.
  */
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: "Profile" },
@@ -297,12 +301,15 @@ function ThemeSwatch({
 }
 
 /**
- * Your data: typed confirmation schedules an erasure after a 14-day grace period. The holder can
- * keep using the account and cancel until cron claims the due request.
+ * Your data: **Download my data** (the whole account as one JSON file; I-11), then Delete account.
+ * A typed confirmation schedules an erasure after a 14-day grace period; the holder can keep using
+ * the account, download their data and cancel until cron claims the due request. The download is
+ * the account's own and never a product's: each product page has its own Your data card.
  */
 function YourData({ account }: { account: PortalAccount }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const [typed, setTyped] = React.useState("");
+  const exportData = useExportAccountData();
   const del = useDeleteAccount();
   const cancel = useCancelAccountDeletion();
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -327,137 +334,158 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
     <SectionCard
       id="data"
       title="Your data"
-      subtitle="Deleting your account doesn't cancel your licenses: they stay with each developer and you can add them again."
+      subtitle={YOUR_DATA_COPY["yourData.subtitle"]}
     >
-      {scheduled ? (
-        <div
-          role="status"
-          className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4"
-        >
-          <h3 className="font-medium text-fg-strong">
-            Your account is scheduled for deletion
-          </h3>
-          <p className="text-sm text-fg">
-            Your account will be erased on{" "}
-            <time dateTime={scheduled.at.toISOString()}>{scheduled.label}</time>.
-            You can cancel the deletion before then.
-          </p>
-          <p className="text-sm text-fg">
-            Until then, you can keep using your account. Your licenses stay with
-            each developer and can be added to a new account later.
-          </p>
-          {cancel.error ? (
-            <p role="alert" className="text-sm text-danger">
-              {portalErrorCopy(cancel.error).title}.{" "}
-              {portalErrorCopy(cancel.error).description}
-            </p>
-          ) : null}
-          <Button
-            variant="outline"
-            loading={cancel.isPending}
-            onClick={() =>
-              cancel.mutate(undefined, {
-                onSuccess: () => {
-                  toast.success("Account deletion was cancelled", {
-                    description: "Your account will remain active.",
-                  });
-                },
-              })
-            }
-          >
-            Cancel scheduled deletion
-          </Button>
-        </div>
-      ) : open ? (
-        <div className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4">
-          <h3
-            ref={headingRef}
-            tabIndex={-1}
-            className="font-medium text-fg-strong outline-none"
-          >
-            Schedule your Polaris Key account for deletion?
-          </h3>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
-            <li>
-              Your account will stay active for 14 days, then its data and links
-              to licenses will be erased.
-            </li>
-            <li>
-              You can cancel the deletion any time before the 14-day period
-              ends.
-            </li>
-            <li>
-              Licenses stay with each developer. Add them again with a new
-              account.
-            </li>
-            <li>We'll email {account.email} to confirm the schedule.</li>
-          </ul>
-          <div className="space-y-1.5">
-            <label
-              htmlFor={inputId}
-              className="text-sm font-medium text-fg-strong"
+      <div className="space-y-6">
+        <DownloadData
+          title={YOUR_DATA_COPY["yourData.account.copy.title"]}
+          description={YOUR_DATA_COPY["yourData.account.copy.body"]}
+          label={YOUR_DATA_COPY["yourData.account.copy.button"]}
+          filename={ACCOUNT_EXPORT_FILE}
+          download={exportData}
+        />
+        <div className="space-y-3 border-t border-border pt-6">
+          {scheduled ? (
+            <div
+              role="status"
+              className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4"
             >
-              Type {target} to confirm
-            </label>
-            <input
-              id={inputId}
-              value={typed}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => setTyped(e.target.value)}
-              className="h-11 w-full rounded-md border border-border-strong bg-surface-page px-3 text-fg-strong"
-            />
-          </div>
-          {del.error ? (
-            <p role="alert" className="text-sm text-danger">
-              {portalErrorCopy(del.error).title}.{" "}
-              {portalErrorCopy(del.error).description}
-            </p>
-          ) : null}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setOpen(false);
-                setTyped("");
-                requestAnimationFrame(() => triggerRef.current?.focus());
-              }}
-            >
-              Keep my account
-            </Button>
-            <Button
-              variant="danger"
-              disabled={!matches}
-              loading={del.isPending}
-              iconStart={<Trash2 aria-hidden />}
-              onClick={() =>
-                del.mutate(undefined, {
-                  onSuccess: () => {
+              <h3 className="font-medium text-fg-strong">
+                Your account is scheduled for deletion
+              </h3>
+              <p className="text-sm text-fg">
+                Your account will be erased on{" "}
+                <time dateTime={scheduled.at.toISOString()}>
+                  {scheduled.label}
+                </time>
+                . You can cancel the deletion before then.
+              </p>
+              <p className="text-sm text-fg">
+                Until then, you can keep using your account. Your licenses stay
+                with each developer and can be added to a new account later.
+              </p>
+              {cancel.error ? (
+                <p role="alert" className="text-sm text-danger">
+                  {portalErrorCopy(cancel.error).title}.{" "}
+                  {portalErrorCopy(cancel.error).description}
+                </p>
+              ) : null}
+              <Button
+                variant="outline"
+                loading={cancel.isPending}
+                onClick={() =>
+                  cancel.mutate(undefined, {
+                    onSuccess: () => {
+                      toast.success("Account deletion was cancelled", {
+                        description: "Your account will remain active.",
+                      });
+                    },
+                  })
+                }
+              >
+                Cancel scheduled deletion
+              </Button>
+            </div>
+          ) : open ? (
+            <div className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4">
+              <h3
+                ref={headingRef}
+                tabIndex={-1}
+                className="font-medium text-fg-strong outline-none"
+              >
+                Schedule your Polaris Key account for deletion?
+              </h3>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+                <li>
+                  Your account will stay active for 14 days, then its data and
+                  links to licenses will be erased.
+                </li>
+                <li>
+                  You can cancel the deletion any time before the 14-day period
+                  ends.
+                </li>
+                <li>
+                  Licenses stay with each developer. Add them again with a new
+                  account.
+                </li>
+                <li>We'll email {account.email} to confirm the schedule.</li>
+              </ul>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor={inputId}
+                  className="text-sm font-medium text-fg-strong"
+                >
+                  Type {target} to confirm
+                </label>
+                <input
+                  id={inputId}
+                  value={typed}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setTyped(e.target.value)}
+                  className="h-11 w-full rounded-md border border-border-strong bg-surface-page px-3 text-fg-strong"
+                />
+              </div>
+              {del.error ? (
+                <p role="alert" className="text-sm text-danger">
+                  {portalErrorCopy(del.error).title}.{" "}
+                  {portalErrorCopy(del.error).description}
+                </p>
+              ) : null}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
                     setOpen(false);
                     setTyped("");
-                    toast.success("Your account is scheduled for deletion", {
-                      description:
-                        "We sent a confirmation to your email. You can cancel it for 14 days.",
-                    });
-                  },
-                })
-              }
-            >
-              Schedule deletion
-            </Button>
-          </div>
+                    requestAnimationFrame(() => triggerRef.current?.focus());
+                  }}
+                >
+                  Keep my account
+                </Button>
+                <Button
+                  variant="danger"
+                  disabled={!matches}
+                  loading={del.isPending}
+                  iconStart={<Trash2 aria-hidden />}
+                  onClick={() =>
+                    del.mutate(undefined, {
+                      onSuccess: () => {
+                        setOpen(false);
+                        setTyped("");
+                        toast.success(
+                          "Your account is scheduled for deletion",
+                          {
+                            description:
+                              "We sent a confirmation to your email. You can cancel it for 14 days.",
+                          },
+                        );
+                      },
+                    })
+                  }
+                >
+                  Schedule deletion
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-fg-muted">
+                {YOUR_DATA_COPY["yourData.account.deleteNote"]}
+              </p>
+              <Button
+                ref={triggerRef}
+                variant="outline"
+                className="border-danger-border text-danger"
+                iconStart={<Trash2 aria-hidden />}
+                onClick={() => setOpen(true)}
+              >
+                Delete account
+              </Button>
+            </>
+          )}
         </div>
-      ) : (
-        <Button
-          ref={triggerRef}
-          variant="outline"
-          className="border-danger-border text-danger"
-          iconStart={<Trash2 aria-hidden />}
-          onClick={() => setOpen(true)}
-        >
-          Delete account
-        </Button>
-      )}
+      </div>
     </SectionCard>
   );
 }

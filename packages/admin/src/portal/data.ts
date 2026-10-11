@@ -609,6 +609,63 @@ export function useCancelAccountDeletion() {
 }
 
 /**
+ * I-11: Download my data (`GET /api/me/export`), the whole account as one JSON file the browser
+ * saves. The person starts it with a press, never on load. It reads and changes nothing, so no
+ * view refreshes.
+ */
+export function useExportAccountData() {
+  return useMutation({ mutationFn: () => portalApi.exportAccountData() });
+}
+
+/**
+ * I-11: a product page's copy of what that one product holds for the person
+ * (`GET /api/products/<p>/export`). It is only ever the product the page is about: the account's
+ * own data and every other product stay out of it.
+ */
+export function useExportProductData(product: string) {
+  return useMutation({
+    mutationFn: () => portalApi.exportProductData(product),
+  });
+}
+
+/**
+ * I-11: Remove my data from <Product> (`DELETE /api/products/<p>/data`). `alsoRemoveLicense` is the
+ * person's explicit choice to take the product's licenses out of the library too; without it they
+ * stay. `licenseIds` are the licenses the page holds in this product, so the views that show them
+ * refresh by their own keys.
+ *
+ * Views refresh only once the Worker has answered: a refusal (`409 not_removable`, nothing written)
+ * or any other error leaves the library and the product as they were. After a success the devices
+ * have lost their binding and a license may have left, so the licenses, the library, the product,
+ * the releases and Discover (the product may be offered again) are read again.
+ */
+export function useRemoveProductData(
+  product: string,
+  licenseIds: readonly string[],
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (alsoRemoveLicense: boolean) =>
+      portalApi.removeProductData(product, alsoRemoveLicense),
+    onSuccess: (res) => {
+      for (const id of licenseIds) {
+        if (res.detachedLicenses.includes(id))
+          qc.removeQueries({ queryKey: portalKeys.license(product, id) });
+        else
+          void qc.invalidateQueries({
+            queryKey: portalKeys.license(product, id),
+          });
+      }
+      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
+      void qc.invalidateQueries({ queryKey: portalKeys.library });
+      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
+      void qc.invalidateQueries({ queryKey: portalKeys.releases });
+      void qc.invalidateQueries({ queryKey: portalKeys.discover });
+    },
+  });
+}
+
+/**
  * Account → Sign-in methods (PX-W12, `GET /api/me/methods`), or `null` when this Worker has no
  * such route (404): the section then lists the session's email alone (G27's fallback).
  */

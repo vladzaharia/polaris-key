@@ -18,6 +18,7 @@ import {
 } from "../data.js";
 import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
 import { ProductIdentityCard } from "../components/product/ProductIdentityCard.js";
+import { ProductDataCard } from "../components/product/ProductDataCard.js";
 import { RemoveLicenseDialog } from "../components/product/RemoveLicenseDialog.js";
 import { toast } from "../../ui/toast.js";
 import { consumeHeadingFocus, focusSectionHeading } from "../focus.js";
@@ -417,6 +418,15 @@ function ProductBody({
                 <ProductIdentityCard productName={product.name} />
               </div>
             ) : null}
+            {/* Your data in this product (I-11): last in every layout and in no section of the
+                nav, like the product sign-in card. A removal that also took the licenses leaves
+                nothing here, so the page goes back to the Library. */}
+            <div className="order-7">
+              <ProductDataCard
+                product={product}
+                onLeftLibrary={() => navigate(href.library())}
+              />
+            </div>
           </div>
         </div>
       </div>
