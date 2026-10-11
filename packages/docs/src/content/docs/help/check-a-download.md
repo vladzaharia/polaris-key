@@ -25,11 +25,15 @@ Have the file you downloaded, and the app's download page or your library, open.
 
 ## Get your file's value
 
-A terminal is a window where you type commands. Terminals usually open in your home folder and browsers usually save to Downloads, so first type `cd Downloads` and press Enter (macOS, Linux and PowerShell). If you saved the file somewhere else, use that folder instead. Replace `<file>` with the file's name, in quotes if it has spaces.
+A terminal is a window where you type commands. It usually opens in your home folder, and browsers usually save to Downloads.
 
-- **macOS:** in Terminal, run `shasum -a 256 <file>`
-- **Linux:** in a terminal, run `sha256sum <file>`
-- **Windows:** in PowerShell, run `Get-FileHash <file>`
+Type `cd Downloads` and press Enter to go there (macOS, Linux and PowerShell). If you saved the file somewhere else, use that folder instead.
+
+Replace `<file>` with the file's name, in quotes if it has spaces.
+
+- **macOS:** `shasum -a 256 <file>` in Terminal
+- **Linux:** `sha256sum <file>` in a terminal
+- **Windows:** `Get-FileHash <file>` in PowerShell
 
 The two values must match exactly. Capital and small letters count as the same.
 

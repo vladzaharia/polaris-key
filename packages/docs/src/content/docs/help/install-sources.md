@@ -25,7 +25,7 @@ Find them under **Other ways to get it** on the app's public download page, or u
 2. On the app's download page, find **Add to AltStore** or **Add to SideStore** and select **Open in the app**.
 3. Approve the source in the app.
 
-In your library, select **Add to AltStore** or **Add to SideStore** for step 2. On a computer, the page also shows a QR code: scan it with your phone. To add the source by hand, copy the **Source URL** and paste it into the app.
+In your library, select **Add to AltStore** or **Add to SideStore** for step&nbsp;2. On a computer, the page also shows a QR code: scan it with your phone. To add the source by hand, copy the **Source URL** and paste it into the app.
 
 **Add to AltStore PAL** is for AltStore PAL, a separate store app. It appears only when the developer has set it up.
 
@@ -35,7 +35,7 @@ In your library, select **Add to AltStore** or **Add to SideStore** for step 2. 
 2. On the app's download page, find **Add to F-Droid** and select **Open in the app**.
 3. Approve the repository in F-Droid.
 
-In your library, select **Add to F-Droid** for step 2. When the page lists a SHA-256 value for the repository, the link carries it for F-Droid to check. To add the repository by hand, copy the **Repository URL** and that value. If the page says no SHA-256 value is published, ask the developer first.
+In your library, select **Add to F-Droid** for step&nbsp;2. When the page lists a SHA-256 value for the repository, the link carries it for F-Droid to check. To add the repository by hand, copy the **Repository URL** and that value. If the page says no SHA-256 value is published, ask the developer first.
 
 ## Obtainium on Android
 
@@ -43,7 +43,7 @@ In your library, select **Add to F-Droid** for step 2. When the page lists a SHA
 2. On the app's download page, find **Add to Obtainium** and select **Open in the app**.
 3. If the link doesn't open Obtainium, select **Open via obtainium.imranr.dev**.
 
-In your library, select **Add to Obtainium** for step 2.
+In your library, select **Add to Obtainium** for step&nbsp;2.
 
 ## Scoop, Homebrew and other commands
 

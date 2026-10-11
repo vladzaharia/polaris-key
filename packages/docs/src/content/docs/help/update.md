@@ -8,7 +8,7 @@ sidebar:
   order: 9
 ---
 
-An app that can update shows a prompt when a newer version is available. The words can differ from app to app. On a Mac, buttons use capital letters, such as **Update Now** and **Restart Now**.
+An app that can update shows a prompt when a newer version is available. The words can differ from app to app. On a Mac, buttons use capital letters, such as **Update Now**.
 
 ## Before you start
 
@@ -19,37 +19,53 @@ An update restarts the app, so save your work first.
 1. Open the app. When it starts it can look for a newer version and show **Looking for a newer version…**.
 2. To look right away, choose **Check for updates** in the app's menu or settings. On macOS it reads **Check for Updates…**.
 3. When a newer version is available, select **Update now**.
-4. When the app says the new version is ready, select **Restart now**.
+4. When the app says the update is ready, select **Restart now**.
 
 You may also see:
 
-- **Restart when ready** (**Install and Relaunch** on macOS) restarts the app once the download is ready.
+- **Restart when ready** (**Install and Relaunch** on macOS) restarts the app after the download.
 - **Later** (**Remind Me Later** on macOS) closes the prompt.
 - An update that fixes a security problem says **This update includes an important security fix.**
 
 ## When an update is required
 
-**Update required** means the app can't continue until you install a newer version. Select **Update now** or **Update**. A message that starts **Update to keep using** has no **Later** button. With no **Update now** button, see [Apps from a store or package manager](#apps-from-a-store-or-package-manager).
+**Update required** means the app can't continue until you update. Select **Update now** or **Update**. A message that starts **Update to keep using** has no **Later** button. With no **Update now** button, see [Apps from a store or package manager](#apps-from-a-store-or-package-manager).
 
 The app keeps working if it says **This version is no longer supported** and **No update is available here yet.** Check again later.
 
 ## Apps from a store or package manager
 
-A store or package manager installs updates for the apps you got from it. The app shows where. Don't remember how you installed it? See [Download a newer version yourself](#the-download-page), or ask the app's developer.
+A store or package manager updates the apps you got from it. Don't remember how you installed it? See [Download a newer version yourself](#the-download-page), or ask the app's developer.
 
-| If the app shows                                                                                                                                                                                           | Do this                                                                                                                                                                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Update on the App Store**<br>**Update on Google Play**<br>**Get it on Steam**<br>**Open AltStore**<br>**Open TestFlight**<br>**Open** and a store's name                                                 | Open it and update the app there.                                                                                                                                                 |
-| **Steam installs it. Restart Steam if it hasn't arrived.**<br>**Windows installs it the next time** the app **starts.**<br>**Reload the page to get it.**<br>or any other line that says where it installs | Do what the line says, or update the app the way you installed it.                                                                                                                |
-| **Run** a command **to install it.**                                                                                                                                                                       | Only if you installed the app with that tool and recognize the command, run it in a terminal (a window where you type commands). If not, update the app the way you installed it. |
+If the app shows one of these, update it in that store or app:
+
+- **Update on the App Store**
+- **Update on Google Play**
+- **Get it on Steam**
+- **Open AltStore**
+- **Open TestFlight**
+- **Open** and a store's name
+
+If it shows one of these, do what the line says, or update the way you installed the app:
+
+- **Steam installs it. Restart Steam if it hasn't arrived.**
+- **Windows installs it the next time** the app **starts.**
+- **Reload the page to get it.**
+- Any other line saying where it installs
+
+If it shows this line:
+
+- **Run** a command **to install it.**
+
+Run the command in a terminal (a window for typing commands) only if you installed the app with that tool and recognize the command. If not, update the way you installed the app.
 
 ## Why you may not see an update yet
 
-A developer can release an update to some people first, and a store can release in stages too. If the developer pauses a release, apps stop offering it. The download page waits until a release is open to everyone.
+A developer can release an update to some people first, and a store can release in stages too. Apps stop offering a release the developer pauses. The download page waits until a release is open to everyone.
 
 ## If an update doesn't work
 
-When an update doesn't start, some apps put the previous version back and say **The last update didn't start, so the previous version was restored.**
+When an update doesn't start, some apps restore the previous version and say **The last update didn't start, so the previous version was restored.**
 
 | You see                        | What it means and what to do                                                                        |
 | ------------------------------ | --------------------------------------------------------------------------------------------------- |
@@ -60,7 +76,7 @@ When an update doesn't start, some apps put the previous version back and say **
 
 ## <a id="the-download-page"></a>Download a newer version yourself
 
-To install a newer version yourself, download it again from your library or the app's download page. See [Download your app](/docs/help/download/).
+Download the app again from your library or its download page. See [Download your app](/docs/help/download/).
 
 ## Check it worked
 
