@@ -22,6 +22,8 @@ name: Native desktop plugins
 # notarisation and Store checks are the owner's checklist (notes/S-11 §7). A path filter keeps
 # these 10-20 minute jobs off unrelated changes; they are not required checks. Only first-party
 # actions; every download is pinned (sdks/godot/tools/godot.sha512, sdks/godot/native/deps.env).
+# The composite action the macOS and Windows jobs set up Node with (.github/actions/setup-js) is a
+# trigger too: a change to it changes those jobs as much as an edit of this file does.
 on:
   push:
     branches: [main]
@@ -32,6 +34,7 @@ on:
       - "packages/worker/src/services/update/**"
       - "packages/worker/src/services/release/sparkle.ts"
       - ".github/workflows/native-desktop.yml"
+      - ".github/actions/setup-js/**"
   pull_request:
     paths:
       - "sdks/godot/**"
@@ -40,6 +43,7 @@ on:
       - "packages/worker/src/services/update/**"
       - "packages/worker/src/services/release/sparkle.ts"
       - ".github/workflows/native-desktop.yml"
+      - ".github/actions/setup-js/**"
 
 permissions:
   contents: read

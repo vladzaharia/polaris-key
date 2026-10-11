@@ -14,7 +14,7 @@ export declare function selectLanes(
 export declare function matrixFor(
   scope: CiScope,
   name: string,
-  event: string,
+  narrow: boolean,
 ): unknown;
 export declare function ciOutputs(
   scope: CiScope,
@@ -24,4 +24,5 @@ export declare function changedFiles(opts: {
   base: string;
   head?: string;
   worktree?: boolean;
+  cwd?: string;
 }): string[] | null;

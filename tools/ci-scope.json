@@ -1,5 +1,5 @@
 {
-  "$comment": "P0-43: the one scope map. ci.yml's `changes` job and the lead's gate.sh both read it through tools/ci-scope.mjs, so a lane runs for the same changed files in CI and in the local gate. A lane runs when a changed path starts with one of its `paths`, or with one of `shared` (the inputs every language verifies: the contract, the shared packages, the tool chain, the repository's own CI). On a push to main, and whenever the changed files cannot be read, every lane runs. `matrices` hold each matrix's two shapes: a pull request runs the floor and the latest, main runs the full set. Edit this file, never a path filter in a workflow.",
+  "$comment": "P0-43: the one scope map. ci.yml's `changes` job and the lead's gate.sh both read it through tools/ci-scope.mjs, so a lane runs for the same changed files in CI and in the local gate. A lane runs when a changed path starts with one of its `paths` (a directory ending in `/`, or one file), or with one of `shared` (the inputs every language verifies: the contract, the shared packages, the tool chain, the repository's own CI). A lane lists everything its job reads, not only its own tree: the Python lane names the samples and the two cross-SDK fixtures its tests open. A rename counts at its old and its new path. On a push to main, and whenever the changed files cannot be read, every lane runs and every matrix takes its full shape. `matrices` hold each matrix's two shapes: a pull request runs the floor and the latest, main runs the full set. Edit this file, never a path filter in a workflow.",
   "shared": [
     "conformance/",
     "packages/shared-",
@@ -74,7 +74,15 @@
       "paths": ["packages/sdk-react/", "packages/ui-core/"]
     },
     "python": {
-      "paths": ["sdks/python/", "packages/ui-qa/"]
+      "paths": [
+        "sdks/python/",
+        "packages/ui-qa/",
+        "examples/python-cli/",
+        "examples/python-renpy/",
+        "examples/ui/terminal-python/",
+        "sdks/godot/tests/qr/fixtures.json",
+        "docs/design/ui-kits/terminal-parity.json"
+      ]
     },
     "swift": {
       "paths": [
@@ -83,6 +91,9 @@
         "packages/cli/",
         "packages/ui-qa/"
       ]
+    },
+    "swift-floor": {
+      "paths": ["sdks/swift/"]
     },
     "kotlin": {
       "paths": ["sdks/kotlin/"]

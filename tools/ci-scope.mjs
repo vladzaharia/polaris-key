@@ -42,14 +42,19 @@ export function selectLanes(scope, files) {
   );
 }
 
-/** A matrix's shape for the event: a pull request runs the floor and latest, everything else all. */
-export function matrixFor(scope, name, event) {
+/** A matrix's shape: a narrowed run takes the floor and the latest, every other run the full set. */
+export function matrixFor(scope, name, narrow) {
   const m = scope.matrices[name];
   if (!m) throw new Error(`no matrix "${name}" in ci-scope.json`);
-  return event === "pull_request" ? m.pr : m.main;
+  return narrow ? m.pr : m.main;
 }
 
-/** The `changes` job's outputs: lane flags, `full`, and one JSON matrix per matrix. */
+/**
+ * The `changes` job's outputs: lane flags, `full`, and one JSON matrix per matrix. Only a pull
+ * request whose changed files are known narrows, to their lanes and the pull-request matrices; a
+ * push to main, a manual run and a pull request whose changes could not be read all run every lane
+ * and the full matrices.
+ */
 export function ciOutputs(scope, { event, files }) {
   const narrow = event === "pull_request" && files !== null;
   const lanes = selectLanes(scope, narrow ? files : null);
@@ -58,28 +63,37 @@ export function ciOutputs(scope, { event, files }) {
   );
   out.full = String(!narrow);
   for (const name of Object.keys(scope.matrices))
-    out[`${name}-matrix`] = JSON.stringify(matrixFor(scope, name, event));
+    out[`${name}-matrix`] = JSON.stringify(matrixFor(scope, name, narrow));
   return out;
 }
 
-function git(args) {
+function git(args, cwd) {
   return execFileSync("git", args, {
+    cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
 }
 
-/** Changed files `base...head`, plus uncommitted ones when asked; null when git cannot say. */
-export function changedFiles({ base, head = "HEAD", worktree = false }) {
+/**
+ * Changed files `base...head`, plus uncommitted ones when asked; null when git cannot say. Both
+ * sides of a rename count (`--no-renames`: git's default lists only the new path, so a file moved
+ * out of a lane's tree would leave that lane unchecked), and `-z` keeps a path with non-ASCII
+ * characters from arriving C-quoted, which no lane prefix would match.
+ */
+export function changedFiles({
+  base,
+  head = "HEAD",
+  worktree = false,
+  cwd = process.cwd(),
+}) {
+  const diff = ["diff", "--name-only", "--no-renames", "-z"];
   try {
-    const names = new Set(
-      git(["diff", "--name-only", `${base}...${head}`]).split("\n"),
-    );
+    const files = new Set(git([...diff, `${base}...${head}`], cwd).split("\0"));
     if (worktree)
-      for (const f of git(["diff", "--name-only", "HEAD"]).split("\n"))
-        names.add(f);
-    names.delete("");
-    return [...names];
+      for (const f of git([...diff, "HEAD"], cwd).split("\0")) files.add(f);
+    files.delete("");
+    return [...files];
   } catch {
     return null;
   }

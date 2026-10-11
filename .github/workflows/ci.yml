@@ -14,8 +14,8 @@ permissions:
 # once, by the `changes` job from tools/ci-scope.json (the same map the lead's gate.sh reads through
 # tools/ci-scope.mjs): a lane runs when a changed path is one of its `paths` or a `shared` input;
 # the `js` job always runs. A pull request runs the floor and the latest of each matrix, `main`
-# (and any non-PR run) every lane and the full matrix. A skipped lane counts as passed in `ci-ok`;
-# a failed or cancelled one does not.
+# (and any non-PR run, or a pull request whose changed files cannot be read) every lane and the full
+# matrix. A skipped lane counts as passed in `ci-ok`; a failed or cancelled one does not.
 jobs:
   changes:
     name: Changes (which lanes run)
@@ -30,6 +30,7 @@ jobs:
       react-kit: ${{ steps.scope.outputs.react-kit }}
       python: ${{ steps.scope.outputs.python }}
       swift: ${{ steps.scope.outputs.swift }}
+      swift-floor: ${{ steps.scope.outputs.swift-floor }}
       kotlin: ${{ steps.scope.outputs.kotlin }}
       android: ${{ steps.scope.outputs.android }}
       godot: ${{ steps.scope.outputs.godot }}
@@ -362,8 +363,48 @@ jobs:
         working-directory: sdks/python
         run: .venv/bin/python -m pytest -q
 
-  # The Swift SDK and the Apple platform plugin on one macOS job (P0-43; the old `swift` job ran the
-  # same `swift test` and a subset of the iOS builds below on macos-15). First the swift kit's
+  # The Swift SDK on the OLDEST toolchain it supports: the half of the old `swift` job that `apple`
+  # does not repeat (P0-43). sdks/swift/Package.swift is `swift-tools-version: 6.0`, and the Xcode 26+
+  # SDK code of PolarisKeyPlatform (AssetPackManager and the 26.4 Background Assets methods) is
+  # behind `#if compiler(>=6.3)`, the iOS 27 manifest API behind `#if compiler(>=6.4)`. `apple`
+  # pins Xcode 26.6 and compiles only the guarded branch; this job pins Xcode 16.4 (Swift 6.1 on
+  # macos-15) and compiles the other, so a newer API used outside its guard fails here and nowhere
+  # else, though it would break a supported client. Build only: the package's tests run once, on
+  # `apple`. The scheme lists are the old job's: packs and update plain, the platform and its C
+  # surface with warnings as errors (with SWIFT_TREAT_WARNINGS_AS_ERRORS the clang importer's
+  # libzstd configuration-macro warnings fail PolarisKeyPacks, measured with Xcode 26.6, which is
+  # not this job's concern). Its lane, `swift-floor`, is the package alone (sdks/swift/): a change
+  # to the Godot addon or the CLI needs `apple`, not a second macOS run of the same package.
+  swift-floor:
+    name: Swift SDK floor (macos-15, Xcode 16.4)
+    needs: changes
+    if: needs.changes.outputs.swift-floor == 'true'
+    runs-on: macos-15
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Xcode 16.4, Swift below 6.3
+        run: sdks/swift/tools/select-xcode-16.sh
+      - name: swift build (macOS host)
+        run: swift build --package-path sdks/swift
+      - name: iOS build (packs, update, platform)
+        working-directory: sdks/swift
+        run: |
+          for scheme in PolarisKeyPacks PolarisKeyUpdate; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO -quiet build
+          done
+          for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
+          done
+
+  # The Swift SDK and the Apple platform plugin on one macos-26 job (P0-43; the old `swift` job ran
+  # the same `swift test` and a subset of the iOS builds below on macos-15. Its Xcode 16.4 half is
+  # `swift-floor` above; the package's tests run only here). First the swift kit's
   # modernity lint (UI-KITS.md §7.3, UK-15: the swiftui source rules of
   # packages/ui-qa/rules/kit-rules.json; zero dependencies, so plain Node runs it; it fails on any
   # hit beyond the debt ledger packages/ui-qa/rules/kit-debt.json and on stale debt).
@@ -912,6 +953,7 @@ jobs:
         browser-webkit,
         python,
         apple,
+        swift-floor,
         kotlin,
         kotlin-desktop,
         android,
