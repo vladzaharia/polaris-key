@@ -7470,7 +7470,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/A-19-one-channel-catalogue-tools-channels.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-20",
@@ -11934,7 +11934,7 @@
         "plans/SP-53.md (approved 2026-10-09)"
       ],
       "brief": "wp/SP-53-backend-credential-contract.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-54",
@@ -11955,7 +11955,7 @@
         "plans/SP-54.md (approved 2026-10-09)"
       ],
       "brief": "wp/SP-54-signed-in-subject-in-licence-document.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-54b",
@@ -11977,7 +11977,7 @@
         "docs/research/2026-10-08-sdk-usability/README.md §10.2 (the Python terminal kit signed-in finding)"
       ],
       "brief": "wp/SP-54b-native-signed-in-user-readers.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-55",
@@ -16491,7 +16491,7 @@
         "plans/UK-51.md (approved 2026-10-09)"
       ],
       "brief": "wp/UK-51-terminal-drop-in-contract.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-52",
