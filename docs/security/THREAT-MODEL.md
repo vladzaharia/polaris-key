@@ -5429,8 +5429,9 @@ directory holds operators only, which closes G5 (operator and customer in one di
   and `operators-only` heard `signIn`'s `account_disabled` and carried on as before, and I-26's
   trigger skipped a disabled account and fell through to minting. The callback now reads the
   subject's method first (issuer key or the pre-I-01 literal, read-only;
-  `platformSubjectAccountRefused`) and, when its account is not active (disabled, or its deletion
-  under way), drops the flow before the claim, the chooser or any activation, mints and writes
+  `platformSubjectStanding`, which answers allowed, refused or unavailable) and, when its account
+  is not active (disabled, or its deletion under way) or is on the erasure ledger (a restored
+  erased account), drops the flow before the claim, the chooser or any activation, mints and writes
   nothing, and answers the portal's "This account can't sign in". The device-code poll checks
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
@@ -5439,15 +5440,16 @@ directory holds operators only, which closes G5 (operator and customer in one di
   The OIDC return path records two things on the session's KV record (`browserSessionBinding`;
   neither for a custom issuer): the platform subject itself (issuer and `sub`), and the account
   that holds its platform-IdP method at sign-in, if any. At every read, `loadBrowserSession` runs
-  this same N9 check on the subject (`platformSubjectAccountRefused`, so whichever account holds
+  this same N9 check on the subject (`platformSubjectStanding`, so whichever account holds
   the method now counts: one the subject joined after the session opened, or one its method moved
   to) and checks the sign-in account. It deletes the record and answers "no session" once either
   is disabled, being deleted or gone (an absorbed account follows its join for 30 days, as
   `signIn` reads it). The sign-in account is kept for erasure, which deletes the account's methods,
   so the subject alone would then resolve no account. So the page reads signed out at its next
   request, a `requires-identity` product refuses to register a device on it, and sign-out finds
-  nothing to end. A D1 error during the check reads as signed out for that request (never a 500,
-  fail closed) and keeps the record, since the error says nothing about the account. Residual, by
+  nothing to end. A D1 error during the check, or an erasure ledger that cannot be read, reads as
+  signed out for that request (never a 500, fail closed) and keeps the record, since the error says
+  nothing about the account. Residual, by
   decision: device seats and device tokens are kept, the browser device's included. They belong
   to the licence, not the account; disabling clears each device's account binding
   (`devices.subject`) and nothing else, and the operator deauthorizes a seat or disables the
@@ -7752,14 +7754,27 @@ names the account, so there is nothing for a caller to substitute.
   id, so a person who hands it to a developer gives them that id (a per-product file never carries
   it).
 
-### Account erasure is a resumable state machine (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
+### Account erasure is scheduled, then resumable (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
 
 `DELETE /api/me` used to flip the account to `deleted` and then run the registered stores' hooks
 unguarded: one failing Durable Object or R2 call left the email, links, subjects and licence
 attachments in place, with no record and no retry, while the person had been told it was done.
 
-- **Closed first, in one batch.** The first batch sets `accounts.status = 'deleted'` (every
-  reader refuses anything but `active`, so no session validates and `signIn` refuses with
+- **Request before close.** A current portal session, CSRF token, five-minute step-up and the
+  account-action rate limit are required to create or cancel a deletion request. Creating one
+  stores only the opaque account id, request time and a deadline fourteen days later in
+  `account_deletions`; it leaves the account active so its holder can export data or cancel.
+  Repeating the request preserves its first deadline. Scheduling or cancelling sends a security
+  notice to every verified address, and its account-scoped activity record contains no email,
+  name or product.
+- **Claim then close.** Both scheduled ticks choose due requests and conditionally claim one
+  before starting the hard-erasure state machine. Cancellation can remove only an unclaimed (or
+  expired claim) request, so a concurrent cancellation and due sweep have one atomic winner.
+  A winning claim makes the request irrevocable; the next batch closes the account and ends every
+  session. The final erasure batch deletes the request and its account activity, leaving only the
+  id-only tombstone and the id-only `portal.account.delete` receipt.
+- **Closed first, in one batch.** The first hard-erasure batch sets `accounts.status = 'deleted'`
+  (every reader refuses anything but `active`, so no session validates and `signIn` refuses with
   `account_disabled`: a new login cannot resurrect or re-attach to an account being erased),
   deletes the sessions and writes the progress row in `account_erasures` (opaque account id,
   attempts, back-off, lease, failing step and a 200-character error; no email, name or product).
@@ -7818,8 +7833,50 @@ attachments in place, with no record and no retry, while the person had been tol
   reads use `subjectForOrNull`), and a last read-and-hook pass precedes the commit. A new
   account on the same email exists only after the erasure completes, because until then the
   email's link still belongs to the erasing account and sign-in is refused.
-- **Residual.** Until the retry completes the person's data still exists server-side, but no API
-  or session reaches it; the time to completion is bounded by the store recovering plus the
+- **A restore cannot reopen an erased account's sessions, sign-in or tokens (I-11).** A D1 Time Travel restore rewinds the
+  tombstone together with the account, so an account erased after the restore point is `active`
+  again in D1 with its sessions, sign-in methods, subjects and registry tokens. The erasure ledger
+  survives it: one id-only object `erasures/<account id>` in the `BLOBS` bucket, written
+  create-only before the first batch closes the account (`recordErasure`). Every request that acts
+  as an account reads it first (`core/accounts/erasureFence.ts`, `erasureVerdict`: one HEAD per
+  account id, an erased answer remembered for the isolate's life and a not-erased answer for 30
+  seconds, `recordErasure` writing through so the isolate that erased knows at once; no new
+  binding, queue or secret), so the sessions, sign-in and token window of the previous bullets is
+  closed from the moment the restore lands, before the replay runs. Refused for an account on the
+  ledger: sign-in through every front door (email code or link, providers and the email gate,
+  passkeys, single sign-on, product sign-in through the platform IdP) with the answer of a
+  disabled account, and a join offer to it; the portal API (`401`); a product browser session (its
+  record is ended); an approved sign-in on another device (not spent); a licensed download (`404`,
+  token not spent); package-registry tokens a person minted from the portal (they resolve to
+  nothing, as a revoked token does); device attach and subject reads for a device bound to it;
+  joining, linking, undoing a join and relinking a licence to it. It fails closed: with `BLOBS`
+  unbound or R2 failing, nothing is let through for an account (portal API `503`, sign-in
+  refused, a browser session reads signed out but keeps its record, an approved device sign-in or
+  a download `503` unspent, a portal-minted package token resolves to nothing); an unavailable
+  answer is never remembered. Tokens no account owns (console and operator tokens) and CI tokens
+  are not asked, and public feeds keep working. The replay (`deletion.replayErasures`, cron only:
+  the 15-minute connector tick and the 03:17 UTC maintenance, at most 25 accounts and 5 pages of
+  1,000 keys a pass) is still the cleanup: it closes the restored account in D1 and erases what
+  the restore brought back. Its timing decides how long the rows sit in the restored database, not
+  whether the account can be used.
+- **Residual after a restore (I-11).** (a) The operator console's Users page, per-user detail and
+  export are staff-only reads and are not fenced: until the replay erases the rows they can list a
+  restored erased account's contact address and activity; staff should not act on them. (b) The
+  not-erased answer is remembered for 30 seconds per isolate, so an erasure recorded by another
+  isolate in the last 30 seconds is unseen by this one for up to that long. (c) A deletion that is
+  only scheduled (the fourteen-day window) is not on the ledger: a restore to a point before its
+  request was made forgets it, and the person must schedule it again. (d) An erasure that finished
+  before the ledger shipped is covered only once the mirror copied it (100 a pass). (e) A ledger
+  object deleted by hand or by a lifecycle rule removes the protection, since the fence and the
+  replay both read it; the bucket is the ledger's only copy. (f) A `503` from the fence is not a
+  signal that a restore happened: the `platform_job_runs` rows of step `erasureLedger` are the
+  evidence of the replay. (g) Cloud Sync and account overrides identify a device by its token and
+  its subject binding, not by the account (`syncAccess`, `accountOverrides`), so they are not
+  fenced: a device still bound to a restored erased account's subject keeps that access until the
+  replay clears the binding.
+- **Residual.** During the fourteen-day request window the holder can still reach their active
+  account. During a hard-erasure retry the person's data still exists server-side, but no API or
+  session reaches it; the time to completion is bounded by the store recovering plus the
   back-off. Beyond the audit rows that name the person (above), this erasure does not rewrite
   `audit.summary` or `license_relinks.holder_json`: new audit rows name a licence by id, older ones
   (which may hold a buyer's address) are deleted after 180 days, and a relink's holder snapshot is

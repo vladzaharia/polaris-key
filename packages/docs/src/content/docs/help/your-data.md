@@ -11,9 +11,9 @@ Your library at key.plrs.im lets you download or remove information held for you
 
 ## What is stored where
 
-Your Polaris Key account holds your sign-in methods, name and picture, licenses, devices, where
-you are signed in, and the apps in your library. Each app can also keep its own information about
-you, such as saves or settings. The app's developer manages that information.
+Your account holds your sign-in methods, name and picture, licenses, devices, where you're signed
+in, and library apps. Each app's developer manages its own information about you, such as saves or
+settings.
 
 ## Download my data
 
@@ -25,8 +25,9 @@ You can download everything from your account, or information from one app.
 4. Sign in again when asked. This protects your information if you left the site signed in.
 
 Your full account file includes your account, sign-in methods, name and pictures, passkeys, where
-you're signed in, apps connected to your account, accepted terms, library, licenses, each app's
-information, and activity. An app's file includes only information held for you by that app.
+you've signed in, connected apps, accepted terms, library, licenses, package access details, joined
+accounts, each app's information, and activity. If the activity list is long, the file keeps recent
+entries and says it was shortened. An app's file includes only information it holds for you.
 
 ## Remove my data from an app
 
@@ -53,8 +54,8 @@ Removing your information from that app ends the old code. Ask for another code 
 
 ## Delete your account
 
-Deleting your account schedules it for deletion after 14 days. Until then, you stay signed in and
-your licenses and devices keep working.
+Deleting your account schedules it for 14 days later. Until then, you stay signed in and your
+licenses and devices keep working.
 
 1. Open **Account**, then **Your data and privacy**.
 2. Select **Delete account**.
@@ -68,5 +69,10 @@ erases its own records.
 While a deletion is scheduled, you cannot join another account to this one. Choose **Keep my
 account** first, then join them.
 
-Time Travel keeps deleted rows for up to 30 days. If a restore happens, Polaris Key applies the
-deletion list again.
+Polaris Key keeps database backups for up to 30 days, used only after a serious fault. If a backup
+brings back an account deleted after it was taken, no one can sign in to it, and a separate record
+with only an internal reference and date makes the next scheduled cleanup erase it again. This
+usually takes about 15 minutes, or longer if many accounts need cleanup.
+
+A deletion still within its 14-day waiting period is not in that record. If a restore predates your
+request, schedule deletion again.

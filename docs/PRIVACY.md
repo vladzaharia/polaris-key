@@ -302,10 +302,15 @@ What the sections above do not promise, stated plainly:
   also removes it, and while it stays the developer can still connect them to the old records
   through it.
 
-- **Erasure.** Account deletion is a resumable state machine (`account_erasures`). There is no
-  self-service data export for the person and no `removeProductData` route: an admin exports and
-  deletes a person's data per product from the Users page. Data is not encrypted per person
-  (no crypto-shredding), and D1 Time Travel backups keep deleted rows for up to 30 days.
+- **Erasure.** `DELETE /api/me` records a cancellable request in `account_deletions` and keeps
+  the account active for fourteen days. At its deadline the scheduled worker claims the request
+  and starts the resumable hard-erasure state machine (`account_erasures`); it deletes
+  account-linked data and the request's account activity, retains only the id-only erasure
+  tombstone and final receipt, and detaches licences. The tombstone is kept and reapplied after a
+  D1 restore so legacy catch-up cannot recreate the account, and a restored deleted account is
+  refused at sign-in and on every request before that cleanup erases it again. Data is not
+  encrypted per person (no crypto-shredding), and D1 Time Travel backups keep deleted rows for up to
+  30 days.
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/core/repo.ts`, which purges both tables in the
