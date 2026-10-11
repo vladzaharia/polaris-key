@@ -168,6 +168,30 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     );
   });
 
+  it("refuses absolute and escaping release.fetch destinations before a request", async () => {
+    const downloadDir = tempDir();
+    const { bridge, seen } = await setup(
+      {},
+      "pkeyt_seed",
+      { host: { downloadDir } },
+    );
+    for (const to of ["/tmp/escape.zip", "../escape.zip", "nested/../../escape.zip"]) {
+      await expect(
+        bridge.invoke!("release", "fetch", {
+          target: { sha256: "a".repeat(64), buildId: "macos-zip" },
+          to,
+        }),
+      ).rejects.toMatchObject({ code: "invalid-argument" });
+    }
+    await expect(
+      bridge.invoke!("release", "fetch", {
+        target: { sha256: "a".repeat(64), buildId: "macos-zip" },
+        to: "C:\\escape.zip",
+      }),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(seen).toEqual([]);
+  });
+
   // @pkey-feature core.presentation
   it("answers the presentation verbs from the host's client (HA-13)", async () => {
     const { bridge } = await setup();
