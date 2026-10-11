@@ -8,9 +8,9 @@ sidebar:
   order: 3
 ---
 
-**Discover** lists apps that developers offer to your account for free. Adding one puts it in your
-library straight away, at no cost. Only apps you can add for free appear there. An app you buy
-appears in your library by itself.
+**Discover** lists apps that developers offer to your account. Most you can add for free, and adding
+one puts it in your library straight away, at no cost. An app you buy appears in your library by
+itself.
 
 ## Add a free app
 
@@ -19,11 +19,11 @@ appears in your library by itself.
 3. Find the app. Its card says why you can add it, for example "Free with a Polaris Key account" or
    "Free trial · 14 days".
 4. Select **Add to library**.
-5. When the card says **In your library**, select **Open** followed by the app's name.
+5. When the card says **In your library**, select the button that reads **Open** and the app's name.
 
 To read more first, select the app's name. Its page shows the description, screenshots and every
-way you can add the app. When there is more than one way, choose the one that **Add to library**
-should use.
+way you can add the app. When there is more than one way, choose the way you want to add it, then
+select **Add to library**.
 
 Some cards have no **Add to library** button. They show **Get it on** and a store name, or
 **Get it from** and the developer's name. The developer shows these apps to everyone with a Polaris
@@ -38,11 +38,13 @@ Key account, and you get them from the store or the developer's website.
 
 ## Check it worked
 
-The app appears in your library. A free app that needs no license shows **Free to use**.
+The app appears in your library. A free app that needs no license shows **Free to use**. A free
+trial ends when its days run out, and your library then shows **Expired**.
 
 ## Undo
 
-You can take a free app that needs no license out of your library again. See
+You can take a free app that needs no license out of your library again. An app that comes with a
+license, such as a free trial, has no remove option. See
 [Remove an app from your library](/docs/help/remove-from-library/).
 
 ## Still need help?

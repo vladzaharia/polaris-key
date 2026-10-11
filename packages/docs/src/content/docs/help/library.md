@@ -26,17 +26,19 @@ license for it.
 
 A tile shows the app's name and a line about your license, such as how many of its devices are in
 use. A colored label appears only when something needs attention, for example **Expired** or
-**Device limit reached**. An active license shows no label. See
+**Device limit reached**. An active license shows no colored label. See
 [What your license status means](/docs/help/license-status/).
 
 The main button depends on the app. It can download the app, show its details, or say
 **Free a device** when the license is on every device it allows.
 
-Select the app's name to open its page. The page shows your license and your devices. When the
+Select the app's name to open its page. If you have only one app, its name is not a link: select
+**License, devices and all versions** instead (**Details and downloads** for a free app that needs
+no license). The page of an app with a license shows your license and your devices. When the
 developer has published them, it also shows downloads and release notes.
 
-With 8 or more apps, the library adds a search box, **All** and **Needs attention** filters, a sort
-menu and a **Grid** and **List** switch.
+With 8 or more apps, the library adds a search box, an **All** filter, a sort menu and a **Grid**
+and **List** switch. A **Needs attention** filter appears while an app needs attention.
 
 ## If an app is missing
 

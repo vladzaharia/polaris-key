@@ -8,56 +8,77 @@ sidebar:
   order: 6
 ---
 
+import Callout from "../../../components/docs/Callout.astro";
 import HelpMessage from "../../../components/docs/HelpMessage.astro";
 
 Removing an app takes it off your library page. What else it does depends on how the app got there.
 
+<Callout type="caution" title="Important">
+  Before you remove an app you added with a key, make sure you still have the
+  key. Without it you cannot add the app back. If you lost the key, see [Find a
+  lost license key](/docs/help/lost-key/).
+</Callout>
+
 ## What happens when you remove an app
 
 If you added the app with a license key, its devices keep working. The license leaves your account
-and does not come back to it by itself. To add it again, use its key. If no email address is tied to
-the license, anyone with the key can add it to their own account.
+and does not come back to it by itself. If no email address is tied to the license, anyone with the
+key can add it to their own account.
 
-If you added a free app from **Discover**, nothing else changes. You can add it again from Discover
-while its developer offers it.
+If the app is a free app that needs no license, nothing else changes. You can add it again from
+**Discover** while its developer offers it.
 
 Removing an app does not free a device. To free one, see
 [Manage your devices](/docs/help/devices/).
 
 ## Remove an app you added with a key
 
-1. Sign in at [key.plrs.im](https://key.plrs.im) and open the app's page.
-2. Select the three-dot menu next to the main button, then **Remove from my library**.
-3. Read what happens, then select **Remove from my library**. Select **Keep it** to stop.
+1. Sign in at [key.plrs.im](https://key.plrs.im).
+2. Open the app's page.
+3. If you hold more than one license for the app, choose the one you want to remove in the license
+   list on the page.
+4. Open the three-dot menu next to the main button.
+5. Select **Remove from my library**.
+6. Read what happens. If you hold more than one license, the dialog names the one you chose, and
+   your other licenses stay.
+7. Select **Remove from my library** to confirm.
 
-If you hold more than one license for the app, first choose the one you want to remove in the
-license list on the page. The dialog names that license, and your other licenses stay.
+To stop, select **Keep it**.
 
-If the library asks you to sign in again, sign in and repeat the steps. Removing a license needs a
-sign-in from the last 5 minutes.
+If the dialog says **Sign in again to continue**, sign out from your account menu, sign back in and
+repeat the steps. Removing a license needs a sign-in from the last 5 minutes.
 
-## Remove a free app
+## Remove a free app that needs no license
+
+Its tile says **Free to use**.
 
 1. Find the app's tile in your library, or open its page.
-2. Select the three-dot menu, then **Remove from library**.
-3. Select **Remove from library** again. Select **Keep it** to stop.
+2. Open the three-dot menu.
+3. Select **Remove from library**.
+4. Select **Remove from library** again to confirm.
+
+To stop, select **Keep it**.
 
 ## If there is no remove option
 
 The menu has no remove option when the license has no key to add it back with, such as a license
-the app gave you when you signed in. It also has none when the developer does not allow adding by
+the app gave you when you signed in, or a license you added from **Discover**, for example
+**Free with a Polaris Key account**. It also has none when the developer does not allow adding by
 key.
+
+You may see this message if a removal is refused.
 
 <HelpMessage id="not_removable" />
 
 ## Check it worked
 
-The app is gone from your library, and a message says it was removed.
+The app is gone from your library, and a message says it was removed. If you held more than one
+license, the app stays and the message says which license was removed.
 
 ## Undo
 
-Add the app again. Use **Activate license** with its key, or add a free app from **Discover**. See
-[Add a license with a key](/docs/help/add-a-license/) and
+Add the app again. Use **Activate license** with its key. For a free app that needs no license, add
+it from **Discover** again. See [Add a license with a key](/docs/help/add-a-license/) and
 [Get free apps from Discover](/docs/help/discover/).
 
 ## Still need help?

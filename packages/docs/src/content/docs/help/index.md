@@ -36,12 +36,17 @@ something your product doesn't have, it simply doesn't apply to you.
 
 ## Your library and devices
 
+### Your library
+
 - [Your library](/docs/help/library/) — see the apps linked to your account.
 - [Add a license with a key](/docs/help/add-a-license/) — add a key to your library.
 - [Get free apps from Discover](/docs/help/discover/) — add a free app.
 - [Find a lost license key](/docs/help/lost-key/) — find a key, or carry on without it.
 - [What your license status means](/docs/help/license-status/) — Active, Offline, Expired and more.
 - [Remove an app from your library](/docs/help/remove-from-library/) — what it does, and how.
+
+### Devices
+
 - [Manage your devices](/docs/help/devices/) — see, remove and rename devices.
 - [Move your license to a new computer](/docs/help/new-computer/) — free the old one first.
 - [Device limit reached](/docs/help/device-limit/) — free a device.
