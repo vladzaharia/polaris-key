@@ -7,7 +7,9 @@ lanes: ["kit", "library"]
 lastReviewed: "2026-10-10"
 ---
 
-Every SDK offers two lanes of equal depth. The drop-in lane gives you the SDK's UI kit, whole or one screen at a time. The own-UI lane gives you the SDK's headless layer, and you draw the screens. Both lanes share the SDK's setup and the generated config file.
+Every SDK has a drop-in lane and an own-UI lane. The drop-in lane gives you the SDK's UI kit, whole or one screen at a time. The own-UI lane gives you the SDK's headless layer, and you draw the screens. Both lanes share the SDK's setup and the generated config file.
+
+Node, React and Python have an own-UI guide as deep as their kit. For Swift, Kotlin and Godot, the own-UI lane is the SDK reference: the guide that walks each screen is not built yet.
 
 ## Compare the lanes
 
