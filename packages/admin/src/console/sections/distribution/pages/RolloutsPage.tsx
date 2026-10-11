@@ -349,72 +349,74 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
         />
       }
     >
-      {grid ? (
-        <>
-          <ReadinessRefreshed
-            refreshed={readiness.refreshed}
-            onDismiss={readiness.dismiss}
-          />
-          <MatrixBoard
-            slug={slug}
-            view={view === "readiness" ? "readiness" : "availability"}
-          />
-        </>
-      ) : (
-        <DataTable<Rollout>
-          id="rollouts"
-          caption="Rollouts"
-          data={rows}
-          columns={columns}
-          getRowId={rowId}
-          rowLabel={(r) =>
-            `${versionOf(r.releaseId)} on ${r.outletId} / ${r.channel}`
-          }
-          rowHref={rolloutHref}
-          rowActions={rowActions}
-          linkComponent={Link}
-          state={state}
-          onStateChange={setState}
-          search={{
-            placeholder: "Search rollouts",
-            columns: ["release", "outlet", "channel"],
-          }}
-          facets={[
-            {
-              id: "state",
-              label: "State",
-              options: ["halted", "paused", "active", "complete"].map((s) => ({
-                value: s,
-                label: statusOf("rollout", s).label,
-              })),
-            },
-            {
-              id: "outlet",
-              label: "Outlet",
-              options: outlets.map((o) => ({ value: o, label: o })),
-            },
-          ]}
-          loading={rollouts.isPending}
-          error={
-            rollouts.isError && !rollouts.data ? rollouts.error : undefined
-          }
-          onRetry={() => void rollouts.refetch()}
-          mobile="cards"
-          empty={
-            <EmptyState
-              kind="first-run"
-              title="No rollouts yet"
-              description="A rollout offers a release to a share of the devices on one outlet's channel, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone."
-              primaryAction={
-                <Button onClick={() => setStarting(true)}>
-                  Start rollout…
-                </Button>
-              }
-              docs="/docs/services/distribution/rollouts/"
+      <div className="pk-vt-tabpanel">
+        {grid ? (
+          <>
+            <ReadinessRefreshed
+              refreshed={readiness.refreshed}
+              onDismiss={readiness.dismiss}
             />
-          }
-        />
-      )}
+            <MatrixBoard
+              slug={slug}
+              view={view === "readiness" ? "readiness" : "availability"}
+            />
+          </>
+        ) : (
+          <DataTable<Rollout>
+            id="rollouts"
+            caption="Rollouts"
+            data={rows}
+            columns={columns}
+            getRowId={rowId}
+            rowLabel={(r) =>
+              `${versionOf(r.releaseId)} on ${r.outletId} / ${r.channel}`
+            }
+            rowHref={rolloutHref}
+            rowActions={rowActions}
+            linkComponent={Link}
+            state={state}
+            onStateChange={setState}
+            search={{
+              placeholder: "Search rollouts",
+              columns: ["release", "outlet", "channel"],
+            }}
+            facets={[
+              {
+                id: "state",
+                label: "State",
+                options: ["halted", "paused", "active", "complete"].map((s) => ({
+                  value: s,
+                  label: statusOf("rollout", s).label,
+                })),
+              },
+              {
+                id: "outlet",
+                label: "Outlet",
+                options: outlets.map((o) => ({ value: o, label: o })),
+              },
+            ]}
+            loading={rollouts.isPending}
+            error={
+              rollouts.isError && !rollouts.data ? rollouts.error : undefined
+            }
+            onRetry={() => void rollouts.refetch()}
+            mobile="cards"
+            empty={
+              <EmptyState
+                kind="first-run"
+                title="No rollouts yet"
+                description="A rollout offers a release to a share of the devices on one outlet's channel, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone."
+                primaryAction={
+                  <Button onClick={() => setStarting(true)}>
+                    Start rollout…
+                  </Button>
+                }
+                docs="/docs/services/distribution/rollouts/"
+              />
+            }
+          />
+        )}
+      </div>
       {!grid && cell !== "" ? (
         <ListCellDrawer slug={slug} cell={cell} deliverable={deliverable} />
       ) : null}
