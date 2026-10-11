@@ -504,6 +504,9 @@ importers:
         specifier: ^4.12.0
         version: 4.12.0
     devDependencies:
+      '@polaris-key/elements':
+        specifier: workspace:*
+        version: link:../elements
       '@polaris-key/jws':
         specifier: workspace:*
         version: link:../shared-jws
@@ -543,6 +546,15 @@ importers:
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@types/node@22.20.5)(@vitest/browser-playwright@4.1.11)(jsdom@26.1.0)(vite@8.3.2(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/sdk-react/test/react19:
+    dependencies:
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.0(react@19.3.0)
 
   packages/shared-catalog:
     dependencies:

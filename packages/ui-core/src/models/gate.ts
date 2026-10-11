@@ -4,6 +4,7 @@
 // banner never extends grace visually; a toast is never the only record of an error.
 
 import { codeCopy } from "../errors.js";
+import { formatBytes } from "../format.js";
 import type { Context } from "../input.js";
 import { loadingVisible } from "../loading.js";
 import { hiddenView, identityText, makeView, type View } from "../view.js";
@@ -34,6 +35,7 @@ export type GateState =
 export function gateView(ctx: Context): View<"PolarisKeyGate", GateState> {
   const { gate, stage } = ctx.input;
   const status = gate?.status;
+  const product = identityText(ctx).name;
   // License off: the gate never stands between the person and the app.
   if (!ctx.on("license") || status === "not-applicable" || status === "ok")
     return makeView(ctx, "PolarisKeyGate", {
@@ -45,6 +47,7 @@ export function gateView(ctx: Context): View<"PolarisKeyGate", GateState> {
     return makeView(ctx, "PolarisKeyGate", {
       state: "error",
       copy: ["gate.error.title", "common.tryAgain"],
+      args: { product },
       primary: "common.tryAgain",
       tone: "danger",
       errorSlot: "screen",
@@ -88,6 +91,7 @@ export function gateView(ctx: Context): View<"PolarisKeyGate", GateState> {
   return makeView(ctx, "PolarisKeyGate", {
     state: "error",
     copy: ["gate.error.title", "common.tryAgain"],
+    args: { product },
     primary: "common.tryAgain",
     tone: "danger",
     errorSlot: "screen",
@@ -131,14 +135,17 @@ export function bootView(ctx: Context): View<"Boot", BootState> {
       focus: null,
     });
   switch (stage.outcome) {
-    case "error":
+    case "error": {
+      const code = emit?.code;
       return makeView(ctx, "Boot", {
         state: "error",
         copy: ["gate.error.title", "boot.error.body", "common.tryAgain"],
+        args: { product, code: typeof code === "string" ? code : undefined },
         primary: "common.tryAgain",
         tone: "danger",
         errorSlot: "screen",
       });
+    }
     case "blocked":
       if (emit?.reason === "content-declined")
         return makeView(ctx, "Boot", {
@@ -148,6 +155,7 @@ export function bootView(ctx: Context): View<"Boot", BootState> {
             "boot.declined.body",
             "common.tryAgain",
           ],
+          args: { product },
           primary: "common.tryAgain",
           tone: "neutral",
         });
@@ -190,7 +198,11 @@ export function bootView(ctx: Context): View<"Boot", BootState> {
             "common.notNow",
           ],
           args: {
-            size: typeof emit.bytes === "number" ? emit.bytes : undefined,
+            product,
+            size:
+              typeof emit.bytes === "number"
+                ? formatBytes(emit.bytes, ctx.input.locale)
+                : undefined,
           },
           primary: "boot.consent.download",
         });
@@ -212,7 +224,16 @@ export function bootView(ctx: Context): View<"Boot", BootState> {
         ? ["boot.fetchingProgress", "a11y.progress"]
         : ["boot.fetching"],
       args: counted
-        ? { done: emit.done as number, total: emit.total as number }
+        ? {
+            size:
+              typeof emit.done === "number"
+                ? formatBytes(emit.done, ctx.input.locale)
+                : undefined,
+            total:
+              typeof emit.total === "number"
+                ? formatBytes(emit.total, ctx.input.locale)
+                : undefined,
+          }
         : {},
       focus: null,
     });
@@ -248,7 +269,7 @@ export function statusScreenView(
   const id = identityText(ctx);
   const args = {
     product: id.name,
-    developer: id.developer ?? undefined,
+    developer: id.developer ?? id.name,
     min: allowed.min,
     max: allowed.max,
   };
@@ -317,6 +338,7 @@ export function graceBannerView(ctx: Context): View<"GraceBanner", GraceState> {
     return makeView(ctx, "GraceBanner", {
       state: "last-day",
       copy: ["grace.lastDay", "common.reconnect"],
+      args: { product: identityText(ctx).name },
       primary: "common.reconnect",
       focus: null,
     });
@@ -328,7 +350,7 @@ export function graceBannerView(ctx: Context): View<"GraceBanner", GraceState> {
       "common.reconnect",
       "common.dismiss",
     ],
-    args: { days },
+    args: { days, date: gate.graceDate },
     primary: "common.reconnect",
     focus: null,
   });
@@ -353,7 +375,11 @@ export function toastView(ctx: Context): View<"Toast", ToastState> {
       return makeView(ctx, "Toast", {
         state: "info",
         copy: ["toast.updateAvailable", "common.dismiss", "a11y.toastTimer"],
-        args: { version: ctx.input.update?.version },
+        args: {
+          product: identityText(ctx).name,
+          version: ctx.input.update?.version,
+          time: ctx.input.toast?.closesIn,
+        },
         focus: null,
       });
     case "copied":
@@ -372,6 +398,7 @@ export function toastView(ctx: Context): View<"Toast", ToastState> {
       return makeView(ctx, "Toast", {
         state: "error",
         copy: [...codeCopy(ctx.input.error?.code), "common.dismiss"],
+        args: { product: identityText(ctx).name },
         tone: "danger",
         focus: null,
       });
@@ -380,7 +407,12 @@ export function toastView(ctx: Context): View<"Toast", ToastState> {
       return makeView(ctx, "Toast", {
         state: "with-progress",
         copy: ["updateProgress.downloading", "toast.undo"],
-        args: { fraction: ctx.input.update?.progress?.fraction },
+        args: {
+          fraction: ctx.input.update?.progress?.fraction,
+          size: ctx.input.update?.progress?.size,
+          total: ctx.input.update?.progress?.total,
+          time: ctx.input.update?.progress?.timeLeft,
+        },
         focus: null,
       });
     default:

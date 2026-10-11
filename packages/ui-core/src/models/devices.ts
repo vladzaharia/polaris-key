@@ -173,7 +173,7 @@ export function devicesView(ctx: Context): View<"Devices", DevicesState> {
     return makeView(ctx, "Devices", {
       state: "confirming",
       copy: ["devices.removeConfirm", "devices.remove", "common.cancel"],
-      args: { device: edit.device },
+      args: { device: edit.device, product: identityText(ctx).name },
       primary: "devices.remove",
     });
   const list = devices ?? [];

@@ -31,6 +31,9 @@ export interface Layout {
   /** Title keys drawn as the subhead under the h1 (an h2 at body size): a fact that heads the
    *  content, not a second title. */
   subtitles?: readonly string[];
+  /** Links that stay quiet even as the view's primary (the filled control is drawn in the
+   *  content instead: the Replace step's inline confirm). */
+  quiet?: readonly string[];
   /** Short status lines in muted meta type. */
   meta?: readonly string[];
   /** The footnote at the foot of the card. */
@@ -102,6 +105,8 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.replace.openSystem",
       "signin.done.start",
       "signin.again",
+      // The key step's submit (the key field is the SignIn form's content).
+      "activate.submit",
       "common.cancel",
     ],
     links: [
@@ -113,6 +118,8 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
     titles: ["signin.return.signedInShort"],
     meta: ["signin.provider.group", "signin.code.label"],
     content: ["part.keyField.label"],
+    // The sign-in form's Replace step confirms inline (D-80): its Replace… opener is quiet.
+    quiet: ["signin.replace.open", "signin.replace.openSystem"],
   },
   SignInHandoff: {
     kind: "screen",
@@ -208,6 +215,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.replace.openSystem",
       "signin.choice.keyInstead",
     ],
+    quiet: ["signin.replace.open", "signin.replace.openSystem"],
     titles: ["deviceLimit.title"],
     meta: ["common.loading"],
     content: [

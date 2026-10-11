@@ -123,7 +123,7 @@ void app.whenReady().then(async () => {
 import "@polaris-key/node/electron/preload";
 ```
 
-The renderer wraps the app in `<PolarisKeyProvider>` and `<LicenseGate>`:
+The renderer wraps the app in `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate>`:
 [the React quickstart](/docs/build/quickstart/react/#drop-in-screens).
 
 ## The same eight checkpoints

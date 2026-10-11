@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": ["../../../node_modules/@types"],
+    "paths": {
+      "@polaris-key/react": ["../../../packages/sdk-react/dist/index"],
+      "@polaris-key/react/*": ["../../../packages/sdk-react/dist/*/index"],
+      "react": ["../../../packages/sdk-react/node_modules/@types/react"],
+      "react/*": ["../../../packages/sdk-react/node_modules/@types/react/*"],
+      "react-dom": [
+        "../../../packages/sdk-react/node_modules/@types/react-dom"
+      ],
+      "react-dom/*": [
+        "../../../packages/sdk-react/node_modules/@types/react-dom/*"
+      ]
+    }
+  },
+  "include": ["src", "vite.repo.config.ts"]
+}

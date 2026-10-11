@@ -251,7 +251,7 @@ describe("core.local: the adapter never touches the network", () => {
       );
     }
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={a}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: a }}>
         <Probe />
       </PolarisKeyProvider>,
     );

@@ -37,7 +37,6 @@ import {
 } from "../core/adapter.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
-import type { PolarisTheme } from "../components/theme.js";
 
 export function useCtx(): PolarisContextValue {
   const ctx = useContext(PolarisContext);
@@ -57,8 +56,8 @@ export function useAdapterState(adapter: PolarisAdapter): PolarisState {
 }
 
 /** The product's service capability map (D-21) plus the two convenience predicates a UI
- *  reaches for most. Discovery when it answered; the provider's `expectServices` when it did
- *  not; never all-true. */
+ *  reaches for most. Discovery when it answered; `config.expectedServices` when it did not;
+ *  never all-true. */
 export function useCapabilities(): ServicesMap & {
   has: (slug: keyof ServicesMap) => boolean;
 } {
@@ -173,7 +172,7 @@ export interface UseLicense {
   usable: boolean;
   loading: boolean;
   /** False for a product that does not run the license service — its gate is
-   *  `not-applicable` and a `<LicenseGate>` renders children straight through (D-08). */
+   *  `not-applicable` and `<PolarisKeyGate>` renders children straight through (D-08). */
   enabled: boolean;
   /** How this install became activated (`"token"`, `"bundle"`), or `null`. */
   activation: ActivationSource | null;
@@ -397,7 +396,7 @@ export function usePolarisAuth(): UsePolarisAuth {
   );
 }
 
-/** Headless gate logic for a fully custom UI: which screen to render + the theme + actions.
+/** Headless gate logic for a fully custom UI: which screen to render + actions.
  *  `screen` is the renderable bucket; `usable` short-circuits to children. */
 export type GateScreen =
   | "loading"
@@ -415,7 +414,6 @@ export interface UseLicenseGate {
   state: PolarisState;
   gate: LicenseState;
   status: LicenseStatus;
-  theme: PolarisTheme;
   usable: boolean;
   /** The error the gate would describe: license first, then identity. */
   error: PolarisError | null;
@@ -460,7 +458,7 @@ export function screenFor(state: PolarisState): GateScreen {
 }
 
 export function useLicenseGate(): UseLicenseGate {
-  const { adapter, theme } = useCtx();
+  const { adapter } = useCtx();
   const state = useAdapterState(adapter);
   const screen = screenFor(state);
   return {
@@ -468,14 +466,8 @@ export function useLicenseGate(): UseLicenseGate {
     state,
     gate: state.gate,
     status: state.status,
-    theme,
     usable: isUsable(state.status),
     error: state.error.license ?? state.error.identity,
     retry: () => adapter.refresh({ force: true }),
   };
-}
-
-/** Access the resolved brand theme (tokens + copy + logo). */
-export function usePolarisTheme(): PolarisTheme {
-  return useCtx().theme;
 }

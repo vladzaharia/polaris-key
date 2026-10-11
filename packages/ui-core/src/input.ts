@@ -2,6 +2,13 @@
 // already returns, a shape an approved plan fixes (plans/I-04.md's LicenseChoiceView and
 // ReplaceView) or a kit-side value (the integrator's identity, the platform, the kit's events). A
 // kit adapter maps its client's state onto this one shape, and every model reads only it.
+//
+// Display facts: a few strings name a value no SDK result carries as text (a tier, a download
+// size, the date grace ends). Each is a member of the input holding display-ready text, formatted
+// for the kit's locale by whoever supplies it ("52 MB", "Dec 4, 2026"), and a model passes it into
+// its strings as it is: ui-core never guesses one, so a screen drawn without it shows the string's
+// `{name}` (copy.ts) and nothing that reads like a fact. The numbers the contract does carry (the
+// boot stage's byte counts) are formatted by the model, in `locale`.
 
 import type {
   DeviceCodePhase,
@@ -47,6 +54,9 @@ export interface PresentationMember {
 export interface BundleIdentity {
   slug: string;
   name?: string;
+  /** The app's own version as the person reads it ("2.4.1"): About and the account pane show it,
+   *  and the update prompt's "You have …" names it. */
+  version?: string;
 }
 
 export interface Platform {
@@ -92,6 +102,9 @@ export interface GateInput {
   /** True when a cached license is being re-checked. */
   cached?: boolean;
   graceDaysLeft?: number;
+  /** The date offline grace ends as the person reads it ("Dec 4, 2026"): `graceDaysLeft` says how
+   *  long, this says until when (the SDK's `graceUntil`, formatted for the kit's locale). */
+  graceDate?: string;
   /** The license's allowed versions. */
   allowed?: { min?: string; max?: string };
 }
@@ -102,6 +115,10 @@ export interface ActivationInput {
   code?: string;
   limit?: number;
   deviceCount?: number;
+  /** An `ok` result's license: its tier's name ("Pro") and its term as the person reads it
+   *  ("Lifetime", "Until Dec 4, 2026"). The key field's verdict line names both. */
+  tier?: string;
+  term?: string;
   /** PX-W8's refusal link: the page that frees a seat. */
   manageUrl?: string;
 }
@@ -195,10 +212,27 @@ export interface UpdateInput {
   /** `enums.json` outletKind. */
   outlet?: string;
   reason?: string;
+  /** The new version. */
   version?: string;
   mandatory?: boolean;
   critical?: boolean;
-  progress?: { phase: ProgressPhase; fraction?: number };
+  /** The download's size as the person reads it ("52 MB"). */
+  size?: string;
+  /** The store's name ("Microsoft Store"), for "Open …" when the outlet is a store the models
+   *  hold no name for; a name given here wins over the outlet's own. */
+  store?: string;
+  /** The terminal command that installs it ("winget upgrade Harbor.Tidewater"), where a package
+   *  manager does. */
+  command?: string;
+  progress?: {
+    phase: ProgressPhase;
+    fraction?: number;
+    /** What has downloaded and the whole, as the person reads them ("38 MB", "61 MB"). */
+    size?: string;
+    total?: string;
+    /** The time left as the person reads it ("20 seconds", "4:12"). */
+    timeLeft?: string;
+  };
 }
 
 export interface ReleaseNoteInput {
@@ -227,6 +261,9 @@ export interface UiInput {
   presentation?: PresentationMember | null;
   bundle?: BundleIdentity;
   platform?: Platform;
+  /** The BCP 47 locale the kit shows its strings in: the models format the numbers the contract
+   *  carries (the boot stage's byte counts) in it. Absent: English. */
+  locale?: string;
   /** The enabled opt-in services, closed under `requires`. Absent: all on. */
   services?: readonly string[];
   registration?: Registration;
@@ -251,6 +288,9 @@ export interface UiInput {
     verified?: boolean;
   };
   signIn?: SignInSession;
+  /** The sign-in provider the methods step's row names ("Apple", "Google", "Steam"), and the one a
+   *  failed sign-in names. Absent: "Polaris Key", the sign-in the generic row opens. */
+  provider?: string;
   deviceCode?: DeviceCodeInput;
   choices?: LicenseChoiceView;
   replaceView?: ReplaceView;
@@ -264,17 +304,23 @@ export interface UiInput {
   update?: UpdateInput;
   releaseNotes?: ReleaseNoteInput[];
   config?: ConfigRowInput[];
-  account?: { signedIn: boolean; holder?: string };
-  entitlement?: { name: string; entitled: boolean };
+  /** `holder` is the person's display name, `tier` the license's tier name ("Pro"). */
+  account?: { signedIn: boolean; holder?: string; tier?: string };
+  /** `tier` is the tier that unlocks it ("Pro"), which the paywall and the lock name. */
+  entitlement?: { name: string; entitled: boolean; tier?: string };
   offers?: { available: boolean; purchased?: boolean };
-  toast?: { kind: ToastKind };
+  /** `closesIn` is how long an auto-closing toast stays ("8 seconds"), for the screen reader. */
+  toast?: { kind: ToastKind; closesIn?: string };
   error?: { code: string };
   /** The should tier: Cloud Sync's state, and whether the release channel is locked. */
   cloudSync?: {
     state: "synced" | "syncing" | "offline" | "conflict" | "error";
     signedIn?: boolean;
+    /** When it last synced, relative ("2 min ago"). */
+    lastSynced?: string;
   };
-  channel?: { locked: boolean };
+  /** `store` is the store that fixes the channel ("App Store", "Google Play", "Steam"). */
+  channel?: { locked: boolean; store?: string };
 }
 
 /** The input with its context resolved once: every model reads these, never the raw members. */

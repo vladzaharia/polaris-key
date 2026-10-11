@@ -6,6 +6,17 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "@polaris-key/node#build": {
+      "dependsOn": [
+        "@polaris-key/catalog#build",
+        "@polaris-key/client-core#build",
+        "@polaris-key/jws#build",
+        "@polaris-key/protocol#build",
+        "@polaris-key/ui-core#build",
+        "@polaris-key/zstd-wasm#build"
+      ],
+      "outputs": ["dist/**"]
+    },
     "typecheck": {
       "dependsOn": ["^build"]
     },

@@ -616,7 +616,7 @@ export class BrowserAdapter implements PolarisAdapter {
       // The developer's mistake, said once in development; the page's users see a neutral screen.
       developerError(
         "missing-pins",
-        `${this.product}: this page is cross-origin to ${this.base} (or inside Tauri), so it signs in with a device token and verifies every document in the page. Pass trust={{ pinnedKeys }} to <PolarisKeyProvider>: the pins are in your generated polaris config (\`pkey sdk --lang react\`). Until then the kit shows its error screen.`,
+        `${this.product}: this page is cross-origin to ${this.base} (or inside Tauri), so it signs in with a device token and verifies every document in the page. Put trust: { pinnedKeys } in the config passed to <PolarisKeyProvider>: the pins are in your generated Polaris config (\`pkey sdk --lang react\`). Until then the kit shows its error screen.`,
       );
     } else if (this.authMode === "bearer" && this.pinned) {
       this.bearerStore =
@@ -1308,7 +1308,7 @@ export class BrowserAdapter implements PolarisAdapter {
   /**
    * A cookie session holds no `pkeyt_` bearer token, and `/<p>/devices` authenticates with
    * one — so remote device management is genuinely unreachable from a browser rather than
-   * merely unimplemented. `DeviceManager` renders this refusal as an explanation.
+   * merely unimplemented. `Devices` renders this refusal as an explanation.
    */
   async listDevices(): Promise<DeviceInfo[]> {
     const b = this.requireBearer(

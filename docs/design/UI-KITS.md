@@ -847,7 +847,7 @@ product's accent.
 
 | Kit                  | Set it                                                                                                                      | Restyle hooks beyond the theme                                                                                                                                                                                                                                                                                                    |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React                | `<PolarisKeyProvider theme={…}>`; `polarisKeyTheme({ … })` helper                                                           | Stable class names `pk-*` and `data-part="title"` etc.; CSS cascade layer `@layer polaris-key` so host CSS wins without `!important`; slots (`slots={{ header, footer }}`) and render props; `--pk-*` vars scoped to the provider element, **never `:root`** (RE); the same `styles.css` and `data-part` contract as the elements |
+| React                | `<PolarisKeyTheme theme={…}>` around a `/kit` component; transport is `<PolarisKeyProvider config={polarisKey}>` | Stable class names `pk-*` and `data-part="title"` etc.; CSS cascade layer `@layer polaris-key` so host CSS wins without `!important`; slots (`slots={{ header, footer }}`) and render props; `--pk-*` vars scoped to each kit root, **never `:root`** (RE); the same `styles.css` and `data-part` contract as the elements |
 | Web components       | `<pk-provider theme='…'>` or `PolarisKey.theme({…})`; `--pk-*` custom properties                                            | `::part(title)`, `::part(primary)`…; named `<slot>`s; `pk-*` DOM events; the shared `styles.css` adopted into each shadow root (`adoptedStyleSheets`)                                                                                                                                                                             |
 | Vue, Svelte, Angular | `providePolarisKey({ theme })` / `setPolarisKeyTheme` / `providePolarisKey({ theme })`                                      | Pass-through of the element parts and slots                                                                                                                                                                                                                                                                                       |
 | SwiftUI              | `.polarisKeyTheme(PolarisKeyTheme(…))` environment modifier                                                                 | `PolarisKeyStyle` protocols per component (`.activateStyle(.myStyle)`) in the manner of `ButtonStyle`; `@ViewBuilder` slots                                                                                                                                                                                                       |
@@ -1040,14 +1040,17 @@ Each snippet below is complete: imports, client construction and styles included
 the integration cost.
 
 ```tsx
-// React: web, Electron renderer, Tauri webview, Next.js client component (4 lines)
-import { PolarisKeyGate } from "@polaris-key/react";
+// React: web, Electron renderer, Tauri webview, Next.js client component
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
 import "@polaris-key/react/styles.css";
-import polarisKey from "./polaris-key.json"; // the generated config module
+import { polarisKey } from "./polaris.config";
 
-<PolarisKeyGate config={polarisKey}>
-  <App />
-</PolarisKeyGate>;
+<PolarisKeyProvider config={polarisKey}>
+  <PolarisKeyGate>
+    <App />
+  </PolarisKeyGate>
+</PolarisKeyProvider>;
 ```
 
 ```html

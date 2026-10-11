@@ -9,8 +9,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { PolarisKeyProvider } from "../src/react/Provider.js";
-import { useImportBundle } from "../src/react/hooks.js";
+import { PolarisKeyProvider, useImportBundle } from "@polaris-key/react";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import {
   emptyBridgeState,
@@ -57,7 +56,7 @@ describe("useImportBundle()", () => {
       return <span data-testid="a">{hook.activation ?? "none"}</span>;
     }
     const { getByTestId } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: adapter }}>
         <Probe />
       </PolarisKeyProvider>,
     );

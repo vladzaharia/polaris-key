@@ -1,8 +1,8 @@
 ---
 /**
  * The facts block at the top of a framework page: what the kit is, what a host installs, where
- * its baselines and sample live. The sample row is checked against the repository at build time,
- * so it says "not yet" until `examples/ui/<id>/` exists.
+ * its baselines and samples live. The sample row is checked against the repository at build time,
+ * so it says "not yet" until `examples/ui/<id>/` (or a folder the kit's `samples` names) exists.
  */
 import { DIRS } from "../../lib/baselines";
 import { repoHas } from "../../lib/repo";
@@ -16,8 +16,8 @@ interface Props {
 
 const kit = kitById(Astro.props.kit);
 const baselines = DIRS[kit.id];
-const sample = `examples/ui/${kit.id}/`;
-const hasSample = repoHas(sample);
+const wanted = kit.samples ?? [`examples/ui/${kit.id}/`];
+const samples = wanted.filter((s) => repoHas(s));
 ---
 
 <table class="pk-ui-facts">
@@ -60,11 +60,16 @@ const hasSample = repoHas(sample);
       <th scope="row">Sample</th>
       <td>
         {
-          hasSample ? (
-            <code>{sample}</code>
+          samples.length > 0 ? (
+            samples.map((s, i) => (
+              <>
+                {i > 0 && ", "}
+                <code>{s}</code>
+              </>
+            ))
           ) : (
             <span class="pk-ui-muted">
-              None yet; it goes in <code>{sample}</code>
+              None yet; it goes in <code>{wanted[0]}</code>
             </span>
           )
         }

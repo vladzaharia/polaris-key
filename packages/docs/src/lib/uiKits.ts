@@ -5,7 +5,8 @@
  *
  * One row per kit:
  *   - `id` is the framework page's slug (`/docs/build/ui/frameworks/<id>/`), the sample's folder
- *     (`examples/ui/<id>/`) and, for a kit that records baselines, the `kit` id of ui-qa's
+ *     (`examples/ui/<id>/`, unless `samples` names several) and, for a kit that records baselines,
+ *     the `kit` id of ui-qa's
  *     BASELINE_DIRS (packages/ui-qa/src/config.ts). test/ui.test.ts holds the last one to it.
  *   - `label` is the tab label every kit-tabbed block uses. Starlight syncs tabs that share a
  *     label across pages (syncKey "ui-kit"), so a reader who picks "Compose" once keeps it.
@@ -32,6 +33,8 @@ export interface UiKit {
    *  a shipped kit's status: the names it ships now are the ones its page documents. */
   status: KitStatus;
   current?: { label: string; href: string };
+  /** The sample folders, when the kit has more than one (`examples/ui/<id>/` otherwise). */
+  samples?: readonly string[];
 }
 
 export const UI_KITS: readonly UiKit[] = [
@@ -53,6 +56,7 @@ export const UI_KITS: readonly UiKit[] = [
     package: "@polaris-key/react",
     status: { ships: true },
     current: { label: "React SDK", href: "/docs/build/sdks/react/" },
+    samples: ["examples/ui/react-vite/", "examples/ui/react-next/"],
   },
   {
     id: "electron",

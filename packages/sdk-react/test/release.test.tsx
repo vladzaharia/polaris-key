@@ -9,8 +9,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { PolarisKeyProvider } from "../src/react/Provider.js";
-import { useChangelog } from "../src/release/useChangelog.js";
+import { PolarisKeyProvider, useChangelog } from "@polaris-key/react";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import { PolarisError } from "../src/core/types.js";
@@ -235,7 +234,7 @@ describe("useChangelog()", () => {
       );
     }
     const { getByTestId } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: adapter }}>
         <Probe />
       </PolarisKeyProvider>,
     );
@@ -254,7 +253,7 @@ describe("useChangelog()", () => {
       );
     }
     const { getByTestId } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: adapter }}>
         <Probe />
       </PolarisKeyProvider>,
     );

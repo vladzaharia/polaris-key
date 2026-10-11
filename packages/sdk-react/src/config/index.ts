@@ -1,6 +1,5 @@
-// @polaris-key/react/config — the Config service's UI surface: the managed-settings hook and the
-// prebuilt settings panel over it.
-
+// @polaris-key/react/config — the managed-settings hook and wire types. Render the shared
+// settings part with `Settings` from `@polaris-key/react/kit`.
 export { useManagedConfig, useConfigSetting } from "../react/hooks.js";
 export type { UseManagedConfig, UseConfigSetting } from "../react/hooks.js";
 export type {
@@ -9,12 +8,6 @@ export type {
   ConfigStorage,
   LocalConfig,
 } from "../core/localConfig.js";
-export {
-  ConfigPanel,
-  type ConfigPanelProps,
-  type ConfigPanelSlots,
-  type ConfigRow,
-} from "../components/ConfigPanel.js";
 export type { UserConfigEntry, ProductCatalog } from "../core/index.js";
 export type { ConfigSource } from "@polaris-key/client-core";
 export type { ManagedEntry, ManagementState } from "@polaris-key/protocol/core";

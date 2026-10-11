@@ -46,6 +46,21 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
 
+## Breaks for the 0.9 release notes (2026-10-11)
+
+The cutover to the kit removes these from `@polaris-key/react`, with no alias. The replacements are on `@polaris-key/react/kit`: `PolarisKeyGate` calls the SDK itself (so does `SignIn`, given the SDK's primitives), and the other parts draw an `input` and report each control. These are the rows for the changelog entry whose `replaces` builds the Upgrade to 0.9 table (docs plan §3.5, DOC-12a). A component's `*Props` and `*Slots` types go with it.
+
+- `LicenseGate` (root, `/license`) and `PolarisLogin` (root, `/identity`): use `PolarisKeyGate` inside `<PolarisKeyProvider config={polarisKey}>`.
+- `PolarisLogout` (root, `/identity`): use Sign out on `AccountAndLicense`, or `usePolarisAuth().signOut()`.
+- `DeviceManager` (root, `/license`): use `Devices`.
+- `ConfigPanel` and `ConfigRow` (root, `/config`): use `Settings`, over `useManagedConfig()` or `useConfigSetting()`.
+- `UpdatePrompt` (root, `/update`): use `UpdatePrompt` from `/kit`, and `useUpdateDecision()` for your own prompt. The `/update` subpath stays, for the hooks and the packs.
+- `openManageUrl` (root): use `withManageReturn` and `withManageKey`, then the app's own navigation (the Replace-a-device example on the React "Your own UI" page).
+- `usePolarisTheme`, `defaultTheme`, `lightTheme`, `highContrastTheme`, `polarisKeyTheme`, `mergeTheme`, `themeVars`, `baseTokens`, `neutralDarkTokens`, `neutralLightTokens`, `polarisKeyDarkTokens`, `polarisKeyLightTokens` and the types `PolarisTheme`, `PartialTheme`, `PolarisThemeTokens`, `PolarisThemeCopy`, `PolarisBranding`, `PolarisColorScheme`, `PolarisResolvedScheme`, `PoweredByLayout`: use `<PolarisKeyTheme theme={…}>` and `KitTheme`.
+- `PoweredByPolarisKey`: use the theme's `poweredBy` option (`"line"` or `"badge"`) on the kit's screens.
+- `MessageScreen`, `Button`, `Panel`, `TextField` and `useFocusRing`: use the kit's parts, or your own components.
+- `<PolarisKeyProvider>` props `theme`, `branding`, `colorScheme` and `expectServices`: the transport props (`productSlug`, `baseUrl` and the rest) move into `config={polarisKey}`, which takes `expectedServices`; the theme goes on `<PolarisKeyTheme>`.
+
 ## Approved plans (2026-10-08)
 
 These approved plans change this package. Where they differ from the text below, they win.
@@ -110,6 +125,74 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Progress (2026-10-10): first slices, and where to continue
+
+Branch `wp/UK-05-react-kit`. Done:
+
+- **Shared contract.** `@polaris-key/elements/contract` (no Lit) holds the layouts, `placeKeys`
+  (a view's primary is always the filled control, which restored Activate's device-limit fix and
+  LicenseChoice's key path), the opener list, the theme and copy resolution, the QR encoder and
+  `lightDomCss()`: the elements' sheet with every selector anchored to `.pk-root` through `:where()`
+  and all of it, tokens included, in `@layer polaris-key` (the shadow sheet's tokens moved into the
+  layer too: unlayered, they beat `native`'s surfaces). `dist/styles.css` is that light-DOM form.
+- **React kit** (`@polaris-key/react/kit`, `src/kit/`): every §4.1 component as a React component
+  over its ui-core view, drawing the elements' DOM; `<PolarisKeyTheme>` (§3.1); the stylesheet
+  adopted once per document (never a `<style>`), `@polaris-key/react/styles.css` and `fonts.css`
+  for hosts; `fill` for a screen that owns the window. Elements is a workspace devDependency only:
+  the build bundles `src/kit/contract.ts` (it is not published until UK-04 completes).
+- **`<PolarisKeyGate>`** (root export) starts itself inside `<PolarisKeyProvider>`: loading
+  without sign-in paths, the app outside any kit root, Welcome → Activate → refusal (device limit:
+  the neutral callout, Replace a device opens the validated link with `return=` and the key, key
+  retried on return) → app; the desktop code hand-off with its countdown; Try again, Reconnect,
+  Sign out; Escape backs out of a step; focus follows the drawn screen.
+- **Shared stylesheet fixes** from the Chromium renders: short landscape in two columns, actions
+  docked or sticky so the primary never leaves reach, narrow rows wrap their actions, the gate
+  fills the window.
+- **Tests:** `test/kitMatrix.test.tsx` (every component row of the eight families, plus "the
+  primary is the filled control", also added to the elements' matrix test), `test/kit.test.tsx`,
+  `test/kitGate.test.tsx`, `test/browser/kit.browser.test.tsx` (21 states × the §7.1 sizes ×
+  dark/light, five under `native`: 498 renders). Baselines: `test/visual/__screenshots__/kit.*`
+  (eight scenes, 1440 and 390, both schemes). `parity.json`: seven `ui.*` rows implemented;
+  `packages/elements/test` is a test root. New size case `polaris-key-gate` (67.0 KB budget).
+
+Continue with, in order:
+
+1. **The one sign-in form** (SIGN-IN.md §3.17, §3.18): `<SignIn presentation replace>` driven by
+   ui-core's `SignInModel` over the SDK (SignIn → hand-off or code → LicenseChoice → Replace →
+   done, morphing in place with View Transitions and the Web Animations fallback), inside the
+   gate and alone; `useSignIn()`. UK-04's `packages/elements/src/signin.ts` (on main since
+   2026-10-10) is the elements' form: port it, as `src/kit/views.tsx` ports `views.ts`, then flip
+   `ui.signin`. `SignIn/choose` drawn alone shows its title with no rows, because the rows are
+   LicenseChoice's: the form composes them. Keep React's views in step with every later change
+   to the elements' `render.ts` and `views.ts` (the matrix and browser suites catch a key that
+   goes missing, not a look that drifts; the cross-renderer diff will once UK-04 records
+   baselines).
+2. **Re-point the legacy components** onto the kit and retire the inline-style theme
+   (`components/theme.ts` neutral default): `LicenseGate`, `PolarisLogin`, `DeviceManager` →
+   `Devices` wired to `listDevices`/`renameDevice`/`deauthorizeDevice`, `UpdatePrompt` (the root
+   name collides: the kit's is on `/kit` until then), `ConfigPanel` → `Settings`, `PolarisLogout`.
+   Keep the UK-47 rules (forced-colours Highlight primary, safeLink, the refusal callout). Then
+   the DX consolidation: `PolarisKeyProvider config={polarisKey}`, `theme` the §3.1 shape (no
+   `branding`/`colorScheme` aliases), `expectServices` refused with `invalid-options`, and the
+   provider's presentation source (HA-13/14) fed to the kit with no integrator code. Re-record
+   the legacy baselines that change and look at the most-changed scenes before and after.
+3. **Theme and i18n families:** run `ui-matrix.json`'s `theme` and `i18n` families through the kit,
+   renders in the launch locales (CJK headings at 600), then flip `ui.theme` and `ui.i18n`.
+4. **Baselines for every fixture component × state** in both schemes at the §7.1 sizes. PNGs of
+   the screen states are about 250 KB at 1440 (the ambient gradient); agree the storage with the
+   lead before committing several hundred. Name them `<Component>.<state>/<size>-<scheme>.png`
+   so UK-04's land beside them for the cross-renderer diff.
+5. **Samples and docs:** `examples/ui/react-vite/` and `examples/ui/react-next/` (App Router,
+   `"use client"`, the stylesheet imported in the layout), React 19 in CI beside 18, the
+   framework page and the kit tabs in `build/ui/`, the README cut to install + one line + link.
+6. **UX review** (`pkey-ux-reviewer`, BUILT mode) against `web.html` and the fix round's `react.*`
+   renders; record it in the PR.
+
+Seen in the renders, for ui-core and the corpus (plan-mode, not changed here): `update.current`
+and `grace.deadline` print `{size}` and `{date}` because `UiInput` carries neither; Activate's key
+states, `SignIn/code` and `Paywall/not-available` carry no title key, so those screens have no h1;
+the light ambient's second gradient reads as a smudge at 1440.
 
 ## Goal
 

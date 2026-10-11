@@ -8,10 +8,12 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
 
-const { stylesCss } = await import(join(dist, "styles.js"));
+// The light-DOM form: every selector anchored to `.pk-root`, all of it in `@layer polaris-key`
+// (src/contract.ts). The elements adopt the shadow form from JS and never load this file.
+const { lightDomCss } = await import(join(dist, "contract.js"));
 writeFileSync(
   join(dist, "styles.css"),
-  `/* @polaris-key/elements: the shared kit stylesheet (generated at build from src/styles.ts). */\n${stylesCss()}`,
+  `/* @polaris-key/elements: the shared kit stylesheet (generated at build from src/styles.ts). */\n${lightDomCss()}`,
 );
 
 const require = createRequire(import.meta.url);

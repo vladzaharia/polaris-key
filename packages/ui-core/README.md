@@ -31,6 +31,7 @@ A view is plain data: the state, the catalog keys it shows, its actions, the arg
 The package exports:
 
 - **`viewOf(component, input)`**: one view model per component in [UI-KITS.md](https://github.com/vladzaharia/polaris-key/blob/main/docs/design/UI-KITS.md).
+- **Display facts**: a few strings name a value no SDK result carries as text (a tier, a download size, the date grace ends, the app's version). `UiInput` has an optional member for each, holding text its producer formatted for the kit's locale; a model passes it into the string as it is. ui-core never invents one: a screen drawn without it shows the string's `{name}`.
 - **`SignInModel`**: the sign-in form's state machine over the SDK primitives, with `presentation` and `replace` as inputs. Two ways to let go of it:
   - `dispose()` stops following the session and nothing more: no later answer is applied, and the request and any license-choice grant stay open on the server. A binding calls it when its view unmounts, so a re-mount (React's StrictMode, a Lit element moved in the DOM) can follow the same sign-in again with a new model.
   - `cancel()` ends the sign-in: it cancels the request and the grant and returns the form to its first step. A binding calls it only when the person cancels, or when the host closes the form for good.

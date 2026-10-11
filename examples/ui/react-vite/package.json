@@ -1,0 +1,28 @@
+{
+  "name": "polaris-key-example-ui-react-vite",
+  "version": "2.4.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "live": "vite --live",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "repo": "vite --config vite.repo.config.ts",
+    "repo:live": "vite --config vite.repo.config.ts --live",
+    "repo:typecheck": "tsc --noEmit -p tsconfig.repo.json"
+  },
+  "dependencies": {
+    "@polaris-key/react": "^0.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.4.0"
+  }
+}

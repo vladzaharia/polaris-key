@@ -49,7 +49,7 @@ import {
   type ConfigChange,
   type OidcSignInHandle,
   type PolarisAdapter,
-  type PolarisKeyProviderProps,
+  type PolarisKeyConfig,
   type UseConfigSetting,
   type UseLicense,
   type UseLicenseGate,
@@ -89,10 +89,10 @@ interface DevInfo {
 
 /** The module `pkey sdk --lang react --dev --write` writes, as the quickstart imports it. */
 interface GeneratedConfig {
-  polarisConfig: Required<
+  polarisKey: Required<
     Pick<
-      PolarisKeyProviderProps,
-      "productSlug" | "baseUrl" | "trust" | "expectServices"
+      PolarisKeyConfig,
+      "productSlug" | "baseUrl" | "trust" | "expectedServices"
     >
   >;
   pinnedKeys: Record<string, string>;
@@ -294,12 +294,12 @@ describe.skipIf(unset.length > 0)("the React SDK on a live pkey dev", () => {
   async function openPage(version: string): Promise<Page> {
     // A new IndexedDB is a new browser profile: the adapter mints its own device id in it.
     vi.stubGlobal("indexedDB", new IDBFactory());
-    const { polarisConfig, pinnedReleaseKeys } = generated;
+    const { polarisKey, pinnedReleaseKeys } = generated;
     const adapter = browserAdapter({
-      productSlug: polarisConfig.productSlug,
-      baseUrl: polarisConfig.baseUrl,
-      trust: polarisConfig.trust,
-      expectServices: servicesFromList(polarisConfig.expectServices),
+      productSlug: polarisKey.productSlug,
+      baseUrl: polarisKey.baseUrl,
+      trust: polarisKey.trust,
+      expectServices: servicesFromList(polarisKey.expectedServices),
       version,
       // Tidewater ships one build, a macOS zip from its direct outlet, so a page that asks for
       // updates says it is the shell running it. As a plain web page it would be told there is
@@ -324,8 +324,7 @@ describe.skipIf(unset.length > 0)("the React SDK on a live pkey dev", () => {
       {
         wrapper: ({ children }: { children: ReactNode }) => (
           <PolarisKeyProvider
-            productSlug={polarisConfig.productSlug}
-            adapter={adapter}
+            config={{ productSlug: polarisKey.productSlug, adapter }}
           >
             {children}
           </PolarisKeyProvider>
@@ -381,14 +380,14 @@ describe.skipIf(unset.length > 0)("the React SDK on a live pkey dev", () => {
     })());
 
   it("the generated config names this server, and the page's origin is one it allows", () => {
-    const { polarisConfig, pinnedKeys, pinnedReleaseKeys } = generated;
-    expect(polarisConfig.baseUrl.replace(/\/+$/, "")).toBe(base);
+    const { polarisKey, pinnedKeys, pinnedReleaseKeys } = generated;
+    expect(polarisKey.baseUrl.replace(/\/+$/, "")).toBe(base);
     expect(info.baseUrl).toBe(base);
-    expect(polarisConfig.productSlug).toBe(info.product);
-    expect(polarisConfig.trust.pinnedKeys).toEqual(pinnedKeys);
+    expect(polarisKey.productSlug).toBe(info.product);
+    expect(polarisKey.trust.pinnedKeys).toEqual(pinnedKeys);
     expect(pinnedKeys).toEqual(info.trust.pinnedKeys);
     expect(pinnedReleaseKeys).toEqual(info.releaseKeys);
-    expect([...polarisConfig.expectServices].sort()).toEqual(
+    expect([...polarisKey.expectedServices].sort()).toEqual(
       [...info.services].sort(),
     );
     // jsdom's origin is the page's: it must be one the product lists under `web.origins`.

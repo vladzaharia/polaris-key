@@ -2,7 +2,7 @@
 // https://key.plrs.im/acme/.well-known/polaris.json. Do not edit: run the command again to refresh.
 // The trust pins came from discovery; compare each fingerprint with the console before
 // you ship (pkey sdk prints them). Release keys match release.releaseKeyFingerprints.
-import type { PolarisKeyProviderProps } from "@polaris-key/react";
+import type { PolarisKeyConfig } from "@polaris-key/react";
 
 /** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
  *  the page against them; a desktop host's `@polaris-key/node` client pins the same keys. */
@@ -18,13 +18,13 @@ export const pinnedReleaseKeys = {
 /**
  * The provider's product facts and trust pins:
  *
- *   <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>…</PolarisKeyProvider>
+ *   <PolarisKeyProvider config={polarisKey}>…</PolarisKeyProvider>
  */
-export const polarisConfig = {
+export const polarisKey = {
   productSlug: "acme",
   baseUrl: "https://key.plrs.im",
   trust: { pinnedKeys },
-  expectServices: ["license", "config", "release", "update"],
-} satisfies Partial<PolarisKeyProviderProps>;
+  expectedServices: ["license", "config", "release", "update"],
+} satisfies PolarisKeyConfig;
 
-export default polarisConfig;
+export default polarisKey;

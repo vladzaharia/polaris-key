@@ -1,6 +1,5 @@
-// @polaris-key/react/update — the Update service's UI surface: the headless version-check hook,
-// wire v4's headless decision hook, and the slotted prompt built on either.
-
+// @polaris-key/react/update — the headless version-check and decision hooks. Render the shared
+// update parts from `@polaris-key/react/kit`.
 export {
   useLatestVersion,
   type UseLatestVersion,
@@ -11,11 +10,6 @@ export {
   type UseUpdateDecision,
   type UseUpdateDecisionOptions,
 } from "./useUpdateDecision.js";
-export {
-  UpdatePrompt,
-  type UpdatePromptProps,
-  type UpdatePromptSlots,
-} from "../components/UpdatePrompt.js";
 export type {
   StagedUpdate,
   UpdateCheck,
