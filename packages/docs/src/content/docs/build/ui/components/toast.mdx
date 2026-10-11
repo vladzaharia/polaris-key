@@ -7,7 +7,9 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 A one-line notice with its consequence and at most two actions. It times out after six seconds with a visible timer; errors persist until dismissed. Toasts sit at the bottom right, or full width at the bottom on phones.
 
@@ -23,13 +25,21 @@ A one-line notice with its consequence and at most two actions. It times out aft
 
 <Tabs syncKey="ui-kit">
   <TabItem label="SwiftUI">
-    **Drop-in.** The gate's toast after a sign-in that found an existing license ("Signed in as …").
+    <KitStatus kit="swiftui" />
+
+    **Drop-in.** Not drawn by `.polarisKeyGate`: a host places `ToastView` itself. The gate's sign-in form ends by saying who signed in ("Signed in as …") in its own body.
 
     **Styled part.** `ToastView(text:tone:)` on a floating glass surface.
 
     **Headless.** `KitStates.toast(_:)`: an error toast stays until dismissed.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="Toast" />
 
   </TabItem>
 </Tabs>

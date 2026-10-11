@@ -25,7 +25,7 @@ val theme = client.config("ui.theme", JsonPrimitive("dark"))
 ```
 
 `clientOptions()` configures the update client when the product declares release keys; build on
-`PolarisConfig.coreOptions()` to add a store, a transport or packs. On Android, `polaris-key-ui`
+the generated config's `coreOptions` function to add a store, a transport or packs. On Android, `polaris-key-ui`
 draws the boot shell, the gate and the update prompt over the host's `MaterialTheme`.
 
 Next: the full [Kotlin SDK reference](/docs/build/sdks/kotlin/) and the

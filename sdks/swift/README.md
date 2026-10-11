@@ -564,7 +564,7 @@ or place `PolarisPoweredByBadge` on your about or credits screen. It renders the
 less than the kit minimum (compact 232 × 88, horizontal 376 × 144, stacked 288 × 336 points).
 
 Xcode previews in `PolarisLoginView.swift` cover every gate state, native and branded, in dark and
-light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size. `KitLayoutTests`
+light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size. The KitLayoutTests suite
 hosts the gate, the device-code sign-in and offline activation at iPhone SE, 440 × 956 and iPad
 sizes in both orientations and in 480 × 520, 900 × 640 and 1440 × 900 Mac windows, at Dynamic Type
 L and AX3, native and branded, and asserts the code and the primary action are on screen without
@@ -823,7 +823,7 @@ try await update.packs.confirm()                             // this boot is hea
   delegation is `pack-revoked`, detail `delegation`, and stops running. The stamp's pins and
   holds, a revocation's replacement and embedded baselines never take the delegated path, and a
   `pinnedReleaseKeys` kid matching `pkd1-<64 hex>` is `invalid-options`. Parse delegated text only
-  with a pure JSON or CSV parser. `DelegationConformanceTests` runs every `delegationCases` and
+  with a pure JSON or CSV parser. The DelegationConformanceTests suite runs every `delegationCases` and
   `dataOnlyCases` vector through `verifyReleaseRecord(options: …delegation:)`,
   `verifyRevocation`, `recordRevoked`, `verifyFeed` and `dataOnlyRefusal`.
 - **Telemetry.** `devices/report` carries `content: {packSetId}` of the running set once a stamp
@@ -982,7 +982,7 @@ xcodebuild -scheme PolarisKeyPacks -destination 'generic/platform=iOS' build
 ```
 
 The tests read the corpus (`conformance/corpus/v2/`, `content/` included) and the HTTP transcripts
-(`conformance/transcripts/`) from the checkout through `CorpusLocator`, which finds the repository
+(`conformance/transcripts/`) from the checkout through the CorpusLocator helper, which finds the repository
 root from its own `#filePath`; nothing is copied into the test bundle, so run the suite from a
 monorepo checkout (from any working directory: CI runs `swift test --package-path sdks/swift`).
 
@@ -990,7 +990,7 @@ The corpus and the transcripts are **generated**: run `pnpm gen corpus` (or `pnp
 from the repo root after any wire change, and `pnpm gen corpus --check` (and
 `pnpm gen transcripts --check`) is the CI drift gate.
 
-**Against a live `pkey dev` (SP-41).** `PkeyDevLiveTests` runs the quickstart against a real local
+**Against a live `pkey dev` (SP-41).** The PkeyDevLiveTests suite runs the quickstart against a real local
 Polaris Key over the SDK's own `URLSessionTransport`: no replayed traffic. It covers first
 activation (`ok`, `floating`), each refusal the other five seeded keys reach (`unauthorized`,
 `device_limit`, `key_entry_limit`), a `config` change event after `pkey dev config`, device-code

@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -52,6 +53,8 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** `ContentView().polarisKeyGate(client)` or `PolarisKeyGate(client) { App() }`: it starts itself, shows `booting` until the first reload (never activation during a cached-session check) and re-renders on `client.events`.
 
     **Styled part.** `BootView`, `WelcomeView`, `ActivateView`, `SignInView`, `StatusScreenView` and `GraceBannerView` on their own; `PolarisKeyScope(model:)` puts the resolved theme, copy and icon around any of them.
@@ -59,6 +62,12 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
     **Headless.** `PolarisKeyGateModel` (`@Observable`, in `PolarisKeyUICore`): `gate`, `route`, `start()`, `refresh()`; `KitStates.gate(_:)` over `KitInputs`.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="PolarisKeyGate" />
 
   </TabItem>
 </Tabs>

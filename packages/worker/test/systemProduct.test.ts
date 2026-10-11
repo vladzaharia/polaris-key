@@ -127,6 +127,10 @@ describe("the package-feeds bootstrap (F-03)", () => {
     expect(JSON.parse(byEco.get("swift")!.ext_json)).toEqual({
       requireSigned: true,
     });
+    expect(JSON.parse(byEco.get("godot")!.ext_json)).toEqual({
+      license: "MIT",
+      minGodotVersion: "4.4",
+    });
     expect(byEco.get("oci")!.max_package_bytes).toBe(5368709120);
     expect(
       await db.all(

@@ -358,7 +358,10 @@ stubs out of the sitemap). Skipping the build and editing either output by hand 
   Python lane needs `sdks/python/.venv`); ` ```ts run ` also executes it. A code span naming an
   export (`LicenseGate`, `useLicenseGate`, `register_argparse()`) must be one the SDK exports, or
   its line must say "planned". `no-compile` opts a block out on other pages, never on a covered
-  one. Conventions: `packages/docs/test/snippets/extract.ts`.
+  one. A `swift`, `kotlin` or `gdscript` fence compiles the same way against the real SDK
+  (`nativeLanes.ts`; Swift needs macOS, Kotlin a JDK 17, GDScript a `godot` on PATH or `GODOT_BIN`;
+  a Kotlin block that needs Android says `android` in its info string). CI names the lanes it
+  requires in `PKEY_DOCS_LANES`. Conventions: `packages/docs/test/snippets/extract.ts`.
 - Console help links live in exactly two tables (`packages/admin/src/console/nav.ts` and
   `packages/admin/src/lib/docsLinks.ts`) and are gated against the built slug manifest. Renaming
   a page means updating those tables in the same change.

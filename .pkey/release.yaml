@@ -226,6 +226,7 @@ release:
       name: polaris_key
       artifacts:
         zip: { match: "polaris-key-godot-v*.zip" }
+        icon: { match: "polaris-key-godot-icon.png" }
     oci.pkey:
       kind: package
       ecosystem: oci

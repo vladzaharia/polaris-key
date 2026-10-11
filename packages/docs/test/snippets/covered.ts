@@ -7,7 +7,7 @@
 export interface Covered {
   /** Repo-relative path, or a directory prefix ending in `/`. */
   path: string;
-  language: "ts" | "python";
+  language: "ts" | "python" | "swift" | "kotlin" | "gdscript";
 }
 
 const BUILD = "packages/docs/src/content/docs/build/";
@@ -22,9 +22,20 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}ui/frameworks/terminal-python.mdx`, language: "python" },
   { path: `${BUILD}quickstart/python.md`, language: "python" },
   { path: `${BUILD}sdks/python/your-own-ui.md`, language: "python" },
+  { path: `${BUILD}quickstart/kotlin.md`, language: "kotlin" },
+  { path: `${BUILD}sdks/kotlin/your-own-ui.md`, language: "kotlin" },
+  { path: `${BUILD}ui/frameworks/compose.mdx`, language: "kotlin" },
+  { path: `${BUILD}quickstart/swift.mdx`, language: "swift" },
+  { path: `${BUILD}sdks/swift/your-own-ui.md`, language: "swift" },
+  { path: `${BUILD}ui/frameworks/swiftui.mdx`, language: "swift" },
+  { path: "sdks/swift/README.md", language: "swift" },
+  { path: "sdks/godot/README.md", language: "gdscript" },
+  { path: `${BUILD}quickstart/godot.md`, language: "gdscript" },
+  { path: `${BUILD}sdks/godot/your-own-ui.md`, language: "gdscript" },
+  { path: `${BUILD}ui/frameworks/godot.mdx`, language: "gdscript" },
 ];
 
-export function coveredLanguage(file: string): "ts" | "python" | null {
+export function coveredLanguage(file: string): Covered["language"] | null {
   const hit = COVERED_PAGES.find((c) =>
     c.path.endsWith("/") ? file.startsWith(c.path) : file === c.path,
   );

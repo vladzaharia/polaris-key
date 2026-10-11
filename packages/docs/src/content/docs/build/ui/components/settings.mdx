@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -52,6 +53,8 @@ Settings driven by the product's config catalog: typed controls, categories, sea
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** A section a host drops into its settings: values as text, locked rows with a lock and `Set by <org>`, never a dimmed switch.
 
     **Styled part.** `SettingsSection(screen:rows:)`.
@@ -59,6 +62,12 @@ Settings driven by the product's config catalog: typed controls, categories, sea
     **Headless.** `KitStates.settings(_:)`.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="Settings" />
 
   </TabItem>
 </Tabs>

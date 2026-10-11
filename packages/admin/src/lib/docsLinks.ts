@@ -68,6 +68,14 @@ export const DOCS_LINKS = {
   pythonCustomise: "/docs/build/ui/frameworks/terminal-python/#piecemeal",
   pythonOwnUi: "/docs/build/sdks/python/your-own-ui/",
   pythonQt: "/docs/build/sdks/python/your-own-ui/#qt",
+  swiftCustomise: "/docs/build/ui/frameworks/swiftui/#piecemeal",
+  swiftOwnUi: "/docs/build/sdks/swift/your-own-ui/",
+  swiftUikitAppkit: "/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit",
+  kotlinCustomise: "/docs/build/ui/frameworks/compose/#piecemeal",
+  kotlinOwnUi: "/docs/build/sdks/kotlin/your-own-ui/",
+  kotlinComposeDesktop: "/docs/build/sdks/kotlin/your-own-ui/#compose-desktop",
+  godotCustomise: "/docs/build/ui/frameworks/godot/#scenes",
+  godotOwnUi: "/docs/build/sdks/godot/your-own-ui/",
   // Landing
   docsHome: "/docs/",
 } as const;

@@ -134,9 +134,9 @@ export const DOOR_TREES: readonly DoorTree[] = [
           sdkPages("node", "Node", true),
           sdkPages("react", "React", true),
           sdkPages("python", "Python", true),
-          sdkPages("swift", "Swift"),
-          sdkPages("kotlin", "Kotlin"),
-          sdkPages("godot", "Godot"),
+          sdkPages("swift", "Swift", true),
+          sdkPages("kotlin", "Kotlin", true),
+          sdkPages("godot", "Godot", true),
           leaf("build/sdks/index", "All SDKs"),
           {
             label: "Drop-in UI kits",

@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -36,6 +37,12 @@ The product, its version and build, the open-source notices, the optional Powere
 
     [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
     `--json` contract and the fallbacks.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="About" />
 
   </TabItem>
 </Tabs>

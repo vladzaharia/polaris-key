@@ -22604,10 +22604,7 @@ var COMMANDS = [
     summary: "Run a local Polaris Key to build against",
     rows: [
       ["dev", "Run a local Polaris Key with a seeded product and test keys"],
-      [
-        "dev expire|disable|revoke|restore key",
-        "Change a test key's state"
-      ],
+      ["dev expire|disable|revoke|restore key", "Change a test key's state"],
       ["dev fill-seats key", "Fill a test key's device limit"],
       ["dev config name json", "Set a config value on the test keys"],
       ["dev release version", "Publish a signed release"],
@@ -23931,7 +23928,11 @@ async function loadDevBundle(file) {
     throw new Error(
       `pkey dev needs Node ${MIN_NODE.join(".")} or newer (its built-in SQLite); this is ${process.versions.node}.`
     );
-  const target = file ?? path3.join(path3.dirname(fileURLToPath(import.meta.url)), "dev", "server.mjs");
+  const target = file ?? path3.join(
+    path3.dirname(fileURLToPath(import.meta.url)),
+    "dev",
+    "server.mjs"
+  );
   try {
     return await import(pathToFileURL(target).href);
   } catch (e) {
@@ -24018,8 +24019,10 @@ async function serveDev(args, io, bundlePath) {
 `);
       wrote = path3.relative(io.cwd, file) || file;
     }
-    io.stdout.write(args.json ? `${JSON.stringify(info)}
-` : banner(info, wrote));
+    io.stdout.write(
+      args.json ? `${JSON.stringify(info)}
+` : banner(info, wrote)
+    );
     await (io.stop ?? new Promise(() => {
     }));
   } finally {
@@ -24080,9 +24083,7 @@ releases: ${info.releases.map((r) => `${r.version} (${r.channel})`).join(", ") |
   if (DEV_KEY_COMMANDS.includes(sub)) {
     const key = args.positional[0];
     if (!key)
-      throw new Error(
-        `Usage: pkey dev ${sub} <key>  (${DEV_KEYS.join(", ")})`
-      );
+      throw new Error(`Usage: pkey dev ${sub} <key>  (${DEV_KEYS.join(", ")})`);
     body = { key };
   } else if (sub === "config") {
     const [name, raw] = args.positional;
@@ -24119,7 +24120,8 @@ ${DEV_USAGE.join("\n")}`);
     );
   }
   const answer = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(answer.message ?? `${sub} failed (${res.status}).`);
+  if (!res.ok)
+    throw new Error(answer.message ?? `${sub} failed (${res.status}).`);
   io.stdout.write(`${answer.message ?? "done"}
 `);
   return 0;

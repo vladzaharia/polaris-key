@@ -48,6 +48,52 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections (verified against the code, 2026-10-11)
+
+- The branch is `wp/SP-45b-sdk-docs`. `sdks/godot.mdx` moves to `sdks/godot/index.mdx` like every
+  other SDK page (the slug is unchanged); `doors.test.ts` failed on the half-done move.
+- Godot README: the in-flight edit lost a closing fence and nested a snippet in a list without
+  indenting its code, so 50 lines rendered as one code block. Fixed; every `gdscript` block compiles
+  in the lane and the prose names no test-only class.
+- Godot facts corrected from the code: `expired` is the cached licence document outliving its grace
+  window (the old "Connect to renew" text does not exist; the copy is "Connect to keep playing");
+  today's Worker answers an ended licence `401 unauthorized`, so `license-expired` does not occur
+  against it; `key_entry_limit` arrives as `refused` with that code and no manage link; `sync()`
+  keeps `ok` true offline and `classify()` says `offline`, `error` or `ok`; an `unknown` outlet
+  (the editor) always gets `none` with reason `not-available`; the test seams are
+  `PKeyOptions.store` (`PKeyMemoryStore`), `now_source` and `local_only`, with no transport seam.
+- Kotlin pages (verified by file and line): the quickstart shows `0.9.3`, `PolarisKeyApp(client,
+signIn = true)`, and the own-UI gate emits `status()` before `licenseChanges` (`licenseState` is
+  null until the first publish); `licenseUser()` ships after `v0.9.3`.
+- Swift: the README is now a covered page with the shipped `.polarisKeyGate` instead of the
+  `PolarisGateModel(license:)` recipe, the real floors (`macOS(.v15)`, `iOS(.v18)`) and `from:
+"0.9.3"`. The kit is not English-only (nine locales; `ErrorCopy` is). `.polarisKeyGate` draws no
+  update prompt and no Renew; `signInWithBrowser()` never returns `.confirm`; the generated
+  `clientOptions` omits `pinnedReleaseKeys`, so `configureUpdate` is documented.
+- Added: Godot component tabs generated from the addon's `class_name`s with a drift test
+  (`godotKit.ts`, `godotKit.test.ts`); the SwiftUI tabs carry the status badge; `layerTable.test.ts`
+  checks the shipped names in the layer table of `build/ui/index.mdx`, row by row, per SDK.
+- The native lanes are new, so their failures in sources this package does not change are
+  registered once in `advisory-baseline.json` (20 blocks: `install.md`, `offline.md`,
+  `ship-builds/packages`, `first-product.md`, and the Kotlin and Kotlin UI READMEs). It may only
+  shrink from here.
+- AssetLib: `SYSTEM_FEEDS` gives the Godot feed `license: "MIT"` and `minGodotVersion: "4.4"`, and
+  the release declares the brand icon. The bootstrap never overwrites an existing feed, so an
+  operator sets License `MIT` and Oldest editor `4.4` on the platform's Godot feed in the console
+  once; the icon and description reach the listing with the next publish.
+
+## Open (blocks `in-review`)
+
+- The newcomer dry run per SDK is not recorded: it needs a local Polaris Key and SP-41's `pkey dev`
+  has not landed.
+- The full green gate has not run. Run so far: the docs unit tests, `lint:docs`, the whole snippet
+  suite on every lane (Swift, Kotlin, GDScript, TypeScript, Python), the docs build, `check:links`,
+  `gen:check`, and the worker and admin `docsLinks` tests.
+- Not done: the Compose and Godot tabs of `build/ui/theming.mdx` still say "Planned" for APIs that
+  ship; the Kotlin and Swift sections of `build/install.md` still show `0.8.33` and the
+  `polaris-key-platform-play` coordinate for Android; programme ids in the Godot README and the
+  slimming of the SDK READMEs belong to SP-37.
+
 ## Acceptance criteria
 
 - [ ] For each SDK, both lanes reach the eight checkpoints.
