@@ -15,7 +15,7 @@ and notes.
 ```text
 docs/design/mockups/
 ├─ README.md              this file
-├─ areas.json             the eleven areas, in order, with their service accent
+├─ areas.json             the twelve areas, in order, with their service accent
 ├─ kit/
 │  ├─ mockup.css          the one stylesheet (tokens, fonts, icons, components)
 │  ├─ README.md           the class vocabulary, with markup for each component
@@ -33,7 +33,7 @@ tools/mockups/
 ```
 
 Areas, in page order: products, licenses, entitlements, config, distribution, packages, commerce,
-identity, admin, sdk, portal (`areas.json` has each title, accent and blurb).
+identity, admin, sdk, portal, docs (`areas.json` has each title, accent and blurb).
 
 ## The screen contract
 

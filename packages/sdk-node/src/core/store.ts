@@ -164,6 +164,8 @@ function secureDir(dir: string, files: string[]): void {
 const DEVICE_ID_SHAPE = /^[A-Za-z0-9_-]{1,64}$/;
 
 export interface FileStoreOptions {
+  /** The name state is kept under, default the product slug (`storeNamespace`). */
+  namespace?: string;
   /** Where the hardware anchor comes from. Default: the platform probe (`rawDeviceId`). A
    *  test seam: a test that plants a fixed device id passes `() => null` ("no anchor is
    *  readable", so the stored id is used). Hosts never need it. */
@@ -185,7 +187,7 @@ export class FileStore implements Store {
   ) {
     this.anchor = options.readAnchor ?? (() => rawDeviceId());
     assertProductSlug(productSlug);
-    this.dir = join(configDir, productSlug);
+    this.dir = join(configDir, options.namespace ?? productSlug);
     this.tokenPath = join(this.dir, "token");
     this.cachePath = join(this.dir, "managed.json");
     this.devicePath = join(this.dir, "device");
@@ -268,6 +270,8 @@ async function runningInSea(): Promise<boolean> {
 
 /** Test seams for `KeyringStore`. Hosts never need them. */
 export interface KeyringStoreOptions {
+  /** The name state is kept under, default the product slug (`storeNamespace`). */
+  namespace?: string;
   /** Load the keyring module; reject when it is unavailable. Default: `import("@napi-rs/keyring")`. */
   loadKeyring?: () => Promise<KeyringModule>;
   /** Default `process.platform`. On Linux every entry is pinned to the Secret Service. */
@@ -311,13 +315,15 @@ export class KeyringStore implements Store {
     configDir: string,
     options: KeyringStoreOptions = {},
   ) {
+    const ns = options.namespace ?? productSlug;
     this.files = new FileStore(productSlug, configDir, {
       readAnchor: options.readAnchor,
+      namespace: ns,
     });
-    this.tokenPath = join(configDir, productSlug, "token");
+    this.tokenPath = join(configDir, ns, "token");
     // Rebranded with the rest of the identifier registry (§8). Pre-launch, so there is no
     // `pkey:` entry to migrate — a host that somehow has one simply re-activates.
-    this.service = `pkey:${productSlug}`;
+    this.service = `pkey:${ns}`;
     this.load = options.loadKeyring ?? loadKeyring;
     this.platform = options.platform ?? process.platform;
     this.isSea = options.isSea ?? runningInSea;

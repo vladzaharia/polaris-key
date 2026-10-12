@@ -589,7 +589,80 @@ export function useRemoveLicense(product: string) {
 }
 
 export function useDeleteAccount() {
-  return useMutation({ mutationFn: () => portalApi.deleteMe() });
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => portalApi.deleteMe(),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: portalKeys.me });
+    },
+  });
+}
+
+export function useCancelAccountDeletion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => portalApi.cancelDeletion(),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: portalKeys.me });
+    },
+  });
+}
+
+/**
+ * I-11: Download my data (`GET /api/me/export`), the whole account as one JSON file the browser
+ * saves. The person starts it with a press, never on load. It reads and changes nothing, so no
+ * view refreshes.
+ */
+export function useExportAccountData() {
+  return useMutation({ mutationFn: () => portalApi.exportAccountData() });
+}
+
+/**
+ * I-11: a product page's copy of what that one product holds for the person
+ * (`GET /api/products/<p>/export`). It is only ever the product the page is about: the account's
+ * own data and every other product stay out of it.
+ */
+export function useExportProductData(product: string) {
+  return useMutation({
+    mutationFn: () => portalApi.exportProductData(product),
+  });
+}
+
+/**
+ * I-11: Remove my data from <Product> (`DELETE /api/products/<p>/data`). `alsoRemoveLicense` is the
+ * person's explicit choice to take the product's licenses out of the library too; without it they
+ * stay. `licenseIds` are the licenses the page holds in this product, so the views that show them
+ * refresh by their own keys.
+ *
+ * Views refresh only once the Worker has answered: a refusal (`409 not_removable`, nothing written)
+ * or any other error leaves the library and the product as they were. After a success the devices
+ * have lost their binding and a license may have left, so the licenses, the library, the product,
+ * the releases and Discover (the product may be offered again) are read again.
+ */
+export function useRemoveProductData(
+  product: string,
+  licenseIds: readonly string[],
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (alsoRemoveLicense: boolean) =>
+      portalApi.removeProductData(product, alsoRemoveLicense),
+    onSuccess: (res) => {
+      for (const id of licenseIds) {
+        if (res.detachedLicenses.includes(id))
+          qc.removeQueries({ queryKey: portalKeys.license(product, id) });
+        else
+          void qc.invalidateQueries({
+            queryKey: portalKeys.license(product, id),
+          });
+      }
+      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
+      void qc.invalidateQueries({ queryKey: portalKeys.library });
+      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
+      void qc.invalidateQueries({ queryKey: portalKeys.releases });
+      void qc.invalidateQueries({ queryKey: portalKeys.discover });
+    },
+  });
 }
 
 /**
@@ -657,6 +730,37 @@ export function useRemoveMethod() {
         err instanceof PortalApiError &&
         (err.status === 409 || err.status === 403 || err.status === 404)
       )
+        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+    },
+  });
+}
+
+/** Make a verified email the primary (step-up first). The answer is the methods list. */
+export function useMakePrimary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (methodId: string) => portalApi.makePrimary(methodId),
+    onSuccess: (view) => {
+      qc.setQueryData(qk.portalMethods(), view);
+      refreshAfterMethodChange(qc);
+    },
+    onError: (err) => {
+      if (err instanceof PortalApiError && err.status === 404)
+        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+    },
+  });
+}
+
+/** Name a passkey, or clear its name (step-up first). */
+export function useRenamePasskey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; name: string | null }) =>
+      portalApi.renamePasskey(v.id, v.name),
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: portalKeys.methods }),
+    onError: (err) => {
+      if (err instanceof PortalApiError && err.status === 404)
         void qc.invalidateQueries({ queryKey: portalKeys.methods });
     },
   });

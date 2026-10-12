@@ -679,6 +679,8 @@
   "core.codes.oidc_error.message": "Sign-in didn't finish. Try again.",
   "core.codes.unavailable.title": "Sign-in unavailable",
   "core.codes.unavailable.message": "Sign-in isn't available right now. Try again in a few minutes.",
+  "core.codes.erasure_ledger_unavailable.title": "Account check unavailable",
+  "core.codes.erasure_ledger_unavailable.message": "We couldn't confirm your account's status right now. Try again in a few minutes.",
   "core.codes.identity_disabled.title": "Sign-in unavailable",
   "core.codes.identity_disabled.message": "Sign-in through this app is turned off. Your installs and licenses keep working.",
   "core.codes.auth_method_disabled.title": "Sign-in method unavailable",

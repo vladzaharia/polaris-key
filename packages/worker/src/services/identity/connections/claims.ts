@@ -71,14 +71,20 @@ export function mappedGroups(
   return out;
 }
 
-/** The mapped access-rule claims, as strings; `null` when none is present. */
+/**
+ * The mapped access-rule claims, as strings; `null` when none is present. A claim name may be
+ * `__proto__` or `constructor` (`CLAIM_NAME_RE` allows them), so the token is read for its own
+ * members only and the result has no prototype: such a name is kept as a plain key, never an
+ * inherited value or a prototype write.
+ */
 export function mappedClaims(
   payload: Record<string, unknown>,
   names: readonly string[] | undefined,
 ): Record<string, string> | null {
   if (!names?.length) return null;
-  const out: Record<string, string> = {};
+  const out = Object.create(null) as Record<string, string>;
   for (const name of names) {
+    if (!Object.prototype.hasOwnProperty.call(payload, name)) continue;
     const v = payload[name];
     if (
       typeof v === "string" ||

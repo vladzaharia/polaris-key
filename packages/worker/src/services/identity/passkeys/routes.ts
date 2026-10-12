@@ -7,6 +7,7 @@
  *   GET    /api/me/passkeys              the account's passkeys, and whether one can be added
  *   POST   /api/me/passkeys/options      a registration challenge (verified email + step-up)
  *   POST   /api/me/passkeys              the attestation: adds the passkey
+ *   PATCH  /api/me/passkeys/<id>         name or unname one (PX-W19; step-up; `{name}`)
  *   DELETE /api/me/passkeys/<id>         remove one (step-up; never the last sign-in method)
  *
  * The `/api/me/…` routes are dispatched by `portal/api.ts` after its session and CSRF checks.
@@ -54,12 +55,14 @@ import { signInMethodAddedNotice } from "../portal/notices.js";
 import { browserLabel } from "../portal/accountSessions.js";
 import { finishSignIn } from "../card/finish.js";
 import { ACCOUNT_DISABLED_MESSAGE, cardJson } from "../card/http.js";
+import { readBodyCapped } from "../card/avatars.js";
 import {
   MAX_PASSKEYS_PER_ACCOUNT,
   accountUserHandle,
   findPasskey,
   insertPasskey,
   listAccountPasskeys,
+  setPasskeyName,
   parseDetails,
   parseTransports,
   recordPasskeyUse,
@@ -281,7 +284,7 @@ export async function handlePasskeySignInVerify(
       amr: ["passkey"],
     },
     now,
-    { linkedOnly: true },
+    { env, linkedOnly: true },
   );
   if (result.status !== "signed_in" || result.account.status !== "active") {
     return cardJson(
@@ -341,6 +344,8 @@ export interface PasskeyView {
   aaguid: string | null;
   /** The browser it was added from ("Safari on iOS"), when known. */
   addedFrom: string | null;
+  /** The name its holder gave it, or null. Shown to its owner as text only (PX-W19). */
+  name: string | null;
 }
 
 type AddRefusal = "email_unverified" | "limit";
@@ -433,6 +438,8 @@ export async function handleAccountPasskeys(
     return registrationStart(req, env, db, caller, now);
   }
   if (rest.length === 1 && rest[0]) {
+    if (req.method === "PATCH")
+      return renamePasskey(req, env, db, caller, rest[0], now);
     if (req.method !== "DELETE")
       return cardJson({ error: "method_not_allowed" }, 405);
     return removePasskey(req, env, db, caller, rest[0], now);
@@ -456,6 +463,7 @@ export function passkeyView(r: PasskeyRow & { link_id: string }): PasskeyView {
         : details.deviceType === "multiDevice",
     aaguid: typeof details.aaguid === "string" ? details.aaguid : null,
     addedFrom: typeof details.addedFrom === "string" ? details.addedFrom : null,
+    name: typeof r.name === "string" && r.name !== "" ? r.name : null,
   };
 }
 
@@ -676,4 +684,84 @@ async function removePasskey(
     );
   }
   return cardJson({ error: "not_found" }, 404);
+}
+
+/** A passkey name is at most this many characters (code points). */
+export const PASSKEY_NAME_MAX = 64;
+const PATCH_MAX_BYTES = 1024;
+// C0/C1 controls, line and paragraph separators and bidirectional overrides.
+// eslint-disable-next-line no-control-regex
+const NAME_FORBIDDEN =
+  /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
+
+/**
+ * A passkey name from a request: trimmed, 1 to 64 characters, no control characters; `null` or
+ * an empty string clears it. `undefined` is a refusal (the body must say which).
+ */
+export function parsePasskeyName(
+  raw: unknown,
+): { ok: true; name: string | null } | { ok: false } {
+  if (raw === null) return { ok: true, name: null };
+  if (typeof raw !== "string") return { ok: false };
+  const name = raw.trim();
+  if (name === "") return { ok: true, name: null };
+  if (Array.from(name).length > PASSKEY_NAME_MAX || NAME_FORBIDDEN.test(name))
+    return { ok: false };
+  return { ok: true, name };
+}
+
+/** `PATCH /api/me/passkeys/<id> {name}`: a label, so audited but not mailed (PX-W19). */
+async function renamePasskey(
+  req: Request,
+  env: Env,
+  db: Db,
+  caller: PasskeyCaller,
+  credentialId: string,
+  now: number,
+): Promise<Response> {
+  if (!(await changesAllowed(env, caller, now)))
+    return cardJson({ error: "rate_limited" }, 429);
+  if (!fresh(caller, now)) return stepUpRequired();
+  const held = (await listAccountPasskeys(db, caller.accountId)).find(
+    (p) => p.credential_id === credentialId,
+  );
+  if (!held) return cardJson({ error: "not_found" }, 404);
+  const bad = () =>
+    cardJson(
+      {
+        error: "bad_request",
+        message: `Use 1 to ${PASSKEY_NAME_MAX} characters, or leave it empty to clear the name.`,
+      },
+      422,
+    );
+  const raw = await readBodyCapped(req.body, PATCH_MAX_BYTES);
+  if (raw === "too-large") return bad();
+  let body: unknown;
+  try {
+    body = JSON.parse(new TextDecoder().decode(raw));
+  } catch {
+    return bad();
+  }
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body) ||
+    !("name" in body)
+  )
+    return bad();
+  const parsed = parsePasskeyName((body as { name: unknown }).name);
+  if (!parsed.ok) return bad();
+  if (!(await setPasskeyName(db, caller.accountId, credentialId, parsed.name)))
+    return cardJson({ error: "not_found" }, 404);
+  await portalAudit(db, {
+    accountId: caller.accountId,
+    action: "account.passkey.rename",
+    targetKind: "link",
+    targetId: held.link_id,
+    // That it changed, never the name.
+    summary:
+      parsed.name === null ? "Cleared a passkey name" : "Named a passkey",
+    now,
+  });
+  return listPasskeys(db, caller);
 }

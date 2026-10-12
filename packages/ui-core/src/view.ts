@@ -55,6 +55,14 @@ export interface View<C extends ComponentName = ComponentName, S = string> {
   /** The arguments the copy's messages take (`{product}`, `{count}`, …). */
   args: Record<string, string | number>;
   /**
+   * The arguments one key takes in place of `args`, for a state whose strings give one name two
+   * values (the update prompt: its title names the new `{version}`, "You have {version}" the
+   * installed one). Absent when every key takes `args`. A key listed here takes only what its
+   * entry holds, so a value the input does not carry stays visibly missing and never reads as the
+   * other value.
+   */
+  keyArgs?: Record<string, Record<string, string | number>>;
+  /**
    * The arguments that carry a product's, a developer's or a person's own text (names, device
    * labels, tiers): a renderer draws each in an isolated run (`<bdi>` or `dir="auto"`), because
    * presentation text keeps its bidi controls (plans/HA-12.md Q5).
@@ -109,6 +117,8 @@ export interface ViewSpec<S> {
   /** Actions with no copy key of their own (`replace-in-browser`). */
   extraActions?: readonly Action[];
   args?: Record<string, string | number | undefined>;
+  /** The arguments a key takes instead of `args` (`View.keyArgs`). */
+  keyArgs?: Record<string, Record<string, string | number | undefined>>;
   primary?: string | null;
   tone?: Tone | null;
   errorSlot?: string | null;
@@ -131,13 +141,25 @@ export function makeView<C extends ComponentName, S extends string>(
   for (const [k, v] of Object.entries(spec.args ?? {}))
     if (v !== undefined) args[k] = v;
   const primary = spec.primary ?? null;
+  let keyArgs: Record<string, Record<string, string | number>> | undefined;
+  for (const [key, own] of Object.entries(spec.keyArgs ?? {})) {
+    const entry: Record<string, string | number> = {};
+    for (const [k, v] of Object.entries(own)) if (v !== undefined) entry[k] = v;
+    (keyArgs ??= {})[key] = entry;
+  }
   return {
     component,
     state: spec.state,
     copy,
     actions: actionsFor(copy, spec.extraActions),
     args,
-    isolate: Object.keys(args)
+    ...(keyArgs ? { keyArgs } : {}),
+    isolate: [
+      ...new Set([
+        ...Object.keys(args),
+        ...Object.values(keyArgs ?? {}).flatMap((own) => Object.keys(own)),
+      ]),
+    ]
       .filter((k) => ISOLATED_ARGS.has(k))
       .sort(),
     decisions: {

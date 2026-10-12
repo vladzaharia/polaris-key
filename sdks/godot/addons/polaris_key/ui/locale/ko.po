@@ -4007,6 +4007,16 @@ msgstr "로그인 사용 불가"
 msgid "core.codes.unavailable.message"
 msgstr "지금은 로그인을 사용할 수 없어요. 몇 분 후에 다시 시도하세요."
 
+#. Account check unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.title"
+msgstr "계정 확인 불가"
+
+#. We couldn't confirm your account's status right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.message"
+msgstr "지금은 계정 상태를 확인할 수 없어요. 몇 분 후에 다시 시도하세요."
+
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.identity_disabled.title"

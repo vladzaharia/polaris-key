@@ -1,6 +1,6 @@
 ---
 title: "React"
-description: "Integrate @polaris-key/react: install from the feed, generate polaris.config.ts, then take the drop-in screens, slot your own, or build on the hooks."
+description: "Integrate @polaris-key/react: install from the feed, generate polaris.config.ts, then take the drop-in screens, compose kit parts, or build on the hooks."
 sidebar:
   order: 2
 ---
@@ -31,58 +31,68 @@ Other package managers, and the age gates that delay a new version:
 pnpm exec pkey sdk --lang react --product <slug> --write
 ```
 
-It writes `polaris.config.ts`: `productSlug`, `baseUrl`, `expectServices` and `trust.pinnedKeys`. A page
+It writes `polaris.config.ts`: `productSlug`, `baseUrl`, `expectedServices` and `trust.pinnedKeys`. A page
 on another origin, or in Tauri, signs in with a device token and verifies every document in the
 page against those pins. Without them the page makes no request, developers see a console error and
 users see a neutral error screen. The file also exports `pinnedKeys` and `pinnedReleaseKeys` for the
-Electron main process, whose `@polaris-key/node` client verifies. A local Polaris Key to run
-against is planned.
+Electron main process, whose `@polaris-key/node` client verifies. [Run Polaris Key locally](/docs/build/local/) to try this without a registered product.
 
 ## Choose your path
 
-| Path                        | You write                                   | Page                                                               |
-| --------------------------- | ------------------------------------------- | ------------------------------------------------------------------ |
-| Drop-in                     | `<PolarisKeyProvider>` and `<LicenseGate>`  | [Below](#drop-in-screens)                                          |
-| Drop-in with your own slots | `slots` for the screens you replace         | [React kit](/docs/build/ui/frameworks/react/#piecemeal)            |
-| Your own UI on the hooks    | `useLicenseGate()` and the other hooks      | [Your own UI](/docs/build/sdks/react/your-own-ui/)                 |
-| Your own UI without React   | the adapter, `subscribe()` and `snapshot()` | [Without React](/docs/build/sdks/react/your-own-ui/#without-react) |
+| Path                      | You write                                                         | Page                                                               |
+| ------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Drop-in                   | `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate>` | [Below](#drop-in-screens)                                          |
+| Compose kit parts         | kit components with `input` and action handlers                   | [React kit](/docs/build/ui/frameworks/react/#piecemeal)            |
+| Your own UI on the hooks  | `useLicenseGate()` and the other hooks                            | [Your own UI](/docs/build/sdks/react/your-own-ui/)                 |
+| Your own UI without React | the adapter, `subscribe()` and `snapshot()`                       | [Without React](/docs/build/sdks/react/your-own-ui/#without-react) |
 
 ## Drop-in screens
 
 ```tsx
 import { PolarisKeyProvider } from "@polaris-key/react";
-import { LicenseGate } from "@polaris-key/react/license";
-import { polarisConfig } from "./polaris.config";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+import { polarisKey as productPolarisKey } from "./polaris.config";
+
+const polarisKey = {
+  ...productPolarisKey,
+  version: APP_VERSION,
+};
 
 export function App() {
   return (
-    <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>
-      <LicenseGate>
+    <PolarisKeyProvider config={polarisKey}>
+      <PolarisKeyGate>
         <YourApp />
-      </LicenseGate>
+      </PolarisKeyGate>
     </PolarisKeyProvider>
   );
 }
 ```
 
-`LicenseGate` renders `YourApp` only when the license is usable, and otherwise the screen for the
-state: loading, sign-in, expired, revoked, a version block or an error. The look is neutral and
-follows the page; `branding="polaris-key"` opts into the Polaris Key design system.
+`PolarisKeyGate` renders `YourApp` only when the license is usable, and otherwise the screen for the
+state: loading, sign-in, expired, revoked, a version block or an error. It receives the product
+presentation from the provider configuration.
 
-In the Electron renderer the provider takes the bridge the main process exposes
-([the Node quickstart](/docs/build/quickstart/node/#drop-in-electron)):
+In the Electron renderer, put desktop mode in the same configuration while the provider uses the
+bridge the main process exposes ([the Node quickstart](/docs/build/quickstart/node/#drop-in-electron)):
 
 ```tsx
 import { PolarisKeyProvider } from "@polaris-key/react";
-import { LicenseGate } from "@polaris-key/react/license";
-import { polarisConfig } from "./polaris.config";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+import { polarisKey as productPolarisKey } from "./polaris.config";
+
+const polarisKey = {
+  ...productPolarisKey,
+  mode: "desktop" as const,
+  version: APP_VERSION,
+};
 
 export function App() {
   return (
-    <PolarisKeyProvider productSlug={polarisConfig.productSlug} mode="desktop">
-      <LicenseGate allowGrace>
+    <PolarisKeyProvider config={polarisKey}>
+      <PolarisKeyGate>
         <YourApp />
-      </LicenseGate>
+      </PolarisKeyGate>
     </PolarisKeyProvider>
   );
 }
@@ -90,16 +100,18 @@ export function App() {
 
 ## The same eight checkpoints
 
-| #   | Checkpoint         | Drop-in                                                       | Your own UI                                            |
-| --- | ------------------ | ------------------------------------------------------------- | ------------------------------------------------------ |
-| 1   | Install            | above                                                         | above                                                  |
-| 2   | Config             | above                                                         | above                                                  |
-| 3   | First activation   | `LicenseGate`'s sign-in card takes a key                      | `usePolarisAuth().submitKey(key)`                      |
-| 4   | Each refusal       | The card keeps the key, says why, and offers Replace a device | `PolarisError.activation.kind`, `describeError(error)` |
-| 5   | Sign-in            | `PolarisLogin` inside the gate                                | `usePolarisAuth().signInWithOidc()`, then `profile`    |
-| 6   | Status and offline | `LicenseGate` (`allowGrace` keeps the app open in grace)      | `useLicenseGate()`, `useLicense()`                     |
-| 7   | An update offer    | `<UpdatePrompt source="decision" />`                          | `useUpdateDecision()`                                  |
-| 8   | Tests              | `<PolarisKeyProvider adapter={…}>`                            | `browserAdapter({ fetchImpl, … })`                     |
+| #   | Checkpoint         | Drop-in                                                         | Your own UI                                            |
+| --- | ------------------ | --------------------------------------------------------------- | ------------------------------------------------------ |
+| 1   | Install            | above                                                           | above                                                  |
+| 2   | Config             | above                                                           | above                                                  |
+| 3   | First activation   | `PolarisKeyGate`'s sign-in screen takes a key                   | `usePolarisAuth().submitKey(key)`                      |
+| 4   | Each refusal       | The screen keeps the key, says why, and offers Replace a device | `PolarisError.activation.kind`, `describeError(error)` |
+| 5   | Sign-in            | The kit sign-in screen inside the gate                          | `usePolarisAuth().signInWithOidc()`, then `profile`    |
+| 6   | Status and offline | `PolarisKeyGate` handles usable offline grace                   | `useLicenseGate()`, `useLicense()`                     |
+| 7   | An update offer    | The kit update screen                                           | `useUpdateDecision()`                                  |
+| 8   | Tests              | `<PolarisKeyProvider config={testPolarisKey}>`                  | `browserAdapter({ fetchImpl, … })`                     |
 
+For a fixture test, create `const testPolarisKey = { ...polarisKey, adapter };` and pass that same
+configuration to the provider.
 [Your own UI](/docs/build/sdks/react/your-own-ui/) gives each call with its state and its words. The
 whole API is the [React SDK reference](/docs/build/sdks/react/).

@@ -12,8 +12,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
-import { PolarisKeyProvider } from "../src/react/Provider.js";
-import { useLicense } from "../src/react/hooks.js";
+import {
+  PolarisError,
+  PolarisKeyProvider,
+  type PolarisKeyProviderProps,
+  useLicense,
+} from "@polaris-key/react";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisAdapter } from "../src/core/index.js";
@@ -27,6 +31,24 @@ import {
 
 afterEach(cleanup);
 
+describe("PolarisKeyProvider config boundary", () => {
+  it("rejects legacy expectServices with the config migration hint", () => {
+    let error: unknown;
+    try {
+      PolarisKeyProvider({
+        config: { productSlug: "acme" },
+        expectServices: ["config"],
+      } as unknown as PolarisKeyProviderProps);
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(PolarisError);
+    expect(error).toMatchObject({ code: "invalid-options" });
+    expect((error as Error).message).toBe(
+      "expectServices was removed; use config.expectedServices",
+    );
+  });
+});
 /** [name, the `channels` entitlement's value (undefined ⇒ absent), the expected list]. */
 const FIXTURES: [string, unknown, string[]][] = [
   ["absent", undefined, ["stable"]],
@@ -110,7 +132,7 @@ describe("entitledChannels() over the shared fixtures", () => {
       );
     }
     const { getByTestId } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: adapter }}>
         <Probe />
       </PolarisKeyProvider>,
     );

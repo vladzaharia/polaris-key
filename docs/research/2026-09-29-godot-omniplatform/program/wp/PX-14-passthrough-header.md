@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-33](PX-33-signin-product-cover.md)                                                                                                                                                                                                 |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                             |
 | Plan mode   | no; builds the card for the approved [`plans/I-27.md`](../plans/I-27.md) (2026-10-08) §2.2 and §2.4, [`plans/I-04.md`](../plans/I-04.md) §G, [`plans/PX-W13.md`](../plans/PX-W13.md) and [`plans/UK-02b.md`](../plans/UK-02b.md) §5 item 7                                     |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components                                                                                       |
+| Gates       | the AGENTS.md green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components                                                                                           |
 | Human input | none                                                                                                                                                                                                                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                      |
 
@@ -18,14 +18,14 @@ App sign-ins show "<App> wants you to sign in" in the card header (app and devic
 
 ## Why
 
-Passthrough is how apps use the one account ([PORTAL.md §4.7](../../../../design/PORTAL.md#47-app-sign-in-the-card-header)). The owner approved the design on 2026-10-04.
+Passthrough is how apps use the one account ([PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)). The canonical sign-in specification owns this design.
 
-Sources: [PORTAL.md](../../../../design/PORTAL.md) §4.7–§4.9 and §11.3; [SIGN-IN.md](../../../../design/SIGN-IN.md) §2.4, §3.6–§3.18, §4.16 (copy from §5.2, `signin.*`); [`plans/I-27.md`](../plans/I-27.md) §2.2 and §2.4; [`plans/I-04.md`](../plans/I-04.md) §F and §G; [`plans/PX-W13.md`](../plans/PX-W13.md); [`plans/PX-W17.md`](../plans/PX-W17.md); [`plans/UK-02b.md`](../plans/UK-02b.md) §5 item 7; the owner's 2026-10-08 direction on responsive screens.
+Sources: [SIGN-IN.md](../../../../design/SIGN-IN.md) §2.4, §3.6–§3.18, §4.16 (copy from §5.2, `signin.*`); [`plans/I-27.md`](../plans/I-27.md) §2.2 and §2.4; [`plans/I-04.md`](../plans/I-04.md) §F and §G; [`plans/PX-W13.md`](../plans/PX-W13.md); [`plans/PX-W17.md`](../plans/PX-W17.md); [`plans/UK-02b.md`](../plans/UK-02b.md) §5 item 7; the owner's 2026-10-08 direction on responsive screens.
 
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md`; `.claude/agents/pkey-ux-reviewer.md` (the quality bar).
-- [PORTAL.md](../../../../design/PORTAL.md) in full once, then §3.3, §4.7, §4.8, §4.9, §11.3 and §11.4; the matching mockups in `docs/design/portal/`.
+- [PORTAL.md](../../../../design/PORTAL.md) §7 for its parked portal boundary; [SIGN-IN.md](../../../../design/SIGN-IN.md) for the app handoff; the matching mockups in `docs/design/portal/`.
 - [SIGN-IN.md](../../../../design/SIGN-IN.md) §3.6–§3.18 and §4.16; the prototype in `docs/design/sign-in/prototype/`.
 - `wp/I-08-app-passthrough.md`, `wp/I-15-native-redirect.md`; `docs/design/BRAND.md` and `@polaris-key/brand`; the console kit in `packages/admin/src/ui/`.
 
@@ -56,7 +56,7 @@ Sources: [PORTAL.md](../../../../design/PORTAL.md) §4.7–§4.9 and §11.3; [SI
 - Consent is shown on the first sign-in to each app and whenever what it gets changes, for every app (owner decision Q-7).
 - New copy uses the owner's licence vocabulary: the tier pill and "{used} of {limit} devices" on every row; no "Account-wide" label.
 - Accessibility (SIGN-IN.md §3.14): full and blocked rows are not radios, Replace stays in Tab order, focus moves to each step's h1.
-- **Dependency ids.** PORTAL.md §10.3 and §11 cite the first revision of phase I; the graph maps them onto the re-cut S-16 ids (README §8, phase PX).
+- **Dependency ids.** The retired PORTAL work-package table cited the first revision of phase I; the graph maps them onto the re-cut S-16 ids (README §8, phase PX).
 
 ## Screen acceptance (brand transition, 2026-10-09)
 
@@ -126,7 +126,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
 - [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
 - [ ] `pkey-ux-reviewer` passes the built card in a real browser, both themes.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

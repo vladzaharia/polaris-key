@@ -1,0 +1,71 @@
+---
+title: "Use a passkey"
+description: "Add, use and remove a passkey."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-10-11"
+sidebar:
+  order: 3
+---
+
+import HelpMessage from "../../../components/docs/HelpMessage.astro";
+
+A passkey is a sign-in saved on your device and unlocked the way you unlock the device, such as
+with your face or your PIN. In Polaris Key, you use a passkey to confirm it's you before you add
+or remove a sign-in method. A passkey doesn't replace the email code on the sign-in page, so keep
+an email address on your account.
+
+## Before you start
+
+You need a verified email address on your account, a browser that can make passkeys, and a
+sign-in from the last 5 minutes. A passkey made here works only with Polaris Key.
+
+## Add a passkey
+
+1. Open the account menu and select **Sign-in methods**.
+2. Under **Passkeys**, select **Add a passkey**.
+3. If you see **Confirm it's you first**, confirm it's you.
+4. Select **Add a passkey** again when the page says **Thanks, that's you. Now add your passkey.**
+5. Follow your device's prompt to save the passkey.
+
+If **Add a passkey** is unavailable, the page says why: add an email first, you already have 20
+passkeys, or this browser can't make passkeys.
+
+## Check it worked
+
+The passkey appears under **Passkeys**, named for where it was saved, such as **iCloud
+Keychain**. Polaris Key emails every verified address on your account. See
+[A sign-in method was added](/docs/help/emails/#sign-in-method-added).
+
+## Use your passkey
+
+When Polaris Key asks you to **Confirm it's you first**, select the button that starts with **Use
+your passkey to**. Then unlock the passkey. Your browser offers only passkeys saved for this
+account. If your passkey doesn't work, select **Use an email code instead**, then the button that
+starts with **Email a code to**.
+
+## Remove a passkey
+
+1. Open **Sign-in methods** and find the passkey under **Passkeys**.
+2. Select **Remove** next to it.
+3. If you see **Confirm it's you first**, confirm it's you. A passkey or an emailed code removes the
+   passkey at once.
+4. If you don't see that prompt, or after **Sign in again with**, select the button that starts with
+   **Remove** and names the passkey.
+
+To stop, select **Keep it**. Removing a passkey doesn't delete it from your device. Delete it
+there too.
+
+The message for a last sign-in method that can't be removed is:
+
+<HelpMessage id="last_link" />
+
+In your account the last method shows **Only method**, and its **Remove** or **Disconnect** button
+stays unavailable. For a passkey the page says **This is your only way to sign in. Connect another
+one first, then you can remove this passkey.** Add another sign-in method first, such as an email
+address. For your only email address the page says **This is your account's only email address.
+Add another one first, then you can remove it.**
+
+## Still need help?
+
+If a passkey still doesn't work, see [Get help with an app](/docs/help/contact/).

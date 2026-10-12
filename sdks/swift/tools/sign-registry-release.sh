@@ -75,7 +75,9 @@ if [ "$i" -eq 0 ]; then
   exit 1
 fi
 
-cd "$package_dir"
+stage="$keydir/source"
+"$here/stage-registry-source.sh" "$stage"
+cd "$stage"
 swift package-registry publish "$identity" "$version" \
   --url "$feed_url" \
   --dry-run \
@@ -92,5 +94,6 @@ if [ "$zip_count" != 1 ] || [ "$sig_count" != 1 ] || [ ! -f "$scratch/Package.sw
   ls -la "$scratch" >&2
   exit 1
 fi
+"$here/check-registry-archive.sh" "$scratch/$identity-$version.zip"
 echo "Signed $identity $version into $scratch:"
 (cd "$scratch" && find . -maxdepth 1 -type f | sort)

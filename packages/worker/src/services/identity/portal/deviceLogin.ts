@@ -50,6 +50,7 @@ import {
   PLATFORM_LABELS,
   detectPlatform,
 } from "../../../core/platformDetect.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { qrSvg } from "../../../core/qr.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import { hashKey } from "../../../platform/crypto.js";
@@ -458,6 +459,17 @@ export async function handleDeviceLoginPoll(
       interval: DEVICE_LOGIN_POLL_INTERVAL_SECONDS,
     });
   }
+  // I-11: an approval names the account that gave it, and a D1 restore can bring an erased account
+  // back as `active`. The ledger is asked BEFORE the record is taken, so a ledger that cannot be
+  // read answers 503 and burns no approval: the poll that follows tries again.
+  const approver =
+    record.status === "approved"
+      ? await erasureVerdict(env, now, record.accountId)
+      : "clear";
+  if (approver === "unavailable")
+    return err(503, "erasure_ledger_unavailable", "try again");
+  if (approver === "erased")
+    return err(403, "account_disabled", "this account cannot sign in");
   // A decision: take the record (at most one poll ever gets it) and answer it.
   const taken = parseRecord(await consumeArtefact(env, ref));
   if (!taken || taken.status !== record.status) return expired();
@@ -469,6 +481,14 @@ export async function handleDeviceLoginPoll(
     : null;
   if (!account || account.status !== "active")
     return err(403, "account_disabled", "this account cannot sign in");
+  // After a merge the approver's account resolves to its survivor: that is the one signed in.
+  if (account.id !== taken.accountId) {
+    const survivor = await erasureVerdict(env, now, account.id);
+    if (survivor === "unavailable")
+      return err(503, "erasure_ledger_unavailable", "try again");
+    if (survivor === "erased")
+      return err(403, "account_disabled", "this account cannot sign in");
+  }
   await syncAccountLicenseLinks(db, account.id, now);
   // One account session like every other sign-in (I-07), carrying the approver's sign-in time.
   const { cookie: sessionCookie } = await startAccountSession(

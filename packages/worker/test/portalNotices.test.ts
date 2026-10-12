@@ -37,6 +37,8 @@ import {
 import {
   NOTICE_VALUE_MAX,
   accountDeletedNotice,
+  accountDeletionCancelledNotice,
+  accountDeletionScheduledNotice,
   appLink,
   deviceRemovedNotice,
   displayValue,
@@ -89,6 +91,14 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
     signInMethodAddedNotice({ method: "Steam", origin: ORIGIN }),
   methodRemoved: () =>
     signInMethodRemovedNotice({ method: "Steam", origin: ORIGIN }),
+  accountDeletionScheduled: () =>
+    accountDeletionScheduledNotice({
+      origin: ORIGIN,
+      dueAt: NOW + 14 * 24 * 60 * 60,
+    }),
+  accountDeletionCancelled: () =>
+    accountDeletionCancelledNotice({ origin: ORIGIN }),
+  // Retained though no flow sends it today: the hard erasure's own template keeps its copy pinned.
   accountDeleted: () => accountDeletedNotice({ origin: ORIGIN }),
   // LX-30: the relink tool's holder moves. The away side is a security notice when the licence
   // was in an account, and a plain one to a waiting licence's address (it has no account).
@@ -124,14 +134,16 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
     }),
 };
 
-const SECURITY = new Set([
-  "deviceRemoved",
-  "newDeviceSignIn",
-  "methodAdded",
-  "methodRemoved",
-  "madeFloating",
-  "reassignedAway",
-]);
+const SECURITY: Record<string, true> = {
+  deviceRemoved: true,
+  newDeviceSignIn: true,
+  methodAdded: true,
+  methodRemoved: true,
+  madeFloating: true,
+  reassignedAway: true,
+  accountDeletionScheduled: true,
+  accountDeletionCancelled: true,
+};
 
 describe("notice templates: copy", () => {
   for (const [name, build] of Object.entries(TEMPLATES)) {
@@ -184,7 +196,7 @@ describe("notice templates: rules", () => {
 
     it(`${name}: "Wasn't you?" only on security notices`, () => {
       const m = build();
-      const secure = SECURITY.has(name);
+      const secure = name in SECURITY;
       expect(m.text.includes("Wasn't you? Secure your account")).toBe(secure);
       expect(m.html.includes("Wasn&#x27;t you?")).toBe(secure);
       if (secure) {
@@ -210,6 +222,12 @@ describe("notice templates: rules", () => {
     );
     expect(urls(TEMPLATES.newDeviceSignIn!())[0]).toBe(
       `${ORIGIN}/#/account/sessions`,
+    );
+    expect(urls(TEMPLATES.accountDeletionScheduled!())[0]).toBe(
+      `${ORIGIN}/#/account/data`,
+    );
+    expect(urls(TEMPLATES.accountDeletionCancelled!())[0]).toBe(
+      `${ORIGIN}/#/account/data`,
     );
     expect(urls(TEMPLATES.accountDeleted!())).toEqual([]);
     for (const build of Object.values(TEMPLATES)) {
@@ -483,7 +501,7 @@ describe("security notices reach every verified address", () => {
     for (const m of sent) expect(m.text).not.toContain(key);
   });
 
-  it("account deletion: every verified address, and no 'portal' in the copy", async () => {
+  it("account deletion scheduling: every verified address, and no 'portal' in the copy", async () => {
     const db = makeTestDb();
     const { env, sent } = portalEnv();
     const s = await session(env, db);
@@ -500,7 +518,9 @@ describe("security notices reach every verified address", () => {
       "ada.work@example.com",
       "ada@example.com",
     ]);
-    expect(sent[0]!.subject).toBe("Your Polaris Key account has been deleted");
+    expect(sent[0]!.subject).toBe(
+      "Your Polaris Key account is scheduled for deletion",
+    );
     expect(`${sent[0]!.subject}${sent[0]!.text}`).not.toMatch(/portal/i);
   });
 

@@ -13,7 +13,12 @@ import { describe, expect, it } from "vitest";
 const BUDGET = 600;
 const SECTIONS = join(import.meta.dirname, "../src/console/sections");
 
-/** Over-budget files (relative to `src/console/`) and the line count each may not exceed. */
+/**
+ * Over-budget files (relative to `src/console/`) and the line count each may not exceed. Five
+ * ceilings (UserRecord, PackageRecord, PackRecord, ReleaseRecord, ListingPage) were raised by the
+ * `pk-vt-tabpanel` wrapper around each tab panel, merged from the UI-kit branches; split those
+ * pages when next touched.
+ */
 const OVER_BUDGET: Record<string, number> = {
   "sections/config/components/CatalogEntryForm.tsx": 1004,
   "sections/config/pages/CatalogEditorPage.tsx": 953,
@@ -23,9 +28,8 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/core/pages/KeysCi.tsx": 714,
   "sections/core/pages/Overview.tsx": 1371,
   "sections/core/pages/Presentation.tsx": 814,
-  "sections/core/pages/Services.tsx": 775,
-  "sections/core/pages/Settings.tsx": 731,
-  "sections/core/pages/UserRecord.tsx": 670,
+  "sections/core/pages/Settings.tsx": 671,
+  "sections/core/pages/UserRecord.tsx": 686,
   "sections/distribution/components/RolloutDialogs.tsx": 847,
   "sections/distribution/components/StoreControls.tsx": 933,
   "sections/distribution/pages/AppStorePage.tsx": 1835,
@@ -35,7 +39,7 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/distribution/pages/MatrixPage.tsx": 732,
   "sections/distribution/pages/OutletsPage.tsx": 1123,
   "sections/feeds/pages/FeedSettings.tsx": 1083,
-  "sections/feeds/pages/PackageRecord.tsx": 604,
+  "sections/feeds/pages/PackageRecord.tsx": 606,
   "sections/feeds/pages/RegistryTokens.tsx": 889,
   "sections/global/pages/ProductNew.tsx": 749,
   "sections/license/components/CreateLicenseDialog.tsx": 718,
@@ -47,11 +51,11 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/platform/pages/platformStores.tsx": 1790,
   "sections/release/components/PolicyDialog.tsx": 655,
   "sections/release/pages/CompatibilityPage.tsx": 753,
-  "sections/release/pages/PackRecord.tsx": 753,
-  "sections/release/pages/ReleaseRecord.tsx": 1240,
+  "sections/release/pages/PackRecord.tsx": 755,
+  "sections/release/pages/ReleaseRecord.tsx": 1244,
   "sections/release/pages/SimulatorPage.tsx": 766,
   "sections/storefronts/components/PolarisKeyPanel.tsx": 965,
-  "sections/storefronts/pages/ListingPage.tsx": 693,
+  "sections/storefronts/pages/ListingPage.tsx": 695,
   "sections/storefronts/pages/StorefrontsPage.tsx": 713,
   "sections/update/pages/UpdateChannelsPage.tsx": 631,
 };

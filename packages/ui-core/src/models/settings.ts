@@ -49,7 +49,7 @@ export function accountView(
         update && "account.updates",
         "common.signOut",
       ],
-      args,
+      args: { ...args, tier: account?.tier },
     });
   return makeView(ctx, "AccountAndLicense", {
     state: "signed-in",
@@ -70,7 +70,12 @@ export function accountView(
       "common.signOut",
       ctx.input.integrator?.poweredBy !== undefined && "part.poweredBy",
     ],
-    args,
+    args: {
+      ...args,
+      name: account.holder,
+      tier: account.tier,
+      version: ctx.input.bundle?.version,
+    },
   });
 }
 
@@ -203,7 +208,10 @@ function storePurchase(ctx: Context): boolean {
 export function paywallView(ctx: Context): View<"Paywall", PaywallState> {
   if (!ctx.on("license")) return hiddenView(ctx, "Paywall");
   const offers = ctx.input.offers;
-  const args = { product: identityText(ctx).name };
+  const args = {
+    product: identityText(ctx).name,
+    tier: ctx.input.entitlement?.tier,
+  };
   if (ctx.input.loading)
     return makeView(ctx, "Paywall", {
       state: "loading",
@@ -274,6 +282,7 @@ export function entitlementGateView(
   return makeView(ctx, "EntitlementGate", {
     state: "not-entitled",
     copy: ["entitlement.locked", license && "entitlement.unlock"],
+    args: { tier: ctx.input.entitlement?.tier },
     primary: license ? "entitlement.unlock" : null,
     focus: null,
   });
@@ -302,6 +311,7 @@ export function cloudSyncStatusView(
       `cloudSync.${sync.state}`,
       error && sync.signedIn === false && "cloudSync.signIn",
     ],
+    args: { time: sync.lastSynced },
     primary: error && sync.signedIn === false ? "cloudSync.signIn" : null,
     tone: error ? "danger" : null,
     focus: null,
@@ -320,7 +330,7 @@ export function aboutView(ctx: Context): View<"About", "default"> {
       "about.copyDiagnostics",
       ctx.input.integrator?.poweredBy !== undefined && "part.poweredBy",
     ],
-    args: { product: id.name },
+    args: { product: id.name, version: ctx.input.bundle?.version },
   });
 }
 
@@ -333,6 +343,7 @@ export function channelPickerView(
     ? makeView(ctx, "ChannelPicker", {
         state: "locked",
         copy: ["channel.locked", "a11y.locked"],
+        args: { store: ctx.input.channel?.store },
       })
     : makeView(ctx, "ChannelPicker", {
         state: "default",

@@ -679,6 +679,8 @@
   "core.codes.oidc_error.message": "O acesso não foi concluído. Tente novamente.",
   "core.codes.unavailable.title": "Acesso indisponível",
   "core.codes.unavailable.message": "O acesso não está disponível agora. Tente novamente em alguns minutos.",
+  "core.codes.erasure_ledger_unavailable.title": "Verificação da conta indisponível",
+  "core.codes.erasure_ledger_unavailable.message": "Não foi possível confirmar a situação da sua conta agora. Tente novamente em alguns minutos.",
   "core.codes.identity_disabled.title": "Acesso indisponível",
   "core.codes.identity_disabled.message": "O acesso por este app está desativado. Suas instalações e licenças continuam funcionando.",
   "core.codes.auth_method_disabled.title": "Método de acesso indisponível",

@@ -7,7 +7,9 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 Renders its children only while an entitlement holds; otherwise a slot of the host's choosing or the paywall. It renders nothing of its own while the entitlement is loading.
 
@@ -23,6 +25,8 @@ Renders its children only while an entitlement holds; otherwise a slot of the ho
 
 <Tabs syncKey="ui-kit">
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** `EntitlementGate(screen:content:locked:)` around a feature.
 
     **Styled part.** The `locked` slot.
@@ -30,6 +34,12 @@ Renders its children only while an entitlement holds; otherwise a slot of the ho
     **Headless.** `KitStates.entitlementGate(_:)`: only the entitlement decides; a theme or style never unlocks.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="EntitlementGate" />
 
   </TabItem>
 </Tabs>

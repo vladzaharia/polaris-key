@@ -1,16 +1,16 @@
 # PX-15 After sign-in: add a method, link accounts, approve a device
 
-| Field       | Value                                                                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W12](PX-W12-sign-in-methods-api.md), [PX-W14](PX-W14-approve-device.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md)                                |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                   |
-| Role        | `pkey-implementer`                                                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                                                       |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
-| Human input | none                                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                           |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                               |
+| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W12](PX-W12-sign-in-methods-api.md), [PX-W14](PX-W14-approve-device.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md)                            |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                               |
+| Role        | `pkey-implementer`                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                   |
+| Gates       | the AGENTS.md green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
+| Human input | none                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                            |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -26,7 +26,7 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 Checked against `main` at `148439c4f`.
 
 - **Link an existing account under `license_owned`** ([PX-17](PX-17-activate-confirm.md)). PX-17 left
-  PORTAL.md §4.19's **Link an existing account** action, and its notice "If that account is yours
+  SIGN-IN.md's **Link an existing account** action, and its notice "If that account is yours
   too, sign in to it and join the two.", out of the Activate dialog's `license_owned` refusal,
   because `#/account/link` does not exist (the router's account sections are `profile`, `methods`,
   `products`, `sessions`, `appearance` and `data`). When this package adds `#/account/link`
@@ -48,13 +48,13 @@ After sign-in the person may be nudged to add another method, can link an existi
 
 ## Why
 
-Recovery and multi-device sign-in ([PORTAL.md §4.10](../../../../design/PORTAL.md#410-add-another-way-to-sign-in-nudge), [PORTAL.md §4.11](../../../../design/PORTAL.md#411-link-an-existing-account), [PORTAL.md §4.23](../../../../design/PORTAL.md#423-sign-in-with-another-device), [PORTAL.md §4.24](../../../../design/PORTAL.md#424-approve-a-new-device)). PORTAL.md sizes this M (2–4 agent-days); the owner approved the design on 2026-10-04.
+Recovery and multi-device sign-in ([PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)). The package brief is the scoped delivery record.
 
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md`.
-- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §11.3](../../../../design/PORTAL.md#113-phase-b-features-on-the-new-api-s-16-and-s-17) (this package's row) and [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order).
-- [PORTAL.md §4.10](../../../../design/PORTAL.md#410-add-another-way-to-sign-in-nudge), [PORTAL.md §4.11](../../../../design/PORTAL.md#411-link-an-existing-account), [PORTAL.md §4.23](../../../../design/PORTAL.md#423-sign-in-with-another-device), [PORTAL.md §4.24](../../../../design/PORTAL.md#424-approve-a-new-device)
+- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work) (this package's row) and [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work).
+- [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)
 - `docs/design/BRAND.md` and `@polaris-key/brand`; the console kit in `packages/admin/src/ui/`.
 
 ## Scope
@@ -65,7 +65,7 @@ Recovery and multi-device sign-in ([PORTAL.md §4.10](../../../../design/PORTAL.
 
 **Out** (and where it belongs instead):
 
-- Anything not in PORTAL.md's row for this package (→ the PX package that owns it, per §11).
+- Anything outside this brief belongs to its owning work package in the program graph.
 
 ## Design notes
 
@@ -120,7 +120,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
 - [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
 - [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

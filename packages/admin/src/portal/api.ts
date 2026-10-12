@@ -4,6 +4,8 @@ export interface PortalAccount {
   id: string;
   name: string;
   email: string;
+  /** A soft account deletion, until its 14-day due time; absent on a Worker before I-11. */
+  deletion?: { requestedAt: number; dueAt: number } | null;
   /**
    * The picture in use (PX-W16): a same-origin `/media/avatar/<asset>` URL (256 px; `-96` names
    * the small one), or null for initials. Absent on an older Worker, which means initials.
@@ -19,6 +21,42 @@ export interface PortalMe {
 /** The sign-in providers the login card can show (PORTAL.md §4.1), in display order. */
 export type PortalProvider = "apple" | "google" | "steam";
 
+/** A sign-in connection the card can offer (I-30): its id names `/login/sso/<id>`. */
+export interface PortalConnection {
+  id: string;
+  label: string;
+}
+
+/**
+ * I-30: where an address's domain routes (identifier-first routing). The email start answers it
+ * for a DNS-verified domain of an active connection, and an enforced domain's refusals carry it.
+ */
+export interface PortalSsoNext {
+  kind: "sso";
+  connection: PortalConnection;
+  /** The domain gets no email code or sign-in link: the connection is the only way in. */
+  enforced: boolean;
+}
+
+const CONNECTION_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** `x` as a `next: {kind: "sso"}` member, or `undefined` when it is anything else. */
+export function readSsoNext(x: unknown): PortalSsoNext | undefined {
+  if (typeof x !== "object" || x === null) return undefined;
+  const o = x as { kind?: unknown; connection?: unknown; enforced?: unknown };
+  if (o.kind !== "sso" || typeof o.connection !== "object" || !o.connection)
+    return undefined;
+  const c = o.connection as { id?: unknown; label?: unknown };
+  if (typeof c.id !== "string" || !CONNECTION_ID_RE.test(c.id))
+    return undefined;
+  if (typeof c.label !== "string" || !c.label.trim()) return undefined;
+  return {
+    kind: "sso",
+    connection: { id: c.id, label: c.label.trim() },
+    enforced: o.enforced === true,
+  };
+}
+
 export interface PortalCapabilities {
   auth: {
     oidc: boolean;
@@ -33,6 +71,11 @@ export interface PortalCapabilities {
      * provider row renders only when the list is present and non-empty.
      */
     providers?: PortalProvider[];
+    /**
+     * I-30: the platform connections for customers besides the seeded one (that one is `oidc`),
+     * each a "Continue with <label>" button to `/login/sso/<id>`. Absent on an older Worker.
+     */
+    connections?: PortalConnection[];
   };
   /**
    * The product named by `?product=`, for the login card's context header (G1/G28). Not sent by
@@ -275,6 +318,8 @@ export interface PortalProduct extends PortalPresentation {
   product: string;
   /** `entry`: an open product's library entry (PS-04), with no licences. */
   kind?: "license" | "entry";
+  /** The person's product-specific support code, created only on their request. */
+  supportCode?: string | null;
   /** Each service's own toggle (e.g. `identity`); a section shows only for a service that is on. */
   services: Record<string, boolean>;
   status: PortalStatus;
@@ -832,6 +877,8 @@ export interface PortalMethodEmail {
   methodId: string;
   email: string;
   primary: boolean;
+  /** Products this address brought in (PX-W19); absent on an older Worker. */
+  productCount?: number;
   connectedAt: number;
   lastUsedAt: number | null;
   canRemove: boolean;
@@ -852,6 +899,8 @@ export interface PortalPasskey {
   aaguid: string | null;
   /** The browser it was added from ("Safari on macOS"). */
   addedFrom: string | null;
+  /** The name its holder gave it (PX-W19), or null; absent on an older Worker. */
+  name?: string | null;
   canRemove?: boolean;
   reason?: PortalRemoveRefusal | null;
 }
@@ -923,6 +972,8 @@ export interface PortalEmailSent {
   codeLength?: number;
   /** Seconds before "Send a new code" is accepted (the card's countdown). */
   resendIn?: number;
+  /** I-30: the address's domain routes to a connection; nothing was sent. */
+  next?: PortalSsoNext;
 }
 
 export class PortalApiError extends Error {
@@ -935,6 +986,8 @@ export class PortalApiError extends Error {
    * `too_large`, `unsupported_type` …). Copy is chosen from it, never from `message`.
    */
   reason?: string;
+  /** I-30: an enforced domain's refusal names the connection to use instead. */
+  next?: PortalSsoNext;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -954,10 +1007,17 @@ export function setPortalCsrf(token: string): void {
 /** This tab started an email sign-in that has not finished yet (I-07). */
 let signInPending = false;
 
-async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+/**
+ * One request to the Worker, answered or refused as a {@link PortalApiError}. `withCsrf` sends
+ * the portal binder for every change and for a personal-data download.
+ */
+async function send(
+  path: string,
+  init: RequestInit,
+  withCsrf: boolean,
+): Promise<Response> {
   const headers = new Headers(init.headers);
-  const mutating = init.method != null && init.method !== "GET";
-  if (mutating) {
+  if (withCsrf) {
     headers.set(CSRF_HEADER, csrf);
     // JSON unless the caller sent bytes with their own type (a picture upload).
     if (init.body && !headers.has("Content-Type"))
@@ -980,6 +1040,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let triesLeft: number | undefined;
     let retryAfter: number | undefined;
     let reason: string | undefined;
+    let next: PortalSsoNext | undefined;
     try {
       const body = (await res.json()) as {
         error?: string;
@@ -987,12 +1048,14 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
         triesLeft?: unknown;
         retryAfter?: unknown;
         reason?: unknown;
+        next?: unknown;
       };
       code = body.error;
       message = body.message;
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
       if (typeof body.reason === "string") reason = body.reason;
+      next = readSsoNext(body.next);
     } catch {
       // non-JSON response
     }
@@ -1001,10 +1064,37 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (triesLeft !== undefined) error.triesLeft = triesLeft;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (reason !== undefined) error.reason = reason;
+    if (next) error.next = next;
     throw error;
   }
+  return res;
+}
+
+async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await send(
+    path,
+    init,
+    init.method != null && init.method !== "GET",
+  );
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
+}
+
+function saveDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function download(path: string, filename: string): Promise<void> {
+  const res = await send(path, {}, true);
+  saveDownload(await res.blob(), filename);
 }
 
 const enc = encodeURIComponent;
@@ -1018,9 +1108,11 @@ export const portalApi = {
     ),
   me: () => call<PortalMe>("/api/me"),
   deleteMe: () =>
-    call<{ ok: true; deleted: string; erasing?: true }>("/api/me", {
+    call<{ ok: true; scheduled: true; deletionDueAt: number }>("/api/me", {
       method: "DELETE",
     }),
+  cancelDeletion: () =>
+    call<{ ok: true }>("/api/me/deletion/cancel", { method: "POST" }),
   /** Account → Profile (PX-W16): the profile, its sources and what each method supplied. */
   profile: () => call<{ profile: PortalProfile }>("/api/me/profile"),
   /** An explicit choice (a typed or picked name; Initials, a method's picture or an upload). */
@@ -1046,12 +1138,16 @@ export const portalApi = {
    * I-07's identifier-first email start: one email with a 6-digit code and a sign-in link
    * (SIGN-IN.md §3.4). `/api/magic/start` is the older alias of the same route.
    */
-  startEmailSignIn: async (email: string) => {
+  startEmailSignIn: async (email: string): Promise<PortalEmailSent> => {
     const out = await call<PortalEmailSent>("/api/signin/email/start", {
       method: "POST",
       // Never the carried license key (carriedKey.ts).
       body: JSON.stringify({ email, returnTo: returnUrl() }),
     });
+    // I-30: a routed start sent nothing, so this tab has no code to wait for yet.
+    const next = readSsoNext(out?.next);
+    if (next) return { ...out, next };
+    if (out && "next" in out) delete out.next;
     signInPending = true;
     return out;
   },
@@ -1152,6 +1248,25 @@ export const portalApi = {
     ),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
+  createSupportCode: (product: string) =>
+    call<{ supportCode: string }>(
+      `/api/products/${enc(product)}/support-code`,
+      { method: "POST" },
+    ),
+  exportProductData: (product: string) =>
+    download(
+      `/api/products/${enc(product)}/export`,
+      `polaris-key-${product}-data.json`,
+    ),
+  removeProductData: (product: string, alsoRemoveLicense: boolean) =>
+    call<{ ok: true; product: string; detachedLicenses: string[] }>(
+      `/api/products/${enc(product)}/data${
+        alsoRemoveLicense ? "?alsoRemoveLicense=1" : ""
+      }`,
+      { method: "DELETE" },
+    ),
+  exportAccountData: () =>
+    download("/api/me/export", "polaris-key-account-data.json"),
   downloads: (product: string) =>
     call<PortalDownloads>(`/api/products/${enc(product)}/downloads`),
   previewKey: (key: string) =>
@@ -1225,6 +1340,17 @@ export const portalApi = {
       `/api/me/methods/${enc(id)}`,
       { method: "DELETE" },
     ),
+  /** Make a verified email the primary (PX-W19; step-up). The answer is the methods list. */
+  makePrimary: (methodId: string) =>
+    call<PortalMethods>(`/api/me/methods/${enc(methodId)}/primary`, {
+      method: "POST",
+    }),
+  /** Name a passkey, or clear its name with `null` (PX-W19; step-up). */
+  renamePasskey: (passkeyId: string, name: string | null) =>
+    call<{ passkeys: PortalPasskey[] }>(`/api/me/passkeys/${enc(passkeyId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
   /** A passkey sign-in's challenge: how the account page confirms it's you (step-up). */
   passkeySignInOptions: () =>
     call<PortalPasskeyOptions>("/api/signin/passkey/options", {

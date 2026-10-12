@@ -1527,6 +1527,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_title">Comprobación de cuenta no disponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_message">No pudimos confirmar el estado de tu cuenta en este momento. Vuelve a intentarlo en unos minutos.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_title">Inicio de sesión no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando.</string>

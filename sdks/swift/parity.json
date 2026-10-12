@@ -264,7 +264,7 @@
     },
     "packs.apply.delta": {
       "status": "implemented",
-      "note": "libzstd 1.5.7 (facebook/zstd SwiftPM package): ZSTD_DCtx_refPrefix with ZSTD_d_windowLogMax; the window check runs in the applier before every prefix decode, macOS and iOS alike."
+      "note": "libzstd 1.5.7 (vendored C target, official source release): ZSTD_DCtx_refPrefix with ZSTD_d_windowLogMax; the window check runs in the applier before every prefix decode, macOS and iOS alike."
     },
     "packs.delta.feed": {
       "status": "implemented",

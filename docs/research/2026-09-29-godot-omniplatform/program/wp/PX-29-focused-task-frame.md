@@ -88,7 +88,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] e2e at 1440, 1024, 844x390, 390 and 360 in both themes; axe clean; focus lands on h1.
+- [x] e2e at 1440, 1024, 844x390, 390 and 360 in both themes; axe clean; focus lands on h1.
 - [ ] A return link only through `safeReturnTo`; UX review in BUILT mode.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 

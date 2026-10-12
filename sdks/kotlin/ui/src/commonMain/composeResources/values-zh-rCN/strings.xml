@@ -1507,6 +1507,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">登录目前不可用。请几分钟后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_title">无法验证账户</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_erasure_ledger_unavailable_message">暂时无法确认您的账户状态。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_title">登录不可用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">已关闭通过此应用登录。你的安装和许可证仍可正常使用。</string>

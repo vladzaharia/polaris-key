@@ -1,0 +1,22 @@
+---
+sidebar:
+  order: 5
+title: "Godot"
+description: "The Godot addon — install it from Polaris Key's Godot feed, set it up in the editor dock, await PolarisKey.boot(), then licence, config, devices, sign-in, updates by outlet and packs, in pure GDScript."
+type: "reference"
+lastReviewed: "2026-10-11"
+---
+
+import { Content as GodotReadme } from "../../../../../../../../sdks/godot/README.md";
+
+The Godot SDK is a pure-GDScript addon (the engine has no Ed25519 or SHA-512, so it carries its
+own) behind the `PolarisKey` autoload: install it from Polaris Key's Godot feed (the editor's
+AssetLib tab, or GodotEnv), fill in the setup dock, and `await PolarisKey.boot()`. It runs on Godot 4.4
+and later, 4.6 and later recommended, and passes the same conformance corpus as every other SDK,
+in the editor and on an exported release template. This page renders `sdks/godot/README.md`
+whole, so there is exactly one copy to keep current; the contributor notes are in
+`sdks/godot/CONTRIBUTING.md`. To start, see the [quickstart](/docs/build/quickstart/godot/); for
+the finished screens, the [Godot UI kit](/docs/build/ui/frameworks/godot/); to draw your own,
+[Your own UI](/docs/build/sdks/godot/your-own-ui/).
+
+<GodotReadme />

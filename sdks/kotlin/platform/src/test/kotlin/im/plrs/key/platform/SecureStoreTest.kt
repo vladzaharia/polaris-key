@@ -280,6 +280,20 @@ class SecureStoreTest {
     }
 
     @Test
+    fun localNamespaceIsValidForProductsNotAccounts() {
+        val local = "diceroll@localhost_8787"
+        val store = store(product = local)
+        store.put("token", "pkeyt_local")
+        assertEquals(SecureStore.Read("pkeyt_local"), store.get("token"))
+        try {
+            store().put(local, "v")
+            fail("an account may not contain a namespace suffix")
+        } catch (e: SecureStoreException) {
+            assertEquals("invalid-name", e.reason)
+        }
+    }
+
+    @Test
     fun noTempFileIsLeftBehind() {
         val s = store()
         s.put("token", "pkeyt_abc")

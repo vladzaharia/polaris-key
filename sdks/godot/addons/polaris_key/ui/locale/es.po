@@ -4027,6 +4027,16 @@ msgstr "Inicio de sesión no disponible"
 msgid "core.codes.unavailable.message"
 msgstr "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos."
 
+#. Account check unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.title"
+msgstr "Comprobación de cuenta no disponible"
+
+#. We couldn't confirm your account's status right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.erasure_ledger_unavailable.message"
+msgstr "No pudimos confirmar el estado de tu cuenta en este momento. Vuelve a intentarlo en unos minutos."
+
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.identity_disabled.title"

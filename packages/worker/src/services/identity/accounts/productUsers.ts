@@ -48,6 +48,7 @@ import {
 import { normalizeEmail } from "../../../platform/email.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { sendNotice, sendSecurityNotice } from "../portal/email.js";
 import {
   licenseAssignedToYouNotice,
@@ -938,6 +939,10 @@ export async function relinkLicense(
     return { ok: false, reason: "same_subject" };
   const toAccount = await getAccountRow(db, toAccountId);
   if (!toAccount || toAccount.status !== "active")
+    return { ok: false, reason: "target_unavailable" };
+  // I-11: a licence is not moved to an account the erasure ledger holds (a D1 restore brings one
+  // back as `active`), and an unreadable ledger refuses the same way.
+  if ((await erasureVerdict(env, now, toAccountId)) !== "clear")
     return { ok: false, reason: "target_unavailable" };
 
   // The notices go out first: "a notice to both accounts before the change takes effect".

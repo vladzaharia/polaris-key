@@ -1,0 +1,70 @@
+---
+/**
+ * All messages, A to Z (docs plan §7.1): every title a reader can see, each linking to the entry
+ * that explains it. Generated from the catalog and `help-messages.json` on every build, so a new
+ * code appears here the day it is given a home. The titles are the catalog's, never retyped. A row
+ * of the letters, each a link to its heading, comes first: on a phone the list is many screens long.
+ */
+import {
+  HELP_MESSAGES,
+  KNOWN_ENTRIES,
+  helpMessageUrl,
+  indexRows,
+  indexSections,
+} from "../../lib/helpMessages";
+
+const sections = indexSections(indexRows(HELP_MESSAGES, KNOWN_ENTRIES));
+---
+
+<nav class="not-content pk-help-letters" aria-label="Jump to a letter">
+  <ul>
+    {
+      sections.map(({ letter, id }) => (
+        <li>
+          <a href={`#${id}`}>{letter}</a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+{
+  sections.map(({ letter, id, rows }) => (
+    <>
+      <h2 id={id}>{letter}</h2>
+      <ul class="pk-help-index">
+        {rows.map((row) => (
+          <li>
+            <a href={helpMessageUrl(HELP_MESSAGES, row.id)}>{row.title}</a>
+            <small>{row.pageTitle}</small>
+          </li>
+        ))}
+      </ul>
+    </>
+  ))
+}
+
+<style is:global>
+  .pk-help-index small {
+    display: block;
+    color: var(--sl-color-gray-3);
+  }
+  /* Touch-sized, wrapping onto as many rows as the width needs. */
+  .pk-help-letters ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pk-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pk-help-letters a {
+    display: grid;
+    place-items: center;
+    min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
+    border: 1px solid var(--pk-border-subtle);
+    border-radius: var(--pk-radius-md);
+    text-decoration: none;
+  }
+</style>

@@ -20,7 +20,7 @@ const SHOTS = process.env.PK_SHOTS_DIR;
 
 const PAGES: { name: string; hash: string; title: string }[] = [
   { name: "overview", hash: "#/p/djdl", title: "DJDL" },
-  { name: "services", hash: "#/p/djdl/services", title: "Services" },
+  { name: "services", hash: "#/p/djdl/settings/features", title: "Settings" },
   { name: "devices", hash: "#/p/djdl/devices", title: "Devices" },
   {
     name: "device-drawer",
@@ -38,7 +38,13 @@ const PAGES: { name: string; hash: string; title: string }[] = [
     hash: `#/p/djdl/users/${USER_SUBJECT}/licenses`,
     title: USER_SUBJECT,
   },
-  { name: "keys", hash: "#/p/djdl/keys", title: "Keys & secrets" },
+  { name: "keys", hash: "#/p/djdl/settings/keys", title: "Settings" },
+  { name: "settings-all", hash: "#/p/djdl/settings/all", title: "Settings" },
+  {
+    name: "settings-members",
+    hash: "#/p/djdl/settings/members",
+    title: "Settings",
+  },
   { name: "activity", hash: "#/p/djdl/activity", title: "Activity" },
   {
     name: "activity-table",
@@ -142,9 +148,9 @@ describe("Core pages under the Worker's CSP", () => {
   }
 
   it("the Set secret drawer and the Delete product dialog open and close cleanly", async () => {
-    const page = await open("dark", "#/p/djdl/keys");
+    const page = await open("dark", "#/p/djdl/settings/keys");
     await page
-      .locator("[data-page-title]", { hasText: "Keys & secrets" })
+      .getByRole("heading", { level: 2, name: "Keys & secrets" })
       .waitFor();
     await violations(page);
     await page.getByRole("button", { name: "Set secret" }).first().click();
@@ -158,6 +164,21 @@ describe("Core pages under the Worker's CSP", () => {
     await page.waitForTimeout(300);
     expect(await violations(page)).toEqual([]);
     await page.context().close();
+  });
+
+  // ST-08: the old pages are removals, not aliases. The old URL stays and says where it went.
+  it("old Services, Presentation and Keys URLs open Page moved, with no redirect", async () => {
+    for (const [old, home] of [
+      ["#/p/djdl/services", "Services"],
+      ["#/p/djdl/presentation", "Presentation"],
+      ["#/p/djdl/keys", "Keys & secrets"],
+    ] as const) {
+      const page = await open("dark", old);
+      await page.getByText(/This page moved to/).waitFor();
+      expect(new URL(page.url()).hash).toBe(old);
+      await page.getByRole("link", { name: `Go to ${home}` }).waitFor();
+      await page.context().close();
+    }
   });
 
   it("the relink dialog opens and closes cleanly (I-12)", async () => {
@@ -181,10 +202,10 @@ describe("Core pages under the Worker's CSP", () => {
   it("the document never scrolls past the viewport, desktop or phone", async () => {
     const cases: [string, string, { width: number; height: number }][] = [
       ["#/p/djdl", "DJDL", { width: 1440, height: 900 }],
-      ["#/p/djdl/services", "Services", { width: 1440, height: 900 }],
+      ["#/p/djdl/settings/features", "Settings", { width: 1440, height: 900 }],
       ["#/p/djdl/settings", "Settings", { width: 1440, height: 900 }],
       ["#/p/djdl/activity", "Activity", { width: 1440, height: 900 }],
-      ["#/p/djdl/services", "Services", { width: 390, height: 844 }],
+      ["#/p/djdl/settings/features", "Settings", { width: 390, height: 844 }],
       ["#/p/djdl/devices", "Devices", { width: 390, height: 844 }],
       ["#/p/djdl/users", "Users", { width: 1440, height: 900 }],
       ["#/p/djdl/users", "Users", { width: 390, height: 844 }],

@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { RadioCards } from "../../ui/RadioCards.js";
-import { Skeleton } from "../../ui/Skeleton.js";
 import { announce } from "../../ui/LiveRegion.js";
 import { SuccessCheck } from "../../ui/motion/index.js";
 import { formatRelative } from "../../lib/format.js";
@@ -19,7 +18,12 @@ import type {
   PortalProduct,
   PortalProductDevice,
 } from "../api.js";
-import { FlowCard, FocusedFlow } from "../components/FocusedFlow.js";
+import {
+  FocusedFlow,
+  StickyActions,
+  TaskFrame,
+  TaskFrameSkeleton,
+} from "../components/FocusedFlow.js";
 import { SeatMeter } from "../components/SeatMeter.js";
 import { ErrorPanel } from "../components/States.js";
 import {
@@ -110,10 +114,7 @@ export function FreeDevicePage({
   return (
     <FocusedFlow back={back}>
       {q.isPending || nothingToFree ? (
-        <div aria-busy className="mx-auto max-w-[41rem] space-y-4">
-          <h1 className="sr-only">Loading</h1>
-          <Skeleton className="h-96 w-full rounded-xl" />
-        </div>
+        <TaskFrameSkeleton />
       ) : q.error && isNotFound(q.error) ? (
         <NotFoundProduct email={account.email} />
       ) : q.error || !p ? (
@@ -187,24 +188,31 @@ function FreeDevice({
   const [picked, setPicked] = React.useState<string | null>(leastRecent);
   const [removed, setRemoved] = React.useState<string | null>(null);
   const remove = useRemoveDevice(product.product, license.id);
-  const headingRef = React.useRef<HTMLHeadingElement>(null);
+  // The one `h1` the frame draws, whichever state it shows.
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
   // The device is removed: focus the success heading (MO-05's page focus, which never scrolls),
   // and bring it into view, smoothly or (reduced motion) at once: the same place either way.
   React.useEffect(() => {
     if (!removed) return;
-    headingRef.current?.scrollIntoView?.({
+    titleRef.current?.scrollIntoView?.({
       block: "nearest",
       behavior: scrollBehavior(),
     });
-    focusPageHeading(() => headingRef.current);
+    focusPageHeading(() => titleRef.current);
   }, [removed]);
   // Arriving from the Activate dialog (`next=free-device`, PX-17): focus the flow's heading once
   // the dialog has left (through its exit) and handed focus back to its opener (§9.4, MO-05).
-  const titleRef = React.useRef<HTMLHeadingElement>(null);
   React.useEffect(() => {
     if (consumeHeadingFocus(product.product))
       focusPageHeading(() => titleRef.current);
   }, [product.product]);
+  // A failed removal: the busy Remove button was disabled while the request ran, which drops
+  // focus to the page. Put it back on the control that failed, enabled again, so Enter tries
+  // again; the choice, and the error beside it, stay.
+  const removeRef = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => {
+    if (remove.isError) removeRef.current?.focus();
+  }, [remove.isError]);
 
   const name = product.name;
   const limit = seats.limit ?? 0;
@@ -232,59 +240,60 @@ function FreeDevice({
       <strong className="text-fg-strong">{t("signin.retry")}</strong>.
     </>
   ) : null;
-  const card = (children: React.ReactNode) => (
-    <FlowCard
+  // The seat fact is said once beside the product's identity, where no other line of the state
+  // says it (the free-seat state's lede does); the meter beside it is its picture.
+  const seatsFact =
+    limit > 0
+      ? `${inUse} of ${limit} ${limit === 1 ? "device" : "devices"} in use`
+      : null;
+  const frame = (
+    title: React.ReactNode,
+    children: React.ReactNode,
+    { icon, fact = true }: { icon?: React.ReactNode; fact?: boolean } = {},
+  ) => (
+    <TaskFrame
       slug={product.product}
       name={name}
       developer={pres.developer}
       tint={pres.tint}
       iconUrl={pres.iconUrl}
-      headerUrl={pres.headerUrl}
+      task="Device access"
+      title={title}
+      titleRef={titleRef}
+      titleIcon={icon}
+      identityMeta={fact ? seatsFact : null}
+      aside={limit > 0 ? <SeatMeter inUse={inUse} limit={limit} /> : null}
     >
       {children}
-    </FlowCard>
+    </TaskFrame>
   );
 
   if (removed) {
-    return card(
-      <div className="mt-2 space-y-4">
-        <h1
-          ref={headingRef}
-          tabIndex={-1}
-          className="flex items-center gap-3 text-headline font-medium leading-tight text-fg-strong outline-none"
-        >
-          {/* The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
-              first-time moment. It sits in a ring the size of the icon it replaces. */}
-          <span
-            aria-hidden
-            className="inline-flex size-7 shrink-0 items-center justify-center text-success"
-          >
-            <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-current">
-              <SuccessCheck size={14} />
-            </span>
-          </span>
-          {removed} was removed
-        </h1>
+    return frame(
+      `${removed} was removed`,
+      <div className="space-y-4">
         <p className="text-fg">
           {name} now has a free device.
           {tryAgain}
         </p>
         {goBack}
       </div>,
+      {
+        // The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
+        // first-time moment. It sits in a ring the size of the glyph it leads.
+        icon: (
+          <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-current text-success">
+            <SuccessCheck size={14} />
+          </span>
+        ),
+      },
     );
   }
 
   if (!full) {
-    return card(
-      <div className="mt-2 space-y-4">
-        <h1
-          ref={titleRef}
-          tabIndex={-1}
-          className="text-headline font-medium leading-tight text-fg-strong outline-none"
-        >
-          Your license has a free device
-        </h1>
-        {limit > 0 ? <SeatMeter inUse={inUse} limit={limit} /> : null}
+    return frame(
+      "Your license has a free device",
+      <div className="space-y-4">
         <p className="text-fg">
           {limit > 0
             ? `${inUse} of ${limit} ${limit === 1 ? "device is" : "devices are"} in use, so ${target} can be added.`
@@ -293,6 +302,7 @@ function FreeDevice({
         </p>
         {goBack}
       </div>,
+      { fact: false },
     );
   }
 
@@ -307,17 +317,9 @@ function FreeDevice({
     });
   };
 
-  return card(
-    <div className="mt-2 space-y-4">
-      <h1
-        ref={titleRef}
-        tabIndex={-1}
-        className="text-headline font-medium leading-tight text-fg-strong outline-none desk:text-headline-lg"
-      >
-        Your license is on {inUse} of {limit}{" "}
-        {limit === 1 ? "device" : "devices"}
-      </h1>
-      <SeatMeter inUse={inUse} limit={limit} />
+  return frame(
+    t("signin.choice.freeDevice"),
+    <div className="space-y-4">
       <p id="free-lede" className="text-fg">
         To use {name} on{" "}
         {forDevice ? (
@@ -354,7 +356,7 @@ function FreeDevice({
         }))}
       />
       {pickedDevice ? (
-        <p className="flex gap-3 rounded-lg border border-border px-4 py-3 text-sm text-fg">
+        <p id="free-consequence" className="flex gap-3 text-sm text-fg-muted">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
             {name} on {deviceName(pickedDevice)} will ask to activate next time
@@ -368,28 +370,32 @@ function FreeDevice({
           {portalErrorCopy(remove.error).description}
         </p>
       ) : null}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button asChild size="lg" variant="outline" className="h-12">
-          <a href={returnUrl ?? href.product(product.product)}>
-            {t("signin.cancel")}
-          </a>
-        </Button>
-        <Button
-          size="lg"
-          className="h-12 font-medium sm:flex-1"
-          loading={remove.isPending}
-          disabledReason={
-            pickedDevice ? undefined : "Choose a device to remove"
-          }
-          onClick={onRemove}
-        >
-          {/* The primary names what it does (§2 C5): this flow only frees the seat, so
-              nothing "continues" (§4.25, FLOWS.md P-6). */}
-          {pickedDevice
-            ? `Remove ${deviceName(pickedDevice)}`
-            : "Remove a device"}
-        </Button>
-      </div>
+      <StickyActions>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button asChild size="lg" variant="outline" className="h-12">
+            <a href={returnUrl ?? href.product(product.product)}>
+              {t("signin.cancel")}
+            </a>
+          </Button>
+          <Button
+            ref={removeRef}
+            size="lg"
+            className="h-12 font-medium sm:flex-1"
+            loading={remove.isPending}
+            disabledReason={
+              pickedDevice ? undefined : "Choose a device to remove"
+            }
+            aria-describedby={pickedDevice ? "free-consequence" : undefined}
+            onClick={onRemove}
+          >
+            {/* The primary names what it does (§2 C5): this flow only frees the seat, so
+                nothing "continues" (§4.25, FLOWS.md P-6). */}
+            {pickedDevice
+              ? `Remove ${deviceName(pickedDevice)}`
+              : "Remove a device"}
+          </Button>
+        </div>
+      </StickyActions>
       {support ? (
         <p className="text-sm text-fg-muted">
           Need more devices?{" "}

@@ -1,83 +1,68 @@
 // @pkey-feature core.store license.activate identity.devicecode
-// SDK parity pass SP-N10 and SP-N11: exposePolarisBridge (Electron main) and the preload's
-// PolarisBridge v3 round-trip over a structured-clone IPC, and SafeStorageStore's surfaced
-// degradation. `PolarisBridge` is imported from `@polaris-key/react/desktop` itself (a
-// workspace devDependency, type-only), so if the React contract in
-// `packages/sdk-react/src/desktop/bridge.ts` changes, this stops compiling instead of drifting.
+// SDK parity pass SP-N10, SP-N11 and SP-31: exposePolarisBridge (Electron main) and the preload's
+// PolarisBridge v4 round-trip over a structured-clone IPC (every v3 method and verb, every v4
+// verb, the v4 sign-in and activation shapes, the `release.fetch` path rule), and
+// SafeStorageStore's surfaced degradation. `PolarisBridge` is imported from
+// `@polaris-key/react/desktop` itself (a workspace devDependency, type-only), so if the React
+// contract in `packages/sdk-react/src/desktop/bridge.ts` changes, this stops compiling instead
+// of drifting.
 
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { BridgeState, PolarisBridge } from "@polaris-key/react/desktop";
+import ts from "typescript";
+import { recordHash } from "@polaris-key/client-core";
+import type {
+  CrashTags,
+  ReleaseFetchResult,
+  UpdateEventEntry,
+} from "@polaris-key/react";
+import type {
+  BridgeOidcBegin,
+  BridgeState,
+  PolarisBridge,
+} from "@polaris-key/react/desktop";
+import {
+  PolarisKeyClient,
+  type PolarisKeyClientOptions,
+} from "../src/client.js";
 import {
   DEFAULT_INVOKE_VERBS,
   exposePolarisBridge,
+  POLARIS_BRIDGE_VERSION,
   SafeStorageStore,
-  type IpcMainLike,
+  type ExposePolarisBridgeOptions,
 } from "../src/electron/index.js";
+import { channelOf, DEFAULT_BRIDGE_CHANNEL } from "../src/electron/protocol.js";
 import {
   createPreloadBridge,
   exposePolarisBridgeInMainWorld,
-  type IpcRendererLike,
 } from "../src/electron/renderer.js";
+import { allowApp, ipcPair } from "./electronIpc.js";
 import {
+  DEVICE,
+  FixedStore,
   json,
+  nowSec,
   seededClient,
   signedLicense,
   tempDir,
   type Handler,
+  type Seen,
 } from "./parityFixtures.js";
-
-/** An in-process ipcMain/ipcRenderer pair that structured-clones every message, as Electron
- *  does, so a function or class instance in a reply fails the test. */
-function ipcPair() {
-  const handlers = new Map<string, (...a: unknown[]) => unknown>();
-  const listeners = new Map<
-    string,
-    Set<(e: unknown, ...a: unknown[]) => void>
-  >();
-  const sender = {
-    id: 7,
-    send(channel: string, ...args: unknown[]) {
-      for (const l of listeners.get(channel) ?? [])
-        l({}, ...structuredClone(args));
-    },
-    once() {
-      return undefined;
-    },
-  };
-  let allowed = true;
-  const ipcMain: IpcMainLike = {
-    handle: (ch, fn) => void handlers.set(ch, fn as never),
-    removeHandler: (ch) => void handlers.delete(ch),
-  };
-  const ipcRenderer: IpcRendererLike = {
-    async invoke(ch, ...args) {
-      const h = handlers.get(ch);
-      if (!h) throw new Error(`No handler registered for '${ch}'`);
-      const event = {
-        sender,
-        senderFrame: { url: allowed ? "app://main" : "https://evil.test" },
-      };
-      return structuredClone(await h(event, ...structuredClone(args)));
-    },
-    on(ch, l) {
-      if (!listeners.has(ch)) listeners.set(ch, new Set());
-      listeners.get(ch)!.add(l);
-    },
-    removeListener(ch, l) {
-      listeners.get(ch)?.delete(l);
-    },
-  };
-  return {
-    ipcMain,
-    ipcRenderer,
-    handlers,
-    deny: () => {
-      allowed = false;
-    },
-  };
-}
+import {
+  BASE,
+  discoveryDoc,
+  MemStore,
+  PINS,
+  PRODUCT,
+  RELEASE_KEYS,
+  recordPayload,
+  signRecord,
+  V4_SERVICES,
+} from "./updateFixtures.js";
 
 const START = {
   deviceCode: "dc_never_leaves_main",
@@ -89,34 +74,51 @@ const START = {
   interval: 1,
 };
 
+interface SetupOptions {
+  services?: string[];
+  extra?: Partial<PolarisKeyClientOptions>;
+  host?: Partial<ExposePolarisBridgeOptions>;
+}
+
 async function setup(
-  routes: Record<string, Handler> = {},
+  routes:
+    | Record<string, Handler>
+    | ((license: string) => Record<string, Handler>) = {},
   token: string | null = "pkeyt_seed",
+  o: SetupOptions = {},
 ) {
   const license = await signedLicense({ pro: true });
   const seeded = await seededClient({
     license: license,
     token,
     extra: {
-      expectedServices: ["license", "config", "identity", "release"] as never,
+      expectedServices: (o.services ?? [
+        "license",
+        "config",
+        "identity",
+        "release",
+      ]) as never,
+      ...o.extra,
     },
-    routes,
+    routes: typeof routes === "function" ? routes(license) : routes,
   });
   const ipc = ipcPair();
   const handle = exposePolarisBridge(seeded.client, {
     ipcMain: ipc.ipcMain,
-    allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,
+    allowSender: allowApp,
+    ...o.host,
   });
   const bridge = createPreloadBridge(ipc.ipcRenderer);
   // The load-bearing type assertion: the preload's object IS a React PolarisBridge.
   const typed: PolarisBridge = bridge;
-  return { ...seeded, ipc, handle, bridge: typed };
+  return { ...seeded, license, ipc, handle, bridge: typed };
 }
 
-describe("PolarisBridge v3 over IPC (SP-N10)", () => {
+describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
   it("serves the gate state with the capability map", async () => {
     const { bridge } = await setup();
-    expect(bridge.version).toBe(3);
+    expect(POLARIS_BRIDGE_VERSION).toBe(4);
+    expect(bridge.version).toBe(4);
     const s = await bridge.getSyncState();
     expect(s.activation).toBe("token");
     expect((s.doc as { licenseId: string }).licenseId).toBe("lic_parity");
@@ -139,10 +141,14 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
       deviceCount: 2,
     });
     const other = await bridge.submitKey("KEY-2");
-    expect(other.kind).toBe("error");
-    expect((other as { message: string }).message).toContain(
-      "[license_suspended]",
-    );
+    // v4: a refusal the bridge does not name keeps its code and status (never folded into `error`).
+    expect(other).toMatchObject({
+      kind: "refused",
+      code: "license_suspended",
+      status: 403,
+    });
+    if (other.kind !== "refused") throw new Error("expected a refusal");
+    expect(other.message).toContain("[license_suspended]");
   });
 
   it("keeps the device code in the main process and pushes state on ready", async () => {
@@ -167,6 +173,8 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
     expect(begin).toMatchObject({
       verificationUrl: START.verificationUriComplete,
       userCode: "WDJB-MJHT",
+      verificationUri: START.verificationUri,
+      interval: START.interval,
     });
     expect(JSON.stringify(begin)).not.toContain("dc_never_leaves_main");
     expect(await bridge.pollSignIn(begin.flowId)).toEqual({ kind: "pending" });
@@ -178,6 +186,65 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
       kind: "expired",
     });
     off();
+  });
+
+  it("passes the renderer device name and answers v4 sign-in fields", async () => {
+    let body: Record<string, unknown> | null = null;
+    const { bridge } = await setup(
+      {
+        "POST /djdl/identity/auth/device/start": (req) => {
+          body = JSON.parse(req.body!) as Record<string, unknown>;
+          return json(START);
+        },
+      },
+      "pkeyt_seed",
+      { host: { deviceName: "Host default" } },
+    );
+    const begin = (await bridge.beginSignIn({
+      deviceName: "Renderer name",
+    })) satisfies BridgeOidcBegin;
+    expect(body).toMatchObject({ deviceName: "Renderer name" });
+    expect(begin).toMatchObject({
+      verificationUri: START.verificationUri,
+      expiresAt: expect.any(Number),
+      interval: START.interval,
+    });
+  });
+
+  it("returns v4 activation kinds without folding them into error", async () => {
+    const answers = [
+      json({ error: { code: "fingerprint_required" } }, 403),
+      json({ error: { code: "enroll_disabled" } }, 403),
+      json(
+        {
+          error: { code: "hardware_mismatch" },
+          drift: 2,
+          changed: ["cpu", "board"],
+        },
+        403,
+      ),
+      json({ error: { code: "license_suspended" } }, 403),
+    ];
+    const { bridge } = await setup(
+      { "POST /djdl/license/activate": () => answers.shift()! },
+      null,
+    );
+    expect(await bridge.submitKey("KEY-1")).toEqual({
+      kind: "fingerprint-required",
+    });
+    expect(await bridge.submitKey("KEY-2")).toEqual({
+      kind: "enroll-disabled",
+    });
+    expect(await bridge.submitKey("KEY-3")).toEqual({
+      kind: "hardware-mismatch",
+      drift: 2,
+      changed: ["cpu", "board"],
+    });
+    expect(await bridge.submitKey("KEY-4")).toMatchObject({
+      kind: "refused",
+      code: "license_suspended",
+      status: 403,
+    });
   });
 
   it("answers only the allowlisted invoke verbs, with the host's code on refusal", async () => {
@@ -192,6 +259,32 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
     await expect(bridge.importBundle!("not-a-jws")).rejects.toHaveProperty(
       "code",
     );
+  });
+
+  it("refuses absolute and escaping release.fetch destinations before a request", async () => {
+    const downloadDir = tempDir();
+    const { bridge, seen } = await setup({}, "pkeyt_seed", {
+      host: { downloadDir },
+    });
+    for (const to of [
+      "/tmp/escape.zip",
+      "../escape.zip",
+      "nested/../../escape.zip",
+    ]) {
+      await expect(
+        bridge.invoke!("release", "fetch", {
+          target: { sha256: "a".repeat(64), buildId: "macos-zip" },
+          to,
+        }),
+      ).rejects.toMatchObject({ code: "invalid-argument" });
+    }
+    await expect(
+      bridge.invoke!("release", "fetch", {
+        target: { sha256: "a".repeat(64), buildId: "macos-zip" },
+        to: "C:\\escape.zip",
+      }),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(seen).toEqual([]);
   });
 
   // @pkey-feature core.presentation
@@ -224,6 +317,721 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
       ipcRenderer: ipcPair().ipcRenderer,
     });
     expect(Object.keys(exposed)).toEqual(["polarisKey"]);
+  });
+
+  it("requires every adapter invoke pair in the v4 host allowlist", () => {
+    const root = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "..",
+      "sdk-react",
+      "src",
+    );
+    const calls = new Set<string>();
+    for (const file of [
+      join(root, "desktop", "desktopAdapter.ts"),
+      join(root, "core", "presentation.ts"),
+    ]) {
+      const source = ts.createSourceFile(
+        file,
+        readFileSync(file, "utf8"),
+        ts.ScriptTarget.Latest,
+        true,
+      );
+      const visit = (node: ts.Node): void => {
+        if (ts.isCallExpression(node)) {
+          const expression = ts.isNonNullExpression(node.expression)
+            ? node.expression.expression
+            : node.expression;
+          const name = ts.isPropertyAccessExpression(expression)
+            ? expression.name.text
+            : ts.isIdentifier(expression)
+              ? expression.text
+              : "";
+          const offset = name === "invoke" ? 0 : name === "invokeV4" ? 2 : null;
+          if (offset !== null) {
+            const service = node.arguments[offset];
+            const method = node.arguments[offset + 1];
+            if (
+              service !== undefined &&
+              method !== undefined &&
+              ts.isStringLiteral(service) &&
+              ts.isStringLiteral(method)
+            )
+              calls.add(`${service.text}.${method.text}`);
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    }
+    expect([...calls].sort()).toEqual([...DEFAULT_INVOKE_VERBS].sort());
+  });
+});
+
+// ── Every v4 verb, round-tripped through the real preload over structured-clone IPC and checked
+//    against the result shape `packages/sdk-react/src/desktop/bridge.ts` declares ("WHAT v4 ADDS"). ──
+
+const V4_VERBS = [
+  "config.mint",
+  "commerce.binding",
+  "commerce.claim",
+  "core.discovery",
+  "core.storeStatus",
+  "devices.id",
+  "core.boot",
+  "core.crashTags",
+  "release.fetch",
+  "distribution.downloadModel",
+  "distribution.thisPlatform",
+  "update.feedUrl",
+  "config.set",
+  "config.clear",
+  "update.journal",
+] as const;
+
+const docRoutes = (license: string): Record<string, Handler> => ({
+  "GET /djdl/license/document": () => new Response(license, { status: 200 }),
+  "GET /djdl/config/document": () => new Response("", { status: 404 }),
+  "POST /djdl/devices/report": () => json({}),
+});
+
+const FEEDS = {
+  appcast: "https://k.test/djdl/update/appcast.xml",
+  velopack:
+    "https://k.test/djdl/update/{channel}/velopack/releases.{velopackChannel}.json",
+};
+
+const DISCOVERY = {
+  product: "djdl",
+  services: {
+    license: { enabled: true },
+    config: { enabled: true },
+    identity: { enabled: true },
+    release: { enabled: true },
+    distribution: { enabled: true },
+    update: { enabled: true, endpoints: FEEDS },
+  },
+};
+
+const MODEL = {
+  schemaVersion: 1,
+  product: { slug: "djdl", name: "DJDL" },
+  channel: "stable",
+  pageUrl: "https://dl.plrs.im/djdl",
+  listing: {
+    name: "DJDL",
+    subtitle: null,
+    description: null,
+    developerName: null,
+    website: null,
+  },
+  release: null,
+  platforms: [
+    {
+      platform: "macos",
+      label: "macOS",
+      primary: "download:direct:macos",
+      actions: ["download:direct:macos"],
+      builds: [],
+    },
+    {
+      platform: "windows",
+      label: "Windows",
+      primary: null,
+      actions: [],
+      builds: [],
+    },
+  ],
+  actions: [
+    {
+      id: "download:direct:macos",
+      kind: "download",
+      outletId: "direct",
+      platforms: ["macos"],
+      label: "Download",
+      url: "https://dl.plrs.im/x.dmg",
+      deepLink: null,
+      qr: null,
+      command: null,
+      fingerprint: null,
+      version: "1.0.0",
+      build: null,
+    },
+  ],
+  keys: [],
+};
+
+const CATALOG = {
+  schemaVersion: 1,
+  entries: [
+    {
+      key: "ui.theme",
+      kind: "config",
+      category: "ui",
+      schema: { type: "string", enum: ["light", "dark"] },
+      managementDefault: "default",
+    },
+  ],
+};
+
+/** A host store that reports where it keeps the token (the shape `core.storeStatus` answers). */
+class DegradedStore extends FixedStore {
+  override async status() {
+    return {
+      backend: "file" as const,
+      degraded: { reason: "keyring-unavailable" as const },
+    };
+  }
+}
+
+const SERVICES_ALL = [
+  "license",
+  "config",
+  "identity",
+  "release",
+  "distribution",
+  "update",
+];
+
+interface V4Row {
+  verb: (typeof V4_VERBS)[number];
+  /** What this row pins, for the test name. */
+  what: string;
+  args?: unknown;
+  routes?: (license: string) => Record<string, Handler>;
+  options?: SetupOptions;
+  /** The exact result shape the renderer receives (`toEqual`: no extra or missing key). */
+  result?: unknown;
+  /** Or the code the call rejects with. */
+  rejects?: string;
+  /** Checks that need the host's side effects. */
+  after?: (ctx: {
+    bridge: PolarisBridge;
+    pushes: BridgeState[];
+    result: unknown;
+    seen: Seen[];
+  }) => Promise<void> | void;
+}
+
+const NOW = nowSec();
+
+const ROWS: V4Row[] = [
+  {
+    verb: "config.mint",
+    what: "{token, expiresAt}",
+    args: { recipeId: "musickit" },
+    routes: () => ({
+      "GET /djdl/config/mint/musickit/token": () =>
+        json({ token: "minted-1", expiresAt: NOW + 600 }),
+    }),
+    result: { token: "minted-1", expiresAt: NOW + 600 },
+  },
+  {
+    verb: "config.mint",
+    what: "a missing recipeId rejects invalid-argument",
+    args: {},
+    rejects: "invalid-argument",
+  },
+  {
+    verb: "commerce.binding",
+    what: "{bindingId, products: [{store, productId, flag, deliverable}]}",
+    routes: () => ({
+      "GET /djdl/distribution/commerce/binding": () =>
+        json({
+          bindingId: "bind-1",
+          products: [
+            { store: "play", productId: "p1", flag: "extras.skins" },
+            {
+              store: "steam",
+              productId: "7",
+              flag: "extras.maps",
+              deliverable: "dlc",
+            },
+          ],
+        }),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: {
+      bindingId: "bind-1",
+      products: [
+        {
+          store: "play",
+          productId: "p1",
+          flag: "extras.skins",
+          deliverable: "app",
+        },
+        {
+          store: "steam",
+          productId: "7",
+          flag: "extras.maps",
+          deliverable: "dlc",
+        },
+      ],
+    },
+  },
+  {
+    verb: "commerce.binding",
+    what: "a refusal rejects with its code",
+    routes: () => ({
+      "GET /djdl/distribution/commerce/binding": () =>
+        json({ error: { code: "forbidden" } }, 403),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    rejects: "forbidden",
+  },
+  {
+    verb: "commerce.claim",
+    what: "an ok claim answers the full CommerceClaimResult, then a state push",
+    args: { store: "play", payload: { productId: "p1", purchaseToken: "t" } },
+    routes: (license) => ({
+      ...docRoutes(license),
+      "POST /djdl/distribution/commerce/claim": () =>
+        json({
+          ok: true,
+          store: "play",
+          productId: "p1",
+          flag: "extras.skins",
+          state: "active",
+          granted: true,
+          changed: true,
+        }),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: {
+      kind: "ok",
+      store: "play",
+      productId: "p1",
+      flag: "extras.skins",
+      deliverable: "app",
+      state: "active",
+      granted: true,
+      changed: true,
+    },
+    after: ({ pushes }) => expect(pushes.length).toBeGreaterThan(0),
+  },
+  {
+    verb: "commerce.claim",
+    what: "a not-owned claim answers notOwned{code, reason, status}",
+    args: { store: "steam", payload: { ticket: "abcd", dlcAppId: 1 } },
+    routes: () => ({
+      "POST /djdl/distribution/commerce/claim": () =>
+        json({ error: { code: "forbidden" }, reason: "not_owned" }, 403),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: {
+      kind: "notOwned",
+      code: "forbidden",
+      reason: "not_owned",
+      status: 403,
+    },
+  },
+  {
+    verb: "commerce.claim",
+    what: "an attestation refusal answers attestationRequired{code, status}",
+    args: {
+      store: "app-store",
+      payload: { signedTransaction: "jws.jws.jws" },
+    },
+    routes: () => ({
+      "POST /djdl/distribution/commerce/claim": () =>
+        json({ error: { code: "attestation_required" } }, 403),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: {
+      kind: "attestationRequired",
+      code: "attestation_required",
+      status: 403,
+    },
+  },
+  {
+    verb: "commerce.claim",
+    what: "an unknown store rejects invalid-argument",
+    args: { store: "gog", payload: {} },
+    rejects: "invalid-argument",
+  },
+  {
+    verb: "commerce.claim",
+    what: "a 5xx rejects with the Node code",
+    args: { store: "play", payload: { productId: "p1", purchaseToken: "t" } },
+    routes: () => ({
+      "POST /djdl/distribution/commerce/claim": () =>
+        json(
+          { error: { code: "unavailable" }, reason: "store_unavailable" },
+          503,
+        ),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    rejects: "server-error",
+  },
+  {
+    verb: "core.discovery",
+    what: "the host's discovery document",
+    routes: () => ({
+      "GET /djdl/.well-known/polaris.json": () => json(DISCOVERY),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: expect.objectContaining({
+      product: "djdl",
+      services: expect.objectContaining({
+        update: expect.objectContaining({ enabled: true }),
+      }),
+    }),
+  },
+  {
+    verb: "core.discovery",
+    what: "null when the host has none",
+    result: null,
+  },
+  {
+    verb: "core.storeStatus",
+    what: "{backend, degraded?}",
+    options: { extra: { store: new DegradedStore() } },
+    result: {
+      backend: "file",
+      degraded: { reason: "keyring-unavailable" },
+    },
+  },
+  {
+    verb: "devices.id",
+    what: "the host's device id, a string",
+    result: DEVICE,
+  },
+  {
+    verb: "core.boot",
+    what: "{outcome, state, license, decision, emits}, then a state push",
+    args: {
+      consent: "never",
+      metered: false,
+      allowOffline: true,
+      allowGrace: true,
+      registration: false,
+      requiredPacks: [],
+    },
+    routes: docRoutes,
+    options: { services: ["license", "config"] },
+    result: {
+      outcome: "ready",
+      state: expect.objectContaining({ outcome: "ready" }),
+      license: expect.objectContaining({ status: "ok" }),
+      decision: null,
+      emits: expect.arrayContaining([{ type: "boot_ready" }]),
+    },
+    after: ({ pushes }) => expect(pushes.length).toBeGreaterThan(0),
+  },
+  {
+    verb: "core.crashTags",
+    what: 'the Sentry tags {release, environment, "pkey.outlet"}',
+    args: { deliverable: "app", build: "42" },
+    result: {
+      release: "app@1.2.3+42",
+      environment: "stable",
+      "pkey.outlet": "unknown",
+    } satisfies CrashTags,
+  },
+  {
+    verb: "distribution.downloadModel",
+    what: "the download model",
+    args: {},
+    routes: () => ({
+      "GET /djdl/distribution/download.json": () => json(MODEL),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: MODEL,
+  },
+  {
+    verb: "distribution.thisPlatform",
+    what: "{platform, primary, actions, builds, alsoOn}",
+    args: { platform: "macos" },
+    routes: () => ({
+      "GET /djdl/distribution/download.json": () => json(MODEL),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: {
+      platform: "macos",
+      primary: expect.objectContaining({
+        id: "download:direct:macos",
+        kind: "download",
+        label: "Download",
+      }),
+      actions: [expect.objectContaining({ kind: "download" })],
+      builds: [],
+      alsoOn: [{ platform: "windows", label: "Windows" }],
+    },
+  },
+  {
+    verb: "update.feedUrl",
+    what: "{supported: true, url}",
+    args: { kind: "appcast", channel: "stable" },
+    routes: () => ({
+      "GET /djdl/.well-known/polaris.json": () => json(DISCOVERY),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: {
+      supported: true,
+      url: "https://k.test/djdl/update/appcast.xml",
+    },
+  },
+  {
+    verb: "update.feedUrl",
+    what: "the typed Unsupported as a result, not a rejection",
+    args: { kind: "zsync" },
+    routes: () => ({
+      "GET /djdl/.well-known/polaris.json": () => json(DISCOVERY),
+    }),
+    options: { services: [...SERVICES_ALL] },
+    result: expect.objectContaining({ supported: false, reason: "product" }),
+  },
+  {
+    verb: "update.feedUrl",
+    what: "an unknown kind rejects invalid-argument",
+    args: { kind: "rss" },
+    rejects: "invalid-argument",
+  },
+  {
+    verb: "config.set",
+    what: "null, then a state push carrying localConfig",
+    args: { key: "ui.theme", value: "dark" },
+    routes: () => ({ "GET /djdl/config/schema": () => json(CATALOG) }),
+    result: null,
+    after: async ({ bridge, pushes }) => {
+      expect(pushes.at(-1)).toMatchObject({
+        localConfig: { "ui.theme": "dark" },
+      });
+      expect(await bridge.getSyncState()).toMatchObject({
+        localConfig: { "ui.theme": "dark" },
+      });
+    },
+  },
+  {
+    verb: "config.set",
+    what: "a value the catalog refuses keeps its bad_request code",
+    args: { key: "ui.theme", value: "purple" },
+    routes: () => ({ "GET /djdl/config/schema": () => json(CATALOG) }),
+    rejects: "bad_request",
+  },
+  {
+    verb: "config.clear",
+    what: "null, then a state push without the key",
+    args: { key: "ui.theme" },
+    routes: () => ({ "GET /djdl/config/schema": () => json(CATALOG) }),
+    result: null,
+    after: async ({ bridge, pushes }) => {
+      await bridge.invoke!("config", "set", { key: "ui.theme", value: "dark" });
+      expect(pushes.at(-1)?.localConfig).toEqual({ "ui.theme": "dark" });
+      await bridge.invoke!("config", "clear", { key: "ui.theme" });
+      expect(pushes.at(-1)?.localConfig).toEqual({});
+    },
+  },
+  {
+    verb: "update.journal",
+    what: "the journalled UpdateEventEntry",
+    args: { event: "update_downloaded", release: "1.5.0", deliverable: "app" },
+    result: {
+      eventId: expect.any(String),
+      event: "update_downloaded",
+      deliverable: "app",
+      release: "1.5.0",
+      outlet: "unknown",
+      channel: "stable",
+      at: expect.any(Number),
+    } satisfies UpdateEventEntry,
+  },
+  {
+    verb: "update.journal",
+    what: "null for an event the journal refuses",
+    args: { event: "not_an_event", release: "1.5.0" },
+    result: null,
+  },
+];
+
+describe("PolarisBridge v4 verbs round-trip through the preload (SP-31)", () => {
+  it("has a row for every v4 verb, each one on the host's allowlist", () => {
+    for (const verb of V4_VERBS) expect(DEFAULT_INVOKE_VERBS).toContain(verb);
+    const covered = new Set<string>([
+      ...ROWS.map((r) => r.verb),
+      "release.fetch",
+    ]);
+    expect([...covered].sort()).toEqual([...V4_VERBS].sort());
+  });
+
+  for (const row of ROWS) {
+    it(`${row.verb}: ${row.what}`, async () => {
+      const [service, method] = row.verb.split(".") as [string, string];
+      const { bridge, seen } = await setup(
+        row.routes ?? {},
+        "pkeyt_seed",
+        row.options,
+      );
+      const pushes: BridgeState[] = [];
+      bridge.on("stateChanged", (s) => pushes.push(s));
+      if (row.rejects !== undefined) {
+        await expect(
+          bridge.invoke!(service, method, row.args),
+        ).rejects.toMatchObject({ code: row.rejects });
+        return;
+      }
+      const result = await bridge.invoke!(service, method, row.args);
+      expect(result).toEqual(row.result);
+      await row.after?.({ bridge, pushes, result, seen });
+    });
+  }
+
+  it("a v4 verb the host did not allowlist is refused, not answered", async () => {
+    const { bridge } = await setup();
+    await expect(
+      bridge.invoke!("config", "rotate", { key: "x" }),
+    ).rejects.toMatchObject({ code: "invoke-not-allowed" });
+  });
+
+  it("subscribe answers {version: 4}", async () => {
+    const { ipc } = await setup();
+    expect(
+      await ipc.ipcRenderer.invoke(
+        channelOf(DEFAULT_BRIDGE_CHANNEL, "subscribe"),
+      ),
+    ).toEqual({ ok: true, value: { version: 4 } });
+  });
+
+  it("pollSignIn's ok carries the identity the host's poll knew", async () => {
+    const license = await signedLicense({ pro: true });
+    const { bridge } = await setup({
+      "POST /djdl/identity/auth/device/start": () => json(START),
+      "POST /djdl/identity/auth/device/poll": () =>
+        json({
+          status: "ready",
+          token: "pkeyt_signed",
+          identity: { name: "Ada Lovelace", email: "ada@example.com" },
+        }),
+      "GET /djdl/license/document": () =>
+        new Response(license, { status: 200 }),
+      "GET /djdl/config/document": () => new Response("", { status: 404 }),
+      "POST /djdl/devices/report": () => json({}),
+    });
+    const begin = await bridge.beginSignIn();
+    expect(await bridge.pollSignIn(begin.flowId)).toEqual({
+      kind: "ok",
+      identity: { name: "Ada Lovelace", email: "ada@example.com" },
+    });
+  });
+});
+
+describe("release.fetch through the bridge (SP-31)", () => {
+  const BYTES = Buffer.from("polaris-key build payload ".repeat(64));
+  const SHA = createHash("sha256").update(BYTES).digest("hex");
+
+  async function fetchHost(host: Partial<ExposePolarisBridgeOptions>) {
+    const payload = recordPayload();
+    // The fixture's declared type omits `builds`; set the one artifact this download verifies.
+    const record = payload as unknown as { builds: { artifacts: unknown[] }[] };
+    record.builds[0]!.artifacts = [
+      { name: "app.zip", role: "payload", sha256: SHA, size: BYTES.length },
+    ];
+    const recordJws = await signRecord(payload);
+    const hash = await recordHash(recordJws);
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path === `/${PRODUCT}/.well-known/polaris.json`)
+        return new Response(JSON.stringify(discoveryDoc()), { status: 200 });
+      if (path === `/${PRODUCT}/release/records/${hash}`)
+        return new Response(recordJws, { status: 200 });
+      if (path === `/${PRODUCT}/distribution/builds/1.5.0/macos-zip`)
+        return new Response(BYTES, { status: 200 });
+      return new Response("", { status: 404 });
+    }) as typeof fetch;
+    const store = new MemStore("dev_fetch");
+    store.token = "pkeyt_fetch";
+    const client = await PolarisKeyClient.create({
+      productSlug: PRODUCT,
+      baseUrl: BASE,
+      version: "1.4.0",
+      trust: { pinnedKeys: PINS },
+      store,
+      fetchImpl,
+      requestTimeoutMs: 0,
+      stateDir: tempDir(),
+      expectedServices: [...V4_SERVICES] as never,
+      update: {
+        pinnedReleaseKeys: RELEASE_KEYS,
+        outlet: "direct",
+        platform: "macos",
+        arch: "arm64",
+      },
+    });
+    const ipc = ipcPair();
+    exposePolarisBridge(client, {
+      ipcMain: ipc.ipcMain,
+      allowSender: allowApp,
+      ...host,
+    });
+    const bridge: PolarisBridge = createPreloadBridge(ipc.ipcRenderer);
+    return { bridge, hash };
+  }
+
+  const filesUnder = (dir: string): string[] =>
+    (readdirSync(dir, { recursive: true }) as string[])
+      .filter((p) => statSync(join(dir, p)).isFile())
+      .sort();
+
+  it("answers {path, size, sha256, version, buildId} and writes only under downloadDir", async () => {
+    const downloadDir = tempDir();
+    const { bridge, hash } = await fetchHost({ downloadDir });
+    const pushes: BridgeState[] = [];
+    bridge.on("stateChanged", (s) => pushes.push(s));
+    const result = await bridge.invoke!("release", "fetch", {
+      target: { sha256: hash, buildId: "macos-zip" },
+      to: join("nested", "app.zip"),
+    });
+    expect(result).toEqual({
+      path: join(downloadDir, "nested", "app.zip"),
+      size: BYTES.length,
+      sha256: SHA,
+      version: "1.5.0",
+      buildId: "macos-zip",
+    } satisfies ReleaseFetchResult);
+    expect(
+      readFileSync(join(downloadDir, "nested", "app.zip")).equals(BYTES),
+    ).toBe(true);
+    // Only the verified file: no `.part`, nothing outside `nested/`.
+    expect(filesUnder(downloadDir)).toEqual([join("nested", "app.zip")]);
+    expect(pushes.length).toBeGreaterThan(0);
+  });
+
+  it("a host with no downloadDir writes nothing and rejects not-configured", async () => {
+    const { bridge, hash } = await fetchHost({});
+    await expect(
+      bridge.invoke!("release", "fetch", {
+        target: { sha256: hash, buildId: "macos-zip" },
+        to: "app.zip",
+      }),
+    ).rejects.toMatchObject({ code: "not-configured" });
+  });
+
+  it("refuses a record the renderer holds: the host verifies its own", async () => {
+    const downloadDir = tempDir();
+    const { bridge, hash } = await fetchHost({ downloadDir });
+    await expect(
+      bridge.invoke!("release", "fetch", {
+        target: { record: "a.b.c", sha256: hash, buildId: "macos-zip" },
+        to: "app.zip",
+      }),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(filesUnder(downloadDir)).toEqual([]);
+  });
+
+  it("an escaping destination writes nothing, inside or beside downloadDir", async () => {
+    const downloadDir = tempDir();
+    const { bridge, hash } = await fetchHost({ downloadDir });
+    for (const to of ["../escape.zip", "nested/../../escape.zip"]) {
+      await expect(
+        bridge.invoke!("release", "fetch", {
+          target: { sha256: hash, buildId: "macos-zip" },
+          to,
+        }),
+      ).rejects.toMatchObject({ code: "invalid-argument" });
+    }
+    expect(filesUnder(downloadDir)).toEqual([]);
+    expect(existsSync(join(dirname(downloadDir), "escape.zip"))).toBe(false);
   });
 });
 

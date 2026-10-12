@@ -90,6 +90,7 @@ roborazzi {
 
 dependencies {
     api(project(":sdk"))
+    api(project(":ui-core"))
     api(platform(libs.compose.bom))
     api(libs.compose.ui)
     api(libs.compose.foundation)

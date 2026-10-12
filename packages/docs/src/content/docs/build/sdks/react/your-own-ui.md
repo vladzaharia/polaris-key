@@ -8,7 +8,7 @@ sidebar:
 The hooks return state and actions and draw nothing. This page gives the hook for each task, the
 states it can be in and the words to show. To take the finished screens instead, see the
 [drop-in quickstart](/docs/build/quickstart/react/#drop-in-screens). Everything renders inside
-`<PolarisKeyProvider>`, configured as the quickstart does.
+`<PolarisKeyProvider config={polarisKey}>`, configured as the quickstart does.
 
 ## The hook for each task
 
@@ -52,9 +52,10 @@ import { useState, type ReactNode } from "react";
 import {
   copyMessage,
   describeError,
-  openManageUrl,
   useLicenseGate,
   usePolarisAuth,
+  withManageKey,
+  withManageReturn,
   type OidcSignInHandle,
 } from "@polaris-key/react";
 
@@ -110,7 +111,18 @@ function SignIn({ notice }: { notice?: string }) {
       )}
       {auth.error && <p role="alert">{describeError(auth.error)}</p>}
       {manageUrl && (
-        <button type="button" onClick={() => openManageUrl(manageUrl, { key })}>
+        <button
+          type="button"
+          onClick={() => {
+            // Add the page to return to and the key, then open the link in a
+            // new tab so this form and the key in it stay put.
+            const link = withManageKey(
+              withManageReturn(manageUrl, window.location.href),
+              key,
+            );
+            window.open(link, "_blank", "noopener,noreferrer");
+          }}
+        >
           Replace a device
         </button>
       )}
@@ -137,6 +149,12 @@ function SignIn({ notice }: { notice?: string }) {
   );
 }
 ```
+
+`auth.error.manageUrl` is the link that frees a seat, already validated by the SDK.
+`withManageReturn` adds `return=`, the page to come back to, which the portal follows only for an
+origin your product declares. `withManageKey` adds the key as `#key=` on an activate link: a
+fragment no server sees. Open the link from a click, and submit the same key again when the person
+comes back.
 
 The refusal's `activation.kind` says which one: `deviceLimit` (with `limit`, `deviceCount` and
 `manageUrl`), `unauthorized`, `licenseExpired`, `licenseDisabled`, `rateLimited` (with
@@ -186,10 +204,10 @@ export function UpdateBanner() {
 ```
 
 `useUpdateDecision` needs the Update service and release keys: build the adapter with
-`browserAdapter({ update: { pinnedReleaseKeys } })` and pass it to the Provider as `adapter`. A
-Provider prop for the keys is planned. A mandatory answer and `blocked` are notices with no dismiss
-control over an app that keeps running, never a window that covers it. The unsigned
-`useLatestVersion()` is the older check.
+`browserAdapter({ update: { pinnedReleaseKeys } })`, then include it in the Provider configuration
+as `const testPolarisKey = { ...polarisKey, adapter }`. A mandatory answer and `blocked` are
+notices with no dismiss control over an app that keeps running, never a window that covers it. The
+unsigned `useLatestVersion()` is the older check.
 
 ## Refresh and storage
 
@@ -240,11 +258,11 @@ own reactivity, or for a service worker:
 ```ts
 import { browserAdapter } from "@polaris-key/react/browser";
 import { servicesFromList } from "@polaris-key/react/core";
-import { polarisConfig } from "./polaris.config";
+import { polarisKey } from "./polaris.config";
 
 const adapter = browserAdapter({
-  ...polarisConfig,
-  expectServices: servicesFromList(polarisConfig.expectServices),
+  ...polarisKey,
+  expectServices: servicesFromList(polarisKey.expectedServices),
   version: APP_VERSION,
 });
 
@@ -297,5 +315,5 @@ try {
 }
 ```
 
-Pass the same adapter to `<PolarisKeyProvider adapter={adapter}>` to render your components against
-it. `now` replaces the clock, in seconds.
+Make the adapter part of the same configuration: `const testPolarisKey = { ...polarisKey, adapter };`
+then render `<PolarisKeyProvider config={testPolarisKey}>`. `now` replaces the clock, in seconds.

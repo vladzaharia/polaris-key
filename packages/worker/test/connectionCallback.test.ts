@@ -255,6 +255,53 @@ describe("/callback through a connection", () => {
     expect(JSON.parse(session!.amr_json)).toEqual([`connection:${CONN}`]);
   });
 
+  it("keys the link by one form of the subject: the lookup, Q1's link and the sign-in agree", async () => {
+    const w = await seededWorld();
+    await workConnection(w, ["corp.example"]);
+    const ada = await emailAccount(w.db, "ada@corp.example");
+    const claims = {
+      sub: " w-9 ",
+      email: "ada@corp.example",
+      email_verified: true,
+    };
+    const first = new Device(w);
+    await signInThrough(w, first, claims);
+    expect(first.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(true);
+    // Again from another browser: the same link signs the same account in.
+    const second = new Device(w);
+    await signInThrough(w, second, claims);
+    expect(second.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(true);
+    const links = await w.db.all<{ account_id: string; subject: string }>(
+      "SELECT account_id, subject FROM account_links WHERE issuer_key = ?",
+      ISSUER,
+    );
+    expect(links).toEqual([{ account_id: ada, subject: "w-9" }]);
+  });
+
+  it("keeps a claim named like an Object member as a plain key, never a prototype write", async () => {
+    const w = await seededWorld();
+    await workConnection(w, ["corp.example"], {
+      claims: ["__proto__", "constructor", "department"],
+    });
+    await emailAccount(w.db, "ada@corp.example");
+    const d = new Device(w);
+    await signInThrough(w, d, {
+      sub: "w-10",
+      email: "ada@corp.example",
+      email_verified: true,
+      department: "games",
+      // An own `__proto__` member, as JSON.parse makes it from a token.
+      ...(JSON.parse('{"__proto__":"admins"}') as Record<string, unknown>),
+    });
+    const link = await w.db.first<{ claims_json: string | null }>(
+      "SELECT claims_json FROM account_links WHERE subject = 'w-10'",
+    );
+    // `constructor` is not in the token, so an inherited value is never read for it.
+    expect(link?.claims_json).toBe(
+      '{"__proto__":"admins","department":"games"}',
+    );
+  });
+
   it("Q1 never links outside its conditions: an unverified email claim, a lookalike or a shared address", async () => {
     for (const claims of [
       { email: "ada@corp.example", email_verified: false },

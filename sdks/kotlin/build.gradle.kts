@@ -37,7 +37,7 @@ if (findProject(":platform") != null) {
 // allowed to see both core and platform is :android (P6-12), and it is a leaf: no module but the
 // :boundary probe depends on it. `./gradlew checkModuleBoundaries` fails on any edge that breaks
 // this; the kotlin and android CI jobs run it.
-val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":update", ":packs", ":sdk", ":desktop", ":zstd")
+val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":update", ":packs", ":sdk", ":desktop", ":zstd", ":ui-core")
 val serviceModules = listOf(":license", ":config", ":identity", ":release", ":update", ":packs")
 val checkModuleBoundaries by tasks.registering {
     group = "verification"
@@ -132,13 +132,13 @@ val checkModuleBoundaries by tasks.registering {
                         }
                     }
                 }
-                if (seesCore && seesPlatform && p.path != ":boundary") {
+                if (seesCore && seesPlatform && p.path != ":boundary" && p.path != ":docs-snippets-android") {
                     problems += "${p.path} sees both :core and :platform (only :android may)"
                 }
             }
             if (androidProject != null) {
                 for (p in everyProject) {
-                    if (p == androidProject || p.path == ":boundary") continue
+                    if (p == androidProject || p.path == ":boundary" || p.path == ":docs-snippets-android") continue
                     for (config in p.configurations) {
                         for (dep in config.dependencies.withType(ProjectDependency::class.java)) {
                             if (dep.name == androidProject.name) problems += "${p.path} ${config.name} depends on :android (a leaf)"

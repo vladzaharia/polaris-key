@@ -4,6 +4,7 @@
   "runtimes": ["web", "desktop-bridge"],
   "testRoots": [
     "packages/sdk-react/test",
+    "packages/elements/test",
     "packages/client-core/test",
     "packages/ui-core/test",
     "conformance/runners/node",
@@ -21,7 +22,7 @@
     },
     "core.bundle": {
       "status": "implemented",
-      "note": "Desktop through the host bridge (protocol v3 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB. The browser runner drives inspectBundle over every bundleCases vector in Chromium, Firefox and WebKit."
+      "note": "Desktop through the Node Electron bridge (protocol v4 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB. The browser runner drives inspectBundle over every bundleCases vector in Chromium, Firefox and WebKit."
     },
     "core.discover": {
       "status": "implemented"
@@ -33,9 +34,8 @@
       "status": "implemented"
     },
     "core.local": {
-      "status": "planned",
-      "wp": "SP-15",
-      "note": "No local-only client in React; P1b-07 leaves it unowned."
+      "status": "implemented",
+      "note": "SP-15: localAdapter() (@polaris-key/react/local) serves the documents the build bundles and a fixed licence state with no fetch in reach: it takes no transport, and every verb that would dial rejects local-only. The gate, config, config.local, crash tags, the boot guard and boot() work offline; supports() answers runtime N/A for the rest. A test with a throwing fetch stub proves no call is made."
     },
     "core.headers": {
       "status": "implemented"
@@ -131,7 +131,7 @@
     },
     "config.mint": {
       "status": "implemented",
-      "note": "SP-R02: bearer mode's GET /<p>/config/mint/<recipe>/token, memory-cached per device token until 30 s before expiry (edge-mint replays through it). Desktop: the renderer half of bridge v4's invoke(\"config\", \"mint\") is in place and is sent only to a host reporting version 4 or later; the Node Electron host is still v3 until SP-N10, so today a desktop renderer gets the typed version N/A."
+      "note": "SP-R02: bearer mode's GET /<p>/config/mint/<recipe>/token, memory-cached per device token until 30 s before expiry (edge-mint replays through it). Desktop: bridge v4's invoke(\"config\", \"mint\", {recipeId}) forwards to the Node Electron host's client.config.mintToken() and answers {token, expiresAt}; a v3 host is refused typed (reason version)."
     },
     "config.mirror": {
       "status": "implemented",
@@ -139,7 +139,7 @@
     },
     "config.local": {
       "status": "implemented",
-      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change; ConfigPanel saves overrides itself."
+      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change. test/configLocal.test.tsx."
     },
     "config.sync": {
       "status": "planned",
@@ -257,21 +257,19 @@
     },
     "update.decide": {
       "status": "implemented",
-      "note": "client-core decideUpdate/runUpdateCheck; useUpdateDecision and <UpdatePrompt source=\"decision\"> render every v4 action. The browser outlet is web unless the host passes one."
+      "note": "client-core decideUpdate/runUpdateCheck on both adapters (test/updateDecision.test.ts, test/updateMatrixParity.test.ts); useUpdateDecision hands the host the decision and whether it is undismissable, for its own prompt. The browser outlet is web unless the host passes one."
     },
     "update.content": {
       "status": "implemented",
-      "note": "client-core decideUpdate with content; useUpdateDecision exposes the content reason and <UpdatePrompt> renders packs silently and the revoked-content hard stop (boot required). The Node and browser runners drive every contentRows and feedContentCases vector."
+      "note": "client-core decideUpdate with content; useUpdateDecision exposes the content reason (revoked-content stops the boot, content-floor prompts) and the boot value. The Node and browser runners drive every contentRows and feedContentCases vector."
     },
     "update.driver": {
-      "status": "planned",
-      "wp": "SP-15",
-      "note": "No updater hand-off in React, and no work package adds one."
+      "status": "implemented",
+      "note": "SP-15: adapter.installUpdate(decision) answers an InstallOutcome. Web: a platform decision hands off to the registration's waiting service worker (postMessage SKIP_WAITING, wait for control, reload) and answers handedOff, restartRequired with reload: false, or unsupported{reason} with no worker; binary and store decisions are runtime N/A. Desktop-bridge: forwarded to the host's client.update.install() over bridge v4 (invoke update.install), the typed version N/A on an older host. update_downloaded and update_applied go through recordUpdateEvent."
     },
     "update.bootguard": {
-      "status": "planned",
-      "wp": "SP-15",
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "SP-15: markBootAttempt() and confirmBoot() over client-core's bootGuardAction. Web: slots (current, previous, failedBoots, confirmed, skipVersion) in localStorage with a memory fallback, a waiting service worker counted as staged, an optional host rollback, update_confirmed/update_reverted/boot_rolled_back through recordUpdateEvent; boot() runs it as its guard stage and confirms per bootConfirmation. Desktop-bridge: the host's guard over bridge v4 (invoke update.markBootAttempt / update.confirmBoot). The guardCases and confirmCases of stage-matrix.json replay against persisted slots."
     },
     "outlet.detect": {
       "status": "implemented",
@@ -400,7 +398,7 @@
     },
     "ui.kit.manage": {
       "status": "implemented",
-      "note": "PX-W8: a device-limit refusal stays on PolarisLogin's card (screenFor) as a neutral callout (deviceLimit.heading, deviceLimit.browser) with Replace a device as the one filled action, focused, re-trying the key when the person comes back; a failure that reaches the error screen with the portal link leads with Replace a device beside Try again. test/kitLayout.test.tsx, and test/browser in Chromium at every size."
+      "note": "PX-W8: a device-limit refusal stays on the gate's Activate screen as a neutral callout with Replace a device as the one filled action. It takes focus, opens the validated link with the app's return URL and the typed key, and tries the key again once when the person comes back (test/kitGate.test.tsx). Activate/device-limit, DeviceLimit/default and DeviceLimit/browser-mode render in Chromium at every size, and every DeviceLimit state at 390 and 1440 in both schemes (test/browser/kit.browser.test.tsx)."
     },
     "ui.kit.account": {
       "status": "planned",
@@ -429,58 +427,50 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit's contract is the headless SDKs'."
     },
     "ui.gate": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit's <PolarisKeyGate> starts itself inside <PolarisKeyProvider> (test/kitGate.test.tsx); (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx; pnpm test:visual records every component state at 390 and 1440 in both schemes, lossless, under test/visual/__screenshots__/<Component>.<state>/); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.activate": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx; pnpm test:visual records every component state at 390 and 1440 in both schemes, lossless, under test/visual/__screenshots__/<Component>.<state>/); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.signin": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit's one sign-in form (<SignIn presentation replace>, the step parts SignInMethods, ReplaceDevice and SignInDone, and useSignIn()) morphs through the signIn family's steps and drives ui-core's SignInModel over the SDK's sign-in primitives (test/kitSignIn.test.tsx); every row of the family renders through its component (test/kitMatrix.test.tsx), and the code and license-choice states in Chromium at the UI-KITS §7.1 sizes (test/browser/kit.browser.test.tsx); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.devicelimit": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx; pnpm test:visual records every component state at 390 and 1440 in both schemes, lossless, under test/visual/__screenshots__/<Component>.<state>/); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.devices": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx; pnpm test:visual records every component state at 390 and 1440 in both schemes, lossless, under test/visual/__screenshots__/<Component>.<state>/); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.update": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx; pnpm test:visual records every component state at 390 and 1440 in both schemes, lossless, under test/visual/__screenshots__/<Component>.<state>/); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.settings": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx; pnpm test:visual records every component state at 390 and 1440 in both schemes, lossless, under test/visual/__screenshots__/<Component>.<state>/); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.paywall": {
-      "status": "planned",
-      "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "status": "implemented",
+      "note": "The React kit (@polaris-key/react/kit) renders every row of this ui-matrix.json family through its component (test/kitMatrix.test.tsx), and the main states in Chromium at the UI-KITS §7.1 sizes in both schemes (test/browser/kit.browser.test.tsx; pnpm test:visual records every component state at 390 and 1440 in both schemes, lossless, under test/visual/__screenshots__/<Component>.<state>/); the elements prove the same rows (packages/elements/test). The Electron renderer (desktop-bridge) follows in UK-06."
     },
     "ui.theme": {
       "status": "planned",
       "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "note": "The kit resolves the theme and identity through ui-core (test/kit.test.tsx); running the theme family of ui-matrix.json is the rest of UK-05. Elements via UK-04; the Electron renderer via UK-06."
     },
     "ui.i18n": {
       "status": "planned",
       "wp": "UK-05",
-      "note": "Elements via UK-04; the Electron renderer (desktop-bridge) via UK-06"
+      "note": "The kit formats through ui-core's catalog with the launch locales loaded on demand; running the i18n family and the locale renders is the rest of UK-05. Elements via UK-04; the Electron renderer via UK-06."
     },
     "commerce.receipt": {
       "status": "implemented",
-      "note": "SP-16: bearer mode's GET /<p>/distribution/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the renderer half of bridge v4's invoke(\"commerce\", \"binding\" | \"claim\"), with the host's fresh state read after an ok claim, replays commerce-claim through a v4 bridge; it is sent only to a host reporting version 4 or later, and the Node Electron host is still v3 (SP-N10), so today a desktop renderer gets the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
+      "note": "SP-16: bearer mode's GET /<p>/distribution/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the Node Electron v4 host answers invoke(\"commerce\", \"binding\" | \"claim\") over client.commerce, synchronising and pushing fresh state after an ok claim. A v3 host receives the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
     },
     "sync.scenarios": {
       "status": "planned",

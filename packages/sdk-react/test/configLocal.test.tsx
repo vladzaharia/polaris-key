@@ -3,15 +3,10 @@
 // `config.set/clear/clearAll/setting/onConfigChange` — persisted per product in the browser,
 // validated against the catalog type, refused for an admin-managed key, one change event per
 // write, forwarded to the host over bridge v4 on desktop, and `useConfigSetting` re-rendering.
+// The kit's Settings part draws `input` and reports `onAction`; it does not write overrides.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  waitFor,
-} from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import type { ProductCatalog } from "@polaris-key/catalog";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
@@ -23,7 +18,6 @@ import {
 } from "../src/core/localConfig.js";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { useConfigSetting } from "../src/react/hooks.js";
-import { ConfigPanel } from "../src/components/ConfigPanel.js";
 import { UnsupportedError } from "../src/core/caps.js";
 import {
   entry,
@@ -81,7 +75,11 @@ async function settle(adapter: { snapshot(): { phase: string } }) {
 
 function browser(
   storage: ConfigStorage | null,
-  opts: { catalog?: ProductCatalog | null; fetchImpl?: typeof fetch } = {},
+  opts: {
+    catalog?: ProductCatalog | null;
+    fetchImpl?: typeof fetch;
+    baseUrl?: string;
+  } = {},
 ) {
   return browserAdapter({
     auth: "cookie",
@@ -89,6 +87,7 @@ function browser(
     fetchImpl: opts.fetchImpl ?? makeFakeFetch(makeDoc(), { config: CONFIG }),
     now: () => NOW_SEC,
     configStorage: storage,
+    ...(opts.baseUrl !== undefined ? { baseUrl: opts.baseUrl } : {}),
     ...(opts.catalog !== undefined ? { catalog: opts.catalog } : {}),
   });
 }
@@ -114,6 +113,29 @@ describe("config.local — browser", () => {
     expect(b.getConfig("ui.theme", "light")).toBe("dark");
     expect(b.config.localValues()).toEqual({ "ui.theme": "dark" });
     b.dispose();
+  });
+
+  it("keeps a local Worker override separate from the production product key", async () => {
+    const storage = memoryStorage();
+    const production = browser(storage, { catalog: CATALOG });
+    const development = browser(storage, {
+      catalog: CATALOG,
+      baseUrl: "http://localhost:8787",
+    });
+    await Promise.all([settle(production), settle(development)]);
+    await production.config.set("ui.theme", "dark");
+    await development.config.set("ui.theme", "light");
+
+    expect(
+      JSON.parse(storage.data.get(localConfigStorageKey("acme"))!),
+    ).toEqual({ "ui.theme": "dark" });
+    expect(
+      JSON.parse(
+        storage.data.get(localConfigStorageKey("acme@localhost_8787"))!,
+      ),
+    ).toEqual({ "ui.theme": "light" });
+    production.dispose();
+    development.dispose();
   });
 
   it("clear drops one override and clearAll drops every one", async () => {
@@ -338,7 +360,7 @@ describe("config.local — React", () => {
       );
     }
     const { getByTestId } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={a}>
+      <PolarisKeyProvider config={{ productSlug: "acme", adapter: a }}>
         <Probe />
       </PolarisKeyProvider>,
     );
@@ -350,77 +372,6 @@ describe("config.local — React", () => {
     expect(latest!.overridden).toBe(true);
     await act(() => latest!.clear());
     expect(getByTestId("v").textContent).toBe("light:remote-default");
-    a.dispose();
-  });
-
-  it("ConfigPanel saves an override itself, shows a refusal, and resets", async () => {
-    const storage = memoryStorage();
-    const a = browser(storage, { catalog: CATALOG });
-    const { container } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={a}>
-        <ConfigPanel />
-      </PolarisKeyProvider>,
-    );
-    const input = await waitFor(() => {
-      const el = container.querySelector<HTMLInputElement>(
-        '[data-polaris-config-input="ui.theme"]',
-      );
-      expect(el).toBeTruthy();
-      return el!;
-    });
-    // The locked row stays read-only.
-    expect(
-      container.querySelector('[data-polaris-config-input="theme.mode"]'),
-    ).toBeNull();
-
-    fireEvent.change(input, { target: { value: "purple" } });
-    fireEvent.submit(input.closest("form")!);
-    const alert = await waitFor(() => {
-      const el = container.querySelector(
-        '[data-polaris-config-error="ui.theme"]',
-      );
-      expect(el).toBeTruthy();
-      return el!;
-    });
-    expect(alert.getAttribute("role")).toBe("alert");
-    expect(input.getAttribute("aria-invalid")).toBe("true");
-
-    fireEvent.change(input, { target: { value: "dark" } });
-    fireEvent.submit(input.closest("form")!);
-    await waitFor(() =>
-      expect(a.config.localValues()).toEqual({ "ui.theme": "dark" }),
-    );
-    const reset = await waitFor(() => {
-      const el = container.querySelector<HTMLButtonElement>(
-        '[data-polaris-config-reset="ui.theme"]',
-      );
-      expect(el).toBeTruthy();
-      return el!;
-    });
-    fireEvent.click(reset);
-    await waitFor(() => expect(a.config.localValues()).toEqual({}));
-    a.dispose();
-  });
-
-  it("a host's onOverride still takes over the save", async () => {
-    const a = browser(memoryStorage(), { catalog: CATALOG });
-    const onOverride = vi.fn();
-    const { container } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={a}>
-        <ConfigPanel onOverride={onOverride} />
-      </PolarisKeyProvider>,
-    );
-    const input = await waitFor(() => {
-      const el = container.querySelector<HTMLInputElement>(
-        '[data-polaris-config-input="ui.theme"]',
-      );
-      expect(el).toBeTruthy();
-      return el!;
-    });
-    fireEvent.change(input, { target: { value: "dark" } });
-    fireEvent.submit(input.closest("form")!);
-    expect(onOverride).toHaveBeenCalledWith("ui.theme", "dark");
-    expect(a.config.localValues()).toEqual({});
     a.dispose();
   });
 });

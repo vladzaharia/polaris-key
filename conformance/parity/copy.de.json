@@ -137,6 +137,10 @@
       "title": "Anmeldung nicht verfügbar",
       "message": "Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut."
     },
+    "erasure_ledger_unavailable": {
+      "title": "Kontoprüfung nicht verfügbar",
+      "message": "Der Status Ihres Kontos konnte gerade nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut."
+    },
     "identity_disabled": {
       "title": "Anmeldung nicht verfügbar",
       "message": "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin."

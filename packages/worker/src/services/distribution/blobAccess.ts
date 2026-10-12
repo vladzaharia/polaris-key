@@ -20,7 +20,7 @@
  *
  * ── WHAT EACH HOLDER REQUIRES ───────────────────────────────────────────────────────────────
  *
- *   - nobody, for a package version's files (`package-file`, SEC-DST-1: the package feeds serve
+ *   - nobody, for a package version's files (`package-file`: the package feeds serve
  *     them under their own ladder; the ref grants nothing here) and for listing art and hosted copies (`listing-asset`, `hosted-asset`; HA-07): those refs
  *     authorise nothing here (`SERVES_NOTHING_REF_KINDS`); the image host serves them;
  *   - the app side (any other non-pack ref, public path only): P2b-04's rule, unchanged — the strictest
@@ -152,7 +152,7 @@ function classify(
   let packageFile = false;
   for (const r of rows) {
     if (r.storageKey !== key) continue;
-    // SEC-DST-1: a package version's file is served by its feed under the feed's own ladder,
+    // A package version's file is served by its feed under the feed's own ladder,
     // never by hash on this route: the ref grants no standing here.
     if (r.refKind === PACKAGE_FILE_REF) {
       packageFile = true;
@@ -424,7 +424,7 @@ export async function decideBlob(
 }
 
 /**
- * SEC-DST-12: a caller who holds a usable licence but is outside the app's entitlement window
+ * A caller who holds a usable licence but is outside the app's entitlement window
  * must not learn, from a 403 body, that a digest exists here (the absent path answers a flat 404
  * once the licence passes). Applies to the app side only: a pack's 403 `not_entitled` is its
  * published wire contract (its hashes are named by signed records). Every 403 but the
@@ -448,7 +448,7 @@ async function uniformRefusal(res: Response): Promise<Response> {
  * registered files to anyone, so it asks this at registration and on every relay request; a key
  * no holder holds yet (a file being registered) is judged by the app side's rule.
  *
- * INTENTIONAL (SEC-DST-2): a key any package file holds is never public here, whatever the app's
+ * INTENTIONAL: a key any package file holds is never public here, whatever the app's
  * mode, so an operator who registers the same bytes in an F-Droid feed is refused (registration
  * and relay alike): the relay would otherwise publish a package's file to anyone.
  */
@@ -462,7 +462,7 @@ export async function publicKeyIsPublic(
   const rows = await refHolders(db, product, [key]);
   if (rows === null) return false;
   const h = classify(key, false, rows);
-  // SEC-DST-2: a package version's file is never relay-public, whatever the app's mode is.
+  // A package version's file is never relay-public, whatever the app's mode is.
   if (h.packageFile) return false;
   if (!h.packs.length) h.appSide = true;
   const reqs = await requirementsOf(

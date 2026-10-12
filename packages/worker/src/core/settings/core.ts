@@ -162,51 +162,11 @@ export const CORE_SLICE: readonly SettingDef[] = [
     readers: ["core/services.ts", "core/registry.ts", "core/discovery.ts"],
     storage: { kind: "column", table: "products", column: "services_json" },
   }),
-  // ST-19b: `.pkey/product`'s `devices.registration`. It shares `services_json` with
-  // `core.services` (the blob's `registration` key, `core/services.ts`): the console's Services
-  // page writes it (`console/handlers/servicesAdmin.ts`, its own Save action) and that write claims the blob
-  // through `services_source`, so it is claimable like the enablement beside it.
-  setting({
-    key: "core.registration",
-    rbacArea: "settings",
-    scope: "product",
-    service: "core",
-    area: "services",
-    label: "Device registration",
-    description:
-      "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
-    keywords: ["devices.registration", "register", "device token", "open"],
-    docs: "/docs/reference/protocol/device-principal/",
-    value: {
-      kind: "enum",
-      values: ["open", "requires-identity", "requires-license"],
-    },
-    defaultValue: null,
-    allowUnset: true,
-    merge: "cascade",
-    ownership: "claimable",
-    manifest: { path: "product:devices.registration" },
-    securityWidening: true,
-    widensWhen: "any",
-    critical: true,
-    confirm: { change: "L1" },
-    wire: ["discovery", "refusal"],
-    readers: [
-      "core/services.ts",
-      "core/register.ts",
-      "core/discovery.ts",
-      "console/handlers/servicesAdmin.ts",
-    ],
-    storage: { kind: "column", table: "products", column: "services_json" },
-    since: "ST-19b",
-  }),
   // ST-19b: `.pkey/product`'s `secrets.required`, names only. A manifest names a secret and never
   // carries its value: an operator sets each value on Keys & secrets, sealed in `product_secrets`,
-  // and only its presence is shown. No Worker file reads `secrets.required` yet (the validator
-  // collects it for `pkey validate`; the console's setup check derives the required names from
-  // `oidc` and `edgeMint`), so the entry is pending on ST-08 with no readers and storage `none`.
-  // ST-08, which owns the `table:product_secrets` PENDING entry, extends this entry with that
-  // table and its readers rather than registering a second one.
+  // and only its presence is shown. ST-08 extended the entry with the `product_secrets` table
+  // (its adapter and readers) instead of registering a second one: the names come from the
+  // manifest, the sealed values from the table, and only presence is ever read back.
   setting({
     key: "core.secrets",
     rbacArea: "keys",
@@ -235,9 +195,46 @@ export const CORE_SLICE: readonly SettingDef[] = [
     manifest: { path: "product:secrets.required" },
     sensitivity: "secret",
     confirm: { change: "L0" },
-    storage: { kind: "none" },
+    readers: [
+      "core/managedSecrets.ts",
+      "core/products.ts",
+      "console/handlers/products.ts",
+    ],
+    storage: { kind: "rich", adapter: "product_secrets" },
     since: "ST-19b",
-    pending: { wp: "ST-08" },
+  }),
+  // ST-08: the signing keyring on Keys & secrets. Rows live in `product_keys` (migration 0003);
+  // the sealed private half never leaves the Worker, so the setting is the public record.
+  setting({
+    key: "core.keys",
+    rbacArea: "keys",
+    scope: "product",
+    service: "core",
+    area: "keys",
+    label: "Signing keys",
+    description:
+      "The product's Ed25519 signing keys: one active key signs licences, config and the feed, retired keys stay published so older documents still verify. The private half is sealed and never shown. Rotating or retiring a key changes what devices accept.",
+    keywords: ["signing", "kid", "rotate", "keyring", "ed25519", "retire"],
+    docs: "/docs/operate/console/keys-and-secrets/",
+    value: {
+      kind: "json",
+      schema: "product_keys rows: kid, status, public key (core/signing.ts)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    critical: true,
+    confirm: { change: "L2" },
+    wire: ["document"],
+    readers: [
+      "core/signing.ts",
+      "platform/keyvault.ts",
+      "keyTransitions.ts",
+      "console/handlers/products.ts",
+    ],
+    storage: { kind: "rich", adapter: "product_keys" },
+    since: "ST-08",
   }),
   setting({
     key: "core.presentation",

@@ -1,0 +1,33 @@
+---
+/**
+ * The Godot kit's Drop-in, Styled part and Headless paragraphs for one component page, read from
+ * the addon's source (src/lib/godotKit.ts), so a class or scene named here is one the addon ships.
+ * It goes after `<KitStatus kit="godot" />` in the page's `<TabItem label="Godot">`.
+ */
+import { godotTab } from "../../lib/godotKit";
+
+interface Props {
+  /** The catalog component, as components.json names it: "Activate". */
+  component: string;
+}
+
+const paragraphs = godotTab(Astro.props.component);
+---
+
+{
+  paragraphs.map((p) => (
+    <p>
+      {p.label !== "" && <strong>{p.label}.</strong>}
+      {p.label !== "" && " "}
+      {p.segs.map((s) =>
+        typeof s === "string" ? (
+          s
+        ) : "code" in s ? (
+          <code>{s.code}</code>
+        ) : (
+          <a href={s.href}>{s.text}</a>
+        ),
+      )}
+    </p>
+  ))
+}

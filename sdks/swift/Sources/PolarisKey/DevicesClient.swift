@@ -38,6 +38,10 @@ public struct KeychainAttestKeyStore: AttestKeyStore {
     public static let account = "app_attest_key"
     private let store: SecureStore
 
+    /// The Keychain service the key id lives under (`pkey:<state namespace>`); read by the tests
+    /// that pin which namespace a client's default key store was built for.
+    var service: String { store.service }
+
     public init(product: String, backend: any KeychainBackend = SystemKeychainBackend()) {
         self.store = SecureStore(product: product, backend: backend)
     }
@@ -112,7 +116,8 @@ public final class DevicesClient: Sendable {
     private let core: CoreContext
     private let license: LicenseClient
     private let attestClient: any AppAttestClient
-    private let keyStore: any AttestKeyStore
+    /// Internal, not private: the tests read which key store the client defaulted to.
+    let keyStore: any AttestKeyStore
     private let outletCheck: @Sendable () -> String?
     /// The facade's "the licence may have moved" hook (it diffs and emits `client.events`).
     private let onLicenseChanged: (@Sendable () async -> Void)?
@@ -125,7 +130,7 @@ public final class DevicesClient: Sendable {
         self.onLicenseChanged = onLicenseChanged
         self.license = license
         self.attestClient = options.client ?? DevicesClient.systemAttestClient()
-        self.keyStore = options.keyStore ?? KeychainAttestKeyStore(product: core.product)
+        self.keyStore = options.keyStore ?? KeychainAttestKeyStore(product: core.storageNamespace)
         self.outletCheck = options.outletCheck ?? DevicesClient.defaultOutletCheck
     }
 

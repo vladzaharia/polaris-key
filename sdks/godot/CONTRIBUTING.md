@@ -180,6 +180,9 @@ sdks/godot/
                               link and restart recorded
     updater/                  the updater suite's groups (adapters, bridges, download, swap,
                               guard, boot, grep) and their support.gd
+    dev_live/                 the dev_live suite's groups (quickstart, refusals, config, signin,
+                              update) and their support.gd: the SDK against a live `pkey dev`
+                              server (SP-41); skipped where no PKEY_DEV_* variable is set
     packs/                    the packs suite's groups (content, plan, records, pck, bake, engine,
                               state, http, boot, guard, uid, revocations, delegation), support.gd and
                               fixtures.gd (pack
@@ -242,13 +245,36 @@ PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, wit
   `conformance/corpus/v2/content`; `content/` is not mirrored) and the f_uid data packs that
   run_tests.sh exports into `build/uid_packs/` (`PKEY_UID_PACKS`). Run directly, export both.
 - Logs land in `build/logs/<step>.log` (`build/` is git-ignored).
+- The `dev_live` suite (SP-41) runs the SDK against a live `pkey dev` server over real HTTP, with
+  no fake server or replay: the generated quickstart config, all seven test keys through
+  `license.activate_with_key`, a config change event, device-code sign-in and an update decision.
+  It is in `ci` and skips itself when none of `PKEY_DEV_BASE_URL`, `PKEY_DEV_CONFIG` and
+  `PKEY_DEV_APPROVE` is set; with only some of them set (or one set to nothing) it fails. A lane
+  that runs it starts `pkey dev --auto-approve`, writes the config to a file outside this tree
+  (the run must leave it clean) and puts `node` on `PATH` for the approver script:
+
+  ```sh
+  pkey dev --auto-approve --no-write &   # prints its origin, e.g. http://127.0.0.1:8787
+  pkey sdk --lang godot --dev --url http://127.0.0.1:8787 --write --out /tmp/polaris_key_config.gd
+  PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/polaris_key_config.gd \
+  PKEY_DEV_APPROVE="$PWD/packages/cli/scripts/dev-approve.mjs" PKEY_TEST_SUITES=dev_live \
+  sdks/godot/tools/run_tests.sh
+  ```
+
+  The server counts a key entry for every seat a key claims and allows three per key, so the suite
+  runs each group as one of four fixed devices and never frees the seat of the one that activated
+  `ok` (or `floating`): a rerun on the same server, which CI does (the editor, then the exported
+  pack), activates the same device again and publishes the next patch release.
 
 CI (`.github/workflows/ci.yml`, job `godot`) runs four Linux legs, one per supported engine: the
 4.7.2, 4.6.3 and 4.5.2 editors, each with its official `linux_release.x86_64` template, and the
 4.4.1 editor (the floor). All must print the same corpus SHA-256. A new engine gets a leg (its
 editor and template pinned in `tools/godot.sha512`) before the README's tested matrix names it. Two editor smoke legs on `windows-latest` and `macos-14` run the
 `platform` and `devices` suites, so the Windows and macOS readers find their anchor on a real
-machine.
+machine. Each Linux leg also starts a fresh `pkey dev` (`packages/cli/scripts/start-dev-ci.mjs`),
+checks it, and passes the three `PKEY_DEV_*` variables to the `run_tests.sh` step, so the `ci`
+selection's `dev_live` suite runs against it in the editor and again from the exported pack; the
+smoke legs select other suites, and a job that runs `ci` without a server skips `dev_live`.
 
 ## The runner protocol
 

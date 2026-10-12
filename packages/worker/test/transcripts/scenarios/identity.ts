@@ -420,6 +420,7 @@ export const identityDisabled: Scenario = {
         world.db,
         { issuerKey: "email", subject: PLAYER.email, kind: "email" },
         T0,
+        { unfenced: true },
       );
       if (account.status !== "signed_in") throw new Error(account.status);
       expect(

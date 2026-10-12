@@ -51,7 +51,7 @@ Service table in every language.
 - Check: `pnpm gen services --check`.
 - Underlying: `pnpm exec tsx tools/gen-services.ts`.
 - Reads: `tools/services.json`, `tools/gen-services.ts`.
-- Writes: `packages/shared-manifest/src/services.generated.ts`, `packages/admin/src/services.generated.ts`, `packages/sdk-node/src/services.generated.ts`, `packages/sdk-react/src/core/services.generated.ts`, `sdks/python/src/polaris_key/_services.py`, `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift`, `sdks/godot/addons/polaris_key/core/services_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt`.
+- Writes: `packages/shared-manifest/src/services.generated.ts`, `packages/admin/src/services.generated.ts`, `packages/docs/src/lib/features.generated.ts`, `packages/sdk-node/src/services.generated.ts`, `packages/sdk-react/src/core/services.generated.ts`, `sdks/python/src/polaris_key/_services.py`, `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift`, `sdks/godot/addons/polaris_key/core/services_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt`.
 
 ### channels
 
@@ -176,6 +176,17 @@ This registry as a docs page and the AGENTS.md generated-files table.
 - Reads: `tools/generators.ts`, `tools/gen-generators-doc.ts`.
 - Writes: `packages/docs/src/content/docs/reference/generators.mdx`, `AGENTS.md`.
 
+### readme-work
+
+The Work on it block of each internal README.
+
+- Run: default, pre-commit.
+- Regenerate: `pnpm gen readme-work`.
+- Check: `pnpm gen readme-work --check`.
+- Underlying: `pnpm exec tsx tools/gen-readme-work.ts`.
+- Reads: `tools/generators.ts`, `tools/gen-readme-work.ts`, `package.json`, `packages/{worker,admin,docs,elements,ui-qa}/package.json`, `conformance/runners/*/package.json`, `tools/package.json`, `products/package.json`.
+- Writes: `packages/{worker,admin,docs,elements,ui-qa}/README.md`, `conformance/README.md`, `tools/README.md`, `products/README.md`, `docs/README.md`.
+
 ### parity
 
 Parity gate: every SDK's parity.json against the feature registry.
@@ -184,6 +195,16 @@ Parity gate: every SDK's parity.json against the feature registry.
 - Check: `pnpm gen parity`.
 - Underlying: `pnpm exec tsx tools/parity-check.ts`.
 - Reads: `tools/parity-check.ts`, `tools/capabilities.ts`, `conformance/parity/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `sdks/**/tests/**`, `{sdks,packages}/*/test/**`.
+- Writes: none (a checker).
+
+### ux-rows
+
+UX-row gate: every UX-* id in the design specs is mapped and marked from uxRows.
+
+- Run: check only.
+- Check: `pnpm gen ux-rows`.
+- Underlying: `pnpm exec tsx tools/ux-rows-check.ts`.
+- Reads: `tools/ux-rows-check.ts`, `docs/research/2026-10-07-dx-consolidation/backlog-changes.json`, `docs/research/2026-09-29-godot-omniplatform/program/workpackages.json`, `docs/design/{EXPERIENCE,SETUP,FLOWS,SIGN-IN,ADMIN,PORTAL}.md`.
 - Writes: none (a checker).
 
 ### graph-index

@@ -21,6 +21,19 @@ export const GET_IT_COPY = {
   "getIt.obtainiumWeb": "Open via obtainium.imranr.dev",
   "getIt.otherFiles": "To download the files, open this page on your computer.",
   "getIt.flow.sourcesBelow": "Other ways to install it are below.",
+  "getIt.flow.desktopBuilds": "You're viewing desktop builds.",
+  "getIt.flow.emailMe": "Email me the download",
+  "getIt.flow.otherBuilds": "Other platforms and architectures",
+  "getIt.flow.channel": "Channel",
+  "getIt.flow.sha256": "SHA-256",
+  "getIt.flow.fullSha256": "Full SHA-256",
+  "getIt.flow.copySha256": "Copy SHA-256",
+  "getIt.flow.hint.pkg": "Open the .pkg and follow the installer.",
+  "getIt.flow.hint.installer": "Run the installer and follow the steps.",
+  "getIt.flow.hint.appimage": "Make it executable, then run it.",
+  "getIt.flow.hint.package": "Install it with your package manager.",
+  "getIt.flow.hint.apk": "Open the .apk on your Android device to install it.",
+  "getIt.flow.hint.flatpak": "Install it with Flatpak.",
 } as const;
 
 /** The product name the source's own app goes by, for a row's title ("AltStore", "Homebrew"). */
@@ -102,4 +115,73 @@ export function qrAlt(label: string): string {
 /** The sources list's accessible name: "Other ways to install on macOS". */
 export function otherWaysOn(platform: string): string {
   return `Other ways to install on ${platform}`;
+}
+
+/** The focused download's primary on a computer: "Download for macOS". */
+export function downloadFor(os: string): string {
+  return `Download for ${os}`;
+}
+
+/**
+ * That primary's accessible name. It begins with the visible words (label in name), then says
+ * what they get: "Download for macOS: Orbit Survey 1.4.2, Universal".
+ */
+export function downloadName(
+  os: string,
+  product: string,
+  version: string,
+  arch: string,
+): string {
+  return `${downloadFor(os)}: ${product} ${version}, ${arch}`;
+}
+
+/** The phone's primary: "Email me the download: Orbit Survey for macOS". */
+export function emailName(product: string, os: string): string {
+  return `${GET_IT_COPY["getIt.flow.emailMe"]}: ${product} for ${os}`;
+}
+
+/** The toast after the email is sent. */
+export function emailSent(product: string, os: string): string {
+  return `We sent you the link to download ${product} for ${os}.`;
+}
+
+/** Under the title when the license's last covered version isn't the newest. */
+export function lastCovered(newest: string): string {
+  return `This is the last version your license covers. Version ${newest} isn't included.`;
+}
+
+/**
+ * The line under a build's details (PORTAL.md §4.25 item 4): the one step that opens the file,
+ * read from its format ("dmg", "tar.gz", ".dmg" too). Null when the format has no step of its
+ * own: an .ipa installs through one of the install sources, listed as "Other ways to install".
+ */
+export function installHint(
+  format: string | null,
+  productName: string,
+): string | null {
+  switch (format?.replace(/^\./, "").toLowerCase()) {
+    case "dmg":
+      return `Open the .dmg and drag ${productName} to Applications.`;
+    case "pkg":
+      return GET_IT_COPY["getIt.flow.hint.pkg"];
+    case "exe":
+    case "msi":
+    case "msix":
+      return GET_IT_COPY["getIt.flow.hint.installer"];
+    case "zip":
+    case "tar.gz":
+    case "tar.xz":
+      return `Unzip it and open ${productName}.`;
+    case "appimage":
+      return GET_IT_COPY["getIt.flow.hint.appimage"];
+    case "deb":
+    case "rpm":
+      return GET_IT_COPY["getIt.flow.hint.package"];
+    case "apk":
+      return GET_IT_COPY["getIt.flow.hint.apk"];
+    case "flatpak":
+      return GET_IT_COPY["getIt.flow.hint.flatpak"];
+    default:
+      return null;
+  }
 }

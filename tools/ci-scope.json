@@ -1,0 +1,224 @@
+{
+  "$comment": "P0-43: the one scope map. ci.yml's `changes` job and the lead's gate.sh both read it through tools/ci-scope.mjs, so a lane runs for the same changed files in CI and in the local gate. A lane runs when a changed path starts with one of its `paths` (a directory ending in `/`, or one file), or with one of `shared` (the inputs every language verifies: the contract, the shared packages, the tool chain, the repository's own CI). A lane lists everything its job reads, not only its own tree: the Python lane names the samples and the two cross-SDK fixtures its tests open. A rename counts at its old and its new path. On a push to main, and whenever the changed files cannot be read, every lane runs and every matrix takes its full shape. `matrices` hold each matrix's two shapes: a pull request runs the floor and the latest, main runs the full set. Edit this file, never a path filter in a workflow.",
+  "shared": [
+    "conformance/",
+    "packages/shared-",
+    "packages/client-core/",
+    "packages/brand/",
+    "tools/",
+    ".github/",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "turbo.json",
+    "tsconfig.base.json",
+    ".npmrc"
+  ],
+  "lanes": {
+    "docs": {
+      "paths": ["packages/docs/", "docs/", "packages/worker/src/"]
+    },
+    "workerd": {
+      "paths": [
+        "packages/worker/",
+        "packages/admin/",
+        "packages/docs/",
+        "packages/cli/",
+        "packages/sdk-node/",
+        "packages/sdk-react/",
+        "packages/ui-core/",
+        "packages/zstd-wasm/",
+        "products/"
+      ]
+    },
+    "node-floor": {
+      "paths": [
+        "packages/sdk-node/",
+        "packages/sdk-react/",
+        "packages/ui-core/",
+        "packages/zstd-wasm/"
+      ]
+    },
+    "browser": {
+      "paths": [
+        "packages/sdk-react/",
+        "packages/ui-core/",
+        "packages/zstd-wasm/"
+      ]
+    },
+    "console": {
+      "paths": [
+        "packages/admin/",
+        "packages/worker/",
+        "packages/cli/",
+        "packages/sdk-node/",
+        "packages/ui-core/",
+        "packages/zstd-wasm/"
+      ]
+    },
+    "ui-kits": {
+      "paths": [
+        "packages/ui-qa/",
+        "packages/ui-core/",
+        "packages/sdk-react/",
+        "packages/elements/",
+        "packages/sdk-node/src/cli/",
+        "sdks/swift/Sources/PolarisKeyUI/",
+        "sdks/kotlin/ui/",
+        "sdks/godot/addons/polaris_key/ui/",
+        "sdks/python/src/polaris_key/ui/",
+        "docs/design/"
+      ]
+    },
+    "react-kit": {
+      "paths": ["packages/sdk-react/", "packages/ui-core/"]
+    },
+    "python": {
+      "paths": [
+        "sdks/python/",
+        "packages/ui-qa/",
+        "examples/python-cli/",
+        "examples/python-renpy/",
+        "examples/ui/terminal-python/",
+        "sdks/godot/tests/qr/fixtures.json",
+        "docs/design/ui-kits/terminal-parity.json"
+      ]
+    },
+    "swift": {
+      "paths": [
+        "sdks/swift/",
+        "sdks/godot/",
+        "packages/cli/",
+        "packages/ui-qa/"
+      ]
+    },
+    "swift-floor": {
+      "paths": ["sdks/swift/"]
+    },
+    "kotlin": {
+      "paths": ["sdks/kotlin/"]
+    },
+    "android": {
+      "paths": ["sdks/kotlin/", "sdks/godot/", "packages/ui-qa/"]
+    },
+    "godot": {
+      "paths": ["sdks/godot/", "packages/ui-qa/"]
+    }
+  },
+  "matrices": {
+    "python": {
+      "pr": {
+        "include": [
+          {
+            "os": "ubuntu-latest",
+            "python": "3.9"
+          },
+          {
+            "os": "ubuntu-latest",
+            "python": "3.14",
+            "live": true
+          }
+        ]
+      },
+      "main": {
+        "include": [
+          {
+            "os": "ubuntu-latest",
+            "python": "3.9"
+          },
+          {
+            "os": "ubuntu-latest",
+            "python": "3.14",
+            "live": true
+          },
+          {
+            "os": "macos-14",
+            "python": "3.12"
+          }
+        ]
+      }
+    },
+    "kotlin-desktop": {
+      "pr": {
+        "os": ["ubuntu-latest"]
+      },
+      "main": {
+        "os": ["ubuntu-latest", "macos-15", "windows-latest"]
+      }
+    },
+    "kotlin-emulator": {
+      "pr": {
+        "api-level": [24, 36]
+      },
+      "main": {
+        "api-level": [24, 34, 36]
+      }
+    },
+    "godot": {
+      "pr": {
+        "include": [
+          {
+            "name": "Godot SDK (4.7.2 editor + release template)",
+            "os": "ubuntu-latest",
+            "godot": "4.7.2",
+            "template": "--template",
+            "suites": ""
+          },
+          {
+            "name": "Godot SDK (4.4.1 editor, floor)",
+            "os": "ubuntu-latest",
+            "godot": "4.4.1",
+            "template": "",
+            "suites": ""
+          }
+        ]
+      },
+      "main": {
+        "include": [
+          {
+            "name": "Godot SDK (4.7.2 editor + release template)",
+            "os": "ubuntu-latest",
+            "godot": "4.7.2",
+            "template": "--template",
+            "suites": ""
+          },
+          {
+            "name": "Godot SDK (4.6.3 editor + release template)",
+            "os": "ubuntu-latest",
+            "godot": "4.6.3",
+            "template": "--template",
+            "suites": ""
+          },
+          {
+            "name": "Godot SDK (4.5.2 editor + release template)",
+            "os": "ubuntu-latest",
+            "godot": "4.5.2",
+            "template": "--template",
+            "suites": ""
+          },
+          {
+            "name": "Godot SDK (4.4.1 editor, floor)",
+            "os": "ubuntu-latest",
+            "godot": "4.4.1",
+            "template": "",
+            "suites": ""
+          },
+          {
+            "name": "Godot SDK (4.7.2 editor, Windows smoke)",
+            "os": "windows-latest",
+            "godot": "4.7.2",
+            "template": "",
+            "suites": "platform,devices"
+          },
+          {
+            "name": "Godot SDK (4.7.2 editor, macOS smoke)",
+            "os": "macos-14",
+            "godot": "4.7.2",
+            "template": "",
+            "suites": "platform,devices"
+          }
+        ]
+      }
+    }
+  }
+}

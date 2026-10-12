@@ -49,26 +49,19 @@ point and links to the kit's current docs.
   <TabItem label="React">
     <KitStatus kit="react" />
 
-    `branding`, `colorScheme` and `theme` on `<PolarisKeyProvider>`: `theme.tokens` and
-    `theme.lightTokens` (every colour, radius and the font, as `--pk-*` variables), `theme.copy`,
-    `theme.logo` and `theme.poweredBy`. An accent needs its label colour and focus ring set with it
-    (`accentText`, `ring`): the kit does not resolve contrast yet. The
-    [framework page](/docs/build/ui/frameworks/react/#theming) has the table.
+    `<PolarisKeyProvider>` has no theme props. Wrap kit components in
+    `<PolarisKeyTheme theme={…}>`, or give an individual component its `theme` prop; an inner
+    boundary layers over an outer one. A theme leaves product values unset to use the adapter's
+    presentation source. Host CSS customizes `.pk-root` through `data-part`, `data-key`,
+    `data-state` and scoped `--pk-*` variables. The kit's rules sit in the `@layer polaris-key`
+    cascade layer, so host CSS wins without `!important`; React and the web components share one
+    stylesheet and one `data-part` contract.
 
-    **Product presentation (shipped).** With no `theme.copy.productName`, accent or `theme.logo`,
-    the kit uses the product's presentation from discovery: its name (bidi-isolated), `accentDark`
-    in the dark scheme, else `accent`, else a colour derived from the icon, else ink; and the
-    verified icon in place of the monogram. `usePresentation()` reads it in your own components,
-    and `adapter.presentationSource()` is the seam other kits take. The browser fetches the icon
-    without credentials or redirects, checks its SHA-256 and shows it as a `blob:` URL, so a page
-    with a Content-Security-Policy needs `img-src blob:` and `connect-src` for the image origin
-    (`https://img.plrs.im`); a blocked icon falls back to the monogram. Desktop apps reuse the
-    host's Node cache over the bridge.
-
-    **Planned:** the `polarisKeyTheme({ … })` helper, the stable `pk-*` class names and
-    `data-part` attributes inside the `@layer polaris-key` cascade layer so host CSS wins without
-    `!important`, and `--pk-*` variables scoped to the provider element. React and the web
-    components then share one `styles.css` and one `data-part` contract.
+    The provider's presentation supplies the product name, accent and verified icon. The browser
+    fetches the icon without credentials or redirects, checks its SHA-256 and shows it as a
+    `blob:` URL, so a page with a Content-Security-Policy needs `img-src blob:` and `connect-src`
+    for the image origin (`https://img.plrs.im`); a blocked icon falls back to the monogram.
+    Desktop apps reuse the host's Node cache over the bridge.
 
   </TabItem>
   <TabItem label="Web components">

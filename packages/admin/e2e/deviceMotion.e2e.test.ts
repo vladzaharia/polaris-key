@@ -247,11 +247,21 @@ const running = (page: Page): Promise<string[]> =>
     }),
   );
 
+/**
+ * Nothing is animating and no View Transition is in flight. `html[data-vt]` is set before the
+ * transition starts and cleared when it finishes; a View Transition's pseudo-element animations
+ * only exist from its ready phase, so "no animations" alone also holds in the gap between the
+ * DOM swap and the first frame of the transition (which widens on a loaded runner).
+ */
 async function atRest(page: Page, timeout = 4000): Promise<void> {
   await page
-    .waitForFunction(() => document.getAnimations().length === 0, null, {
-      timeout,
-    })
+    .waitForFunction(
+      () =>
+        !document.documentElement.hasAttribute("data-vt") &&
+        document.getAnimations().length === 0,
+      null,
+      { timeout },
+    )
     .catch(() => undefined);
 }
 
@@ -560,9 +570,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
         }
       },
     });
-    await expect
-      .poll(() => focused(page))
-      .toBe("H2:Mossgarden is in your library");
+    await expect.poll(() => focused(page)).toBe("BUTTON:Open Mossgarden");
     await atRest(page);
     let m = await state(page);
     // enter → confirm, confirm → done: two dialog transitions over the panel.
@@ -641,7 +649,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
     await page
       .getByRole("heading", {
         level: 1,
-        name: "Your license is on 2 of 2 devices",
+        name: "Free a device",
       })
       .waitFor();
     await atRest(page);
@@ -747,9 +755,7 @@ describe("reduced motion: every change in scope is an instant swap to the same e
         },
       });
       expect(await running(page), "done").toEqual([]);
-      await expect
-        .poll(() => focused(page))
-        .toBe("H2:Mossgarden is in your library");
+      await expect.poll(() => focused(page)).toBe("BUTTON:Open Mossgarden");
       expect(
         await page
           .getByRole("dialog")

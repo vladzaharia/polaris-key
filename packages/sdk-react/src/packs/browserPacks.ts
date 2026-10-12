@@ -71,6 +71,7 @@ import {
   payloadUrlTemplate,
   type NativePayloadEvent,
 } from "./nativePayload.js";
+import { storeNamespace } from "../core/storeNamespace.js";
 
 /** At most `limit` bytes of a body as UTF-8; the rest is never read. */
 async function readCapped(res: Response, limit: number): Promise<string> {
@@ -407,6 +408,11 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   );
   const fetchImpl = opts.fetchImpl ?? fetch;
   const sha256 = opts.sha256 ?? hashWasmSha256;
+  // A supplied root is caller-owned. The default OPFS layout must not let a local Worker share
+  // production packs or update journals for the same product.
+  const storageProduct = opts.opfsRoot
+    ? opts.product
+    : storeNamespace(opts.product, opts.baseUrl);
   const listeners = new Set<(e: PackProgress) => void>();
   const pendingHandlers: PackHandler[] = [...(opts.handlers ?? [])];
   let engine: PackEngine | null = null;
@@ -459,13 +465,13 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
                   opts.opfsRoot || opts.opfsWorker === false
                     ? null
                     : await startOpfsWorker(
-                        ["polaris-key", opts.product, "packs"],
+                        ["polaris-key", storageProduct, "packs"],
                         typeof opts.opfsWorker === "function"
                           ? opts.opfsWorker
                           : undefined,
                       );
                 return opfsPackStore({
-                  product: opts.product,
+                  product: storageProduct,
                   sha256,
                   ...(opts.opfsRoot ? { root: opts.opfsRoot } : {}),
                   ...(io ? { io } : {}),

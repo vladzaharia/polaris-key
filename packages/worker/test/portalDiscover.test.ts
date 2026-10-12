@@ -16,12 +16,18 @@ import { describe, expect, it } from "vitest";
 import { writeListing } from "./listingWrites.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/core/repo.js";
-import { getLicense, getLicenseBySub } from "../src/core/repo.js";
+import {
+  appendAudit,
+  getLicense,
+  getLicenseBySub,
+  type AuditRow,
+} from "../src/core/repo.js";
 import {
   licenseDeviceLimit,
   resolveEntitlements,
@@ -37,6 +43,11 @@ import {
   linkLicense,
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
+import { deleteAccount } from "../src/services/identity/accounts/deletion.js";
+import {
+  ERASED_AUDIT_ACTOR,
+  ERASED_AUDIT_SUMMARY,
+} from "../src/services/identity/accounts/accountAudit.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -910,5 +921,96 @@ describe("the stored groups claim (migrations/0071)", () => {
       discoverEnabled: false,
     });
     expect(off.discover_enabled).toBe(0);
+  });
+});
+
+describe("erasing the account anonymises what its Discover claims wrote to the product audit (I-11)", () => {
+  it("replaces the claim's actor, name, email and summary, and touches no one else's rows", async () => {
+    const env = portalEnv();
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    env.BLOBS = asR2(new R2Mock());
+    const db = makeTestDb();
+    await freeProduct(db, "mossgarden");
+    await freeProduct(db, "fernwick");
+    const mara = await platformAccount(env, db);
+    const stranger = await issue(
+      env,
+      db,
+      (
+        await getOrCreateAccountByIdentity(
+          db,
+          {
+            provider: ISSUER,
+            subject: "user-other",
+            email: "other@fennick.studio",
+            displayName: "Other",
+          },
+          NOW,
+        )
+      ).id,
+    );
+    const claims = [
+      await claim(env, db, mara, "mossgarden"),
+      await claim(env, db, mara, "fernwick"),
+      await claim(env, db, stranger, "mossgarden"),
+    ];
+    for (const c of claims) expect(c.status).toBe(200);
+    // The same IdP subject acting as an operator on the other person's licence: console history.
+    await appendAudit(db, {
+      product: "mossgarden",
+      id: "aud_console",
+      at: NOW + 1,
+      actor_sub: SUB,
+      actor_name: "Mara",
+      actor_email: EMAIL,
+      action: "license.disable",
+      target_kind: "license",
+      target_id: claims[2]!.body.license.id,
+      parent_id: null,
+      summary: "Disabled license",
+    });
+
+    const rows = () =>
+      db.all<AuditRow>(
+        `SELECT product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id,
+                parent_id, summary
+           FROM audit ORDER BY product, id`,
+      );
+    const before = await rows();
+    expect(before).toHaveLength(4);
+    // What the writer really recorded: the person, by subject, name and address.
+    const hers = before.filter(
+      (r) => r.action === "license.create" && r.actor_sub === SUB,
+    );
+    expect(hers).toHaveLength(2);
+    for (const r of hers)
+      expect(r).toEqual(
+        expect.objectContaining({
+          actor_name: "Mara",
+          actor_email: EMAIL,
+          summary: expect.stringContaining(EMAIL),
+        }),
+      );
+
+    expect(
+      await deleteAccount(
+        { db, env, now: NOW + 100, origin: "https://key.plrs.im" },
+        mara.accountId,
+      ),
+    ).toEqual({ ok: true });
+
+    expect(await rows()).toEqual(
+      before.map((r) =>
+        hers.includes(r)
+          ? {
+              ...r,
+              actor_sub: ERASED_AUDIT_ACTOR,
+              actor_name: null,
+              actor_email: null,
+              summary: ERASED_AUDIT_SUMMARY,
+            }
+          : r,
+      ),
+    );
   });
 });

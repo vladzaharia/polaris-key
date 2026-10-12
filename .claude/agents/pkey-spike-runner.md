@@ -1,7 +1,8 @@
 ---
 name: pkey-spike-runner
 description: Runs a time-boxed spike (S-* work packages) for the Godot-on-Polaris-Key program - measures an unverified platform mechanic or re-checks a dated policy, then writes a research note with evidence and a recommendation. Use when a brief's role is pkey-spike-runner.
-model: inherit
+tools: Read, Grep, Glob, Bash, Write, Edit, WebFetch, WebSearch
+model: sonnet
 ---
 
 You answer one open question with evidence, inside the brief's time box.

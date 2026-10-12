@@ -10,9 +10,11 @@ import os
 
 import httpx
 
+from polaris_key.client import PolarisKeyClient
 from polaris_key.core.update_journal import MAX_UPDATE_EVENTS, UpdateJournal
+from polaris_key.devices.store import InMemoryStore
 
-from helpers import PRODUCT, TOKEN, make_client, routes, sign_license
+from helpers import PRODUCT, TOKEN, TRUST, client_dirs, make_client, routes, sign_license
 
 
 def _ctx():
@@ -106,6 +108,18 @@ def test_in_memory_store_never_writes_to_the_state_directory() -> None:
 
 
 def test_an_explicit_state_dir_persists(tmp_path) -> None:
+    # `BASE_URL` is not the production host, so the state goes under `<slug>@<host>` (SP-41).
     c = make_client(lambda r: httpx.Response(404), state_dir=str(tmp_path))
-    assert c.core.local_state_dir() == os.path.join(str(tmp_path), PRODUCT)
+    assert c.core.local_state_dir() == client_dirs(state_dir=str(tmp_path)).state
     c.close()
+    # A client on the production host keeps the plain `<slug>` name it always had.
+    prod = PolarisKeyClient(
+        product_slug=PRODUCT,
+        version="1.0.0",
+        trust=TRUST,
+        store=InMemoryStore(PRODUCT),
+        state_dir=str(tmp_path),
+        local_only=True,
+    )
+    assert prod.core.local_state_dir() == os.path.join(str(tmp_path), PRODUCT)
+    prod.close()

@@ -104,7 +104,7 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
 
 ## Brand v2 (lead decisions B1–B16, 2026-10-09)
 
-The kit was re-skinned once to the brand and transition decisions (`_brand/DECISIONS.md`); every
+The kit was re-skinned once to the brand and transition decisions ([BRAND-TRANSITION.md](../../../research/2026-09-29-godot-omniplatform/program/BRAND-TRANSITION.md)); every
 screen inherits it. Our mockups, DL1–DL18 and the owner's notes win over the Transition Guide's
 pictures; the guide is a reference edition. What changed, and the classes that draw it:
 

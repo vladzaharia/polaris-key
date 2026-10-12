@@ -88,15 +88,84 @@ export const DOOR_TREES: readonly DoorTree[] = [
     door: "help",
     label: "Help",
     groups: [
-      { label: "Get started", items: leaves("help/index", "help/activate") },
-      { label: "Sign in", items: leaves("help/sign-in") },
-      { label: "Devices", items: leaves("help/devices") },
+      {
+        label: "Get started",
+        items: [
+          leaf("help/index", "Help home"),
+          ...leaves(
+            "help/what-is-polaris-key",
+            "help/activate",
+            "help/emails",
+            "help/contact",
+          ),
+        ],
+      },
+      {
+        label: "Sign in",
+        items: leaves(
+          "help/sign-in",
+          "help/code-didnt-arrive",
+          "help/passkeys",
+          "help/approve-a-sign-in",
+          "help/secure-your-account",
+          "help/work-account",
+          "help/messages/signing-in",
+        ),
+      },
+      {
+        label: "Your library",
+        items: leaves(
+          "help/library",
+          "help/add-a-license",
+          "help/discover",
+          "help/lost-key",
+          "help/messages/license-key",
+          "help/license-status",
+          "help/messages/license-status",
+          "help/remove-from-library",
+        ),
+      },
+      {
+        label: "Devices",
+        items: leaves(
+          "help/devices",
+          "help/new-computer",
+          "help/device-limit",
+          "help/offline-activation",
+          "help/messages/devices",
+        ),
+      },
       { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Downloads and updates",
-        items: leaves("help/download", "help/update"),
+        items: leaves(
+          "help/download",
+          "help/check-a-download",
+          "help/install-sources",
+          "help/update",
+          "help/packages",
+          "help/messages/downloads-and-updates",
+        ),
       },
-      { label: "Messages", items: leaves("help/messages/index") },
+      {
+        label: "Purchases",
+        items: leaves("help/restore-purchase", "help/refunds"),
+      },
+      {
+        label: "Account and privacy",
+        items: leaves(
+          "help/account",
+          "help/join-accounts",
+          "help/delete-account",
+          "help/your-data",
+          "help/manage-your-data",
+          "help/messages/accounts",
+        ),
+      },
+      {
+        label: "Messages",
+        items: leaves("help/messages/index", "help/messages/other"),
+      },
     ],
   },
   {
@@ -108,6 +177,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: [
           leaf("start/index", "Overview"),
           leaf("start/first-product"),
+          leaf("start/choose-your-integration"),
           leaf("start/how-it-works"),
           leaf("start/concepts"),
         ],
@@ -117,12 +187,13 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: [
           leaf("build/index", "Build map"),
           leaf("build/install"),
+          leaf("build/upgrade-to-0-9"),
           sdkPages("node", "Node", true),
           sdkPages("react", "React", true),
           sdkPages("python", "Python", true),
-          sdkPages("swift", "Swift"),
-          sdkPages("kotlin", "Kotlin"),
-          sdkPages("godot", "Godot"),
+          sdkPages("swift", "Swift", true),
+          sdkPages("kotlin", "Kotlin", true),
+          sdkPages("godot", "Godot", true),
           leaf("build/sdks/index", "All SDKs"),
           {
             label: "Drop-in UI kits",
@@ -182,6 +253,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
             ),
           },
           leaf("build/web-apps"),
+          leaf("build/local", "Run Polaris Key locally"),
         ],
       },
       {
@@ -344,6 +416,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "operate/console/presentation",
           "operate/console/keys-and-secrets",
           "operate/console/activity",
+          "operate/console/help-a-customer",
         ),
       },
       {
@@ -373,6 +446,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "contribute/package-feeds",
           "contribute/data-model",
           "contribute/docs-components",
+          "contribute/console",
           "contribute/agents/index",
           "contribute/agents/recipes",
           "contribute/agents/conventions",

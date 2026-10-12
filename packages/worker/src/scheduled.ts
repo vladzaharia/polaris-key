@@ -64,9 +64,11 @@ import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.
 import { pruneAccountMerges } from "./services/identity/accounts/mergeUndo.js";
 import { recheckConnectionDomains } from "./services/identity/connections/domains.js";
 import {
+  replayErasures,
   stuckErasures,
   sweepErasures,
 } from "./services/identity/accounts/deletion.js";
+import { sweepAccountDeletions } from "./services/identity/accounts/lifecycle.js";
 import { overrideMigrationNightly } from "./core/ops/overrideMigration.js";
 import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
@@ -415,6 +417,10 @@ export async function runScheduledMaintenance(
   // F-21: registry tokens 90 days past their expiry or revocation (`core/registry/registryTokens.ts`).
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
 
+  // I-11: the erasure ledger (R2, outside the D1 a restore rewinds) is replayed BEFORE the legacy
+  // catch-up below: the D1 tombstone of every erased account is recreated (the catch-up copies no
+  // tombstoned portal account), and an account a restore brought back is re-erased.
+  if (env) await runErasureLedgerReplay(report, env, db, now);
   // I-05: portal rows a pre-I-05 Worker wrote during the deploy window join the account model,
   // then every second account linked to a licence another account owns loses its link, is
   // emailed and is listed in the platform audit log (plans/I-04.md §8 Q1).
@@ -422,9 +428,12 @@ export async function runScheduledMaintenance(
     await catchUpLegacyAccounts(db);
     return 0;
   });
-  // SEC-PRV-1: erasures a store hook failed on are resumed (also on the 15-minute tick, behind
-  // their back-off); one that keeps failing is reported here so the Operations page shows it.
-  if (env) await runErasureSweep(report, env, db, now, true);
+  // I-11: due requests first enter the resumable erasure state machine, then incomplete erasures
+  // retry under their own back-off. Both runs are bounded and fault-isolated.
+  if (env) {
+    await runAccountDeletionSweep(report, env, db, now);
+    await runErasureSweep(report, env, db, now, true);
+  }
   // U-03: the licence-override migration's daily inventory (until the run), its report past 90
   // days and, once the report window has passed, the licences' emptied config and secrets columns
   // (`core/ops/overrideMigration.ts`). The run itself is never started here: it is the owner's.
@@ -533,7 +542,61 @@ export const MAINTENANCE_CRON = "17 3 * * *";
 export const CONNECTOR_POLL_CRON = "*/15 * * * *";
 
 /**
- * The account-erasure retry sweep (SEC-PRV-1, `services/identity/accounts/deletion.ts`): resume
+ * I-11: one bounded pass of the erasure ledger replay (`services/identity/accounts/erasureLedger.ts`).
+ * The count is what the pass repaired (tombstones recreated, restored accounts re-erased, erasure
+ * tombstones copied into the ledger): 0 while D1 and the ledger agree. An account whose re-erasure
+ * or ledger copy threw fails the step, naming the opaque account ids.
+ */
+export async function runErasureLedgerReplay(
+  report: MaintenanceReport,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<void> {
+  await step(report, "erasureLedger", async () => {
+    const r = await replayErasures({
+      db,
+      env,
+      now,
+      origin: env.CONSOLE_ORIGIN ?? "",
+    });
+    if (r.failures.length > 0)
+      throw new Error(
+        `${r.failures.length} erasure ledger repair(s) failed: ` +
+          r.failures
+            .slice(0, 10)
+            .map((f) => `${f.accountId} (${f.step}: ${f.message})`)
+            .join(", ") +
+          (r.failures.length > 10 ? ", …" : ""),
+      );
+    return r.tombstoned + r.reapplied + r.mirrored;
+  });
+}
+
+/**
+ * I-11: start hard erasure for account deletions whose fourteen-day grace period elapsed. The
+ * lifecycle helper conditionally claims each request, so an account holder's cancellation and
+ * this cron tick cannot both win.
+ */
+export async function runAccountDeletionSweep(
+  report: MaintenanceReport,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<void> {
+  await step(report, "accountDeletions", async () => {
+    const r = await sweepAccountDeletions({
+      db,
+      env,
+      now,
+      origin: env.CONSOLE_ORIGIN ?? "",
+    });
+    return r.started;
+  });
+}
+
+/**
+ * The account-erasure retry sweep (`services/identity/accounts/deletion.ts`): resume
  * every unfinished erasure whose back-off elapsed. `reportStuck` (the nightly tick only) fails
  * the `erasures` step while any erasure has failed `ERASURE_STUCK_ATTEMPTS` times, naming the
  * opaque account ids and the failing step, so the Operations page shows a stuck erasure.
@@ -734,16 +797,22 @@ export async function handleScheduled(
   const report = poll
     ? await runConnectorPolls(env, db, now)
     : await runScheduledMaintenance(db, now, env);
-  // A failed attempt on the poll tick is re-scheduled by the sweep itself; only the nightly tick
-  // reports stuck erasures (the Operations page reads a poll tick's failures as connector ones).
+  // The erasure ledger replay, due account deletions and failed erasures are run on each
+  // connector-poll tick. Their failures wait for the nightly report so the Operations page reads
+  // this tick as connector work.
   if (poll) {
     const erasure: MaintenanceReport = { counts: {}, failures: {} };
+    // The replay first: a restored account is closed before the sweeps below look at it.
+    await runErasureLedgerReplay(erasure, env, db, now);
+    await runAccountDeletionSweep(erasure, env, db, now);
     await runErasureSweep(erasure, env, db, now, false);
+    report.counts["erasureLedger"] = erasure.counts["erasureLedger"] ?? 0;
+    report.counts["accountDeletions"] = erasure.counts["accountDeletions"] ?? 0;
     report.counts["erasures"] = erasure.counts["erasures"] ?? 0;
   }
   const registry: MaintenanceReport = { counts: {}, failures: {} };
   await runRegistryRenders(env, db, now, registry);
-  // SEC-DST-1: heal package refs the deploy window's old Worker wrote as `artifact`, every tick.
+  // Heal package refs the deploy window's old Worker wrote as `artifact`, every tick.
   await step(registry, "packageFileRefs", () =>
     reconcilePackageFileRefs(db, "cron"),
   );

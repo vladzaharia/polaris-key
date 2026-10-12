@@ -137,6 +137,10 @@
       "title": "Accesso non disponibile",
       "message": "L'accesso non è disponibile al momento. Riprova tra qualche minuto."
     },
+    "erasure_ledger_unavailable": {
+      "title": "Verifica dell'account non disponibile",
+      "message": "Non è stato possibile confermare lo stato del tuo account al momento. Riprova tra qualche minuto."
+    },
     "identity_disabled": {
       "title": "Accesso non disponibile",
       "message": "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."

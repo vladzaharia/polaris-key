@@ -1,58 +1,87 @@
 ---
-title: "Devices"
-description: "What counts as a device, seat limits, and renaming or disconnecting one from the app or the portal."
+title: "Manage your devices"
+description: "See where an app is activated, remove a device you no longer use and learn how the limit works."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-10-11"
 sidebar:
-  order: 4
+  order: 1
 ---
 
-A **device** is one authorized install of the product on one machine. Activating — any of the
-four ways described in [Activation](/docs/users/activation/) — creates one; from then on, that's
-what the app uses to prove it's allowed to run without asking you to activate again.
+A device is a computer, phone or tablet where you activated an app. Your library shows which devices
+use each license, and you can remove one you no longer use.
 
-## Seat limits
+## <a id="seat-limits"></a>The device limit
 
-Your license allows a certain number of devices to be active at once — its device limit, shown
-alongside the rest of what the license includes. Activating one more device than that allows is
-refused until a seat frees up, either by disconnecting a device you no longer use or by an old,
-unused device dropping off on its own after a few months of inactivity. See
-[Seat pools and deviceLimit](/docs/services/license/model/#seat-pools-and-devicelimit) for
-exactly how the count is worked out.
+Your license allows a limited number of devices at once, and the developer sets the number. On the
+app's page in your library, **Devices** shows how many are in use, such as "2 of 3 devices in use".
+Devices that no longer count toward the limit are mentioned next to that count. A device that has
+not been seen for 90 days stops counting. If you use it again, the app may ask you to activate it
+or sign in again, and it counts again.
 
-## If your tier changes
+To ask for more devices, contact the developer. See
+[Get help with an app](/docs/help/contact/).
 
-Moving a license to a tier with a smaller device limit than the number of devices already
-running on it doesn't disconnect anything — every device already active keeps working exactly
-as before. What changes is forward-looking only: activating a **new** device is refused until
-the count drops back under the new limit.
+## See your devices
 
-## Renaming a device
+1. Sign in at [key.plrs.im](https://key.plrs.im).
+2. Open the app's page and find **Devices**.
 
-From inside the app itself — wherever it lists your devices, usually somewhere in settings —
-give a device a label of your choosing, like "Sam's laptop", so it's easy to tell apart from any
-others on the same license. Renaming isn't available from the customer portal; do it from the
-app running on that device.
+Each device shows its name, system, app version and when it was last seen. A device with no name
+shows **Unnamed device**.
 
-## Disconnecting a device
+Some apps also list your devices, on a screen titled **Your devices**. Your app may look different.
 
-Two ways to do this, and which one you need depends on the situation:
+## What happens when you remove a device
 
-- **From the app**, on the device you're currently using — the everyday way to free a seat you
-  no longer need.
-- **From the [customer portal](/docs/users/portal/)**, for any device on a license you own — the
-  way to go when the machine itself is gone, sold, wiped, or otherwise unreachable and you can't
-  open the app on it to disconnect it yourself.
+- It stops counting toward your limit straight away.
+- The app on that device asks you to activate it, or to sign in again, the next time it starts.
+- Its saved files stay on that device.
+- You may get an email telling you the device was removed. If you did not remove it, select
+  **Secure your account** in that email.
 
-## What disconnecting deletes
+## Remove a device
 
-Disconnecting a device is permanent, not a pause. Its hardware fingerprint and the software
-details it last reported are deleted along with it — not just marked inactive — because that
-information only ever existed to describe that one machine. See
-[Fingerprints](/docs/services/core/fingerprints/) and
-[The device principal](/docs/services/core/device-principal/) for exactly what's stored while a
-device is connected. A disconnected device can't be reconnected; if you plan to use it again,
-activate it like a new one.
+1. Open the app's page in your library and find **Devices**.
+2. Select **Remove** next to the device.
+3. Read what happens.
+4. Select **Remove** to confirm.
 
-:::note[Browser-only products]
-If a product runs entirely in the browser, there may be no separate app to manage devices from —
-the portal is the only place to do it, when the product offers one.
-:::
+To stop, select **Keep it**.
+
+If the license is not in your library yet, add its key first. See
+[Add a license with a key](/docs/help/add-a-license/).
+
+## Check it worked
+
+The device is gone from the list, and the count goes down by one.
+
+## Undo
+
+Open the app on that device and activate it again, as long as you are under the limit. See
+[Activate your app](/docs/help/activate/).
+
+## Rename a device
+
+You rename a device in the app, not in your library, and only on that device. Some apps have no
+rename option. Your app may look different.
+
+1. Open the app on the device you want to rename.
+2. In the app's list of devices, select **Rename** next to the device.
+3. Type a name.
+4. Select **Save**.
+
+## If a device cannot be loaded, removed or renamed
+
+Check your connection and try again. A device can be renamed only in the app on that device. See
+[All messages](/docs/help/messages/) for what each message means.
+
+## More about devices
+
+- [Move your license to a new computer](/docs/help/new-computer/)
+- [Device limit reached](/docs/help/device-limit/)
+- [Activate a computer without internet](/docs/help/offline-activation/)
+
+## Still need help?
+
+For help with an app, read [Get help with an app](/docs/help/contact/).

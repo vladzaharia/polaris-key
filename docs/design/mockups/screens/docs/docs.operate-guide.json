@@ -1,0 +1,37 @@
+{
+  "id": "docs.operate-guide",
+  "title": "Help a customer",
+  "area": "docs",
+  "surface": "code",
+  "packages": ["DOC-02a", "DOC-11a"],
+  "uxRows": [],
+  "summary": "Member-facing device-limit walkthrough with role requirement, impact and public customer Help article.",
+  "compare": [
+    "Role and impact appear before the task.",
+    "Console labels are bold and Open Licenses is an outline deep link.",
+    "The public Help article names the customer path."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "ResumeDocsWave.DocsMockupLensReview: one reviewer agent, consumer, developer and brand lenses in a single pass",
+    "date": "2026-10-11",
+    "lenses": {
+      "consumer": "Walked in the combined pass; no finding raised for this screen.",
+      "developer": "Walked in the combined pass; no finding raised for this screen.",
+      "brand": "Walked in the combined pass; 1 finding(s) raised, applied below."
+    },
+    "separatePasses": "not-run",
+    "verdict": "Combined three-lens pass ended PASS after its findings were applied; the PR #65 fix round (below) is checked by the contract check only, not re-reviewed by a lens.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The desktop header stopped at search and omitted shared Docs chrome.",
+        "resolution": "Restored Developer changelog, Console and Theme controls.",
+        "decision": "accepted",
+        "raisedBy": ["brand"]
+      }
+    ],
+    "notRun": "Plan §8.4 and the DOC-01 brief ask for three separate pkey-ux-reviewer passes (consumer, developer, brand consistency). Those three separate passes were not run. One reviewer agent (ResumeDocsWave.DocsMockupLensReview) walked the three lenses as sections of a single pass over saved renders, then re-checked after fixes. The PR #65 fixes recorded above were verified with tools/mockups/check.mjs and shoot.mjs --check only; no lens re-review followed them."
+  }
+}

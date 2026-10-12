@@ -1044,7 +1044,7 @@ async function applyProduct(
       const subject =
         unit.subject ??
         (await subjectForOrNull(db, unit.accountId, product, now));
-      // An account being erased is skipped (SEC-WP-04); it has no override rows to move.
+      // An account being erased is skipped; it has no override rows to move.
       if (subject === null) continue;
       // An owner whose subject the plan did not know has no row (rows exist only for subjects).
       const existingJson = unit.subject === null ? null : unit.existingJson;

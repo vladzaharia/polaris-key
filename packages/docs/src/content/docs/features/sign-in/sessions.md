@@ -120,13 +120,12 @@ Despite living beside the session surfaces conceptually, this route is dispatche
 `auth` group as the OIDC flow (`/identity/auth/logout`, not `/identity/session/logout`) — it sits
 in `routes.ts`'s `auth` switch alongside `start`/`callback`/`poll`.
 
-## Authorizing `requires-identity` registration — without a license
+## Authorizing identity-required registration — without a license
 
-The browser session is also the credential behind Core's keyless
-`POST /<product>/devices/register`, for a product whose registration policy is
-`requires-identity`. Core cannot itself answer "is a human signed in to this product" — that
-question is Identity's — so it asks through one narrow hook, `authorizeRegistration`, rather than
-importing this service.
+When License is off and Identity is on, the derived registration policy is
+`requires-identity`. The browser session is the credential behind Core's keyless
+`POST /<product>/devices/register`; Core asks Identity through the narrow
+`authorizeRegistration` hook rather than importing this service.
 
 What that hook checks is deliberately **one step short** of what `/identity/session` checks:
 
@@ -136,18 +135,10 @@ What that hook checks is deliberately **one step short** of what `/identity/sess
    `requireLicensedDevice`. It asks only "is this a live device," never "does it hold a usable
    license."
 
-That second point is load-bearing. `requires-identity` is precisely the policy a product picks
-when it does **not** run License at all (a Config-only or Release-only product with sign-in but
-no seats) — demanding a usable license here would make the policy unsatisfiable for the very
-products it exists to serve. Contrast this with `/identity/session` above, which upgrades to the
-full license-usability check because a browser asking for its config document _is_ asking a
-licensing question.
-
-One more gate sits in front of both: the registry-level `authorizeRegistration` first confirms
-`identity.enabled` for the product before it ever calls this hook, and refuses outright if either
-the flag is off or no hook is registered. A product cannot declare `requires-identity` with
-Identity disabled and have registration fall open — see [Identity](/docs/services/identity/) for
-the enablement rule that closes that combination off at the admin API.
+That second point is load-bearing. Identity-required registration serves a Config-only or
+Release-only product with sign-in but no seats; demanding a usable license would make that path
+unsatisfiable. The registry confirms that Identity is enabled before it calls the hook, and fails
+closed when the service or hook is unavailable.
 
 No CSRF check applies to this exchange, unlike logout: it authorizes minting a _new_ credential
 that is returned only in the response body, so a cross-site caller that forced the request could

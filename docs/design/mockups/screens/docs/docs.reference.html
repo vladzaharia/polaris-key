@@ -1,0 +1,141 @@
+<div
+  class="docs"
+  data-service="core"
+  data-door="developers"
+  data-density="compact"
+>
+  <header class="docs-top">
+    <button class="btn ghost icon docs-menu" aria-label="Menu">
+      <i class="ic ic-menu lg"></i></button
+    ><a class="docs-brand" href="#"
+      ><i class="pk-mark sm"></i>Polaris Key<span class="docs-tag"
+        >Docs</span
+      ></a
+    >
+    <nav class="docs-doors" aria-label="Docs doors">
+      <a class="on" href="#">Developers</a><a href="#">Operate</a
+      ><a href="#">Help</a>
+    </nav>
+    <div class="docs-search">
+      <i class="ic ic-search"></i><span>Search the docs</span><kbd>⌘K</kbd>
+    </div>
+    <nav class="docs-links">
+      <a href="#">Developer changelog</a
+      ><a href="#">Console<i class="ic ic-arrow-up-right"></i></a
+      ><button class="btn ghost icon" aria-label="Theme">
+        <i class="ic ic-moon"></i>
+      </button>
+    </nav>
+  </header>
+  <div class="docs-body">
+    <nav class="docs-side" aria-label="Docs">
+      <div class="nav-group closed">
+        <button class="nav-label" aria-expanded="false">
+          Start here<i class="ic ic-chevron-down sm"></i>
+        </button>
+      </div>
+      <div class="nav-group">
+        <button class="nav-label" aria-expanded="true">
+          Reference<i class="ic ic-chevron-down sm"></i></button
+        ><a class="nav-item" href="#">Overview</a
+        ><a class="nav-item" href="#">pkey CLI</a
+        ><a class="nav-item active" href="#">Error codes</a
+        ><a class="nav-item" href="#">Validation codes</a>
+      </div>
+    </nav>
+    <div class="docs-content wide">
+      <article class="docs-main">
+        <header class="docs-header">
+          <div class="docs-eyebrow">Reference</div>
+          <div class="docs-title-row">
+            <h1>Error codes</h1>
+            <button class="btn outline sm docs-copy" aria-label="Copy page">
+              <i class="ic ic-copy"></i
+              ><span class="copy-label">Copy page</span>
+            </button>
+          </div>
+          <p class="docs-lede">
+            What each code shows, what it means and how to fix it.
+          </p>
+        </header>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field">
+              <i class="ic ic-search"></i><span>Filter error codes</span>
+            </div>
+            <span class="filter on"><i class="ic ic-check"></i>All</span
+            ><span class="filter">Licensing</span
+            ><span class="filter">Sign-in</span
+            ><span class="filter">Downloads</span>
+          </div>
+          <div
+            class="table-card"
+            role="region"
+            aria-label="Error codes"
+            tabindex="0"
+          >
+            <table class="table compact fixed scroll stack-phone">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>On screen</th>
+                  <th>What it means</th>
+                  <th>Fix</th>
+                  <th>Help</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>device_limit</code></td>
+                  <td>Device limit reached</td>
+                  <td>All device slots are used.</td>
+                  <td>Free a device or raise the tier limit.</td>
+                  <td><a class="link" href="#">Help</a></td>
+                </tr>
+                <tr>
+                  <td><code>key_entry_limit</code></td>
+                  <td>No key entries left</td>
+                  <td>The key cannot be entered again.</td>
+                  <td>Add it to an account and sign in.</td>
+                  <td><a class="link" href="#">Help</a></td>
+                </tr>
+                <tr>
+                  <td><code>license_owned</code></td>
+                  <td>License in another account</td>
+                  <td>A key does not move a license.</td>
+                  <td>Sign in to that account or join accounts.</td>
+                  <td><a class="link" href="#">Help</a></td>
+                </tr>
+                <tr>
+                  <td><code>license_expired</code></td>
+                  <td>License expired</td>
+                  <td>The duration ended.</td>
+                  <td>Renew the license.</td>
+                  <td><a class="link" href="#">Help</a></td>
+                </tr>
+                <tr>
+                  <td><code>version_blocked</code></td>
+                  <td>Update required</td>
+                  <td>The app is outside the license window.</td>
+                  <td>Update the app or widen the version window.</td>
+                  <td><a class="link" href="#">Help</a></td>
+                </tr>
+                <tr>
+                  <td><code>channel_not_allowed</code></td>
+                  <td>Channel not included</td>
+                  <td>The tier excludes this release track.</td>
+                  <td>Add the track to the tier.</td>
+                  <td><a class="link" href="#">Help</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+  <footer class="docs-footer">
+    Polaris Key · <a href="#">key.plrs.im</a> · Developer changelog ·
+    Console<span class="end">Last reviewed October 9, 2026</span>
+  </footer>
+</div>

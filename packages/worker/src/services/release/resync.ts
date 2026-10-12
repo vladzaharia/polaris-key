@@ -618,14 +618,11 @@ async function applyRepoManifest(
   // Service enablement + the device-registration policy, under the same ownership rule once
   // more. Unconditional (unlike the two above) because `services` is always present on a parsed
   // manifest — a manifest that declares no `modules:` block still means something definite,
-  // namely the defaults. `registration` rides in the same value and is written only when the
-  // manifest declared it, so dropping the key from `.pkey/product` returns the product to the
-  // derived default rather than freezing whatever it last said. The `services_source = 'admin'`
-  // guard lives inside the statement, so a push cannot turn a service back on after an operator
-  // has turned it off live — nor re-open registration after one has closed it.
+  // namely the defaults. The registration policy is derived from the set (ST-38), and the write
+  // drops any retired `registration` key. The `services_source = 'admin'` guard lives inside the
+  // statement, so a push cannot turn a service back on after an operator has turned it off live.
   const manifestServicesJson = serializeServices({
     services: manifest.services,
-    ...(manifest.registration ? { registration: manifest.registration } : {}),
   });
   stmts.push(stmtSetServices(slug, manifestServicesJson, "manifest", now));
   updated.push("services");

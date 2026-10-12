@@ -33,8 +33,7 @@ pnpm exec pkey sdk --lang node --product <slug> --write
 
 It writes `polaris.config.ts` (`--out polaris.config.mjs` for JavaScript): the slug, base URL,
 trust pins, advertised services and, when the product has release keys, `update.pinnedReleaseKeys`.
-Compare the printed pin fingerprints with the console before you ship. A local Polaris Key to run
-against is planned.
+Compare the printed pin fingerprints with the console before you ship. [Run Polaris Key locally](/docs/build/local/) to try this without a registered product.
 
 ## The client
 
@@ -124,7 +123,7 @@ void app.whenReady().then(async () => {
 import "@polaris-key/node/electron/preload";
 ```
 
-The renderer wraps the app in `<PolarisKeyProvider>` and `<LicenseGate>`:
+The renderer wraps the app in `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate>`:
 [the React quickstart](/docs/build/quickstart/react/#drop-in-screens).
 
 ## The same eight checkpoints

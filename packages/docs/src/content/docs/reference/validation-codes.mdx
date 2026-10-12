@@ -170,7 +170,7 @@ the offending value, or the allowed set.
 | `invalid_profile_ref` | error | product | `/licensing/tiers/${i}/profile` | Tier profile must be a string profile id. |
 | `invalid_rate_limit` | error | product | `/autoIssue/rateLimitPerHour` | autoIssue.rateLimitPerHour must be a non-negative integer. |
 | `invalid_redirect_uri` | error | product | `/oidc/redirectUris/${i}` | Redirect URIs $\{problem\}. |
-| `invalid_registration_policy` | error | product | `/devices/registration` | devices.registration must be one of $\{REGISTRATION_POLICIES.join(", ")\}. |
+| `invalid_registration_policy` | error | product | `/devices/registration` | devices.registration is removed: the registration policy follows the enabled services (License on: requires a licence; else Identity on: requires sign-in; else open). Delete it. |
 | `invalid_release_access` | error | release | `/release/access/${key}` | release.access values must be public, authenticated, or licensed. |
 | `invalid_release_access` | error | release | `/release/access` | release.access must be an object when present. |
 | `invalid_release_key` | error | release | `/release/releaseKeys` | release.releaseKeys must be an array of 1 to $\{MAX_RELEASE_KEYS\} \{ kid, publicKey \} entries. |

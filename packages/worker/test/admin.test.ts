@@ -6,6 +6,7 @@ import {
   mkReq as mkLicReq,
   NOW,
   seedLicenseWithKey,
+  seedTier,
   seedProduct,
   approveEdgeMintRecipe,
   seedProductSecret,
@@ -1384,7 +1385,7 @@ describe("admin services enablement", () => {
     };
   }
 
-  it("GET returns the set, the declared policy, the effective one, and the owner", async () => {
+  it("GET returns the set, effective policy, and owner", async () => {
     const w = await world();
     const { status, body } = await call(w, "GET");
     expect(status).toBe(200);
@@ -1397,10 +1398,51 @@ describe("admin services enablement", () => {
       identity: { enabled: false },
       sync: { enabled: false },
     });
-    // Nothing declared, so the policy is null and the wire enforces the derivation.
-    expect(body.registration).toBeNull();
     expect(body.effectiveRegistration).toBe("requires-license");
     expect(body.source).toBe("manifest");
+  });
+
+  it("GET, PATCH and revert all report facts counted from the rows, and a dry run reports none", async () => {
+    const w = await world();
+    await seedTier(w.db, "djdl", "free");
+    await seedTier(w.db, "djdl", "pro");
+    await seedLicenseWithKey(w.db, "djdl", { id: "lic_a" });
+    await seedLicenseWithKey(w.db, "djdl", { id: "lic_b" });
+    await seedLicenseWithKey(w.db, "djdl", { id: "lic_c" });
+    await w.db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, channel, metadata_access, artifacts_access,
+          published_at, created_at, modified_at)
+       VALUES ('djdl', 'rel_1', '2.4.0', 'beta', 'public', 'public', ?, ?, ?)`,
+      NOW,
+      NOW,
+      NOW,
+    );
+    const expected = {
+      licensing: { tiers: 2, licenses: 3 },
+      managedConfig: { catalogVersion: 1 },
+      shipBuilds: { latest: { version: "2.4.0", channel: "beta" } },
+    };
+
+    expect((await call(w, "GET")).body.facts).toEqual(expected);
+
+    // A write that adds a licence in between would show here if facts were read before it.
+    const patched = await call(w, "PATCH", "", {
+      services: { identity: { enabled: true } },
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.body.facts).toEqual(expected);
+
+    const dry = await call(w, "PATCH", "?dryRun=1", {
+      services: { identity: { enabled: false } },
+    });
+    expect(dry.status).toBe(200);
+    expect(dry.body).not.toHaveProperty("facts");
+    expect(
+      (await loadProduct(w.env, w.db, "djdl"))?.services.identity.enabled,
+    ).toBe(true);
+
+    expect((await call(w, "POST", "/revert")).body.facts).toEqual(expected);
   });
 
   it("PATCH merges, claims the row, and is visible to loadProduct", async () => {
@@ -1414,7 +1456,11 @@ describe("admin services enablement", () => {
     });
     expect(status).toBe(200);
     expect(body.source).toBe("admin");
-    // Omitted slugs keep their current values rather than reverting to a default.
+    expect(body.facts).toMatchObject({
+      licensing: { tiers: 0, licenses: 0 },
+      managedConfig: { catalogVersion: 1 },
+      shipBuilds: { latest: null },
+    });
     expect(body.services).toEqual({
       license: { enabled: true },
       config: { enabled: true },
@@ -1426,6 +1472,60 @@ describe("admin services enablement", () => {
     });
     const product = await loadProduct(w.env, w.db, "djdl");
     expect(product?.services.update.enabled).toBe(true);
+  });
+
+  it("PATCH applies submitted changes and cascades dependents under the requirement rule", async () => {
+    const w = await world();
+    const enabled = await call(w, "PATCH", "", {
+      services: {
+        release: { enabled: true },
+        distribution: { enabled: true },
+        update: { enabled: true },
+      },
+    });
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.services).toMatchObject({
+      release: { enabled: true },
+      distribution: { enabled: true },
+      update: { enabled: true },
+    });
+
+    const disabled = await call(w, "PATCH", "", {
+      services: { release: { enabled: false } },
+    });
+    expect(disabled.status).toBe(200);
+    expect(disabled.body.services).toMatchObject({
+      release: { enabled: false },
+      distribution: { enabled: false },
+      update: { enabled: false },
+    });
+  });
+
+  it("records Ship builds turned on, and the cascade of turning Release off, as one audit row each (ST-38)", async () => {
+    const w = await world();
+    await call(w, "PATCH", "", {
+      services: {
+        release: { enabled: true },
+        distribution: { enabled: true },
+        update: { enabled: true },
+      },
+    });
+    await call(w, "PATCH", "", { services: { release: { enabled: false } } });
+    const rows = (await listAudit(w.db, "djdl", { limit: 20 })).filter(
+      (r) => r.action === "product.services.update",
+    );
+    // Three slugs written by one PATCH are one audited batch, not one row per slug, and the two
+    // dependents the second PATCH takes with Release share its row.
+    expect(rows).toHaveLength(2);
+    const summaries = rows.map((r) => r.summary ?? "");
+    expect(summaries).toContainEqual(
+      expect.stringContaining("license, config, release, distribution, update"),
+    );
+    expect(summaries).toContainEqual(
+      expect.stringContaining(
+        "distribution, update turned off with what they require",
+      ),
+    );
   });
 
   it("PATCH preserves a slug from a newer build it does not know (P0-08)", async () => {
@@ -1465,7 +1565,7 @@ describe("admin services enablement", () => {
     expect(after.body.services).toMatchObject({ update: { enabled: false } });
   });
 
-  it("PATCH refuses Cloud Sync without Config and Identity, and either of them off under it (U-04)", async () => {
+  it("PATCH refuses Cloud Sync without Config and Identity, then cascades it off with a requirement (U-04)", async () => {
     const w = await world();
     // Defaults: License + Config on, Identity off. Cloud Sync needs Identity.
     const noIdentity = await call(w, "PATCH", "", {
@@ -1482,7 +1582,7 @@ describe("admin services enablement", () => {
     });
     expect(noConfig.status).toBe(422);
     expect(noConfig.body.errors).toContain("sync_requires_config");
-    // With both, it turns on; then Identity (or Config) cannot go off under it.
+    // With both, it turns on; turning off a requirement cascades it off in the same write.
     const on = await call(w, "PATCH", "", {
       services: { identity: { enabled: true }, sync: { enabled: true } },
     });
@@ -1490,18 +1590,10 @@ describe("admin services enablement", () => {
     const identityOff = await call(w, "PATCH", "", {
       services: { identity: { enabled: false } },
     });
-    expect(identityOff.status).toBe(422);
-    expect(identityOff.body.errors).toEqual(["sync_requires_identity"]);
-    const configOff = await call(w, "PATCH", "", {
-      services: { config: { enabled: false } },
-    });
-    expect(configOff.status).toBe(422);
-    expect(configOff.body.errors).toContain("sync_requires_config");
-    const after = await call(w, "GET");
-    expect(after.body.services).toMatchObject({
-      config: { enabled: true },
-      identity: { enabled: true },
-      sync: { enabled: true },
+    expect(identityOff.status).toBe(200);
+    expect(identityOff.body.services).toMatchObject({
+      identity: { enabled: false },
+      sync: { enabled: false },
     });
   });
 
@@ -1560,36 +1652,13 @@ describe("admin services enablement", () => {
     }
   });
 
-  it("PATCH refuses a registration policy nothing could satisfy", async () => {
+  it("PATCH rejects a removed registration policy by field", async () => {
     const w = await world();
-    const noIdentity = await call(w, "PATCH", "", {
-      registration: "requires-identity",
-    });
-    expect(noIdentity.status).toBe(422);
-    expect(noIdentity.body.errors).toEqual(["registration_requires_identity"]);
-
-    const stranded = await call(w, "PATCH", "", {
-      services: { license: { enabled: false } },
-      registration: "requires-license",
-    });
-    expect(stranded.status).toBe(422);
-    expect(stranded.body.errors).toEqual(["config_without_activation"]);
-  });
-
-  it("PATCH sets and clears the declared policy independently of the set", async () => {
-    const w = await world();
-    const declared = await call(w, "PATCH", "", { registration: "open" });
-    expect(declared.status).toBe(200);
-    expect(declared.body.registration).toBe("open");
-    expect(declared.body.effectiveRegistration).toBe("open");
-    expect((await loadProduct(w.env, w.db, "djdl"))?.registration).toBe("open");
-
-    // `null` CLEARS it — the product goes back to following its services. Omitting the key
-    // would have left `open` in place, which is why the two have to be expressible separately.
-    const cleared = await call(w, "PATCH", "", { registration: null });
-    expect(cleared.status).toBe(200);
-    expect(cleared.body.registration).toBeNull();
-    expect(cleared.body.effectiveRegistration).toBe("requires-license");
+    for (const registration of ["requires-identity", null]) {
+      const res = await call(w, "PATCH", "", { registration });
+      expect(res.status).toBe(422);
+      expect(res.body.fields).toEqual(["registration"]);
+    }
   });
 
   it("PATCH rejects malformed input by field", async () => {
@@ -1646,6 +1715,11 @@ describe("admin services enablement", () => {
     expect(reverted.body.source).toBe("manifest");
     expect(reverted.body.services).toMatchObject({
       config: { enabled: false },
+    });
+    expect(reverted.body.facts).toMatchObject({
+      licensing: { tiers: 0, licenses: 0 },
+      managedConfig: { catalogVersion: 1 },
+      shipBuilds: { latest: null },
     });
 
     // …and now a resync is permitted to write again.

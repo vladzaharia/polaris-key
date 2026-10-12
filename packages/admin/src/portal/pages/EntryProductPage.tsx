@@ -7,6 +7,7 @@ import { SectionCard } from "../components/product/Card.js";
 import { GetItPanel } from "../components/product/GetItPanel.js";
 import { HelpCard } from "../components/product/HelpCard.js";
 import { ProductHeader } from "../components/product/ProductHeader.js";
+import { ProductDataCard } from "../components/product/ProductDataCard.js";
 import { RemoveEntryConfirm } from "../components/RemoveEntryConfirm.js";
 import { portalKeys, useProductDownloads } from "../data.js";
 import { consumeHeadingFocus } from "../focus.js";
@@ -32,6 +33,10 @@ import { focusPageHeading, href, navigate } from "../router.js";
  *
  * Get it is the per-product downloads view when the Worker serves one for the entry, else the
  * developer's website ("Get it from <developer>"). With neither, the section is left out.
+ *
+ * **Your data in <Product>** (I-11) follows Get it: download what the product holds for the
+ * person, or remove it. It is about this product alone; the entry stays in the library (Remove
+ * from library is the header menu's, above).
  */
 export function EntryProductBody({
   product,
@@ -103,6 +108,7 @@ export function EntryProductBody({
       <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <EntryGetIt product={product} device={here} />
+          <ProductDataCard product={product} />
         </div>
         {help ? (
           <div className="flex min-w-0 flex-col gap-6">

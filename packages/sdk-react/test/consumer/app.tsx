@@ -2,14 +2,8 @@
 // against React 18's types and once against React 19's, with `skipLibCheck: false`, so a
 // declaration that reaches for React 18's global `JSX` namespace (gone in 19) fails here.
 import type { ReactNode } from "react";
-import {
-  DeviceManager,
-  LicenseGate,
-  PolarisKeyProvider,
-  PolarisLogout,
-  UpdatePrompt,
-  useLicense,
-} from "@polaris-key/react";
+import { PolarisKeyProvider, useLicense } from "@polaris-key/react";
+import { Devices, PolarisKeyGate } from "@polaris-key/react/kit";
 
 function Status(): React.JSX.Element {
   const license = useLicense();
@@ -19,17 +13,17 @@ function Status(): React.JSX.Element {
 export function App(props: { children?: ReactNode }): React.JSX.Element {
   return (
     <PolarisKeyProvider
-      productSlug="acme"
-      trust={{ pinnedKeys: { k1: "A".repeat(43) } }}
-      version="1.0.0"
+      config={{
+        productSlug: "acme",
+        trust: { pinnedKeys: { k1: "A".repeat(43) } },
+        version: "1.0.0",
+      }}
     >
-      <LicenseGate slots={{ loading: () => <p>…</p> }}>
+      <PolarisKeyGate>
         <Status />
-        <UpdatePrompt />
-        <DeviceManager />
-        <PolarisLogout />
+        <Devices />
         {props.children}
-      </LicenseGate>
+      </PolarisKeyGate>
     </PolarisKeyProvider>
   );
 }

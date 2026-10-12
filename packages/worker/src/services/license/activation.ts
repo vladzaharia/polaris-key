@@ -89,7 +89,7 @@ export function authorizationError(
 ): Response {
   switch (err.error) {
     case "unauthorized":
-      // Also SEC-LIC-1's answer for a device id another licence holds: indistinguishable from a
+      // Also the answer for a device id another licence holds: indistinguishable from a
       // refused key, saying neither who holds the id nor whether anything does.
       return errorResponse(401, ErrorCode.Unauthorized);
     case "device_limit":

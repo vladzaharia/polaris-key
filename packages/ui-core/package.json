@@ -2,6 +2,22 @@
   "name": "@polaris-key/ui-core",
   "version": "0.0.0",
   "description": "The Polaris Key UI kits' headless layer for JavaScript: one view model per UI-KITS §4.1 component, the sign-in form's state machine, theme and product identity resolution, the copy formatter, and the design language as data. No DOM, no framework.",
+  "keywords": [
+    "polaris-key",
+    "ui-kit",
+    "headless",
+    "view-model",
+    "sign-in"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/ui-core"
+  },
+  "homepage": "https://key.plrs.im/docs/build/ui/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

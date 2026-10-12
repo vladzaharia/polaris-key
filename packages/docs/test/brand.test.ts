@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { FEATURES } from "../src/lib/features";
+import { FEATURES } from "../src/lib/features.generated";
 import { sectionFor } from "../src/lib/section";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");

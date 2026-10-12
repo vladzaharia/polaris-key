@@ -28,6 +28,10 @@ updates:
     schedule:
       interval: weekly
   - package-ecosystem: github-actions
-    directory: /
+    # "/" covers .github/workflows; the pinned pnpm/action-setup and actions/setup-node refs
+    # live in the local composite action, which Dependabot only scans when listed explicitly.
+    directories:
+      - /
+      - /.github/actions/setup-js
     schedule:
       interval: weekly

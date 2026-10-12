@@ -658,7 +658,11 @@ describe("P0-12 recipe approval via the Config admin API", () => {
   it("on an open-registration product, refuses approval without acknowledgeOpenRegistration", async () => {
     await db.run(
       "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
-      JSON.stringify({ registration: "open" }),
+      // License off with Identity off derives open registration.
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+      }),
     );
     await seedRecipe(db, {}, { approve: false });
     const listed = await listRecipes(env, db);
@@ -670,7 +674,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       db,
       "POST",
       "/api/products/djdl/config/mint/applemusic/approve",
-      echoOf(shown),
+      echoOf(shown, null, false),
     );
     expect(refused.status).toBe(422);
     expect(refused.body.fields).toEqual(["acknowledgeOpenRegistration"]);
@@ -683,7 +687,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       db,
       "POST",
       "/api/products/djdl/config/mint/applemusic/approve",
-      { ...echoOf(shown), acknowledgeOpenRegistration: true },
+      { ...echoOf(shown, null, false), acknowledgeOpenRegistration: true },
     );
     expect(accepted.status).toBe(200);
     const row = (await listAudit(db, "djdl", {})).find(
@@ -713,7 +717,11 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     // A push (or an operator edit) opens registration without touching the recipe.
     await db.run(
       "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
-      JSON.stringify({ registration: "open" }),
+      // License off with Identity off derives open registration.
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+      }),
     );
     const opened = (await loadProduct(env, db, "djdl"))!;
     expect(opened.registration).toBe("open");
@@ -731,7 +739,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
     expect(listed.registration).toBe("open");
     expect(listed.recipes[0]).toMatchObject({
       status: "changed",
-      changedFields: ["registration"],
+      changedFields: ["registration", "license"],
       approval: { openRegistrationAcknowledged: false },
     });
 
@@ -740,7 +748,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       db,
       "POST",
       "/api/products/djdl/config/mint/applemusic/approve",
-      echoOf(listed.recipes[0]!),
+      echoOf(listed.recipes[0]!, null, false),
     );
     expect(refused.status).toBe(422);
     const accepted = await admin(
@@ -748,7 +756,10 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       db,
       "POST",
       "/api/products/djdl/config/mint/applemusic/approve",
-      { ...echoOf(listed.recipes[0]!), acknowledgeOpenRegistration: true },
+      {
+        ...echoOf(listed.recipes[0]!, null, false),
+        acknowledgeOpenRegistration: true,
+      },
     );
     expect(accepted.status).toBe(200);
     expect((await mint(env, db, opened, token)).status).toBe(200);
@@ -1445,7 +1456,6 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
       "utf8",
     ),
   ) as {
-    devices?: { registration?: string };
     modules: Record<string, { enabled: boolean }>;
     oidc: { provider: string; groupRoleMap: Record<string, unknown> };
     edgeMint: Array<{
@@ -1539,8 +1549,9 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
   }
 
   it("a djdl-shaped fixture (closed registration) mints exactly as before, and goes inert if a push later opens registration", async () => {
-    // djdl itself runs requires-license, which is what the fixture's default services give.
-    expect(djdl.devices?.registration).toBe("requires-license");
+    // djdl itself runs requires-license: its License service is on, which the fixture's default
+    // services give.
+    expect(djdl.modules.license?.enabled).toBe(true);
     const { handle, db } = await migrated();
 
     expect(
@@ -1579,7 +1590,11 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
     // mint. The recipe answers 404 until an operator re-approves it with the acknowledgement.
     await db.run(
       "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
-      JSON.stringify({ registration: "open" }),
+      // License off with Identity off derives open registration.
+      JSON.stringify({
+        license: { enabled: false },
+        config: { enabled: true },
+      }),
     );
     const opened = (await loadProduct(env, db, "djdl"))!;
     expect(opened.registration).toBe("open");
@@ -1596,10 +1611,6 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
   });
 
   const ALREADY_PUBLIC: Array<[string, Record<string, string>]> = [
-    [
-      "declared open registration",
-      { services_json: JSON.stringify({ registration: "open" }) },
-    ],
     [
       "License off with Identity off (derived open)",
       {

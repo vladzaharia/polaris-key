@@ -149,6 +149,30 @@ function ext(name: string): string | null {
   return m ? m[1]!.toLowerCase() : null;
 }
 
+/**
+ * A file's format as its name says it: the extension, lowercased and without its dot ("dmg",
+ * "tar.gz", "appimage"). Null when the name has none, or only a number after a dot ("tool-1.4.2").
+ */
+export function fileFormat(name: string): string | null {
+  const format = ext(name)?.slice(1) ?? null;
+  return format && /[a-z]/.test(format) ? format : null;
+}
+
+/**
+ * What a file is, after its title: ".dmg · 84 MB". A part the file doesn't give is left out;
+ * null when it gives neither.
+ */
+export function fileSource(
+  a: Pick<PortalArtifact, "name" | "sizeBytes">,
+): string | null {
+  const format = fileFormat(a.name);
+  return (
+    [format ? `.${format}` : null, formatSize(a.sizeBytes)]
+      .filter(Boolean)
+      .join(" · ") || null
+  );
+}
+
 function archTitle(a: PortalArtifact, platform: PlatformKey | null): string {
   const arch = (a.arch ?? "").toLowerCase();
   if (!platform) return a.name;

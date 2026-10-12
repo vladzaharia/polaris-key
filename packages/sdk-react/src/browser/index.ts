@@ -9,6 +9,18 @@ export {
   type BrowserUpdateConfig,
 } from "./browserAdapter.js";
 export {
+  SKIP_WAITING_MESSAGE,
+  hasWaitingWorker,
+  pageServiceWorker,
+  type SwContainer,
+  type SwRegistration,
+  type SwWorker,
+} from "./serviceWorkerUpdate.js";
+export {
+  installViaServiceWorker,
+  type ServiceWorkerInstallDeps,
+} from "./serviceWorkerInstall.js";
+export {
   pageOutletEnvironment,
   readOutletSignals,
   type WebOutletEnvironment,

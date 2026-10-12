@@ -46,7 +46,7 @@ freely:
 | Document          | Purpose                                                                   |
 | ----------------- | ------------------------------------------------------------------------- |
 | `.pkey/schema.*`  | the config catalog                                                        |
-| `.pkey/product.*` | product metadata, enabled services, registration policy, OIDC, tiers      |
+| `.pkey/product.*` | product metadata, enabled services, OIDC, tiers                           |
 | `.pkey/release.*` | GitHub releases: binary name, channel workflow, Sparkle key, access modes |
 
 There is no fallback directory and no dual-read of an alternate location — one directory,
@@ -223,11 +223,10 @@ patches.
 ## Manifest-vs-admin ownership
 
 Three specific settings — the **fingerprint policy**, the **auto-issue policy**, and
-**service enablement** (which carries the device registration policy alongside it) —
-follow a different rule than everything above: manifest-owned until an operator changes
-one of them live in the console, at which point it is admin-claimed and a later resync
-skips it entirely rather than overwriting the operator's change. A push cannot quietly
-undo a change an operator made at 3 a.m. to stop an incident.
+**service enablement** — follow a different rule than everything above: manifest-owned until an
+operator changes one live in the console, at which point it is admin-claimed and a later resync
+skips it entirely rather than overwriting the operator's change. A push cannot quietly undo a
+change an operator made at 3 a.m. to stop an incident.
 
 `POST …/services/revert` (and its equivalents for the other two) hands ownership back to
 the manifest without changing the live value — the setting stays exactly as the operator

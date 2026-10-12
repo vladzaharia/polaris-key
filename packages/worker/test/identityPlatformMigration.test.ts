@@ -25,6 +25,7 @@ import {
 } from "jose";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -1076,13 +1077,13 @@ describe("claim at next sign-in through a provider: platform product", () => {
       const COOKIE = "pkey_djdl_session";
 
       beforeEach(async () => {
-        // License, Config and Identity on; registration only behind a product sign-in.
+        // Config and Identity on, License off: registration is derived behind a product sign-in.
         await setServices(
           db,
           "djdl",
           serializeServices({
             services: {
-              license: { enabled: true },
+              license: { enabled: false },
               config: { enabled: true },
               release: { enabled: false },
               distribution: { enabled: false },
@@ -1090,13 +1091,12 @@ describe("claim at next sign-in through a provider: platform product", () => {
               identity: { enabled: true },
               sync: { enabled: false },
             },
-            registration: "requires-identity",
           }),
           "manifest",
           NOW,
         );
         product = (await loadProduct(env, db, "djdl"))!;
-        expect(product.registration).toBe("requires-identity");
+        expect(product.services.identity.enabled).toBe(true);
       });
 
       /** The `return_to` browser flow: the callback answers with the product session cookie. */
@@ -1309,6 +1309,8 @@ describe("claim at next sign-in through a provider: platform product", () => {
         const account = await platformLinkedAccount(db, SUB);
         const cookie = await browserSessionSignIn();
         expect((await sessionRead(cookie)).authenticated).toBe(true);
+        // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+        env.BLOBS = asR2(new R2Mock());
         expect(await deleteAccount(ctx(), account)).toEqual({ ok: true });
         expect(
           await count(

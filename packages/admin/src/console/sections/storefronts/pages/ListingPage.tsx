@@ -83,25 +83,27 @@ export function ListingPage({ slug }: { slug: string }): React.ReactElement {
           />
         }
       />
-      {q.isPending ? (
-        <Skeleton className="h-64 w-full" />
-      ) : q.isError ? (
-        <ErrorState
-          error={q.error}
-          onRetry={() => void q.refetch()}
-          context={{ area: "distribution", thing: "Listing" }}
-        />
-      ) : tab === "text" ? (
-        <TextTab slug={slug} data={q.data} />
-      ) : tab === "fit" ? (
-        <FitTab slug={slug} />
-      ) : tab === "images" ? (
-        <SlotBoard slug={slug} />
-      ) : tab === "notes" ? (
-        <NotesTab slug={slug} data={q.data} />
-      ) : (
-        <PushTab slug={slug} />
-      )}
+      <div className="pk-vt-tabpanel">
+        {q.isPending ? (
+          <Skeleton className="h-64 w-full" />
+        ) : q.isError ? (
+          <ErrorState
+            error={q.error}
+            onRetry={() => void q.refetch()}
+            context={{ area: "distribution", thing: "Listing" }}
+          />
+        ) : tab === "text" ? (
+          <TextTab slug={slug} data={q.data} />
+        ) : tab === "fit" ? (
+          <FitTab slug={slug} />
+        ) : tab === "images" ? (
+          <SlotBoard slug={slug} />
+        ) : tab === "notes" ? (
+          <NotesTab slug={slug} data={q.data} />
+        ) : (
+          <PushTab slug={slug} />
+        )}
+      </div>
     </div>
   );
 }

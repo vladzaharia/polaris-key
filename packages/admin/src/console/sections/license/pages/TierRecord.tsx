@@ -163,18 +163,20 @@ function TierRecordBody({
         }
       />
       {tab === "overview" || dirty ? (
-        <div hidden={tab !== "overview"}>
+        <div hidden={tab !== "overview"} className="pk-vt-tabpanel">
           <TierOverview slug={slug} tier={tier} onDirtyChange={setDirty} />
         </div>
       ) : null}
       {tab === "used-by" ? (
-        <TierUsedBy
-          slug={slug}
-          licenses={onTier}
-          loading={licensesQ.isPending}
-          error={licensesQ.error}
-          onRetry={() => void licensesQ.refetch()}
-        />
+        <div className="pk-vt-tabpanel">
+          <TierUsedBy
+            slug={slug}
+            licenses={onTier}
+            loading={licensesQ.isPending}
+            error={licensesQ.error}
+            onRetry={() => void licensesQ.refetch()}
+          />
+        </div>
       ) : null}
       <DeleteTierDialog
         slug={slug}

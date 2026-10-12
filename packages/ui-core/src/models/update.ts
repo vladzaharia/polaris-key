@@ -32,6 +32,12 @@ const STORE_VERB: Readonly<Record<string, string>> = {
   steam: "update.steam",
 };
 
+/** The name of the store an outlet opens when the catalog has no verb of its own for it ("Open
+ *  Microsoft Store"): store names read the same in every locale. */
+const STORE_NAME: Readonly<Record<string, string>> = {
+  "ms-store": "Microsoft Store",
+};
+
 /** Who installs an update the app cannot install itself (update-matrix.json `platform`). */
 const PLATFORM_BODY: Readonly<Record<string, string>> = {
   steam: "update.platform.steam",
@@ -65,7 +71,13 @@ export function updatePromptView(
         "update.restartWhenReady",
         "update.later",
       ],
-      args: { ...args, fraction: u.progress?.fraction },
+      args: {
+        ...args,
+        fraction: u.progress?.fraction,
+        size: u.progress?.size,
+        total: u.progress?.total,
+        time: u.progress?.timeLeft,
+      },
       primary: "update.restartWhenReady",
     });
   switch (u.action) {
@@ -104,6 +116,17 @@ export function updatePromptView(
               "update.skipVersion",
             ],
         args,
+        // "You have {version}" names the installed version, not the new one the title names.
+        ...(u.version
+          ? {
+              keyArgs: {
+                "update.current": {
+                  version: ctx.input.bundle?.version,
+                  size: u.size,
+                },
+              },
+            }
+          : {}),
         primary: "update.install",
       });
     case "code-ready":
@@ -142,7 +165,7 @@ export function updatePromptView(
       return makeView(ctx, "UpdatePrompt", {
         state: "store",
         copy: [verb],
-        args,
+        args: { ...args, store: u.store ?? STORE_NAME[u.outlet ?? ""] },
         primary: verb,
       });
     }
@@ -154,7 +177,7 @@ export function updatePromptView(
           "update.availableTitle",
           PLATFORM_BODY[u.outlet ?? ""] ?? "update.platform.generic",
         ],
-        args,
+        args: { ...args, command: u.command },
       });
     case "none":
       return makeView(ctx, "UpdatePrompt", {
@@ -185,7 +208,12 @@ export function updateProgressView(
   const u = ctx.input.update;
   const p = u?.progress;
   if (!ctx.on("update") || !u || !p) return hiddenView(ctx, "UpdateProgress");
-  const args = { fraction: p.fraction };
+  const args = {
+    fraction: p.fraction,
+    size: p.size,
+    total: p.total,
+    time: p.timeLeft,
+  };
   switch (p.phase) {
     case "queued":
       return makeView(ctx, "UpdateProgress", {
@@ -256,12 +284,14 @@ export function releaseNotesView(
   ctx: Context,
 ): View<"ReleaseNotes", ReleaseNotesState> {
   if (!ctx.on("release")) return hiddenView(ctx, "ReleaseNotes");
+  const product = identityText(ctx).name;
   if (ctx.input.loading)
     return makeView(ctx, "ReleaseNotes", {
       state: "loading",
       copy: loadingVisible(ctx.input.elapsedMs)
         ? ["releaseNotes.title", "common.loading"]
         : [],
+      args: { product },
       focus: null,
     });
   if (ctx.input.error)
@@ -285,5 +315,6 @@ export function releaseNotesView(
       "releaseNotes.version",
       "releaseNotes.released",
     ],
+    args: { product },
   });
 }

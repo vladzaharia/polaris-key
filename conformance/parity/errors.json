@@ -196,6 +196,12 @@
       "description": "Device-code sign-in could not allocate a free user code after several attempts; try again."
     },
     {
+      "code": "erasure_ledger_unavailable",
+      "kind": "wire",
+      "service": "identity",
+      "description": "The account-erasure ledger could not be read, so the request is refused rather than guessed; try again."
+    },
+    {
       "code": "identity_disabled",
       "kind": "wire",
       "service": "identity",

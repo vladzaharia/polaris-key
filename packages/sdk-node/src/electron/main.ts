@@ -1,5 +1,6 @@
-// `exposePolarisBridge` (SDK parity pass SP-N10): the Electron main process's half of the
-// PolarisBridge v3 contract that `@polaris-key/react`'s desktop adapter drives. The privileged
+// `exposePolarisBridge` (SDK parity pass SP-N10, v4 in SP-31): the Electron main process's half of
+// the PolarisBridge v4 contract that `@polaris-key/react`'s desktop adapter drives (the contract
+// is written down once, in that package's `desktop/bridge.ts`, "WHAT v4 ADDS"). The privileged
 // process owns the real client (token, keyring, cache, pinned trust); the renderer gets a proxy
 // that can read state and ask for the verbs listed here, and nothing else.
 //
@@ -12,10 +13,16 @@
 // (`allowSender`) — for example any frame not loaded from the app's own origin.
 
 import { randomUUID } from "node:crypto";
+import { isAbsolute, posix, relative, resolve, sep, win32 } from "node:path";
 import type { PolarisKeyClient } from "../client.js";
+import type { ClientBootOptions } from "../boot.js";
+import type { ClaimResult, CommerceStore } from "../commerce/client.js";
+import type { UpdateEvent } from "../constants.generated.js";
 import { copy } from "../core/copy.js";
 import type { SignInPrompt } from "../identity/client.js";
 import type { ActivationResult } from "../license/endpoints.js";
+import type { FeedKind } from "../update/client.js";
+import type { UpdateDecision } from "@polaris-key/protocol/update";
 import {
   BRIDGE_METHODS,
   DEFAULT_BRIDGE_CHANNEL,
@@ -69,8 +76,14 @@ export interface ExposePolarisBridgeOptions {
   invoke?: {
     extra?: Record<string, (args: unknown) => Promise<unknown> | unknown>;
   };
-  /** The device name a sign-in started from this bridge reports. */
+  /** The device name a sign-in started from this bridge reports when the renderer names none
+   *  (v4: `beginSignIn({deviceName})`, the renderer's name wins). */
   deviceName?: string;
+  /** The one directory `release.fetch` writes under. The renderer's `to` is a path RELATIVE to
+   *  it; an absolute path or a `..` escape is refused with `invalid-argument`. Pass Electron's
+   *  `app.getPath("downloads")`. Without it `release.fetch` answers `not-configured` and
+   *  writes nothing. */
+  downloadDir?: string;
   /** A sign-in flow is forgotten this long after its code expired. Default 60 seconds. */
   flowGraceSeconds?: number;
 }
@@ -119,7 +132,8 @@ interface FlowEntry {
   timer: ReturnType<typeof setTimeout>;
 }
 
-/** A BridgeState: the client's SyncState plus the capability map and the config entries. */
+/** A BridgeState: the client's SyncState plus the capability map, the config entries, the
+ *  device-local overrides (v4 `config.local`) and the presentation member. */
 export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
   const state: Record<string, unknown> = {
     ...client.getSyncState(),
@@ -127,15 +141,19 @@ export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
   };
   const config = client.config.entries();
   if (config) state.config = config;
+  // v4 (`config.local`): the host's persisted overrides ride every state.
+  state.localConfig = client.config.localValues();
   // Discovery's `core.presentation` (HA-13): the member rides every state, null for none.
   state.presentation =
     typeof client.presentation === "function" ? client.presentation() : null;
   return state;
 }
 
-/** Map `license.activateWithKey`'s outcome onto the bridge's `BridgeActivation`. Every refusal
- *  other than the three the bridge names becomes `error` with the copy catalog's sentence and
- *  the server's code (never a raw body). */
+/** Map `license.activateWithKey`'s outcome onto the bridge's `BridgeActivation` (v4). The kinds
+ *  the bridge names (`device-limit`, `unauthorized`, `fingerprint-required`, `enroll-disabled`,
+ *  `hardware-mismatch`, `refused`) keep their shape and the server's code; every other refusal
+ *  becomes `error` with the copy catalog's sentence and the server's code. The messages are the
+ *  catalog's, never a raw server body. */
 export function bridgeActivation(r: ActivationResult): Record<string, unknown> {
   switch (r.kind) {
     case "ok":
@@ -148,9 +166,26 @@ export function bridgeActivation(r: ActivationResult): Record<string, unknown> {
     }
     case "unauthorized":
       return { kind: "unauthorized" };
+    case "fingerprint-required":
+      return { kind: "fingerprint-required" };
+    case "enroll-disabled":
+      return { kind: "enroll-disabled" };
+    case "hardware-mismatch": {
+      const out: Record<string, unknown> = { kind: "hardware-mismatch" };
+      if (r.drift !== undefined) out.drift = r.drift;
+      if (r.changed !== undefined) out.changed = r.changed;
+      return out;
+    }
+    case "refused":
+      return {
+        kind: "refused",
+        code: r.code,
+        status: r.status,
+        message: `${copy.message(r.code)} [${r.code}]`,
+      };
     default: {
       const text =
-        r.kind === "refused" || r.kind === "error"
+        r.kind === "error"
           ? copy.message(r.code)
           : copy.activation(r.kind, { code: r.code });
       return {
@@ -197,8 +232,133 @@ function str(v: unknown, name: string): string {
   return v;
 }
 
+/** The v4 verbs' argument check: `invalid-argument`, the code the bridge documents. */
+function arg(v: unknown, name: string): string {
+  if (typeof v !== "string" || v === "")
+    throw new BridgeRefusal("invalid-argument", `${name} must be a string.`);
+  return v;
+}
+
+/** `v` when it is a string, else undefined (an optional string argument). */
+function optStr(v: unknown): string | undefined {
+  return typeof v === "string" && v !== "" ? v : undefined;
+}
+
+/** Resolve a renderer's `release.fetch` destination inside `dir`, the one directory the host
+ *  lets a renderer write under. A renderer can name a file, never a place: an absolute path (on
+ *  either platform's rules), a NUL, or any path that resolves outside `dir` or to `dir` itself is
+ *  refused with `invalid-argument`. */
+export function resolveDownloadPath(dir: string, to: unknown): string {
+  const refuse = (why: string): never => {
+    throw new BridgeRefusal(
+      "invalid-argument",
+      `release.fetch \`to\` must be a file path inside the download directory: ${why}.`,
+    );
+  };
+  if (typeof to !== "string" || to === "") return refuse("it is empty");
+  if (to.includes("\0")) return refuse("it contains a NUL");
+  if (isAbsolute(to) || posix.isAbsolute(to) || win32.isAbsolute(to))
+    return refuse("it is absolute");
+  const root = resolve(dir);
+  const target = resolve(root, to);
+  const rel = relative(root, target);
+  if (rel === "") return refuse("it names the directory itself");
+  if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel))
+    return refuse("it escapes the directory");
+  return target;
+}
+
+const FEED_KINDS: readonly FeedKind[] = [
+  "appcast",
+  "winsparkle",
+  "velopack",
+  "appInstaller",
+  "zsync",
+];
+
+/** The one shape of `release.fetch` target a renderer may send: a release record's hash (and a
+ *  build id), or a `binary` decision, which names the same hash. A renderer-supplied record is
+ *  never accepted: the host fetches the record itself and verifies it against its pinned release
+ *  keys, so the renderer cannot choose what the SHA-256 check compares against. */
+function fetchTarget(v: unknown): { sha256: string; buildId?: string } {
+  const t = bag(v);
+  if ("record" in t)
+    throw new BridgeRefusal(
+      "invalid-argument",
+      "release.fetch takes a record hash (or a binary decision), not a record: the host verifies the record itself.",
+    );
+  const release = bag(t.release);
+  const sha256 = optStr(t.sha256) ?? optStr(release.sha256);
+  if (!sha256 || !/^[0-9a-f]{64}$/.test(sha256))
+    throw new BridgeRefusal(
+      "invalid-argument",
+      "release.fetch target needs the release record's sha256.",
+    );
+  const buildId = optStr(t.buildId) ?? optStr(t.build);
+  return { sha256, ...(buildId ? { buildId } : {}) };
+}
+
+/** The React desktop adapter's `CommerceClaimResult` for a Node `ClaimResult`. The stores' own
+ *  failures (`error`: no answer, a 5xx) reject with their code instead. */
+function bridgeClaim(r: ClaimResult): Record<string, unknown> {
+  switch (r.kind) {
+    case "ok":
+      return {
+        kind: "ok",
+        store: r.store,
+        productId: r.productId,
+        flag: r.flag,
+        deliverable: r.deliverable ?? "app",
+        state: r.state,
+        granted: r.granted,
+        changed: r.changed,
+      };
+    case "not-owned":
+      return {
+        kind: "notOwned",
+        code: r.code,
+        reason: r.reason ?? "not_owned",
+        status: r.status,
+      };
+    case "attestation-required":
+      return { kind: "attestationRequired", code: r.code, status: r.status };
+    case "refused":
+      return {
+        kind: "refused",
+        code: r.code,
+        ...(r.reason ? { reason: r.reason } : {}),
+        status: r.status,
+      };
+    case "error":
+      throw new BridgeRefusal(r.code, r.message);
+  }
+}
+
+/** `commerce.claim`'s payload, reduced to the fields the store's claim carries. */
+function claimPayload(
+  store: CommerceStore,
+  a: unknown,
+): Record<string, unknown> {
+  const p = bag(a);
+  const need = (name: string): string => arg(p[name], `payload.${name}`);
+  if (store === "app-store")
+    return { signedTransaction: need("signedTransaction") };
+  if (store === "play")
+    return {
+      productId: need("productId"),
+      purchaseToken: need("purchaseToken"),
+    };
+  const dlc = p.dlcAppId;
+  if (typeof dlc !== "string" && typeof dlc !== "number")
+    throw new BridgeRefusal(
+      "invalid-argument",
+      "payload.dlcAppId must be a string or number.",
+    );
+  return { ticket: need("ticket"), dlcAppId: String(dlc) };
+}
+
 /**
- * Register the PolarisBridge v3 handlers on `ipcMain` for `client`. Call once, after the client
+ * Register the PolarisBridge v4 handlers on `ipcMain` for `client`. Call once, after the client
  * is created; the preload (`@polaris-key/node/electron/preload`) exposes the matching
  * `window.polarisKey`. Returns a handle whose `close()` removes every handler.
  */
@@ -244,6 +404,8 @@ export function exposePolarisBridge(
     if (f) clearTimeout(f.timer);
     flows.delete(id);
   };
+  // The restart an install staged, applied by `update.restart` (the function cannot cross IPC).
+  let pendingRestart: (() => Promise<void>) | null = null;
 
   const invokeVerbs: Record<string, (args: unknown) => Promise<unknown>> = {
     "devices.list": async () => client.listDevices(),
@@ -279,6 +441,38 @@ export function exposePolarisBridge(
         o.skipVersion = b.skipVersion as string | null;
       return client.update.decide(o);
     },
+    "update.install": async (a) => {
+      const decision = bag(a).decision;
+      if (typeof decision !== "object" || decision === null)
+        throw new BridgeRefusal(
+          "invalid-arguments",
+          "decision must be an update decision.",
+        );
+      const outcome = await client.update.install(decision as UpdateDecision);
+      // Any install clears a restart left pending from an earlier one.
+      pendingRestart = null;
+      if (outcome.kind === "restartRequired") {
+        pendingRestart = outcome.restart;
+        return { kind: outcome.kind, version: outcome.version };
+      }
+      return outcome;
+    },
+    "update.restart": async () => {
+      const restart = pendingRestart;
+      if (!restart)
+        throw new BridgeRefusal(
+          "invalid-arguments",
+          "no install is staged to restart into.",
+        );
+      pendingRestart = null;
+      await restart();
+      return null;
+    },
+    "update.markBootAttempt": async () => client.update.markBootAttempt(),
+    "update.confirmBoot": async () => {
+      await client.update.confirmBoot();
+      return null;
+    },
     "core.presentationIcon": async (a) => {
       const b = bag(a);
       const num = (v: unknown, fallback: number): number =>
@@ -306,6 +500,180 @@ export function exposePolarisBridge(
         o,
       );
     },
+    // ── v4 (SP-R07) ────────────────────────────────────────────────────────────────────
+    "config.mint": async (a) => {
+      const m = await client.config.mintToken(arg(bag(a).recipeId, "recipeId"));
+      return { token: m.token, expiresAt: m.expiresAt };
+    },
+    "commerce.binding": async () => {
+      const r = await client.commerce.binding();
+      if (r.kind !== "ok") throw new BridgeRefusal(r.code, r.message);
+      return {
+        bindingId: r.bindingId,
+        products: r.products.map((p) => ({
+          store: p.store,
+          productId: p.productId,
+          flag: p.flag,
+          deliverable: p.deliverable ?? "app",
+        })),
+      };
+    },
+    "commerce.claim": async (a) => {
+      const b = bag(a);
+      const store = arg(b.store, "store");
+      if (store !== "app-store" && store !== "play" && store !== "steam")
+        throw new BridgeRefusal(
+          "invalid-argument",
+          "store must be app-store, play or steam.",
+        );
+      const r = await client.commerce.claim(
+        store,
+        claimPayload(store, b.payload),
+        {
+          sync: true,
+        },
+      );
+      const out = bridgeClaim(r);
+      if (r.kind === "ok") pushState();
+      return out;
+    },
+    "core.discovery": async () => {
+      const known = client.discovery();
+      if (known) return known;
+      const r = await client.discover();
+      return r.kind === "ok" ? r.manifest : null;
+    },
+    "core.storeStatus": async () => client.storeStatus(),
+    "devices.id": async () => client.getCurrentDevice().id,
+    // ── v4 (SP-12) ─────────────────────────────────────────────────────────────────────
+    "core.boot": async (a) => {
+      const b = bag(a);
+      const o: ClientBootOptions = {};
+      if (
+        b.consent === "always" ||
+        b.consent === "metered" ||
+        b.consent === "never"
+      )
+        o.consent = b.consent;
+      if (typeof b.metered === "boolean") o.metered = b.metered;
+      if (typeof b.allowOffline === "boolean") o.allowOffline = b.allowOffline;
+      if (typeof b.allowGrace === "boolean") o.allowGrace = b.allowGrace;
+      if (typeof b.registration === "boolean") o.registration = b.registration;
+      if (Array.isArray(b.requiredPacks))
+        o.requiredPacks = b.requiredPacks.filter(
+          (p): p is string => typeof p === "string",
+        );
+      const r = await client.boot(o);
+      pushState();
+      return {
+        outcome: r.outcome,
+        state: r.state,
+        license: r.license,
+        decision: r.decision,
+        emits: r.emits,
+      };
+    },
+    "core.crashTags": async (a) => {
+      const b = bag(a);
+      return client.crashTags({
+        ...(optStr(b.deliverable)
+          ? { deliverable: optStr(b.deliverable)! }
+          : {}),
+        ...(typeof b.build === "string" || b.build === null
+          ? { build: b.build }
+          : {}),
+      });
+    },
+    "release.fetch": async (a) => {
+      const b = bag(a);
+      if (!opts.downloadDir)
+        throw new BridgeRefusal(
+          "not-configured",
+          "This desktop host sets no download directory, so it does not write downloads.",
+        );
+      const to = resolveDownloadPath(opts.downloadDir, b.to);
+      const r = await client.release.fetch(fetchTarget(b.target), { to });
+      pushState();
+      return {
+        path: r.path,
+        size: r.size,
+        sha256: r.sha256,
+        version: r.version,
+        buildId: r.buildId,
+      };
+    },
+    "distribution.downloadModel": async (a) => {
+      const channel = optStr(bag(a).channel);
+      return client.distribution.downloadModel(channel ? { channel } : {});
+    },
+    "distribution.thisPlatform": async (a) => {
+      const b = bag(a);
+      const channel = optStr(b.channel);
+      const platform = optStr(b.platform);
+      return client.distribution.thisPlatform({
+        ...(channel ? { channel } : {}),
+        ...(platform ? { platform } : {}),
+      });
+    },
+    "update.feedUrl": async (a) => {
+      const b = bag(a);
+      const kind = FEED_KINDS.find((k) => k === b.kind);
+      if (!kind)
+        throw new BridgeRefusal(
+          "invalid-argument",
+          `kind must be one of ${FEED_KINDS.join(", ")}.`,
+        );
+      const o: Parameters<PolarisKeyClient["update"]["feedUrl"]>[1] = {};
+      for (const k of [
+        "channel",
+        "velopackChannel",
+        "buildId",
+        "arch",
+      ] as const) {
+        const v = optStr(b[k]);
+        if (v) o[k] = v;
+      }
+      return client.update.feedUrl(kind, o);
+    },
+    // ── v4 (SP-13 config.local, SP-14 update-health events) ───────────────────────────
+    "config.set": async (a) => {
+      const b = bag(a);
+      if (!("value" in b))
+        throw new BridgeRefusal("invalid-argument", "value is required.");
+      await client.config.set(
+        arg(b.key, "key"),
+        b.value as Parameters<PolarisKeyClient["config"]["set"]>[1],
+      );
+      pushState();
+      return null;
+    },
+    "config.clear": async (a) => {
+      await client.config.clear(arg(bag(a).key, "key"));
+      pushState();
+      return null;
+    },
+    "update.journal": async (a) => {
+      const b = bag(a);
+      return client.update.journal.record(
+        arg(b.event, "event") as UpdateEvent,
+        {
+          release: arg(b.release, "release"),
+          ...(typeof b.fromRelease === "string" || b.fromRelease === null
+            ? { fromRelease: b.fromRelease }
+            : {}),
+          ...(optStr(b.deliverable)
+            ? { deliverable: optStr(b.deliverable)! }
+            : {}),
+          ...(optStr(b.channel) ? { channel: optStr(b.channel)! } : {}),
+          ...(typeof b.packSetId === "string" || b.packSetId === null
+            ? { packSetId: b.packSetId }
+            : {}),
+          ...(typeof b.code === "string" || b.code === null
+            ? { code: b.code }
+            : {}),
+        },
+      );
+    },
   };
   for (const v of DEFAULT_INVOKE_VERBS)
     if (!invokeVerbs[v]) throw new Error(`bridge verb ${v} has no handler`);
@@ -321,9 +689,11 @@ export function exposePolarisBridge(
       await client.sync({ force: true });
       return bridgeState(client);
     },
-    beginSignIn: async () => {
+    beginSignIn: async (_e, begin) => {
+      // v4: the renderer's device name wins over the host option, which stays the default.
+      const deviceName = optStr(bag(begin).deviceName) ?? opts.deviceName;
       const prompt = await client.identity.beginSignIn(
-        opts.deviceName ? { deviceName: opts.deviceName } : {},
+        deviceName ? { deviceName } : {},
       );
       const flowId = randomUUID();
       const ttl = Math.max(0, prompt.expiresIn * 1000) + graceMs;
@@ -334,6 +704,9 @@ export function exposePolarisBridge(
         flowId,
         verificationUrl: prompt.verificationUriComplete,
         userCode: prompt.userCode,
+        verificationUri: prompt.verificationUri,
+        expiresAt: prompt.expiresAt,
+        interval: prompt.interval,
       };
     },
     pollSignIn: async (_e, flowId) => {
@@ -357,7 +730,9 @@ export function exposePolarisBridge(
         case "ready":
           forgetFlow(flowId as string);
           pushState();
-          return { kind: "ok" };
+          return r.identity
+            ? { kind: "ok", identity: r.identity }
+            : { kind: "ok" };
         case "expired":
           forgetFlow(flowId as string);
           return { kind: "expired" };

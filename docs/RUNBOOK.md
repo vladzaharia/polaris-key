@@ -133,6 +133,10 @@ cd packages/worker
 npx wrangler secret put <NAME> --env prod
 ```
 
+`KEY_HASH_PEPPER` is not rotated with that command. A new pepper cannot find any console sign-out
+mark, so signed-out admin cookies work again until they expire. It changes only together with a
+new `ADMIN_SESSION_SECRET`, in one `wrangler secret bulk` ("Compromised `KEY_HASH_PEPPER`").
+
 `PLATFORM_KEK` protects sealed product signing keys and product secrets in D1. It is the only
 secret whose misconfiguration is **silent**: every `open()` throws, `loadProduct` returns
 `null`, and every product route serves **404 with no log line** — an outage indistinguishable
@@ -542,11 +546,13 @@ still open, because the ring still holds it. After step 8 only the escrowed old 
 back a value it left dark (step 8's first bullet). After step 9 there is no rollback at all.
 Step 7 is there so you never need one.
 
-**`wrangler rollback` un-rotates secrets.** A Worker version captures its bindings, and classic
-secrets are bindings, so rolling back to a pre-rotation version also restores the pre-rotation
-keyring. If rows have already been re-sealed under the new kid, that version cannot open them
-and every affected product 404s. After any KEK change, prefer a forward fix over
-`wrangler rollback`.
+**Do not use `wrangler rollback` as a secret rollback.** A Worker version captures its
+bindings, and secrets are bindings; treat a rollback to a pre-rotation version as restoring the
+secret values that version held. That conclusion follows Cloudflare's version model, so re-apply
+every secret rotated after the target version immediately after any rollback and verify the
+behaviour below. A forward fix (deploying the known-good code as a new version) is safer because
+it retains the current secrets. For this KEK specifically, an old keyring cannot open rows already
+re-sealed under the new kid, so affected product routes return 404. See "Key compromise" below.
 
 **KEK compromise (containment).** The leak is exploited offline against a D1 dump, so there is
 nothing to block at the edge; the only response is to re-key. Run steps 1-8 immediately — the
@@ -732,6 +738,246 @@ set is always safe. Do not go back to `PLATFORM_KEK` alone once anything has bee
 the new kid (the sweep, or any admin write after step 2): those values would go dark. After step
 6 the old key is gone for good, and so is every D1 backup, bookmark or `wrangler rollback` target
 from before step 4: restored, their blobs carry the legacy kid and cannot be opened.
+
+## Key compromise
+
+Treat a suspected compromise as an incident: record the first plausible exposure time, preserve
+the affected GitHub and Cloudflare audit evidence, and rotate the compromised credential from a
+trusted workstation. Do not use a Worker rollback as containment. Cloudflare documents that a
+Worker version captures its bindings, secrets are bindings, and `wrangler secret put` creates and
+deploys a new version. A rollback to an older version can therefore restore a leaked secret
+value while leaving D1 and KV data unchanged.
+
+Prefer a forward deployment of trusted code. If a rollback is unavoidable, identify every secret
+rotated after its target version, immediately re-apply each from escrow with `wrangler secret
+put` or `wrangler secret bulk`, then perform the secret-specific verification below. Keep a
+pre-rotation cookie or webhook delivery only as a verification fixture; never keep compromised
+secret material. Two secrets are exceptions. Never re-apply an earlier `ADMIN_SESSION_SECRET`:
+generate another. Re-apply `KEY_HASH_PEPPER` only together with that new value, in one
+`wrangler secret bulk` ("Compromised `KEY_HASH_PEPPER`").
+
+### Compromised session secret
+
+`ADMIN_SESSION_SECRET` is the only signing key for the stateless
+`__Host-pkey_admin` cookie (`packages/worker/src/core/console/session.ts`). A holder can forge
+the cookie's subject, groups and step-up timestamp; the root rule grants Superadmin when those
+groups include `PLATFORM_ADMIN_GROUP` (`core/rbac/principal.ts`). Per-subject logout revocation is
+useful for a stolen cookie, but it cannot contain a leaked signing secret: the attacker can mint a
+new subject and expiry. Removing an operator from the IdP group also does not end an existing
+cookie; groups are copied into the cookie for its eight-hour lifetime.
+
+1. Generate a new value (64 hex characters exceeds the deployed-environment minimum):
+
+   ```sh
+   openssl rand -hex 32 | npx wrangler secret put ADMIN_SESSION_SECRET --env <env>
+   ```
+
+2. Keep `PORTAL_SESSION_SECRET` separate. The portal has no fallback to the admin secret
+   (`services/identity/portal/session.ts`), so this rotation does **not** sign portal visitors
+   out.
+3. Verify a saved old admin cookie is rejected:
+
+   ```sh
+   curl -i https://<host>/manage/api/me \
+     -H 'cookie: __Host-pkey_admin=<old-cookie>'
+   # 401
+   ```
+
+   Then sign in afresh at `/manage` and confirm `GET /manage/api/me` returns 200.
+
+4. Review the exposure window in Platform → Activity and every affected product's activity log.
+   A genuine console callback writes `admin.signin` to `platform_audit`
+   (`console/auth.ts`); a forged cookie does not. An action whose `actor_sub` has no recent
+   corresponding sign-in is a lead, not proof—security-event writes are best-effort. Treat
+   `key.*`, `secret.set`, `ci.token.*`, repo-link/resync, exports and deletes as possible
+   Superadmin actions, and rotate or revoke anything unrecognised.
+
+For a leaked `PORTAL_SESSION_SECRET`, rotate it the same way. A portal cookie also needs a live,
+unrevoked `account_sessions` row named by its random `sid`
+(`services/identity/portal/accountSessions.ts`), so the secret alone is not a usable forged
+portal session. Rotation nevertheless signs every portal visitor out; use the account's existing
+“sign out everywhere” path first when the incident is limited to one account.
+
+### Compromised `KEY_HASH_PEPPER`
+
+`hashKey` is HMAC-SHA-256 when the pepper exists and falls back to plain SHA-256 when it does not
+(`packages/worker/src/platform/crypto.ts`). On prod, staging and dev, `core/configGuard.ts`
+refuses every request if the pepper is missing or shorter than 32 characters; that avoids a
+silent production fallback, but it does **not** provide versioning or a dual-read window.
+
+Do **not** rotate this secret merely because its value leaked. It is useful to an attacker only
+with the corresponding D1/KV hashes. Licence keys have 128 random bits and device tokens 256, so
+the pepper does not make either practical to brute-force; the meaningful offline risk is
+low-entropy values such as email-derived limit keys and short-lived sign-in codes. Contain the
+data-access incident first: rotate Cloudflare credentials, audit D1/KV access, and let
+short-lived flows expire.
+
+There is no safe in-place rotation today. Changing the pepper invalidates device-token,
+licence-key, CI-token, registry-token, portal-session and single-use-flow hashes. Licence-key
+plaintext is shown once and is not stored, so old keys cannot be re-hashed. A forced rotation is a
+planned, owner-approved platform-wide credential reissue, and it **replaces `ADMIN_SESSION_SECRET`
+in the same update**. Do not begin without a customer communication and recovery plan.
+`KEY_HASH_PEPPER` versioning and dual-read remain open work.
+
+**Why the session secret changes with the pepper.** The console cookie is verified with
+`ADMIN_SESSION_SECRET` alone and stays valid for eight hours (`core/console/session.ts`). Signing
+out does not change the cookie: it writes a per-operator "revoked at" mark to the single-use store,
+at an address that is an HMAC of the operator's subject under `KEY_HASH_PEPPER`, and a mark the
+check cannot find, because it is missing or the store is unreachable, reads as "not revoked"
+(`core/console/sessionRevocation.ts`). A new pepper addresses different records, so every existing
+mark is lost. With the session secret unchanged, each cookie that was signed out, or revoked as
+stolen, and has not yet expired verifies again, with the groups it carries (Superadmin, for an
+operator in `PLATFORM_ADMIN_GROUP`), for the rest of its eight hours. A new session secret removes
+the dependency on any mark: an older cookie fails its signature check before the store is read.
+Portal cookies need no such step. Each names an `account_sessions` row by an HMAC of its random id
+under the pepper (`services/identity/portal/accountSessions.ts`), so a new pepper finds no row and
+they fail closed.
+
+Forced reissue, in this order:
+
+1. **Prepare.** Have the owner's approval and the customer communication in place, take a D1 Time
+   Travel bookmark, and escrow the current pepper. Tell every console operator that step 4 signs
+   them out.
+
+2. **Generate both values** into a file outside the repository. Worker secrets are write-only, so
+   copy `KEY_HASH_PEPPER` into the escrow (a password manager plus an offline copy) and confirm you
+   can read it back before applying anything. The session secret needs no escrow; if it is ever
+   lost, generate another.
+
+   ```sh
+   cd packages/worker
+   F=$(mktemp)    # created mode 0600
+   printf '{"KEY_HASH_PEPPER":"%s","ADMIN_SESSION_SECRET":"%s"}\n' \
+     "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > "$F"
+   ```
+
+3. **Make a signed-out cookie to test with**, immediately before applying: sign in at `/manage`,
+   copy the `__Host-pkey_admin` cookie from the browser's developer tools, and sign out in the
+   console.
+
+   ```sh
+   BASE=https://<host>/manage/api
+   STALE="cookie: __Host-pkey_admin=…"      # the cookie you copied before signing out
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$STALE"
+   # 401
+   ```
+
+   Anything but 401 means the sign-out did not register: stop. The cookie proves something only
+   until its eight hours end.
+
+4. **Apply both in one request.**
+
+   ```sh
+   npx wrangler secret bulk "${F:?}" --env <env> && rm -f "$F"
+   ```
+
+   Wrangler must report both `KEY_HASH_PEPPER` and `ADMIN_SESSION_SECRET` as successfully created.
+   One `bulk` call sends both in a single request, so no deployed version holds one new secret and
+   one old (DEPLOYMENT.md §4 relies on the same property for the console client's secrets). Two
+   `wrangler secret put` calls deploy two versions and leave that gap: with the pepper first, every
+   signed-out cookie works again; with the session secret first, so does any cookie that was signed
+   in and out before the pepper followed. If the call fails, fix the cause and run the same command
+   again, and delete the file if you stop. Do not split the call.
+
+5. **Verify.** Nothing from before may return, and the new pair must work:
+
+   ```sh
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$STALE"
+   # 401 (a pepper-only change would give 200)
+   curl -fsS https://<host>/api/capabilities >/dev/null && echo up
+   # up, not 500 server_misconfigured
+   ```
+
+   If `STALE` answers 200, the session secret did not change: before anything else, run
+   `openssl rand -hex 32 | npx wrangler secret put ADMIN_SESSION_SECRET --env <env>` and check
+   again. Then sign in afresh at `/manage`, copy the new cookie, and check that a sign-out holds
+   under the new pepper:
+
+   ```sh
+   NEW="cookie: __Host-pkey_admin=…"
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$NEW"
+   # 200
+   CSRF=$(curl -fsS "$BASE/me" -H "$NEW" | jq -er .csrf)
+   curl -fsS -X POST "$BASE/logout" -H "$NEW" -H "X-PKey-CSRF: $CSRF"
+   # {"ok":true,"revoked":true}
+   curl -s -o /dev/null -w '%{http_code}\n' "$BASE/me" -H "$NEW"
+   # 401
+   ```
+
+   `"revoked":false` means the store could not record the sign-out and the cookie still works:
+   treat the environment as unverified and do not continue.
+
+6. **Reissue.** Sign in again, then mint and distribute replacement keys through each licence's
+   Keys API, have devices re-activate or sign in again, and reissue CI and registry tokens. Do this
+   only now: a key minted earlier was hashed under the old pepper and would not match.
+
+**Going back.** Returning to the old pepper, whether by abandoning the reissue or by restoring the
+D1 bookmark (its rows hold the old pepper's hashes), is also a pepper change. Write the escrowed
+old `KEY_HASH_PEPPER` and a newly generated `ADMIN_SESSION_SECRET` to a new file, as in step 2, and
+repeat steps 3 to 5. Set back alone, the old pepper cannot find the marks written under the new
+one, so cookies signed out in between work again.
+
+**Never set an earlier `ADMIN_SESSION_SECRET` by hand.** Next to the new pepper it revives every
+unexpired cookie it signed, signed-out ones included, and a leaked one lets its holder forge
+sessions again. A `wrangler rollback` past this change restores the old pepper and the old session
+secret together ("Key compromise" above). The marks written under the old pepper are reachable
+again, so nothing signed out before the change comes back, but both secrets are un-rotated. If the
+reissue should stand, apply the new `KEY_HASH_PEPPER` from escrow and a freshly generated
+`ADMIN_SESSION_SECRET` in one `wrangler secret bulk` and verify again. Eight hours after the
+change, every cookie signed before it has expired on its own.
+
+### Compromised GitHub webhook secret
+
+`GITHUB_WEBHOOK_SECRET` is one global HMAC secret. The handler accepts
+`GITHUB_WEBHOOK_SECRET_PREVIOUS` only for a planned overlap
+(`packages/worker/src/githubWebhook.ts`); it also binds a delivery to the installation recorded
+for the linked repository and re-syncs the GitHub-resolved default-branch head, never
+`payload.after` (`services/release/resync.ts`, `services/release/manifestFetch.ts`). A forged
+delivery can therefore force a resync or poison webhook metadata, but cannot choose arbitrary
+repository content. Per-tenant webhook secrets remain an open control-plane gap.
+
+For a suspected leak, **do not** retain the old value in `_PREVIOUS`:
+
+1. Generate a new secret and set it on the Worker first, clearing `_PREVIOUS` if present.
+2. Change the GitHub App webhook secret immediately afterwards.
+3. GitHub does not automatically redeliver failed deliveries. Redeliver failures from the App's
+   Recent Deliveries view, or run `POST /manage/api/products/<slug>/release/resync` for each
+   linked product after the App and Worker agree on the new secret.
+4. Compare webhook-sourced `product_sync_state` rows with GitHub's delivery history and the
+   GitHub-resolved `product_manifest_snapshot.applied_sha`; inspect `setting.resync` audit rows
+   for unexpected changes. Signature failures themselves are not audited.
+
+For routine rotation, set the old value as `_PREVIOUS` and the new value as the current secret in
+one bulk update, change GitHub, verify a new delivery, then delete `_PREVIOUS`.
+
+### Compromised product signing key
+
+This is the product Ed25519 key held under `PLATFORM_KEK`, not a CI release key. It signs the
+product's licence, config, feed, trust and bundle documents; release records remain separately
+signed by CI. First determine whether one product key leaked or whether a Worker/KEK compromise
+requires the KEK procedure and rotation across every product.
+
+1. In the product's Keys page (or `POST /manage/api/products/<slug>/keys/prepare`), prepare a
+   replacement. The key is `staged` and published before it signs; wait its 300-second
+   `activateAfter` trust-cache window. During active forgery, `activate` may use
+   `breakGlass: true`, which requires a fresh console step-up.
+2. Activate the staged key. This atomically retires the previous active key. Retirement alone is
+   **not containment**: retired keys remain verification keys.
+3. Revoke the leaked, now-retired kid with
+   `POST /manage/api/products/<slug>/keys/revoke`. An active key cannot be revoked; replacement
+   activation is required first. Revocation removes it from JWKS and keeps a positive
+   `status: "revoked"` listing in the trust manifest for 400 days.
+4. Verify the Keys listing, `/<slug>/.well-known/jwks.json`, and
+   `/<slug>/.well-known/polaris-trust.jws`. Check the product audit trail for
+   `key.prepare`, `key.activate` (or `key.activate.break_glass`) and `key.revoke`.
+5. Run "Recovering the update feeds after a signer compromise" below for the affected product.
+
+Clients with the leaked kid as their **only** compiled trust pin cannot be repaired remotely once
+it is revoked: a tombstone must be signed by another already-usable pin. Ship new app builds
+pinning a clean standby key. Keep a standby pin in future builds; the trust-manifest tombstone
+rule can then remove a compromised pin. The `product_keys.status` column has no declarative
+CHECK in `0003_keyvault.sql`, but `0015_data_integrity.sql` triggers reject values outside
+`active`, `staged`, `retired` and `revoked`; use the Keys API, never an ad-hoc status update.
 
 ## Product operations
 
@@ -1141,25 +1387,33 @@ nothing to bump and no per-SDK tag:
 Owner request 2026-10-06. These decisions were made by the lead under delegated owner authority.
 
 - **What is pruned.** When version V of a package is published on `stable`, the package's
-  `main`-channel prereleases that sort below V are deleted. That means semver `X-main.N` and PEP 440
-  `X.devN` with X ≤ V (`services/release/packages/prune.ts`). Stable and beta versions are never
+  prereleases on the ephemeral channels (`main`, and the built-in `dev` since F-36) that sort below
+  V are deleted. That means semver `X-main.N` (on `main`), `X-dev.N` (on `dev`) and PEP 440
+  `X.devN` (on either) with X ≤ V (`services/release/packages/prune.ts`). A public registry's copy
+  is never reached. Stable and beta versions are never
   touched, prereleases of versions newer than V are never touched, and other packages are never
   touched. A `beta` publish (a prerelease tag) prunes nothing. Only a live stable release sets
   the ceiling: a yanked or deprecated one never does. A candidate that a channel policy points
   at (a promote or pin) is kept. So is any candidate another row names (a revocation, a pack pin
   or hold, a download token). Both show as `kept` in the report. A candidate that became held
   between the plan and its deletion is kept too and listed as `skipped`, never dropped silently.
-- **When.** Once the product opted in (below), the prune runs automatically in the Worker, right
+- **When.** Once retention is on for the product (below), the prune runs automatically in the Worker, right
   after the stable version is committed, for that package only. A failure never fails the publish. It is recorded
   in the product's audit as `package.prune.failed`, with the error. The Worker never logs to the
   console (R12), so the audit is the log. The next stable
   publish retries it, because each run prunes every remaining candidate. The backfill below also
   retries it. Every statement is idempotent, so running it twice is harmless.
 - **The setting.** `release.packages.prunePrereleases` (settings registry; table
-  `release_package_retention`) is OFF by default for a tenant product, which opts in with
-  `PUT /manage/api/products/<slug>/distribution/feeds/retention {"expectedVersion": <n>,
-"prunePrereleases": true}` (audited `feed.retention.update`; `false` turns it off again). The
-  system product (`polaris-key`) is on by default and locked on: a write is refused.
+  `release_package_retention`) is ON by default for every product (F-36), after a one-time
+  dry-run notice. The Release cron (every 15 minutes), or the product's first stable publish,
+  records the notice (`release_package_retention_notices`: what a dry run found, and
+  `starts_at`, a week later; one `package.prune.notice` audit row). Nothing is deleted before
+  `starts_at`. An operator's own value wins at once: `PUT
+/manage/api/products/<slug>/distribution/feeds/retention {"expectedVersion": <n>,
+"prunePrereleases": false}` keeps the builds (audited `feed.retention.update`; `true` opts in
+  without waiting). `GET` on the same path shows `source` and the `notice`. The system product
+  (`polaris-key`) is on by default and locked on: a write is refused. Rolling the CODE back across
+  F-36 leaves cleanup off for a product that never chose (`scripts/rollback/0115_release_package_retention_notices.down.sql`).
 - **What a prune does.** Versions go in atomic D1 batches of up to 20. For each version, the batch deletes its
   `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows and drops
   its `artifact` blob refs. It writes a tombstone to `release_package_prunes`: ingest refuses to
@@ -1803,6 +2057,162 @@ surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep
   its lock age: stop the collector and escalate. Never shorten or remove the bucket lock to make
   it pass.
 
+## Account erasure ledger and D1 restore (I-11)
+
+A D1 Time Travel restore rewinds the whole database, so an account erased after the restore point
+comes back with nothing in D1 to say it was erased. The erasure ledger is the record a restore
+does not touch: one object per erased account in the existing `BLOBS` R2 bucket, key
+`erasures/<account id>`, holding the opaque `acct_…` id, a version and a timestamp (no email, name
+or product). It is written create-only, **before** the erasure closes the account, so a write that
+fails (R2 down, `BLOBS` unbound) stops the erasure with D1 untouched and the due request is claimed
+again after its 10-minute lease. No code deletes a ledger object; do not delete one by hand, and
+never put a lifecycle or expiry rule on `erasures/` (DEPLOYMENT §3). A deletion that is only
+scheduled (the 14-day grace period, still cancellable) is **not** on the ledger: a restore to a
+point before the request was made forgets it, and the person has to schedule it again.
+
+**When the ledger is applied.** The replay, which is the cleanup, runs only from the cron: never
+synchronously with a restore and never from a request. No route, console action or restore hook
+runs it, so an operator waits for the next tick. (Requests only read the ledger, see "The
+request-time fence" below; none applies it.) The ticks are:
+
+- every 15 minutes, on the connector tick (`*/15 * * * *`), as the first of the erasure steps,
+  before the due-deletion and retry sweeps;
+- nightly at 03:17 UTC (`17 3 * * *`), after the registry-token purge and before the legacy
+  `accountsCatchUp`.
+
+One pass reads the ledger in key order, in pages of 1,000 keys, at most 5 pages (5,000 ids) a
+pass; a longer ledger is continued from where the last pass stopped (a KV resume marker that
+expires on its own; losing it only restarts the walk). For each page, in this order:
+
+1. **Tombstones.** An id-only `account_tombstones` row is created for every listed id that has none
+   (`INSERT OR IGNORE`: an existing row is never rewritten), so the legacy catch-up cannot copy the
+   account back.
+2. **Re-erasure.** Every listed account that is live again (`status <> 'deleted'`) is handed to the
+   erasure state machine, at most **25 accounts per pass**; the rest are counted as deferred, and a
+   pass that stopped at its page bound with accounts deferred resumes from the same point, so they
+   are read first. The state machine closes the account in one batch (status `deleted`, sessions
+   deleted, package-registry tokens revoked; another Worker isolate may keep a cached registry
+   token for up to 30 seconds), then runs the stores' per-person deletes and the final erasure
+   again. Developers receive `subject.deleted` again. An account already at `deleted` is left to
+   the retry sweeper and its back-off (15 minutes, 1 hour, 4 hours, 12 hours, then 24 hours).
+3. **Mirror.** D1 erasure tombstones (never merge tombstones) that the ledger lacks, from erasures
+   that finished before the ledger shipped, are copied into it, at most **100 per pass**, over the
+   key range the pages covered.
+
+Every step is idempotent: a pass over a consistent state changes nothing. A single account that
+fails is recorded and the pass goes on; an unreachable R2 or D1 fails the step.
+
+**The request-time fence.** Every request that acts as an account reads the ledger first: one HEAD
+of `erasures/<account id>` in the `BLOBS` bucket, remembered per Worker isolate (an erased answer for
+the isolate's life, a not-erased answer for 30 seconds). It needs no new binding, queue or secret.
+An account on the ledger is refused from the moment a restore lands, before the replay runs:
+
+- sign-in through every front door (email code or link, providers and the email gate, passkeys,
+  single sign-on, product sign-in through the platform IdP) is refused with the same answer as a
+  disabled account, and so is a join offer to it;
+- the portal API answers `401` to its session cookies; a product browser session reads signed out
+  and its record is ended; an approved sign-in on another device is refused; licensed download
+  links answer `404`;
+- package-registry tokens a person minted from the portal resolve to nothing, as a revoked token
+  does;
+- devices bound to the account cannot attach a licence or read its subject; joining, linking,
+  undoing a join and relinking a licence to it are refused.
+
+**It fails closed.** With `BLOBS` unbound or R2 failing, nothing is let through for an account: the
+portal API answers `503 unavailable` (the browser keeps its cookie and retries), sign-in is refused,
+a product browser session reads signed out but its record is kept, an approved device sign-in or a
+download answers `503` without being spent, and a portal-minted package token resolves to nothing.
+Public feeds keep working; tokens no account owns (console and operator tokens) and CI tokens are
+not asked.
+
+**The replay is still the cleanup.** It closes the restored account in D1 and erases what the
+restore brought back (tombstone, data, tokens). Its timing no longer decides whether a restored
+account can be used; it decides how long its rows sit in the restored database. That is up to one
+connector tick (15 minutes), and longer when:
+
+- more than 25 accounts came back: each pass re-erases 25, so _n_ accounts need ⌈_n_ ÷ 25⌉ passes
+  (1,000 accounts: 40 passes, about 10 hours of 15-minute ticks);
+- the ledger holds more than 5,000 ids and the account is past the pages a pass reads (the walk
+  needs ⌈ids ÷ 5,000⌉ passes to reach every id);
+- re-erasing an account failed (it is retried on the next pass).
+
+**What stays open after a restore.** The fence is the in-repo control; there is still no maintenance
+mode, read-only switch or traffic switch, and none should be assumed.
+
+- The console's Users page, per-user detail and export are staff-only reads and are **not**
+  fenced: until the replay erases the rows they can still list a restored erased account's contact
+  address and activity. Staff should not act on those rows.
+- Cloud Sync and account overrides identify a device by its token and its subject binding, not by
+  the account (`syncAccess`, `accountOverrides`), so they are **not** fenced: a device still bound
+  to a restored erased account's subject keeps that access until the replay clears the binding.
+- The not-erased answer is remembered for 30 seconds per isolate, so an erasure recorded by another
+  isolate in the last 30 seconds is unseen by this one for up to that long. The isolate that
+  recorded the erasure knows at once.
+- A `503` from the fence is not a signal that a restore happened. The evidence of the replay is the
+  `platform_job_runs` rows of step `erasureLedger` (below).
+
+### Restoring D1
+
+1. Follow the Time Travel commands in `docs/security/arch/operational-resilience.md` §5
+   ("Point-in-time restore"): capture the current bookmark first (the restore is in place and
+   destructive), find the target bookmark, then
+   `npx wrangler d1 time-travel restore polaris_key_prod --env prod --bookmark <bookmark>`.
+   Time Travel reaches back 30 days. Restoring to the undo bookmark afterwards is safe for erasures
+   too: the ledger lives outside D1, and the replay applies it again whichever state D1 is in.
+2. Leave R2 alone. The restore does not touch `BLOBS`; do not empty, replace or re-point the
+   bucket, and keep the `BLOBS` binding in `wrangler.toml` for the environment. With no binding the
+   fence refuses account sign-in and portal API calls with `503`, the replay does nothing and every
+   account erasure refuses to start.
+3. Note the restore time (UTC). Accounts on the ledger are refused from the moment the restore
+   lands; the replay then erases what came back, on the next connector tick (the nightly tick is
+   the second chance). Nothing here can be forced or sped up, and the console Users rows stay
+   visible until it has run (see "What stays open").
+4. Verify **after** that time. `platform_job_runs` is in D1, so the restore rewound it too: only
+   ticks that ran after the restore appear.
+
+   ```sh
+   cd packages/worker
+   npx wrangler d1 execute polaris_key_prod --env prod --remote --command \
+     "SELECT job, cron, datetime(started_at/1000,'unixepoch') AS started_utc, outcome, rows_affected, error_summary FROM platform_job_runs WHERE step = 'erasureLedger' ORDER BY started_at DESC LIMIT 12"
+   ```
+
+   (`started_at` is epoch milliseconds.) The same rows are on the console's Operations page
+   (`GET /manage/api/platform/operations`, `jobs`). `rows_affected` is the sum of tombstones
+   created, accounts re-erased and ledger copies made in that pass: expect it above 0 on the first
+   tick after a restore that brought erased accounts back, then 0 once D1 and the ledger agree.
+   **A `connectorPoll` row never shows a failure**: the 15-minute tick keeps only the count, so a
+   replay that threw is recorded there as `ok` with `rows_affected` 0. Only the nightly
+   (`maintenance`) row can be `failed`; its `error_summary` names up to ten opaque account ids with
+   the failing step (`reapply` or `mirror`). Read a 0 on the poll tick together with the nightly
+   result, never alone. Likewise only the nightly run records a failed `accountDeletions` step
+   (due scheduled deletions) or `erasures` step (an erasure that failed 5 times, named by id and
+   step).
+
+5. For a specific account id (from the ledger, or from the person's report), check D1 directly:
+   `SELECT id FROM account_tombstones WHERE id = '<id>'` should return the row;
+   `SELECT id, status FROM accounts WHERE id = '<id>'` should return nothing once the erasure has
+   finished, or `status = 'deleted'` while it is being resumed; `SELECT attempts, failed_step,
+last_error FROM account_erasures WHERE account_id = '<id>'` shows a resumed erasure's progress.
+   The repo has no command that lists the ledger itself; the R2 dashboard's object browser shows
+   the `erasures/` prefix.
+
+**Limits to know before relying on it.**
+
+- Erasures that finished **before** the ledger shipped are protected only once the mirror has copied
+  them (100 per pass). A restore to a point before such an account's tombstone existed, made before
+  that copy, brings the account back usable, with nothing to refuse or re-erase it. After the first
+  deploy of I-11, do not restore D1 to a point earlier than the deploy until the `erasureLedger`
+  count on the connector ticks has stayed at 0 for a day. No recorded signal says the mirror is
+  complete, only that a pass did nothing.
+- The ledger is one bucket with no other copy. R2 is outside Time Travel and the repo configures
+  no backup of it; a lost or emptied bucket loses the ledger. So does a ledger object deleted by
+  hand or by a lifecycle rule: the fence and the replay both read it, and both lose that account.
+
+**Troubleshooting.** A wave of `503 unavailable` on the portal API, sign-in refusals or signed-out
+product sessions while R2 is degraded or `BLOBS` is unbound is the fence failing closed, not an
+account problem: restore R2 or the binding and signed-in clients carry on. An unreadable ledger
+clears no portal cookie and ends no product browser session; it only refuses until it can be read.
+
 ## Release-file mirroring (HA-08)
 
 Polaris Key keeps its own copy of every app-release file whose bytes live only on GitHub or at an
@@ -1901,13 +2311,45 @@ polaris-key-deltas-<env>`).
 
 ## CI gates
 
-`.github/workflows/ci.yml` runs on PRs and `main` pushes:
+`.github/workflows/ci.yml` runs on PRs and `main` pushes. **`CI OK` is the one required check**
+(branch protection: require it and nothing else); it passes when every job passed or was skipped
+by scope.
 
-- JS/TS build, typecheck, tests, lint.
-- Conformance corpus drift check with `pnpm gen corpus --check`.
-- Admin build.
-- Python SDK tests on Ubuntu and macOS.
-- Swift SDK tests on macOS.
+- `js` always runs: JS/TS build, typecheck, tests (the adapter conformance suites included),
+  lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
+  gates), the admin build and the docs link check.
+- The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the
+  Swift SDK and Apple plugin (four macOS jobs: `apple`, `apple-hosted`, `apple-footprint`,
+  `apple-plugin`, one lane because they read the same paths), the Swift floor, Kotlin, Android, Godot) run when a
+  changed path is one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs
+  (the contract, the shared packages, `tools/`, `.github/`, the lockfile). A lane's `paths` list
+  what its job reads, not only its own tree: the Python lane names the Python samples under
+  `examples/` and the two cross-SDK fixtures its tests open (`sdks/godot/tests/qr/fixtures.json`,
+  `docs/design/ui-kits/terminal-parity.json`), and a rename counts at its old path and its new one.
+  The `changes` job decides this through `tools/ci-scope.mjs`. The lead's local `gate.sh` does not
+  yet ask that script; it still carries its own regexes until it runs `node tools/ci-scope.mjs touches <lane> --worktree`,
+  so until then a local run can pick different lanes from CI for the same files.
+  A new lane or matrix is one entry in that file and one job in `ci.yml`
+  (`tools/ci-scope.test.ts` fails when the two disagree).
+- A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
+  4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes run every lane
+  and the full matrix (Python on macOS too, all four Linux Godot engines and the Windows and macOS
+  smokes, Kotlin desktop on macOS and Windows, emulator API 34). So does a pull request whose
+  changed files `git` cannot list: every lane, every matrix in full.
+- `swift-floor` keeps the Swift SDK building on the oldest toolchain it supports, Xcode 16.4 (Swift
+  6.1) on macos-15. `PolarisKeyPlatform`'s Xcode 26+ code is behind `#if compiler(>=6.3)`, so
+  `apple` (Xcode 26.6) compiles only the guarded branch and this job compiles the other. It builds
+  the package and the iOS schemes; the package's tests run once, on `apple`. Its lane is the
+  package alone (`sdks/swift/`), where `apple`'s also takes the Godot addon, the CLI and the kit
+  lint. `sdks/swift/tools/select-xcode-16.sh` fails it unless the compiler is Swift 6.0 to 6.2.
+- `ci.yml`, `native-desktop.yml` and `feed-closure.yml` set up pnpm, Node and the install through the
+  composite action `.github/actions/setup-js`. `native-desktop.yml` runs only for its own paths, and
+  its filter lists the composite action too: a change to it changes those jobs
+  (`tools/ci-scope.test.ts` fails when a workflow's path filter leaves out a local action its jobs
+  use). The release and secret-holding workflows (`deploy.yml`, `publish-sdks.yml`,
+  `npm-repair.yml`, `sync-worker-secrets.yml`) keep their steps inline: `npm-repair.yml` checks out
+  an old tag that has no local action, and `syncWorkerSecretsWorkflow.test.ts` and
+  `releaseWorkflows.test.ts` pin those steps to commit SHAs.
 
 A red conformance job means the wire contract changed without regenerating and committing
 the corpus.

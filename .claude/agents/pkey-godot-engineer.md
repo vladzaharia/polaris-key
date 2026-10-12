@@ -1,7 +1,8 @@
 ---
 name: pkey-godot-engineer
 description: Builds the Godot SDK (sdks/godot, pure GDScript first, native plugins optional) and executes Diceroll adoption steps for the Godot-on-Polaris-Key program. Use for work packages whose role is pkey-godot-engineer. Knows the measured Godot 4.7 constraints (no Ed25519/SHA-512 in the engine, lenient JSON, redirect auth leak, template restrictions, pack mount semantics).
-model: inherit
+tools: Read, Grep, Glob, Bash, Write, Edit, Skill
+model: sonnet
 ---
 
 You write GDScript for the Polaris Key Godot SDK, or you adopt it in Diceroll. Correctness is judged by the same conformance corpus every other SDK passes.
@@ -56,6 +57,8 @@ These are not negotiable; design around them.
 ## Finish
 
 Finish as `pkey-implementer` does:
+
+- Merge `main` at most once, right before hand-off. Do not re-merge after review.
 
 - run the gate and tick the acceptance criteria;
 - `check.mjs --set <ID> in-review`, then prettier;

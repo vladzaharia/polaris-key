@@ -56,6 +56,10 @@
  *   - A join is refused while either account could still undo a join of its own (`merge_pending`
  *     in `merge.ts`): absorbing that account would make the undo impossible, and absorbing INTO it
  *     would hand the second join's data and aliases to the first one's absorbed account on undo.
+ *   - A join is refused while either account has a scheduled deletion (`deletion_pending` in
+ *     `merge.ts`, I-11), so a snapshot never holds a deletion request and an undo never has to
+ *     restore one. A request the survivor schedules after the join stays on the survivor: an undo
+ *     neither moves nor cancels it, and the restored account starts with none.
  *   - The snapshot holds the absorbed person's details (its account row: email, name, locale,
  *     profile sources, passkey user handle; its consents and terms acceptances), so it lives no
  *     longer than the window: an undo clears it, the nightly job deletes rows whose window ended,
@@ -64,6 +68,7 @@
 
 import { randomId } from "../../../platform/crypto.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
@@ -474,6 +479,11 @@ export async function undoMerge(
   const A = merge.absorbed_id;
   const survivor = await getAccountRow(db, S);
   if (!snap || !survivor || survivor.status !== "active") {
+    return { ok: false, error: "not_found" };
+  }
+  // I-11: an undo rebuilds the absorbed account into a survivor; one the erasure ledger holds (a
+  // D1 restore brings it back as `active`) gets nothing rebuilt, and an unreadable ledger refuses.
+  if ((await erasureVerdict(env, now, S)) !== "clear") {
     return { ok: false, error: "not_found" };
   }
   // The absorbed id must still be this join's tombstone (and not an account again).

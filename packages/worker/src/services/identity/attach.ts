@@ -47,6 +47,7 @@ import { randomId } from "../../platform/crypto.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { Product } from "../../core/products.js";
+import { erasureVerdict } from "../../core/accounts/erasureFence.js";
 import {
   ErrorCode,
   json,
@@ -110,20 +111,27 @@ async function deviceOf(
 
 /**
  * The account signed in on the device: the binding's account, through merge aliases, while that
- * account is active. `null` when there is none.
+ * account is active and not on the erasure ledger (I-11: a D1 restore brings an erased account
+ * back as `active`, bound devices included). `null` when there is none, `unavailable` when the
+ * ledger could not be read.
  */
 async function deviceHolder(
+  env: Env,
   db: Db,
   product: string,
   bound: string | null | undefined,
-): Promise<{ accountId: string; subject: string } | null> {
+  now: number,
+): Promise<{ accountId: string; subject: string } | "unavailable" | null> {
   if (!bound || !PAIRWISE_SUBJECT_PATTERN.test(bound)) return null;
   const subject = await resolveSubject(db, product, bound);
   if (!subject) return null;
   const accountId = await accountForSubject(db, product, subject);
   if (!accountId) return null;
   const account = await getAccountRow(db, accountId);
-  return account && account.status === "active" ? { accountId, subject } : null;
+  if (!account || account.status !== "active") return null;
+  const ledger = await erasureVerdict(env, now, accountId);
+  if (ledger === "erased") return null;
+  return ledger === "clear" ? { accountId, subject } : "unavailable";
 }
 
 async function limited(
@@ -174,7 +182,15 @@ export async function handleIdentityAttach(
   if (license && !licenseUsable(license, now))
     return wireError(401, ErrorCode.Unauthorized);
   // The holder: the account signed in on THIS device, never one the request names.
-  const holder = await deviceHolder(db, product.slug, valid.device.subject);
+  const holder = await deviceHolder(
+    env,
+    db,
+    product.slug,
+    valid.device.subject,
+    now,
+  );
+  if (holder === "unavailable")
+    return wireError(503, "erasure_ledger_unavailable");
   if (!holder) return wireError(403, ErrorCode.AccountRequired);
   if (!license) return wireError(404, ErrorCode.NotFound);
 
@@ -271,10 +287,18 @@ export async function handleIdentitySubject(
   const auth = await deviceOf(req, env, db, product, now);
   if (auth instanceof Response) return auth;
   const bound = auth.valid.device.subject ?? null;
-  const subject =
+  let subject =
     bound && PAIRWISE_SUBJECT_PATTERN.test(bound)
       ? await resolveSubject(db, product.slug, bound)
       : null;
+  // I-11: a subject whose account the erasure ledger holds is no one's (a restore brings it back).
+  if (subject) {
+    const accountId = await accountForSubject(db, product.slug, subject);
+    const ledger = await erasureVerdict(env, now, accountId);
+    if (ledger === "unavailable")
+      return wireError(503, "erasure_ledger_unavailable");
+    if (ledger === "erased") subject = null;
+  }
   const body: SubjectResponse = { subject };
   return json(body);
 }

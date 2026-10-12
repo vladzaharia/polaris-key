@@ -83,6 +83,57 @@ Left for a follow-up slice (same package, or split by the lead):
 3. **The I-17 modes as connection settings** (scope line): not built. The switch is still read
    from the env for the seeded row's policy and the legacy engine, until I-32b.
 
+## Continuation built (2026-10-10, I-30b on `wp/I-30b-card-ui-docs`)
+
+- **The card UI** (Continuation item 2) is built in `packages/admin/src/portal/pages/SignInPage.tsx`:
+  - a routed start opens **SsoStep** (mockup `identity.sign-in-routes` pins 1 and 2): the address
+    as a chip with **Change**, the organization's name as the heading, **Continue to
+    <Organization>** to `/login/sso/<id>?login_hint=…&return_to=…`;
+  - a domain that is not enforced also gets **Email me a code instead**, which calls `resend` and
+    moves on to the code step;
+  - an enforced refusal (`403` with `next`) from the verify or the resend moves to SsoStep, not
+    to "This account can't sign in";
+  - `auth.connections` render as full-width "Continue with <label>" buttons, with the typed
+    address as `login_hint`.
+
+  Its states are in the portal quality matrix (`signin-sso-required`, `signin-sso-first`,
+  `signin-connections`) with linux baselines.
+
+- **The docs** (Continuation item 1, acceptance item 4) are written:
+  - `features/sign-in/customer-portal.md` ("Work and school addresses") and
+    `features/sign-in/oidc.md`;
+  - `operate/platform/connections.md` ("Sign-in connections": the seeded row, the TXT proof, the
+    daily re-check, enforce);
+  - the new Help page `help/work-account.md`, with a pointer from `help/sign-in.md`.
+- **The two review notes** are fixed:
+  - `/callback` keys the lookup, Q1's auto-link and the sign-in by one subject, trimmed as
+    `normalizeIdentity` keys every link;
+  - `mappedClaims` reads the token's own members into a null-prototype object, so a claim named
+    `__proto__` is a plain key. `test/connectionCallback.test.ts` pins both.
+
+### Corrections from the code (2026-10-10, the I-30b builder)
+
+- **The React cookie note stays.** It goes with SP-40 ("Retire React cookie-mode browser
+  sessions", todo), as docs plan §5 row `build/quickstart/react.md` says. Cookie mode still ships
+  (`packages/sdk-react/README.md`), so removing the note now would make the page wrong.
+- **`help/connected-apps` is I-34's.** It is the "Choose what apps can see" article (docs plan
+  §7.1, P2 I-34). The portal has no Connected apps screen until I-34 builds it.
+- **`help/account` stays DOC-04b's stub.** The page is a hidden placeholder that DOC-04b writes
+  whole. I-30's part (a work account as a sign-in method, and enforcement) is in
+  `help/work-account`, which DOC-04b links.
+- **The mockup draws no platform-connection buttons.** `identity.sign-in` says platform
+  connections route by address only, with no "Continue with single sign-on" button. This branch
+  renders `auth.connections` as buttons, as the continuation note asked. The UX review decides
+  whether they stay. Hiding them is one line in `MethodsStep`.
+- **Pins 4 and 5 are not built.** The Worker has no signal for either: pin 4 (the connection is
+  down) and pin 5 (a saved passkey refused for an SSO-required domain). Passkeys still sign in at
+  an enforced domain (`card/emailSignIn.ts`), and the Help page says so. A down IdP is the
+  Worker's "Sign-in is unavailable" page from `/login/sso/<id>`.
+- **The card's new sentences have no catalog keys yet.** These are `signin.sso.required`,
+  `signin.sso.first`, `signin.sso.continue` and `signin.sso.code`. They are written in place
+  under those names, as the card's other unworded sentences are. **Change** uses
+  `signin.consent.change`, because the portal copy lint requires the catalog's string.
+
 ## Goal
 
 Connections: one OIDC relying-party client, verified domains, identifier routing, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -132,7 +183,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [x] Six OIDC RP code sites become one (grep: `test/oidcClient.test.ts`)
 - [x] An unverified domain never routes (test: `test/connectionRouting.test.ts`, `test/connectionDomains.test.ts`)
 - [x] THREAT-MODEL section: domain trust, rogue issuer, group injection
-- [ ] Docs, in this PR (not done: Continuation item 1) ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account` (I-30b). `help/account` (DOC-04b's stub), `help/connected-apps` (I-34) and the React cookie note (SP-40) belong to other packages: see "Corrections from the code (2026-10-10, the I-30b builder)".
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

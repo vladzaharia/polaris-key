@@ -210,7 +210,7 @@ describe("Core → Overview", () => {
     expect(screen.getAllByText("Needs attention").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("link", { name: /^Set/ }).getAttribute("href"),
-    ).toBe("#/p/djdl/keys");
+    ).toBe("#/p/djdl/settings/keys");
     // No license yet: the step is to do, and links to Licenses.
     expect(await screen.findByText("Issue a first license")).toBeTruthy();
     for (const link of screen.getAllByRole("link"))

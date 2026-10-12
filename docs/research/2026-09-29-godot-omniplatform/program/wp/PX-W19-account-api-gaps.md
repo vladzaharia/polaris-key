@@ -29,7 +29,7 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 ## Goal
 
-The three account actions that PORTAL.md §4.26 draws and the Worker does not serve yet exist:
+The three account actions that PORTAL.md §4.6 draws and the Worker does not serve yet exist:
 **Make primary** on a verified email, **Rename** on a passkey, and, on each email row, the number
 of products that address brought in. PX-13's Sign-in methods page can then draw every row of the
 §4.26 table on real data (PX-25 adds the controls).
@@ -45,8 +45,8 @@ column ([PX-13](PX-13-account-v2.md), "Follow-ups from the 2026-10-06 reviews").
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md`.
-- [PORTAL.md §4.26](../../../../design/PORTAL.md#426-account) (the Sign-in methods table: the
-  Email and Passkeys rows) and [PORTAL.md §10.2](../../../../design/PORTAL.md#102-gaps-the-worker-must-close) (G27).
+- [PORTAL.md §4.6](../../../../design/PORTAL.md#46-account) (the Sign-in methods table: the
+  Email and Passkeys rows) and [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work) (G27).
 - `wp/PX-W12-sign-in-methods-api.md` (corrections and hand-off) and `wp/PX-13-account-v2.md`
   (follow-ups).
 - `packages/worker/src/services/identity/portal/methods.ts` (`handleAccountMethods`,
@@ -174,6 +174,17 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Built (2026-10-10)
+
+- Confirmed against the code: every email link is written verified (`signIn` email kind, the
+  provider fast path, `connect` after its code), so Make primary needs no extra verified check. A
+  merge moves passkey rows whole (`UPDATE account_passkeys SET account_id`), so `name` travels.
+- Migration placeholder: `packages/worker/migrations/00XX_account_passkeys_name.sql`.
+- PX-25's controls are in this branch: `RowTools.tsx` (Make primary, Rename), `productCount` text
+  on email rows. Controls show only when the Worker sends `productCount` / `name`. The committed
+  account baselines are unchanged (their fixture has neither field); new e2e frames
+  `account-methods-w19-*` are not baselined.
 
 ## Steps
 

@@ -1,5 +1,5 @@
-// The preload half of the PolarisBridge (SDK parity pass SP-N10): a `PolarisBridge` v3 object
-// over `ipcRenderer`, for `contextBridge.exposeInMainWorld`. No Node or Electron import, so a
+// The preload half of the PolarisBridge (SDK parity pass SP-N10, v4 in SP-31): a `PolarisBridge`
+// v4 object over `ipcRenderer`, for `contextBridge.exposeInMainWorld`. No Node or Electron import, so a
 // sandboxed preload bundle can include it; `./preload.ts` is the one-line wiring.
 //
 // The object is plain (functions and a number), which is what `contextBridge` can clone. Every
@@ -54,12 +54,12 @@ export interface PreloadBridgeOptions {
 }
 
 /** The bridge object the preload exposes. Its shape is `@polaris-key/react`'s `PolarisBridge`
- *  (protocol v3); `test/electronBridge.test.ts` pins the assignability. */
+ *  (protocol v4); `test/electronBridge.test.ts` pins the assignability. */
 export interface PreloadPolarisBridge {
   readonly version: number;
   getSyncState(): Promise<never>;
   refresh(): Promise<never>;
-  beginSignIn(): Promise<never>;
+  beginSignIn(opts?: { deviceName?: string }): Promise<never>;
   pollSignIn(flowId: string): Promise<never>;
   submitKey(key: string): Promise<never>;
   signOut(): Promise<void>;
@@ -80,7 +80,7 @@ function unwrap(raw: unknown): unknown {
   throw new PolarisBridgeError(env.code, env.message, env.detail ?? null);
 }
 
-/** Build the PolarisBridge v3 object over `ipcRenderer`. */
+/** Build the PolarisBridge v4 object over `ipcRenderer`. */
 export function createPreloadBridge(
   ipc: IpcRendererLike,
   opts: PreloadBridgeOptions = {},
@@ -105,7 +105,8 @@ export function createPreloadBridge(
     version: POLARIS_BRIDGE_VERSION,
     getSyncState: () => call("getSyncState") as Promise<never>,
     refresh: () => call("refresh") as Promise<never>,
-    beginSignIn: () => call("beginSignIn") as Promise<never>,
+    beginSignIn: (opts?: { deviceName?: string }) =>
+      call("beginSignIn", opts) as Promise<never>,
     pollSignIn: (flowId: string) =>
       call("pollSignIn", flowId) as Promise<never>,
     submitKey: (key: string) => call("submitKey", key) as Promise<never>,

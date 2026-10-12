@@ -5,14 +5,7 @@
     "build/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "count": 5
-    },
-    "build/install": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "banned-word": 1,
-      "http-path": 1
+      "count": 4
     },
     "build/manifest/distribution": {
       "frontmatter-type": 1,
@@ -33,9 +26,8 @@
     "build/manifest/product": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "count": 3,
+      "count": 1,
       "time-word": 1,
-      "http-path": 1,
       "banned-word": 1,
       "programme-id": 3
     },
@@ -68,18 +60,10 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "build/sdks/godot": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
     "build/sdks/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
       "future-tense": 1
-    },
-    "build/sdks/kotlin": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
     },
     "build/sdks/node/index": {
       "frontmatter-type": 1,
@@ -102,10 +86,6 @@
       "frontmatter-last-reviewed": 1
     },
     "build/sdks/react/your-own-ui": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "build/sdks/swift": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
@@ -213,10 +193,6 @@
       "frontmatter-last-reviewed": 1
     },
     "build/ui/frameworks/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "build/ui/frameworks/react": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
@@ -407,7 +383,7 @@
     "features/managed-config/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "count": 3,
+      "count": 2,
       "programme-id": 3,
       "http-path": 1,
       "banned-word": 1
@@ -604,7 +580,7 @@
     "features/sign-in/customer-portal": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "http-path": 22,
+      "http-path": 20,
       "programme-id": 4
     },
     "features/sign-in/device-flow": {
@@ -620,8 +596,8 @@
       "count": 2,
       "programme-id": 3,
       "time-word": 1,
-      "http-path": 2,
-      "banned-word": 1
+      "banned-word": 1,
+      "http-path": 1
     },
     "features/sign-in/oidc": {
       "frontmatter-type": 1,
@@ -632,56 +608,11 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "help/activate": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 20,
-      "future-tense": 2,
-      "banned-word": 3
-    },
-    "help/devices": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 17,
-      "banned-word": 2,
-      "time-word": 1
-    },
-    "help/download": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 23
-    },
-    "help/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 19,
-      "banned-word": 1
-    },
-    "help/messages/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 10
-    },
-    "help/sign-in": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 28,
-      "time-word": 1
-    },
     "help/sync": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "help-word": 7,
+      "help-word": 6,
       "time-word": 1
-    },
-    "help/update": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 5
-    },
-    "index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
     },
     "operate/console/activity": {
       "frontmatter-type": 1,
@@ -703,10 +634,10 @@
     "operate/console/products": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "time-word": 2,
+      "time-word": 1,
       "count": 4,
       "http-path": 6,
-      "banned-word": 2,
+      "banned-word": 1,
       "future-tense": 2,
       "programme-id": 3
     },
@@ -784,7 +715,6 @@
     "reference/protocol/device-principal": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
-      "http-path": 1,
       "future-tense": 2,
       "banned-word": 1,
       "time-word": 1,
@@ -838,38 +768,6 @@
     "reference/what-apps-collect": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
-    },
-    "start/concepts": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 34,
-      "http-path": 2,
-      "count": 2,
-      "future-tense": 2
-    },
-    "start/first-product": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 4,
-      "count": 3,
-      "future-tense": 3,
-      "http-path": 2,
-      "time-word": 1
-    },
-    "start/how-it-works": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 2,
-      "banned-word": 1,
-      "http-path": 3,
-      "future-tense": 1
-    },
-    "start/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 5,
-      "banned-word": 1,
-      "future-tense": 1
     }
   }
 }

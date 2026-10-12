@@ -950,3 +950,19 @@ byte-identical verify outcomes alongside the Node / Swift / React runners — JW
 per-document claim cases, trust cases, the clock floor, the gate matrix, the offline
 bundle order, and the stage matrix: every row and every probe of the boot stage machine in
 `polaris_key.core.stages` (`initial_boot_state`, `boot_transition`, `boot_guard_action`).
+
+`tests/test_dev_live.py` runs the quickstart against a real `pkey dev` ([Run Polaris Key
+locally](/docs/build/local/)): the generated `polaris_config.py`, first activation, what each of
+the seven test keys does, a config change arriving as an event, a device-code sign-in approved on
+the fake identity provider's page, and an update decision before and after a release. It skips
+unless `PKEY_DEV_BASE_URL` is set, so a plain `pytest` needs no server; naming the file on the
+command line asks for the live run, and an unset variable then fails it. The run changes the
+server it talks to (device seats, key entries, a published `1.2.0`), so start a fresh one each time:
+
+```sh
+pkey dev --builtin --auto-approve --port 8787 &
+pkey sdk --lang python --dev --url http://127.0.0.1:8787 --write --out /tmp/polaris_config.py
+PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/polaris_config.py \
+  PKEY_DEV_APPROVE="$(git rev-parse --show-toplevel)/packages/cli/scripts/dev-approve.mjs" \
+  .venv/bin/python -m pytest -q tests/test_dev_live.py
+```

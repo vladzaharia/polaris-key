@@ -469,7 +469,7 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :core:test :license:test :config:test :identity:test :release:test
-          :update:test :packs:test :sdk:test :conformance:test :platform:testPlayDebugUnitTest
+          :update:test :packs:test :sdk:test :ui-core:test :conformance:test :platform:testPlayDebugUnitTest
           :platform:testDirectDebugUnitTest :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
           :ui:verifyRoborazziDebug :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
           :billing:testDebugUnitTest :desktop:test checkModuleBoundaries :platform:checkStandalone :godot:checkPlatformOnly
@@ -624,6 +624,8 @@ jobs:
           echo "$(printf '%s\n' "$listing" | grep -vc '/$') files"
           mkdir -p build/feed
           cp "$zip" build/feed/
+          # The listing icon (the Asset Library wants 128x128). It rides beside the zip, never in it.
+          cp packages/brand/kit/01-marks/key/png/dark/key-128.png build/feed/polaris-key-godot-icon.png
       - uses: actions/upload-artifact@v7
         with:
           name: godot-feed
@@ -684,7 +686,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter "@polaris-key/cli..." build
+      - run: pnpm exec turbo run build --filter="@polaris-key/cli..."
       # The image carries the committed bundle; it must be what this commit's CLI builds.
       - run: pnpm --filter @polaris-key/cli bundle:action -- --check
       - name: Build linux/amd64 and linux/arm64 into an OCI image layout
@@ -782,15 +784,15 @@ jobs:
           --ecosystem npm --version "$VERSION" --timeout 120
 
   # ── Retention: prune the builds of main a stable release supersedes ─────────────────────────
-  # The Worker already deletes each package's builds of main (semver X-main.N, PEP 440 X.devN,
-  # X <= the release) right after its stable publish; the system product's retention is locked on
+  # The Worker already deletes each package's builds of main and dev (semver X-main.N and X-dev.N,
+  # PEP 440 X.devN, X <= the release) right after its stable publish; the system product's retention is locked on
   # (services/release/packages/prune.ts; THREAT-MODEL and RUNBOOK "Feed retention"). This job is
   # the backstop for a prune that failed there (audited package.prune.failed, never thrown at the
   # publish): the same server-side rule, through `pkey feeds prune`, once every feed shows the
   # stable version. It never chooses what goes, and it is conservative on top of the rule:
   #   - only on a stable vX.Y.Z tag, and only after every publish job and the drift check passed;
   #   - a dry run first, logged to the job summary, and its plan checked: a version that is not a
-  #     build of main stops the job before anything is deleted;
+  #     build of main or dev stops the job before anything is deleted;
   #   - the rule never touches a stable or beta version, and keeps (reports as `kept`) any version
   #     a channel policy, a pin, a hold, a revocation or a download token names;
   #   - the credential is PKEY_FEED_PRUNE_TOKEN, a static pkeyci_ token of the polaris-key product
@@ -852,12 +854,12 @@ jobs:
           cat "$RUNNER_TEMP/prune-dry-run.txt"
           { echo "### Feed retention: dry run"; echo '```'; grep -v '^::' "$RUNNER_TEMP/prune-dry-run.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           node actions/publish/dist/index.js feeds prune --product polaris-key --json | grep -v '^::' > "$RUNNER_TEMP/prune-plan.json"
-      - name: The plan holds builds of main only
+      - name: The plan holds builds of main and dev only
         if: steps.plan.outputs.skip != 'true'
         run: |
           jq -e '[.packages[].prune[].version
-                  | select(test("^v?[0-9]+(\\.[0-9]+)*-main\\.[0-9]+$|^[0-9]+(\\.[0-9]+)*\\.dev[0-9]+$") | not)]
-                 | if length == 0 then true else error("not a build of main: \(join(", "))") end' "$RUNNER_TEMP/prune-plan.json"
+                  | select(test("^v?[0-9]+(\\.[0-9]+)*-(main|dev)\\.[0-9]+$|^[0-9]+(\\.[0-9]+)*\\.dev[0-9]+$") | not)]
+                 | if length == 0 then true else error("not a build of main or dev: \(join(", "))") end' "$RUNNER_TEMP/prune-plan.json"
       - name: Apply the prune
         if: steps.plan.outputs.skip != 'true'
         env:

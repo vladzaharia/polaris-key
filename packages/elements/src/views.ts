@@ -425,6 +425,8 @@ function inline(c: RenderCtx, layout: Layout): TemplateResult {
 /** Draw one view in its component's form; `hidden` draws nothing. */
 export function renderView(c: RenderCtx): TemplateResult | typeof nothing {
   if (c.view.state === "hidden") return nothing;
+  // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
+  if (isLoading(c.view) && c.view.copy.length === 0) return nothing;
   const layout = LAYOUTS[c.view.component];
   switch (layout.kind) {
     case "screen":

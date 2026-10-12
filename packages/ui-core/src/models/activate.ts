@@ -149,7 +149,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
           "core.activation.ok.message",
           "part.keyField.verdict",
         ],
-        args: { product },
+        args: { product, tier: activation.tier, term: activation.term },
         // The done step (UK-42's ActivateDone) carries the way on; the heading takes focus.
       });
     if (activation.result === "device-limit") {
@@ -186,7 +186,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
     return makeView(ctx, "Activate", {
       state: "rejected",
       copy: activationCopy(activation.result, activation.code),
-      args: { product },
+      args: { product, code: activation.code },
       primary: SUBMIT,
       tone: activation.result === "error" ? "danger" : "neutral",
       errorSlot: FIELD,

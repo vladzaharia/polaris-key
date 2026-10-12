@@ -385,7 +385,7 @@ export async function applyProvisionedAccountSecrets(
     );
     if (link === null) return;
   }
-  // An account being erased has no new subject and nothing to seal (SEC-WP-04).
+  // An account being erased has no new subject and nothing to seal.
   const subject = await subjectForOrNull(db, accountId, product, now);
   if (subject === null) return;
   const sealed: Record<string, ManagedEntry> = {};

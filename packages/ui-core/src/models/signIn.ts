@@ -28,6 +28,10 @@ import { hiddenView, identityText, makeView, type View } from "../view.js";
 
 const DEFAULT_DEVICE_URL = "https://key.plrs.im/device";
 const DEFAULT_TV_URL = "https://key.plrs.im/tv";
+/** The provider the generic sign-in row names. That row opens Polaris Key's own sign-in (the hosted
+ *  card), so this is its true name; a product that shows a provider's row of its own (Apple,
+ *  Google, Steam) says which with `UiInput.provider`. */
+const DEFAULT_PROVIDER = "Polaris Key";
 
 /** The sign-in is possible here: Identity is on and the build offers it. */
 function signInOn(ctx: Context): boolean {
@@ -105,7 +109,14 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
   if (!signInOn(ctx) || !s) return hiddenView(ctx, "SignIn");
   const dc = ctx.input.deviceCode;
   const id = identityText(ctx);
-  const args = { product: id.name, app: id.name };
+  const provider = ctx.input.provider ?? DEFAULT_PROVIDER;
+  const args = {
+    product: id.name,
+    app: id.name,
+    provider,
+    // The sign-in that failed is the one the methods step's first row started.
+    method: provider,
+  };
   const license = ctx.on("license");
   const error = ctx.input.error?.code;
   if (error) {
@@ -153,7 +164,11 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
     return makeView(ctx, "SignIn", {
       state: "done",
       copy,
-      args,
+      args: {
+        ...args,
+        name: ctx.input.account?.holder,
+        tier: ctx.input.account?.tier,
+      },
       primary: copy.includes("signin.done.start") ? "signin.done.start" : null,
       focus: copy.includes("signin.done.start") ? undefined : null,
     });
@@ -171,7 +186,7 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
           // `license_owned` never names the holder (S-16): only its core copy.
           ...(a && a.result !== "ok" ? activationCopy(a.result, a.code) : []),
         ],
-        args,
+        args: { ...args, code: a?.code },
         primary: "activate.submit",
         tone: a && a.result !== "ok" ? "neutral" : null,
         errorSlot: a && a.result !== "ok" ? "part.keyField.label" : null,
@@ -184,6 +199,8 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
       ctx.input.replaceView
     ) {
       const system = systemConfirm(ctx.platform, s.presentation);
+      const rv = ctx.input.replaceView;
+      const pick = rv.devices.find((d) => d.leastRecent) ?? rv.devices[0];
       return makeView(ctx, "SignIn", {
         state: "replace",
         copy: [
@@ -191,7 +208,7 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
           "signin.replace.lede",
           system ? "signin.replace.openSystem" : "signin.replace.title",
         ],
-        args,
+        args: { ...args, device: pick?.label ?? undefined },
         primary: system ? "signin.replace.openSystem" : "signin.replace.open",
       });
     }
@@ -517,7 +534,7 @@ export function licenseChoiceView(
   )
     return hiddenView(ctx, "LicenseChoice");
   const id = identityText(ctx);
-  const args = { product: id.name };
+  const args = { product: id.name, developer: id.developer ?? id.name };
   if (ctx.input.loading)
     return makeView(ctx, "LicenseChoice", {
       state: "loading",

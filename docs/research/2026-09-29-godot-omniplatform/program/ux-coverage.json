@@ -17100,6 +17100,138 @@
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
+    },
+    {
+      "id": "docs.guide-lanes",
+      "kind": "screen",
+      "title": "Add licensing to your app",
+      "source": "docs/design/mockups/screens/docs/docs.guide-lanes",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02a", "DOC-09a"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.help-article",
+      "kind": "screen",
+      "title": "Move your license to a new computer",
+      "source": "docs/design/mockups/screens/docs/docs.help-article",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02a", "DOC-05b"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.help-home",
+      "kind": "screen",
+      "title": "Help",
+      "source": "docs/design/mockups/screens/docs/docs.help-home",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02b", "DOC-04a"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.help-message",
+      "kind": "screen",
+      "title": "Messages about devices",
+      "source": "docs/design/mockups/screens/docs/docs.help-message",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02a", "DOC-05a"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.landing",
+      "kind": "screen",
+      "title": "Polaris Key docs",
+      "source": "docs/design/mockups/screens/docs/docs.landing",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02b", "DOC-07a"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.mobile-menu",
+      "kind": "screen",
+      "title": "Docs mobile menu",
+      "source": "docs/design/mockups/screens/docs/docs.mobile-menu",
+      "area": "docs",
+      "surface": "dialog",
+      "owners": ["DOC-02b"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.not-found",
+      "kind": "screen",
+      "title": "Page not found",
+      "source": "docs/design/mockups/screens/docs/docs.not-found",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02b"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.operate-guide",
+      "kind": "screen",
+      "title": "Help a customer",
+      "source": "docs/design/mockups/screens/docs/docs.operate-guide",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02a", "DOC-11a"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.reference",
+      "kind": "screen",
+      "title": "Error codes",
+      "source": "docs/design/mockups/screens/docs/docs.reference",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02a", "DOC-12a"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.sdk-quickstart",
+      "kind": "screen",
+      "title": "Swift quickstart",
+      "source": "docs/design/mockups/screens/docs/docs.sdk-quickstart",
+      "area": "docs",
+      "surface": "code",
+      "owners": ["DOC-02a", "DOC-08a"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
+    },
+    {
+      "id": "docs.search",
+      "kind": "screen",
+      "title": "Search the docs",
+      "source": "docs/design/mockups/screens/docs/docs.search",
+      "area": "docs",
+      "surface": "dialog",
+      "owners": ["DOC-02c", "DOC-03b"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "drawn by DOC-01; the owner packages build it (not built yet)"
     }
   ]
 }

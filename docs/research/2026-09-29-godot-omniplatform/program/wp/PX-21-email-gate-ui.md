@@ -8,7 +8,7 @@
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                               |
 | Role        | `pkey-implementer`                                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                                   |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components             |
+| Gates       | the AGENTS.md green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components                 |
 | Human input | none                                                                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                            |
 
@@ -50,13 +50,13 @@ The login card's `/signin/confirm-email` step renders `EmailGate` with `ProfileI
 
 ## Why
 
-Required before the first provider sign-in ships ([PORTAL.md §11.4](../../../../design/PORTAL.md#114-order)). PORTAL.md sizes this M (2–4 agent-days); the owner approved the design on 2026-10-04.
+Required before the first provider sign-in ships ([PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)). The package brief is the scoped delivery record.
 
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md`.
-- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §11.3](../../../../design/PORTAL.md#113-phase-b-features-on-the-new-api-s-16-and-s-17) (this package's row) and [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order).
-- [PORTAL.md §4.29](../../../../design/PORTAL.md#429-confirm-your-email-first-provider-sign-in), [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order)
+- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work) (this package's row) and [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work).
+- [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work), [PORTAL.md §7](../../../../design/PORTAL.md#7-parked-and-conditional-work)
 - `docs/design/BRAND.md` and `@polaris-key/brand`; the console kit in `packages/admin/src/ui/`.
 
 ## Scope
@@ -67,7 +67,7 @@ Required before the first provider sign-in ships ([PORTAL.md §11.4](../../../..
 
 **Out** (and where it belongs instead):
 
-- Anything not in PORTAL.md's row for this package (→ the PX package that owns it, per §11).
+- Anything outside this brief belongs to its owning work package in the program graph.
 
 ## Design notes
 
@@ -134,7 +134,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
 - [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
 - [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

@@ -10,6 +10,7 @@ const SIZE: Record<number, string> = {
   24: "size-6",
   40: "size-10",
   48: "size-12",
+  56: "size-14",
   64: "size-16",
   112: "size-28",
 };
@@ -20,6 +21,7 @@ const RADIUS: Record<number, string> = {
   24: "rounded-md",
   40: "rounded-lg",
   48: "rounded-xl",
+  56: "rounded-xl",
   64: "rounded-2xl",
   112: "rounded-[1.75rem]",
 };
@@ -30,6 +32,7 @@ const TILE: Record<number, string> = {
   24: "text-xs",
   40: "text-base",
   48: "text-lg",
+  56: "text-xl",
   64: "text-2xl",
   112: "text-5xl",
 };
@@ -62,7 +65,7 @@ export function ProductIcon({
   tint: string | null;
   /** An image-host URL (or a same-origin `/media/…` one), or null for the fallback. */
   src?: string | null;
-  size: 20 | 24 | 40 | 48 | 64 | 112;
+  size: 20 | 24 | 40 | 48 | 56 | 64 | 112;
   /** Over art: a drop shadow on the image, elevation on the tile. */
   lift?: boolean;
   /** Layout (position, margins, size overrides): both the image and the tile. */

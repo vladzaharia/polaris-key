@@ -98,19 +98,14 @@ interface World {
   product: Product;
 }
 
-async function world(
-  services: ServicesMap = SET.configOnly,
-  registration?: "open" | "requires-identity" | "requires-license",
-): Promise<World> {
+async function world(services: ServicesMap = SET.configOnly): Promise<World> {
   const db = makeTestDb();
   const env = makeEnv(new KvMock(), ["djdl"]);
   await seedProduct(db, "djdl");
   await setServices(
     db,
     "djdl",
-    serializeServices(
-      registration === undefined ? { services } : { services, registration },
-    ),
+    serializeServices({ services }),
     "manifest",
     NOW,
   );
@@ -297,55 +292,17 @@ describe("POST /<p>/devices/register — policy matrix", () => {
     expect(await getDevice(w.db, "djdl", DEVICE)).toBeNull();
   });
 
-  it("requires-identity with identity DISABLED is an unreachable configuration", async () => {
-    // `validateServices` refuses the combination at ingest and in the admin API, so it cannot be
-    // written through a supported path…
-    expect(
-      validateServices(
-        { ...SET.configOnly, identity: { enabled: false } },
-        "requires-identity",
-      ),
-    ).toContain("registration_requires_identity");
-
-    // …and if a hand-edited row got there anyway, the exchange fails closed: Identity's code is
-    // never consulted for a service this product has turned off, so a live session in KV does
-    // not open the door.
-    const w = await world(SET.identity, "requires-identity");
-    const cookie = await browserSession(w);
-    await setServices(
-      w.db,
-      "djdl",
-      serializeServices({
-        services: { ...SET.identity, identity: { enabled: false } },
-        registration: "requires-identity",
-      }),
-      "admin",
-      NOW,
-    );
-    const forced = (await loadProduct(w.env, w.db, "djdl"))!;
-    expect(forced.registration).toBe("requires-identity");
-    expect(forced.services.identity.enabled).toBe(false);
-
-    const res = await handleRegister(
-      registerReq({ "x-pkey-device": DEVICE, cookie }),
-      w.env,
-      w.db,
-      forced,
-      NOW,
-      SERVICES,
-    );
-    expect(res.status).toBe(403);
-    expect(await getDevice(w.db, "djdl", DEVICE)).toBeNull();
+  it("derives open registration when License and Identity are off", async () => {
+    const w = await world({ ...SET.configOnly, identity: { enabled: false } });
+    expect(w.product.services.license.enabled).toBe(false);
+    expect(w.product.services.identity.enabled).toBe(false);
+    const res = await register(w);
+    expect(res.status).toBe(200);
   });
 
-  it("an explicitly declared policy overrides the derivation in both directions", async () => {
-    // A licensed product may deliberately open registration…
-    const open = await world(SET.licensed, "open");
-    expect((await register(open)).status).toBe(200);
-
-    // …and a config-only product may deliberately close it.
-    const closed = await world(SET.configOnly, "requires-license");
-    expect((await register(closed)).status).toBe(403);
+  it("derivation does not permit a licensed product to register anonymously", async () => {
+    expect((await register(await world(SET.licensed))).status).toBe(403);
+    expect((await register(await world(SET.configOnly))).status).toBe(200);
   });
 
   it("rejects a non-POST method", async () => {
@@ -424,7 +381,7 @@ describe("POST /<p>/devices/register — the device id", () => {
   it("REFUSES to take over an id already bound to a licence", async () => {
     // Otherwise anyone who knows a licensed device's id could keyless-deauthorize it: the
     // registration write rebinds `license_id`, dropping the device off its seat.
-    const w = await world(SET.licensed, "open");
+    const w = await world(SET.configOnly);
     const { key } = await seedLicenseWithKey(w.db, "djdl");
     const activated = await handleActivate(
       mkReq("POST", {
@@ -489,7 +446,7 @@ describe("POST /<p>/devices/register — the device id", () => {
   });
 
   it("stores canonical values for a pre-§5.2 SDK's spellings on /license/document", async () => {
-    const w = await world(SET.licensed, "open");
+    const w = await world(SET.licensed);
     const { key } = await seedLicenseWithKey(w.db, "djdl");
     const activated = await handleActivate(
       mkReq("POST", {
@@ -594,8 +551,8 @@ describe("the registered device token", () => {
     // R1 refuses a device BOUND to a licence that is no longer usable. A device registered under
     // an `open` policy was never bound to one (`license_id` is NO_LICENSE_ID), and it still gets
     // config documents, as the concepts page promises.
-    const w = await world(SET.licensed, "open");
-    expect(w.product.services.license.enabled).toBe(true);
+    const w = await world(SET.configOnly);
+    expect(w.product.services.license.enabled).toBe(false);
     const { status, token } = await register(w);
     expect(status).toBe(200);
     expect((await getDevice(w.db, "djdl", DEVICE))?.license_id).toBe(

@@ -660,8 +660,10 @@ final class ClientPresentationTests: XCTestCase {
     func testALocalOnlyClientNeverFetchesTheIcon() async throws {
         let dataDir = temporaryDirectory("local")
         defer { try? FileManager.default.removeItem(at: dataDir) }
+        // The client below talks to https://key.example, not production's host, so its product
+        // directory is `djdl@key.example` and the member it finds on disk is the one seeded there.
         let seed = ProductPresentationSource(
-            product: "djdl", directory: dataDir.appendingPathComponent("djdl/presentation"),
+            product: "djdl", directory: dataDir.appendingPathComponent("djdl@key.example/presentation"),
             fetcher: nil)
         seed.accept(PresentationFixture.member())
         let fetcher = PresentationFixture.fetcher()

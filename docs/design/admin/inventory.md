@@ -1,13 +1,13 @@
 # Admin UI inventory
 
-Companion to [ADMIN.md](../ADMIN.md) §1. This is the exhaustive per-view audit of both SPAs in
+Companion to [ADMIN.md](../ADMIN.md). This is the exhaustive per-view audit of both SPAs in
 `packages/admin` as of `574bd242`. Paths are relative to `packages/admin/src/` unless prefixed:
 `W/` is `packages/worker/src/`, `D/` is `packages/docs/src/content/docs/`. Every API path below
 sits under `/manage/api/products/:slug`, written `…`.
 
-Each finding has a stable ID (`AREA-n`). The redesigns in ADMIN.md §6 and the implementation
-chunks in §7 cite these IDs, so a reviewer can check that every finding is either fixed or
-explicitly deferred.
+Each finding has a stable ID (`AREA-n`). It remains historical audit evidence; consult the current
+console source and ADMIN.md rather than treating its redesign or implementation-chunk references
+as current work.
 
 Severity tags: **[bug]** is wrong behavior today. **[a11y]** is an accessibility defect.
 **[dead]** is a dead end (a promise the UI does not keep). Untagged findings are UX debt.

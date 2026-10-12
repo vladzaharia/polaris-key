@@ -182,7 +182,8 @@ function signedInAccount(result: SignInResult): PortalAccountRow {
  * The account an email sign-in (a delivered magic link) belongs to, created on first sign-in.
  * A thin wrapper over `signIn` for callers that hold an address the portal itself proved; it
  * throws on a join offer (an address another account uses only as its primary email), which the
- * magic-link handler answers itself.
+ * magic-link handler answers itself. No request reaches it: it signs in `unfenced` (no erasure
+ * ledger is read), so it is for fixtures that build accounts, never for a route.
  */
 export async function getOrCreateAccountByEmail(
   db: Db,
@@ -200,6 +201,7 @@ export async function getOrCreateAccountByEmail(
         displayName: displayName ?? null,
       },
       now,
+      { unfenced: true },
     ),
   );
 }
@@ -238,7 +240,8 @@ export async function rekeyLegacyPortalIdentities(
 /**
  * The account a platform-IdP sign-in belongs to: a thin wrapper over `signIn` (the portal
  * callback calls `signIn` itself). Throws on a join offer: an unknown identity whose verified
- * email another account already uses is never attached to it silently (owner, 2026-10-04).
+ * email another account already uses is never attached to it silently (owner, 2026-10-04). Like
+ * {@link getOrCreateAccountByEmail} it signs in `unfenced`: for fixtures, never for a route.
  */
 export async function getOrCreateAccountByIdentity(
   db: Db,
@@ -266,6 +269,7 @@ export async function getOrCreateAccountByIdentity(
       displayName: input.displayName ?? null,
     },
     now,
+    { unfenced: true },
   );
   const account = signedInAccount(result);
   if (result.status === "signed_in")
@@ -608,6 +612,30 @@ export async function listPortalLicenses(
       ORDER BY p.name ASC, l.activated_at DESC, l.id DESC`,
     accountId,
   );
+}
+
+/**
+ * How many distinct products each address brought in (PX-W19): the account's licences whose own
+ * email is that address (case-insensitive, the licence email LX-26 attaches by), leaving out
+ * deleted and portal-off products as the Library does. One grouped query for every address;
+ * keys are lower-cased.
+ */
+export async function productCountsByEmail(
+  db: Db,
+  accountId: string,
+): Promise<Map<string, number>> {
+  const rows = await db.all<{ email: string; n: number }>(
+    `SELECT lower(l.email) AS email, COUNT(DISTINCT l.product) AS n
+       FROM licenses l
+       JOIN products p ON p.slug = l.product
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+      WHERE l.account_id = ? AND l.email IS NOT NULL
+        AND COALESCE(p.status, 'active') != 'deleted'
+        AND COALESCE(s.portal_enabled, 1) = 1
+      GROUP BY lower(l.email)`,
+    accountId,
+  );
+  return new Map(rows.map((r) => [r.email, r.n]));
 }
 
 export async function getPortalLicense(

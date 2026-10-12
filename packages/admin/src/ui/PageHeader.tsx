@@ -65,6 +65,13 @@ export interface PageHeaderProps {
 const INLINE_SECONDARY = 2;
 
 /**
+ * Inside a hub page that owns the `<h1>` (the product settings hub, ST-08), a child page's header
+ * is the area's `<h2>`: the page still has exactly one h1, and focus after a navigation lands on
+ * the hub's.
+ */
+export const PageHeaderNested = React.createContext(false);
+
+/**
  * The page header every page in both apps shares (EXPERIENCE.md §4, components.md §1.6): the
  * page's one `<h1>`
  * (focus lands on it after a navigation, ADMIN.md §5.6), one primary action, up to two secondary
@@ -111,6 +118,7 @@ export function PageHeader({
   const desktopMenu = withDanger(toItems(overflow));
   const mobileMenu = withDanger(toItems(secondaryActions));
 
+  const nested = React.useContext(PageHeaderNested);
   const sentinel = React.useRef<HTMLDivElement>(null);
   const [condensed, setCondensed] = React.useState(false);
   React.useEffect(() => {
@@ -164,16 +172,22 @@ export function PageHeader({
       >
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h1
-              tabIndex={-1}
-              data-page-title=""
-              className={cn(
-                "font-medium tracking-tight text-fg-strong outline-hidden",
-                size === "display" ? "text-3xl lg:text-display" : "text-2xl",
-              )}
-            >
-              {title}
-            </h1>
+            {nested ? (
+              <h2 className="text-lg font-medium tracking-tight text-fg-strong">
+                {title}
+              </h2>
+            ) : (
+              <h1
+                tabIndex={-1}
+                data-page-title=""
+                className={cn(
+                  "font-medium tracking-tight text-fg-strong outline-hidden",
+                  size === "display" ? "text-3xl lg:text-display" : "text-2xl",
+                )}
+              >
+                {title}
+              </h1>
+            )}
             {titleAside}
           </div>
           {description || meta ? (

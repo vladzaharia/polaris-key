@@ -64,5 +64,11 @@
     "title": "Customer portal",
     "accent": "core",
     "blurb": "The customer's Library, product pages, license cards, devices, sign-in and activation, Discover and storefront links, connected apps and account settings. The hosted sign-in, device-code and consent pages are under Identity (identity.*)."
+  },
+  {
+    "key": "docs",
+    "title": "Docs site",
+    "accent": "core",
+    "blurb": "One docs site with three doors (Help for people using an app, Developers, Operate), drawn in the console and portal's own components."
   }
 ]

@@ -204,3 +204,55 @@ UK-10 adds `desktopMain`; UK-28 and UK-35 wrap these states.
 
 The role agent sets `--set UK-09 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-09 done`.
+
+## Progress and continuation (2026-10-11)
+
+- Status is `in-progress` in f9f138bb8.
+- Confirmed that HA-13's `im.plrs.key.core.PresentationSource` and
+  `PolarisKeyClient.presentationSource` are available; this kit needs no local presentation seam.
+- Confirmed that UK-02a already generates the nine Compose Resources locale tables under
+  `ui/src/commonMain/composeResources/`; they are intentionally inert until this module is KMP.
+- Added the Compose-free `:ui-core` JVM artifact. `PolarisGateState`, its SDK adapter and its
+  StateFlow contract now live there; the existing Compose gate consumes that artifact unchanged.
+  `PolarisGateStateTest` verifies status streaming, local key validation, activation, refusal and
+  refresh outside any Compose runtime.
+- Verified this slice with `./gradlew --offline :ui-core:test :ui:compileDebugKotlin` under JDK 17.
+- Moved the RFC 8628 device-code `PolarisSignInState` and its SDK adapter into `:ui-core`.
+  `PolarisSignInStateTest` now verifies countdown, completion, expiry and retry without Compose;
+  Activity/ViewModel retention remains Android UI code.
+- Moved the Devices roster state holder, adapter and deterministic sorting to `:ui-core`.
+  `PolarisDevicesStateTest` covers list failure, sorting, rename normalization and device removal;
+  the Compose renderer retains only its UI and copy fallback.
+- Moved the Pack reducer, subscription holder and SDK adapter to `:ui-core`.
+  `PolarisPackProgressStateTest` holds the event-fold order, aggregate progress and subscription
+  lifecycle outside Compose.
+- Moved the Update offer, install and follow state, the Boot holder over `:sdk`'s `BootDriver` and the
+  Settings holder (catalog-typed editors) to `:ui-core`, each with its test (`PolarisUpdateStateTest`,
+  `PolarisBootStateTest`, `PolarisSettingsStateTest`). Settings' catalog-owned error copy is resolved
+  by typing the failures: `PolarisSettingsUi.error` and `loadFailure` and `PolarisUpdateUi.error` carry
+  `PolarisSettingsFailure` and `PolarisUpdateFailure`, and the renderer maps them to catalog copy
+  (`PolarisCopy.settingsFailureMessage` and `updateFailureMessage`, which also draws an update failure
+  on the banner and the prompt). `HeadlessWiringTest` is removed: its tests live in the holder tests
+  and `PolarisGateStateTest`; `StateHoldersTest` keeps the `:ui` side (`bootScreen`, `updateBannerText`).
+- Added the presentation core to `:ui-core`: `KitStates.resolve(component, inputs)` returns the state,
+  the catalog copy lines (key and arguments) and the actions of every UI-KITS component, `KitIdentity`
+  resolves the product identity and theme, and `KitCopy` formats the generated launch-locale ICU
+  tables (`ui-core/src/main/resources/kit-copy.json`, written by `pnpm gen brand`, whose generator
+  gained that target). `UIMatrixPresentationTest` replays every row of the ten `ui-matrix.json`
+  families (version 3; `hidden` rows assert that nothing renders) and `KitPresentationRulesTest` pins
+  what the matrix does not (the Worker's key shape, line arguments, service closure, platform
+  predicates). The Swift core is the answer key for the rules the corpus leaves open.
+  `:ui-core:test` now runs in the kotlin CI jobs.
+- Verified with the commands below under JDK 17 (no committed baseline changed), plus `pnpm gen brand --check` and `pnpm parity:check`:
+
+  ```sh
+  ( cd sdks/kotlin && ./gradlew --offline :ui-core:test :ui:compileDebugKotlin :ui:testDebugUnitTest :ui:verifyRoborazziDebug checkModuleBoundaries )
+  ```
+
+- Next, not started: the KMP source-set cutover (`:ui` to `commonMain` + `androidMain`, Compose
+  Multiplatform resources from the inert `composeResources/` tables), then `SignIn(state, presentation)`
+  and the other screens drawn from `KitStates` (Material 3 Expressive, the `PolarisKeyGate` one-liner,
+  navigation and deep links, Credential Manager), the ui-matrix Roborazzi baselines in both themes,
+  the Compose lint, `examples/ui/compose-android/`, the docs pages and kit README, the `ui.*` parity
+  rows (they stay `planned`) and the design and UX reviews. Every acceptance criterion above is still
+  open.

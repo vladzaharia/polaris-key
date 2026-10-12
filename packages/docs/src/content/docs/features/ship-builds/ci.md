@@ -382,7 +382,7 @@ run that prints what would go, with counts and bytes, unless you pass `--apply`.
 it lists any version it skipped (a channel took hold of it since the plan, so it was kept) and
 exits non-zero if any version failed. It needs `release:yank` as well. Once the product turned
 retention on (it is off by default), a stable publish runs the same prune for its own package; see
-[Install from the feeds](/docs/build/install-from-feeds/#builds-of-main-are-pruned-once-released).
+[Install from the feeds](/docs/build/install-from-feeds/#builds-of-main-and-dev-are-pruned-once-released).
 
 ## Distribution commands
 

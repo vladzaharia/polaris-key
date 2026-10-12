@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, waitFor, within } from "@testing-library/react";
-import { PolarisKeyProvider } from "../src/react/Provider.js";
 import {
+  PolarisKeyProvider,
   useEntitlement,
   useLicense,
   useManagedConfig,
   usePolarisAuth,
   usePolarisKey,
-} from "../src/react/hooks.js";
+} from "@polaris-key/react";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisAdapter } from "../src/core/index.js";
@@ -55,7 +55,7 @@ async function renderWith(
   // leaks into the queries (both probes would otherwise resolve to "ok").
   cleanup();
   const { container } = render(
-    <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+    <PolarisKeyProvider config={{ productSlug: "acme", adapter: adapter }}>
       <Probe />
     </PolarisKeyProvider>,
   );

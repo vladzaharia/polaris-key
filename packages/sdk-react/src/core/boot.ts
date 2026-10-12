@@ -31,6 +31,7 @@ import {
   type BootState,
   type BootSyncResult,
 } from "@polaris-key/client-core";
+import type { BootAttempt } from "./bootGuard.js";
 import type { LicenseStatus } from "@polaris-key/protocol/license";
 import type { UpdateCheck } from "@polaris-key/protocol/update";
 
@@ -74,6 +75,10 @@ export interface BootRunOptions {
   /** Reacquire policy: register and enrol when the gate needs activation (default true; each
    *  runs only where discovery and the product allow it). */
   registration?: boolean;
+  /** Whether `ready` confirms the launch by itself after `BOOT_OK_SECONDS` (default true). False:
+   *  the host calls `confirmBoot()` when its own health check passes. The other outcomes
+   *  confirm per the stage matrix's `confirmCases`, either way. */
+  autoConfirm?: boolean;
   /** The page's pack facet (`createBrowserPacks()`). Without one nothing downloads, so a
    *  required pack that is not present ends the boot `error`. Browser only. */
   packs?: BootPacks;
@@ -88,6 +93,8 @@ export interface BootResult {
   status: LicenseStatus;
   /** The update decision, when one was made. */
   decision: UpdateCheck | null;
+  /** The boot guard's launch decision, when the transport has one that reports it in full. */
+  guard: BootAttempt | null;
   /** Every emit, in order. */
   emits: BootEmit[];
 }
@@ -107,8 +114,12 @@ export interface BootDriver {
   register?(): Promise<boolean>;
   /** `license/enroll` then a sync; true on success. Absent: not on this transport. */
   enroll?(): Promise<boolean>;
-  /** The boot guard's answer. Absent: `ok`. */
-  guard?(): Promise<BootGuardResult>;
+  /** The boot guard's answer: the full `markBootAttempt()` result, or just the machine's
+   *  `guard.done` result. Absent: `ok`. */
+  guard?(): Promise<BootAttempt | BootGuardResult>;
+  /** Confirm this launch healthy (`confirmBoot()`), as the stage matrix's `confirmCases` say:
+   *  at once for `waiting`, `blocked` and `offline`, after `BOOT_OK_SECONDS` for `ready`. */
+  confirm?(): Promise<void>;
   /** One sync pass (`force` after a reacquire). */
   sync(force?: boolean): Promise<BootSyncResult>;
   /** The gate's status now. */
@@ -189,13 +200,33 @@ export async function runBoot(
   // `send` reassigns `state`; reading through a function keeps TypeScript from narrowing it.
   const stage = (): BootState["stage"] => state.stage;
   let decision: UpdateCheck | null = null;
-  const finish = (): BootResult => ({
-    outcome: state.outcome,
-    state,
-    status: driver.status(),
-    decision,
-    emits,
-  });
+  let attempt: BootAttempt | null = null;
+  const finish = (): BootResult => {
+    if (driver.confirm) {
+      const confirm = driver.confirm.bind(driver);
+      switch (state.outcome) {
+        case "waiting":
+        case "blocked":
+        case "offline":
+          void confirm().catch(() => undefined);
+          break;
+        case "ready":
+          if (opts.autoConfirm !== false)
+            setTimeout(() => {
+              void confirm().catch(() => undefined);
+            }, 10_000);
+          break;
+      }
+    }
+    return {
+      outcome: state.outcome,
+      state,
+      status: driver.status(),
+      decision,
+      guard: attempt,
+      emits,
+    };
+  };
 
   send({ type: "start" });
   // shell
@@ -216,7 +247,14 @@ export async function runBoot(
 
   // guard
   let guard: BootGuardResult = "ok";
-  if (driver.guard) guard = await driver.guard().catch(() => "ok" as const);
+  if (driver.guard) {
+    const g = await driver.guard().catch(() => "ok" as const);
+    if (typeof g === "string") guard = g;
+    else {
+      attempt = g;
+      guard = g.result;
+    }
+  }
   send({ type: "guard.done", result: guard });
 
   // sync

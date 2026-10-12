@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 // @ts-expect-error -- a plain .mjs build script with no declarations
-import { BUDGETS, verdict } from "../scripts/size-budget.mjs";
+import { BUDGETS, CASES, verdict } from "../scripts/size-budget.mjs";
 
 const row = (deltaGzip: number, wasm: string[] = []) => ({
   name: "provider+use-license",
@@ -23,9 +23,10 @@ describe("size budget verdict", () => {
     expect(verdict([row(1, ["assets/zdec.wasm"])])).toHaveLength(1);
   });
   it("has a budget for every case", () => {
-    expect(Object.keys(BUDGETS).sort()).toEqual([
-      "provider+license-gate",
-      "provider+use-license",
-    ]);
+    expect(Object.keys(BUDGETS).sort()).toEqual(
+      Object.keys(CASES)
+        .filter((k) => k !== "baseline")
+        .sort(),
+    );
   });
 });

@@ -36,7 +36,6 @@ const product = {
   createdAt: NOW - 200 * DAY,
   modifiedAt: NOW - DAY,
   services,
-  registration: null,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
   setup: {
@@ -217,9 +216,13 @@ export const CORE_ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl": { product },
   "/manage/api/products/djdl/services": {
     services,
-    registration: null,
     effectiveRegistration: "requires-license",
     source: "manifest",
+    facts: {
+      licensing: { tiers: 3, licenses: 5 },
+      managedConfig: { catalogVersion: 4 },
+      shipBuilds: { latest: { version: "2.4.0", channel: "stable" } },
+    },
   },
   "/manage/api/products/djdl/license/licenses": {
     licenses: Array.from({ length: 5 }, (_, i) => ({

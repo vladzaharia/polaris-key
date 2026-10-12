@@ -374,6 +374,7 @@ class FlowTest {
         val named = PolarisCopy(productName = "Diceroll")
         assertEquals("Diceroll 2.5.0 is ready" to "Restart Diceroll to finish updating.", named.updatePromptText(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart)))
         assertEquals("Update to keep using Diceroll", named.updatePromptText(PolarisUpdateUi("2.5.0", mandatory = true)).first)
+        assertEquals(anon.updateFailed, anon.updateFailureMessage(PolarisUpdateFailure("platform_error", "network detail")))
     }
 
     private fun assertNoCopyPathAfterOpening(link: String) {

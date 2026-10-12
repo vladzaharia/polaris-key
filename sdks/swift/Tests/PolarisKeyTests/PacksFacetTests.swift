@@ -141,7 +141,9 @@ final class PacksFacetTests: XCTestCase {
         }
     }
 
-    private var root: URL { work.appendingPathComponent("data/djdl/packs") }
+    /// The packs directory of the `https://key.example` client below: that is not production's host,
+    /// so its product directory carries the host (`djdl@key.example`), not the bare product.
+    private var root: URL { work.appendingPathComponent("data/djdl@key.example/packs") }
 
     private func client(
         stamp: PackStampSource?, embedded: [EmbeddedPack] = [], token: Bool = true,
@@ -155,12 +157,15 @@ final class PacksFacetTests: XCTestCase {
             pinnedKeys: PackFixtures.productTrust, store: store, transport: server.transport,
             expectedServices: [.release, .distribution, .update], dataDir: work.appendingPathComponent("data"))
         let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
+        let packs = PacksClient(
+            core: client.core, releaseKeys: PackFixtures.releaseKeys,
+            options: PacksOptions(
+                contentStamp: stamp, embedded: embedded, handlers: handlers,
+                objectTransport: transport ?? blobs))
         let update = try UpdateClient(
             core: client.core,
             options: UpdateClientOptions(
-                pinnedReleaseKeys: PackFixtures.releaseKeys, outlet: .kind("direct"),
-                packs: PacksOptions(
-                    contentStamp: stamp, embedded: embedded, handlers: handlers, objectTransport: transport ?? blobs)))
+                pinnedReleaseKeys: PackFixtures.releaseKeys, outlet: .kind("direct"), content: packs))
         return (client, update)
     }
 

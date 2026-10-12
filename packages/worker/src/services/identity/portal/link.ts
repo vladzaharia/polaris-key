@@ -24,8 +24,10 @@
  * 5 minutes, and each proof's session must still be live (signing out of either cancels it). The
  * account kept is the other one by default (the existing account the person came to link: its
  * primary email stays, PORTAL.md §4.11), or the started one on request. A join is refused while
- * either account could still undo a join of its own (`merge_pending`), and it is audited,
- * emailed to every verified address of both, and undoable for 72 hours (`accounts/mergeUndo.ts`).
+ * either account could still undo a join of its own (`merge_pending`) or has a scheduled deletion
+ * (I-11; the refusal reads `unavailable`: the person cancels the deletion first), and it is
+ * audited, emailed to every verified address of both, and undoable for 72 hours
+ * (`accounts/mergeUndo.ts`).
  * The browser's session stays valid either way: an absorbed account's session resolves to the
  * survivor. The flow is claimed before the merge, so two racing confirms merge once; an account's
  * details show on the join screen only while its proof's session is live, and signing out clears
@@ -52,6 +54,7 @@ import {
   updateArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
+import { hasScheduledAccountDeletion } from "../accounts/lifecycle.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   isFresh,
@@ -390,6 +393,16 @@ async function linkView(
   )
     // Refused while either account can still undo a join of its own, whichever is kept.
     reason = "merge_pending";
+  else if (
+    await hasScheduledAccountDeletion(
+      db,
+      flow.started.accountId,
+      flow.other.accountId,
+    )
+  )
+    // A scheduled deletion is the holder's decision about one account (`mergeAccounts` refuses
+    // it as `deletion_pending`): cancel it first, then join.
+    reason = "unavailable";
   const products = flow.other
     ? await db.first<{ n: number }>(
         `SELECT COUNT(DISTINCT product) AS n FROM licenses WHERE account_id IN (?, ?)`,
@@ -500,6 +513,17 @@ async function linkConfirm(
             reason: "merge_pending",
             message:
               "One of these accounts was joined with another in the last 72 hours. Try again once that join can no longer be undone.",
+          },
+          403,
+          gone,
+        );
+      case "deletion_pending":
+        return cardJson(
+          {
+            error: "forbidden",
+            reason: "unavailable",
+            message:
+              "One of these accounts is scheduled for deletion. Choose Keep my account under Your data on that account, then join them again.",
           },
           403,
           gone,

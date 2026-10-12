@@ -2,6 +2,23 @@
   "name": "@polaris-key/brand",
   "version": "0.0.0",
   "description": "The Polaris Key design system: brand and UI-kit tokens (CSS, Tailwind v4, TS, JSON, GDScript, Swift, Kotlin, Python, C#), the product accent resolver, variable Rubik and JetBrains Mono fonts, the Pinned K and Star Cut marks, the ten service icons, lockups (including the generated Polaris Key Delivery lockups, marks, web files and social cards) and \"Powered by\" badges, and the launch-kit assets.",
+  "keywords": [
+    "polaris-key",
+    "design-system",
+    "design-tokens",
+    "brand",
+    "fonts",
+    "icons"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/brand"
+  },
+  "homepage": "https://github.com/vladzaharia/polaris-key/tree/main/packages/brand#readme",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": [

@@ -449,12 +449,9 @@ export function storeGrantWriter(
  * `dispatchService`: a product whose `services_json` says the service is off must not have that
  * service's code run, even to say no.
  *
- * `validateServices` refuses the `requires-identity` + identity-disabled combination on the
- * ADMIN path (`registration_requires_identity`, via `servicesAdmin.ts`) — and ONLY there.
- * Manifest ingest does not call it: `linkRepo`/`resync` go straight to `serializeServices`.
- * So this check is not a redundant second opinion, it is the only thing standing between a
- * repo-authored `devices.registration: requires-identity` on an identity-disabled product and
- * a minted device token. Do not remove it on the grounds that validation "already" happened.
+ * The registration policy is derived from the enabled services, so an identity-disabled product
+ * can never require identity registration. This enablement check is still the fail-closed
+ * boundary: the Identity authorizer must not run for a product whose Identity service is off.
  */
 export async function authorizeRegistration(
   registry: ServiceRegistry,

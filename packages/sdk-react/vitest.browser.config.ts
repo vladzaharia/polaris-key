@@ -14,16 +14,21 @@ interface PlaywrightPage {
   }): Promise<void>;
 }
 
-// The drop-in kit in real Chromium (test/browser/responsive.browser.test.tsx): every screen at
-// phone, tablet, desktop and monitor sizes, short landscape windows, 200 % zoom and a 24 px root
-// font, in dark and light, plus the brand and host presets and the "system" scheme. `pnpm --filter @polaris-key/react test:browser`; it needs Chromium
+// The drop-in kit in real Chromium (test/browser/*.browser.test.tsx): responsive scenes run at
+// every §7.1 row; every non-hidden ui-matrix state also runs at the committed 390 and 1440 rows,
+// in dark and light. `pnpm --filter @polaris-key/react test:browser` needs Chromium
 // (`pnpm --filter @polaris-key/react exec playwright install chromium`). The jsdom suite
 // (vitest.config.ts) leaves test/browser/ out.
 //
-// PKEY_KIT_SHOTS=<dir> writes every render to <dir>/react.<scene>/<size>-<scheme>.png.
+// PKEY_KIT_SHOTS=<dir> writes every responsive render to
+// <dir>/react.<scene>/<size>-<scheme>.png. PKEY_KIT_BASELINES=<dir> writes the complete
+// 390/1440 dark/light fixture matrix directly under <dir>/<Component>.<state>/.
 export default defineConfig({
   define: {
     __PKEY_KIT_SHOTS__: JSON.stringify(process.env.PKEY_KIT_SHOTS ?? ""),
+    __PKEY_KIT_BASELINES__: JSON.stringify(
+      process.env.PKEY_KIT_BASELINES ?? "",
+    ),
   },
   test: {
     include: ["test/browser/**/*.browser.test.tsx"],

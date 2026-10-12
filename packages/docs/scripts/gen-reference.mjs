@@ -107,6 +107,24 @@ function manifestValidationCodes() {
       mdxProse(m[4].slice(1, -1).replace(/\\"/g, '"')),
     ]);
   }
+  // The requirement rule (ST-38) emits one code per `requires` edge through a generic loop, so no
+  // literal `add(...)` call carries them: read the literal `REQUIREMENT_MESSAGES` table instead.
+  const requirements = sources[0].match(
+    /const REQUIREMENT_MESSAGES[^=]*=\s*new Map\(\[([\s\S]*?)\n\]\);/,
+  );
+  if (!requirements)
+    throw new Error("gen-reference: REQUIREMENT_MESSAGES table not found");
+  for (const m of requirements[1].matchAll(
+    /\[\s*"([a-z_]+)_requires_([a-z]+)",\s*("(?:[^"\\]|\\.)*")\s*,?\s*\]/g,
+  )) {
+    rows.push([
+      `\`${m[1]}_requires_${m[2]}\``,
+      "error",
+      "product",
+      `\`/modules/${m[1]}\``,
+      mdxProse(m[3].slice(1, -1).replace(/\\"/g, '"')),
+    ]);
+  }
   const seen = new Set();
   const unique = rows.filter((row) => {
     const key = row.join("\0");
@@ -459,6 +477,7 @@ export const TABLE_OWNERS = {
     "release_native_uploads",
     "release_package_prunes",
     "release_package_retention",
+    "release_package_retention_notices",
     "release_mirrors",
   ],
   distribution: [
@@ -507,6 +526,8 @@ export const TABLE_OWNERS = {
     "account_tombstones",
     // SEC-WP-04: the progress record of an account erasure that has not finished.
     "account_erasures",
+    // I-11: a holder's cancellable, fourteen-day account-deletion request.
+    "account_deletions",
     "subject_events",
     "account_sessions",
     "account_product_grants",

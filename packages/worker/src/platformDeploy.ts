@@ -444,7 +444,7 @@ export async function handleDeployHook(
     }),
   });
 
-  // SEC-DST-1: the new Worker is live; heal any package ref the previous Worker wrote as
+  // The new Worker is live; heal any package ref the previous Worker wrote as
   // `artifact` between the migration and this deploy. Never a failed deploy.
   try {
     const healed = await reconcilePackageFileRefs(db);

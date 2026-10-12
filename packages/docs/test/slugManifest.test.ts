@@ -55,12 +55,24 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
   });
 
   it("records frontmatter and anchors", () => {
-    const stub = manifest.pages["/docs/help/add-a-license/"]!;
-    expect(stub.status).toBe("stub");
-    expect(stub.type).toBe("help");
-    expect(stub.anchors).toEqual(
-      expect.arrayContaining(["license_owned", "email_mismatch"]),
+    const page = manifest.pages["/docs/help/add-a-license/"]!;
+    expect(page.status).toBe("shipped");
+    expect(page.type).toBe("help");
+    expect(page.anchors).toEqual(
+      expect.arrayContaining([
+        "license_owned",
+        "email_mismatch",
+        "key_entry_limit",
+      ]),
     );
+  });
+
+  it("records a stub's status and type", () => {
+    const stubs = Object.values(manifest.pages).filter(
+      (p) => p.status === "stub",
+    );
+    expect(stubs.length).toBeGreaterThan(0);
+    for (const stub of stubs) expect(stub.type).toBeDefined();
   });
 
   it("records where a moved page forwards", () => {
@@ -69,19 +81,41 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
     });
   });
 
-  it("drops stubs from the sitemap", () => {
+  it("drops stubs from the sitemap and marks each one noindex", () => {
     const sitemap = readFileSync(join(dist, "sitemap-0.xml"), "utf8");
-    expect(sitemap).not.toContain("/docs/help/add-a-license/");
+    const stubs = Object.entries(manifest.pages)
+      .filter(([, page]) => page.status === "stub")
+      .map(([route]) => route);
+    expect(stubs.length).toBeGreaterThan(0);
+    for (const route of stubs) expect(sitemap).not.toContain(`${route}</loc>`);
     expect(sitemap).toContain("/docs/help/activate/");
+    // Every stub of the manifest: out of the sitemap, and noindex in its own HTML.
+    const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+      (m) => new URL(m[1]!).pathname,
+    );
+    expect(stubs, "the manifest still lists a stub to check").not.toEqual([]);
+    for (const route of stubs) {
+      expect(listed, route).not.toContain(route);
+      expect(
+        readFileSync(
+          join(dist, route.replace(/^\/docs\//, ""), "index.html"),
+          "utf8",
+        ),
+        `${route}: noindex`,
+      ).toContain('content="noindex"');
+    }
   });
 
-  it("renders the Help message stubs with the message id as the anchor", () => {
+  it("renders a Help message with the message id as the anchor, on an indexable page", () => {
     const html = readFileSync(
       join(dist, "help/messages/devices/index.html"),
       "utf8",
     );
     expect(html).toContain('id="activation.device-limit"');
     expect(html).toContain("Device limit reached");
-    expect(html).toContain('content="noindex"');
+    expect(html).not.toContain('content="noindex"');
+    expect(readFileSync(join(dist, "sitemap-0.xml"), "utf8")).toContain(
+      "/docs/help/messages/devices/",
+    );
   });
 });

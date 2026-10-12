@@ -18,10 +18,11 @@ with `jose`, asymmetric algorithms only.
 
 - **`platform`** (the default when the column is unset) — the operator-configured IdP shared by
   every product that has not linked its own, read from the `PLATFORM_OIDC_ISSUER` /
-  `PLATFORM_OIDC_CLIENT_ID` / `PLATFORM_OIDC_CLIENT_SECRET` Worker secrets. This is the **same**
-  IdP client the customer portal's root `/login` uses — see
-  [Customer portal](/docs/services/identity/portal/) — so a platform-issuer product and the
-  portal share one trust boundary. The console signs operators in through its own client
+  `PLATFORM_OIDC_CLIENT_ID` / `PLATFORM_OIDC_CLIENT_SECRET` Worker secrets. The customer
+  portal's root `/login` uses the same IdP, as the seeded platform connection `platform-sso`
+  that the trio became (`source: env`; see
+  [Connections](/docs/operate/platform/connections/#sign-in-connections)), so a platform-issuer
+  product and the portal share one trust boundary. The console signs operators in through its own client
   (`ADMIN_OIDC_*`, falling back to `PLATFORM_OIDC_*` until it is set); a product or the portal
   never reads the `ADMIN_OIDC_*` names.
 - **`custom`** — a provider the product links itself: `issuer`, `client_id`, and a
@@ -33,9 +34,11 @@ A **custom** issuer is repo-controlled, not operator-controlled: whoever can pus
 repo's `.pkey/product` can point `oidc.issuer` anywhere. Two independent checks stand between
 that and a live sign-in — see "The issuer allowlist" below.
 
-Neither path performs OIDC discovery. The issuer is expanded by fixed, hardcoded suffixes:
-`<issuer>/authorize`, `<issuer>/api/oidc/token`, `<issuer>/.well-known/jwks.json`. A custom IdP
-must expose exactly those three paths at those exact suffixes.
+Both paths run on the Worker's one relying-party client (`core/oidc/client.ts`), as the portal and
+the console do. It reads `<issuer>/.well-known/openid-configuration`, whose `issuer` must
+equal the configured one exactly, and dials only the issuer's host: an endpoint the document
+names on any other host is refused. A custom IdP needs a discovery document that offers the code
+flow.
 
 ## The browser PKCE flow
 
@@ -43,7 +46,7 @@ Two routes, both under `/<product>/identity/auth`:
 
 | Route                             | What it does                                                                                                                                                           |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /<p>/identity/auth/start`    | Begins PKCE and 302s to the IdP's `/authorize`.                                                                                                                        |
+| `GET /<p>/identity/auth/start`    | Begins PKCE and 302s to the IdP's discovered authorization endpoint.                                                                                                   |
 | `GET /<p>/identity/auth/callback` | The registered redirect URI: exchanges the code, verifies the ID token, mints or locates the license (a device-code flow: stores the identity; the poll activates it). |
 
 **`/auth/start`** generates `state` and `nonce` (16 random bytes each, base64url) and a PKCE pair
@@ -63,8 +66,8 @@ redirect URI is always computed as `…/<product>/identity/auth/callback`; when
 `consumedAt` makes it single-use, and a replayed `state` gets the same generic
 `400 unknown state` a state that never existed would (this closes what the findings below call
 "flow injection": a second callback on the same state could otherwise overwrite the license a
-poller is already waiting on). It then exchanges the code at `<issuer>/api/oidc/token` with the
-PKCE verifier, fetches the IdP's JWKS, and verifies the ID token:
+poller is already waiting on). It then exchanges the code at the discovered token endpoint with the
+PKCE verifier, reads the IdP's JWKS through the client's cache, and verifies the ID token:
 
 - algorithms `RS256`, `ES256`, or `EdDSA` only — never a symmetric algorithm an attacker could
   forge with a public value;
@@ -103,7 +106,7 @@ These two routes, plus `/auth/logout`, `/auth/choose`, `/auth/device` and the th
 ## The issuer allowlist: `OIDC_ISSUER_ALLOWLIST`
 
 A **custom** issuer is checked twice before it is ever fetched or redirected to, because the same
-value is both the base of the `/authorize` redirect and the destination of a POST carrying the
+value is both the base of the discovery fetch and the redirect, and the destination of a POST carrying the
 product's OIDC `client_secret`:
 
 1. **Shape**, at manifest-ingest time and again here as a sink-side repeat: `isSafeIssuerUrl`

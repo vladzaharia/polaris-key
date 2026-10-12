@@ -89,6 +89,7 @@ export const GENERATORS: Generator[] = [
     outputs: [
       "packages/shared-manifest/src/services.generated.ts",
       "packages/admin/src/services.generated.ts",
+      "packages/docs/src/lib/features.generated.ts",
       "packages/sdk-node/src/services.generated.ts",
       "packages/sdk-react/src/core/services.generated.ts",
       "sdks/python/src/polaris_key/_services.py",
@@ -313,6 +314,29 @@ export const GENERATORS: Generator[] = [
     fast: true,
   },
   {
+    id: "readme-work",
+    title: "The Work on it block of each internal README",
+    order: 115,
+    inputs: [
+      "tools/generators.ts",
+      "tools/gen-readme-work.ts",
+      "package.json",
+      "packages/{worker,admin,docs,elements,ui-qa}/package.json",
+      "conformance/runners/*/package.json",
+      "tools/package.json",
+      "products/package.json",
+    ],
+    outputs: [
+      "packages/{worker,admin,docs,elements,ui-qa}/README.md",
+      "conformance/README.md",
+      "tools/README.md",
+      "products/README.md",
+      "docs/README.md",
+    ],
+    write: [tsx("tools/gen-readme-work.ts")],
+    fast: true,
+  },
+  {
     id: "parity",
     title: "Parity gate: every SDK's parity.json against the feature registry",
     order: 120,
@@ -328,6 +352,22 @@ export const GENERATORS: Generator[] = [
     ],
     outputs: [],
     write: [tsx("tools/parity-check.ts")],
+  },
+  {
+    id: "ux-rows",
+    title:
+      "UX-row gate: every UX-* id in the design specs is mapped and marked from uxRows",
+    order: 125,
+    checkOnly: true,
+    fast: true,
+    inputs: [
+      "tools/ux-rows-check.ts",
+      "docs/research/2026-10-07-dx-consolidation/backlog-changes.json",
+      "docs/research/2026-09-29-godot-omniplatform/program/workpackages.json",
+      "docs/design/{EXPERIENCE,SETUP,FLOWS,SIGN-IN,ADMIN,PORTAL}.md",
+    ],
+    outputs: [],
+    write: [tsx("tools/ux-rows-check.ts")],
   },
   {
     id: "graph-index",

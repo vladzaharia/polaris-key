@@ -247,14 +247,18 @@ serves, so who may make them is part of this boundary:
   the newest unyanked release the truth store holds below it, computed on every resolution
   (`yankedFloorFallback`), so yanking the newest release leaves the channel protected against
   the R6-10 deletion downgrade. `release:yank` cannot be used to strip a channel's floor.
-- **External locations are a tenant-chosen redirect.** An artifact location of provider
-  `external` makes the build and file routes answer a `302` to that `https://` URL, from
-  `dl.plrs.im` and from the console host. The URL is whatever the release descriptor recorded
-  in `locations_json`, so it is tenant-controlled in the way R6-12's portal redirect was: the
-  platform's hostname vouches for a destination the tenant picked. Only `https:` is followed and
-  the response carries no credentials, but the destination is not allowlisted. Today nothing
-  writes `locations_json` (the descriptor is P2-04's); P2-04 owns deciding whether external
-  URLs need a host allowlist before it does.
+- **External locations are a tenant-chosen redirect.** A release descriptor writes its
+  `locations` array to `release_artifacts.locations_json`
+  (`services/release/descriptor.ts` `stmtSetArtifactModel`); an `external` location is accepted
+  only when its URL is `https:` without credentials
+  (`shared-manifest/src/descriptor.ts` `isHttpsUrl`). `serveArtifact`
+  (`services/distribution/bytes.ts`) tries R2, then GitHub, then answers a `302` to the external
+  URL. The target is rechecked as `https:` and the response carries no credentials, but it is
+  not host-allowlisted. HA-08's mirror fetches an external URL through its guarded ingest path
+  and appends an R2 location, which normally wins that ordering; the original location remains a
+  fallback. CI holding the product publishing credential or a repository-synchronised descriptor
+  can therefore make the platform hostname vouch for a destination the tenant selected. **Open,
+  unowned:** decide and enforce a destination-host allowlist before serving the redirect.
 
 **Deviation, recorded: the bytes host is same-site with the console.** The design rule
 (research README §3.5, decision 4) was a separate registrable domain, because a `*.plrs.im`
@@ -306,16 +310,23 @@ any other `plrs.im` sibling that serves attacker-influenced HTML. Hosted web bui
 which need HTML and script, cannot live on this host under these rules and need their own
 registrable domain.
 
-Residual risk: **delta keys can be squatted.** `deltas/<from>/<to>.<method>` is named by its
-endpoints, not by its own content, and is not product-scoped, so `promote` can verify only
-that the bytes match the hash the caller supplies. Any tenant can promote arbitrary bytes under
-another product's delta key first; the 180-day lock then fixes them in place, and the
-legitimate promote answers `conflict`. This must stay an availability problem only: a client
-must accept a delta's output only when it matches the signed `to` hash, and so falls back to
-the full blob; the delta path for that pair is then denied until the lock lapses. The packages
-that publish deltas (P4-03, P4-17) own the fix: product-scoped or content-named delta keys, or
-granting a delta ref only under the earn-a-ref rule above, so a squatted key is never served
-under the victim product.
+Residual (latent, not tenant-reachable on main): a `deltas/<from>/<to>.<method>` key is named by
+its endpoints rather than its own content hash, and `promote` deliberately accepts a parsed
+delta target (`core/assets/blobs.ts` `namedHash` returns `null` for one). A future caller that
+lets a tenant select such a target could therefore recreate first-writer-wins squatting under
+the 180-day lock.
+
+No current publish path reaches that primitive with a delta key. Descriptor R2 locations are
+restricted to content-addressed `blobs/sha256/<sha256>` keys
+(`shared-manifest/src/descriptor.ts` `KEY_SHAPE_RE`), release publish accepts only parsed
+`kind: "blob"` targets (`services/release/publish.ts`), and pack publish constructs every target
+with `blobKey` (`services/release/packs/publish.ts`). The only `deltaKey` writer is P4-17's
+consumer: it proves the product holds both payload refs, decodes the generated frame against the
+base and target before its create-only put, then grants that product its `lazy-delta` ref
+(`services/release/packs/deltas/consumer.ts`). CI record deltas are ordinary content-addressed
+blob artifacts. Clients still accept a delta only when its output matches the signed `to` hash.
+Keep this caller invariant explicit, or make `promote` reject delta targets before adding another
+writer.
 
 ### Trusted publishing (P2-02)
 
@@ -1502,11 +1513,14 @@ the only deletion is feed retention's (below), and only of builds of main. A wri
 its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
 `test/adminFeeds.test.ts`.
 
-### Feed retention: pruning builds of main (owner request 2026-10-06)
+### Feed retention: pruning builds of main and dev (owner request 2026-10-06; F-36)
 
-**What it is.** `services/release/packages/prune.ts` deletes a package's `main`-channel
-prereleases once a version at or above them is released. When version V is published on
-`stable`, it deletes semver `X-main.N` and PEP 440 `X.devN` with X ≤ V. This is the one place a
+**What it is.** `services/release/packages/prune.ts` deletes a package's ephemeral-channel
+prereleases (`main`, and the built-in `dev`) once a version at or above them is released. When
+version V is published on `stable`, it deletes semver `X-main.N` (on `main`), `X-dev.N` (on `dev`)
+and PEP 440 `X.devN` (on either) with X ≤ V. A build is a candidate only on the channel its
+spelling belongs to. A copy on a public registry is never reached: the prune is D1 and blob-ref
+work only, with no network client or registry credential. This is the one place a
 package version is ever deleted. The lead made the decisions under delegated owner authority,
 and the operations are in RUNBOOK "Feed retention".
 
@@ -1519,10 +1533,18 @@ and the operations are in RUNBOOK "Feed retention".
 | `POST …/feeds/prune` (admin)       | a platform-admin console session (403 otherwise)                                                                         | the scope's owner's packages                           | `admin:<sub>`           |
 | `PUT …/feeds/retention` (admin)    | the same; refused for the system product                                                                                 | the setting only                                       | `feed.retention.update` |
 
-**Off by default.** `release.packages.prunePrereleases` is off for a tenant product: nothing is
-deleted automatically until a platform admin opts the product in (`PUT …/feeds/retention`, an L1
-confirmation, audited). Only the reserved system product (`polaris-key`) is on by default, and it
-is locked on.
+**On by default, after a notice (F-36, 2026-10-11).** `release.packages.prunePrereleases` is on
+for every product, so this is the trigger that widens: the default flips from opt-in to opt-out.
+The control that replaces the opt-in is a one-time dry-run NOTICE
+(`release_package_retention_notices`, one `package.prune.notice` audit row): the Release cron, or
+the product's first stable publish, records what a dry run found and a start day a week later, and
+nothing is deleted before that day, so the owner can turn it off first (`PUT …/feeds/retention`,
+L0 to turn off, L1 to turn on, audited). A stored value, on or off, is the operator's choice and
+applies at once; no code path writes one for a product that never chose. The notice is written
+once (`ON CONFLICT DO NOTHING`), names no candidate beyond counts and bytes, and itself deletes
+nothing. The reserved system product (`polaris-key`) is on and locked on, with no notice. The
+notice window is a constant (`PRUNE_NOTICE_SECONDS`), not a setting, and no per-channel flag
+exists: which channels are ephemeral is code (`main`, `dev`).
 
 A publisher therefore gains no new power. The automatic prune only removes builds of main below
 a version the publisher was already allowed to publish as the stable release, and the
@@ -3454,21 +3476,26 @@ callback claims, migrates and disables nothing, so a hit is not a path to the vi
 either. Before that fix, one hit every 7 hours at the ceiling was one captured anonymous license
 every 7 hours. There is
 deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
-product out of sign-in. Residual, unowned: sharding a product's own rate-limit Durable Object
-(R10-04a is fixed for the
-platform-global `_portal` and `_admin` limiters only; see the single-use store section below).
+product out of sign-in. Residual, unowned: a product's own `RateLimitDO` is still one object per
+product. R10-04a shards only the platform-global `_portal` and `_admin` limiters
+(`core/rateLimit.ts` `SHARDED_LIMITERS`); `email*` buckets are separately sharded in every
+limiter, but the device-code buckets use the product's one object.
 
-**Remote phishing (RFC 8628 §5.4) — closed for device-code flows: R1-07, rooted in R8-03.** The flow's starter can still complete the confirmation step without a browser and
-forward the resulting IdP sign-in to a victim, but the confirmation now sets a `__Host-pk_lcb`
-binder cookie on the confirming browser (the starter's own curl jar) and stores its hash on the
-flow. `handleAuthCallback` requires that cookie before it claims the flow, so the victim's browser,
-which never held it, is refused (400) and the flow is not consumed; the starter's poll stays
-pending. The same binder now covers every product browser flow (`/auth/start` sets it for any
-issuer, not only `provider: platform`) and the admin console's sign-in (`__Host-pkey_admin_flow`).
-Regression tests: `R8-oidc.test.ts` › `FIXED (R1-07 / R8-03): the starter confirms its own flow…`,
-the binder cases in `identityBinders.test.ts`, and `R1-control-plane.test.ts` › `R1-01b`. What stays
-true: a starter who phishes a victim into the _starter's own_ browser (the victim is on the
-starter's machine) is a different attack that no cookie can see.
+**Remote phishing (RFC 8628 §5.4) — forwarded authorize URL closed; residual R1-07 open,
+rooted in R8-03.** A starter can confirm without a browser and forward the resulting IdP URL,
+but confirmation now sets a `__Host-pk_lcb` binder on the confirming browser and stores its
+peppered hash. `handleAuthCallback` requires that binder before claiming the flow, so a victim
+browser that never held it receives 400 without consuming the flow; the starter's poll stays
+pending. The same binder covers every product browser flow (`/auth/start` sets it for any issuer)
+and the admin console sign-in. Regression tests: `R8-oidc.test.ts` ›
+`FIXED (R1-07 / R8-03): the starter confirms its own flow…`, the binder cases in
+`identityBinders.test.ts`, and `R1-control-plane.test.ts` › `R1-01b`.
+
+What remains open is a browser/person mismatch: the victim can confirm the
+`verificationUriComplete` link in their own browser (or be phished into the starter's browser).
+That browser legitimately holds the binder, while the starter still holds the device code and
+chooses the P1-07 attach in `/device/poll`. A cookie cannot establish that the device-code holder
+is the person who completed IdP sign-in.
 
 **What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled
@@ -3531,18 +3558,15 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   turned a flow the Worker refuses (`error`) into a claim or migrate onto the victim's strict
   licence.
 
-PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
-migrate)` assert the gap; `P1-07 (R1-07 bound)`, `P1-07 (R1-07 bound, dormant devices)` and the three `P1-07 (R1-07 bound,
-claim)` / `P1-07 (R1-07 bound, migrate)` tests (dormant devices on a claim, the identity's tier
-rather than the enroll tier, the destination's stored tier rather than a larger mapped one, an
-operator `deviceLimit` override that survives sign-in) assert the seat-limit refusal, and
-`P1-07 (R1-07, claim on a strict tier)`, `P1-07 (R1-07, migrate on a strict tier)` and `P1-07
-(R1-07, migrate onto a strict stored tier)` assert that nothing merges when the mint would be
-refused. `licenseMerge.test.ts` and `enroll.test.ts` (`LX-03: …`) assert the seat-checked
-move, the refusal in one piece, and that grants, purchases and the binding follow the merge.
-Binding the
-callback to the confirming browser (below) closes all of it, because the device-code holder is
-then again the person who signed in.
+PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and
+`OPEN (R1-07 / R8-03, P1-07 migrate)` assert this remaining, binder-satisfied case: the callback
+browser holds the flow binder, but the starter holding the device code accepts the attach. The
+`P1-07 (R1-07 bound)` and `P1-07 (R1-07 bound, dormant devices)` families, including claim and
+migrate cases, assert the seat-limit refusal; `P1-07 (R1-07, claim on a strict tier)`,
+`P1-07 (R1-07, migrate on a strict tier)` and
+`P1-07 (R1-07, migrate onto a strict stored tier)` assert that nothing merges when the mint is
+refused. `licenseMerge.test.ts` and `enroll.test.ts` (`LX-03: …`) assert the seat-checked move,
+the refusal in one piece, and that grants, purchases and the binding follow the merge.
 
 So the confirmation page and its CSRF token protect only flows the attacker did _not_ start
 (cross-site forgery against someone else's flow, above). Typing the user code does not close
@@ -3552,15 +3576,14 @@ product and shows the device label and user code — but the label is `deviceNam
 `/device/start`, client-supplied display text a phisher sets to anything — so it is a speed bump,
 not a control.
 
-This is **not** inherent to the device-authorization grant. In RFC 8628 the user authenticates in
-the same browser session that entered the code; Polaris does not yet bind the IdP callback to
-the browser that confirmed, which is R8-03 (no flow on any surface is bound to the visitor's
-browser; since I-17 the portal's single sign-on is the exception, see "Moving end users off the
-platform IdP"). R1-07 was **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
-GET self-confirm, the framable page and the device code in the URL, not the starter's ability to
-confirm. The browser binder (2026-10-08) closed the rest: the confirmation `303` sets a `__Host-`
-`SameSite=Lax` binder cookie that `handleAuthCallback` requires, which makes the `Origin: null`
-question moot.
+This is **not** inherent to the device-authorization grant. RFC 8628 expects the user to
+authenticate in the browser session that entered the code. Polaris now binds every browser flow
+to that browser: `/auth/start` and device confirmation set the binder, and
+`handleAuthCallback` requires its peppered hash (`services/identity/oidc.ts`). R1-07 was
+**Fixed-partial** in the 2026-08-26 audit: R8-02 and P1-06 closed GET self-confirm, the framable
+page and the device code in the URL. The browser binder added on 2026-10-08 closes the forwarded
+authorize-URL form and makes the `Origin: null` question moot; it does not prove that the
+binder-holder owns the device code.
 
 **The licence chooser's binder (I-26, 2026-10-05).** On a `provider: platform` product, a person
 whose Polaris Key account already owns a usable licence for the product is no longer auto-issued
@@ -3587,17 +3610,15 @@ starter's device. The chooser therefore applies the fix direction above, for thi
   <label>") and the security email to every verified address. Nothing is written before the
   explicit "Replace and continue".
 
-Residual (open, owned by I-08 / PX-W13): the cookie binds the browser that _started or confirmed_
-the flow, not the person who owns the device. In the plain R1-07 pattern the starter confirms
-with curl and holds the cookie, so the victim's callback is refused. In the
-`verificationUriComplete` variant, though, the starter sends the victim the confirmation link:
-the victim confirms **in their own browser**, receives the binder, signs in, and is shown the
-chooser — and could bind one of their purchased licenses to the starter's device. The only speed
-bump is the device label, which the chooser and the confirmation page show (marked "Named by the
-device" on the chooser) but which is client-supplied `deviceName` text the starter chooses.
-Closing it needs the device-code holder and the browser bound together, which is I-08's login
-card with PX-W13's `__Host-pk_req` binder. Flows outside the trigger (no linked account, no
-usable license, `provider: custom`) keep the R1-07 behaviour described above. Pinned by
+Residual (open, owned by I-08 and I-37; PX-W13's `__Host-pk_req` binder is done): the cookie
+binds the browser that _started or confirmed_ the flow, not the person who owns the device. In
+the plain R1-07 pattern the starter confirms with curl and holds the cookie, so the victim's
+callback is refused. In the `verificationUriComplete` variant, though, the starter sends the
+victim the confirmation link: the victim confirms **in their own browser**, receives the binder
+and signs in. The starter still has the device code and can then accept the attach. The device
+label is only a speed bump because `deviceName` is client-supplied. Closing this needs I-08's
+browser-side Continue binding and I-37's explicit “Sign in on <device>?” confirmation; flows
+outside the chooser trigger retain this residual too. Pinned by
 `test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
 
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
@@ -4367,6 +4388,8 @@ resync), `release.publishing.trustedPublisher` (which workflow and environment c
 `core.registration` (`open` lets any client mint a device token) and `identity.provisioning`
 (what a verified claim grants). All five are in `SECURITY_WIDENING_KEYS`. `core.secrets` is
 `secret`: it names secrets, never holds a value, and stays pending until ST-08 wires it.
+ST-38 later removed `core.registration`: the registration policy is derived from the enabled
+services, so there is nothing to declare or widen, and four of the five remain.
 
 ### Self-reported operations (A-14)
 
@@ -5076,12 +5099,22 @@ version answers `unsupported` (`version`) and installs nothing.
     installer-based driver instead.
 - **The bridge's trust boundary.** `exposePolarisBridge` registers `ipcMain` handlers that any
   renderer loaded with the preload can call: state reads, `refresh`, sign-in, `submitKey`,
-  `signOut`, `importBundle`, `fetchSchema` and an `invoke` allowlist (`DEFAULT_INVOKE_VERBS`:
-  device list, rename, deauthorize and report, update check and decide, release changelog,
-  install URL and download URL).
+  `signOut`, `importBundle`, `fetchSchema` and the v4 `invoke` allowlist
+  (`DEFAULT_INVOKE_VERBS`: the v3 device/update/release reads plus config mint and local writes,
+  commerce binding and claim, discovery/store/device reads, boot, crash tags, verified fetch,
+  download-model/platform reads, updater feed URLs and update-health events).
   - `invoke` answers only the allowlist plus the host's own `invoke.extra` verbs, looked up with
     `Object.hasOwn`, so a prototype key never resolves. Arguments are type-checked before they
     reach the client.
+  - `release.fetch` is the only bridge verb that writes a renderer-named file. Its `to` is
+    **relative** to the host-owned `downloadDir` (the caller passes Electron's
+    `app.getPath("downloads")`); an absolute path, a `..` escape or the directory itself is
+    refused with `invalid-argument`, and a host that configured no directory refuses
+    `not-configured`. The host resolves and returns the resulting path, never accepting a
+    renderer-supplied release record: it looks the record up and verifies it against its pinned
+    release keys before downloading. A renderer cannot create links through this bridge; a local
+    process that can plant a symlink inside the user-writable download directory remains
+    equivalent to local filesystem write access.
   - The device code of a sign-in stays in the main process; the renderer holds a random flow id
     that expires with the code. The token, the keyring and the cache never cross the boundary.
     `BridgeState` carries the verified documents and the sync bookkeeping only.
@@ -5362,10 +5395,16 @@ ID-token check has the portal's `maxTokenAge`, `clockTolerance` and `requiredCla
 portal and product browser sessions compare their CSRF tokens in constant time.
 
 **Residual.** The revocation read fails open if the store is unreachable (the 8 h expiry still
-bounds it). Group membership is re-read from config, not from the IdP, so an operator removed
-only at the IdP keeps access until sign-out or expiry. Portal sessions sign with `PORTAL_SESSION_SECRET` only (no fallback to
-the admin secret; see §2, "Required secrets fail closed") and are already revocable
-(`account_sessions`).
+bounds it), and so does a change of `KEY_HASH_PEPPER`: the mark's address is an HMAC of the subject
+under the pepper, so a new pepper cannot find any existing mark and a signed-out cookie that has
+not expired verifies again with the groups it carried. Nothing in the Worker ties the two secrets
+together, so the control is procedural: a pepper change always sets a new `ADMIN_SESSION_SECRET`
+in the same `wrangler secret bulk`, which fails every older cookie on its signature before any
+mark is read (RUNBOOK, "Compromised `KEY_HASH_PEPPER`"). Group membership is re-read from config,
+not from the IdP, so an operator removed only at the IdP keeps access until sign-out or expiry.
+Portal sessions sign with `PORTAL_SESSION_SECRET` only (no fallback to the admin secret; see §2,
+"Required secrets fail closed") and are already revocable (`account_sessions`); a new pepper finds
+none of their rows, so they fail closed.
 
 ### Moving end users off the platform IdP (I-17)
 
@@ -5429,8 +5468,9 @@ directory holds operators only, which closes G5 (operator and customer in one di
   and `operators-only` heard `signIn`'s `account_disabled` and carried on as before, and I-26's
   trigger skipped a disabled account and fell through to minting. The callback now reads the
   subject's method first (issuer key or the pre-I-01 literal, read-only;
-  `platformSubjectAccountRefused`) and, when its account is not active (disabled, or its deletion
-  under way), drops the flow before the claim, the chooser or any activation, mints and writes
+  `platformSubjectStanding`, which answers allowed, refused or unavailable) and, when its account
+  is not active (disabled, or its deletion under way) or is on the erasure ledger (a restored
+  erased account), drops the flow before the claim, the chooser or any activation, mints and writes
   nothing, and answers the portal's "This account can't sign in". The device-code poll checks
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
@@ -5439,15 +5479,16 @@ directory holds operators only, which closes G5 (operator and customer in one di
   The OIDC return path records two things on the session's KV record (`browserSessionBinding`;
   neither for a custom issuer): the platform subject itself (issuer and `sub`), and the account
   that holds its platform-IdP method at sign-in, if any. At every read, `loadBrowserSession` runs
-  this same N9 check on the subject (`platformSubjectAccountRefused`, so whichever account holds
+  this same N9 check on the subject (`platformSubjectStanding`, so whichever account holds
   the method now counts: one the subject joined after the session opened, or one its method moved
   to) and checks the sign-in account. It deletes the record and answers "no session" once either
   is disabled, being deleted or gone (an absorbed account follows its join for 30 days, as
   `signIn` reads it). The sign-in account is kept for erasure, which deletes the account's methods,
   so the subject alone would then resolve no account. So the page reads signed out at its next
   request, a `requires-identity` product refuses to register a device on it, and sign-out finds
-  nothing to end. A D1 error during the check reads as signed out for that request (never a 500,
-  fail closed) and keeps the record, since the error says nothing about the account. Residual, by
+  nothing to end. A D1 error during the check, or an erasure ledger that cannot be read, reads as
+  signed out for that request (never a 500, fail closed) and keeps the record, since the error says
+  nothing about the account. Residual, by
   decision: device seats and device tokens are kept, the browser device's included. They belong
   to the licence, not the account; disabling clears each device's account binding
   (`devices.subject`) and nothing else, and the operator deauthorizes a seat or disables the
@@ -6210,6 +6251,11 @@ merge and deletion) apply to it unchanged.
   `403 forbidden` only after the passkey's own signature verified, so only the holder of that
   passkey learns it. Both card routes share 30 requests a minute per client address and fail
   closed; account changes are limited to 10 a minute per account.
+- **Rename (PX-W19).** `PATCH /api/me/passkeys/<id>` sets a label only: owner-only (the account id
+  is in the UPDATE, and an unknown id and another account's answer the same 404), step-up, 1 to 64
+  characters with no control or bidirectional characters, body read under a 1 KiB cap. The name is
+  never read by verification, never put in an email or audit summary, and is shown to its owner as
+  text (the console renders it escaped).
 - **Residuals.** Whoever holds an unlocked device with a synced passkey, or the sync account
   behind it, can sign in as the person: that is the authenticator's security, as for any passkey
   site. Pocket ID passkeys (`rp_id = id.plrs.im`) cannot carry over; migrated users enrol again
@@ -6270,8 +6316,19 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   tokens move back untouched (a test). A join is refused while EITHER account could still undo a
   join of its own (`merge_pending`): absorbing that account would destroy its undo, and absorbing
   into it would hand the second join's data and aliases to the first join's absorbed account on
-  undo. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
+  undo. It is refused as well while either account has a scheduled deletion (`deletion_pending`,
+  under account erasure below), and an undo leaves such a request with the account it was made
+  for. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
   nightly once the window ends, and deleted with either account (docs/PRIVACY.md).
+- **Make primary (PX-W19).** `POST /api/me/methods/<id>/primary` needs the same step-up as a
+  connect, takes only one of the caller's own email methods (an unknown id and another account's
+  answer the same 404; another kind is 422), and writes `primary_email` with one conditional
+  statement that holds only while that link still belongs to the account, so a removal racing it
+  cannot leave a primary with no method. Every email method exists only after its code or a
+  provider's verified claim, so no unverified address becomes primary. A change is audited and a
+  notice naming no address goes to every verified address, the old primary included. Products
+  see the new address on their next read of the consent view and developers on the next
+  product-user contact read; nothing is pushed to them.
 - **Residuals.** Someone with a fresh session for an account can already change it directly
   (connect their own method, disconnect the others, delete it); joining gives them nothing more,
   and the notices to every verified address of both accounts are the detection. Deleting the kept
@@ -7720,14 +7777,57 @@ be disabled.
   double delete audits once) naming tier, origin, the account's pairwise subject (never the
   global account id) and the device count.
 
-### Account erasure is a resumable state machine (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
+### Personal-data export and per-product removal act on the caller's own account (I-11)
+
+`GET /api/me/export`, `GET /api/products/<product>/export` and
+`DELETE /api/products/<product>/data` take no account, subject or licence identifier: the session
+names the account, so there is nothing for a caller to substitute.
+
+- **Gates.** A portal session; the `X-PKey-Portal-CSRF` header, on the two GETs as on the DELETE,
+  because they hand over personal data and the SPA's download always sends it; a sign-in no older
+  than five minutes; and a per-account rate limit (5 a minute for the full export, 10 for a
+  product's export and 5 for a removal, the last two in the product's own shard). A product the
+  account holds nothing in answers the same `404` as one that does not exist, before the step-up
+  and before any rate-limit charge.
+- **Allow-list.** Each document is assembled field by field and published as an OpenAPI schema whose
+  objects all declare `additionalProperties: false`; `portalDataExport.test.ts` validates real
+  documents against it and plants a sentinel in every credential column an export reads. No
+  session id, key (text or hash), device token, registry token (text or hash), passkey credential
+  id, public key or user handle, provider picture reference, consent scope hash, join undo
+  snapshot, licence `overrides_json`, developer audit log or relink record is exported, and a
+  registered store's secret is reported as `configured`, never its value.
+- **Read-only.** An export mints no subject, attaches no licence and writes only its own
+  `portal.account.export` or `portal.product.export` audit row.
+- **Removal.** It runs `removeProductData`: every registered store deletes first, devices lose the
+  binding, and the developer's `subject.deleted` event carries the pairwise subject and licence ids
+  only. The licence stays unless the person also removes it; then it leaves exactly as the
+  library's Remove does (an auto-attach block, package tokens revoked), a licence its key could not
+  bring back is refused with `409 not_removable`, and the next portal request cannot re-attach it.
+- **Residual.** The copy is a plain file on the person's device. The full export names the account
+  id, so a person who hands it to a developer gives them that id (a per-product file never carries
+  it).
+
+### Account erasure is scheduled, then resumable (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
 
 `DELETE /api/me` used to flip the account to `deleted` and then run the registered stores' hooks
 unguarded: one failing Durable Object or R2 call left the email, links, subjects and licence
 attachments in place, with no record and no retry, while the person had been told it was done.
 
-- **Closed first, in one batch.** The first batch sets `accounts.status = 'deleted'` (every
-  reader refuses anything but `active`, so no session validates and `signIn` refuses with
+- **Request before close.** A current portal session, CSRF token, five-minute step-up and the
+  account-action rate limit are required to create or cancel a deletion request. Creating one
+  stores only the opaque account id, request time and a deadline fourteen days later in
+  `account_deletions`; it leaves the account active so its holder can export data or cancel.
+  Repeating the request preserves its first deadline. Scheduling or cancelling sends a security
+  notice to every verified address, and its account-scoped activity record contains no email,
+  name or product.
+- **Claim then close.** Both scheduled ticks choose due requests and conditionally claim one
+  before starting the hard-erasure state machine. Cancellation can remove only an unclaimed (or
+  expired claim) request, so a concurrent cancellation and due sweep have one atomic winner.
+  A winning claim makes the request irrevocable; the next batch closes the account and ends every
+  session. The final erasure batch deletes the request and its account activity, leaving only the
+  id-only tombstone and the id-only `portal.account.delete` receipt.
+- **Closed first, in one batch.** The first hard-erasure batch sets `accounts.status = 'deleted'`
+  (every reader refuses anything but `active`, so no session validates and `signIn` refuses with
   `account_disabled`: a new login cannot resurrect or re-attach to an account being erased),
   deletes the sessions and writes the progress row in `account_erasures` (opaque account id,
   attempts, back-off, lease, failing step and a 200-character error; no email, name or product).
@@ -7741,6 +7841,34 @@ attachments in place, with no record and no retry, while the person had been tol
   together with the progress row, leaving the id-only tombstone and the receipt. The batch
   deletes ALL of the account's subject rows and their aliases (SEC-PRV-19), and the hook loop
   re-reads the subjects and runs the stores for one minted while it ran.
+- **Audit rows that name the person.** The same batch first rewrites the product `audit` rows
+  whose actor is the person (`accounts/accountAudit.ts`). The Discover claim, and the product
+  sign-in's licence merge, tier change and licence chooser, record the person's platform subject,
+  name and address, which would outlive the account for up to 180 days (`pruneAudit`). A row
+  qualifies only when its `actor_sub` is the subject of one of the account's platform sign-in
+  links (`kind = 'oidc'`, no tenant scope: the left side `syncAccountLicenseLinks` joins on,
+  R5-02) and it concerns that person's own licence (held now, or keyed by that subject) or is the
+  sign-in chooser's own row. Never an address or a name: another person's row that shares one
+  stays. The licence condition keeps an operator's console history: the console signs in at the
+  same IdP, so a person who is also an operator shares the subject, and erasing a portal account
+  must not anonymise what they did to anyone else's licence or product. A matching row keeps its
+  time, action, licence and parent licence and loses its actor (the constant marker
+  `erased-account`: never the account id, which a developer must not see, and never NULL, which
+  the console reads as a row Polaris Key wrote), name, address and summary. The statement is one
+  `UPDATE` that searches `idx_audit_time` by product and runs ahead of the deletes that remove
+  the links it reads, so it commits with the erasure or not at all. Tests:
+  `test/accountErasure.test.ts`, `test/portalDiscover.test.ts`.
+- **A join cannot cancel or broaden a request.** `mergeAccounts` refuses (`deletion_pending`,
+  shown to the person as `forbidden` with `reason: unavailable`) while either account has a row in
+  `account_deletions`, claimed or not. Absorbing the scheduled account used to cascade its
+  request away with the account row, a decision lost silently and out of an undo's reach; joining
+  another account into it put that account's data under a deadline its holder never chose. The
+  check runs before any store is re-keyed and again as the head of the join's batch (a NULL in a
+  NOT NULL column aborts it), so a request scheduled in between aborts the join and survives. The
+  person cancels the request, then joins. An undo never moves a request: one the survivor
+  schedules inside the 72 hours stays on the survivor, and the restored account starts with none.
+  Tests: `test/accounts.test.ts`, `test/portalLinkAccounts.test.ts`,
+  `test/identityCardGate.test.ts`.
 - **Resume and detection.** Both cron ticks run `sweepErasures`, which also adopts any
   `status = 'deleted'` account without a progress row (left by a Worker before this change). The
   nightly tick fails the `erasures` step, shown on the Operations page, while an erasure has
@@ -7758,12 +7886,54 @@ attachments in place, with no record and no retry, while the person had been tol
   reads use `subjectForOrNull`), and a last read-and-hook pass precedes the commit. A new
   account on the same email exists only after the erasure completes, because until then the
   email's link still belongs to the erasing account and sign-in is refused.
-- **Residual.** Until the retry completes the person's data still exists server-side, but no API
-  or session reaches it; the time to completion is bounded by the store recovering plus the
-  back-off. This erasure does not rewrite `audit.summary` or `license_relinks.holder_json`: new
-  audit rows name a licence by id, older ones (which may hold a buyer's address) are deleted after
-  180 days, and a relink's holder snapshot is cleared once its 72-hour undo window ends (PRIVACY,
-  "Residue and limits").
+- **A restore cannot reopen an erased account's sessions, sign-in or tokens (I-11).** A D1 Time Travel restore rewinds the
+  tombstone together with the account, so an account erased after the restore point is `active`
+  again in D1 with its sessions, sign-in methods, subjects and registry tokens. The erasure ledger
+  survives it: one id-only object `erasures/<account id>` in the `BLOBS` bucket, written
+  create-only before the first batch closes the account (`recordErasure`). Every request that acts
+  as an account reads it first (`core/accounts/erasureFence.ts`, `erasureVerdict`: one HEAD per
+  account id, an erased answer remembered for the isolate's life and a not-erased answer for 30
+  seconds, `recordErasure` writing through so the isolate that erased knows at once; no new
+  binding, queue or secret), so the sessions, sign-in and token window of the previous bullets is
+  closed from the moment the restore lands, before the replay runs. Refused for an account on the
+  ledger: sign-in through every front door (email code or link, providers and the email gate,
+  passkeys, single sign-on, product sign-in through the platform IdP) with the answer of a
+  disabled account, and a join offer to it; the portal API (`401`); a product browser session (its
+  record is ended); an approved sign-in on another device (not spent); a licensed download (`404`,
+  token not spent); package-registry tokens a person minted from the portal (they resolve to
+  nothing, as a revoked token does); device attach and subject reads for a device bound to it;
+  joining, linking, undoing a join and relinking a licence to it. It fails closed: with `BLOBS`
+  unbound or R2 failing, nothing is let through for an account (portal API `503`, sign-in
+  refused, a browser session reads signed out but keeps its record, an approved device sign-in or
+  a download `503` unspent, a portal-minted package token resolves to nothing); an unavailable
+  answer is never remembered. Tokens no account owns (console and operator tokens) and CI tokens
+  are not asked, and public feeds keep working. The replay (`deletion.replayErasures`, cron only:
+  the 15-minute connector tick and the 03:17 UTC maintenance, at most 25 accounts and 5 pages of
+  1,000 keys a pass) is still the cleanup: it closes the restored account in D1 and erases what
+  the restore brought back. Its timing decides how long the rows sit in the restored database, not
+  whether the account can be used.
+- **Residual after a restore (I-11).** (a) The operator console's Users page, per-user detail and
+  export are staff-only reads and are not fenced: until the replay erases the rows they can list a
+  restored erased account's contact address and activity; staff should not act on them. (b) The
+  not-erased answer is remembered for 30 seconds per isolate, so an erasure recorded by another
+  isolate in the last 30 seconds is unseen by this one for up to that long. (c) A deletion that is
+  only scheduled (the fourteen-day window) is not on the ledger: a restore to a point before its
+  request was made forgets it, and the person must schedule it again. (d) An erasure that finished
+  before the ledger shipped is covered only once the mirror copied it (100 a pass). (e) A ledger
+  object deleted by hand or by a lifecycle rule removes the protection, since the fence and the
+  replay both read it; the bucket is the ledger's only copy. (f) A `503` from the fence is not a
+  signal that a restore happened: the `platform_job_runs` rows of step `erasureLedger` are the
+  evidence of the replay. (g) Cloud Sync and account overrides identify a device by its token and
+  its subject binding, not by the account (`syncAccess`, `accountOverrides`), so they are not
+  fenced: a device still bound to a restored erased account's subject keeps that access until the
+  replay clears the binding.
+- **Residual.** During the fourteen-day request window the holder can still reach their active
+  account. During a hard-erasure retry the person's data still exists server-side, but no API or
+  session reaches it; the time to completion is bounded by the store recovering plus the
+  back-off. Beyond the audit rows that name the person (above), this erasure does not rewrite
+  `audit.summary` or `license_relinks.holder_json`: new audit rows name a licence by id, older ones
+  (which may hold a buyer's address) are deleted after 180 days, and a relink's holder snapshot is
+  cleared once its 72-hour undo window ends (PRIVACY, "Residue and limits").
 
 ### Account pictures: profile import, re-encoding and uploads (PX-W16)
 
@@ -8189,8 +8359,9 @@ core (SP-55 to SP-57, SP-62).
   to the three product settings that decide who can hold a device token the mint accepts, because
   a push can change each of them without touching the recipe. (a) Whether the mint is public: the
   open-registration acknowledgement is stored on the approval, so a push that makes the mint
-  public — declaring `devices.registration: open`, turning License off so the derived policy is
-  open, enabling anonymous `autoIssue` enrolment (which hands any caller a licence and a device
+  public — turning License and Identity off so the derived policy is open (the policy cannot be
+  declared: `devices.registration` is removed), enabling anonymous `autoIssue` enrolment (which
+  hands any caller a licence and a device
   token while registration still reads `requires-license`), or turning on an OIDC default tier
   with Identity on (every account the IdP signs in gets a licence) — widens an approval given
   without it. (b) Whether licences are checked: the mint requires a usable licence only while
@@ -8689,7 +8860,7 @@ under a looser policy, a registry route answers CORS or a method other than GET,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
 `authorizeFeedRead` moves after the cache lookup (F-02); feed retention deletes anything but a
 build of main below a stable release, gains a trigger, lets a request name the versions it
-deletes, deletes a blob-store object itself, stops leaving its tombstone, or turns on by default for a tenant product (2026-10-06); a push route that is not Release's, a push
+deletes, deletes a blob-store object itself, stops leaving its tombstone, or deletes before a product's dry-run notice has run its window, or the notice window shortens, or a channel other than `main` and `dev` becomes ephemeral, or a public registry is reached (2026-10-06, F-36); a push route that is not Release's, a push
 credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
 creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
 repository's digest reads (F-23); a new registry

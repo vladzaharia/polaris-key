@@ -28,6 +28,7 @@ else bad "tags/list pagination"; fi
 latest="$(digest_of latest)"
 if [ -n "$latest" ] && [ "$latest" = "$(digest_of 1.0.0)" ]; then ok "latest = 1.0.0 ($latest)"; else bad "latest"; fi
 if [ "$(digest_of beta)" = "$(digest_of 1.1.0-beta.1)" ]; then ok "beta = 1.1.0-beta.1"; else bad "beta"; fi
+if [ "$(digest_of dev)" = "$(digest_of 1.1.0-beta.1)" ]; then ok "dev = 1.1.0-beta.1"; else bad "dev"; fi
 
 curl -fsS -D "$tmp/h" -o "$tmp/b" -H 'Accept: application/vnd.oci.image.index.v1+json' \
   "$REGISTRY/v2/$NAME/manifests/latest"

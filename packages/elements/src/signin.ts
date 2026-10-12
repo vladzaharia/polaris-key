@@ -15,84 +15,14 @@
 // the new step's h1.
 
 import { html, nothing, type PropertyValues } from "lit";
-import {
-  SignInModel,
-  viewOf,
-  type SignInPrimitives,
-  type UiInput,
-  type View,
-} from "@polaris-key/ui-core";
+import { SignInModel, type SignInPrimitives } from "@polaris-key/ui-core";
 
 import { PkElement } from "./element.js";
 import { text, type RenderCtx } from "./render.js";
 import { renderView } from "./views.js";
+import { FORM_ORDER, formStep, type FormInput, type FormStep } from "./form.js";
 
-/** The form's input: ui-core's, plus the device picked in the Replace step (kit-side). */
-export type FormInput = UiInput & { replacePick?: string };
-
-/** The step the form's body draws for one snapshot, and the order of travel. */
-export interface FormStep {
-  /** The form's own view (SignIn): its state names the step. */
-  form: View;
-  /** The view whose body the card draws: SignIn's, or the step part's (handoff, license choice). */
-  body: View;
-  /** Keys the form announces without drawing (a desktop notification's words). */
-  announce: string[];
-}
-
-/** Steps in order of travel: a step later in the list is forward (enters from the inline end). */
-const ORDER = [
-  "methods",
-  "error",
-  "handoff",
-  "code",
-  "expired",
-  "finishing",
-  "choose",
-  "key",
-  "replace",
-  "done",
-];
-
-/** Merge the form's own keys into the step part's view (one title, one set of controls). */
-function merged(form: View, part: View, extra: string[] = []): View {
-  const copy = [
-    ...extra,
-    ...form.copy.filter(
-      (k) => k !== "signin.desktop.notifyChoose" && !part.copy.includes(k),
-    ),
-    ...part.copy,
-  ].filter((k, i, all) => all.indexOf(k) === i);
-  return { ...part, copy };
-}
-
-/** The step the form shows for `input`. */
-export function formStep(input: UiInput): FormStep {
-  const form = viewOf("SignIn", input);
-  const announce = form.copy.filter((k) => k === "signin.desktop.notifyChoose");
-  switch (form.state) {
-    case "code":
-      // Step 2 by code: the handoff part draws the code view in the form's body.
-      return { form, body: viewOf("SignInHandoff", input), announce };
-    case "choose":
-      return {
-        form,
-        body: merged(form, viewOf("LicenseChoice", input)),
-        announce,
-      };
-    case "replace":
-      // Step 3b: the license list morphs into the devices, under "Replace a device" (§3.7).
-      return {
-        form,
-        body: merged(form, viewOf("LicenseChoice", input), [
-          "deviceLimit.title",
-        ]),
-        announce,
-      };
-    default:
-      return { form, body: form, announce };
-  }
-}
+export { formStep, type FormInput, type FormStep } from "./form.js";
 
 const reduced = (el: PkElement): boolean =>
   el.resolved.theme.motion !== "full" ||
@@ -353,7 +283,7 @@ export class PkSignIn extends PkElement {
     const key = `${step.body.component}.${step.body.state}`;
     if (this.lastStep !== null && key !== this.lastStep && this.hasUpdated) {
       const card = this.renderRoot.querySelector<HTMLElement>(".card");
-      const index = ORDER.indexOf(this.view.state);
+      const index = FORM_ORDER.indexOf(this.view.state);
       this.morphFrom = card
         ? { height: card.getBoundingClientRect().height, index }
         : null;
@@ -396,7 +326,7 @@ export class PkSignIn extends PkElement {
       focusHeading();
       return;
     }
-    const forward = ORDER.indexOf(this.view.state) >= from.index;
+    const forward = FORM_ORDER.indexOf(this.view.state) >= from.index;
     const to = card.getBoundingClientRect().height;
     const css = getComputedStyle(card);
     const ms = (name: string, fallback: number) =>

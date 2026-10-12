@@ -53,7 +53,8 @@ conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and
                      + transcripts/ (HTTP conversations recorded through the Worker router)
 tools/               sign-corpus.ts (the corpus driver) over corpus/<family>.ts + corpus/reference/ ·
                      gen-mirrors.ts (front end over cli/src/mirrors.ts) · parity-check.ts · gen-transcripts.mjs ·
-                     gen-services.ts + services.json · gen-sdk-constants.ts
+                     gen-services.ts + services.json · gen-sdk-constants.ts ·
+                     ci-scope.json + ci-scope.mjs (which CI lanes a change runs; ci.yml reads it; the lead's local gate.sh is not yet switched to it)
 actions/publish/     the polaris-key/publish GitHub Action (committed dist/ bundle of the CLI)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                RUNBOOK · DEPLOYMENT · PRIVACY
@@ -149,7 +150,7 @@ pnpm --filter @polaris-key/react test:browser
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
 ( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test \
-    :identity:test :release:test :update:test :packs:test :sdk:test :conformance:test )  # Kotlin (JDK 17;
+    :identity:test :release:test :update:test :packs:test :sdk:test :ui-core:test :conformance:test )  # Kotlin (JDK 17;
                                  # :conformance runs every suite on JCA and again with Tink forced)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
@@ -221,7 +222,9 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `action-bundle`      | `pnpm gen action-bundle`      | The publish Action's committed esbuild bundle of the CLI                          |
 | `docs-reference`     | `pnpm gen docs-reference`     | Docs reference pages generated from the validators, routes, migrations and corpus |
 | `registry-docs`      | `pnpm gen registry-docs`      | This registry as a docs page and the AGENTS.md generated-files table              |
+| `readme-work`        | `pnpm gen readme-work`        | The Work on it block of each internal README                                      |
 | `parity`             | `pnpm gen parity`             | Parity gate: every SDK's parity.json against the feature registry                 |
+| `ux-rows`            | `pnpm gen ux-rows`            | UX-row gate: every UX-\* id in the design specs is mapped and marked from uxRows  |
 | `graph-index`        | `pnpm gen graph-index`        | Omniplatform program INDEX.md from workpackages.json                              |
 | `mirrors`            | `pnpm gen mirrors`            | Typed config mirrors for a product catalog, in five languages                     |
 | `sdk-samples`        | `pnpm gen sdk-samples`        | `pkey sdk` configuration samples, one per SDK                                     |
@@ -355,7 +358,56 @@ stubs out of the sitemap). Skipping the build and editing either output by hand 
   Python lane needs `sdks/python/.venv`); ` ```ts run ` also executes it. A code span naming an
   export (`LicenseGate`, `useLicenseGate`, `register_argparse()`) must be one the SDK exports, or
   its line must say "planned". `no-compile` opts a block out on other pages, never on a covered
-  one. Conventions: `packages/docs/test/snippets/extract.ts`.
+  one. A `swift`, `kotlin` or `gdscript` fence compiles the same way against the real SDK
+  (`nativeLanes.ts`; Swift needs macOS, Kotlin a JDK 17, GDScript a `godot` on PATH or `GODOT_BIN`;
+  a Kotlin block that needs Android says `android` in its info string). CI names the lanes it
+  requires in `PKEY_DOCS_LANES`. Conventions: `packages/docs/test/snippets/extract.ts`.
 - Console help links live in exactly two tables (`packages/admin/src/console/nav.ts` and
   `packages/admin/src/lib/docsLinks.ts`) and are gated against the built slug manifest. Renaming
   a page means updating those tables in the same change.
+
+## Commands
+
+Prefix every JS/TS command with `mise exec node@22 --`. A newer Node major makes
+`better-sqlite3` fail to build, so the worker suite fails to collect instead of failing at the
+relevant change.
+
+## Working
+
+Prefer a background job that reports on exit to a sleep-and-poll loop. If polling is unavoidable,
+use short intervals tied to an exit status or final log line. Never sleep "just in case"; do
+independent work while a job runs.
+
+## Testing
+
+Keep a work package well under an hour. Tests are a means, not the work: run scoped tests while
+building and run the gate once at hand-off.
+
+Use `$PKEY_LEAD/gate.sh` for the scoped gate. `$PKEY_LEAD` is the lead directory set in the owner's
+shell profile; `_mockups/` is its sibling. The gate retries a failed step once on its own. Fix the
+failure, then rerun only that step with `GATE_ONLY=<n>` or `GATE_FROM=<n>`; never rerun the whole
+gate for one failure.
+
+If untouched code passes on retry, record the timing flake and move on. Never raise timeouts to
+get green.
+
+## Review
+
+Reviewers never run the gate; the builder did. A fix round reruns only the failing steps and
+affected tests.
+
+Reviewers never block on conflicts with current `main`. Diff from the branch's merge base and note
+the conflict for the lead.
+
+A review gets at most one fix round. If re-review still blocks, return the branch to the lead.
+
+## Hand-off
+
+Merge `main` at most once, right before hand-off. Do not re-merge after review because `main`
+moved.
+
+Name each D1 migration `00XX_<name>.sql`. The lead assigns its number at merge time; state that in
+your report.
+
+Finish clean: stop every background job before reporting. Do not hand back with a shell, server,
+container or watcher still running.

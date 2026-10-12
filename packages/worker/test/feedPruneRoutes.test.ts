@@ -268,13 +268,15 @@ describe("a stable publish prunes the builds of main (feed retention)", () => {
     expect(again.body.message).toContain("pruned");
   });
 
-  it("is off by default for a tenant product, which keeps its builds of main until it opts in", async () => {
+  it("is on by default after a dry-run notice: the first stable publish raises it and deletes nothing, the next one a week later prunes builds of main and dev", async () => {
     const get = await admin("GET", retention);
     expect(get.status).toBe(200);
     expect(await get.json()).toEqual({
       product: SLUG,
       prunePrereleases: false,
       locked: false,
+      source: "default",
+      notice: null,
       version: 0,
       updatedAt: null,
       updatedBy: null,
@@ -288,6 +290,38 @@ describe("a stable publish prunes the builds of main (feed retention)", () => {
         SLUG,
       ),
     ).toEqual({ n: 0 });
+    const noticed = (await (await admin("GET", retention)).json()) as {
+      prunePrereleases: boolean;
+      source: string;
+      notice: { startsAt: number; versions: number } | null;
+    };
+    expect(noticed).toMatchObject({
+      prunePrereleases: false,
+      source: "default",
+      notice: { startsAt: NOW + 7 * 86400, versions: 1 },
+    });
+
+    // A week later the next stable publish prunes: no opt-in was ever made.
+    vi.setSystemTime((NOW + 7 * 86400) * 1000);
+    publishToken = (
+      await issueStaticCiToken(env, db, {
+        product: SLUG,
+        scopes: ["release:publish"],
+        expiresAt: NOW + 8 * 86400,
+        label: null,
+        createdBy: "u1",
+        now: NOW + 7 * 86400,
+      })
+    ).token;
+    expect((await publish("1.2.0-dev.1", "dev")).res.status).toBe(200);
+    expect((await publish("1.2.0", "stable")).res.status).toBe(200);
+    expect(await versions()).toEqual(["1.1.0", "1.2.0"]);
+  });
+
+  it("the backfill is an explicit act: it runs whatever the setting says, and the setting then takes an opt-in", async () => {
+    expect((await publish("1.1.0-main.1", "main")).res.status).toBe(200);
+    expect((await publish("1.1.0", "stable")).res.status).toBe(200);
+    expect(await versions()).toEqual(["1.1.0", "1.1.0-main.1"]);
 
     // The backfill is an explicit act: it runs whatever the setting says.
     const dry = await admin(

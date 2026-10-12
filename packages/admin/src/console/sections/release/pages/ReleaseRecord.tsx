@@ -1170,43 +1170,47 @@ export function ReleaseRecord({
         tabs={<PageTabs label="Release" items={tabs} value={current} />}
         sticky
       />
-      {current === "status" ? (
-        <StatusTab
-          slug={slug}
-          release={release}
-          channels={appChannels}
-          previous={previous}
-          distributionOn={distributionOn}
-          rows={rows}
-          matrixLoading={distributionOn && matrix.isPending}
-          matrixError={distributionOn ? matrix.error : null}
-          onRetry={() => void matrix.refetch()}
-        />
-      ) : null}
-      {current === "builds" ? (
-        <BuildsTab slug={slug} release={release} />
-      ) : null}
-      {current === "packs" ? <PacksTab slug={slug} release={release} /> : null}
-      {current === "channels" ? (
-        <ChannelsTab
-          slug={slug}
-          release={release}
-          channels={appChannels}
-          loading={channelsQuery.isPending}
-          error={channelsQuery.error}
-          onRetry={() => void channelsQuery.refetch()}
-        />
-      ) : null}
-      {current === "distribution" && distributionOn ? (
-        <DistributionTab
-          slug={slug}
-          release={release}
-          matrix={matrix.data}
-          loading={matrix.isPending}
-          error={matrix.error}
-          onRetry={() => void matrix.refetch()}
-        />
-      ) : null}
+      <div className="pk-vt-tabpanel">
+        {current === "status" ? (
+          <StatusTab
+            slug={slug}
+            release={release}
+            channels={appChannels}
+            previous={previous}
+            distributionOn={distributionOn}
+            rows={rows}
+            matrixLoading={distributionOn && matrix.isPending}
+            matrixError={distributionOn ? matrix.error : null}
+            onRetry={() => void matrix.refetch()}
+          />
+        ) : null}
+        {current === "builds" ? (
+          <BuildsTab slug={slug} release={release} />
+        ) : null}
+        {current === "packs" ? (
+          <PacksTab slug={slug} release={release} />
+        ) : null}
+        {current === "channels" ? (
+          <ChannelsTab
+            slug={slug}
+            release={release}
+            channels={appChannels}
+            loading={channelsQuery.isPending}
+            error={channelsQuery.error}
+            onRetry={() => void channelsQuery.refetch()}
+          />
+        ) : null}
+        {current === "distribution" && distributionOn ? (
+          <DistributionTab
+            slug={slug}
+            release={release}
+            matrix={matrix.data}
+            loading={matrix.isPending}
+            error={matrix.error}
+            onRetry={() => void matrix.refetch()}
+          />
+        ) : null}
+      </div>
       <HaltEverywhereDialog
         slug={slug}
         open={halting}

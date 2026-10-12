@@ -13,7 +13,12 @@ import {
 } from "../src/console/shell/palette/navigation.js";
 import { filterItems } from "../src/console/shell/palette/rank.js";
 import { PREF_KEYS } from "../src/console/storage.js";
-import { ALL_ON, boot, resetConsole } from "./consoleHarness.js";
+import {
+  ALL_ON,
+  boot,
+  resetConsole,
+  servicesResponse,
+} from "./consoleHarness.js";
 
 /**
  * The command palette (ADMIN.md §2.2, components.md §1.5): ⌘K / Ctrl+K or `/`, the navigation
@@ -205,6 +210,35 @@ describe("the palette in the console", () => {
     await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/activity"));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("opens Update in Services and focuses its nested control", async () => {
+    const user = userEvent.setup();
+    const services = { ...ALL_ON, update: { enabled: false } };
+    boot("#/p/djdl", {
+      services,
+      extra: {
+        "/manage/api/products/djdl/services": servicesResponse(services),
+      },
+    });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    await user.type(
+      within(dialog).getByRole("combobox", { name: "Search or jump to" }),
+      "turn on update",
+    );
+
+    await user.click(
+      await within(dialog).findByRole("option", { name: /^Turn on Update/ }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/settings/features"),
+    );
+    const updates = await screen.findByRole("switch", {
+      name: /In-app updates/i,
+    });
+    expect(updates.id).toBe("feature-ship-builds-in-app-updates");
+    await waitFor(() => expect(document.activeElement).toBe(updates));
   });
 
   it("jumps to another product's Overview", async () => {

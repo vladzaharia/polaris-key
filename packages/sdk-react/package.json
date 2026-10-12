@@ -1,9 +1,31 @@
 {
   "name": "@polaris-key/react",
   "version": "0.0.0",
+  "description": "The Polaris Key SDK for React: browser sign-in over OIDC, desktop apps over the Node SDK, and the drop-in login UI kit.",
+  "keywords": [
+    "polaris-key",
+    "react",
+    "licensing",
+    "managed-config",
+    "oidc",
+    "sign-in",
+    "ui-kit"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladzaharia/polaris-key.git",
+    "directory": "packages/sdk-react"
+  },
+  "homepage": "https://key.plrs.im/docs/build/sdks/react/",
+  "bugs": {
+    "url": "https://github.com/vladzaharia/polaris-key/issues"
+  },
   "license": "MIT",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/styles.css",
+    "./dist/fonts/fonts.css"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -22,6 +44,10 @@
     "./desktop": {
       "types": "./dist/desktop/index.d.ts",
       "default": "./dist/desktop/index.js"
+    },
+    "./local": {
+      "types": "./dist/local/index.d.ts",
+      "default": "./dist/local/index.js"
     },
     "./license": {
       "types": "./dist/license/index.d.ts",
@@ -46,7 +72,13 @@
     "./packs": {
       "types": "./dist/packs/index.d.ts",
       "default": "./dist/packs/index.js"
-    }
+    },
+    "./kit": {
+      "types": "./dist/kit/index.d.ts",
+      "default": "./dist/kit/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./fonts.css": "./dist/fonts/fonts.css"
   },
   "files": [
     "dist",
@@ -56,11 +88,12 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node scripts/bundle-contract.mjs && node scripts/copy-styles.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "vitest run -c vitest.browser.config.ts",
     "lint": "prettier --check \"src/**/*.{ts,tsx}\" \"test/**/*.{ts,tsx}\"",
+    "test:visual": "PKEY_KIT_BASELINES=test/visual/__screenshots__ pnpm test:browser",
     "clean": "rm -rf dist",
     "size": "node scripts/size-budget.mjs"
   },
@@ -78,6 +111,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
+    "@polaris-key/elements": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.0",

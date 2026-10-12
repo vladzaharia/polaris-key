@@ -33,16 +33,15 @@ async function section(name: string) {
 }
 
 describe("Enrollment", () => {
-  it("shows registration read-only with a way to change it in Services (FPP-2)", async () => {
+  it("shows derived registration with a way to change services (FPP-2)", async () => {
     bootLicense(HASH, { routes: { [POLICY]: policy() } });
     const reg = await section("Registration");
     expect(await within(reg).findByText("License required")).toBeTruthy();
-    expect(within(reg).getByText(/derived from the services/)).toBeTruthy();
     expect(
       within(reg)
         .getByRole("link", { name: "Change in Services" })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/services");
+    ).toBe("#/p/djdl/settings/features");
     expect(within(reg).queryByRole("radio")).toBeNull();
   });
 

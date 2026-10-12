@@ -117,6 +117,8 @@ describe.skipIf(!ptyAvailable)("on a real pty", () => {
     const fresh = start({ columns: 80, rows: 24, args, env });
     expect(await fresh.waitFor("(y/N)")).toBe(true);
     await fresh.settle(200);
+    // A loaded runner repaints late: wait for the dragged screen to converge, not a fixed beat.
+    for (let i = 0; i < 40 && tidy(p) !== tidy(fresh); i++) await p.settle(250);
     expect(tidy(p)).toBe(tidy(fresh));
     p.type("\r");
     fresh.type("\r");

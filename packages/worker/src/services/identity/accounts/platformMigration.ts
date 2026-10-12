@@ -46,6 +46,7 @@
  */
 
 import { normalizeEmail } from "../../../platform/email.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import {
@@ -192,26 +193,36 @@ export async function platformSubjectLink(
   );
 }
 
+/** Whether a platform-IdP subject may sign in to a product (see {@link platformSubjectStanding}). */
+export type PlatformSubjectStanding = "allowed" | "refused" | "unavailable";
+
 /**
  * Whether a platform-IdP subject belongs to a Polaris Key account that can no longer sign in
  * (the I-17 review's N9): the subject holds a method whose account is disabled, is being deleted
- * (`deleted`), or no longer resolves. A product sign-in is then refused, in every migration mode,
- * before anything is minted or written; without this its floating `sub`-keyed licence still
- * signed the subject in. A subject that holds no method has no account (a floating licence, or
- * an erased account, which leaves no link): `false`, and it signs in exactly as before.
- * Read-only.
+ * (`deleted`), no longer resolves, or is on the erasure ledger (I-11: a D1 restore brings an erased
+ * account and its methods back as `active`; only the ledger says it was erased). `refused`: a
+ * product sign-in is then refused, in every migration mode, before anything is minted or written;
+ * without this its floating `sub`-keyed licence still signed the subject in. `unavailable`: the
+ * ledger could not be read, so nothing can be said; the caller refuses a sign-in and, for a
+ * session already open, keeps it and reads signed out for now. A subject that holds no method has
+ * no account (a floating licence, or an erased account, which leaves no link): `allowed`, and it
+ * signs in exactly as before. Read-only.
  */
-export async function platformSubjectAccountRefused(
+export async function platformSubjectStanding(
+  env: Env,
   db: Db,
   issuer: string,
   sub: string,
   now: number,
-): Promise<boolean> {
+): Promise<PlatformSubjectStanding> {
   const link = await platformSubjectLink(db, issuer, sub);
-  if (!link) return false;
+  if (!link) return "allowed";
   // As `signIn` reads it: an absorbed account's sign-ins go to the survivor for 30 days.
   const account = await resolveAccount(db, link.account_id, now);
-  return !account || account.status !== "active";
+  if (!account || account.status !== "active") return "refused";
+  const ledger = await erasureVerdict(env, now, link.account_id, account.id);
+  if (ledger === "erased") return "refused";
+  return ledger === "clear" ? "allowed" : "unavailable";
 }
 
 // ── the claim ────────────────────────────────────────────────────────────────────────────────
@@ -324,6 +335,7 @@ export async function claimPlatformSubject(
   }
 
   const result = await signIn(db, identity, now, {
+    env,
     product: input.product ? { slug: input.product } : undefined,
     linkedOnly: policy.linkedOnly,
   });

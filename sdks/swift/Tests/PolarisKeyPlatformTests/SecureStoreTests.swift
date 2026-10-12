@@ -67,5 +67,13 @@ final class SecureStoreTests: XCTestCase {
         let ok = SecureStore(product: "diceroll", backend: FakeKeychain())
         XCTAssertEqual(ok.set(account: "../x", value: "v")["error"], "invalid_name")
     }
+
+    func testHostNamespaceIsAValidProductNotAnAccount() {
+        let keychain = FakeKeychain()
+        let store = SecureStore(product: "diceroll@localhost_8787", backend: keychain)
+        XCTAssertEqual(store.set(account: "token", value: "local"), ["ok": true, "op": "add"])
+        XCTAssertEqual(keychain.added.first?[kSecAttrService as String] as? String, "pkey:diceroll@localhost_8787")
+        XCTAssertEqual(store.set(account: "bad@account", value: "local")["error"], "invalid_name")
+    }
 }
 #endif

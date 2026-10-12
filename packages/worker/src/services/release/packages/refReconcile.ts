@@ -1,5 +1,5 @@
 /**
- * SEC-DST-1: the self-healing half of migration `0107_package_file_ref_kind.sql`.
+ * The self-healing half of migration `0107_package_file_ref_kind.sql`.
  *
  * `deploy.yml` applies migrations first and deploys the Worker second, so for a short window the
  * OLD Worker is live over the new schema and may write a package file's blob ref as `artifact`

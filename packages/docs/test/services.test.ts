@@ -1,8 +1,8 @@
 /**
  * The docs site's half of the service-table drift gate (P0-09).
  *
- * Every row of `tools/services.json` is a service with a docs home: it belongs to a feature in
- * `src/lib/features.ts`, whose `src/content/docs/features/<feature>/` directory has an index
+ * Every row of `tools/services.json` is a service with a docs home: it belongs to a feature (its
+ * `console.group`, generated into `src/lib/features.generated.ts`), whose `src/content/docs/features/<feature>/` directory has an index
  * page, and that feature has a group in the Developers sidebar (`src/lib/doors.ts`). A new table
  * row fails here with a message naming what is missing (/docs/contribute/layout/#adding-a-service).
  */
@@ -12,7 +12,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DOOR_TREES } from "../src/lib/doors";
-import { FEATURES, type Feature } from "../src/lib/features";
+import { FEATURES, type Feature } from "../src/lib/features.generated";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = join(docsRoot, "..", "..");
@@ -35,7 +35,7 @@ describe("the service table, as the docs site sees it", () => {
     for (const row of table.services)
       expect(
         featureOf(row.slug),
-        `src/lib/features.ts has no feature for service "${row.slug}" (add it to a feature's services)`,
+        `tools/services.json gives service "${row.slug}" no feature (its console.group); run pnpm gen services`,
       ).toBeDefined();
   });
 

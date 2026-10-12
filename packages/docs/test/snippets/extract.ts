@@ -6,7 +6,9 @@
  *
  * - A `ts`, `tsx`, `js`, `python` or `py` fence is compiled in its SDK lane (see `lanes.ts`). The
  *   lane is the one the block's imports name; a block that imports nothing from an SDK is a Node
- *   block. `sh`, `ini`, `json` and the rest are never compiled.
+ *   block. A `swift`, `kotlin` or `gdscript` fence is compiled in its native lane (see
+ *   `nativeLanes.ts`); a Kotlin block that needs the Android SDK says `android` in its info string.
+ *   `sh`, `ini`, `json` and the rest are never compiled.
  * - A block that cannot compile on purpose says so in its info string: ```` ```ts no-compile ````.
  *   Pages in `COVERED_PAGES` may not use it.
  * - `./polaris.config` (and `polaris_config`) resolve to the real `pkey sdk` output, the generated
@@ -26,7 +28,14 @@ export const REPO = join(
 );
 export const DOCS_ROOT = join(REPO, "packages/docs/src/content/docs");
 
-export type SnippetLang = "ts" | "tsx" | "js" | "python";
+export type SnippetLang =
+  | "ts"
+  | "tsx"
+  | "js"
+  | "python"
+  | "swift"
+  | "kotlin"
+  | "gdscript";
 
 export interface Snippet {
   /** Repo-relative path of the source file. */
@@ -49,6 +58,11 @@ const LANGS: Record<string, SnippetLang> = {
   mjs: "js",
   python: "python",
   py: "python",
+  swift: "swift",
+  kotlin: "kotlin",
+  kt: "kotlin",
+  gdscript: "gdscript",
+  gd: "gdscript",
 };
 
 /** Fenced blocks of one markdown or MDX source. Fences nested in a list are dedented. */
@@ -107,6 +121,11 @@ export function sourceFiles(): string[] {
     "packages/sdk-react/README.md",
     "packages/client-core/README.md",
     "sdks/python/README.md",
+    "sdks/swift/README.md",
+    "sdks/kotlin/README.md",
+    "sdks/kotlin/ui/README.md",
+    "sdks/godot/README.md",
+    "sdks/godot/addons/polaris_key/README.md",
   ])
     if (existsSync(join(REPO, readme))) files.push(join(REPO, readme));
   // AX-07 and the skill packages: SDK-tagged fences under the agent kit.

@@ -178,6 +178,8 @@ const FR: CopyBundle = {
       "Le fournisseur de connexion n'a pas répondu correctement. Réessayez.",
     unavailable:
       "La connexion est saturée pour le moment. Réessayez dans un instant.",
+    erasure_ledger_unavailable:
+      "Nous ne pouvons pas vérifier l'état de votre compte pour le moment. Réessayez dans quelques minutes.",
     identity_disabled:
       "La connexion via cette application est désactivée. Vos installations et licences continuent de fonctionner.",
     auth_method_disabled: "Cette méthode de connexion est désactivée.",

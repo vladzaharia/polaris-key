@@ -215,10 +215,14 @@ step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "
 
 # 3b. The UI resolution matrix (tests/ui/matrix.gd): every drop-in screen laid out at every size,
 # look and locale, in the editor, as a step of its own so the editor step keeps its budget. It
-# takes 6-10 minutes, past the default 300 s step limit: CI and the local gate set
-# PKEY_TEST_TIMEOUT=900. Layout is the same engine code on a release template, so it runs once.
+# grew with the matrix (UK-11, ui-matrix v3): on a slow runner it can exceed 900 s, so it gets its own
+# limit, PKEY_UI_MATRIX_TIMEOUT (default 1800 s), and the shared PKEY_TEST_TIMEOUT stays as it was.
+# Layout is the same engine code on a release template, so it runs once.
 if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
-  step ui-matrix run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix || exit 1
+  (
+    TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
+    step ui-matrix run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
+  ) || exit 1
 fi
 
 # 4. The build stamp (P1-11): the export plugin end to end, headless, as CI exports a game.

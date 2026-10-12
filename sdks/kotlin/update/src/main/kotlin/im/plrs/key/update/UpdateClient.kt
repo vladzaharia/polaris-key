@@ -437,7 +437,7 @@ public class UpdateClient private constructor(
     /**
      * The JVM desktop driver [install] uses by default: records from [releaseRecord], bytes from
      * [buildUrl] through [OkHttpArtifactFetch], installers under
-     * `<FileStore.defaultDirectory(product)>/updates/installer`, opened by [SystemInstallerOpener].
+     * `<FileStore.defaultDirectory(storageNamespace)>/updates/installer`, opened by [SystemInstallerOpener].
      * PolarisKeyDesktop builds its own over the app's data directory.
      */
     public val desktopDriver: DesktopInstallDriver by lazy {
@@ -445,7 +445,7 @@ public class UpdateClient private constructor(
             records = { sha -> releaseRecord(sha).record },
             buildUrl = { version, build -> buildUrl(version, build) },
             fetch = OkHttpArtifactFetch(core),
-            dir = File(FileStore.defaultDirectory(core.product), "updates/installer"),
+            dir = File(FileStore.defaultDirectory(core.storageNamespace), "updates/installer"),
         )
     }
 

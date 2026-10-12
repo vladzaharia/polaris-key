@@ -42,33 +42,38 @@ for the portal and, through the passthrough, for every app. It is identifier-fir
 first, then the methods. Its Worker half lives in `services/identity/card/`; the card's screens
 are the portal SPA's.
 
-| Route                                   | What it does                                                                |
-| --------------------------------------- | --------------------------------------------------------------------------- |
-| `GET /login`                            | Begins platform OIDC and 302s to the IdP.                                   |
-| `GET /callback`                         | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
-| `POST /api/signin/email/start`          | Emails a 6-digit code and a magic link, bound to this browser.              |
-| `POST /api/signin/email/verify`         | Redeems the code in the browser that asked; a new address may finish first. |
-| `POST /api/signin/email/resend`         | Sends a new code and link for this browser's sign-in.                       |
-| `GET /magic/verify`                     | The magic link's landing page. Consumes nothing.                            |
-| `POST /magic/verify`                    | The landing page's button: signs in here, or confirms the asking browser.   |
-| `POST /api/signin/flow`                 | The asking browser's poll after the link was confirmed on another device.   |
-| `GET`/`POST /api/signin/confirm-email`  | FinishStep: the email gate, profile and terms of every new account.         |
-| `POST /api/signin/confirm-email/verify` | The gate's code, for a typed or unverified address.                         |
-| `POST /api/signin/confirm-email/join`   | Takes the join offer, once both identities are proven.                      |
-| `POST /api/signin/confirm-email/cancel` | Abandons the sign-in.                                                       |
-| `GET /api/signin/confirm-email/picture` | The provider's picture, proxied for the gate.                               |
-| `POST /api/signin/passkey/options`      | A passkey challenge, bound to this browser.                                 |
-| `POST /api/signin/passkey/verify`       | Signs in with the passkey's answer to that challenge, once.                 |
-| `POST /logout`                          | Ends this browser's session, server-side too.                               |
+| Route                                   | What it does                                                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET /login`                            | Begins sign-in through the seeded platform connection; 302s to its IdP.                                 |
+| `GET /callback`                         | Every connection's redirect URI: redeems the code, verifies the ID token, signs in.                     |
+| `POST /api/signin/email/start`          | Emails a 6-digit code and a magic link, bound to this browser, or routes the address to its connection. |
+| `POST /api/signin/email/verify`         | Redeems the code in the browser that asked; a new address may finish first.                             |
+| `POST /api/signin/email/resend`         | Sends a new code and link for this browser's sign-in.                                                   |
+| `GET /magic/verify`                     | The magic link's landing page. Consumes nothing.                                                        |
+| `POST /magic/verify`                    | The landing page's button: signs in here, or confirms the asking browser.                               |
+| `POST /api/signin/flow`                 | The asking browser's poll after the link was confirmed on another device.                               |
+| `GET`/`POST /api/signin/confirm-email`  | FinishStep: the email gate, profile and terms of every new account.                                     |
+| `POST /api/signin/confirm-email/verify` | The gate's code, for a typed or unverified address.                                                     |
+| `POST /api/signin/confirm-email/join`   | Takes the join offer, once both identities are proven.                                                  |
+| `POST /api/signin/confirm-email/cancel` | Abandons the sign-in.                                                                                   |
+| `GET /api/signin/confirm-email/picture` | The provider's picture, proxied for the gate.                                                           |
+| `POST /api/signin/passkey/options`      | A passkey challenge, bound to this browser.                                                             |
+| `POST /api/signin/passkey/verify`       | Signs in with the passkey's answer to that challenge, once.                                             |
+| `POST /logout`                          | Ends this browser's session, server-side too.                                                           |
 
 `POST /api/magic/start` is the older name of the email start and runs the same handler.
 
-**OIDC.** `/login` uses the same `platformOidcConfig` a `platform`-provider product uses (see
-[Product OIDC](/docs/services/identity/oidc/)) — the portal and every platform-issuer product
-share one IdP client and one trust boundary. The console has its own client (`ADMIN_OIDC_*`),
-so operators and customers do not share one. Rate-limited to 20 requests per minute per IP; PKCE,
-`state`, and `nonce` follow the same shape as the product flow, with the redirect URI fixed to
-`<origin>/callback` rather than a product-scoped path.
+**OIDC.** The card signs in through **connections**: upstream OpenID Connect providers held in
+`identity_connections` (see [Connections](/docs/operate/platform/connections/#sign-in-connections)).
+`/login` starts the seeded platform connection, `platform-sso`, which the `PLATFORM_OIDC_*` trio
+became; `/login/sso/<id>` starts any other active platform connection whose audience covers
+customers (below). Both run on the Worker's one relying-party client (`core/oidc/client.ts`):
+discovery, the JWKS cache, PKCE, `state`, `nonce`, the RFC 9207 `iss` check and ID-token
+verification, every fetch gated to the issuer's hosts. The flow is single-use and bound to the
+browser that started it (a 10-minute `__Host-pkey_sso` cookie), and the redirect URI is
+`<origin>/callback` for every connection. The console has its own client (`ADMIN_OIDC_*`), so
+operators and customers do not share one. Both starts share 20 requests per minute per client
+network.
 
 **Email code and magic link.** `POST /api/signin/email/start` takes `{ "email": "…",
 "turnstileToken"?: "…", "returnTo"?: "…" }`. It opens a flow bound to this browser (a 10-minute
@@ -214,6 +219,76 @@ genuine same-origin top-level navigation — not a cross-site `<img>` or link. T
 class of cross-site request, not a substitute for a real token
 (the R1 audit findings, `R1-03`).
 
+### Work and school addresses
+
+An address whose domain belongs to an organization goes to that organization's sign-in instead of
+an email code. The email start routes it when the domain is **DNS-verified** by an **active
+platform connection** whose audience covers customers. Matching is exact: a verified
+`example.edu` never routes `students.example.edu` or `example.edu.evil.net`, and a domain that is
+not plain ASCII never routes. An unverified domain (its TXT record missing, or not yet checked)
+gets the email code like any other address. How a domain is verified, and the daily re-check that
+unverifies it when its record goes, is in
+[Connections](/docs/operate/platform/connections/#sign-in-connections).
+
+`POST /api/signin/email/start` then sends nothing and adds `next` to the usual answer:
+
+```json
+{
+  "ok": true,
+  "expiresIn": 600,
+  "codeLength": 6,
+  "resendIn": 0,
+  "next": {
+    "kind": "sso",
+    "connection": { "id": "lakeside", "label": "Lakeside University" },
+    "enforced": false
+  }
+}
+```
+
+- **Not enforced.** The start opens the flow (the `__Host-pkey_signin` cookie) without mailing.
+  The card offers **Continue to Lakeside University** first and **Email me a code instead**,
+  which calls `POST /api/signin/email/resend`: the routed flow has sent nothing, so its first code
+  has no 60-second wait. A start with `"method": "code"` skips the route and mails at once.
+- **Enforced.** The domain gets no email code and no magic link. The start opens no flow and
+  sets no cookie, `"method": "code"` included. The resend and the code's verify refuse with
+  `403 auth_method_disabled` and the same `next`, and the link's page answers 403 "Sign in with
+  Lakeside University for this email address.", even for a code or link mailed before the domain
+  was enforced. Passkeys and the account's other sign-in methods still sign the account in.
+
+The answer depends on the domain only, never on whether an account uses the address, so it says
+no more than that the domain uses single sign-on. The start's rate limits and Turnstile check
+apply before routing.
+
+**Connection buttons.** `/api/capabilities` lists the other active platform connections whose
+audience covers customers as `auth.connections`, each `{ "id", "label" }`, and the card shows each
+as **Continue with &lt;label&gt;**. The seeded connection is not in the list: it is the card's
+single sign-on button (`auth.oidc`). While portal sign-in or single sign-on is off,
+`auth.connections` is empty and `auth.oidc` is false.
+
+**Starting.** A button and a routed address both go to `/login/sso/<id>` with `return_to` and,
+for a routed address, `login_hint` (passed to the IdP only when it is a well-formed address). An
+unknown or disabled connection, a product's connection and an operators-only one all get the same
+404 page, "Sign-in is unavailable. Try again later.". The scope is `openid email profile`, plus
+`groups` when the connection's claim map names a groups claim.
+
+**Finishing.** `/callback` redeems the code through the one client, maps the ID token through the
+connection's claim map, and hands the identity to the email gate like any other front door. Its
+session's `amr` is `["connection:<id>"]`.
+
+- **Which addresses it vouches for.** A platform connection vouches for `email_verified` only for
+  an address inside one of its verified domains, exactly, and only when the ID token says so.
+  Any other address gets the gate's code, like a typed one.
+- **Linking to an existing account.** When the connection vouches for the address, the identity
+  has no link yet, and exactly one account has that address verified (an active one), the
+  identity is linked to that account at once: the account gets an email naming the connection,
+  and an `account.link.auto` audit row is written. Every other case goes through the
+  email gate as before, its join offer included.
+- **What the link keeps.** Each sign-in replaces the link's `groups_json` (the mapped groups
+  claim: at most 100 well-formed names, de-duplicated) and `claims_json` (the claims access rules
+  may name, each a string, number or boolean, cut to 256 characters). A birth date the claim map
+  offers rides only to FinishStep, never onto the link.
+
 ## The session cookie
 
 `__Host-pkey_portal`, `Path=/`, `HttpOnly`, `Secure`, `SameSite=Lax`, 14-day `Max-Age`. Unlike
@@ -342,11 +417,13 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   proof in a 15-minute `__Host-pkey_link` flow; the person signs in to the other account on the
   login card by any of its methods, and **`GET /api/me/link`** then shows both accounts (how each
   was proven, what each holds), the result, and `canJoin` with a `reason` (`sign_in_other`,
-  `step_up_required`, `merge_pending`). **`POST /api/me/link/confirm {keep?}`** joins them when both
-  proofs are under 5 minutes old and both sessions are live, keeping the account linked in
-  (`other`, the default) or the started one; it is refused while either account could still undo
-  a join of its own (`403 forbidden`, `reason: merge_pending`), uses up the flow (two racing
-  confirms merge once), and is audited and emailed to both with the undo window. An account's
+  `step_up_required`, `merge_pending`, `unavailable`). **`POST /api/me/link/confirm {keep?}`** joins
+  them when both proofs are under 5 minutes old and both sessions are live, keeping the account
+  linked in (`other`, the default) or the started one; it is refused while either account could
+  still undo a join of its own (`403 forbidden`, `reason: merge_pending`) and while either has a
+  scheduled deletion (`403 forbidden`, `reason: unavailable`: cancel the deletion first, then
+  join; a join never cancels or moves a deletion request), uses up the flow (two racing confirms
+  merge once), and is audited and emailed to both with the undo window. An account's
   details show on the join screen only while its proof's session is live; signing out clears the
   flow. **`POST /api/me/link/cancel`** forgets the flow. `GET /api/me/link`
   also lists `undoable` joins, and **`POST /api/me/link/undo {merge}`** (a fresh sign-in to the kept
@@ -360,8 +437,11 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   (sessions end, sign-in is refused), every registered store's data is deleted, and then one
   atomic batch deletes every email, identity, and license-link row plus the account row itself and
   writes a single tombstone audit entry naming only the opaque `acct_…` id — nothing that still
-  identifies the person. If a store fails, the answer carries `erasing: true`: the erasure is
-  recorded and the Worker's cron retries it with back-off until it completes, and one that keeps
+  identifies the person. It also anonymizes the product `audit` rows that name the person as
+  actor (a Discover add; a product sign-in's license merge, tier change or choice): the actor
+  becomes `erased-account`, and the name, address and summary go. If a store fails, the answer
+  carries `erasing: true`: the erasure is recorded and the Worker's cron retries it with back-off
+  until it completes, and one that keeps
   failing shows as the failed `erasures` step on the Operations page. Rate-limited to 5 attempts on the account's own budget; the notice email is sent
   **before** the delete, because afterward there is no address left to send it to
   (the R11 audit findings, `R11-09`). Licenses themselves are **not** deleted — they
@@ -432,6 +512,55 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
   back to with `?return=` — the product's exact `web.origins`; app schemes are always empty until
   the manifest can declare them, so a scheme return ends on the product page. `404` for a product
   the account holds nothing for.
+- **`GET /api/me/export`** — **Download my data**: the person's own copy of their account as a JSON
+  file (`pkey-account-export/1`, the `PortalAccountExport` schema in the OpenAPI spec). It holds the
+  account (its id, primary email, times and any pending deletion request), the profile with where
+  each value came from and the birth date if one was added, every stored picture, each sign-in
+  method with what its provider supplied (and a single sign-on connection's groups and claims), the
+  passkeys' display facts, the account's sessions, what was consented to share with each app, the
+  terms accepted, the library entries and the licenses removed from it, the package tokens minted,
+  joins still undoable, the account's activity (the newest 5000 rows; `activityTruncated` says when
+  more exist), and one section per product the account holds a license or a pairwise subject in:
+  the subject, the ids it replaced, the licenses with their keys' facts, devices and entitlements,
+  and every registered store's export (managed config overrides, entitlement events, later Cloud
+  Sync), where a secret is named and said to be set, never given. It never holds a credential (no
+  license key or hash, device token, package token text or hash, session id, passkey credential id,
+  public key or user handle, provider picture reference or consent scope hash), the join undo
+  snapshot, a license's `overrides_json`, device fingerprints, store purchase records, the
+  developers' relink history or audit logs, or anything about another person. Every member is
+  listed in the schema, which refuses any other. Like the other exports it is a GET that needs the
+  CSRF header (it hands over personal data), a sign-in in the last 5 minutes
+  (`401 step_up_required`), and is limited to 5 a minute; it is audited as `portal.account.export`
+  and works while a deletion is pending. Only `/api/me` itself answers the account summary: any
+  other path below it is a `404`.
+- **`GET /api/products/<product>/export`** — the same for one product
+  (`pkey-product-export/1`, `PortalProductExport`): only what is held for the person in that
+  product, with no sign-in methods, sessions, birth date or other product. It reads without
+  creating anything, so a product the person never signed in to exports no subject. The same gates,
+  10 a minute in the product's shard, audited as `portal.product.export`. `404` for a product the
+  account holds nothing in, the same answer as for one that does not exist; a product whose portal
+  is off can still be exported.
+- **`DELETE /api/products/<product>/data`** — **Remove my data from this app**. Every registered
+  store deletes the subject's data, the devices signed in with it lose the binding, the subject
+  ends, and the developer gets a `subject.deleted` event with the subject and license ids only. The
+  license stays unless `?alsoRemoveLicense=1`: then each license leaves the account exactly as
+  **Remove from my library** does it (an auto-attach block, package tokens revoked, audited), and
+  only a `removable` license may go (`409 not_removable`, nothing written). The parameter is read
+  strictly (`400 bad_request` for anything but `1`, `true`, `0` or `false`). Needs the CSRF header
+  and a sign-in in the last 5 minutes, 5 a minute in the product's shard; it answers
+  `{ ok, product, removed, detachedLicenses }`, with `removed: false` when nothing was left.
+- **`POST /api/products/<product>/support-code`** — **Get a support code**. The person's pairwise id
+  for this product (`ps_` and 22 base64url characters): the string the console's relink accepts to
+  name them, the same one the product page shows as `supportCode` and the product export holds as
+  `subject`. The first ask creates it, the way a license attach or a sign-in does, and every ask
+  after answers the same one. A subject made only this way stays off the console's Users page
+  until it holds a license, a signed-in device or a sign-in. The answer is `{ supportCode }` and
+  nothing else: no account id, license or other product's id. Needs the CSRF header and is limited
+  to 10 a minute in the product's shard, charged once the account is proven to hold the product;
+  it needs no recent sign-in, because the code opens nothing and the product page already shows an
+  existing one. Creating it is audited as `portal.support_code.create`. `404` for a product the
+  account holds nothing in or whose portal is off, the same answer as for one that does not exist.
+  Removing the person's data from the product ends the code, and the next ask makes another.
 - **`GET /media/<product>/<asset>`** — public, no session: the product's `icon` or `header` art
   from its listing, fetched by the Worker and served from this origin, because the portal's CSP is
   `img-src 'self' data:`. Only `https` sources on GitHub-hosted names (`github.com`,

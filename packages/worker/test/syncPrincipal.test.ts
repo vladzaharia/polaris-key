@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import {
   makeEnv,
   mkReq,
@@ -104,7 +105,7 @@ async function account(db: Db, email: string) {
     db,
     { issuerKey: "email", subject: email, kind: "email" },
     NOW,
-    { product: { slug: SLUG } },
+    { unfenced: true, product: { slug: SLUG } },
   );
   if (r.status !== "signed_in") throw new Error(r.status);
   return { id: r.account.id, subject: r.subject! };
@@ -355,7 +356,7 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     expect(moved.subject ?? null).toBeNull();
   });
 
-  it("open re-registration of a known device id never hands over the signed-in account's principal", async () => {
+  it("does not permit anonymous re-registration once Identity is needed for account binding", async () => {
     const w = await world();
     await setServices(
       w.db,
@@ -370,40 +371,22 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
           identity: { enabled: true },
           sync: { enabled: false },
         },
-        registration: "open",
       }),
       "manifest",
       NOW,
     );
     const product = (await loadProduct(w.env, w.db, SLUG))!;
-    expect(product.registration).toBe("open");
     const DEVICE = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH";
-    const register = () =>
-      handleRegister(
-        mkReq("POST", { "x-pkey-device": DEVICE }),
-        w.env,
-        w.db,
-        product,
-        NOW,
-        SERVICES,
-      );
-
-    // The victim registers and signs in: the device has a Cloud Sync principal.
-    expect((await register()).status).toBe(200);
-    const victim = await account(w.db, "victim@example.com");
-    expect(
-      await setDeviceSubject(w.env, w.db, SLUG, DEVICE, victim.subject),
-    ).toBe(true);
-    expect((await principalOf(w, DEVICE))?.subject).toBe(victim.subject);
-
-    // An attacker who knows the device id re-registers it and gets a fresh token. That token's
-    // device row must carry no binding, so it has no Cloud Sync principal.
-    const res = await register();
-    expect(res.status).toBe(200);
-    const row = (await getDevice(w.db, SLUG, DEVICE))!;
-    expect(row.subject ?? null).toBeNull();
-    expect(await resolveSyncPrincipal(w.db, row)).toBeNull();
-    expect(await syncAccess(w.db, product, row, NOW)).toBeNull();
+    const response = await handleRegister(
+      mkReq("POST", { "x-pkey-device": DEVICE }),
+      w.env,
+      w.db,
+      product,
+      NOW,
+      SERVICES,
+    );
+    expect(response.status).toBe(403);
+    expect(await getDevice(w.db, SLUG, DEVICE)).toBeNull();
   });
 });
 
@@ -472,6 +455,8 @@ describe("the clearing hook's Cloud Sync cases", () => {
   it("account deletion clears it", async () => {
     const w = await world();
     const { ada } = await signedInDevice(w);
+    // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+    w.env.BLOBS = asR2(new R2Mock());
     expect(await deleteAccount(w.ctx, ada.id)).toEqual({ ok: true });
     expect(await bindingOf(w)).toBeNull();
   });
@@ -697,6 +682,7 @@ describe("syncAccess", () => {
       w.db,
       { issuerKey: "email", subject: "ada@example.com", kind: "email" },
       NOW,
+      { unfenced: true },
     );
     if (ada.status !== "signed_in") throw new Error(ada.status);
     expect(

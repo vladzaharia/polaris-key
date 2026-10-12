@@ -117,6 +117,8 @@ func _install_default_store() -> void:
 	if _store != null and not _default_store:
 		return
 	var path := core.options.settings_path
+	if path == PKeyOptions.DEFAULT_SETTINGS_PATH and core.storage_namespace != core.product:
+		path = "user://pkey_settings@%s.cfg" % core.storage_namespace
 	if core.options.persist_settings and path != "":
 		if _store is PKeyConfigFileStore and (_store as PKeyConfigFileStore).path == path:
 			return

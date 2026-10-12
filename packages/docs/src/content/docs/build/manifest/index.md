@@ -14,12 +14,12 @@ could disagree with it.
 
 ## The files
 
-| File             | Base name                      | Required when                                          | Carries                                                                                                            |
-| ---------------- | ------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| **schema**       | `schema.{json,yaml,yml}`       | always (content validated only when Config is enabled) | the config catalog: `{ schemaVersion, entries[] }`                                                                 |
-| **product**      | `product.{json,yaml,yml}`      | always                                                 | metadata, enabled services, device registration policy, browser origins, OIDC, profiles, tiers, provisioning hooks |
-| **release**      | `release.{json,yaml,yml}`      | Release is enabled                                     | provider coordinates + channel/install/appcast/edge-mint settings                                                  |
-| **distribution** | `distribution.{json,yaml,yml}` | never (absent = one implicit `direct` outlet)          | outlets and their store identities, transports per deliverable, the store listing                                  |
+| File             | Base name                      | Required when                                          | Carries                                                                                |
+| ---------------- | ------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| **schema**       | `schema.{json,yaml,yml}`       | always (content validated only when Config is enabled) | the config catalog: `{ schemaVersion, entries[] }`                                     |
+| **product**      | `product.{json,yaml,yml}`      | always                                                 | metadata, enabled services, browser origins, OIDC, profiles, tiers, provisioning hooks |
+| **release**      | `release.{json,yaml,yml}`      | Release is enabled                                     | provider coordinates + channel/install/appcast/edge-mint settings                      |
+| **distribution** | `distribution.{json,yaml,yml}` | never (absent = one implicit `direct` outlet)          | outlets and their store identities, transports per deliverable, the store listing      |
 
 Each file's **base name** selects its role; the **extension** is a pure format preference,
 resolved independently per file in the fixed order `.json`, then `.yaml`, then `.yml` — so a
@@ -57,13 +57,13 @@ no translation
 and may appear in the same block alongside legacy ones.
 
 A manifest that declares no `modules` block — or one where nothing is `enabled: true` — runs
-**license + config**, matching every product's behavior before the service suite existed. These
-coherence rules are enforced at ingest and by the live enablement API alike:
-`distribution_requires_release`, `update_requires_distribution`, `invalid_registration_policy`,
-and `config_without_activation` (a
-warning at ingest, promoted to an error by the enablement API for the one combination that is
-genuinely unreachable). The full list, with JSON-pointer paths, is at
-[Manifest validation codes](/docs/reference/validation-codes/).
+**license + config**, matching every product's behavior before the service suite existed.
+Requirements are data in the service table: Distribution requires Release, Update requires
+Distribution, and Cloud Sync requires Config and Identity. A dependent without each requirement
+is refused as `<service>_requires_<requirement>` at manifest ingest and on a live change. Turning
+off a requirement cascades to its enabled dependents; turning it back on does not restore them.
+The service API reports device registration as an effective value derived from License and
+Identity, rather than accepting a manifest registration policy.
 
 ## Resync vs. admin ownership
 

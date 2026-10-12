@@ -4,6 +4,26 @@
 package im.plrs.key.core
 
 import java.net.URI
+import java.util.Locale
+
+/**
+ * The production control-plane host keeps every historical storage name unchanged. Any other
+ * origin receives a deterministic suffix so a local emulator cannot share credentials or cache
+ * with production.
+ */
+public fun storeNamespace(productSlug: String, baseUrl: String): String {
+    val uri = try {
+        URI(baseUrl)
+    } catch (e: Exception) {
+        return productSlug
+    }
+    val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return productSlug
+    val host = uri.host?.lowercase(Locale.ROOT) ?: return productSlug
+    val defaultPort = (scheme == "https" && uri.port == 443) || (scheme == "http" && uri.port == 80)
+    val origin = if (uri.port >= 0 && !defaultPort) "$host:${uri.port}" else host
+    if (origin == "key.plrs.im") return productSlug
+    return "$productSlug@${origin.replace(Regex("[^a-z0-9.-]"), "_")}"
+}
 
 /** The two signed documents Core fetches, caches and floors; also the cache slice key (§4.1). */
 public enum class DocumentSlice(public val wire: String) {

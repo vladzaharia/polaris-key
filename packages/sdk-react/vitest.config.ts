@@ -1,16 +1,58 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// The React SDK exercises both adapters and the components under jsdom (the parity
-// suite drives @testing-library/react), so the environment is browser-shaped.
+// The React 19 fixture is its own workspace package: react-dom must resolve the same React
+// major, which an alias inside the SDK package cannot guarantee.
+const react19 = (path: string) =>
+  fileURLToPath(
+    new URL(`./test/react19/node_modules/${path}`, import.meta.url),
+  );
+
 export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    include: ["test/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
-    // The real-browser suite runs under vitest.browser.config.ts (`pnpm test:browser`).
-    exclude: ["test/browser/**", "**/node_modules/**"],
-    // Sized for a loaded machine or a slow CI runner (vitest's defaults are 5 s / 10 s).
     testTimeout: 20_000,
     hookTimeout: 60_000,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "react18",
+          include: ["test/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
+          exclude: [
+            "test/browser/**",
+            "test/react19.test.tsx",
+            "**/node_modules/**",
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "react19",
+          environment: "node",
+          include: ["test/react19.test.tsx"],
+          server: { deps: { inline: [/@polaris-key\/react/] } },
+        },
+        resolve: {
+          alias: [
+            { find: /^react$/, replacement: react19("react/index.js") },
+            {
+              find: /^react\/jsx-runtime$/,
+              replacement: react19("react/jsx-runtime.js"),
+            },
+            {
+              find: /^react\/jsx-dev-runtime$/,
+              replacement: react19("react/jsx-dev-runtime.js"),
+            },
+            {
+              find: /^react-dom\/server$/,
+              replacement: react19("react-dom/server.node.js"),
+            },
+          ],
+        },
+      },
+    ],
   },
 });

@@ -209,10 +209,7 @@ function productFields(
     fingerprintPolicy: parseFingerprintPolicy(row.fingerprint_policy_json),
     autoIssue: parseAutoIssue(row.auto_issue_json),
     services: parsedServices.services,
-    registration: resolveRegistration(
-      parsedServices.services,
-      parsedServices.registration,
-    ),
+    registration: resolveRegistration(parsedServices.services),
     webOrigins: parseWebOrigins(row.web_origins_json),
     trustPolicy: parseTrustPolicy(row.trust_policy_json),
     presentation: parseStoredPresentation(row.presentation_json),

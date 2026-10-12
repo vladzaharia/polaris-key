@@ -93,8 +93,28 @@ function deref(root: SchemaNode, node: unknown): SchemaNode {
   return t as SchemaNode;
 }
 
+/** A removed field is declared `{ "not": {} }`: it validates nothing, so it cannot appear. */
+function isRemoved(node: unknown): boolean {
+  if (node === false) return true;
+  const n = node as { not?: unknown } | null;
+  return (
+    typeof n === "object" &&
+    n !== null &&
+    typeof n.not === "object" &&
+    n.not !== null &&
+    Object.keys(n.not).length === 0
+  );
+}
+
+/** A section whose every declared property is removed (`devices` after ST-38) carries nothing. */
+function isEmptiedSection(root: SchemaNode, node: unknown): boolean {
+  const props = Object.values(deref(root, node).properties ?? {});
+  return props.length > 0 && props.every(isRemoved);
+}
+
 /**
- * The fields a document may carry (a property declared `false` cannot appear): the top level,
+ * The fields a document may carry (a property declared `false`, or a section left holding only
+ * removed fields, cannot appear): the top level,
  * with each canonical wrapper (`MANIFEST_WRAPPERS`, ST-19) replaced by its own fields
  * (`licensing.tiers`, `release.provider`).
  */
@@ -102,7 +122,7 @@ function manifestFields(doc: string): string[] {
   const schema = readSchema(doc);
   const out: string[] = [];
   for (const [k, v] of Object.entries(schema.properties ?? {})) {
-    if (v === false) continue;
+    if (v === false || isEmptiedSection(schema, v)) continue;
     if (!(MANIFEST_WRAPPERS[doc] ?? []).includes(k)) {
       out.push(k);
       continue;

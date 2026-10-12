@@ -60,6 +60,8 @@ var product := ""
 ## reaches one.
 static var decodes := 0
 
+## The last host-scoped cache root the SDK generated. Any other current value is caller-owned.
+var _generated_cache_dir := ""
 var _current = null
 var _discovered := false
 var _memo := {}
@@ -75,6 +77,10 @@ class _Pending:
 ## Bind to a configured Core: the icon transport on `host`, and Core's discovery hook. A new
 ## product drops the old product's member.
 func attach(core: PKeyCore, host: Node) -> void:
+	var generated := CACHE_DIR if core.storage_namespace == core.product else CACHE_DIR.path_join(core.storage_namespace)
+	if cache_dir == CACHE_DIR or cache_dir == _generated_cache_dir:
+		cache_dir = generated
+	_generated_cache_dir = generated
 	if product != "" and product != core.product:
 		_discovered = false
 		_memo.clear()

@@ -81,9 +81,10 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       must grant). `access` is `owner` only. Retired, refused with no warning period:
       `cloudSync.saves` (use `template: "saves"`), `cloudSync.open`, `onAttach` (the first
       sign-in is an ordinary sync) and `user.sync: "device"` (use `local`).
-- [ ] **`product`** (required) — product metadata, the `modules` block (enabled services),
-      `devices.registration`, `web.origins`, OIDC, the `identity:` block, profiles, tiers,
-      provisioning hooks, `fingerprint`, `autoIssue` and `secrets.required`. Maps to `products`
+- [ ] **`product`** (required) — product metadata, the `modules` block (enabled services; the
+      device-registration policy is derived from them, never declared), `web.origins`, OIDC, the
+      `identity:` block, profiles, tiers, provisioning hooks, `fingerprint`, `autoIssue` and
+      `secrets.required`. Maps to `products`
       (incl. `services_json`,
       `web_origins_json`) plus
       `oidc_config`, `profiles`, `tiers`, `provisioning_config`. There is no `cloudSync` block
@@ -213,10 +214,11 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 - [ ] The pre-suite vocabulary is still accepted and translated at ingest — only slugs are
       stored, and one block may mix both spellings (table below).
 - [ ] No `modules` block (or every entry off) means `license` + `config` on, the rest off.
-- [ ] `devices.registration` is optional — `open` · `requires-identity` · `requires-license`.
-      Omit it to follow the services: undeclared derives `requires-license` if License is on,
-      else `requires-identity` if Identity is, else `open`. Undeclared is stored as _absent_, so a
-      product that later turns License off moves to the derived `open` rather than staying pinned.
+- [ ] The device-registration policy is **derived, never declared**: License on is
+      `requires-license`; else Identity on is `requires-identity`; else `open`. `devices.registration`
+      is removed (0.9): any value is the error `invalid_registration_policy`, so delete the field.
+      The effective policy is read-only (`effectiveRegistration` in the console's services API,
+      `core.registration` in discovery) and follows the services you turn on or off.
 
 | Declared    | Enables                               | Why                                                                                         |
 | ----------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -268,12 +270,14 @@ table, `tools/services.json`.
       the enabled modules, required secrets, warnings, then errors. Exit code 0 means valid.
 - [ ] Fix every `error`. Common ones: `update_requires_distribution` (Update on with Distribution
       off — the feed would answer every client with an empty document),
-      `distribution_requires_release` (Distribution on with Release off — nothing to deliver), `invalid_registration_policy` (an
-      unrecognised value is refused, never coerced), `reserved_slug`.
-- [ ] Read the `warning` lines too. `config_without_activation` is a warning at ingest (a
-      config-only product is legitimate) but the enablement API applies the same code as a hard
-      error for Config on + License off + a declared `requires-license` policy, which closes the
-      only mint path such a product has.
+      `distribution_requires_release` (Distribution on with Release off — nothing to deliver),
+      `sync_requires_config` and `sync_requires_identity` (Cloud Sync on without Config or
+      Identity: the manifest is refused and nothing is turned on for you),
+      `invalid_registration_policy` (a `devices.registration` value, any value: the field is
+      removed, delete it), `reserved_slug`.
+- [ ] Read the `warning` lines too. `config_without_activation` is a warning (Config on with
+      License and Identity off: a config-only product is legitimate, and its devices register
+      `open`). Nothing turns it into an error.
 - [ ] `pkey doctor --base-url <url> --product <slug>` re-runs local validation and then checks the
       live discovery document. Without both flags the remote half is skipped.
 
@@ -316,9 +320,10 @@ table, `tools/services.json`.
 
 ### 8. Understand resync and ownership before you promise a behavior
 
-- [ ] A resync updates the **manifest baseline**: product metadata, service enablement +
-      registration policy, `web.origins`, fingerprint and auto-issue policy, catalog shape, OIDC baseline,
-      release baseline, profiles, tiers, provisioning, edge-mint recipes.
+- [ ] A resync updates the **manifest baseline**: product metadata, service enablement (the
+      device-registration policy follows from it), `web.origins`, fingerprint and auto-issue
+      policy, catalog shape, OIDC baseline, release baseline, profiles, tiers, provisioning,
+      edge-mint recipes.
 - [ ] Admin-set **values and management states** (per profile/tier/license/device) live in D1 and
       are **not** overwritten by a resync.
 - [ ] **Edge-mint recipes need operator approval.** A recipe from `.pkey/` is inert (its token
@@ -327,7 +332,7 @@ table, `tools/services.json`.
       either. Changing a recipe's `alg`, `signingKeySecret`, `kid`, `claimsTemplate`,
       `ttlSeconds` or `audience` makes it inert again until it is re-approved; an unchanged
       resync keeps it approved; dropping it deletes its approval. So does a push that makes the
-      mint public — opens registration (`devices.registration: open`, or License turned off),
+      mint public — opens registration (License and Identity both off, so the derived policy is `open`),
       enables anonymous `autoIssue` (`mode: anonymous`/`both`), or enables `oidcDefault` with
       Identity on — when the approval was given without the open-registration acknowledgement.
       And, with Identity on, so does any change to `oidc.provider`, `oidc.issuer`,

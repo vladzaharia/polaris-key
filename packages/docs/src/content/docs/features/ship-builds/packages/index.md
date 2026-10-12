@@ -670,7 +670,7 @@ URL layout and who may read). The console manages the feeds in two places, with 
   the product switcher and the Products registry. This scope also holds the **platform policy**:
   each ecosystem's kill switch and size ceiling, above every product's own settings.
 - **Distribution → Package feeds** (`#/p/<slug>/distribution/feeds`): one product's feeds. The
-  sidebar lists it while the product's package feeds are on (**Core → Services → Package feeds**);
+  sidebar lists it while the product's package feeds are on (the **Packages** switch under **Ship builds** on **Core → Services**);
   with them off the page says where to turn them on. It is named "Package feeds" so it does not
   collide with **Outlets & feeds**, which covers storefront feeds.
 
@@ -798,7 +798,7 @@ A licence's **Keys** tab has a **Registry tokens** panel with the tokens bound t
 whoever minted them, and the same New token and Revoke all, for that licence only.
 
 A licensee can mint their own read tokens in the portal whenever the product has an enabled feed
-that is not public; see [Package access](/docs/users/portal/#package-access).
+that is not public.
 
 Tokens are bound to one owner, and docker, SwiftPM and netrc keep one credential per registry host,
 so one machine can hold a token for only one product on the registry host for those clients. npm,
@@ -830,21 +830,28 @@ A yank needs a reason and is a danger confirmation; unyank, deprecate (with a me
 deprecation are caution confirmations. There is no delete action. A version number is unique
 forever, so a yanked version can never be published again.
 
-### Retention: builds of main
+### Retention: builds of main and dev
 
 Feed retention is the one thing that deletes versions. When a version is published on `stable`,
-the package's builds of main below it are pruned: `X-main.N`, or Python's `X.devN`, for every X
-at or below the released version. Stable and beta versions stay, and so do builds of a newer
-version and any version a channel points at. Each pruned version is audited as
-`package.version.prune` with its size, and it leaves a tombstone, so the number is still never
-published again. The bytes are reclaimed by the blob collector once no remaining version,
-package or product references them. It is off by default for a product, which opts in through
-`PUT …/retention` (`release.packages.prunePrereleases`). The platform's own feeds always prune
-and cannot turn it off. A yanked or deprecated stable release never sets the ceiling.
-`POST …/prune` is the backfill for versions released before this existed, or before the product
-opted in. It runs as a dry run unless `apply` is true, and so does `pkey feeds prune`. A version
-a channel or another row took hold of between the plan and the deletion is kept and listed as
-skipped.
+the package's builds on the two ephemeral tracks are pruned: `X-main.N` from `main`, `X-dev.N` from
+the built-in `dev` track, or Python's `X.devN`, for every X at or below the released version, on
+every ecosystem with a feed (OCI tags included). Stable and beta versions stay, and so do builds of
+a newer version and any version a channel points at. A build is a candidate only on the track its
+spelling belongs to. Each pruned version is audited as `package.version.prune` with its size, and it
+leaves a tombstone, so the number is still never published again. The bytes are reclaimed by the
+blob collector once no remaining version, package or product references them. Copies on public
+registries are never touched: cleanup only reaches this feed.
+
+It is on by default for every product (`release.packages.prunePrereleases`), after a dry-run
+notice. The first time a product that never chose reaches it (the Release cron, or its first
+stable publish), the Worker records what a dry run finds and the day cleanup starts, a week later
+(`package.prune.notice` in the audit log, and `notice` on `GET …/retention`). Nothing is deleted
+before that day. An operator's own value through `PUT …/retention` applies at once, on or off, and
+off stays off. The platform's own feeds always prune and cannot turn it off. A yanked or deprecated
+stable release never sets the ceiling. `POST …/prune` is the backfill for versions released before
+this existed, or while it was off. It runs as a dry run unless `apply` is true, and so does
+`pkey feeds prune`. A version a channel or another row took hold of between the plan and the
+deletion is kept and listed as skipped.
 
 ## Setup from the CLI
 
@@ -903,5 +910,5 @@ the platform's feeds); the policy, the bootstrap and platform-scope token action
 platform activity.
 
 The product's own switch is `GET`/`PUT /manage/api/products/<slug>/distribution/package-feeds`
-(`{enabled, expectedVersion}`, audited `distribution.package_feeds.update`), the **Package feeds**
-section of [Services](/docs/admin/services-enablement/).
+(`{enabled, expectedVersion}`, audited `distribution.package_feeds.update`), the **Packages**
+switch under **Ship builds** on [Services](/docs/admin/services-enablement/).

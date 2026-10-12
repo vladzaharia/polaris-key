@@ -16,6 +16,16 @@ import {
   type CompletionShell,
   type HelpHere,
 } from "./help.js";
+import {
+  controlDev,
+  DEV_CONFIG_FILE,
+  DEV_DEFAULT_PORT,
+  devConfigUrl,
+  devInfoFrom,
+  serveDev,
+  type DevArgs,
+  type DevInfo,
+} from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
@@ -638,6 +648,7 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
   sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
+  dev: (p, rt) => cmdDev(p, rt),
   mirror: (p, rt) => cmdMirror(p, rt.cwd, rt.stdout, rt.ci.fetchImpl),
   auth: (p, rt) => cmdAuth(p, rt.stdout, rt.stderr, rt.ci),
   release: (p, rt) => cmdRelease(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
@@ -1289,6 +1300,47 @@ function cmdTrust(
   return 0;
 }
 
+/** `pkey dev` and `pkey dev <command>` (`devCommand.ts`). */
+async function cmdDev(parsed: ParsedArgs, rt: Runtime): Promise<number> {
+  const port = flagString(parsed, "port");
+  if (port !== undefined && !/^\d{1,5}$/.test(port))
+    throw new Error(`--port must be a number; got ${port}.`);
+  const [sub, ...positional] = parsed.positional;
+  const args: DevArgs = {
+    sub,
+    positional,
+    port: port === undefined ? DEV_DEFAULT_PORT : Number(port),
+    url: flagString(parsed, "url"),
+    autoApprove: flagBool(parsed, "auto-approve"),
+    builtin: flagBool(parsed, "builtin"),
+    out: flagBool(parsed, "no-write")
+      ? null
+      : (flagString(parsed, "out") ?? DEV_CONFIG_FILE),
+    channel: flagString(parsed, "channel"),
+    key: flagString(parsed, "key"),
+    json: flagBool(parsed, "json"),
+  };
+  const io = {
+    cwd: rt.cwd,
+    stdout: rt.stdout,
+    stderr: rt.stderr,
+    fetchImpl: rt.ci.fetchImpl,
+  };
+  if (sub !== undefined) return controlDev(args, io);
+  let stopNow!: () => void;
+  const stop = new Promise<void>((resolve) => {
+    stopNow = resolve;
+  });
+  process.once("SIGINT", stopNow);
+  process.once("SIGTERM", stopNow);
+  try {
+    return await serveDev(args, { ...io, stop });
+  } finally {
+    process.off("SIGINT", stopNow);
+    process.off("SIGTERM", stopNow);
+  }
+}
+
 async function cmdSdk(
   parsed: ParsedArgs,
   cwd: string,
@@ -1326,10 +1378,23 @@ async function cmdSdk(
   } catch (e) {
     if (!/No \.pkey\/product manifest/.test((e as Error).message)) throw e;
   }
+  // --dev: the product, origin and release keys of a running pkey dev.
+  let devFacts: DevInfo | null = null;
+  if (flagBool(parsed, "dev")) {
+    const base =
+      flagString(parsed, "url") ??
+      flagString(parsed, "base-url") ??
+      (await devConfigUrl(cwd)) ??
+      `http://127.0.0.1:${DEV_DEFAULT_PORT}`;
+    devFacts = await devInfoFrom(base.replace(/\/+$/, ""), fetchImpl);
+  }
   const product =
-    flagString(parsed, "product") ?? parsed.positional[0] ?? local?.slug;
+    flagString(parsed, "product") ??
+    parsed.positional[0] ??
+    devFacts?.product ??
+    local?.slug;
   if (!product) throw new Error(SDK_CONFIG_USAGE);
-  if (local && local.slug !== product)
+  if (local && !devFacts && local.slug !== product)
     throw new Error(
       `The .pkey/ in ${cwd} is product ${local.slug}, not ${product}; run pkey sdk from ${product}'s repo or drop --product.`,
     );
@@ -1339,9 +1404,13 @@ async function cmdSdk(
     throw new Error("--kid and --public-key go together.");
   const facts = await resolveSdkFacts({
     product,
-    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    baseUrl:
+      devFacts?.baseUrl ?? flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
     releaseKeys: [
-      ...(local?.releaseKeys ?? []),
+      ...(devFacts ? [] : (local?.releaseKeys ?? [])),
+      ...Object.entries(devFacts?.releaseKeys ?? {}).map(
+        ([kid, publicKey]) => ({ kid, publicKey }),
+      ),
       ...parseReleaseKeyFlags(parsed.multi["release-key"] ?? []),
     ],
     ...(kid !== undefined && publicKey !== undefined
@@ -1350,7 +1419,7 @@ async function cmdSdk(
     ...(fetchImpl ? { fetchImpl } : {}),
   });
   // With one pinned key there is no remote recovery from its compromise.
-  if (Object.keys(facts.pinnedKeys).length === 1)
+  if (!devFacts && Object.keys(facts.pinnedKeys).length === 1)
     stderr.write(
       "warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.\n",
     );

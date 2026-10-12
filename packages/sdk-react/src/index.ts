@@ -1,5 +1,5 @@
 // @polaris-key/react — one hook API over two transports (browser cookie-session OIDC and
-// desktop Electron/Tauri bridge) plus brandable drop-in UIs.
+// desktop Electron/Tauri bridge), with the production UI in `@polaris-key/react/kit`.
 //
 // TWO AXES OF SUBPATH ENTRIES, and they compose:
 //
@@ -7,12 +7,12 @@
 //   service     ./license ./config ./identity ./update
 //                                               — WHAT you are talking to
 //
-// This barrel re-exports the full surface for the common case; the service hooks and
-// components are re-exported here while callers migrate to their subpaths.
-
+// The root owns transport configuration and headless hooks. Import screens and their scoped
+// presentation contract from `@polaris-key/react/kit`.
 // ── React layer ──────────────────────────────────────────────────────────────
 export {
   PolarisKeyProvider,
+  type PolarisKeyConfig,
   type PolarisKeyProviderProps,
 } from "./react/Provider.js";
 export { PolarisContext, type PolarisContextValue } from "./react/context.js";
@@ -26,7 +26,6 @@ export {
   usePolarisAuth,
   useLicenseGate,
   useImportBundle,
-  usePolarisTheme,
   screenFor,
   type UsePolarisKey,
   type UseLicense,
@@ -68,85 +67,14 @@ export {
 // ui.boot (SP-12): the one-call boot as a hook.
 export { useBoot, type UseBoot, type UseBootOptions } from "./react/useBoot.js";
 
-// ── Components ───────────────────────────────────────────────────────────────
-export {
-  LicenseGate,
-  type LicenseGateProps,
-  type LicenseGateSlots,
-} from "./components/LicenseGate.js";
-export {
-  PolarisLogin,
-  openManageUrl,
-  type PolarisLoginProps,
-} from "./components/PolarisLogin.js";
-// The refusal link (PX-W8): validate `manageUrl`, add the app's return URL or the key fragment.
+// ── Transport helpers ───────────────────────────────────────────────────────
+// The refusal link helpers are transport semantics, useful to a fully custom host UI.
 export {
   isManageUrl,
   readManageUrl,
   withManageKey,
   withManageReturn,
 } from "@polaris-key/client-core";
-export {
-  PolarisLogout,
-  type PolarisLogoutProps,
-} from "./components/PolarisLogout.js";
-export {
-  ConfigPanel,
-  type ConfigPanelProps,
-  type ConfigPanelSlots,
-  type ConfigRow,
-} from "./components/ConfigPanel.js";
-export {
-  UpdatePrompt,
-  type UpdatePromptProps,
-  type UpdatePromptSlots,
-} from "./components/UpdatePrompt.js";
-export {
-  DeviceManager,
-  type DeviceManagerProps,
-  type DeviceManagerSlots,
-} from "./components/DeviceManager.js";
-export {
-  baseTokens,
-  defaultTheme,
-  highContrastTheme,
-  lightTheme,
-  mergeTheme,
-  neutralDarkTokens,
-  neutralLightTokens,
-  polarisKeyDarkTokens,
-  polarisKeyLightTokens,
-  polarisKeyTheme,
-  themeVars,
-  type PolarisBranding,
-  type PolarisColorScheme,
-  type PolarisResolvedScheme,
-  type PolarisTheme,
-  type PolarisThemeTokens,
-  type PolarisThemeCopy,
-  type PartialTheme,
-  type PoweredByLayout,
-} from "./components/theme.js";
-// The "Powered by Polaris Key" badge for an integrator's about/credits/account screen
-// (docs/design/BRAND.md §7.2).
-export {
-  PoweredByPolarisKey,
-  type PoweredByPolarisKeyProps,
-} from "./components/brand.js";
-
-// ── Primitives (build a custom screen with the same a11y contract) ───────────
-export {
-  MessageScreen,
-  Button,
-  Panel,
-  TextField,
-  useFocusRing,
-  type MessageScreenProps,
-  type ButtonProps,
-  type ButtonVariant,
-  type PanelProps,
-  type TextFieldProps,
-} from "./components/primitives/index.js";
 
 // ── Adapters (so callers can build/inject them directly) ─────────────────────
 export {
@@ -211,6 +139,12 @@ export {
   DesktopAdapter,
   type DesktopAdapterOptions,
 } from "./desktop/desktopAdapter.js";
+// core.local (SP-15): the network-free adapter.
+export {
+  localAdapter,
+  LocalAdapter,
+  type LocalAdapterOptions,
+} from "./local/localAdapter.js";
 export {
   BRIDGE_VERSION,
   resolveBridge,
@@ -329,6 +263,12 @@ export {
   // telemetry.updates (SP-14): adapter.recordUpdateEvent
   type UpdateEventEntry,
   type UpdateEventInput,
+  // update.driver and update.bootguard (SP-15)
+  MAX_FAILED_BOOTS,
+  type BootAttempt,
+  type BootSlots,
+  type InstallOptions,
+  type InstallOutcome,
 } from "./core/index.js";
 
 // ── Generated constants (`pnpm gen constants`, tools/gen-sdk-constants.ts) ──

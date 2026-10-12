@@ -58,7 +58,7 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     name: "InstallSteps",
     file: "InstallSteps.astro",
     summary: "Registry routing, then the install, from the CLI's feedsSetup().",
-    props: ["sdk: SdkId"],
+    props: ['sdk: SdkId | "cli"'],
   },
   {
     name: "StatesToHandle",
@@ -121,8 +121,8 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     name: "HelpMessage",
     file: "HelpMessage.astro",
     summary:
-      "One Help message entry: the catalog title as the heading, the id as its anchor.",
-    props: ["id: string"],
+      "One Help message: the catalog title as the heading, the id as its anchor. With entry, the whole entry the id owns.",
+    props: ["id: string", "entry?: boolean"],
   },
   {
     name: "UiLabel",
@@ -139,7 +139,8 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
   {
     name: "PortalLink",
     file: "PortalLink.astro",
-    summary: "A link into the customer portal.",
+    summary:
+      "A link into the customer portal: library is its home, any other page opens as a route of it.",
     props: ["to: string", "slot: the link text"],
   },
   {

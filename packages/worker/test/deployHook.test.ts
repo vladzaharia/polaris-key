@@ -175,6 +175,8 @@ describe("the deploy hook (F-10 automation)", () => {
   });
 
   it("bootstraps, links and applies the root .pkey/ in one call", async () => {
+    // This Worker has no blob store: `makeEnv` binds an empty bucket, so unbind it here.
+    delete env.BLOBS;
     const res = await hook(await token());
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;

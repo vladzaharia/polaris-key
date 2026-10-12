@@ -344,7 +344,7 @@ export default polarisConfig;
 }
 
 function renderReact(facts: SdkConfigFacts, js: boolean): string {
-  // The pins come first so `polarisConfig` can carry them: bearer mode (a page on its own origin,
+  // The pins come first so `polarisKey` can carry them: bearer mode (a page on its own origin,
   // or Tauri) verifies every document in the page and reports `invalid-options` without them.
   const pins = `/** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
  *  the page against them; a desktop host's \`@polaris-key/node\` client pins the same keys. */
@@ -357,35 +357,35 @@ export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
     `  productSlug: ${q(facts.product)},`,
     `  baseUrl: ${q(facts.baseUrl)},`,
     `  trust: { pinnedKeys },`,
-    `  expectServices: [${facts.services.map(q).join(", ")}],`,
+    `  expectedServices: [${facts.services.map(q).join(", ")}],`,
   ].join("\n");
   const doc = `/**
  * The provider's product facts and trust pins:
  *
- *   <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>…</PolarisKeyProvider>
+ *   <PolarisKeyProvider config={polarisKey}>…</PolarisKeyProvider>
  */`;
   if (js)
     return `${banner("react", facts, "//")}
 
 ${pins}
 ${doc}
-/** @satisfies {Partial<import("@polaris-key/react").PolarisKeyProviderProps>} */
-export const polarisConfig = {
+/** @satisfies {import("@polaris-key/react").PolarisKeyConfig} */
+export const polarisKey = {
 ${props}
 };
 
-export default polarisConfig;
+export default polarisKey;
 `;
   return `${banner("react", facts, "//")}
-import type { PolarisKeyProviderProps } from "@polaris-key/react";
+import type { PolarisKeyConfig } from "@polaris-key/react";
 
 ${pins}
 ${doc}
-export const polarisConfig = {
+export const polarisKey = {
 ${props}
-} satisfies Partial<PolarisKeyProviderProps>;
+} satisfies PolarisKeyConfig;
 
-export default polarisConfig;
+export default polarisKey;
 `;
 }
 

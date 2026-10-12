@@ -557,7 +557,8 @@ describe("garbage collection and deletion", () => {
       { db: w.db, env: w.env, now: NOW, origin: "https://key.plrs.im" },
       accountId,
     );
-    expect(w.r2.keys()).toEqual([]);
+    // Every picture is gone; what remains is the erasure's own id-only ledger record (I-11).
+    expect(w.r2.keys()).toEqual([`erasures/${accountId}`]);
     expect(await w.db.all("SELECT asset FROM account_avatars")).toEqual([]);
   });
 
@@ -653,6 +654,6 @@ describe("garbage collection and deletion", () => {
       { db: w.db, env: w.env, now: NOW, origin: "https://key.plrs.im" },
       accountId,
     );
-    expect(w.r2.keys()).toEqual([]);
+    expect(w.r2.keys()).toEqual([`erasures/${accountId}`]);
   });
 });

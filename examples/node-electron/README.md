@@ -6,8 +6,8 @@ One setup line on each side:
   `SafeStorageStore` and updates through `electronUpdaterDriver`. The boot guard counts each
   launch (`markBootAttempt` / `confirmBoot`).
 - **preload** (`src/preload.ts`): `import "@polaris-key/node/electron/preload"`, bundled.
-- **renderer** (`src/renderer.tsx`): `<PolarisKeyProvider mode="desktop">` and `<LicenseGate>`
-  from `@polaris-key/react`, unchanged.
+- **renderer** (`src/renderer.tsx`): `<PolarisKeyProvider config={polarisKey}>` and
+  `<PolarisKeyGate>` from `@polaris-key/react/kit`.
 
 The renderer holds no credential: the sign-in's device code stays in the main process, and the
 bridge answers only the verbs the React kit uses.

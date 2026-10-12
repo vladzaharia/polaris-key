@@ -77,7 +77,8 @@ import { graceClampFor } from "../../core/licensing/graceClamp.js";
 import { licenseOfflineDays } from "../../core/licensing/entitlements.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 import { resolveAccount } from "./accounts/repo.js";
-import { platformSubjectAccountRefused } from "./accounts/platformMigration.js";
+import { platformSubjectStanding } from "./accounts/platformMigration.js";
+import { erasureVerdict } from "../../core/accounts/erasureFence.js";
 import { readBodyJson } from "../../core/cappedBody.js";
 
 /** The platform-IdP subject a `provider: platform` sign-in verified (the OIDC return path). */
@@ -173,6 +174,27 @@ export async function createBrowserSession(
       extra?: Record<string, unknown>;
     }
 > {
+  // I-11: a session bound to an account is minted only for one the erasure ledger does not hold (a
+  // D1 restore brings an erased account back as `active`). The OIDC return path has already
+  // refused such a subject at the callback (N9); this is the backstop at the mint, and it also
+  // covers the licence chooser's later choice. A key session names no account and is not asked.
+  if (opts.accountId) {
+    const ledger = await erasureVerdict(env, now, opts.accountId);
+    if (ledger === "erased")
+      return {
+        ok: false,
+        status: 403,
+        code: ErrorCode.Forbidden,
+        message: "this account cannot sign in",
+      };
+    if (ledger === "unavailable")
+      return {
+        ok: false,
+        status: 503,
+        code: "erasure_ledger_unavailable",
+        message: "try again",
+      };
+  }
   const sessionToken = mintOpaqueToken();
   const sessionHash = await hashKey(sessionToken, env.KEY_HASH_PEPPER);
   const deviceId = `browser:${license.id}`;
@@ -252,15 +274,18 @@ export async function createBrowserSession(
  * linked to an account after the session opened, or whose method moved to another account, is
  * covered), and checks the account it belonged to at sign-in (`record.accountId`, which also
  * catches erasure, since erasing an account deletes its methods). Either one disabled, being
- * deleted or gone (an absorbed account follows its join as `signIn` does) ends the session: the
- * record is deleted and the answer is "no session", so the page reads signed out, a
- * `requires-identity` product refuses to register a device on it, and sign-out has nothing to
- * end. The browser device's seat and token are left alone: they belong to the licence, not the
- * account (the N9 residual's decision).
+ * deleted, gone or on the erasure ledger (an absorbed account follows its join as `signIn` does)
+ * ends the session: the record is deleted and the answer is "no session", so the page reads
+ * signed out, a `requires-identity` product refuses to register a device on it, and sign-out has
+ * nothing to end. The ledger is what ends a session after a D1 restore: the record lives in KV,
+ * which a restore does not rewind, while the account behind it is rewound to `active`. The
+ * browser device's seat and token are left alone: they belong to the licence, not the account
+ * (the N9 residual's decision).
  *
- * A D1 error while checking answers "no session" too, for that request only: the record is
- * kept, since the failure says nothing about the account, and the next read checks again. The
- * same never-a-500 rule as a corrupt record, and it fails closed.
+ * A D1 error while checking answers "no session" too, for that request only, and so does a
+ * ledger that cannot be read: the record is kept, since the failure says nothing about the
+ * account, and the next read checks again. The same never-a-500 rule as a corrupt record, and it
+ * fails closed.
  */
 export async function loadBrowserSession(
   req: Request,
@@ -283,43 +308,61 @@ export async function loadBrowserSession(
   }
   if (!parsed || typeof parsed !== "object") return null;
   const record = parsed as BrowserSessionRecord;
-  let ended: boolean;
+  let standing: SessionStanding;
   try {
-    ended = await sessionAccountRefused(db, record, now);
+    standing = await sessionStanding(env, db, record, now);
   } catch {
     return null; // D1 unavailable: signed out for now, the record kept (see above)
   }
-  if (ended) {
+  if (standing === "unavailable") return null; // the ledger unreadable: likewise
+  if (standing === "ended") {
     await env.HOT.delete(key);
     return null;
   }
   return { tokenHash, record };
 }
 
+type SessionStanding = "live" | "ended" | "unavailable";
+
 /**
- * Whether a browser session's sign-in can no longer stand (N9): its platform subject belongs to
- * an account that can no longer sign in, or the account it signed in as is disabled, being
- * deleted or gone. `false` for a session with neither (a key session, a custom issuer's, a
- * subject that never had an account). Throws on a D1 error; the caller decides.
+ * Whether a browser session's sign-in can still stand (N9, and I-11's ledger). `ended`: its
+ * platform subject belongs to an account that can no longer sign in, or the account it signed in
+ * as is disabled, being deleted, gone or on the erasure ledger. `unavailable`: the ledger could
+ * not be read. `live` for a session with neither (a key session, a custom issuer's, a subject
+ * that never had an account). `ended` outranks `unavailable`. Throws on a D1 error; the caller
+ * decides.
  */
-async function sessionAccountRefused(
+async function sessionStanding(
+  env: Env,
   db: Db,
   record: BrowserSessionRecord,
   now: number,
-): Promise<boolean> {
+): Promise<SessionStanding> {
+  let unavailable = false;
   const subject = record.subject;
   if (
     subject &&
     typeof subject.issuer === "string" &&
-    typeof subject.sub === "string" &&
-    (await platformSubjectAccountRefused(db, subject.issuer, subject.sub, now))
-  )
-    return true;
+    typeof subject.sub === "string"
+  ) {
+    const standing = await platformSubjectStanding(
+      env,
+      db,
+      subject.issuer,
+      subject.sub,
+      now,
+    );
+    if (standing === "refused") return "ended";
+    if (standing === "unavailable") unavailable = true;
+  }
   if (typeof record.accountId === "string") {
     const account = await resolveAccount(db, record.accountId, now);
-    if (!account || account.status !== "active") return true;
+    if (!account || account.status !== "active") return "ended";
+    const ledger = await erasureVerdict(env, now, record.accountId, account.id);
+    if (ledger === "erased") return "ended";
+    if (ledger === "unavailable") unavailable = true;
   }
-  return false;
+  return unavailable ? "unavailable" : "live";
 }
 
 async function browserDoc(

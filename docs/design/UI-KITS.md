@@ -845,17 +845,17 @@ product's accent.
 
 ### 3.2 Where it is set, per kit
 
-| Kit                  | Set it                                                                                                                      | Restyle hooks beyond the theme                                                                                                                                                                                                                                                                                                    |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React                | `<PolarisKeyProvider theme={…}>`; `polarisKeyTheme({ … })` helper                                                           | Stable class names `pk-*` and `data-part="title"` etc.; CSS cascade layer `@layer polaris-key` so host CSS wins without `!important`; slots (`slots={{ header, footer }}`) and render props; `--pk-*` vars scoped to the provider element, **never `:root`** (RE); the same `styles.css` and `data-part` contract as the elements |
-| Web components       | `<pk-provider theme='…'>` or `PolarisKey.theme({…})`; `--pk-*` custom properties                                            | `::part(title)`, `::part(primary)`…; named `<slot>`s; `pk-*` DOM events; the shared `styles.css` adopted into each shadow root (`adoptedStyleSheets`)                                                                                                                                                                             |
-| Vue, Svelte, Angular | `providePolarisKey({ theme })` / `setPolarisKeyTheme` / `providePolarisKey({ theme })`                                      | Pass-through of the element parts and slots                                                                                                                                                                                                                                                                                       |
-| SwiftUI              | `.polarisKeyTheme(PolarisKeyTheme(…))` environment modifier                                                                 | `PolarisKeyStyle` protocols per component (`.activateStyle(.myStyle)`) in the manner of `ButtonStyle`; `@ViewBuilder` slots                                                                                                                                                                                                       |
-| UIKit / AppKit       | `PolarisKeyUI.theme = …` or per presenter                                                                                   | Subclassable hosting controllers                                                                                                                                                                                                                                                                                                  |
-| Compose              | `PolarisKeyTheme(theme = PolarisKeyTheme(…)) { }`                                                                           | `ActivateDefaults.colors()/shapes()/…` objects like Material's `ButtonDefaults`; composable slot parameters                                                                                                                                                                                                                       |
-| Godot                | `PKeyOptions.ui_theme_preset`, `ui_accent`, `ui_radius`, `ui_density`… in `polaris_key.tres`; or `PKeyUiTheme.build(theme)` | Theme type variations (`PKeyTitle`, `PKeyPrimary`, …, full list documented); a per-node `Theme` wins                                                                                                                                                                                                                              |
-| Qt                   | `polaris_key.ui.qt.apply_theme(app, Theme(…))`                                                                              | Object names (`#pkTitle`, `#pkPrimary`) and dynamic properties for QSS; native `QStyle` under `native`                                                                                                                                                                                                                            |
-| Terminal             | `PolarisKeyTheme` in the CLI adapter options; env `PKEY_THEME=dark\|light`, `NO_COLOR`                                      | Symbols set (unicode / ascii)                                                                                                                                                                                                                                                                                                     |
+| Kit                  | Set it                                                                                                                      | Restyle hooks beyond the theme                                                                                                                                                                                                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React                | `<PolarisKeyTheme theme={…}>` around a `/kit` component; transport is `<PolarisKeyProvider config={polarisKey}>`            | Stable class names `pk-*` and `data-part="title"` etc.; CSS cascade layer `@layer polaris-key` so host CSS wins without `!important`; slots (`slots={{ header, footer }}`) and render props; `--pk-*` vars scoped to each kit root, **never `:root`** (RE); the same `styles.css` and `data-part` contract as the elements |
+| Web components       | `<pk-provider theme='…'>` or `PolarisKey.theme({…})`; `--pk-*` custom properties                                            | `::part(title)`, `::part(primary)`…; named `<slot>`s; `pk-*` DOM events; the shared `styles.css` adopted into each shadow root (`adoptedStyleSheets`)                                                                                                                                                                      |
+| Vue, Svelte, Angular | `providePolarisKey({ theme })` / `setPolarisKeyTheme` / `providePolarisKey({ theme })`                                      | Pass-through of the element parts and slots                                                                                                                                                                                                                                                                                |
+| SwiftUI              | `.polarisKeyTheme(PolarisKeyTheme(…))` environment modifier                                                                 | `PolarisKeyStyle` protocols per component (`.activateStyle(.myStyle)`) in the manner of `ButtonStyle`; `@ViewBuilder` slots                                                                                                                                                                                                |
+| UIKit / AppKit       | `PolarisKeyUI.theme = …` or per presenter                                                                                   | Subclassable hosting controllers                                                                                                                                                                                                                                                                                           |
+| Compose              | `PolarisKeyTheme(theme = PolarisKeyTheme(…)) { }`                                                                           | `ActivateDefaults.colors()/shapes()/…` objects like Material's `ButtonDefaults`; composable slot parameters                                                                                                                                                                                                                |
+| Godot                | `PKeyOptions.ui_theme_preset`, `ui_accent`, `ui_radius`, `ui_density`… in `polaris_key.tres`; or `PKeyUiTheme.build(theme)` | Theme type variations (`PKeyTitle`, `PKeyPrimary`, …, full list documented); a per-node `Theme` wins                                                                                                                                                                                                                       |
+| Qt                   | `polaris_key.ui.qt.apply_theme(app, Theme(…))`                                                                              | Object names (`#pkTitle`, `#pkPrimary`) and dynamic properties for QSS; native `QStyle` under `native`                                                                                                                                                                                                                     |
+| Terminal             | `PolarisKeyTheme` in the CLI adapter options; env `PKEY_THEME=dark\|light`, `NO_COLOR`                                      | Symbols set (unicode / ascii)                                                                                                                                                                                                                                                                                              |
 
 ### 3.3 The accent resolver
 
@@ -1040,28 +1040,29 @@ Each snippet below is complete: imports, client construction and styles included
 the integration cost.
 
 ```tsx
-// React: web, Electron renderer, Tauri webview, Next.js client component (4 lines)
-import { PolarisKeyGate } from "@polaris-key/react";
+// React: web, Electron renderer, Tauri webview, Next.js client component
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
 import "@polaris-key/react/styles.css";
-import polarisKey from "./polaris-key.json"; // the generated config module
+import { polarisKey } from "./polaris.config";
 
-<PolarisKeyGate config={polarisKey}>
-  <App />
-</PolarisKeyGate>;
+<PolarisKeyProvider config={polarisKey}>
+  <PolarisKeyGate>
+    <App />
+  </PolarisKeyGate>
+</PolarisKeyProvider>;
 ```
 
 ```html
 <!-- Any web page, Angular, Vue, Svelte, htmx (2 lines; the module injects its own styles and fonts) -->
 <script type="module" src="https://key.plrs.im/elements/1/pk.js"></script>
-<pk-gate product="tidewater" config='{"product":"tidewater",…}'
-  ><my-app></my-app
-></pk-gate>
+<pk-gate config='{"product":"tidewater",…}'><my-app></my-app></pk-gate>
 ```
 
 ```swift
 // SwiftUI, iOS 18+ / macOS 15+, Liquid Glass on 26 (3 lines)
 import PolarisKeyUI
-let client = PolarisKey.client(product: "tidewater")   // reads PolarisKey.plist
+let client = try await PolarisKeyClient.fromConfig()   // reads polaris-key.json from the app bundle
 WindowGroup { ContentView().polarisKeyGate(client) }
 // macOS: also adds the Settings pane and the menu commands
 Settings { PolarisKeySettings(client) }
@@ -1070,12 +1071,12 @@ Settings { PolarisKeySettings(client) }
 ```kotlin
 // Compose (Android, Desktop) (3 lines)
 import im.plrs.key.ui.PolarisKeyGate
-val client = PolarisKey.client(context, product = "tidewater")
+val client = PolarisKeyClient.fromConfig(context)   // reads assets/polaris-key.json
 setContent { PolarisKeyGate(client) { App() } }
 ```
 
 ```gdscript
-# Godot: the autoload reads polaris_key.tres; one call before the main scene (1 line)
+# Godot: the autoload reads res://polaris-key.json; one call before the main scene (1 line)
 await PolarisKey.boot()
 ```
 
@@ -1083,7 +1084,7 @@ await PolarisKey.boot()
 # Qt (PySide6 or PyQt6) (3 lines)
 from polaris_key import Client
 from polaris_key.ui.qt import run_gate
-run_gate(Client(product="tidewater"), main_window)  # shows the gate until licensed
+run_gate(Client.from_config(), main_window)  # reads polaris-key.json; shows the gate until licensed
 ```
 
 ```ts
@@ -1092,9 +1093,12 @@ registerPolarisKey({ ipcMain, client }); // main
 exposePolarisKey(); // preload
 ```
 
-The constructor names follow each SDK. Every kit takes a `client` built the same way, and the React
-kit takes the generated config module and the elements take `product` plus a `config` attribute
-(SETUP.md D18; there is no publishable key or other credential). The gate fixes today's lifecycle traps:
+The constructor names follow each SDK. Every client is built from the product's `polaris-key.json`
+(`fromConfig()`, Python `from_config()`; Godot's autoload reads the file itself), the React kit takes
+the generated config module and the elements take a `config` attribute. There is no `product` prop,
+publishable key or other credential (SETUP.md D18). Until the config document lands, the shipped
+start is the generated `PolarisConfig` module and its `clientOptions()` (the SDK pages show it). The
+gate fixes today's lifecycle traps:
 
 - it starts itself (Compose `gate.start()`, KO);
 - it never flashes the sign-in card before the real state loads (SW);

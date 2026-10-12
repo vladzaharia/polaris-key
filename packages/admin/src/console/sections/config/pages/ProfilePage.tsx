@@ -168,10 +168,14 @@ export function ProfilePage({
         }
       />
 
-      <div hidden={current !== "payload"}>
+      <div hidden={current !== "payload"} className="pk-vt-tabpanel">
         <PayloadTab slug={slug} profile={p} onDirtyChange={setDirty} />
       </div>
-      {current === "used-by" ? <UsedByTab slug={slug} profile={p} /> : null}
+      {current === "used-by" ? (
+        <div className="pk-vt-tabpanel">
+          <UsedByTab slug={slug} profile={p} />
+        </div>
+      ) : null}
 
       <EditProfileDrawer
         slug={slug}

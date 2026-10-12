@@ -74,6 +74,31 @@ const NIGHTFALL_CONTEXT = {
     modules: { licensing: true, claim: true, releases: true },
   },
 };
+/** I-30: a platform connection whose verified domain the typed address is at. */
+const LAKESIDE = { id: "conn_lakeside", label: "Lakeside University" };
+/** I-30: the email start for a routed domain (`enforced`: the connection is the only way in). */
+const routedStart = (enforced: boolean) => ({
+  "POST /api/signin/email/start": {
+    body: {
+      ok: true,
+      expiresIn: 600,
+      codeLength: 6,
+      resendIn: 0,
+      next: { kind: "sso", connection: LAKESIDE, enforced },
+    },
+  },
+});
+const WITH_CONNECTION = {
+  body: {
+    auth: {
+      oidc: false,
+      magic: true,
+      providers: ["apple", "google"],
+      connections: [LAKESIDE],
+    },
+    modules: { licensing: true, claim: true, releases: true },
+  },
+};
 const SERVER_ERROR = { status: 500, body: { error: "internal" } };
 const MOSSGARDEN = {
   slug: "mossgarden",
@@ -282,6 +307,51 @@ export const SHIPPED: ShippedState[] = [
     path: "/",
     routes: { "/api/capabilities": "abort" },
     ready: (p) => h1(p, "Can't reach Polaris Key"),
+  },
+  // §4.1 Where the address goes (I-30; mockup identity.sign-in-routes pins 1 and 2).
+  {
+    section: "4.1",
+    id: "signin-sso-required",
+    title: "Login card, the address's domain requires its connection",
+    scenario: "signedOut",
+    path: "/",
+    routes: routedStart(true),
+    ready: async (p) => {
+      await typeEmail(p, "dana@example.edu");
+      await h1(p, "Lakeside University");
+      await p
+        .getByRole("link", { name: "Continue to Lakeside University" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-sso-first",
+    title: "Login card, the connection first, the email code second",
+    scenario: "signedOut",
+    path: "/",
+    routes: routedStart(false),
+    ready: async (p) => {
+      await typeEmail(p, "sam.ito@students.example.edu");
+      await h1(p, "Lakeside University");
+      await p
+        .getByRole("button", { name: "Email me a code instead" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-connections",
+    title: "Login card with a connection and the provider row",
+    scenario: "signedOut",
+    path: "/",
+    routes: { "/api/capabilities": WITH_CONNECTION },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Key");
+      await p
+        .getByRole("link", { name: "Continue with Lakeside University" })
+        .waitFor();
+    },
   },
   // §4.2 Product context (PX-05).
   {
@@ -918,14 +988,14 @@ export const SHIPPED: ShippedState[] = [
       await sectionNavSettled(p);
     },
   },
-  // §4.25 Focused flows (PX-10).
+  // §4.25 Focused flows (PX-10) on the task frame (PX-29).
   {
     section: "4.25",
     id: "device-limit",
     title: "Device limit, focused flow",
     scenario: "twelve",
     path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
-    ready: (p) => h1(p, "Your license is on 2 of 2 devices"),
+    ready: (p) => h1(p, "Free a device"),
   },
   {
     section: "4.25",
@@ -934,7 +1004,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "twelve",
     path: "/#/p/orbit-survey/free-device?return=orbitsurvey%3A%2F%2Fretry",
     ready: async (p) => {
-      await h1(p, "Your license is on 2 of 2 devices");
+      await h1(p, "Free a device");
       await p.getByRole("button", { name: "Remove Work laptop" }).click();
       await h1(p, "Work laptop was removed");
     },
@@ -945,7 +1015,7 @@ export const SHIPPED: ShippedState[] = [
     title: "Download, focused flow",
     scenario: "three",
     path: "/#/p/nightfall/download?platform=linux",
-    ready: (p) => h1(p, "Download Nightfall for Linux"),
+    ready: (p) => h1(p, "Download Nightfall 1.4.2"),
   },
   // §4.26 Account (PX-07; Sign-in methods and Where you're signed in, PX-13).
   {
@@ -994,7 +1064,9 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Account");
       await p.getByRole("button", { name: "Delete account" }).click();
       await p
-        .getByRole("heading", { name: "Delete your Polaris Key account?" })
+        .getByRole("heading", {
+          name: "Schedule your Polaris Key account for deletion?",
+        })
         .waitFor();
     },
   },
@@ -1186,9 +1258,14 @@ export const PENDING: PendingState[] = [
   { section: "4.24", title: "Approve a new device", wp: ["PX-15"] },
   {
     section: "4.26",
-    title:
-      "Account: connected products, Download my data, Make primary, passkey Rename (need their API)",
+    title: "Account: connected products, Download my data (need their API)",
     wp: ["PX-13 follow-up"],
+  },
+  {
+    section: "4.26",
+    title:
+      "Account → Sign-in methods: Make primary, passkey Rename, products per email (API and controls built; linux baselines and UX review not recorded yet)",
+    wp: ["PX-W19"],
   },
   {
     section: "4.29",

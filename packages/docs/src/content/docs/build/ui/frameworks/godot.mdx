@@ -1,8 +1,8 @@
 ---
 title: "Godot"
-description: "The Godot SDK's UI kit: the drop-in boot and gate, the scenes it is built from, and the headless view models a game's own UI can use."
+description: "The Godot SDK's UI kit: the drop-in boot and gate, the scenes it is built from, and the headless controllers and view models a game's own UI can use."
 type: "reference"
-lastReviewed: "2026-10-10"
+lastReviewed: "2026-10-11"
 sidebar:
   order: 6
 ---
@@ -13,58 +13,124 @@ import KitFacts from "../../../../../components/ui/KitFacts.astro";
 The Godot SDK's UI kit, in GDScript, for desktop, phones, tablets, the Steam Deck and TVs. One call
 gates a game and runs every screen the license needs: the boot, Activate with the key field, the
 sign-in form, offline activation, Replace a device, the blocking states with their fixes, offline
-grace, the update prompt and the settings. Every screen is also a scene of its own, and every
-state comes from headless view models that run the shared
-[UI state matrix](/docs/reference/corpus/), so a game that draws its own menus gets the same
-states, copy and actions. The rest of the Godot SDK is on the [Godot](/docs/build/sdks/godot/) page.
+grace, the update prompt and the settings. Every screen is also a scene of its own, and each one
+reads a headless controller that a game's own menus can read too. The rest of the Godot SDK is on
+the [Godot](/docs/build/sdks/godot/) page; to draw your own screens instead, see
+[Your own UI](/docs/build/sdks/godot/your-own-ui/).
 
 <KitFacts kit="godot" />
+
+The kit has three layers, and a game can stop at any of them:
+
+| Layer                       | What you write                        | Where                       |
+| --------------------------- | ------------------------------------- | --------------------------- |
+| Drop-in                     | `await PolarisKey.boot()`             | [Below](#the-one-line-flow) |
+| Scenes                      | Place a scene, or let it find the SDK | [Scenes](#scenes)           |
+| Controllers and view models | Draw every control yourself           | [Headless](#headless)       |
 
 ## Install
 
 The kit is part of the addon at `res://addons/polaris_key/`, installed from Polaris Key's Godot
-feed ([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)). It runs on Godot 4.4
+feed ([Installing the SDKs from the feeds](/docs/build/install/)). It runs on Godot 4.4
 and later, and bundles Rubik and JetBrains Mono (both OFL).
 
 ## The one-line flow
 
 ```gdscript
-await PolarisKey.boot()
+extends Node
+
+
+func _ready() -> void:
+	await PolarisKey.boot()
+	get_tree().change_scene_to_file("res://game/title.tscn")
 ```
 
 `boot()` reads `res://polaris_key.tres`, syncs, gates on the license and checks for an update on
 the `PKeyBoot` screen, and returns once the player is through. A stop keeps its card on screen
-with Try again. The settings open over the game in one line too, and close with Close, Escape or
-a pad's B:
+with Try again, and the await waits through the retries. The settings open over the game in one
+line too, and close with Close, Escape or a pad's B:
 
 ```gdscript
-PKeySettingsPanel.open(self)
+func open_settings() -> void:
+	PKeySettingsPanel.open(self)
 ```
 
-## Piecemeal
+## Scenes
 
-Each screen is a `Control` scene a game can place itself: `PKeyGateView`, `PKeyActivationPanel`,
-`PKeySignInDialog`, `PKeyOfflineDialog`, `PKeyUpdatePrompt`, `PKeyStatusBanner`,
-`PKeySettingsPanel` and `PKeyEntitlementBadge`. A scene lays itself out for its window: two panes
-on a wide landscape panel, one column at 4:3, and on a phone the page full-bleed with the product
-at the top and the actions docked at the bottom, the primary on top. A scene a game's own menu
-holds draws no card of its own.
+Each screen is a scene under `addons/polaris_key/ui/`, with a view script and a headless
+controller. The class is the name to use in code; the gate's scene file is `pkey_gate.tscn` and
+its class is `PKeyGateView`.
+
+| Class                  | Scene                                   | Shows                                                                    |
+| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
+| `PKeyBoot`             | `boot/pkey_boot.tscn`                   | The stages from start to ready, and a card with Try again on a stop      |
+| `PKeyGateView`         | `gate/pkey_gate.tscn`                   | The license gate: activation, grace, expired, blocked                    |
+| `PKeyActivationPanel`  | `activation/pkey_activation_panel.tscn` | Key entry, sign-in, free tier, offline activation, Replace a device      |
+| `PKeySignInDialog`     | `sign_in/pkey_sign_in_dialog.tscn`      | The device code, its QR code and the countdown                           |
+| `PKeyOfflineDialog`    | `offline/pkey_offline_dialog.tscn`      | The request code, and the import of an activation file                   |
+| `PKeyUpdatePrompt`     | `update/pkey_update_prompt.tscn`        | An update offer, with the action the install's outlet allows             |
+| `PKeyStatusBanner`     | `banner/pkey_status_banner.tscn`        | Offline grace, an expired check, an available update                     |
+| `PKeySettingsPanel`    | `settings/pkey_settings_panel.tscn`     | The product's settings, with a lock on each managed value                |
+| `PKeyEntitlementBadge` | `badge/pkey_entitlement_badge.tscn`     | "Included with" chips for the user-facing entitlements the license holds |
+
+A scene finds the `PolarisKey` autoload by itself and follows its `state_changed` signal. To place
+one in your own layout, instance it and add it as a child:
+
+```gdscript
+extends Control
+
+const GateScene := preload("res://addons/polaris_key/ui/gate/pkey_gate.tscn")
+
+
+func _ready() -> void:
+	var gate: PKeyGateView = GateScene.instantiate()
+	gate.usable.connect(_on_usable)
+	add_child(gate)
+
+
+func _on_usable() -> void:
+	print("the license lets the game run")
+```
+
+A scene lays itself out for its window: two panes on a wide landscape panel, one column at 4:3,
+and on a phone the page full-bleed with the product at the top and the actions docked at the
+bottom, the primary on top. A scene a game's own menu holds draws no card of its own. Every
+interactive control is in one wrapping focus chain, so `ui_up`, `ui_down`, `ui_accept` and
+`ui_cancel` operate every screen on a keyboard, a gamepad or a TV remote.
 
 ## Headless
 
-The view models are in `addons/polaris_key/ui/model/`. Each is a pure function of one input
-Dictionary and answers the state, the catalog copy keys, the actions and the design decisions
-(the one primary, what takes focus, which links and QR codes may show):
+Each scene reads a controller, and a game that draws its own screens can read the same ones. They
+are in `addons/polaris_key/ui/` and are pure functions of the state they are given:
+
+| Class                        | Answers                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `PKeyGateController`         | Which screen a license status renders, with its copy keys and its controls     |
+| `PKeyActivationController`   | Which ways to activate this build offers, and the copy key for each refusal    |
+| `PKeySignInController`       | The copy key for how a sign-in ended, the countdown and the identity line      |
+| `PKeyUpdatePromptController` | Whether an update answer shows, its copy keys, its action and whether it locks |
+
+[Your own UI](/docs/build/sdks/godot/your-own-ui/#gate-status-screen-and-copy-key) maps every status
+to its screen and copy keys.
+
+The view models in `addons/polaris_key/ui/model/` are the port of the shared headless layer. Each
+is a pure function of one input Dictionary and answers the state, the catalog copy keys, the
+actions and the design decisions (the one primary, what takes focus, which links and QR codes may
+show):
 
 ```gdscript
 const Models := preload("res://addons/polaris_key/ui/model/models.gd")
 
-var view := Models.view_of("PolarisKeyGate", {"gate": {"status": "revoked"}})
-# view["state"] == "blocked"
+
+func headless_view() -> void:
+	var view := Models.view_of("PolarisKeyGate", {"gate": {"status": "revoked"}})
+	print(view["state"])  # blocked
 ```
 
 `sign_in_session.gd` is the sign-in form's state machine over the SDK's sign-in primitives, and
-`copy_format.gd` formats a copy key in the player's locale.
+`copy_format.gd` formats a catalog copy key in the player's locale. The shipped scenes read the
+controllers above; the view models run the shared UI state matrix, so a screen fed the same inputs
+shows the same step with the same copy key in every SDK.
 
 ## Theming
 
@@ -76,8 +142,12 @@ system's settings by default (`auto`, from Godot 4.5) and can be forced `on` or 
 
 ## Localisation
 
-The kit's copy is generated as gettext tables in `addons/polaris_key/ui/locale/`, one per launch
-locale. `PKeyUiCopy.overrides` renames any string without forking a scene.
+Every string the scenes show is a key of `PKeyUiCopy`, in English, passed through `tr()`: translate
+the English defaults with an ordinary Translation, or rename a string with
+`PKeyUiCopy.overrides`, without forking a scene. The generated gettext tables in
+`addons/polaris_key/ui/locale/` are keyed on the shared catalog ids and only the view models'
+`copy_format.gd` reads them: the scenes do not load them, so those `.po` files do not translate a
+scene yet.
 
 ## Baselines
 

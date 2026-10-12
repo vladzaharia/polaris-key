@@ -121,11 +121,12 @@ to run it.
 ### License
 
 ```gdscript
+var key := ""
 var r := await PolarisKey.license.activate_with_key(key)    # a PKeyActivationResult
-if not r.ok: show_error(PKeyUiCopy.shared().for_code(r.code)) # words for r.code, never a raw body
-await PolarisKey.license.enroll()                           # keyless: the device's free licence
-if PolarisKey.license.is_entitled("soundtrack"): unlock_soundtrack()
-PolarisKey.license.get_entitlements()                       # {name: value}
+if not r.ok: print(PKeyUiCopy.shared().for_code(r.code)) # words for r.code, never a raw body
+await PolarisKey.license.enroll()                # keyless: the device's free licence
+if PolarisKey.license.is_entitled("soundtrack"): print("soundtrack unlocked")
+PolarisKey.license.get_entitlements()            # {name: value}
 await PolarisKey.license.deactivate()
 PolarisKey.state_changed.connect(func(s): print(s["status"]))
 ```
@@ -134,30 +135,40 @@ PolarisKey.state_changed.connect(func(s): print(s["status"]))
 `needs-activation` or a block reason, or `not-applicable` for a product without License, where
 `is_licensed()` is true. `is_entitled(name)` is true only while the gate is usable: a revoked
 or expired licence unlocks nothing, even though `get_entitlements()` still reads the last verified
-values (S-19 G11). A 401 during a
-sync re-acquires the token once.
+values. A 401 during a sync re-acquires the token once. `expired` is the cached licence document
+outliving its grace window with no successful sync (a device that stayed offline too long): the
+player sees "Connect to keep playing" and Try again. It is not how a licence whose term ended
+shows: the server answers a dead licence like a wrong key (401), so a key typed for it gets "That
+license key wasn't accepted.", a sync that finds it ends in `revoked` ("Signed out"), and no
+screen tells a key holder the difference yet.
 
 `r.kind` sorts every activation outcome: `ok`, `device-limit` (`limit`, `device_count`),
 `unauthorized`, `fingerprint-required`, `enroll-disabled`, `enroll-claimed`, `license-disabled`,
 `license-expired`, `attestation-required`, `hardware-mismatch`, `rate-limited`, `unsupported`,
 `refused` and `error`. The mapping goes by the server's code, never by the status alone: a 403
 with any code other than the known ones (`registration_closed`, a code a later server adds) is
-`refused` with that code, never `device-limit`; a 5xx or a code-less answer is `error`. Every code
-has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`, `for_result(result)`), so a
-custom screen shows the same text the kit does. The client gate is a user-experience gate, not DRM: see
-[Platform caveats](#platform-caveats).
+`refused` with that code, never `device-limit`; a 5xx or a code-less answer is `error`. Today's
+server answers an expired key `unauthorized`, so `license-expired` does not occur against it yet.
+A key with no entries left (`key_entry_limit`) is `refused` with that code: the words come from
+`PKeyActivationController.message_for(r)` and `PKeyUiCopy`, and its manage link is not on the
+result. Every code has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`,
+`for_result(result)`), so a custom screen shows the same text the kit does. The client gate is a
+user-experience gate, not DRM: see [Platform caveats](#platform-caveats).
 
 ### Config
 
 ```gdscript
 var speed: float = PolarisKey.config.get_value("dice.animSpeed", 1.0)
-PolarisKey.config.config_changed.connect(func(keys): if "dice.animSpeed" in keys: _restyle())
+PolarisKey.config.config_changed.connect(func(keys): if "dice.animSpeed" in keys: print("restyle"))
 PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
 var minted := await PolarisKey.config.mint_token("leaderboard")   # edge-mint for third-party APIs
 ```
 
-Precedence, the player's saved values, the `PKEY_CONFIG_*` environment layer and secrets are in
-[Config](#config-polariskeyconfig).
+Remote values arrive with each sync: at boot, then on every `PolarisKey.sync()` and, when
+`refresh_interval_seconds` is above zero, on that timer (the default is off: sync on focus or on a
+menu open yourself). `config_changed(keys)` fires when a value changes. `config.fetch_schema()`
+reads the catalog's schema for an editor of your own. Precedence, the player's saved values, the
+`PKEY_CONFIG_*` environment layer and secrets are in [Config](#config-polariskeyconfig).
 
 ### Devices
 
@@ -167,8 +178,9 @@ await PolarisKey.devices.rename("Living-room PC")
 await PolarisKey.devices.register()                  # keyless registration, for a product without License
 ```
 
-The device id is derived on the device; hardware values are hashed on the device and never sent
-(`fingerprint_enabled`, `probes`). A device report follows every sync.
+The device id is derived on the device, and hardware values are hashed there: only the hashes
+leave it, never the raw values (`fingerprint_enabled`, `probes`). A device report follows every
+sync; it carries those hashes, the device name and the build's facts, and nothing else.
 
 ### Identity
 
@@ -200,15 +212,17 @@ by CI) to have packs at all. See [Packs](#packs-polariskeyupdatepacks-p4-08).
 ### Commerce
 
 ```gdscript
+var sku := ""
+var purchase_token := ""
 var r := await PolarisKey.commerce.purchase("extras.diceSkins")  # a PKeyPurchaseResult
 match r.kind:
-	PKeyPurchaseResult.KIND_OK: unlock(r.flags)             # claimed and synced
-	PKeyPurchaseResult.KIND_PENDING: show_pending()         # Ask to Buy: it arrives later
+	PKeyPurchaseResult.KIND_OK: print(r.flags)             # claimed and synced
+	PKeyPurchaseResult.KIND_PENDING: print("pending")      # Ask to Buy: it arrives later
 	PKeyPurchaseResult.KIND_CANCELLED, PKeyPurchaseResult.KIND_NOT_OWNED: pass
-	_: show_error(PKeyUiCopy.shared().for_result(r))
-await PolarisKey.commerce.restore()                         # re-claim what the store says you own
-await PolarisKey.commerce.claim_play(sku, purchase_token)   # from your own Play billing plugin
-if PolarisKey.commerce.is_unlocked("extras.diceSkins"): ...
+	_: print(PKeyUiCopy.shared().for_result(r))
+await PolarisKey.commerce.restore()                       # re-claim what the store says you own
+await PolarisKey.commerce.claim_play(sku, purchase_token) # from your own Play billing plugin
+if PolarisKey.commerce.is_unlocked("extras.diceSkins"): print("extras.diceSkins unlocked")
 ```
 
 Store purchases become licence flags (P6-01): the store sells, the Worker verifies the purchase
@@ -229,9 +243,10 @@ arrives, finishes it after the claim, syncs, and emits `app_store_update_claimed
 ### Distribution and crash tags
 
 ```gdscript
-var m := await PolarisKey.distribution.download_model()  # the public download page's model
-var here := PolarisKey.distribution.this_platform()       # {platform, label, primary, others, builds}
-SentrySDK.set_tag("pkey.outlet", PolarisKey.crash_tags().get("pkey.outlet", ""))
+var model := await PolarisKey.distribution.download_model()  # the public download page's model
+var platform := PolarisKey.distribution.this_platform()      # {platform, label, primary, others, builds}
+var crash_tags := PolarisKey.crash_tags()
+print(crash_tags.get("pkey.outlet", ""))  # hand the tags to your crash reporter, e.g. SentrySDK.set_tag
 ```
 
 - `distribution.download_model()` reads `GET /<p>/distribution/download.json`, the unsigned,
@@ -263,8 +278,9 @@ PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
 ```
 
 The options, their variables and defaults are in [Build stamp and setup dock](#build-stamp-and-setup-dock-p1-11).
-A build with packs also ships `pkey_packs/*` (add it to the preset's "Filters to export non-resource
-files"). The `polaris-key/publish` GitHub Action publishes the release after your export and
+`polaris_key_config.gd` and `polaris_key.tres` export by default. Add `tests/*` to the preset's
+"Filters to exclude" if the project holds the SDK's own tests. A build with packs also ships `pkey_packs/*` (add it
+to the preset's "Filters to export non-resource files"). The `polaris-key/publish` GitHub Action publishes the release after your export and
 signing steps.
 
 ## UI kit and theming
@@ -341,10 +357,11 @@ gamepad or a TV remote.
   (applied by `PolarisKey.configure()`):
 
   ```gdscript
+  var options := PKeyOptions.new()
   options.ui_branding = "none"          # your game's theme and font ("polaris-key" is the default)
   options.ui_brand_scheme = "light"     # the Polaris Key light theme (default "dark")
   options.ui_accent = Color("#39d075")  # your accent for the primary action and chips (optional)
-  options.ui_theme = preload("res://ui/my_theme.tres")  # or your whole Theme, whatever the branding
+  options.ui_theme = load("res://ui/my_theme.tres")  # or your whole Theme, whatever the branding
   options.ui_powered_by = true          # the "Powered by Polaris Key" badge (off by default)
   ```
 
@@ -376,7 +393,9 @@ bold_font)` makes the Polaris Key theme with your accent or fonts if you want a 
   uses your font and never loads Rubik.
 - **Copy.** Every string goes through `PKeyUiCopy` and `tr()`: translate the English defaults with
   an ordinary Translation, or rename anything with `overrides`
-  (`copy.overrides = {"activation_title": "Unlock Diceroll"}`) without forking a scene.
+  (`copy.overrides = {"activation_title": "Unlock Diceroll"}`) without forking a scene. The
+  gettext tables in `ui/locale/` are keyed on the shared catalog ids and only the headless view
+  models read them: a scene does not load them, so they do not translate the kit yet.
 - **Credits.** `addons/polaris_key/brand/` holds the "Powered by Polaris Key" credit screens
   (1920×1080, dark and light) and compact badges for your credits or about screen. The folder is
   never imported (`.gdignore`); copy the file you need into your project. (The kit scenes show
@@ -699,11 +718,11 @@ var speed_setting := PolarisKey.config.setting("dice.animSpeed") # .value .sourc
 
 ```gdscript
 PolarisKey.identity.sign_in_pending.connect(func(p: PKeySignInPrompt):
-	$Code.text = p.user_code                      # show it large
-	$Qr.text = p.verification_uri_complete        # a PKeyQrRect
-	$Url.text = p.verification_uri)               # the short URL to type
+	print(p.user_code)                                       # show it large
+	print(p.verification_uri_complete)                       # the QR payload (a PKeyQrRect)
+	print(PKeySignInController.short_uri(p.verification_uri)))   # the short URL to type
 PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
-	if r.ok: $Who.text = "Signed in as %s" % r.identity.get("email", r.identity.get("name", "")))
+	if r.ok: print("Signed in as ", PKeySignInController.identity_line(r.identity)))
 await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
 await PolarisKey.identity.sign_in_with_browser() # the same, and opens the page in the browser
 var who = PolarisKey.identity.current()          # {name, email, activatedAt} or null
@@ -769,14 +788,14 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
 # res://polaris_key.tres: pinned_release_keys = {kid: raw Ed25519 key, base64url}; and, when the
 # stamp's outlet is not the whole story, update_outlet (a kind), update_outlet_id,
 # update_outlet_subkind, update_methods (default ["download"]), update_format.
-PolarisKey.update.update_available.connect(_on_update)   # something to show the player
+PolarisKey.update.update_available.connect(func(result): print(PKeyUpdatePromptController.model(result)["state"]))   # something to show the player
 var check := await PolarisKey.update.decide()            # or decide("beta"); a PKeyUpdateCheck
 if check.ok:
-    match check.decision["action"]:
-        "binary", "store", "platform", "code-ready", "blocked": $PKeyUpdatePrompt.show_result(check)
-        "none": pass                                     # check.decision["reason"] says why
-var notes := await PolarisKey.release.changelog()        # notes.entries: Array[PKeyChangelogEntry]
-PolarisKey.update.set_channel("beta")                    # persisted; check/decide/feed use it
+	match check.decision["action"]:
+		"binary", "store", "platform", "code-ready", "blocked": print("show the update prompt")
+		"none": pass                                     # check.decision["reason"] says why
+var notes := await PolarisKey.release.changelog()             # notes.entries: Array[PKeyChangelogEntry]
+PolarisKey.update.set_channel("beta")                         # persisted; check/decide/feed use it
 ```
 
 **The player's channel.** `set_channel(channel)` persists the player's update channel
@@ -836,6 +855,16 @@ fetches the record the target for this platform pins and verifies it hash first,
   rollout bucket's install id. `configure()` refuses (`invalid-options`) a release key that is
   also a trust pin (compared as raw bytes), an outlet outside the 17 kinds, an id outside
   `^[a-z][a-z0-9-]{0,63}$`, an unknown subkind or method.
+- **When no update is offered.** `decide()` fails before dialling with `not-configured` (no
+  `configure()`, or empty `pinned_release_keys`; the generated config carries the release keys
+  when the product has them) or `service-unavailable` (Update is off for the product). Otherwise
+  it answers `none` and `decision["reason"]` says why: `up-to-date`; `behind` (the channel head
+  is older than this build; nothing is downgraded); `skipped`; `halted` or `out-of-bucket` (the
+  rollout is paused, or has not reached this device); `stale` (the committed feed is too old);
+  `unknown-version`; `no-build` (no build for this platform and architecture); `no-method` (none
+  of the declared `update_methods` can run here); or `not-available`, which an `unknown` outlet
+  always gets: an editor run, or a build the export plugin did not stamp, with nothing detected at
+  run time. Set `update_outlet` (for example `direct`) to see an offer while you develop.
 - **The cache.** `managed.json` gains `feeds` (keyed by each feed's own `channel` claim) and
   `releaseRecords` (keyed by SHA-256), signed artifacts only, written atomically with the rest
   of the record. On load each feed is re-verified (no freshness, its claim equal to its key)
@@ -897,6 +926,7 @@ act on it by itself.
 ### Verified download (`release.fetch`, SP-25)
 
 ```gdscript
+var check := await PolarisKey.update.decide()
 var r := await PolarisKey.release.fetch(check, "user://downloads/game.tar.gz")  # a binary PKeyUpdateCheck
 # or {record = <verified record>, build = "linux-x64"}, or {sha256 = <record hash>, build = …}
 if r.ok:
@@ -936,7 +966,8 @@ host is built client-side): `kind` is `appcast`, `winsparkle`, `velopack`, `appI
 
 ```gdscript
 PolarisKey.update.update_available.connect(func(r):
-	if r is PKeyUpdateCheck: $PKeyUpdatePrompt.show_result(r))   # PKeyBoot does this itself
+	if r is PKeyUpdateCheck: ($PKeyUpdatePrompt as PKeyUpdatePrompt).show_result(r))   # PKeyBoot does this itself
+var check := await PolarisKey.update.decide()
 var applied := await PolarisKey.update.apply(check)    # what the prompt's button does
 await PolarisKey.update.restart_to_update()            # code-ready: "Restart now"
 PolarisKey.update.confirm_boot()                       # optional: the game is clearly running
@@ -1109,7 +1140,7 @@ builds, as Diceroll's updater is: nothing is downloaded, swapped, restarted or c
 decision gets the declared methods unchanged. A link the player presses (a store listing, a source
 page, a download URL) still opens while the updater is inert; only downloads, swaps, restarts, the
 counting and native hand-offs wait for an active updater. `PolarisKey.update.updater.enabled = true`
-turns it on (the tests do, with `PKeyFakeUpdaterEnv`).
+turns it on (the SDK's own tests do, on a fake environment).
 
 **Tests** (`updater` suite): every outlet kind × every action through `apply()` with a recording
 host; the bridges with and without their native side; `PKeyDownload` against the fake server; the
@@ -1432,6 +1463,7 @@ emits `transaction_updated(jws, transaction)`, `pack_progress(id, bytes, total)`
 
 ```gdscript
 var apple := PKeyApple.shared()
+var app_account_token := ""
 var d := await apple.distributor()          # detail: {signal, reason?, provisioned, …}
 var p := await apple.products(["gg.vlad.diceroll.pack.foes"])
 var b := await apple.purchase("gg.vlad.diceroll.pack.foes", app_account_token)
@@ -1480,6 +1512,9 @@ frame and emits `update_progress`, `update_result`, `pack_progress`, `install_st
 
 ```gdscript
 var android := PKeyAndroid.shared()
+var path := "user://downloads/game.apk"
+var sha256 := ""
+var version_code := 1
 var src := android.install_source()            # raw: installer, initiator, initiatorCertSha256, …
 var r := await android.update_check()          # play: availability, priority, stalenessDays, …
 r = await android.pack_fetch("foes")           # pack_progress … status 4, then:

@@ -1,0 +1,44 @@
+{
+  "id": "docs.mobile-menu",
+  "title": "Docs mobile menu",
+  "area": "docs",
+  "surface": "dialog",
+  "packages": ["DOC-02b"],
+  "uxRows": [],
+  "summary": "Open mobile Docs navigation with door tabs, current tree, theme row and moved chrome links.",
+  "compare": [
+    "The open menu exposes Developers, Operate and Help doors.",
+    "The current door tree remains readable on phone.",
+    "Theme offers System, Dark and Light."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "ResumeDocsWave.DocsMockupLensReview: one reviewer agent, consumer, developer and brand lenses in a single pass",
+    "date": "2026-10-11",
+    "lenses": {
+      "consumer": "Walked in the combined pass; no finding raised for this screen.",
+      "developer": "Walked in the combined pass; 1 finding(s) raised, applied below.",
+      "brand": "Walked in the combined pass; no finding raised for this screen."
+    },
+    "separatePasses": "not-run",
+    "verdict": "Combined three-lens pass ended PASS after its findings were applied; the PR #65 fix round (below) is checked by the contract check only, not re-reviewed by a lens.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The mobile drawer inherited the global hidden sidebar rule, so its current-door tree disappeared.",
+        "resolution": "Scoped the mobile sidebar override to the drawer so its tree remains visible.",
+        "decision": "accepted",
+        "raisedBy": ["earlier DOC-01 review (lens not recorded)"]
+      },
+      {
+        "severity": "major",
+        "issue": "The only Close menu control sat behind the visible drawer.",
+        "resolution": "Moved the close control into the drawer header.",
+        "decision": "accepted",
+        "raisedBy": ["developer"]
+      }
+    ],
+    "notRun": "Plan §8.4 and the DOC-01 brief ask for three separate pkey-ux-reviewer passes (consumer, developer, brand consistency). Those three separate passes were not run. One reviewer agent (ResumeDocsWave.DocsMockupLensReview) walked the three lenses as sections of a single pass over saved renders, then re-checked after fixes. The PR #65 fixes recorded above were verified with tools/mockups/check.mjs and shoot.mjs --check only; no lens re-review followed them."
+  }
+}

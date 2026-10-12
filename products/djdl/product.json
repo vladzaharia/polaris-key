@@ -29,9 +29,6 @@
       "enabled": true
     }
   },
-  "devices": {
-    "registration": "requires-license"
-  },
   "oidc": {
     "provider": "platform",
     "redirectUris": ["https://key.plrs.im/djdl/identity/auth/callback"],

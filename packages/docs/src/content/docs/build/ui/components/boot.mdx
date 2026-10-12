@@ -7,6 +7,7 @@ sidebar:
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
@@ -51,6 +52,8 @@ The first-paint screen while the boot stages run: the product hero, a neutral in
 
   </TabItem>
   <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
     **Drop-in.** Inside `.polarisKeyGate`: the product icon and, after the 250 ms grace, the stage's label with the system indicator; never a part-filled bar.
 
     **Styled part.** `BootView(boot:)` and `.bootStyle(_:)`.
@@ -58,6 +61,12 @@ The first-paint screen while the boot stages run: the product hero, a neutral in
     **Headless.** `KitStates.boot(_:)` maps the stage machine's stage, outcome and emit to the Boot state.
 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="Boot" />
 
   </TabItem>
 </Tabs>

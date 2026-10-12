@@ -31,6 +31,14 @@
  * manifest nobody in the room has read, and it does it on the operator's only escape hatch. The
  * response says which state the product is in so the console can tell the operator that the
  * manifest re-applies on the next sync rather than pretending it already has.
+ *
+ * ── THE REQUIREMENT RULE (ST-38) ────────────────────────────────────────────────────────────
+ *
+ * A PATCH goes through `applyRequirementRule`: turning a service on while something it requires
+ * is off is refused (`<slug>_requires_<req>`), and turning a requirement off turns its dependents
+ * off in the SAME write, so one audit row records the whole change. `?dryRun=1` answers that
+ * change before it is made, so the console's confirmation names every dependent. The registration
+ * policy is derived (`resolveRegistration`); a body that still sends `registration` is refused.
  */
 
 import type { Env } from "../../platform/env.js";
@@ -49,28 +57,20 @@ import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { writeSetting, type WriteOptions } from "../../core/settings/write.js";
 import { invalidateWidenedEdgeMintApprovals } from "../../core/edgeMintApproval.js";
 import {
+  applyRequirementRule,
   parseServices,
   resolveRegistration,
-  REGISTRATION_POLICIES,
   serviceStateOf,
   SERVICE_SLUGS,
   serializeServices,
-  validateServices,
   type ProductServices,
-  type RegistrationPolicy,
   type ServiceSlug,
 } from "../../core/services.js";
 import {
   applyServiceTransitions,
   countSignedInDevices,
 } from "../../core/servicesTransitions.js";
-
-function isRegistrationPolicy(value: unknown): value is RegistrationPolicy {
-  return (
-    typeof value === "string" &&
-    (REGISTRATION_POLICIES as readonly string[]).includes(value)
-  );
-}
+import { featureFactsOf } from "../lib/featureFacts.js";
 
 export async function handleServicesAdmin(
   req: Request,
@@ -135,11 +135,16 @@ export async function handleServicesAdmin(
       session,
       now,
     );
-    return adminJson(serviceStateOf(await getProduct(db, slug)));
+    const state = serviceStateOf(await getProduct(db, slug));
+    return adminJson({ ...state, facts: await featureFactsOf(db, slug) });
   }
   if (action !== undefined) return notFound();
 
-  if (req.method === "GET") return adminJson(serviceStateOf(row));
+  if (req.method === "GET")
+    return adminJson({
+      ...serviceStateOf(row),
+      facts: await featureFactsOf(db, slug),
+    });
   if (req.method !== "PATCH")
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
@@ -150,7 +155,7 @@ export async function handleServicesAdmin(
   // Partial patch, like the fingerprint policy: an omitted slug keeps its current value rather
   // than reverting to a default, so a console that only knows about three services cannot turn
   // off the two it has never heard of.
-  const services = { ...current.services };
+  const patch: Partial<Record<ServiceSlug, boolean>> = {};
   if (body.services !== undefined) {
     if (
       !body.services ||
@@ -159,8 +164,8 @@ export async function handleServicesAdmin(
     ) {
       fields.push("services");
     } else {
-      const patch = body.services as Record<string, unknown>;
-      for (const [key, value] of Object.entries(patch)) {
+      const requested = body.services as Record<string, unknown>;
+      for (const [key, value] of Object.entries(requested)) {
         if (!(SERVICE_SLUGS as readonly string[]).includes(key)) {
           fields.push(`services.${key}`);
           continue;
@@ -173,56 +178,49 @@ export async function handleServicesAdmin(
           fields.push(`services.${key}.enabled`);
           continue;
         }
-        services[key as ServiceSlug] = { enabled };
+        patch[key as ServiceSlug] = enabled;
       }
     }
   }
 
-  // `registration: null` CLEARS the declaration and returns the product to the derived default;
-  // omitting the key leaves whatever is stored. The two are different requests and the API has
-  // to be able to express both, or a product could never get back to "follow the services".
-  let registration = current.registration;
-  if (body.registration !== undefined) {
-    if (body.registration === null) registration = undefined;
-    else if (isRegistrationPolicy(body.registration))
-      registration = body.registration;
-    else fields.push("registration");
-  }
+  // ST-38: the registration policy is derived from the services and is no longer a choice. A
+  // body that still sends one is refused rather than silently ignored.
+  if (body.registration !== undefined) fields.push("registration");
 
   if (fields.length > 0)
     return err(422, ErrorCode.BadRequest, "invalid services", { fields });
 
-  const errors = validateServices(services, registration);
-  if (errors.length > 0)
-    return err(422, ErrorCode.BadRequest, "incoherent services", { errors });
+  const outcome = applyRequirementRule(current.services, patch);
+  if (outcome.errors.length > 0)
+    return err(422, ErrorCode.BadRequest, "incoherent services", {
+      errors: outcome.errors,
+    });
+  const services = outcome.services;
 
   // `unknown` rides through untouched: a slug a newer build wrote is not ours to drop.
   const next: ProductServices = {
     services,
-    ...(registration === undefined ? {} : { registration }),
     ...(current.unknown ? { unknown: current.unknown } : {}),
   };
-
-  // PX-W17: `?dryRun=1` answers what this PATCH would change, with no write, so the console can
-  // confirm turning Identity off with the number of devices it signs out.
-  if (new URL(req.url).searchParams.get("dryRun") === "1") {
-    const changes: Array<{ field: string; from: unknown; to: unknown }> = [];
-    for (const s of SERVICE_SLUGS) {
-      if (current.services[s].enabled !== services[s].enabled)
-        changes.push({
-          field: `services.${s}.enabled`,
-          from: current.services[s].enabled,
-          to: services[s].enabled,
-        });
-    }
-    if ((current.registration ?? null) !== (registration ?? null))
+  const changes: Array<{ field: string; from: unknown; to: unknown }> = [];
+  for (const s of SERVICE_SLUGS) {
+    if (current.services[s].enabled !== services[s].enabled)
       changes.push({
-        field: "registration",
-        from: current.registration ?? null,
-        to: registration ?? null,
+        field: `services.${s}.enabled`,
+        from: current.services[s].enabled,
+        to: services[s].enabled,
       });
+  }
+  // Only the dependents that were on: a cascade over an already-off slug changes nothing.
+  const cascaded = outcome.cascaded.filter((s) => current.services[s].enabled);
+
+  // PX-W17, ST-38: `?dryRun=1` answers what this PATCH would change, with no write: every slug
+  // it turns off (the dependents the requirement rule takes with it included, in `cascaded`) and
+  // the number of devices turning Identity off signs out, so the confirmation can name both.
+  if (new URL(req.url).searchParams.get("dryRun") === "1") {
     return adminJson({
       changes,
+      cascaded,
       signedInDevicesToClear: services.identity.enabled
         ? 0
         : await countSignedInDevices(db, slug),
@@ -252,13 +250,17 @@ export async function handleServicesAdmin(
         action: "product.services.update",
         target: { kind: "product", id: slug },
         summary:
-          `Set services for ${slug}: ${enabled.length ? enabled.join(", ") : "none"}; ` +
-          `registration ${registration ?? `derived (${resolveRegistration(services)})`}`,
+          `Set services for ${slug}: ${enabled.length ? enabled.join(", ") : "none"}` +
+          (cascaded.length
+            ? `; ${cascaded.join(", ")} turned off with what ${cascaded.length === 1 ? "it requires" : "they require"}`
+            : "") +
+          `; registration ${resolveRegistration(services)}`,
       },
     },
     opts("console"),
   );
   if (!written.ok) return settingRefused(written);
   await applyServiceTransitions(env, db, slug, services, session, now);
-  return adminJson(serviceStateOf(await getProduct(db, slug)));
+  const state = serviceStateOf(await getProduct(db, slug));
+  return adminJson({ ...state, facts: await featureFactsOf(db, slug) });
 }

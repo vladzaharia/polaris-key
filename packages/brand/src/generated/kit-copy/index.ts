@@ -693,6 +693,8 @@ export type KitCopyKey =
   | "core.codes.oidc_error.message"
   | "core.codes.unavailable.title"
   | "core.codes.unavailable.message"
+  | "core.codes.erasure_ledger_unavailable.title"
+  | "core.codes.erasure_ledger_unavailable.message"
   | "core.codes.identity_disabled.title"
   | "core.codes.identity_disabled.message"
   | "core.codes.auth_method_disabled.title"

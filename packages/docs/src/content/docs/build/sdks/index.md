@@ -22,11 +22,12 @@ per-service-sub-client shape, and fails closed the same way when a capability is
 | Kotlin  | `polaris-key-sdk` (Polaris Key's Maven feed)              | [Kotlin](/docs/build/sdks/kotlin/); the Compose UI kit: [Compose](/docs/build/ui/frameworks/compose/) |
 | CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script   | shipped inside the Node and Python pages above                                                        |
 
-Node, React and Python each have two lanes, with equal depth: the drop-in screens on the kit's
+Every SDK has two lanes, with equal depth: the drop-in screens on the kit's
 [framework page](/docs/build/ui/frameworks/), and your own UI over the library
 ([Node](/docs/build/sdks/node/your-own-ui/), [React](/docs/build/sdks/react/your-own-ui/),
-[Python](/docs/build/sdks/python/your-own-ui/)). The [quickstarts](/docs/build/quickstart/) fork
-into them.
+[Python](/docs/build/sdks/python/your-own-ui/), [Swift](/docs/build/sdks/swift/your-own-ui/),
+[Kotlin](/docs/build/sdks/kotlin/your-own-ui/), [Godot](/docs/build/sdks/godot/your-own-ui/)). The
+[quickstarts](/docs/build/quickstart/) fork into them.
 
 Every SDK that draws UI ships a UI kit. The kits share one component catalog, one theme API and
 one copy catalog, documented once in [UI kits](/docs/build/ui/), with a page per framework.
@@ -71,8 +72,7 @@ None of the SDKs will let a product talk to a service it doesn't run. `client.ca
 (or the equivalent property) resolves with **no network call**, in one fixed precedence:
 
 1. a discovery document loaded this session (`await client.discover()`) — always wins;
-2. `expectedServices` (or `expected_services`/`expectServices`) — what the build was compiled
-   expecting;
+2. `expectedServices` — what the build was compiled expecting;
 3. the suite default: **License + Config on**, Release/Update/Identity **off**.
 
 The licence **gate** is stricter than capability negotiation: it is on when the build's

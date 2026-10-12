@@ -25,15 +25,12 @@ license that is no longer usable. See
 
 ## Turning it on
 
-`products.services_json` is the single authority for whether a product runs Config, alongside the
-other four services. A manifest with no `modules` block at all — or one whose every entry is
-off — gets `license` and `config` on and the rest off, which is exactly how every product behaved
-before the column existed. Config with License off and a declared `requires-license` registration
-policy is the one combination the enablement API refuses outright
-(`config_without_activation`): it would close the product's only device-mint path, leaving Config
-enabled and permanently unreachable. See [Concepts &
-terminology](/docs/start/concepts/) for the full enablement model, shared across all seven
-services.
+`products.services_json` is the single authority for whether a product runs Config. A manifest
+with no `modules` block — or one whose every entry is off — gets `license` and `config` on and the
+rest off, which is how products behaved before the column existed. Config may run without
+License: devices then register through the effective policy derived from the remaining services.
+See [Concepts & terminology](/docs/start/concepts/) for the requirement and cascade model shared
+by every service.
 
 ## The pages in this section
 

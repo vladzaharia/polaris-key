@@ -1,18 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
+  PortalProductSettings,
   ServicesDryRun,
   ServicesResponse,
+  UpdatePortalSettingsBody,
   UpdateServicesBody,
 } from "../src/api.js";
-import { expectNoAxeViolations, renderAt, resetCore } from "./coreTestUtils.js";
+import { ApiError } from "../src/api.js";
+import { renderAt, resetCore } from "./coreTestUtils.js";
+import { ServicesPage } from "../src/console/sections/core/pages/Services.js";
 
 const services = vi.fn<(slug: string) => Promise<ServicesResponse>>();
 const updateServices =
@@ -20,20 +18,33 @@ const updateServices =
     (slug: string, body: UpdateServicesBody) => Promise<ServicesResponse>
   >();
 const revertServices = vi.fn<(slug: string) => Promise<ServicesResponse>>();
-type Feeds = { enabled: boolean; version: number };
+const servicesDryRun =
+  vi.fn<(slug: string, body: UpdateServicesBody) => Promise<ServicesDryRun>>();
 const packageFeeds =
-  vi.fn<(slug: string) => Promise<{ packageFeeds: Feeds }>>();
-const savePackageFeeds =
   vi.fn<
     (
       slug: string,
-      body: { enabled: boolean; expectedVersion: number },
-    ) => Promise<{ ok: true; packageFeeds: Feeds }>
+    ) => Promise<{ packageFeeds: { enabled: boolean; version: number } }>
   >();
-const servicesDryRun =
-  vi.fn<(slug: string, body: UpdateServicesBody) => Promise<ServicesDryRun>>();
+const savePackageFeeds = vi.fn<
+  (
+    slug: string,
+    body: { enabled: boolean; expectedVersion: number },
+  ) => Promise<{
+    ok: true;
+    packageFeeds: { enabled: boolean; version: number };
+  }>
+>();
+const portalSettings =
+  vi.fn<(slug: string) => Promise<{ settings: PortalProductSettings }>>();
+const updatePortalSettings =
+  vi.fn<
+    (
+      slug: string,
+      body: UpdatePortalSettingsBody,
+    ) => Promise<{ ok: true; settings: PortalProductSettings }>
+  >();
 
-// `ApiError` and `SERVICE_ERROR_MESSAGES` stay REAL: the page branches on `instanceof ApiError`.
 vi.mock("../src/api.js", async () => {
   const actual =
     await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
@@ -44,587 +55,489 @@ vi.mock("../src/api.js", async () => {
       updateServices: (slug: string, body: UpdateServicesBody) =>
         updateServices(slug, body),
       revertServices: (slug: string) => revertServices(slug),
+      servicesDryRun: (slug: string, body: UpdateServicesBody) =>
+        servicesDryRun(slug, body),
       packageFeeds: (slug: string) => packageFeeds(slug),
       savePackageFeeds: (
         slug: string,
         body: { enabled: boolean; expectedVersion: number },
       ) => savePackageFeeds(slug, body),
-      servicesDryRun: (slug: string, body: UpdateServicesBody) =>
-        servicesDryRun(slug, body),
+      portalSettings: (slug: string) => portalSettings(slug),
+      updatePortalSettings: (slug: string, body: UpdatePortalSettingsBody) =>
+        updatePortalSettings(slug, body),
     },
   };
 });
 
-const { ApiError, SERVICE_ERROR_MESSAGES } = await import("../src/api.js");
-const { ServicesPage, chainFlip, dependentsOf, needsOf } =
-  await import("../src/console/sections/core/pages/Services.js");
-
-/** Everything but Config, on the derived registration policy. */
-function state(over: Partial<ServicesResponse> = {}): ServicesResponse {
-  return {
-    services: {
-      license: { enabled: true },
-      config: { enabled: false },
-      release: { enabled: true },
-      distribution: { enabled: true },
-      update: { enabled: true },
-      identity: { enabled: true },
-      sync: { enabled: false },
-    },
-    registration: null,
-    effectiveRegistration: "requires-license",
-    source: "admin",
-    ...over,
-  };
-}
-
-/** `state()` with some services moved. */
-function withServices(
-  over: Partial<Record<keyof ServicesResponse["services"], boolean>>,
-  rest: Partial<ServicesResponse> = {},
-): ServicesResponse {
-  const base = state(rest);
-  const services = { ...base.services };
-  for (const [k, v] of Object.entries(over))
-    (services as Record<string, { enabled: boolean }>)[k] = { enabled: v! };
-  return { ...base, services };
-}
-
-const ALL_ON = {
-  license: true,
-  config: true,
-  release: true,
-  distribution: true,
-  update: true,
-  identity: true,
-  sync: true,
+const state = (over: Partial<ServicesResponse> = {}): ServicesResponse => ({
+  services: {
+    license: { enabled: true },
+    config: { enabled: true },
+    release: { enabled: false },
+    distribution: { enabled: false },
+    update: { enabled: false },
+    identity: { enabled: false },
+    sync: { enabled: false },
+  },
+  effectiveRegistration: "requires-license",
+  source: "manifest",
+  facts: {
+    licensing: { tiers: 2, licenses: 3 },
+    managedConfig: { catalogVersion: 4 },
+    shipBuilds: { latest: null },
+  },
+  ...over,
+});
+const portal: PortalProductSettings = {
+  portalEnabled: false,
+  oidcEnabled: false,
+  magicEnabled: false,
+  licenseKeyClaimEnabled: false,
+  releasesEnabled: false,
+  autoLinkEnabled: null,
 };
-const CHAIN_OFF = { release: false, distribution: false, update: false };
+const mount = () =>
+  renderAt("#/p/djdl/settings/features", <ServicesPage slug="djdl" />);
+const feature = (name: string) =>
+  screen.getByRole("switch", { name: new RegExp(name, "i") });
 
-const mount = () => renderAt("#/p/djdl/services", <ServicesPage slug="djdl" />);
-const sw = (name: string) =>
-  screen.getByRole("switch", { name: new RegExp(name) });
-
+afterEach(cleanup);
 beforeEach(() => {
   resetCore();
   services.mockReset().mockResolvedValue(state());
   updateServices.mockReset();
   revertServices.mockReset();
+  servicesDryRun.mockReset().mockResolvedValue({
+    changes: [],
+    cascaded: [],
+    signedInDevicesToClear: 0,
+  });
   packageFeeds
     .mockReset()
-    .mockResolvedValue({ packageFeeds: { enabled: false, version: 3 } });
-  savePackageFeeds.mockReset();
-  servicesDryRun
-    .mockReset()
-    .mockResolvedValue({ changes: [], signedInDevicesToClear: 0 });
+    .mockResolvedValue({ packageFeeds: { enabled: false, version: 1 } });
+  savePackageFeeds.mockReset().mockResolvedValue({
+    ok: true,
+    packageFeeds: { enabled: false, version: 1 },
+  });
+  portalSettings.mockReset().mockResolvedValue({ settings: portal });
+  updatePortalSettings.mockReset().mockResolvedValue({
+    ok: true,
+    settings: { ...portal, portalEnabled: true },
+  });
 });
-afterEach(cleanup);
 
-describe("Core → Services", () => {
-  it("shows a loading state, then all six services with their state, owner and the derived policy", async () => {
-    let resolve!: (v: ServicesResponse) => void;
-    services.mockReturnValue(new Promise((r) => (resolve = r)));
+describe("Services feature groups", () => {
+  it("renders the five generated feature controls and GET facts", async () => {
     mount();
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Services" }),
-    ).toBeTruthy();
-    expect(screen.getByText("Loading services…")).toBeTruthy();
-    resolve(state());
-    await screen.findByRole("switch", { name: /License/ });
-    for (const s of [
-      "License",
-      "Release",
-      "Distribution",
-      "Update",
-      "Identity",
+    for (const name of [
+      "Licensing",
+      "Managed config",
+      "Ship builds",
+      "Sign-in",
+      "Cloud Sync",
     ])
-      expect(sw(s).getAttribute("aria-checked")).toBe("true");
-    expect(sw("Config").getAttribute("aria-checked")).toBe("false");
-    expect(screen.getByText("Set in console")).toBeTruthy();
-    expect(
-      screen
-        .getByRole("radio", { name: /Derived from services/ })
-        .getAttribute("aria-checked"),
-    ).toBe("true");
-    // One h1 only (SVC-7).
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(
+        await screen.findByRole("switch", { name: new RegExp(name, "i") }),
+      ).toBeTruthy();
+    expect(screen.getByText(/2 tiers/)).toBeTruthy();
+    expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
   });
 
-  it("scopes each row to its own section accent (SVC-4)", async () => {
+  it("enables Ship builds with one audited three-service PATCH and retains GET facts", async () => {
+    const user = userEvent.setup();
+    const next = state({
+      services: {
+        ...state().services,
+        release: { enabled: true },
+        distribution: { enabled: true },
+        update: { enabled: true },
+      },
+      source: "admin",
+    });
+    updateServices.mockResolvedValue(next);
     mount();
-    await screen.findByRole("switch", { name: /License/ });
-    const row = sw("Distribution").closest("[data-service]");
-    expect(row?.getAttribute("data-service")).toBe("distribution");
-  });
-
-  it("names a declared policy in words, never the raw slug (SVC-5)", async () => {
-    services.mockResolvedValue(
-      state({
-        registration: "requires-identity",
-        effectiveRegistration: "requires-identity",
+    await user.click(
+      await screen.findByRole("switch", { name: /Ship builds/i }),
+    );
+    await waitFor(() =>
+      expect(updateServices).toHaveBeenCalledWith("djdl", {
+        services: {
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
       }),
     );
-    mount();
-    const radio = await screen.findByRole("radio", {
-      name: /Identity required/,
-    });
-    expect(radio.getAttribute("aria-checked")).toBe("true");
-    expect(screen.queryByText("requires-identity")).toBeNull();
+    expect(screen.getByText(/2 tiers/)).toBeTruthy();
   });
 
-  it("derives the chain from the generated edges: what X needs, and what needs X", () => {
-    expect(needsOf("update")).toEqual(["distribution", "release"]);
-    expect(needsOf("release")).toEqual([]);
-    expect(dependentsOf("release")).toEqual(["distribution", "update"]);
-    expect(dependentsOf("update")).toEqual([]);
-    const off = { ...ALL_ON, ...CHAIN_OFF };
-    // Turning on X turns on what X needs, and nothing more.
-    expect(chainFlip("update", true, off)).toEqual([
-      "update",
-      "distribution",
-      "release",
-    ]);
-    expect(chainFlip("release", true, off)).toEqual(["release"]);
-    expect(chainFlip("update", true, { ...off, release: true })).toEqual([
-      "update",
-      "distribution",
-    ]);
-    // Turning off X takes what needs X with it.
-    expect(chainFlip("release", false, ALL_ON)).toEqual([
-      "release",
-      "distribution",
-      "update",
-    ]);
-    expect(chainFlip("update", false, ALL_ON)).toEqual(["update"]);
-  });
-
-  it("derives the Cloud Sync edges: it needs Config and Identity, and goes with either (U-04)", () => {
-    expect(needsOf("sync")).toEqual(["config", "identity"]);
-    expect(dependentsOf("config")).toEqual(["sync"]);
-    expect(dependentsOf("identity")).toEqual(["sync"]);
-    expect(chainFlip("identity", false, ALL_ON)).toEqual(["identity", "sync"]);
-    expect(chainFlip("config", false, ALL_ON)).toEqual(["config", "sync"]);
-    // With Cloud Sync off, Identity goes alone.
-    expect(chainFlip("identity", false, { ...ALL_ON, sync: false })).toEqual([
-      "identity",
-    ]);
-  });
-
-  it("turning on Cloud Sync from all-off turns on Config and Identity with it, sending only those flags (U-04)", async () => {
-    const user = userEvent.setup();
-    const allOff = { config: false, identity: false, sync: false };
-    services.mockResolvedValue(withServices(allOff));
-    updateServices.mockImplementationOnce(async () => {
-      const on = withServices({ config: true, identity: true, sync: true });
-      services.mockResolvedValue(on);
-      return on;
-    });
-    mount();
-    await screen.findByRole("switch", { name: /Cloud Sync/ });
-    expect(screen.getByText("Needs Config and Identity.")).toBeTruthy();
-    await user.click(sw("Cloud Sync"));
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-    expect(updateServices.mock.calls[0]).toEqual([
-      "djdl",
-      {
-        services: {
-          sync: { enabled: true },
-          config: { enabled: true },
-          identity: { enabled: true },
-        },
-      },
-    ]);
-    expect(await screen.findByText("Cloud Sync turned on")).toBeTruthy();
-    expect(
-      screen.getByText("Also turned on Config and Identity."),
-    ).toBeTruthy();
-    for (const s of ["Cloud Sync", "Config", "Identity"])
-      expect(sw(s).getAttribute("aria-checked")).toBe("true");
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-  });
-
-  for (const [name, slug] of [
-    ["Identity", "identity"],
-    ["Config", "config"],
-  ] as const) {
-    it(`turning off ${name} while Cloud Sync is on lists Cloud Sync in the confirm and takes it off (U-04)`, async () => {
-      const user = userEvent.setup();
-      services.mockResolvedValue(withServices({ config: true, sync: true }));
-      updateServices.mockImplementationOnce(async () => {
-        const off = withServices({ config: true, [slug]: false, sync: false });
-        services.mockResolvedValue(off);
-        return off;
-      });
-      mount();
-      await screen.findByRole("switch", { name: new RegExp(name) });
-      await user.click(sw(name));
-      const dialog = await screen.findByRole("alertdialog");
-      expect(within(dialog).getByText(`Turn off ${name}?`)).toBeTruthy();
-      expect(
-        within(dialog).getByText("Also turns off Cloud Sync, which needs it."),
-      ).toBeTruthy();
-      await user.click(
-        within(dialog).getByRole("button", { name: "Turn off 2 services" }),
-      );
-      await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-      expect(updateServices.mock.calls[0]![1]).toEqual({
-        services: { [slug]: { enabled: false }, sync: { enabled: false } },
-      });
-      expect(
-        await screen.findByText("Cloud Sync turned off with it."),
-      ).toBeTruthy();
-      await waitFor(() =>
-        expect(sw("Cloud Sync").getAttribute("aria-checked")).toBe("false"),
-      );
-    });
-  }
-
-  it("turning on Update also turns on Distribution and Release, saves at once, and offers undo (L0)", async () => {
-    const user = userEvent.setup();
-    services.mockResolvedValue(withServices(CHAIN_OFF));
-    updateServices.mockImplementationOnce(async () => {
-      services.mockResolvedValue(withServices({}));
-      return withServices({});
-    });
-    mount();
-    await screen.findByRole("switch", { name: /Update/ });
-    // Each row states what it needs before anything moves.
-    expect(screen.getByText("Needs Distribution and Release.")).toBeTruthy();
-    await user.click(sw("Update"));
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-    // Only the flipped flags travel; the policy is not part of a switch's write.
-    expect(updateServices.mock.calls[0]).toEqual([
-      "djdl",
-      {
-        services: {
-          update: { enabled: true },
-          distribution: { enabled: true },
-          release: { enabled: true },
-        },
-      },
-    ]);
-    expect(await screen.findByText("Update turned on")).toBeTruthy();
-    expect(
-      screen.getByText("Also turned on Distribution and Release."),
-    ).toBeTruthy();
-    for (const s of ["Update", "Distribution", "Release"])
-      expect(sw(s).getAttribute("aria-checked")).toBe("true");
-    // No confirm for turning on, and no services save bar.
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Save services" })).toBeNull();
-
-    updateServices.mockResolvedValueOnce(withServices(CHAIN_OFF));
-    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(2));
-    expect(updateServices.mock.calls[1]![1]).toEqual({
-      services: {
-        update: { enabled: false },
-        distribution: { enabled: false },
-        release: { enabled: false },
-      },
-    });
-  });
-
-  it("turning on Release turns on nothing else", async () => {
-    const user = userEvent.setup();
-    services.mockResolvedValue(withServices(CHAIN_OFF));
-    updateServices.mockResolvedValue(
-      withServices({ distribution: false, update: false }),
-    );
-    mount();
-    await screen.findByRole("switch", { name: /Release/ });
-    await user.click(sw("Release"));
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-    expect(updateServices.mock.calls[0]![1]).toEqual({
-      services: { release: { enabled: true } },
-    });
-    expect(await screen.findByText("Release turned on")).toBeTruthy();
-    expect(screen.queryByText(/Also turned on/)).toBeNull();
-    expect(sw("Distribution").getAttribute("aria-checked")).toBe("false");
-  });
-
-  it("sends only the flags it flips, leaving an unrecognised slug untouched", async () => {
-    // A Worker one release ahead of this console runs a seventh service the page has never heard
-    // of. The PATCH merges, and a switch sends only what it flips: an older console cannot switch
-    // off a service it cannot show, nor freeze an undeclared policy.
+  it("uses the server dry run to confirm cascades before disabling", async () => {
     const user = userEvent.setup();
     services.mockResolvedValue(
       state({
         services: {
           ...state().services,
-          analytics: { enabled: true },
-        } as ServicesResponse["services"],
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
       }),
     );
-    updateServices.mockResolvedValue(withServices({ config: true }));
+    // Ship builds off asks for Release and Distribution only; the Worker cascades Update.
+    servicesDryRun.mockResolvedValue({
+      changes: [],
+      cascaded: ["update"],
+      signedInDevicesToClear: 0,
+    });
     mount();
-    await screen.findByRole("switch", { name: /Config/ });
-    expect(screen.queryByRole("switch", { name: /analytics/i })).toBeNull();
-    await user.click(sw("Config"));
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-    const [slug, body] = updateServices.mock.calls[0]!;
-    expect(slug).toBe("djdl");
-    expect(body).toEqual({ services: { config: { enabled: true } } });
-    expect("registration" in body).toBe(false);
-  });
-
-  it("asks before turning a service off (L1), listing what goes with it; a cancel saves nothing (SVC-2)", async () => {
-    const user = userEvent.setup();
-    updateServices.mockResolvedValue(withServices(CHAIN_OFF));
-    mount();
-    await screen.findByRole("switch", { name: /Release/ });
-    await user.click(sw("Release"));
-    let dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText("Turn off Release?")).toBeTruthy();
-    expect(
-      within(dialog).getByText(
-        "Also turns off Distribution and Update, which need it.",
-      ),
-    ).toBeTruthy();
-    expect(
-      within(dialog).getByText(/The update feed answers not-configured/),
-    ).toBeTruthy();
-    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    expect(updateServices).not.toHaveBeenCalled();
-    expect(sw("Release").getAttribute("aria-checked")).toBe("true");
-
-    await user.click(sw("Release"));
-    dialog = await screen.findByRole("alertdialog");
     await user.click(
-      within(dialog).getByRole("button", { name: "Turn off 3 services" }),
+      await screen.findByRole("switch", { name: /Ship builds/i }),
     );
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-    expect(updateServices.mock.calls[0]![1]).toEqual({
+    const dialog = await screen.findByRole("alertdialog");
+    expect(servicesDryRun).toHaveBeenCalledWith("djdl", {
       services: {
         release: { enabled: false },
         distribution: { enabled: false },
-        update: { enabled: false },
       },
     });
-    expect(await screen.findByText("Release turned off")).toBeTruthy();
     expect(
-      screen.getByText("Distribution and Update turned off with it."),
+      within(dialog).getByText(
+        "Also turns off Update because it requires this service.",
+      ),
     ).toBeTruthy();
+    expect(updateServices).not.toHaveBeenCalled();
   });
 
-  it("turning off a service nothing needs confirms that one alone", async () => {
-    const user = userEvent.setup();
-    updateServices.mockResolvedValue(withServices({ identity: false }));
-    mount();
-    await screen.findByRole("switch", { name: /Identity/ });
-    await user.click(sw("Identity"));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText("Turn off Identity?")).toBeTruthy();
-    expect(within(dialog).queryByText(/Also turns off/)).toBeNull();
-    expect(
-      within(dialog).getByText(/Sign-in through this product stops/),
-    ).toBeTruthy();
-    await user.click(
-      within(dialog).getByRole("button", { name: "Turn off Identity" }),
-    );
-    await waitFor(() =>
-      expect(updateServices.mock.calls[0]![1]).toEqual({
-        services: { identity: { enabled: false } },
-      }),
-    );
-  });
-
-  it("refuses a flip the registration policy forbids before asking or sending", async () => {
+  it("names a cascaded service by its service-table label, not its slug", async () => {
     const user = userEvent.setup();
     services.mockResolvedValue(
       state({
-        registration: "requires-identity",
-        effectiveRegistration: "requires-identity",
+        services: {
+          ...state().services,
+          identity: { enabled: true },
+          sync: { enabled: true },
+        },
+      }),
+    );
+    servicesDryRun.mockResolvedValue({
+      changes: [],
+      cascaded: ["sync"],
+      signedInDevicesToClear: 0,
+    });
+    mount();
+    await user.click(await screen.findByRole("switch", { name: /Sign-in/i }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/Also turns off Cloud Sync because/),
+    ).toBeTruthy();
+  });
+
+  it("announces a 422 refusal, describes the requested switch with it, and clears on the next try", async () => {
+    const user = userEvent.setup();
+    updateServices.mockRejectedValueOnce(
+      new ApiError(422, undefined, "bad_request", ["sync_requires_identity"]),
+    );
+    services.mockResolvedValue(
+      state({ services: { ...state().services, identity: { enabled: true } } }),
+    );
+    mount();
+    const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
+    expect(sync.getAttribute("aria-describedby")).toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBeNull();
+
+    await user.click(sync);
+    expect(await screen.findByText(/Cloud Sync needs Sign-in/)).toBeTruthy();
+    const title = document.getElementById("feature-cloud-sync-error")!;
+    const detail = document.getElementById("feature-cloud-sync-error-detail")!;
+    expect(title.textContent).toBe("The server refused this change");
+    expect(detail.textContent).toMatch(/Cloud Sync needs Sign-in/);
+    // The callout is a live region, so the refusal is announced when it appears.
+    expect(title.closest('[role="status"]')).toBe(
+      detail.closest('[role="status"]'),
+    );
+    expect(title.closest('[role="status"]')).not.toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBe("true");
+    expect(sync.getAttribute("aria-describedby")).toBe(
+      "feature-cloud-sync-error feature-cloud-sync-error-detail",
+    );
+
+    // The next attempt clears the refusal and the switch's description.
+    updateServices.mockResolvedValueOnce(
+      state({
+        services: {
+          ...state().services,
+          identity: { enabled: true },
+          sync: { enabled: true },
+        },
+      }),
+    );
+    await user.click(sync);
+    await waitFor(() =>
+      expect(document.getElementById("feature-cloud-sync-error")).toBeNull(),
+    );
+    expect(
+      document.getElementById("feature-cloud-sync-error-detail"),
+    ).toBeNull();
+    expect(sync.getAttribute("aria-describedby")).toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("announces a generic failure, describes the requested switch with it, and retries", async () => {
+    const user = userEvent.setup();
+    updateServices.mockRejectedValueOnce(new Error("write failed"));
+    services.mockResolvedValue(
+      state({ services: { ...state().services, identity: { enabled: true } } }),
+    );
+    mount();
+    const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
+
+    await user.click(sync);
+    const title = await screen.findByText("Something went wrong");
+    expect(title.id).toBe("feature-cloud-sync-error");
+    expect(title.closest('[role="status"]')).not.toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBe("true");
+    expect(sync.getAttribute("aria-describedby")!.split(" ")).toContain(
+      title.id,
+    );
+    for (const id of sync.getAttribute("aria-describedby")!.split(" "))
+      expect(document.getElementById(id)).not.toBeNull();
+
+    updateServices.mockResolvedValueOnce(
+      state({
+        services: {
+          ...state().services,
+          identity: { enabled: true },
+          sync: { enabled: true },
+        },
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(2));
+    expect(updateServices).toHaveBeenLastCalledWith("djdl", {
+      services: { sync: { enabled: true } },
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("Something went wrong")).toBeNull(),
+    );
+    expect(sync.getAttribute("aria-describedby")).toBeNull();
+    expect(sync.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("describes only the In-app updates switch when its own change fails", async () => {
+    const user = userEvent.setup();
+    updateServices.mockRejectedValueOnce(new Error("write failed"));
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+          distribution: { enabled: true },
+        },
       }),
     );
     mount();
-    await screen.findByRole("switch", { name: /Identity/ });
-    await user.click(sw("Identity"));
-    const msg = SERVICE_ERROR_MESSAGES.registration_requires_identity!;
-    // Both halves: the Identity row and the registration row.
-    await waitFor(() => expect(screen.getAllByText(msg)).toHaveLength(2));
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(updateServices).not.toHaveBeenCalled();
-    expect(sw("Identity").getAttribute("aria-checked")).toBe("true");
+    const updates = await screen.findByRole("switch", {
+      name: /In-app updates/i,
+    });
+    const shipBuilds = screen.getByRole("switch", { name: /Ship builds/i });
+    expect(updates.getAttribute("aria-describedby")).toBeNull();
+
+    await user.click(updates);
+    await screen.findByText("Something went wrong");
+    expect(updates.getAttribute("aria-invalid")).toBe("true");
+    expect(updates.getAttribute("aria-describedby")).toBe(
+      "feature-ship-builds-error feature-ship-builds-error-detail",
+    );
+    expect(shipBuilds.getAttribute("aria-invalid")).toBeNull();
+    expect(shipBuilds.getAttribute("aria-describedby")).toBeNull();
   });
 
-  it("turning Identity off names how many signed-in devices it signs out (PX-W17)", async () => {
+  it("announces a failed dry run beside Ship builds, keeps ids unique, and retries it", async () => {
     const user = userEvent.setup();
-    updateServices.mockResolvedValue(state());
-    servicesDryRun.mockResolvedValue({
-      changes: [{ field: "services.identity.enabled", from: true, to: false }],
-      signedInDevicesToClear: 3,
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
+      }),
+    );
+    servicesDryRun.mockRejectedValueOnce(new Error("dry run failed"));
+    const { container } = mount();
+    const shipBuilds = await screen.findByRole("switch", {
+      name: /Ship builds/i,
     });
-    mount();
-    await screen.findByRole("switch", { name: /Identity/ });
-    await user.click(sw("Identity"));
+    await user.click(shipBuilds);
+    const title = await screen.findByText("Something went wrong");
+    expect(title.id).toBe("feature-ship-builds-error");
+    expect(title.closest('[role="status"]')).not.toBeNull();
+    expect(shipBuilds.getAttribute("aria-invalid")).toBe("true");
+    expect(shipBuilds.getAttribute("aria-describedby")).toBe(
+      "feature-ship-builds-error feature-ship-builds-error-detail",
+    );
+    const ids = [...container.querySelectorAll("[id]")].map((el) => el.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    servicesDryRun.mockResolvedValueOnce({
+      changes: [],
+      cascaded: ["update"],
+      signedInDevicesToClear: 0,
+    });
+    await user.click(screen.getByRole("button", { name: "Retry" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
-        "3 signed-in devices will be signed out; installs and licences keep working.",
+        "Also turns off Update because it requires this service.",
       ),
     ).toBeTruthy();
-    // The dry run is the same body the switch writes, and writes nothing itself.
-    expect(servicesDryRun.mock.calls[0]![0]).toBe("djdl");
-    expect(servicesDryRun.mock.calls[0]![1].services!.identity).toEqual({
-      enabled: false,
-    });
-    expect(updateServices).not.toHaveBeenCalled();
-    await user.click(
-      within(dialog).getByRole("button", { name: "Turn off Identity" }),
-    );
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
+    expect(shipBuilds.getAttribute("aria-describedby")).toBeNull();
+    expect(shipBuilds.getAttribute("aria-invalid")).toBeNull();
   });
 
-  it("a failed count still confirms, without the count line; other services never ask for one", async () => {
-    const user = userEvent.setup();
-    updateServices.mockResolvedValue(state());
-    servicesDryRun.mockRejectedValue(new ApiError(500));
-    mount();
-    await screen.findByRole("switch", { name: /Identity/ });
-    await user.click(sw("Identity"));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).queryByText(/signed-in device/)).toBeNull();
-    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    servicesDryRun.mockClear();
-    await user.click(sw("Update"));
-    await screen.findByRole("alertdialog");
-    expect(servicesDryRun).not.toHaveBeenCalled();
-  });
-
-  it("renders a server coherence rejection beside the controls it indicts, and clears it when the policy moves", async () => {
-    const user = userEvent.setup();
-    updateServices.mockRejectedValue(
-      new ApiError(422, undefined, "bad_request", [
-        "registration_requires_identity",
-      ]),
-    );
-    mount();
-    await screen.findByRole("switch", { name: /Config/ });
-    await user.click(sw("Config"));
-    const msg = SERVICE_ERROR_MESSAGES.registration_requires_identity!;
-    await waitFor(() => expect(screen.getAllByText(msg)).toHaveLength(2));
-    // The refused flip did not stick.
-    expect(sw("Config").getAttribute("aria-checked")).toBe("false");
-    await user.click(screen.getByRole("radio", { name: /Open/ }));
-    expect(screen.queryAllByText(msg)).toHaveLength(0);
-  });
-
-  it("saves the registration policy through its own section save, sending only the policy", async () => {
-    const user = userEvent.setup();
-    updateServices.mockResolvedValue(
-      state({ registration: "open", effectiveRegistration: "open" }),
-    );
-    mount();
-    await screen.findByRole("radio", { name: /Open/ });
-    await user.click(screen.getByRole("radio", { name: /Open/ }));
-    expect(screen.getByText(/After saving/)).toBeTruthy();
-    await user.click(
-      screen.getByRole("button", { name: "Save registration policy" }),
-    );
-    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
-    expect(updateServices.mock.calls[0]).toEqual([
-      "djdl",
-      { registration: "open" },
-    ]);
-    expect(await screen.findByText("Registration policy saved")).toBeTruthy();
-  });
-
-  it("package feeds save on their own: on at once with undo, off behind a confirm", async () => {
-    const user = userEvent.setup();
-    // The server moves with each write, so the invalidation's refetch agrees with it.
-    savePackageFeeds.mockImplementation(async (_slug, body) => {
-      const next = {
-        enabled: body.enabled,
-        version: body.expectedVersion + 1,
-      };
-      packageFeeds.mockResolvedValue({ packageFeeds: next });
-      return { ok: true, packageFeeds: next };
-    });
-    mount();
-    const feeds = await screen.findByRole("switch", { name: /Package feeds/ });
-    await waitFor(() => expect(feeds.getAttribute("aria-readonly")).toBeNull());
-    await user.click(feeds);
-    await waitFor(() =>
-      expect(savePackageFeeds).toHaveBeenCalledWith("djdl", {
-        enabled: true,
-        expectedVersion: 3,
-      }),
-    );
-    expect(await screen.findByText("Package feeds turned on")).toBeTruthy();
-    expect(
-      screen.queryByRole("button", { name: "Save package feeds" }),
-    ).toBeNull();
-    // Undo carries the version the save returned, not the one the page first read.
-    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    await waitFor(() =>
-      expect(savePackageFeeds).toHaveBeenLastCalledWith("djdl", {
-        enabled: false,
-        expectedVersion: 4,
-      }),
-    );
-    await waitFor(() =>
-      expect(feeds.getAttribute("aria-checked")).toBe("false"),
-    );
-    await waitFor(() => expect(feeds.getAttribute("aria-readonly")).toBeNull());
-    await user.click(feeds);
-    await waitFor(() =>
-      expect(feeds.getAttribute("aria-checked")).toBe("true"),
-    );
-    await waitFor(() => expect(feeds.getAttribute("aria-readonly")).toBeNull());
-    const calls = savePackageFeeds.mock.calls.length;
-    await user.click(feeds);
-    const dialog = await screen.findByRole("alertdialog");
-    expect(savePackageFeeds.mock.calls.length).toBe(calls);
-    await user.click(
-      within(dialog).getByRole("button", { name: "Turn off package feeds" }),
-    );
-    await waitFor(() =>
-      expect(savePackageFeeds).toHaveBeenLastCalledWith("djdl", {
-        enabled: false,
-        expectedVersion: 6,
-      }),
-    );
-  });
-
-  it("states what reverting to the manifest does before doing it", async () => {
-    const user = userEvent.setup();
-    revertServices.mockResolvedValue(state({ source: "manifest" }));
-    mount();
-    await user.click(
-      await screen.findByRole("button", { name: "Revert to manifest…" }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText(/Nothing changes now/)).toBeTruthy();
-    await user.click(
-      within(dialog).getByRole("button", { name: "Revert to manifest" }),
-    );
-    await waitFor(() => expect(revertServices).toHaveBeenCalledWith("djdl"));
-  });
-
-  it("offers no revert for a set the manifest already owns", async () => {
-    services.mockResolvedValue(state({ source: "manifest" }));
-    mount();
-    expect(await screen.findByText("From manifest")).toBeTruthy();
-    // Nothing to revert: the action is absent, not a dead button.
-    expect(
-      screen.queryByRole("button", { name: /Revert to manifest/ }),
-    ).toBeNull();
-  });
-
-  it("shows an error state with a working retry", async () => {
-    const user = userEvent.setup();
-    services.mockRejectedValueOnce(new ApiError(500));
-    mount();
-    await user.click(await screen.findByRole("button", { name: "Retry" }));
-    expect(await screen.findByRole("switch", { name: /License/ })).toBeTruthy();
-  });
-
-  it("passes axe", async () => {
+  it("keeps every id on the page unique so each label binds to its own switch", async () => {
     const { container } = mount();
-    await screen.findByRole("switch", { name: /License/ });
-    await expectNoAxeViolations(container);
+    await screen.findByRole("switch", { name: /Licensing/i });
+    const ids = [...container.querySelectorAll("[id]")].map((el) => el.id);
+    expect(ids.length).toBeGreaterThan(5);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("blocks Cloud Sync while Sign-in is off and says what it needs", async () => {
+    mount();
+    const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
+    expect((sync as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/Needs .*Identity|Needs Sign-in/i)).toBeTruthy();
+    expect(updateServices).not.toHaveBeenCalled();
+  });
+
+  it("shows the Edge mint recipe approval path for minted tokens", async () => {
+    mount();
+    const copy = await screen.findByText(/Recipes are declared in/i);
+    expect(copy.textContent).toMatch(/\.pkey\/release/);
+    expect(copy.textContent).toMatch(
+      /signing secret is marked Edge mint and an operator approves/i,
+    );
+    const review = screen.getByRole("link", { name: "Review recipe" });
+    expect(review.getAttribute("href")).toBe("#/p/djdl/config/edge-mint");
+    expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
+  });
+
+  it("loads Customer portal settings and retries the failed requested state", async () => {
+    const user = userEvent.setup();
+    updatePortalSettings.mockRejectedValueOnce(
+      new Error("Customer portal write failed"),
+    );
+    mount();
+    const customerPortal = await screen.findByRole("switch", {
+      name: /Customer portal/i,
+    });
+    await waitFor(() => expect(portalSettings).toHaveBeenCalledWith("djdl"));
+    expect(customerPortal.getAttribute("aria-describedby")).toBeNull();
+
+    await user.click(customerPortal);
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
+    // The failure is announced, and the switch that reset is described by it.
+    const alert = screen.getByRole("alert");
+    expect(alert.id).toBe("feature-customer-portal-error");
+    expect(alert.textContent).toBe("Something went wrong");
+    expect(customerPortal.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(updatePortalSettings).toHaveBeenLastCalledWith("djdl", {
+      portalEnabled: true,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() =>
+      expect(updatePortalSettings).toHaveBeenLastCalledWith("djdl", {
+        portalEnabled: true,
+      }),
+    );
+    expect(updatePortalSettings).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(customerPortal.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("names a package feed version conflict and reloads it", async () => {
+    const user = userEvent.setup();
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
+      }),
+    );
+    savePackageFeeds.mockRejectedValueOnce(
+      new ApiError(409, undefined, "version_conflict"),
+    );
+    mount();
+    const packages = await screen.findByRole("switch", { name: /Packages/i });
+    expect(packages.getAttribute("aria-describedby")).toBeNull();
+    await user.click(packages);
+    expect(await screen.findByText("This changed on the server")).toBeTruthy();
+    // The failure is announced, and the switch that reset is described by it.
+    const alert = screen.getByRole("alert");
+    expect(alert.id).toBe("feature-packages-error");
+    expect(alert.textContent).toBe("This changed on the server");
+    expect(packages.getAttribute("aria-describedby")).toBe(alert.id);
+    const callsBeforeReload = packageFeeds.mock.calls.length;
+
+    await user.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() =>
+      expect(packageFeeds.mock.calls.length).toBeGreaterThan(callsBeforeReload),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Reload" })).toBeNull(),
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(packages.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("links a disabled Cloud Sync switch to its requirement", async () => {
+    mount();
+    const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
+    const requirementId = sync.getAttribute("aria-describedby");
+    expect((sync as HTMLButtonElement).disabled).toBe(true);
+    expect(requirementId).toBe("feature-cloud-sync-requirements");
+    expect(document.getElementById(requirementId!)?.textContent).toMatch(
+      /Needs Identity/,
+    );
+  });
+
+  it("links a disabled In-app updates switch to its requirement", async () => {
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+        },
+      }),
+    );
+    mount();
+    const updates = await screen.findByRole("switch", {
+      name: /In-app updates/i,
+    });
+    const requirementId = updates.getAttribute("aria-describedby");
+    expect((updates as HTMLButtonElement).disabled).toBe(true);
+    expect(requirementId).toBe(
+      "feature-ship-builds-in-app-updates-requirements",
+    );
+    expect(document.getElementById(requirementId!)?.textContent).toMatch(
+      /Needs Distribution/,
+    );
+  });
+
+  it("links a blocked Packages switch to why it is blocked", async () => {
+    mount();
+    const packages = await screen.findByRole("switch", { name: /Packages/i });
+    const requirementId = packages.getAttribute("aria-describedby");
+    expect((packages as HTMLButtonElement).disabled).toBe(true);
+    expect(requirementId).toBe("feature-packages-requirements");
+    expect(document.getElementById(requirementId!)?.textContent).toBe(
+      "Turn on Ship builds to manage packages.",
+    );
   });
 });

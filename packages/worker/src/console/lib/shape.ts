@@ -36,6 +36,7 @@ import {
   type ProductPresentationView,
 } from "./presentation.js";
 import { parseJsonStringList } from "../../platform/json.js";
+import { parseWebOrigins } from "../../core/cors.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -147,7 +148,6 @@ export async function productView(
     modules: setup.modules,
     portalSettings: portalProductSettingsView(portalSettings),
     services: services.services,
-    registration: services.registration,
     effectiveRegistration: services.effectiveRegistration,
     servicesSource: services.source,
     setup,
@@ -169,6 +169,8 @@ export async function productView(
     defaultMaxOfflineDays: p.default_max_offline_days,
     defaultDeviceLimit: p.default_device_limit,
     adminGroup: p.admin_group,
+    // ST-08: the browser origins the product answers CORS for (`core.web.origins`, claimable).
+    webOrigins: parseWebOrigins(p.web_origins_json),
     // ST-01b: the column-backed settings the console has claimed from the manifest (the resync
     // leaves these alone until a Revert). Empty for a product with no manifest to claim from.
     // ST-20: each break-glass claim carries its reason and expiry, and `manifestAuthoritative`

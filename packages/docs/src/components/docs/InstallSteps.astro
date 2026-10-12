@@ -7,24 +7,12 @@
  */
 import { Code } from "@astrojs/starlight/components";
 import { feedsSetup } from "../../../../cli/src/feedSetup";
-import { SDK_LABELS, type SdkId } from "../../lib/docs";
+import { FEEDS, INSTALL_LABELS, type InstallTarget } from "../../lib/feeds";
 
 export interface Props {
-  sdk: SdkId;
+  /** An SDK, or "cli" for the `pkey` command-line tool (npm feed). */
+  sdk: InstallTarget;
 }
-
-/** The feed ecosystem, the scope or group the feed routes, and the package to install. */
-const FEEDS: Record<
-  SdkId,
-  { ecosystem: string; namespace: string[]; package: string }
-> = {
-  node: { ecosystem: "npm", namespace: ["scope=@polaris-key"], package: "@polaris-key/node" },
-  react: { ecosystem: "npm", namespace: ["scope=@polaris-key"], package: "@polaris-key/react" },
-  python: { ecosystem: "pypi", namespace: [], package: "polaris-key" },
-  swift: { ecosystem: "swift", namespace: ["scope=polaris-key"], package: "PolarisKey" },
-  kotlin: { ecosystem: "maven", namespace: ["groupPrefixes=im.plrs.key"], package: "polaris-key-core" },
-  godot: { ecosystem: "godot", namespace: [], package: "polaris_key" },
-};
 
 const { sdk } = Astro.props;
 const feed = FEEDS[sdk];
@@ -34,6 +22,7 @@ const { snippets } = JSON.parse(
     owner: "polaris-key",
     namespace: feed.namespace,
     package: feed.package,
+    ...(feed.version ? { version: feed.version } : {}),
     json: true,
   }),
 ) as {
@@ -50,7 +39,7 @@ const { snippets } = JSON.parse(
 ---
 
 <div class="pk-install-steps" data-sdk={sdk}>
-  <p>Route the package scope to the Polaris Key feed, then install {SDK_LABELS[sdk]}.</p>
+  <p>Route the package scope to the Polaris Key feed, then install {INSTALL_LABELS[sdk]}.</p>
   {
     snippets.map((s) => (
       <section data-snippet={s.id}>

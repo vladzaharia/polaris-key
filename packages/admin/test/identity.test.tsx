@@ -519,7 +519,7 @@ describe("Identity → Portal", () => {
     expect(screen.getByText(/Release is off for this product/)).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Open Services" }).getAttribute("href"),
-    ).toBe("#/p/djdl/services");
+    ).toBe("#/p/djdl/settings/features");
   });
 
   it("shows branding as a read-out: none, or the stored value (IDN-4)", async () => {
@@ -680,7 +680,7 @@ describe("Identity → Sign-in", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Open Services" }).getAttribute("href"),
-    ).toBe("#/p/djdl/services");
+    ).toBe("#/p/djdl/settings/features");
   });
 
   it("shows a loading state, then an error state with a working retry", async () => {

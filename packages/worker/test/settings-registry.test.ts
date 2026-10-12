@@ -843,7 +843,6 @@ describe("rule 7: every entry's rbacArea", () => {
       "release.sparkleEd25519Pub": "keys",
       "release.publishing.trustedPublisher": "keys",
       "release.github": "keys",
-      "core.registration": "settings",
       "core.adminGroup": "settings",
       "identity.provisioning": "settings",
       "identity.keyEntry.claimByKey": "settings",

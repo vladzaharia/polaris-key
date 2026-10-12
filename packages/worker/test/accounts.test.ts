@@ -11,6 +11,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import {
   makeEnv,
   mkReq,
@@ -58,6 +59,13 @@ import {
   deleteAccount,
   removeProductData,
 } from "../src/services/identity/accounts/deletion.js";
+import {
+  ACCOUNT_DELETION_GRACE_SECONDS,
+  accountDeletionSchedule,
+  cancelAccountDeletion,
+  claimDueAccountDeletion,
+  scheduleAccountDeletion,
+} from "../src/services/identity/accounts/lifecycle.js";
 import { resolveAccount } from "../src/services/identity/accounts/repo.js";
 
 const ISSUER = "https://id.example";
@@ -72,6 +80,8 @@ interface World {
 async function world(): Promise<World> {
   const db = makeTestDb();
   const env = makeEnv(new KvMock(), []);
+  // I-11: an erasure is recorded on the ledger (R2) before D1 changes.
+  env.BLOBS = asR2(new R2Mock());
   const sent: Array<{ to: string; subject: string }> = [];
   env.EMAIL = {
     send: async (m: { to: string; subject: string }) => {
@@ -91,7 +101,7 @@ async function signedIn(
   db: Db,
   identity: Parameters<typeof signIn>[1],
   now = NOW,
-  opts: Parameters<typeof signIn>[3] = {},
+  opts: Parameters<typeof signIn>[3] = { unfenced: true },
 ) {
   const r = await signIn(db, identity, now, opts);
   if (r.status !== "signed_in")
@@ -199,6 +209,7 @@ describe("signIn(verifiedIdentity)", () => {
       db,
       oidcIdentity("google-1", "ada@example.com"),
       NOW,
+      { unfenced: true },
     );
     expect(r).toEqual({
       status: "join_offer",
@@ -227,12 +238,18 @@ describe("signIn(verifiedIdentity)", () => {
       "UPDATE accounts SET status = 'disabled' WHERE id = ?",
       a.account.id,
     );
-    expect(await signIn(db, emailIdentity("ada@example.com"), NOW)).toEqual({
+    expect(
+      await signIn(db, emailIdentity("ada@example.com"), NOW, {
+        unfenced: true,
+      }),
+    ).toEqual({
       status: "refused",
       reason: "account_disabled",
     });
     expect(
-      await signIn(db, { issuerKey: ISSUER, subject: " ", kind: "oidc" }, NOW),
+      await signIn(db, { issuerKey: ISSUER, subject: " ", kind: "oidc" }, NOW, {
+        unfenced: true,
+      }),
     ).toEqual({ status: "refused", reason: "invalid_identity" });
   });
 
@@ -250,23 +267,30 @@ describe("signIn(verifiedIdentity)", () => {
     const productB = { slug: "game-b", tenantScopes: ["team-b"] };
 
     const a = await signedIn(db, gamecenter("team-a"), NOW, {
+      unfenced: true,
       product: productA,
     });
     // The same subject string under team B is a different identity: it finds no link.
     const b = await signedIn(db, gamecenter("team-b"), NOW, {
+      unfenced: true,
       product: productB,
     });
     expect(b.created).toBe(true);
     expect(b.account.id).not.toBe(a.account.id);
     // Team A's identity presented to team B's product is refused outright.
     expect(
-      await signIn(db, gamecenter("team-a"), NOW, { product: productB }),
+      await signIn(db, gamecenter("team-a"), NOW, {
+        unfenced: true,
+        product: productB,
+      }),
     ).toEqual({
       status: "refused",
       reason: "tenant_scope_mismatch",
     });
     // And a tenant-scoped identity is recognised only inside a product of its scope.
-    expect(await signIn(db, gamecenter("team-a"), NOW)).toEqual({
+    expect(
+      await signIn(db, gamecenter("team-a"), NOW, { unfenced: true }),
+    ).toEqual({
       status: "refused",
       reason: "tenant_scope_mismatch",
     });
@@ -277,9 +301,11 @@ describe("signIn(verifiedIdentity)", () => {
     await seedProduct(db, "acme");
     await seedProduct(db, "other");
     const viaAcme = await signedIn(db, emailIdentity("ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "acme" },
     });
     const viaOther = await signedIn(db, emailIdentity("ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "other" },
     });
     expect(viaAcme.subject).toMatch(PAIRWISE_SUBJECT_PATTERN);
@@ -568,6 +594,172 @@ describe("merge with proof of both", () => {
       "b@example.com",
     ]);
   });
+
+  describe("a scheduled deletion (I-11)", () => {
+    /** Two accounts, each holding a licence; B has asked to be deleted. */
+    async function twoAccounts() {
+      const w = await world();
+      await seedProduct(w.db, "acme");
+      await seedFloating(w.db, "acme", "lic-a");
+      await seedFloating(w.db, "acme", "lic-b");
+      const a = await signedIn(w.db, emailIdentity("a@example.com"));
+      const b = await signedIn(w.db, emailIdentity("b@example.com"));
+      for (const [who, licenseId] of [
+        [a, "lic-a"],
+        [b, "lic-b"],
+      ] as const) {
+        await attachLicense(w.ctx(), {
+          accountId: who.account.id,
+          product: "acme",
+          licenseId,
+          via: "key",
+        });
+      }
+      return { w, a, b };
+    }
+    const proofs = (survivor: string, absorbed: string) => ({
+      survivor: { accountId: survivor, authenticatedAt: NOW },
+      absorbed: { accountId: absorbed, authenticatedAt: NOW },
+    });
+    /** Everything a join would change, and the requests it must not lose. */
+    const state = async (db: Db) => ({
+      deletions: await db.all(
+        "SELECT account_id, requested_at, due_at, claimed_until FROM account_deletions ORDER BY account_id",
+      ),
+      accounts: await db.all("SELECT id, status FROM accounts ORDER BY id"),
+      links: await db.all(
+        "SELECT id, account_id FROM account_links ORDER BY id",
+      ),
+      owners: await db.all("SELECT id, account_id FROM licenses ORDER BY id"),
+      merges: await db.all("SELECT id FROM account_merges"),
+      tombstones: await db.all("SELECT id FROM account_tombstones"),
+      events: await db.all("SELECT id FROM subject_events"),
+    });
+
+    it("refuses to join while either account has a request, whichever side survives, and loses nothing", async () => {
+      const { w, a, b } = await twoAccounts();
+      const requested = await scheduleAccountDeletion(w.db, b.account.id, NOW);
+      expect(requested.created).toBe(true);
+      const before = await state(w.db);
+      expect(before.deletions).toEqual([
+        {
+          account_id: b.account.id,
+          requested_at: NOW,
+          due_at: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+          claimed_until: null,
+        },
+      ]);
+
+      // The scheduled account absorbed (its request would cascade away with its row)...
+      expect(
+        await mergeAccounts(w.ctx(), proofs(a.account.id, b.account.id)),
+      ).toEqual({ ok: false, reason: "deletion_pending" });
+      expect(await state(w.db)).toEqual(before);
+      // ...and the scheduled account surviving (the other account's data would ride its deadline).
+      expect(
+        await mergeAccounts(w.ctx(), proofs(b.account.id, a.account.id)),
+      ).toEqual({ ok: false, reason: "deletion_pending" });
+      expect(await state(w.db)).toEqual(before);
+      // Nothing was moved, and nobody was told about a join that did not happen.
+      expect(w.sent).toEqual([]);
+
+      // The request is the same row, with its first deadline, still cancellable.
+      expect(await accountDeletionSchedule(w.db, b.account.id)).toEqual({
+        requestedAt: NOW,
+        dueAt: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+      });
+    });
+
+    it("a request on both accounts, or one the sweep already claimed, still refuses", async () => {
+      const { w, a, b } = await twoAccounts();
+      await scheduleAccountDeletion(w.db, a.account.id, NOW);
+      await scheduleAccountDeletion(w.db, b.account.id, NOW);
+      const dueAt = NOW + ACCOUNT_DELETION_GRACE_SECONDS;
+      expect(await claimDueAccountDeletion(w.db, b.account.id, dueAt)).toBe(
+        true,
+      );
+      const before = await state(w.db);
+      const at = { ...w.ctx(dueAt) };
+      for (const [s, x] of [
+        [a, b],
+        [b, a],
+      ] as const) {
+        expect(
+          await mergeAccounts(at, {
+            survivor: { accountId: s.account.id, authenticatedAt: dueAt },
+            absorbed: { accountId: x.account.id, authenticatedAt: dueAt },
+          }),
+        ).toEqual({ ok: false, reason: "deletion_pending" });
+      }
+      expect(await state(w.db)).toEqual(before);
+    });
+
+    it("joins once the request is cancelled, and leaves no request behind", async () => {
+      const { w, a, b } = await twoAccounts();
+      await scheduleAccountDeletion(w.db, b.account.id, NOW);
+      expect(
+        await mergeAccounts(w.ctx(), proofs(a.account.id, b.account.id)),
+      ).toEqual({ ok: false, reason: "deletion_pending" });
+      expect(await cancelAccountDeletion(w.db, b.account.id, NOW + 60)).toBe(
+        "cancelled",
+      );
+      const joined = await mergeAccounts(w.ctx(NOW + 60), {
+        survivor: { accountId: a.account.id, authenticatedAt: NOW + 60 },
+        absorbed: { accountId: b.account.id, authenticatedAt: NOW + 60 },
+      });
+      expect(joined.ok).toBe(true);
+      expect(await w.db.all("SELECT * FROM account_deletions")).toEqual([]);
+      expect(
+        (await w.db.all<{ id: string }>("SELECT id FROM accounts")).map(
+          (r) => r.id,
+        ),
+      ).toEqual([a.account.id]);
+    });
+
+    it.each([
+      ["the absorbed account", "absorbed"],
+      ["the survivor", "survivor"],
+    ] as const)(
+      "a request scheduled for %s between the check and the batch aborts the join and survives",
+      async (_label, side) => {
+        const { w, a, b } = await twoAccounts();
+        const [survivor, absorbed] = [a.account.id, b.account.id];
+        const victim = side === "absorbed" ? absorbed : survivor;
+        // The request lands after every check passed, just before the join's batch commits (a
+        // second session of that account).
+        const racy = Object.create(w.db) as Db;
+        racy.batch = async (stmts) => {
+          await scheduleAccountDeletion(w.db, victim, NOW);
+          return w.db.batch(stmts);
+        };
+        const before = await state(w.db);
+        expect(
+          await mergeAccounts(
+            { ...w.ctx(), db: racy },
+            proofs(survivor, absorbed),
+          ),
+        ).toEqual({ ok: false, reason: "deletion_pending" });
+        // The whole batch rolled back: nothing moved, no join recorded, no tombstone...
+        expect(await state(w.db)).toEqual({
+          ...before,
+          deletions: [
+            {
+              account_id: victim,
+              requested_at: NOW,
+              due_at: NOW + ACCOUNT_DELETION_GRACE_SECONDS,
+              claimed_until: null,
+            },
+          ],
+        });
+        // ...and the request is still there, cancellable (it did not cascade away with the
+        // absorbed account's row).
+        expect(await accountDeletionSchedule(w.db, victim)).not.toBeNull();
+        expect(await cancelAccountDeletion(w.db, victim, NOW + 1)).toBe(
+          "cancelled",
+        );
+      },
+    );
+  });
 });
 
 // ── Licence claim rules ──────────────────────────────────────────────────────────────────────
@@ -812,6 +1004,7 @@ describe("the device binding and Core's clearing hook", () => {
     const product = (await loadProduct(w.env, w.db, "djdl"))!;
     const { key, licenseId } = await seedLicenseWithKey(w.db, "djdl");
     const a = await signedIn(w.db, emailIdentity("ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "djdl" },
     });
     await attachLicense(w.ctx(), {
@@ -903,6 +1096,7 @@ describe("the device binding and Core's clearing hook", () => {
     });
     const product = (await loadProduct(w.env, w.db, "idonly"))!;
     const r = await signedIn(w.db, oidcIdentity("u1", "ada@example.com"), NOW, {
+      unfenced: true,
       product: { slug: "idonly" },
     });
     const { token, device } = await registerDeviceBinding(
