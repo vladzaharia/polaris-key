@@ -463,27 +463,36 @@ jobs:
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
 
-  # The Swift SDK and the Apple platform plugin on one macos-26 job (P0-43; the old `swift` job ran
+  # The Swift SDK and the Apple platform plugin on macos-26, as four jobs (P0-43 put them on one
+  # job; it grew past its 45 minutes, measured 2026-10-12: pkey dev build 5.5 min, swift test
+  # 6 min, iOS builds 5 min, footprint 9 min, Catalyst 7 min, hosted tests 11-22 min, plugin tail
+  # 6-7 min, about 55 to 65 min in all, and the job was cancelled in its hosted-test or plugin
+  # steps. The four share no state, so each gets its own runner): `apple`, the SDK's tests and
+  # builds; `apple-hosted`, the hosted StoreKit/Keychain tests; `apple-footprint`, the report-only
+  # footprint measurement; `apple-plugin`, the Godot addon's Apple half. The old `swift` job ran
   # the same `swift test` and a subset of the iOS builds below on macos-15. Its Xcode 16.4 half is
-  # `swift-floor` above; the package's tests run only here). First the swift kit's
+  # `swift-floor` above; the package's tests run only in `apple`.
+  #
+  # `apple`: first the swift kit's
   # modernity lint (UI-KITS.md §7.3, UK-15: the swiftui source rules of
   # packages/ui-qa/rules/kit-rules.json; zero dependencies, so plain Node runs it; it fails on any
   # hit beyond the debt ledger packages/ui-qa/rules/kit-debt.json and on stale debt).
   #
   # P5-05: the Apple platform plugin with the Xcode 26 SDK. macos-26 (arm64, GA) ships Xcode
   # 26.0.1 to 26.6 (26.6 the default) and the iOS 26.2, 26.4 and 26.5 simulator runtimes. Xcode
-  # is PINNED to 26.6 and the job fails unless the compiler is Swift 6.3 or later: the
+  # is PINNED to 26.6 and each job fails unless the compiler is Swift 6.3 or later: the
   # Background Assets client is behind `#if compiler(>=6.3)`, so an older default Xcode would
-  # silently compile it out. Steps: the package's `swift test` (fakes only) and an iOS build of every
-  # library with warnings as errors; the hosted XCTest project (StoreKit Testing needs a host
-  # app with get-task-allow; it asserts the product count); the xcframework for device and
-  # simulator; the iOS export check (store preset has the Background Assets extension, App
-  # Group and BA keys, sideload has none; both build for the device, unsigned); the PKeyApple
-  # facade's headless stub tests. P5-08 adds `pkey transport apple-ba package` against the real
-  # `xcrun ba-package` and the platform transports suite (`transports`) beside the stub tests. No
-  # Apple account, certificate or App Store Connect is used.
+  # silently compile it out. `apple` runs the package's `swift test` (fakes only) and an iOS build
+  # of every library with warnings as errors; `apple-hosted` the hosted XCTest project (StoreKit
+  # Testing needs a host app with get-task-allow; it asserts the product count); `apple-plugin`
+  # the xcframework for device and simulator; the iOS export check (store preset has the
+  # Background Assets extension, App Group and BA keys, sideload has none; both build for the
+  # device, unsigned); the PKeyApple facade's headless stub tests. P5-08 adds `pkey transport
+  # apple-ba package` against the real `xcrun ba-package` and the platform transports suite
+  # (`transports`) beside the stub tests. No Apple account, certificate or App Store Connect is
+  # used.
   apple:
-    name: Swift SDK and Apple plugin (macos-26)
+    name: Swift SDK (macos-26)
     needs: changes
     if: needs.changes.outputs.swift == 'true'
     runs-on: macos-26
@@ -500,13 +509,6 @@ jobs:
         run: node packages/ui-qa/bin/kit-lint.mjs --kit=swiftui
       - name: Xcode 26.6, Swift 6.3 or later
         run: sdks/swift/tools/select-xcode-26.sh
-      - name: Boot the iOS simulator for the hosted tests
-        # Now, so its first boot settles while the libraries build: on this 3-vCPU runner a new
-        # simulator stays busy for minutes, and StoreKit Testing stalled inside that window
-        # (PlatformHostTests/run.sh, which still waits for it to go quiet).
-        run: |
-          udid="$(sdks/swift/PlatformHostTests/run.sh --boot)"
-          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
       # SP-41, the Swift lane: the full `swift test` runs the live test, which needs a fresh `pkey dev`
       # (the `js` job says what `start` and `check` do). The no-server run is the same test with none
       # of the PKEY_DEV_* variables set, so it skips.
@@ -545,20 +547,6 @@ jobs:
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
-      - name: iOS app footprint (kit + decide() vs 0.8.33)
-        # SP-52: a Release arm64 app must be at least 25% smaller than over the v0.8.33 SDK. Report
-        # only until it holds: measured 2026-10-11 with Xcode 27, removing packs, zstd and the static
-        # Rubik still leaves this tree 13% LARGER (3.47 MB vs 3.07 MB .ipa), because the UK-07 kit
-        # (PolarisKeyUI + PolarisKeyUICore, +2.1 MB of code and resources) outweighs the 1.4 MB
-        # removed. Drop `continue-on-error` when the kit's own footprint package lands.
-        # XcodeGen is installed by the hosted-tests step below, so this one fetches the same pinned release.
-        continue-on-error: true
-        run: |
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/xcodegen-size.zip" \
-            https://github.com/yonaskolb/XcodeGen/releases/download/2.45.4/xcodegen.zip
-          echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen-size.zip" | shasum -a 256 -c
-          unzip -q "$RUNNER_TEMP/xcodegen-size.zip" -d "$RUNNER_TEMP/xcodegen-size"
-          XCODEGEN="$RUNNER_TEMP/xcodegen-size/xcodegen/bin/xcodegen" sdks/swift/tools/measure-ios-footprint.sh
       - name: Mac Catalyst build of every library
         working-directory: sdks/swift
         # SP-S16: Catalyst takes the iOS branches (identifierForVendor, no Sparkle: the Sparkle
@@ -569,6 +557,28 @@ jobs:
             xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS,variant=Mac Catalyst' \
               CODE_SIGNING_ALLOWED=NO -quiet build
           done
+
+  # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy
+  # for minutes and StoreKit Testing stalled inside that window, so the simulator boots first and
+  # PlatformHostTests/run.sh still waits for it to go quiet. It needs nothing the other Apple jobs
+  # build, only Xcode, the simulator runtime and XcodeGen.
+  apple-hosted:
+    name: Apple platform hosted tests (macos-26, iOS simulator)
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
+    runs-on: macos-26
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: sdks/swift/tools/select-xcode-26.sh
+      - name: Boot the iOS simulator
+        run: |
+          udid="$(sdks/swift/PlatformHostTests/run.sh --boot)"
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
       - name: hosted StoreKit / Keychain tests (iOS simulator)
         # XcodeGen 2.45.4, the release asset checked against its SHA-256.
         run: |
@@ -577,6 +587,59 @@ jobs:
           echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
           XCODEGEN="$RUNNER_TEMP/xcodegen/bin/xcodegen" sdks/swift/PlatformHostTests/run.sh
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: apple-hosted-logs
+          path: sdks/swift/PlatformHostTests/build/logs/
+
+  # SP-52: a Release arm64 app must be at least 25% smaller than over the v0.8.33 SDK. Report
+  # only until it holds: measured 2026-10-11 with Xcode 27, removing packs, zstd and the static
+  # Rubik still leaves this tree 13% LARGER (3.47 MB vs 3.07 MB .ipa), because the UK-07 kit
+  # (PolarisKeyUI + PolarisKeyUICore, +2.1 MB of code and resources) outweighs the 1.4 MB
+  # removed. Drop `continue-on-error` when the kit's own footprint package lands. It is its own job
+  # because it takes 9 minutes of Release builds and gates nothing.
+  apple-footprint:
+    name: iOS app footprint (macos-26, report only)
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: sdks/swift/tools/select-xcode-26.sh
+      - name: iOS app footprint (kit + decide() vs 0.8.33)
+        continue-on-error: true
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/xcodegen.zip" \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.45.4/xcodegen.zip
+          echo "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          XCODEGEN="$RUNNER_TEMP/xcodegen/bin/xcodegen" sdks/swift/tools/measure-ios-footprint.sh
+
+  # The Godot addon's Apple half: the real `xcrun ba-package`, the xcframework, the export check
+  # and the headless facade suites. It reads the Swift package's sources but builds nothing the
+  # `apple` job builds.
+  apple-plugin:
+    name: Apple platform plugin (macos-26)
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install: "false"
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: sdks/swift/tools/select-xcode-26.sh
       # P5-08: `pkey transport apple-ba package` against the real `xcrun ba-package` (the other
       # tests use an exec seam). No App Store Connect key: the upload runs against a fake. Node
       # and pnpm come from the setup step at the top.
@@ -610,9 +673,8 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: apple-logs
+          name: apple-plugin-logs
           path: |
-            sdks/swift/PlatformHostTests/build/logs/
             sdks/godot/build/ios_export_check/logs/
             sdks/godot/build/logs/
 
@@ -1164,6 +1226,9 @@ jobs:
         browser-webkit,
         python,
         apple,
+        apple-hosted,
+        apple-footprint,
+        apple-plugin,
         swift-floor,
         kotlin,
         kotlin-desktop,
