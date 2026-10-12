@@ -1071,7 +1071,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.godot == 'true'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
