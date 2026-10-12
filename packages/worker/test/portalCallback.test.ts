@@ -71,6 +71,8 @@ async function callbackWith(
   /** The browser's `__Host-pkey_sso` value; `null` sends none. Default: the flow's own. */
   binding: string | null = BINDING,
   fetched: string[] = [],
+  /** The flow value to store verbatim; default: a genuine flow record bound to `BINDING`. */
+  storedFlow?: string,
 ): Promise<Response> {
   await seedProduct(db, "djdl");
   const kv = new KvMock();
@@ -81,12 +83,13 @@ async function callbackWith(
 
   await artefacts(env).put(
     await portalFlowKey(env, STATE),
-    JSON.stringify({
-      verifier: "v".repeat(43),
-      nonce: "nonce-1",
-      redirectUri: "https://key.plrs.im/portal/auth/callback",
-      bindingHash: await hashKey(BINDING, env.KEY_HASH_PEPPER),
-    }),
+    storedFlow ??
+      JSON.stringify({
+        verifier: "v".repeat(43),
+        nonce: "nonce-1",
+        redirectUri: "https://key.plrs.im/portal/auth/callback",
+        bindingHash: await hashKey(BINDING, env.KEY_HASH_PEPPER),
+      }),
   );
 
   const { publicKey, privateKey } = await generateKeyPair("ES256");
@@ -183,6 +186,20 @@ describe("the callback is bound to the browser that started it (I-17)", () => {
     expect(cookies.some((c) => c.startsWith("__Host-pkey_gate="))).toBe(true);
     expect(cookies).toContain(clearAccountRealmCookie(PORTAL_SSO_COOKIE));
   });
+});
+
+describe("a stored flow that is not a flow record is an expired flow", () => {
+  it.each(["null", "2", '"flow"', "not json", "[]"])(
+    "%s: 400 (took too long), not a TypeError, even with the browser's binding present",
+    async (stored) => {
+      const db = makeTestDb();
+      const fetched: string[] = [];
+      const res = await callbackWith(idClaims(), db, BINDING, fetched, stored);
+      expect(res.status).toBe(400);
+      expect(fetched).toEqual([]);
+      expect(await db.all("SELECT id FROM accounts")).toEqual([]);
+    },
+  );
 });
 
 describe("portal identities are keyed by issuer (I-01, S-16 G14)", () => {

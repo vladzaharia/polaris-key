@@ -62,6 +62,22 @@ export function parseJsonArray(raw: unknown): unknown[] | null {
 }
 
 /**
+ * A stored single-use flow record (a KV/artefact value) as a plain object, or `null` when it is
+ * absent, empty, malformed, or valid JSON of another shape (`null`, a number, an array).
+ *
+ * Every caller already has a well-defined answer for "this flow does not exist" (`expired`,
+ * `unknown state`, `timeout`, "took too long"), and a garbled value is indistinguishable from a
+ * missing one for every purpose the handler has. It must take that branch rather than escape as
+ * an uncaught `SyntaxError` or, for a value that parses to `null`, a `TypeError` on the first
+ * property read, either of which would 500 a sign-in path.
+ */
+export function parseFlowRecord<T extends object>(
+  raw: string | null | undefined,
+): T | null {
+  return parseJsonObject(raw) as T | null;
+}
+
+/**
  * A column that must read back as a list of strings: the string members of a JSON array, in
  * order; `[]` when the column is absent, empty, malformed or not an array.
  */

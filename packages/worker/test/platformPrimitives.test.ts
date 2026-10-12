@@ -230,17 +230,14 @@ describe("session cookies survive the move onto platform/hmacToken", () => {
     expect(await verifySession(PIN_ENV, ADMIN_PIN, 1800028800)).toBeNull();
   });
 
-  it("answers signed-out without touching a missing secret, and fails closed when it must", async () => {
+  it("answers signed-out without touching a missing secret, and still refuses when a token has to be checked", async () => {
     const noSecret = {} as Env;
     expect(await verifySession(noSecret, null, PIN_NOW)).toBeNull();
     expect(await verifySession(noSecret, "no-dot", PIN_NOW)).toBeNull();
-    await expect(verifySession(noSecret, ADMIN_PIN, PIN_NOW)).rejects.toThrow(
-      "ADMIN_SESSION_SECRET is required",
-    );
+    // A well-formed token with no secret to check it against is refused (null), not thrown.
+    expect(await verifySession(noSecret, ADMIN_PIN, PIN_NOW)).toBeNull();
     expect(await verifyPortalSession(noSecret, null, PIN_NOW)).toBeNull();
-    await expect(
-      verifyPortalSession(noSecret, PORTAL_PIN, PIN_NOW),
-    ).rejects.toThrow("PORTAL_SESSION_SECRET is required");
+    expect(await verifyPortalSession(noSecret, PORTAL_PIN, PIN_NOW)).toBeNull();
   });
 
   it("hmacToken answers undefined, never throws, for a malformed token", async () => {
@@ -251,6 +248,11 @@ describe("session cookies survive the move onto platform/hmacToken", () => {
     const good = await signHmacToken(await key(), "d|", { a: 1 });
     expect(await verifyHmacToken(good, "d|", key)).toEqual({ a: 1 });
     expect(await verifyHmacToken(good, "e|", key)).toBeUndefined();
+    // A key source that throws (an unset secret) is a refusal, not an exception.
+    const unset = async (): Promise<CryptoKey> => {
+      throw new Error("secret is required");
+    };
+    expect(await verifyHmacToken(good, "d|", unset)).toBeUndefined();
   });
 });
 

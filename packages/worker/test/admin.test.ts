@@ -792,7 +792,7 @@ describe("admin api", () => {
     expect(rows[0]?.actor_sub).toBe("u1");
   });
 
-  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing/verifying a session throws (D1)", async () => {
+  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing a session throws and verifying returns null (D1)", async () => {
     const env = adminEnv(new KvMock(), []);
     // Remove the secret — the worker must NOT fall back to a guessable signing key.
     delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
@@ -803,10 +803,8 @@ describe("admin api", () => {
         NOW,
       ),
     ).rejects.toThrow("ADMIN_SESSION_SECRET is required");
-    // Verification of any token must also throw (so no request can authenticate).
-    await expect(verifySession(env, "forged.token", NOW)).rejects.toThrow(
-      "ADMIN_SESSION_SECRET is required",
-    );
+    // Verification of any token is null (no request can authenticate), not a thrown error.
+    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
   });
 
   it("manual create with an uploaded schema yields a usable product (loadProduct + /config sign)", async () => {

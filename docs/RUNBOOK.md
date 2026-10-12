@@ -25,8 +25,11 @@ DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 Reserved platform routes:
 
 - `/manage/*` - admin SPA, admin OIDC, and admin JSON API.
+- `/docs/*` - the documentation site, gated by tier (public, console member or platform admin,
+  by directory).
 - `/api/*`, `/login`, `/callback`, `/logout`, `/magic/verify`, `/download/*` - customer
   portal.
+- `/assets/*` - the customer portal SPA's static assets.
 - `/webhooks/github` - signed GitHub App push webhooks.
 - `/<product>/*` - product-scoped licensing, config, OIDC activation, releases, and JWKS.
 
@@ -39,8 +42,16 @@ pnpm build
 pnpm typecheck
 pnpm test
 pnpm lint
+# The Worker's [assets] root (packages/worker/assets) is gitignored: it is assembled from the
+# built admin and docs sites, and `wrangler deploy` aborts without it.
+pnpm --filter @polaris-key/worker assemble
 cd packages/worker
 npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
+# Re-assert the required indexes. The assertion migration runs once per database, so this is
+# what turns a vanished index into a failed deploy. Always the NEWEST *_index_assertion.sql:
+# each one replaces the full list, so an older file would shorten what is checked.
+ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"
+npx wrangler d1 execute polaris_key_prod --env prod --remote --file "$ASSERTION"
 pnpm check:representable          # see "Representability check" below; must report clean
 npx wrangler deploy --env prod
 ```
@@ -2397,7 +2408,7 @@ Repo-link or release sync cannot access GitHub:
   `GITHUB_WEBHOOK_SECRET`.
 - Confirm the app has Contents: read and Actions: read.
 
-Every product route 404s at once (JWKS, `/config`, `/activate`, appcast), with nothing in the
+Every product route 404s at once (JWKS, `/config/document`, `/license/activate`, appcast), with nothing in the
 admin broken:
 
 - This is the KEK failure signature. `loadProduct` swallows a sealed-value error and returns
@@ -2416,5 +2427,8 @@ admin broken:
 
 Deploy fails on bindings:
 
-- Confirm `REPLACE_ME_PROD_D1_ID` and `REPLACE_ME_PROD_KV_ID` in
-  `packages/worker/wrangler.toml` have been replaced with real Cloudflare IDs.
+- Production's D1 and KV ids in `packages/worker/wrangler.toml` are real. Only staging and dev
+  carry `REPLACE_ME_*` placeholders (`REPLACE_ME_STAGING_D1_ID`, `REPLACE_ME_STAGING_KV_ID`,
+  `REPLACE_ME_DEV_D1_ID`, `REPLACE_ME_DEV_KV_ID`). A staging or dev deploy fails until those are
+  replaced with the ids `wrangler d1 create` and `wrangler kv namespace create` print for that
+  environment.

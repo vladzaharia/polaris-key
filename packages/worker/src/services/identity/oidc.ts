@@ -61,7 +61,7 @@ import {
   safeReturnTo,
 } from "../../platform/returnTo.js";
 import { randomBytes, randomToken } from "../../platform/random.js";
-import { tryParseJson } from "../../platform/json.js";
+import { parseFlowRecord, tryParseJson } from "../../platform/json.js";
 import type { Db } from "../../db/types.js";
 import {
   openProductSecret,
@@ -549,23 +549,6 @@ function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
     return false;
   }
   return Array.isArray(allowed) && allowed.includes(redirectUri);
-}
-
-/**
- * Parse a stored flow record, treating a corrupt value exactly like a missing one (R11-06).
- *
- * Every caller already has a well-defined answer for "this flow does not exist" — `expired`,
- * `unknown state`, `timeout`. A truncated or garbled KV value is indistinguishable from that
- * for every purpose the handler has, so it should take the same branch rather than escape as
- * an uncaught `SyntaxError` and 500 a sign-in path.
- */
-function parseFlowRecord<T>(raw: string): T | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as T) : null;
-  } catch {
-    return null;
-  }
 }
 
 /** Whether a verified claim genuinely enables a provisioning hook. Truthiness is NOT enough:

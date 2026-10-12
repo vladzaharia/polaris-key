@@ -1,6 +1,7 @@
 # Polaris Key — Threat Model
 
-> Status: **v1**, written 2026-08-25 as part of the full security audit.
+> Status: first written 2026-08-25 as part of the full security audit, and revised with the code
+> since (the sections below describe the system as it is now, not as it was then).
 > This is the document the codebase was missing. When code and this document disagree, that is
 > a finding — open a PR to reconcile one or the other.
 
@@ -8505,16 +8506,38 @@ core (SP-55 to SP-57, SP-62).
 
 ## 4. Adversaries
 
-| ID  | Adversary                                                                                               | Capability                                                                           | Motivation                                                                                                                                                                    | Priority                                           |
-| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| T1  | **Unauthenticated internet attacker**                                                                   | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                                                                                                                        | **Highest**                                        |
-| T2  | **Release-channel attacker**                                                                            | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                                                                                                                        | **Highest**                                        |
-| T3  | **Malicious tenant / customer**                                                                         | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                                                                                                                               | High                                               |
-| T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                   | Medium — bounded by §6                             |
-| T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02) | High                                               |
-| T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                      | High                                               |
-| T7  | **Insider / compromised admin**                                                                         | Valid admin session                                                                  | Anything the admin API permits — which today is everything, on every tenant                                                                                                   | High                                               |
-| T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                               | Low (TLS), but no SDK enforces HTTPS or pins certs |
+| ID  | Adversary                                                                                               | Capability                                                                           | Motivation                                                                                                                                                                    | Priority                           |
+| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| T1  | **Unauthenticated internet attacker**                                                                   | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                                                                                                                        | **Highest**                        |
+| T2  | **Release-channel attacker**                                                                            | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                                                                                                                        | **Highest**                        |
+| T3  | **Malicious tenant / customer**                                                                         | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                                                                                                                               | High                               |
+| T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                   | Medium — bounded by §6             |
+| T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02) | High                               |
+| T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                      | High                               |
+| T7  | **Insider / compromised admin**                                                                         | Valid admin session                                                                  | Anything the admin API permits — which today is everything, on every tenant                                                                                                   | High                               |
+| T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                               | Low — see the transport note below |
+
+**T8, stated precisely.** Two different things are easy to conflate here, and they are not the same
+control.
+
+- **Transport is enforced in the SDK cores.** The Node, Python, Swift, Kotlin and Godot cores each
+  refuse a base URL that is not `https:` and exempt only loopback hosts (`localhost`, `127.0.0.1`,
+  `::1`), so a local control plane and the integration tests still
+  work. It is checked when the client is built, not per request, so a misconfigured client fails
+  at once instead of leaking a bearer token once, and it fails with the `insecure-base-url` error
+  code: `normalizeBaseUrl` in `packages/sdk-node/src/core/context.ts`, and its ports in
+  `sdks/python/src/polaris_key/core/context.py`, `sdks/swift/Sources/PolarisKeyCore/Endpoints.swift`,
+  `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Endpoints.kt` and
+  `sdks/godot/addons/polaris_key/core/transport.gd` (`check_base_url`). The React browser adapter
+  (`packages/sdk-react/src/browser/browserAdapter.ts`) and `pkey bundle`
+  (`packages/cli/src/bundle.ts`) take their base URL as given and do not check its scheme.
+- **What is pinned is an Ed25519 key, not a TLS certificate.** The pins in the app verify the
+  signed documents (§6); no client pins a TLS certificate or public key of the connection. So an
+  on-path attacker who can break TLS (a rogue or coerced CA, a trusted middlebox) cannot forge a
+  signed licence, config, trust manifest or release record, but can read or replay what the
+  transport carries (a device bearer token, a sign-in code) and can withhold, delay or replay
+  signed answers within their validity windows. The pins bound what a bad transport can make a
+  client believe; they do not make the transport confidential.
 
 ## 5. Semi-trusted inputs — the ones that decide authorization
 
@@ -8686,9 +8709,9 @@ Forge a signed config doc for product P
 │   ├── Obtain PLATFORM_KEK ──────────────► Worker secret compromise
 │   └── Obtain an admin session ──────────► AT-2
 └── OR make the client trust a key you hold
-    ├── Write the victim's managed.json ──► local access; overrides PINNED keys
-    └── Get a rogue key into a manifest ──► requires an already-trusted signer
-        └── ...and it is then trusted FOREVER (no client-side revocation)
+    ├── Write the victim's managed.json ──► DEAD: the cache stores signed JWSs only and supplies no key bytes; pins are spread last (§6 property 2)
+    └── Get a rogue key into a manifest ──► needs an already-trusted signer: a manifest verifies against the pins only, and a pinned kid listed with different bytes rejects the whole manifest
+        └── ...and it is revocable: by omission or a `revoked` entry (unpinned), by a manifest another pin signs (pinned); an app that pinned only the compromised key needs an update (§6 property 3)
 ```
 
 ### AT-2 — Take the admin plane
@@ -8696,9 +8719,9 @@ Forge a signed config doc for product P
 ```
 Obtain admin authority
 ├── Forge the session cookie ─────────────► needs ADMIN_SESSION_SECRET
-├── Plant your own session in an operator's browser (login CSRF — no state↔browser binding)
+├── Plant your own session in an operator's browser (login CSRF) ► DEAD: the sign-in flow is bound to the browser that started it (`ADMIN_FLOW_COOKIE` hash in the flow record; the portal's `PORTAL_SSO_COOKIE` likewise), so another browser's callback is refused before the code is spent
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
-├── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
+├── XSS on the platform origin ───────────► DEAD for the sign-in error pages: they carry the strict script-free CSP (`htmlError` in `console/auth.ts`)
 ├── Reach an unguarded route ─────────────► deny-by-default route table; route × principal matrix test (ST-29)
 ├── Write a key outside your area ────────► writeSettings() checks can() on the key's rbacArea (ST-29)
 └── Read operator docs without a session ─► the docs tiers: Operate and Contribute stay gated (ST-29)
@@ -8802,7 +8825,8 @@ Poison the release channel
 │   └── CAN mint delegations, which is no worse than the key itself; a delegation the holder never sees cannot be revoked by hash (revocation ingest accepts an unstored delegation only when it is supplied alongside), so rotating the pinned release keys is the remedy
 ├── Control the unsigned v3 `/version` answer (a compromised Worker, or its `url` field)
 │   └── CAN offer any page, but the Godot UI kit's prompt opens only an `https://` URL (P1-10): a `file:`, `http:` or custom-scheme `url` gets no action, so `OS.shell_open` never reaches a local handler
-└── Anywhere upstream of install.sh (no checksum, no signature verification at all)
+└── Anywhere upstream of install.sh (a compromised origin or artifact store)
+    └── install.sh verifies the download against the SHA-256 the origin publishes beside it and refuses to install when none is published (`services/release/install.ts`). The checksum comes from the same origin as the binary, so this catches corruption and a mismatched pair, not a hostile origin; there is no signature check on this path
 ```
 
 ### AT-4 — Take the Apple developer account through the Worker (A-17a)

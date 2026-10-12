@@ -16,6 +16,7 @@ import {
 import { strictEmail } from "../../../core/strictEmail.js";
 import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
+import { parseFlowRecord } from "../../../platform/json.js";
 import { hashKey } from "../../../platform/crypto.js";
 import { isSameOriginNavigation } from "../../../platform/http.js";
 import {
@@ -350,12 +351,10 @@ export async function handlePortalCallback(
   const flowKey = await portalFlowKey(env, state);
   const peeked = await getArtefact(env, flowKey);
   if (!peeked) return signInPage.tookTooLong();
-  let flow: FlowRecord;
-  try {
-    flow = JSON.parse(peeked) as FlowRecord;
-  } catch {
-    return signInPage.tookTooLong();
-  }
+  // A stored value that does not parse to an object (`null`, a number, garbage) is the same
+  // as an expired flow; reading `flow.bindingHash` off it would be a TypeError (500).
+  const flow = parseFlowRecord<FlowRecord>(peeked);
+  if (!flow) return signInPage.tookTooLong();
   // I-17: only the browser that started the flow may finish it. Without this, anyone could hand
   // a victim the callback URL of their own sign-in: the victim's browser would get the
   // attacker's session (login CSRF) or the attacker's email gate, whose join the victim's own

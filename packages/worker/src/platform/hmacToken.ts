@@ -8,9 +8,10 @@
  *   body  = base64url(UTF-8(JSON.stringify(payload)))                 unpadded
  *   mac   = base64url(HMAC-SHA-256(key, UTF-8(domain + body)))       unpadded
  *
- * `domain` is the realm's separation tag (`pkey.admin.v1|`, `pkey.portal.v1|`; R1-02). The two
- * realms may share one raw key (the portal falls back to `ADMIN_SESSION_SECRET`), and the tag is
- * what keeps a token minted for one from verifying in the other, whatever the payload shape.
+ * `domain` is the realm's separation tag (`pkey.admin.v1|`, `pkey.portal.v1|`; R1-02). Each
+ * realm has its own secret (`ADMIN_SESSION_SECRET`, `PORTAL_SESSION_SECRET`; neither falls back
+ * to the other), and the tag additionally keeps a token minted for one from verifying in the
+ * other, whatever the payload shape.
  * Each realm keeps its own tag, key and payload checks; only the mechanism lives here (P0-15).
  * `test/platformPrimitives.test.ts` pins a token of each realm minted before the move.
  *
@@ -47,8 +48,8 @@ export async function signHmacToken(
  * body, a MAC mismatch, a body that does not decode or parse.
  *
  * `key` is called only once a token is present and well-formed, so a request without a cookie
- * never touches the secret: a deployment missing it still answers "signed out" there, and
- * throws (fails closed) only when a token actually has to be checked.
+ * never touches the secret. A realm whose secret is unset cannot have authentic tokens, so it
+ * fails closed too: `key()` throwing is `undefined`, the same answer as a bad MAC.
  */
 export async function verifyHmacToken(
   token: string | null,
@@ -60,9 +61,12 @@ export async function verifyHmacToken(
   if (dot <= 0) return undefined;
   const body = token.slice(0, dot);
   const mac = token.slice(dot + 1);
-  const k = await key();
   let expected: Uint8Array;
   try {
+    // Inside the `try`: a realm whose secret is unset makes `key()` throw, and "there is no
+    // secret" must refuse exactly like "the signature is wrong", not raise into the gate that
+    // called this.
+    const k = await key();
     expected = await hmacSha256(k, signingInput(domain, body));
   } catch {
     return undefined;

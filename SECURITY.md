@@ -67,12 +67,28 @@ window, escalating publicly is reasonable.
 - Social engineering of the maintainer
 - Vulnerabilities requiring a compromised identity provider's _signing keys_ (we do model
   malicious _claims_ from an IdP — those are in scope)
-- Reports that a licensed user can bypass client-side enforcement on their own machine. This is
-  a documented, accepted property of the design; see
+- Reports that a licensed user can make their **own** client report itself as licensed — by
+  patching the binary, hand-writing a cache file, or winding back their clock. This is a
+  documented, accepted property of the design; see
   [`docs/security/THREAT-MODEL.md`](docs/security/THREAT-MODEL.md) §6 for what the licensing
-  layer does and does not promise. A bypass that yields something the **server** would not have
-  sent — product secrets, edge-mint tokens, another tenant's data — _is_ in scope and we want
-  to hear about it.
+  layer does and does not promise.
+
+  **The carve-out is narrow, and the boundary is worth stating exactly.** It covers property 1
+  of §6 only, the part that is a client trusting its own machine. Properties 2 and 3 of §6 hold,
+  so breaking either of them is a bug we want reported, not an accepted trade-off:
+
+  - Anything that lets a **local file write change which keys verify signatures**: a cached or
+    discovered key shadowing a pinned one, a manifest accepted against anything but the pins, the
+    cache supplying key bytes, a pinned kid's bytes substituted without the whole manifest being
+    rejected.
+  - Anything that makes a **revoked signing key stay trusted**: a client that ignores
+    `status: "revoked"`, a discovered set that grows instead of being replaced, or any way a key
+    rotation stops a client from receiving revocations. §6 states the one residual that is not a
+    bug: an app that pinned only the compromised key cannot be told and needs an update (property
+    3 holds for a product that pins at least two keys).
+
+  A bypass that yields something the **server** would not have sent — product secrets,
+  edge-mint tokens, another tenant's data — is also in scope, and we want to hear about it.
 
 ## Testing guidance
 

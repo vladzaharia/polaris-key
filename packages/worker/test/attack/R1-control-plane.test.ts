@@ -352,6 +352,38 @@ describe("R1-02 cross-realm session signing", () => {
     expect(await verifyPortalSession(env, legacy, NOW)).toBeNull();
   });
 
+  it("with NO session secret at all, BOTH verifiers answer null instead of throwing", async () => {
+    const env = adminEnv(new KvMock());
+    delete env.ADMIN_SESSION_SECRET;
+    delete env.PORTAL_SESSION_SECRET;
+
+    // `sessionKey()` throws in this configuration. A gate whose verifier raises into its caller
+    // is a gate whose behaviour belongs to whoever catches, which is not failing closed: the
+    // configuration in which no session can be authentic must refuse like a bad signature.
+    // Asserted for both realms together so a fix to one cannot leave the other as the
+    // counter-example.
+    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
+    expect(await verifyPortalSession(env, "forged.token", NOW)).toBeNull();
+
+    // Not merely "a malformed token is rejected": a WELL-FORMED token signed with a key the
+    // attacker chose is refused for the same reason, there is nothing to verify it against.
+    const body = b64urlStr(
+      JSON.stringify({
+        accountId: "acct_1",
+        sub: "u1",
+        name: "Mallory",
+        email: "m@evil.test",
+        groups: [PLATFORM_GROUP],
+        csrf: "x",
+        exp: NOW + 3600,
+      }),
+    );
+    const forgedAdmin = `${body}.${await hmacB64url("attacker-chosen", `pkey.admin.v1|${body}`)}`;
+    const forgedPortal = `${body}.${await hmacB64url("attacker-chosen", `pkey.portal.v1|${body}`)}`;
+    expect(await verifySession(env, forgedAdmin, NOW)).toBeNull();
+    expect(await verifyPortalSession(env, forgedPortal, NOW)).toBeNull();
+  });
+
   it("R1-02e: REFUTED — lastIndexOf('.') splitting is not forgeable (extra dots move the signed body)", async () => {
     const env = adminEnv(new KvMock());
     const { token } = await issueSession(

@@ -13,7 +13,7 @@ Design spec: `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md
 
 Two tiers, strictly decreasing authority. The on-disk cache is **never** a key source.
 
-1. **Pinned keys** — `TrustSet = Record<kid, base64url(raw Ed25519 pubkey)>` compiled into the host app. Terminal: `mergeTrust(discovered, pinned) = { ...discovered, ...pinned }` (pins spread last; a manifest can never shadow a pin). **[C]**
+1. **Pinned keys** — `TrustSet = Record<kid, base64url(raw Ed25519 pubkey)>` compiled into the host app. Terminal: `mergeTrust(pinned, discovered) = { ...discovered, ...pinned }` (pins spread last; a manifest can never shadow a pin). The argument order is pinned first and the spread order is the reverse on purpose, in every implementation: `packages/client-core/src/trust.ts`, `sdks/python/src/polaris_key/core/trust.py` (`merge_trust`), `sdks/swift/Sources/PolarisKeyCore/Trust.swift` and `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Trust.kt`. **[C]**
 2. **Manifest keys** — learned only from a verified trust manifest (`pkey-trust+jws`). The discovered set is **replaced wholesale** on every successful verification; absence of a previously-seen kid is revocation. **[C]**
 
 Trust manifests are always verified against **pinned keys only** — never against the effective (merged) set — on both the network path and the cache-reload path, so online and offline verification are identical. A manifest that presents a pinned `kid` with different key bytes is rejected in full (substitution attempt; previous trust kept). Keys with `status: "revoked"` are dropped; `retired` and `staged` are trusted for verification. Manifest entries that are not `alg: "EdDSA"` / `kty: "OKP"` / `crv: "Ed25519"` are **skipped, not fatal** (carried v2 semantics): a future-alg key in the manifest must not brick current verifiers. **[C]**
@@ -314,7 +314,7 @@ architecture it was built for. For example:
 
 ## 6. Device principal
 
-- **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).
+- **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `plrst_` tokens (the withdrawn spelling, §8) are rejected (pre-launch, no migration).
 - **Registration policy** (per product, manifest key `devices.registration` [removed in 0.9 (ST-38): the policy is only derived; see `WIRE-CONTRACT-V4.md` §6], default derived — `requires-license` if license enabled, else `requires-identity` if identity enabled, else `open`):
   - `open` — `POST /<p>/devices/register` (keyless, rate-limited, optional fingerprint) mints a token.
   - `requires-identity` — same endpoint, but only with a valid product identity session.
