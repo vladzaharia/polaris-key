@@ -2319,7 +2319,8 @@ by scope.
   lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
   gates), the admin build and the docs link check.
 - The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the
-  Swift SDK and Apple plugin on one macOS job, the Swift floor, Kotlin, Android, Godot) run when a
+  Swift SDK and Apple plugin (four macOS jobs: `apple`, `apple-hosted`, `apple-footprint`,
+  `apple-plugin`, one lane because they read the same paths), the Swift floor, Kotlin, Android, Godot) run when a
   changed path is one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs
   (the contract, the shared packages, `tools/`, `.github/`, the lockfile). A lane's `paths` list
   what its job reads, not only its own tree: the Python lane names the Python samples under
