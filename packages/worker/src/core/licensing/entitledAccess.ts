@@ -257,6 +257,17 @@ function unorderablePin(
   );
 }
 
+/** The wire answer for an `entitled` denial: the nested v3 shape every delivery surface shares. */
+function denialResponse(decision: EntitledDenial): Response {
+  if (decision.code === "version_blocked")
+    return wireError(403, "version_blocked", {
+      allowedRange: decision.allowedRange,
+    });
+  if (decision.code === "channel_not_allowed")
+    return wireError(403, "channel_not_allowed");
+  return wireError(401, "unauthorized");
+}
+
 /**
  * Enforce a delivery access mode for a request bearing `token`. Returns `null` when it may
  * proceed, or the refusal to answer with. The one implementation Release's surfaces (through its
@@ -310,13 +321,7 @@ export async function accessRefusal(
         "wire",
       );
     }
-    if (decision.code === "version_blocked")
-      return wireError(403, "version_blocked", {
-        allowedRange: decision.allowedRange,
-      });
-    if (decision.code === "channel_not_allowed")
-      return wireError(403, "channel_not_allowed");
-    return wireError(401, "unauthorized");
+    return denialResponse(decision);
   }
 
   const valid = await usableLicensedDevice(env, db, product, token, now);
@@ -335,6 +340,72 @@ export async function accessRefusal(
     now,
     "flat",
   );
+}
+
+// ── The window, re-asserted once a selector has resolved ────────────────────────────────────
+
+/**
+ * Re-assert `entitled`'s version window against the release a MOVING selector resolved to.
+ *
+ * `accessRefusal` runs before a surface has resolved anything, so for `latest`, `stable`, `beta`,
+ * `pr-5` or a manual channel it knows the channel but no version: a moving selector names a
+ * release only inside the surface, and refusing it up front would mean guessing which one. Left
+ * there, the ceiling was a property of the URL's SHAPE: a caller refused `/release/dl/2.0.0/…`
+ * was handed the identical artifact by swapping one segment for `latest`. So every surface that
+ * resolves a moving selector calls this once the release is known, with that release's version,
+ * and answers the refusal in the shape a pinned request already gets: `403 version_blocked` with
+ * `allowedRange`.
+ *
+ * The resolved release is a concrete, stored version, so it is checked as one: pinned, on the
+ * stable channel (the channel was decided before resolution), never re-read as a selector
+ * (`fixedReleaseSelector`). `null` when `mode` is not `entitled` — the other modes have no window
+ * — or when the release is inside the caller's window.
+ *
+ * Core, not a service, owns this because Release, Update and Distribution all resolve selectors
+ * and may not import each other.
+ */
+export async function resolvedReleaseRefusal(
+  env: Env,
+  db: Db,
+  product: ProductPublic,
+  token: string | null,
+  mode: ReleaseAccess,
+  resolvedVersion: string,
+  now: number,
+): Promise<Response | null> {
+  if (mode !== "entitled") return null;
+  return accessRefusal(
+    env,
+    db,
+    product,
+    token,
+    mode,
+    fixedReleaseSelector(resolvedVersion),
+    true,
+    now,
+  );
+}
+
+/**
+ * The version window of an `entitled` caller's grant, for a surface that lists SEVERAL releases
+ * (the recorded updater feeds): the caller holds the window and tests each listed release against
+ * it with `versionInWindow`, rather than paying one `resolvedReleaseRefusal` — a full read of the
+ * device, the licence and the merged grant — per entry.
+ *
+ * `null` when `mode` is not `entitled`; the refusal when the caller holds no usable grant (the
+ * answers `accessRefusal` gives, which the gateway has normally given already).
+ */
+export async function entitledWindow(
+  env: Env,
+  db: Db,
+  product: ProductPublic,
+  token: string | null,
+  mode: ReleaseAccess,
+  now: number,
+): Promise<AllowedRange | Response | null> {
+  if (mode !== "entitled") return null;
+  const decision = await entitledAccessCheck(env, db, product, token, {}, now);
+  return decision.ok ? decision.allowedRange : denialResponse(decision);
 }
 
 // ── A delivery gate (P4-05) ─────────────────────────────────────────────────────────────────

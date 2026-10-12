@@ -280,8 +280,9 @@
       "type": "object",
       "properties": {
         "id": {
+          "description": "A URL path segment on the mint route, held to that route's own alphabet so ingest cannot write a recipe no request could reach.",
           "type": "string",
-          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+          "pattern": "^[a-z0-9-]{1,64}$"
         },
         "alg": {
           "enum": ["ES256", "RS256", "EdDSA"]
@@ -298,8 +299,10 @@
           "type": "object"
         },
         "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
           "type": "integer",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "maximum": 3600
         },
         "audience": {
           "anyOf": [
@@ -307,6 +310,22 @@
               "type": "string",
               "maxLength": 200,
               "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requires": {
+          "description": "Who may mint this recipe: none (any device of this product) · registered (a device of this product, stated explicitly) · licensed (a device whose licence is usable; the product must run License). Omitted means licensed: a recipe signs with the product's third-party key, so it fails closed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this recipe may be minted.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]{1,64}$"
             },
             {
               "type": "null"

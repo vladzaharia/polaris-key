@@ -83,9 +83,11 @@ the offending value, or the allowed set.
 | `invalid_distribution` | error | distribution | `/` | the distribution document must be an object with outlets, transports and listing. |
 | `invalid_edge_mint_alg` | error | release | `/edgeMint/${i}/alg` | Edge mint alg must be ES256, RS256, or EdDSA. |
 | `invalid_edge_mint_audience` | error | release | `/edgeMint/${i}/audience` | Edge mint audience |
+| `invalid_edge_mint_entitlement` | error | release | `/edgeMint/${i}/requiredEntitlement` | Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]\{1,64\}$. |
 | `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint recipes require id. |
-| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
+| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[a-z0-9-]\{1,64\}$ (the mint route's own alphabet). |
 | `invalid_edge_mint_kid` | error | release | `/edgeMint/${i}/kid` | Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
+| `invalid_edge_mint_requires` | error | release | `/edgeMint/${i}/requires` | Edge mint requires must be none, registered, or licensed. |
 | `invalid_entitlement_key` | error | product | `/provisioning/${i}/entitlementKey` | Provisioned entitlement keys must be catalog identifiers. |
 | `invalid_fingerprint_enabled` | error | product | `/fingerprint/enabled` | fingerprint.enabled must be a boolean. |
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
@@ -201,7 +203,7 @@ the offending value, or the allowed set.
 | `invalid_trusted_publisher_environment` | error | release | `/release/publishing/trustedPublisher/environment` | publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -). |
 | `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher/workflow` | publishing.trustedPublisher.workflow must be a workflow path like .github/workflows/release.yml. |
 | `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher` | publishing.trustedPublisher must be an object with a workflow (.github/workflows/\<file>.yml). |
-| `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer. |
+| `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer of at most $\{MAX_EDGE_MINT_TTL_SECONDS\} seconds. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/buildNumber` | versioning.buildNumber must be one of $\{BUILD_NUMBER_SOURCES.join(", ")\}. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/scheme` | versioning.scheme must be one of $\{VERSION_SCHEMES.join(", ")\}. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning` | deliverables.app.versioning must be an object. |

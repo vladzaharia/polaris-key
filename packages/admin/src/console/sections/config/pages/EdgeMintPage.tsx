@@ -46,6 +46,8 @@ const FIELD_LABELS: Record<keyof EdgeMintRecipeFields, string> = {
   claimsTemplateJson: "Claims template",
   ttlSeconds: "Token lifetime (seconds)",
   audience: "Audience",
+  requires: "Who may mint",
+  requiredEntitlement: "Required entitlement",
 };
 
 const FIELD_ORDER: (keyof EdgeMintRecipeFields)[] = [
@@ -54,6 +56,8 @@ const FIELD_ORDER: (keyof EdgeMintRecipeFields)[] = [
   "kid",
   "audience",
   "ttlSeconds",
+  "requires",
+  "requiredEntitlement",
   "claimsTemplateJson",
 ];
 
@@ -78,6 +82,8 @@ function fieldsOf(recipe: EdgeMintRecipeFields): EdgeMintRecipeFields {
     claimsTemplateJson: recipe.claimsTemplateJson,
     ttlSeconds: recipe.ttlSeconds,
     audience: recipe.audience,
+    requires: recipe.requires,
+    requiredEntitlement: recipe.requiredEntitlement,
   };
 }
 

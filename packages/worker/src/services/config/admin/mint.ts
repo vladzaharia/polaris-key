@@ -77,6 +77,7 @@
  * review it. Recipe-field changes are not swept: a changed recipe signs nothing meanwhile.
  */
 
+import { MAX_EDGE_MINT_TTL_SECONDS } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import {
   adminJson,
@@ -112,6 +113,8 @@ function wireFields(row: MintRecipeFields) {
     claimsTemplateJson: row.claims_template_json,
     ttlSeconds: row.ttl_seconds,
     audience: row.audience,
+    requires: row.requires,
+    requiredEntitlement: row.required_entitlement,
   };
 }
 
@@ -250,6 +253,7 @@ async function handleApprove(
   const kid = echoedText(body.kid);
   const claims = echoedText(body.claimsTemplateJson);
   const audience = echoedText(body.audience);
+  const requiredEntitlement = echoedText(body.requiredEntitlement);
   const malformed = [
     ...(typeof body.alg === "string" ? [] : ["alg"]),
     ...(typeof body.signingKeySecret === "string" ? [] : ["signingKeySecret"]),
@@ -259,6 +263,8 @@ async function handleApprove(
       ? []
       : ["ttlSeconds"]),
     ...(audience === "invalid" ? ["audience"] : []),
+    ...(typeof body.requires === "string" ? [] : ["requires"]),
+    ...(requiredEntitlement === "invalid" ? ["requiredEntitlement"] : []),
     ...(typeof body.licenseEnabled === "boolean" ? [] : ["licenseEnabled"]),
   ];
   if (malformed.length > 0) {
@@ -276,6 +282,8 @@ async function handleApprove(
     claims_template_json: claims as string | null,
     ttl_seconds: body.ttlSeconds as number,
     audience: audience as string | null,
+    requires: body.requires as string,
+    required_entitlement: requiredEntitlement as string | null,
   };
   // Sign-in trust is echoed the same way: the console shows which identity provider and group
   // map can hand out device tokens, and a push that changes them between that view and this
@@ -299,6 +307,22 @@ async function handleApprove(
     );
   }
 
+  // The ceiling holds for an approval as it does at ingest (`MAX_EDGE_MINT_TTL_SECONDS`): a
+  // stored recipe from before the ceiling cannot be approved at a lifetime the platform no
+  // longer lets a manifest declare. Checked after the echo matched, so the value refused is the
+  // stored recipe's own.
+  if (
+    echoed.ttl_seconds < 1 ||
+    echoed.ttl_seconds > MAX_EDGE_MINT_TTL_SECONDS
+  ) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      `ttlSeconds must be between 1 and ${MAX_EDGE_MINT_TTL_SECONDS}: lower it in the manifest, then approve the recipe again`,
+      { fields: ["ttlSeconds"] },
+    );
+  }
+
   const open = basis.publicMint;
   const acknowledged = body.acknowledgeOpenRegistration === true;
   if (open && !acknowledged) {
@@ -318,13 +342,15 @@ async function handleApprove(
   await db.run(
     `INSERT INTO edge_mint_approvals
        (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
+        requires, required_entitlement,
         open_registration_acknowledged, license_enabled, identity_enabled, oidc_provider,
         oidc_issuer, oidc_client_id, oidc_group_role_map_json, approved_at, approved_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, id) DO UPDATE SET
        alg = excluded.alg, signing_key_secret = excluded.signing_key_secret,
        kid = excluded.kid, claims_template_json = excluded.claims_template_json,
        ttl_seconds = excluded.ttl_seconds, audience = excluded.audience,
+       requires = excluded.requires, required_entitlement = excluded.required_entitlement,
        open_registration_acknowledged = excluded.open_registration_acknowledged,
        license_enabled = excluded.license_enabled,
        identity_enabled = excluded.identity_enabled,
@@ -340,6 +366,8 @@ async function handleApprove(
     echoed.claims_template_json,
     echoed.ttl_seconds,
     echoed.audience,
+    echoed.requires,
+    echoed.required_entitlement,
     acknowledged ? 1 : 0,
     // Whether the mint is checking licences now. Turning License off later is a widening
     // (`license`): a device whose licence was disabled or expired would mint again.
@@ -362,7 +390,7 @@ async function handleApprove(
     now,
     "config.mint.approve",
     { kind: "edgeMint", id },
-    `Approved edge-mint recipe ${id} (${echoed.alg}, signs with ${echoed.signing_key_secret})` +
+    `Approved edge-mint recipe ${id} (${echoed.alg}, signs with ${echoed.signing_key_secret}, requires ${echoed.requires}${echoed.required_entitlement ? ` + the ${echoed.required_entitlement} entitlement` : ""})` +
       (identity
         ? ` — sign-in via ${identity.provider ?? "no provider"} ${identity.issuer ?? ""}`.trimEnd()
         : "") +

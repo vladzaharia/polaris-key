@@ -396,6 +396,8 @@ describe("api — every product-scoped resource is under its owning service", ()
             claimsTemplateJson: null,
             ttlSeconds: 60,
             audience: null,
+            requires: "licensed",
+            requiredEntitlement: null,
           },
           null,
           true,
@@ -499,6 +501,8 @@ describe("api — every product-scoped resource is under its owning service", ()
       claimsTemplateJson: '{"iss":"T"}',
       ttlSeconds: 3600,
       audience: null,
+      requires: "licensed" as const,
+      requiredEntitlement: "musicPro",
     };
     const identity = {
       provider: "custom",

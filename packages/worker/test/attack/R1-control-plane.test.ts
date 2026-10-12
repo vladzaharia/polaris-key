@@ -617,8 +617,19 @@ describe("R1-05 /<product>/mint/<id>/auth renders stored HTML with no CSP and no
       claimsTemplate: {},
       ttlSeconds: 3600,
     });
-    expect(stmt.sql).toContain("auth_page_template");
-    expect(stmt.sql).toMatch(/VALUES \(\?, \?, \?, \?, \?, \?, \?, \?, NULL\)/);
+    // Positional, not a literal placeholder string: the same INSERT also carries the recipe's
+    // `requires` / `required_entitlement`, and the claim being pinned is that
+    // `auth_page_template`'s slot is a hard-coded NULL whatever else the column list carries.
+    const columns = stmt.sql
+      .match(/\(([^)]*)\)\s*\n?\s*VALUES/)![1]!
+      .split(",")
+      .map((c) => c.trim());
+    const values = stmt.sql
+      .match(/VALUES \(([^)]*)\)/)![1]!
+      .split(",")
+      .map((v) => v.trim());
+    expect(columns).toContain("auth_page_template");
+    expect(values[columns.indexOf("auth_page_template")]).toBe("NULL");
     await db.batch([stmt]);
     const row = await db.first<{ auth_page_template: string | null }>(
       "SELECT auth_page_template FROM edge_mint_config WHERE product = ? AND id = ?",

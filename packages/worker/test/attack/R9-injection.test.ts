@@ -1659,9 +1659,23 @@ describe("R9-11 edge-mint auth page", () => {
       join(HERE, "..", "..", "src", "core", "repo.ts"),
       "utf8",
     );
-    // The only INSERT that touches the column hardcodes NULL.
-    expect(repoSrc).toContain("ttl_seconds, audience, auth_page_template)");
-    expect(repoSrc).toContain("VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)");
+    // The only INSERT that touches the column hardcodes NULL, asserted POSITIONALLY: the same
+    // statement carries the recipe's `requires` / `required_entitlement`, and the claim is that
+    // whatever the column list is, `auth_page_template`'s slot is a literal NULL.
+    const insert = repoSrc.match(
+      /INSERT INTO edge_mint_config \(([^)]*)\)\s*\n\s*VALUES \(([^)]*)\)/,
+    );
+    expect(
+      insert,
+      "the edge_mint_config INSERT is still recognisable",
+    ).not.toBe(null);
+    const columns = insert![1]!.split(",").map((c) => c.trim());
+    const values = insert![2]!.split(",").map((v) => v.trim());
+    expect(columns).toContain("auth_page_template");
+    expect(values[columns.indexOf("auth_page_template")]).toBe("NULL");
+    // And exactly ONE mention of the column in the repository layer, so no second statement (an
+    // UPDATE, an upsert) has appeared that could bind it.
+    expect(repoSrc.match(/auth_page_template/g)).toHaveLength(1);
   });
 });
 

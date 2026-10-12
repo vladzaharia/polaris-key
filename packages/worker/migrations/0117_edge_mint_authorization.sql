@@ -1,0 +1,49 @@
+-- Per-recipe authorization for edge minting.
+--
+-- `POST /<p>/config/mint/<id>/token` authenticated the CALLER (a device of this product and,
+-- while the product runs License, one whose licence is usable) and then minted whichever
+-- approved recipe the path named. Nothing said which callers may mint WHICH recipe, so both
+-- shapes below worked:
+--
+--   * On a CONFIG-ONLY product registration is derived `open`, so anyone could register a device
+--     with no credential at all and then mint third-party-signed tokens (an Apple MusicKit
+--     developer token is the shipped instance) with the operator's key, at the operator's cost,
+--     under the operator's identity. The operator's approval (0025_b) says the recipe may mint
+--     and, for a public mint, records that the operator knows it; it does not say who among the
+--     product's devices may.
+--   * On a LICENSED product every usable licence could mint every approved recipe, so a
+--     free-tier device minted the recipe intended for a paid tier.
+--
+-- `requires` is the caller class a recipe demands: `none`, `registered` (a device of the
+-- product) or `licensed` (a device whose licence is usable). `required_entitlement` optionally
+-- names a catalog flag that must be present and truthy in the caller's merged payload.
+--
+-- The default is `licensed`, deliberately. Every row that exists today was written before this
+-- column and carries no author intent, so it must FAIL CLOSED: a recipe that is genuinely open
+-- (or merely device-scoped) has to say so in the manifest, which is a reviewable diff, and an
+-- operator has to approve the result. The alternative default would have silently preserved the
+-- finding for every already-registered product. On a LICENSED product nothing changes: the mint
+-- already required a usable licence. A CONFIG-ONLY product's recipes answer `500 misconfigured`
+-- until the manifest declares `requires: registered` (or `none`) and an operator re-approves it,
+-- because `licensed` is a demand a product that does not run License cannot evaluate.
+--
+-- The enum is a CHECK rather than a code-side normalisation because, unlike
+-- `release_config.metadata_access`, there is no safe fallback to read an unrecognised value as:
+-- coercing garbage to `none` opens the recipe and coercing it to `licensed` breaks a config-only
+-- product. Refusing the write is the only answer that is wrong in neither direction.
+--
+-- `edge_mint_approvals` mirrors both columns. An approval is the operator's decision about the
+-- recipe IN THE FORM IT WILL RUN, and `requires` is the part of that form which decides who the
+-- recipe signs for: a push that relaxes `licensed` to `none` makes the recipe inert until an
+-- operator approves it again (`MINT_RECIPE_FIELDS`, core/edgeMintApproval.ts), exactly as a push
+-- that changes `ttl_seconds` or `audience` does. The approval columns take the same defaults, so
+-- every approval that exists today still equals its recipe and stays approved.
+--
+-- Expand only: both tables keep every column the Worker deployed before this change names, and
+-- the defaults make its inserts valid. Each statement stays on ONE line: the docs data-model
+-- generator (`packages/docs/scripts/gen-reference.mjs`) matches `ALTER TABLE <t> ADD COLUMN <c>`
+-- literally, so a wrapped ALTER silently omits the column from the published schema table.
+ALTER TABLE edge_mint_config ADD COLUMN requires TEXT NOT NULL DEFAULT 'licensed' CHECK (requires IN ('none', 'registered', 'licensed'));
+ALTER TABLE edge_mint_config ADD COLUMN required_entitlement TEXT;
+ALTER TABLE edge_mint_approvals ADD COLUMN requires TEXT NOT NULL DEFAULT 'licensed';
+ALTER TABLE edge_mint_approvals ADD COLUMN required_entitlement TEXT;

@@ -990,6 +990,8 @@ async function applyRepoManifest(
         claimsTemplate: e.claimsTemplate ?? {},
         ttlSeconds: e.ttlSeconds,
         audience: e.audience ?? null,
+        requires: e.requires,
+        requiredEntitlement: e.requiredEntitlement ?? null,
       }),
     );
   }

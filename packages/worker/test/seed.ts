@@ -163,10 +163,11 @@ export async function approveEdgeMintRecipe(
   await db.run(
     `INSERT OR REPLACE INTO edge_mint_approvals
        (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience,
+        requires, required_entitlement,
         open_registration_acknowledged, license_enabled, identity_enabled, oidc_provider,
         oidc_issuer, oidc_client_id, oidc_group_role_map_json, approved_at, approved_by)
      SELECT product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds,
-            audience, ?, ?, ?, ?, ?, ?, ?, ?, 'test'
+            audience, requires, required_entitlement, ?, ?, ?, ?, ?, ?, ?, ?, 'test'
        FROM edge_mint_config WHERE product = ? AND id = ?`,
     opts.acknowledgeOpenRegistration ? 1 : 0,
     services.license.enabled ? 1 : 0,

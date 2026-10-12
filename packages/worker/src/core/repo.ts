@@ -801,11 +801,15 @@ export interface EdgeMintInput {
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
   audience?: string | null;
+  /** Who may mint this recipe. Omitted persists as `licensed`: fail closed. */
+  requires?: "none" | "registered" | "licensed";
+  /** A catalog flag the caller's merged payload must carry, truthy. */
+  requiredEntitlement?: string | null;
 }
 export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
   return {
-    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template, requires, required_entitlement)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
     params: [
       e.product,
       e.id,
@@ -815,6 +819,11 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
       JSON.stringify(e.claimsTemplate),
       e.ttlSeconds,
       e.audience ?? null,
+      // The `??` restates the column's own fail-closed default, so a caller that builds an
+      // `EdgeMintInput` by hand (a test, a future admin path) does not rely on the DDL to decide
+      // its authorization posture.
+      e.requires ?? "licensed",
+      e.requiredEntitlement ?? null,
     ],
   };
 }

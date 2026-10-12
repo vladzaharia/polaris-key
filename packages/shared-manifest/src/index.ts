@@ -632,6 +632,9 @@ export type ManifestCatalog = Omit<ProductCatalog, "entries"> & {
   entries: ManifestCatalogEntry[];
 };
 
+/** Who may mint a recipe. See `EDGE_MINT_REQUIRES_VALUES`. */
+export type ManifestEdgeMintRequires = "none" | "registered" | "licensed";
+
 export interface ManifestEdgeMint {
   id: string;
   alg: string;
@@ -640,6 +643,14 @@ export interface ManifestEdgeMint {
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
   audience?: string | null;
+  /**
+   * The caller class this recipe demands. Always populated by the normalizer, and `licensed`
+   * when the manifest is silent: a recipe signs with the product's third-party key, so an
+   * undeclared one fails closed.
+   */
+  requires: ManifestEdgeMintRequires;
+  /** A catalog flag that must be present and truthy in the caller's merged payload, or null. */
+  requiredEntitlement?: string | null;
 }
 
 export interface ParsedManifest {
@@ -791,6 +802,14 @@ const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
 /** `edgeMint[].kid` — emitted verbatim in a JWS protected header. Exported (P3-12) for the
  *  admin product handler's `signingKid`, as `ID_RE` is. */
 export const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+/**
+ * `edgeMint[].id`: a URL path segment on the mint route (`/<product>/config/mint/<id>/{token,auth}`),
+ * which matches it with `^[a-z0-9-]+$` (`services/config/routes.ts`), strictly narrower than the
+ * `ID_RE` shared with profile, tier and catalog ids. Held to the route's own alphabet, ingest
+ * cannot write a recipe no request could ever reach (`AppleMusic`, `apple.music`): it refuses
+ * what the route cannot serve. The 64-character bound is `ID_RE`'s, so the column stays bounded.
+ */
+const MINT_ID_RE = /^[a-z0-9-]{1,64}$/;
 /** Channel / architecture names — they reach URL path segments and asset-match patterns.
  *  Exported (P3-12) for the admin tier and licence handlers' channels, as `ID_RE` is. */
 export const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -1411,6 +1430,41 @@ export const MAX_MANIFEST_DEPTH = 32;
 /** Bound on YAML anchor expansion ("billion laughs"). Same as the `yaml` default, pinned here
  *  so a dependency default change cannot silently widen it. */
 const MAX_YAML_ALIASES = 100;
+/**
+ * Ceiling on `edgeMint[].ttlSeconds`: one hour.
+ *
+ * `ttlSeconds` is the lifetime of a token the PLATFORM mints with the product's third-party
+ * signing key, and it arrives from a `.pkey/` file any repo writer can push. Without a ceiling
+ * the manifest dictates how long a leaked minted token stays valid: `ttlSeconds: 31536000` is a
+ * one-line edit that turns a short-lived credential into a year-long bearer token. An operator's
+ * approval of the recipe already binds the value; this is the hard limit that holds even for an
+ * approving operator or a careless default. One hour is what the normalizer has always
+ * defaulted to, so nothing that did not deliberately raise it is affected.
+ */
+export const MAX_EDGE_MINT_TTL_SECONDS = 3600;
+
+/**
+ * `edgeMint[].requires`: who may mint this recipe.
+ *
+ *   none        the recipe adds no demand of its own.
+ *   registered  a device of THIS product, stated explicitly.
+ *   licensed    a device whose licence is usable. The product must run License, or the recipe
+ *               is a misconfiguration and the route refuses it.
+ *
+ * `none` and `registered` are both satisfied by the device token EVERY mint request must
+ * present: the route spends the product's third-party signing key, so it is never anonymous.
+ * They differ in what they say, not in what they check: a config-only product declares
+ * `registered` to record that a device token is the whole of its gate, and `none` records that
+ * the recipe is deliberately ungated beyond that. Neither is safe by default: on a config-only
+ * product registration is derived `open`, so an anonymous caller can obtain that device token in
+ * one credential-free request. Hence `licensed` is the default the normalizer and the column
+ * both apply.
+ */
+export const EDGE_MINT_REQUIRES_VALUES = [
+  "none",
+  "registered",
+  "licensed",
+] as const;
 
 const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
 const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
@@ -2479,15 +2533,16 @@ function validateDocuments(
       );
       continue;
     }
-    // The recipe id is a URL path segment (`/<product>/mint/<id>/auth`) and a table key.
+    // The recipe id is a URL path segment (`/<product>/config/mint/<id>/…`) and a table key,
+    // held to the ROUTE's alphabet so ingest cannot write an unreachable recipe.
     constrained(
       errors,
       "release",
       raw.id,
       `/edgeMint/${i}/id`,
       "invalid_edge_mint_id",
-      ID_RE,
-      "Edge mint ids must match ^[A-Za-z0-9._:-]{1,64}$.",
+      MINT_ID_RE,
+      "Edge mint ids must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet).",
     );
     // `kid` is emitted verbatim in the JWS protected header; `audience` becomes `aud`.
     constrained(
@@ -2527,15 +2582,44 @@ function validateDocuments(
         "Edge mint signing key refs must be stable uppercase names.",
       );
     }
-    if (raw.ttlSeconds !== undefined && !positiveInteger(raw.ttlSeconds)) {
+    const ttl: unknown = raw.ttlSeconds;
+    if (
+      ttl !== undefined &&
+      (!positiveInteger(ttl) ||
+        (typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS))
+    ) {
       add(
         errors,
         "release",
         `/edgeMint/${i}/ttlSeconds`,
         "invalid_ttl",
-        "Edge mint TTL must be a positive integer.",
+        `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`,
       );
     }
+    // Both are ENFORCEMENT: an unrecognised value is refused, never coerced, or a typo'd
+    // `requires: "licenced"` would decide who may mint with the product's signing key.
+    if (
+      raw.requires !== undefined &&
+      !isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
+    ) {
+      add(
+        errors,
+        "release",
+        `/edgeMint/${i}/requires`,
+        "invalid_edge_mint_requires",
+        "Edge mint requires must be none, registered, or licensed.",
+      );
+    }
+    // Names a catalog entry, so it is held to the key alphabet catalog entries are.
+    constrained(
+      errors,
+      "release",
+      raw.requiredEntitlement,
+      `/edgeMint/${i}/requiredEntitlement`,
+      "invalid_edge_mint_entitlement",
+      ID_RE,
+      "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$.",
+    );
   }
 
   // ── Fingerprint + auto-issue policy blocks ──────────────────────────────────────────────
@@ -5309,8 +5393,25 @@ function normalizeEdgeMint(raw: unknown): ManifestEdgeMint | null {
     signingKeySecret: String(raw.signingKeySecret ?? ""),
     kid: typeof raw.kid === "string" ? raw.kid : undefined,
     claimsTemplate: asRecord(raw.claimsTemplate),
-    ttlSeconds: typeof raw.ttlSeconds === "number" ? raw.ttlSeconds : 3600,
+    // Validation has already refused anything above the ceiling (reject, never coerce), so the
+    // `Math.min` is belt-and-braces for a caller that reaches the normalizer directly. The
+    // omitted-value default has always been one hour, which is also the ceiling.
+    ttlSeconds:
+      typeof raw.ttlSeconds === "number"
+        ? Math.min(raw.ttlSeconds, MAX_EDGE_MINT_TTL_SECONDS)
+        : MAX_EDGE_MINT_TTL_SECONDS,
     audience: typeof raw.audience === "string" ? raw.audience : null,
+    // Same shape as `ttlSeconds`: validation has already refused anything outside the enum, so
+    // this only decides the OMITTED case, and the omitted case is `licensed`, the same
+    // fail-closed default the column carries. A recipe that means to be reachable without a
+    // licence has to say so.
+    requires: isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
+      ? raw.requires
+      : "licensed",
+    requiredEntitlement:
+      typeof raw.requiredEntitlement === "string" && raw.requiredEntitlement
+        ? raw.requiredEntitlement
+        : null,
   };
 }
 

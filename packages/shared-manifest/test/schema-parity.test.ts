@@ -207,6 +207,8 @@ function base(): Docs {
           kid: "ABC123",
           claimsTemplate: { iss: "TEAMID" },
           ttlSeconds: 3600,
+          requires: "licensed",
+          requiredEntitlement: "acmeVpn",
         },
       ],
     },
@@ -2471,6 +2473,26 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (mint(d).id = "bad id!"),
   },
   {
+    code: "invalid_edge_mint_id",
+    file: "product",
+    schema: "rejects",
+    // `AppleMusic` is inside the shared `ID_RE` and outside the mint ROUTE's `^[a-z0-9-]+$`, so
+    // ingest used to accept a recipe that no request could ever reach.
+    mutate: (d) => (mint(d).id = "AppleMusic"),
+  },
+  {
+    code: "invalid_edge_mint_requires",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (mint(d).requires = "licenced"),
+  },
+  {
+    code: "invalid_edge_mint_entitlement",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (mint(d).requiredEntitlement = "not a key!"),
+  },
+  {
     code: "invalid_edge_mint_kid",
     file: "product",
     schema: "rejects",
@@ -2493,6 +2515,15 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (mint(d).ttlSeconds = 0),
+  },
+  {
+    code: "invalid_ttl",
+    file: "product",
+    schema: "rejects",
+    // The CEILING arm (`MAX_EDGE_MINT_TTL_SECONDS`): a repo push must not decide how long a token
+    // minted with the product's third-party signing key stays valid. The schema expresses it as
+    // `maximum: 3600`.
+    mutate: (d) => (mint(d).ttlSeconds = 31_536_000),
   },
   // HA-04: `.pkey/product` `presentation { icon, accent, accentDark }`.
   {

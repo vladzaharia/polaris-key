@@ -5,7 +5,8 @@
 // page); the worker stamps iat/exp + the trusted aud from the allowlisted template and
 // signs. Apple MusicKit's ES256 developer token is the first instance; RS256 and EdDSA are
 // also supported. Reserved claims (iat/exp/nbf/aud) are server/recipe-controlled; the caller
-// must hold a valid licensed token (confused-deputy guard).
+// must present a valid device token, and the recipe's own `requires` / `required_entitlement`
+// decide which callers may mint it (confused-deputy guard, `authorizeMint`).
 //
 // Moved from `src/edgeMint.ts` to `/<p>/config/mint/:id/{token,auth}` (D-19): edge minting is
 // how a catalog SECRET with `delivery: "edgeMint"` actually reaches a runtime, so it belongs
@@ -27,6 +28,12 @@
 //      manifest ingest DELETES an approval a push widened, so reverting the push cannot revive
 //      it (`invalidateWidenedEdgeMintApprovals`, core/edgeMintApproval.ts). No approval, or one
 //      that no longer applies, answers exactly like an unknown recipe (404).
+//
+// A recipe also says WHO may mint it. `requires` (`none` | `registered` | `licensed`, default
+// `licensed`) is the caller class it demands, and `required_entitlement` optionally names a
+// catalog flag the caller's merged payload must carry, truthy. Both are recipe columns, so the
+// approval binds them too: a push that relaxes either leaves the recipe inert until an operator
+// approves it again (`MINT_RECIPE_FIELDS`).
 
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
@@ -42,9 +49,19 @@ import {
 import { errorResponse } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws, StrictJsonError } from "@polaris-key/jws";
-import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
+import {
+  licenseUsable,
+  validateDeviceToken,
+  type ValidDeviceToken,
+} from "../../core/devices.js";
 import { trustRefusal } from "../../core/trust/deviceTrust.js";
 import { signJwtEs256, signJwtRs256 } from "../../core/jwt.js";
+import { resolveMergedPayload } from "../../core/licensing/payload.js";
+import {
+  injectAdminPolicy,
+  tighterMax,
+  tighterMin,
+} from "../../core/licensing/entitlements.js";
 
 export interface EdgeMintRow {
   product: string;
@@ -57,6 +74,10 @@ export interface EdgeMintRow {
   /** Trusted JWT `aud` — server-controlled, NOT overridable from the free template. */
   audience: string | null;
   auth_page_template: string | null;
+  /** Who may mint this recipe: `none`, `registered` or `licensed` (migration 0117; CHECKed). */
+  requires: string;
+  /** A catalog flag the caller's merged payload must carry, truthy. NULL: no such demand. */
+  required_entitlement: string | null;
 }
 
 /** The recipe row as the manifest last wrote it — approved or not. The `/auth` page and the
@@ -166,6 +187,94 @@ function sanitizeTemplate(t: Record<string, unknown>): Record<string, unknown> {
   return rest;
 }
 
+/**
+ * Per-recipe authorization: the gate between "who is calling" and "may they mint THIS".
+ *
+ * The route authenticates a device of the product and, while the product runs License, used to
+ * ask one product-wide question, "is its licence usable", on behalf of every recipe at once. A
+ * recipe could therefore say nothing about its callers, and two shapes minted what they should
+ * not: on a CONFIG-ONLY product registration is derived `open`, so an anonymous caller obtains a
+ * device token in one credential-free request and then mints third-party-signed tokens with the
+ * operator's key at the operator's cost; on a LICENSED product a free-tier device minted the
+ * recipe intended for a paid tier, because "has a usable licence" says nothing about which tier.
+ * The operator's approval does not close either: it says the recipe may mint, not for whom.
+ *
+ * `requires` is checked against what the caller proved, and `required_entitlement` against the
+ * SAME merged payload the licence document is built from (`resolveMergedPayload`, then
+ * `injectAdminPolicy`, as `entitledAccessCheck` composes it), so a recipe gated on `musicPro` is
+ * reachable by exactly the licences whose own document says they hold it.
+ *
+ * `requires: licensed` on a product that does not run License is a MISCONFIGURATION, not a pass:
+ * the demand cannot be evaluated, and a recipe whose stated posture is stricter than the product
+ * can enforce must not fall through to the weaker one. It answers `500 misconfigured`, the shape
+ * the claims-template and key-material arms use. That is also the upgrade path: a licensed
+ * product that turns License off stops minting instead of silently opening every recipe on it.
+ * An unrecognised `requires` refuses too. The column is CHECK-constrained, so reaching one is
+ * schema drift, and both ways to be permissive about it (read it as `none`, or ignore it) are
+ * the finding.
+ *
+ * `none` and `registered` are both satisfied by the device token the caller already presented:
+ * neither is the weaker check, they differ in what the manifest SAYS. Whether the licence of a
+ * `licensed` caller is usable is decided by the caller of this function, before the recipe is
+ * known to exist (see `handleMintToken`); what is left here is the demand on the product and
+ * the entitlement.
+ */
+async function authorizeMint(
+  db: Db,
+  product: Product,
+  cfg: EdgeMintRow,
+  valid: ValidDeviceToken,
+  now: number,
+): Promise<Response | null> {
+  switch (cfg.requires) {
+    case "none":
+    case "registered":
+      break;
+    case "licensed":
+      if (!product.services.license.enabled)
+        return errorResponse(
+          500,
+          "misconfigured",
+          "recipe requires a licence but this product does not run the License service",
+        );
+      break;
+    default:
+      return errorResponse(
+        500,
+        "misconfigured",
+        `unsupported mint requires ${cfg.requires}`,
+      );
+  }
+
+  const flag = cfg.required_entitlement;
+  if (!flag) return null;
+  const { payload, tier } = await resolveMergedPayload(
+    db,
+    product.slug,
+    valid.license,
+    valid.device,
+    now,
+    { entitlementsOnly: true },
+  );
+  // The licence-derived policy layer, as the licence document applies it. Skipped without a
+  // licence row (the config-only shape): the layer is derived FROM the licence, so there is
+  // nothing to stamp, and the catalog defaults and the device's own overrides still decide.
+  if (valid.license)
+    injectAdminPolicy(payload, tier, valid.license, tighterMin, tighterMax);
+  const entry = Object.hasOwn(payload.entitlements, flag)
+    ? payload.entitlements[flag]
+    : undefined;
+  // Present AND truthy: an entitlement stored as `false` (or `0`, or `""`) is a tier that was
+  // explicitly denied this capability, not one that merely never mentioned it.
+  if (!entry?.value)
+    return errorResponse(
+      403,
+      "forbidden",
+      `recipe requires the ${flag} entitlement`,
+    );
+  return null;
+}
+
 /** POST/GET /<product>/config/mint/<id>/token — mint an edge token for the recipe. */
 export async function handleMintToken(
   req: Request,
@@ -175,28 +284,27 @@ export async function handleMintToken(
   mintId: string,
   now: number,
 ): Promise<Response> {
-  // Confused-deputy guard: the caller must be a device of THIS product, and — when the product
-  // runs License — one whose licence is usable. Asked with Core's pure `licenseUsable` predicate
-  // rather than by importing License: a service may not import another service, and the boundary
-  // is not worth spending on a two-line check.
+  // Confused-deputy guard: the caller must be a device of THIS product. Every mint request
+  // needs a device token, including one for a recipe declared `requires: none`: this route
+  // spends the product's third-party signing key, so a caller with no credential at all must not
+  // reach it.
   //
-  // For a licensed product this is byte-identical to what `validateDeviceToken` used to apply on
-  // this handler's behalf before the split (`requireLicensedDevice`, `core/licensing/authz.ts`). The scope — "iff the
-  // License service is enabled", the same rule Core's own `/devices` and `/devices/report` use —
-  // is what makes edge minting reachable at all for a config-only product (D-08): its devices
-  // register, hold real `pkeyt_` tokens, and have no licence to be licensed by. Edge minting is
-  // how a catalog secret with `delivery: "edgeMint"` reaches a runtime, so a Config service that
-  // could not mint would be Config with a hole in it.
+  // Whether the caller's LICENCE must be usable is the recipe's question (`requires`), asked once
+  // the recipe is known, below; Core's pure `licenseUsable` answers it, not an import of License:
+  // a service may not import another service. The scope is still "iff the License service is
+  // enabled", the same rule Core's own `/devices` and `/devices/report` use: a CONFIG-ONLY
+  // product (D-08) has devices that register, hold real `pkeyt_` tokens and have no licence to be
+  // licensed by, and a recipe that declares `requires: registered` mints for such a device. Edge
+  // minting is how a catalog secret with `delivery: "edgeMint"` reaches a runtime, so a Config
+  // service that could not mint there would be Config with a hole in it.
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
   const valid = await validateDeviceToken(env, db, product, token, now);
-  if (
-    "error" in valid ||
-    (product.services.license.enabled && !licenseUsable(valid.license, now))
-  ) {
-    // The per-network budget is charged on FAILED authentication only, so a shared
-    // egress address full of legitimate devices is not starved by the pre-auth check; the
-    // per-device budget below bounds the authenticated ones.
+  // The per-network budget is charged on FAILED credentials only (a bad token, or a licence the
+  // recipe demands and the caller lacks), so a shared egress address full of legitimate devices
+  // is not starved by the pre-auth check; the per-device budget below bounds the authenticated
+  // ones.
+  const credentialsRefused = async (): Promise<Response> => {
     if (
       !(await rateLimitOk(
         env,
@@ -208,7 +316,8 @@ export async function handleMintToken(
       return errorResponse(429, "rate_limited", "too many mint requests");
     }
     return errorResponse(401, "unauthorized");
-  }
+  };
+  if ("error" in valid) return credentialsRefused();
 
   // P0-12 — a per-DEVICE budget as well as the per-IP one. Under open registration anyone can
   // hold a device token, and one device behind many IPs would otherwise get a fresh 60/min per
@@ -249,7 +358,20 @@ export async function handleMintToken(
   // or sign-in trusting a different identity provider or group map — re-checked here on every
   // request, because a push can do any of them without touching the recipe.
   const cfg = await getApprovedEdgeMintConfig(db, product, mintId);
+  // A caller whose licence is not usable, on a product that runs License, may mint only a recipe
+  // that says it needs none (`requires: none` or `registered`). The recipe that is not there is
+  // held to the default, `licensed`, so for such a caller an unknown id, an unapproved one and a
+  // licensed one all answer 401 and none can be told from another: the product-wide check this
+  // replaced refused before any lookup too.
+  const licensed =
+    !product.services.license.enabled || licenseUsable(valid.license, now);
+  if (!licensed && (cfg?.requires ?? "licensed") === "licensed")
+    return credentialsRefused();
   if (!cfg) return errorResponse(404, "not_found", "no such edge-mint recipe");
+  // Authenticate, then decide whether THIS caller may mint THIS recipe, then spend the key:
+  // nothing below asks who the caller is again.
+  const refused = await authorizeMint(db, product, cfg, valid, now);
+  if (refused) return refused;
   if (cfg.alg !== "ES256" && cfg.alg !== "RS256" && cfg.alg !== "EdDSA") {
     return errorResponse(500, "misconfigured", `unsupported alg ${cfg.alg}`);
   }
@@ -293,31 +415,51 @@ export async function handleMintToken(
   };
   const kid = cfg.kid ?? undefined;
   let minted: string;
-  switch (cfg.alg) {
-    case "ES256":
-      minted = await signJwtEs256(claims, pem, kid);
-      break;
-    case "RS256":
-      minted = await signJwtRs256(claims, pem, kid);
-      break;
-    case "EdDSA":
-      // @polaris-key/jws emits a compact JWS with header {alg:"EdDSA", kid}. Its signer guard
-      // refuses claims a strict verifier would refuse (plans/P3-01.md §2.2); the manifest
-      // validator refuses such a claims template at sync, so only a template stored before it
-      // reaches here, and it answers in this route's flat body, never as a throw.
-      try {
-        minted = await signJws(claims, pem, kid ?? "");
-      } catch (e) {
-        if (!(e instanceof StrictJsonError)) throw e;
+  // Everything below signs with OPERATOR-supplied key material read out of a column: `atob`
+  // throws on a PEM body that is not base64, `importKey` on DER that does not parse or does not
+  // match the declared alg, and `signJws` on a malformed Ed25519 key. The Worker has no top-level
+  // catch, so each surfaced as an unhandled rejection: an opaque 500 with no diagnosis, on a
+  // route an authenticated caller reaches at will. Corrupt key material is the same class of
+  // fault as a corrupt claims template, so it gets the same answer, and the message never quotes
+  // the exception (it is derived from the key).
+  try {
+    switch (cfg.alg) {
+      case "ES256":
+        minted = await signJwtEs256(claims, pem, kid);
+        break;
+      case "RS256":
+        minted = await signJwtRs256(claims, pem, kid);
+        break;
+      case "EdDSA":
+        // @polaris-key/jws emits a compact JWS with header {alg:"EdDSA", kid}. Its signer guard
+        // refuses claims a strict verifier would refuse (plans/P3-01.md §2.2); the manifest
+        // validator refuses such a claims template at sync, so only a template stored before it
+        // reaches here, and it answers in this route's flat body, never as a throw. Any other
+        // throw is the key's, and falls to the catch below.
+        try {
+          minted = await signJws(claims, pem, kid ?? "");
+        } catch (e) {
+          if (!(e instanceof StrictJsonError)) throw e;
+          return errorResponse(
+            500,
+            "document_not_representable",
+            "the mint's claims break the wire contract's strict JSON rules",
+          );
+        }
+        break;
+      default:
         return errorResponse(
           500,
-          "document_not_representable",
-          "the mint's claims break the wire contract's strict JSON rules",
+          "misconfigured",
+          `unsupported alg ${cfg.alg}`,
         );
-      }
-      break;
-    default:
-      return errorResponse(500, "misconfigured", `unsupported alg ${cfg.alg}`);
+    }
+  } catch {
+    return errorResponse(
+      500,
+      "misconfigured",
+      "mint signing key is not usable for this algorithm",
+    );
   }
   return new Response(
     JSON.stringify({ token: minted, expiresAt: claims.exp }),

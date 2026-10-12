@@ -34,7 +34,10 @@
  * ── access ──────────────────────────────────────────────────────────────────────────────────
  *
  * The release METADATA mode. Under `entitled` the licence's entitlements must hold the CANONICAL
- * channel, checked per request before the stored body is returned. `public` is
+ * channel, checked per request before the stored body is returned, and the release the requested
+ * platform resolves to must sit inside the licence's version window (`403 version_blocked`): the
+ * document is the same bytes for every caller, so the window decides who may read it, never what
+ * it says. `public` is
  * `public, max-age=60, no-transform`; anything else `private, no-store, no-transform`.
  */
 
@@ -60,6 +63,8 @@ import { sha256Hex } from "../../platform/hash.js";
 import type { Db } from "../../db/types.js";
 import { errorResponse, wireError } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
+import { bearer } from "../../platform/http.js";
+import { resolvedReleaseRefusal } from "../../core/licensing/entitledAccess.js";
 import { signDoc } from "../../core/signing.js";
 import { appendAudit } from "../../core/repo.js";
 import {
@@ -571,13 +576,32 @@ export async function handleFeedRoute(
     ))
   )
     return harden(errorResponse(429, "rate_limited", "too many feed requests"));
-  const gated = accessModeFor(artifactPolicy(cfg), "feed") !== "public";
+  const mode = accessModeFor(artifactPolicy(cfg), "feed");
+  const gated = mode !== "public";
 
   const composed = await composeChannelFeed(
     { db, product: product.slug, hooks: ctx.hooks, cfg, env },
     requested,
   );
   if (!composed) return null;
+
+  // `entitled` decided the CANONICAL channel above; the release this request's platform resolves
+  // to is held to the caller's version window now that the composition names it. Nothing in the
+  // document is per caller, so it is neither filtered nor re-signed: the window only gates the
+  // read.
+  const target = composed.targets.find((t) => t.platform === platform);
+  if (target) {
+    const blocked = await resolvedReleaseRefusal(
+      env,
+      db,
+      product,
+      bearer(req),
+      mode,
+      target.release.version,
+      now,
+    );
+    if (blocked) return harden(blocked);
+  }
 
   // A channel that offers nothing and has never offered anything (no state row) — an unused
   // `pr-<n>` or manual channel, or a product with no app release yet — is signed at the seq a row

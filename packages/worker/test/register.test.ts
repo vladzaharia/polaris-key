@@ -853,7 +853,10 @@ describe("Core surfaces accept a registered device when License is disabled", ()
       "edge-mint",
     );
     await w.db.run(
-      "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
+      // A config-only product's recipe now has to SAY that a device token is the whole of its
+      // gate: `requires` defaults to `licensed`, which a product that does not run License
+      // cannot meet (pinned below). This pins the capability the default must not take away.
+      "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template,requires) VALUES (?,?,?,?,?,?,?,?,?,'registered')",
       "djdl",
       "applemusic",
       "ES256",
@@ -885,6 +888,44 @@ describe("Core surfaces accept a registered device when License is disabled", ()
       acknowledgeOpenRegistration: true,
     });
     expect(await mint()).toBe(200);
+  });
+
+  it("a recipe that declares nothing is `licensed`, which a config-only product cannot meet: 500 misconfigured, never a pass", async () => {
+    const w = await world(SET.configOnly);
+    await seedProductSecret(
+      w.db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
+    await w.db.run(
+      "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
+      "djdl",
+      "applemusic",
+      "ES256",
+      "applemusic_devkey",
+      "KID123",
+      JSON.stringify({ iss: "TEAMID123" }),
+      3600,
+      null,
+      null,
+    );
+    // Registration is derived `open` here, so this device token cost the caller no credential.
+    const { token } = await register(w);
+    await approveEdgeMintRecipe(w.db, "djdl", "applemusic", {
+      acknowledgeOpenRegistration: true,
+    });
+    const res = await handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      w.env,
+      w.db,
+      w.product,
+      "applemusic",
+      NOW,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
   });
 });
 

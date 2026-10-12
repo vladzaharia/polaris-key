@@ -1920,7 +1920,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "Edge-mint recipe (a Config-service secret-delivery capability, served at /<product>/config/mint/<id>/...). May also live in the release document.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" },
+        "id": {
+          "description": "A URL path segment on the mint route, held to that route's own alphabet so ingest cannot write a recipe no request could reach.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        },
         "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
         "signingKeySecret": { "$ref": "#/$defs/secretRef" },
         "kid": {
@@ -1928,9 +1932,22 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
         },
         "claimsTemplate": { "type": "object" },
-        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 3600
+        },
         "audience": {
           "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
+        },
+        "requires": {
+          "description": "Who may mint this recipe: none (any device of this product) · registered (a device of this product, stated explicitly) · licensed (a device whose licence is usable; the product must run License). Omitted means licensed: a recipe signs with the product's third-party key, so it fails closed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this recipe may be minted.",
+          "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
         }
       },
       "required": ["id", "alg", "signingKeySecret"]
@@ -3017,8 +3034,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "object",
       "properties": {
         "id": {
+          "description": "A URL path segment on the mint route, held to that route's own alphabet so ingest cannot write a recipe no request could reach.",
           "type": "string",
-          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+          "pattern": "^[a-z0-9-]{1,64}$"
         },
         "alg": {
           "enum": ["ES256", "RS256", "EdDSA"]
@@ -3035,8 +3053,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "type": "object"
         },
         "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
           "type": "integer",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "maximum": 3600
         },
         "audience": {
           "anyOf": [
@@ -3044,6 +3064,22 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
               "type": "string",
               "maxLength": 200,
               "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requires": {
+          "description": "Who may mint this recipe: none (any device of this product) · registered (a device of this product, stated explicitly) · licensed (a device whose licence is usable; the product must run License). Omitted means licensed: a recipe signs with the product's third-party key, so it fails closed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this recipe may be minted.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]{1,64}$"
             },
             {
               "type": "null"
@@ -18342,6 +18378,7 @@ var RESERVED_PROPERTY_NAMES = /* @__PURE__ */ new Set([
 ]);
 var CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
 var KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+var MINT_ID_RE = /^[a-z0-9-]{1,64}$/;
 var CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 var MANUAL_CHANNEL_REGEX_MAX = 80;
 function compileManualChannelRegex(source) {
@@ -18594,6 +18631,12 @@ var MAX_DEVICE_LIMIT = 1e3;
 var MAX_MANIFEST_BYTES = 64 * 1024;
 var MAX_MANIFEST_DEPTH = 32;
 var MAX_YAML_ALIASES = 100;
+var MAX_EDGE_MINT_TTL_SECONDS = 3600;
+var EDGE_MINT_REQUIRES_VALUES = [
+  "none",
+  "registered",
+  "licensed"
+];
 var RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"];
 var OIDC_PROVIDER_VALUES = ["platform", "custom"];
 var FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"];
@@ -19465,8 +19508,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       raw.id,
       `/edgeMint/${i}/id`,
       "invalid_edge_mint_id",
-      ID_RE,
-      "Edge mint ids must match ^[A-Za-z0-9._:-]{1,64}$."
+      MINT_ID_RE,
+      "Edge mint ids must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet)."
     );
     constrained(
       errors,
@@ -19505,15 +19548,34 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Edge mint signing key refs must be stable uppercase names."
       );
     }
-    if (raw.ttlSeconds !== void 0 && !positiveInteger2(raw.ttlSeconds)) {
+    const ttl = raw.ttlSeconds;
+    if (ttl !== void 0 && (!positiveInteger2(ttl) || typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS)) {
       add4(
         errors,
         "release",
         `/edgeMint/${i}/ttlSeconds`,
         "invalid_ttl",
-        "Edge mint TTL must be a positive integer."
+        `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`
       );
     }
+    if (raw.requires !== void 0 && !isOneOf2(raw.requires, EDGE_MINT_REQUIRES_VALUES)) {
+      add4(
+        errors,
+        "release",
+        `/edgeMint/${i}/requires`,
+        "invalid_edge_mint_requires",
+        "Edge mint requires must be none, registered, or licensed."
+      );
+    }
+    constrained(
+      errors,
+      "release",
+      raw.requiredEntitlement,
+      `/edgeMint/${i}/requiredEntitlement`,
+      "invalid_edge_mint_entitlement",
+      ID_RE,
+      "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$."
+    );
   }
   if (productRoot.fingerprint !== void 0 && !isRecord6(productRoot.fingerprint)) {
     add4(
@@ -21523,8 +21585,17 @@ function normalizeEdgeMint(raw) {
     signingKeySecret: String(raw.signingKeySecret ?? ""),
     kid: typeof raw.kid === "string" ? raw.kid : void 0,
     claimsTemplate: asRecord(raw.claimsTemplate),
-    ttlSeconds: typeof raw.ttlSeconds === "number" ? raw.ttlSeconds : 3600,
-    audience: typeof raw.audience === "string" ? raw.audience : null
+    // Validation has already refused anything above the ceiling (reject, never coerce), so the
+    // `Math.min` is belt-and-braces for a caller that reaches the normalizer directly. The
+    // omitted-value default has always been one hour, which is also the ceiling.
+    ttlSeconds: typeof raw.ttlSeconds === "number" ? Math.min(raw.ttlSeconds, MAX_EDGE_MINT_TTL_SECONDS) : MAX_EDGE_MINT_TTL_SECONDS,
+    audience: typeof raw.audience === "string" ? raw.audience : null,
+    // Same shape as `ttlSeconds`: validation has already refused anything outside the enum, so
+    // this only decides the OMITTED case, and the omitted case is `licensed`, the same
+    // fail-closed default the column carries. A recipe that means to be reachable without a
+    // licence has to say so.
+    requires: isOneOf2(raw.requires, EDGE_MINT_REQUIRES_VALUES) ? raw.requires : "licensed",
+    requiredEntitlement: typeof raw.requiredEntitlement === "string" && raw.requiredEntitlement ? raw.requiredEntitlement : null
   };
 }
 function collectRequiredSecrets(secrets, product, release) {

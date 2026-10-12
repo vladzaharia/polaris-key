@@ -42,7 +42,10 @@
  *
  *   - `dl` and `builds` classify their selector through `releaseCatalog.accessSelector`; a
  *     pinned version is window-checked, and a version the window cannot order (a four-part
- *     `1.2.3.4`) is refused whenever the window is bounded;
+ *     `1.2.3.4`) is refused whenever the window is bounded. A MOVING selector (`latest`, a
+ *     channel) names no version until it resolves, so the release it resolved to is checked
+ *     then (`resolvedReleaseRefusal`): `builds` here, the legacy `dl` in Release, which does
+ *     the resolving (`CatalogSourceRef` carries the mode);
  *   - `files` checks the release's STORED version as a fixed, pinned version
  *     (`fixedReleaseSelector`) — never re-read as a selector, so a release tagged `latest`,
  *     `stable`, `beta`, `pr-5` or a manual channel's name cannot pass as a moving channel (the
@@ -109,6 +112,7 @@ import {
   accessRefusal,
   fixedReleaseSelector,
   type EntitledSelector,
+  resolvedReleaseRefusal,
 } from "../../core/licensing/entitledAccess.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { decideBlob, type BlobDecision } from "./blobAccess.js";
@@ -455,7 +459,7 @@ function compute(
     case "install":
       return computeInstall(ctx, cleared.catalog);
     case "dl":
-      return computeDownload(ctx, cleared.catalog, target);
+      return computeDownload(ctx, cleared.catalog, target, cleared.mode);
     case "build":
       return computeBuild(ctx, cleared, target);
     case "file":
@@ -492,6 +496,7 @@ async function computeDownload(
   { req }: ByteContext,
   catalog: ReleaseCatalog,
   target: Extract<ByteTarget, { kind: "dl" }>,
+  access: ReleaseAccess,
 ): Promise<Response> {
   const res = await catalog.openSource(
     {
@@ -500,6 +505,7 @@ async function computeDownload(
       arch: target.arch,
       format: target.format,
       checksum: new URL(req.url).searchParams.get("checksum") === "sha256",
+      access,
     },
     req,
   );
@@ -640,6 +646,20 @@ async function computeBuild(
     buildId: target.buildId,
   });
   if (resolved?.kind !== "build" || !resolved.payload) return notFound();
+  // A MOVING selector named no version before this point, so the window was not asked; the
+  // release it resolved to is held to it now, before its checksum or any byte is served.
+  if (resolved.moving) {
+    const blocked = await resolvedReleaseRefusal(
+      env,
+      ctx.db,
+      ctx.product,
+      bearer(req),
+      mode,
+      resolved.release.version,
+      ctx.now,
+    );
+    if (blocked) return blocked;
+  }
   const payload = resolved.payload;
   const cache = resolved.moving ? MOVING_BYTES_CACHE : FIXED_BYTES_CACHE;
   const publicMode = mode === "public";

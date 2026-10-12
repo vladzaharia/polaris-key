@@ -34,7 +34,10 @@
  *
  * Access is the release gateway's (`enforceReleaseAccess`): the appcasts and the four new feeds
  * are governed by Distribution's delivery access for the app (`delivery.accessMode`), the version
- * check by the metadata mode, exactly as the appcast and version check always were. A public
+ * check by the metadata mode, exactly as the appcast and version check always were. Under
+ * `entitled` the gateway knows only the CHANNEL, and the releases a feed lists are chosen after
+ * it, so the caller's version window is applied to them too (`inWindow`): a feed whose newest
+ * release is outside it is `403 version_blocked`, an older entry outside it is left out. A public
  * answer is cached for five minutes in Core's feed cache, keyed by the path, only the query
  * inputs the renderer reads, and a stamp of the state that must take effect at once
  * (`delivery.feedStamp()` plus the channel policies); a non-public answer is never cached and is
@@ -45,6 +48,7 @@
 import { APP_DELIVERABLE_ID, RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import { OUTLET_KINDS } from "@polaris-key/protocol/distribution";
 import { BUILD_ID_PATTERN } from "@polaris-key/protocol/release";
+import type { AllowedRange } from "@polaris-key/protocol";
 import type { ServiceContext } from "../../core/registry.js";
 import type {
   CatalogChannelPolicy,
@@ -55,13 +59,15 @@ import type {
   FeedSelectionQuery,
   ReleaseCatalog,
 } from "../../core/hooks.js";
-import { errorResponse, notFound } from "../../core/errors.js";
+import { errorResponse, notFound, wireError } from "../../core/errors.js";
 import { bearer } from "../../platform/http.js";
 import { sha256Hex } from "../../platform/hash.js";
 import {
   accessRefusal,
+  entitledWindow,
   fixedReleaseSelector,
 } from "../../core/licensing/entitledAccess.js";
+import { versionInWindow } from "../../core/licensing/entitlements.js";
 import {
   DOWNLOAD_TICKET_PARAM,
   mintDownloadTicket,
@@ -193,6 +199,11 @@ export interface RenderContext {
   outletParam: string | null;
   /** The app deliverable's delivery access mode, the one this request was admitted under. */
   mode: ReleaseAccess;
+  /**
+   * The caller's version window under `entitled` (A5-03), or null for every other mode: what
+   * `inWindow` holds the releases a feed lists to.
+   */
+  window: AllowedRange | null;
 }
 
 /** Run one updater feed request: rate limit, access, cache, render, headers. */
@@ -237,6 +248,10 @@ async function serveFeed(
     );
     if (denied) return harden(denied);
   }
+  // The gateway above decided the CHANNEL. The window is read once here, so each release a
+  // renderer lists can be tested against it (`inWindow`) without a grant read per release.
+  const window = await entitledWindow(env, db, product, bearer(req), mode, now);
+  if (window instanceof Response) return harden(window);
 
   const url = new URL(req.url);
   const outletParam = url.searchParams.get("outlet");
@@ -249,6 +264,7 @@ async function serveFeed(
     recorded,
     outletParam,
     mode,
+    window,
     artifacts: {
       env,
       db,
@@ -359,6 +375,39 @@ function select(
   });
 }
 
+/**
+ * The releases a feed lists, held to the caller's `entitled` version window (A5-03). The access
+ * decision ran with the channel alone: the releases are chosen afterwards, so each is tested
+ * here. The newest listed release is the one a moving selector resolves to. When it is outside
+ * the window the request is refused (`403 version_blocked` with the caller's `allowedRange`, the
+ * answer the pinned download gives): serving an older release instead would be a decision about
+ * what the caller may have that no pinned route ever made. An older release outside the window
+ * is left out, because a feed never names a release its own download route refuses.
+ *
+ * Only a non-public render ever has a window (`RenderContext.window`), so the `Response` this can
+ * return is never cached.
+ */
+function inWindow<T extends { version: string }>(
+  window: AllowedRange,
+  listed: readonly T[],
+): T[] | Response {
+  const newest = listed[0];
+  if (newest && !versionInWindow(newest.version, window))
+    return wireError(403, "version_blocked", { allowedRange: window });
+  return listed.filter((e) => versionInWindow(e.version, window));
+}
+
+/** `select`, with the releases it lists held to the caller's `entitled` window (`inWindow`). */
+async function selectInWindow(
+  r: RenderContext,
+  q: Omit<FeedSelectionQuery, "origin" | "releaseIds">,
+): Promise<FeedSelection | Response | null> {
+  const sel = await select(r, q);
+  if (!sel || !r.window) return sel;
+  const entries = inWindow(r.window, sel.entries);
+  return entries instanceof Response ? entries : { ...sel, entries };
+}
+
 function policyView(
   policies: readonly CatalogChannelPolicy[],
   channel: string,
@@ -414,7 +463,7 @@ export function serveSparkle(
       contentType: CONTENT_TYPES.xml,
       publicCache: PUBLIC_FEED_CACHE,
       render: async (r) => {
-        const sel = await select(r, {
+        const sel = await selectInWindow(r, {
           channel,
           kinds: ["direct"],
           outletId: r.outletParam,
@@ -426,7 +475,7 @@ export function serveSparkle(
           rollouts: "phase",
           withArtifacts: true,
         });
-        if (!sel) return null;
+        if (!sel || sel instanceof Response) return sel;
         const sig = signaturePolicy(r.cfg);
         const sources: SparkleSource[] = [];
         for (const entry of preferArch(sel.entries, arch)) {
@@ -518,7 +567,7 @@ function serveWinSparkle(
       contentType: CONTENT_TYPES.xml,
       publicCache: PUBLIC_FEED_CACHE,
       render: async (r) => {
-        const sel = await select(r, {
+        const sel = await selectInWindow(r, {
           channel,
           kinds: ["direct"],
           outletId: r.outletParam,
@@ -530,7 +579,7 @@ function serveWinSparkle(
           allBuilds: true,
           withArtifacts: true,
         });
-        if (!sel) return null;
+        if (!sel || sel instanceof Response) return sel;
         const sig = signaturePolicy(r.cfg);
         const sources: WinSparkleSource[] = [];
         for (const entry of sel.entries) {
@@ -716,8 +765,13 @@ function serveVelopack(
       render: async (r) => {
         const candidates = await velopackCandidates(r, channel, target);
         if (!candidates) return null;
+        // Held to the caller's window here and not in `velopackCandidates`: the package route
+        // shares that selection but decides its own file, by the file's stored version
+        // (`ticketedPackageUrl`), and one target's newest release must not refuse another's.
+        const listed = r.window ? inWindow(r.window, candidates) : candidates;
+        if (listed instanceof Response) return listed;
         return renderVelopackFeed(
-          await velopackAssets(candidates, (a) => artifactSha1(r.artifacts, a)),
+          await velopackAssets(listed, (a) => artifactSha1(r.artifacts, a)),
         );
       },
     },
@@ -950,7 +1004,7 @@ function serveAppInstaller(
       contentType: CONTENT_TYPES.appinstaller,
       publicCache: PUBLIC_FEED_CACHE,
       render: async (r) => {
-        const sel = await select(r, {
+        const sel = await selectInWindow(r, {
           channel,
           kinds: ["app-installer"],
           outletId: pair === "outlet" ? r.outletParam : null,
@@ -960,6 +1014,7 @@ function serveAppInstaller(
           liveness: "availability",
           limit: 1,
         });
+        if (sel instanceof Response) return sel;
         const head = sel?.entries[0];
         if (!sel || !head) return null;
         const family = sel.outlet.identity.packageFamilyName;
@@ -1022,7 +1077,7 @@ function serveZsync(
       contentType: CONTENT_TYPES.zsync,
       publicCache: PUBLIC_FEED_CACHE,
       render: async (r) => {
-        const sel = await select(r, {
+        const sel = await selectInWindow(r, {
           channel,
           kinds: ["direct"],
           outletId: r.outletParam,
@@ -1033,6 +1088,7 @@ function serveZsync(
           limit: 1,
           withArtifacts: true,
         });
+        if (sel instanceof Response) return sel;
         const head = sel?.entries[0];
         if (!head || head.size === null) return null;
         // Only the build's own descriptor-named control file, which the CI-signed record
@@ -1099,7 +1155,7 @@ export function serveExtendedVersion(
       contentType: CONTENT_TYPES.json,
       publicCache: PUBLIC_VERSION_CACHE,
       render: async (r) => {
-        const sel = await select(r, {
+        const sel = await selectInWindow(r, {
           channel,
           // Any self-hosted outlet may be named; by default the direct download.
           kinds: r.outletParam ? OUTLET_KINDS : ["direct"],
@@ -1111,6 +1167,7 @@ export function serveExtendedVersion(
           limit: 1,
           allBuilds: true,
         });
+        if (sel instanceof Response) return sel;
         // One build of the newest release: the exact arch over a universal one, then by id.
         const head = sel
           ? (sel.entries.find((e) => arch !== null && e.arch === arch) ??

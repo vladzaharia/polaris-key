@@ -34,6 +34,8 @@ const FIELDS = {
   claimsTemplateJson: '{"iss":"TEAM"}',
   ttlSeconds: 3600,
   audience: null,
+  requires: "licensed" as const,
+  requiredEntitlement: null,
 };
 
 function recipe(over: Partial<EdgeMintRecipe> = {}): EdgeMintRecipe {

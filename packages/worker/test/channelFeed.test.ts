@@ -9,7 +9,7 @@ import { verifyJws } from "@polaris-key/jws";
 import { feedClaims } from "@polaris-key/client-core/feed";
 import { MAX_WIRE_INTEGER } from "@polaris-key/protocol/core";
 import { installDigestStream } from "./r2Mock.js";
-import { NOW, TEST_KID, TEST_PUB } from "./seed.js";
+import { NOW, seedLicenseWithKey, TEST_KID, TEST_PUB } from "./seed.js";
 import { call, CONSOLE, SLUG } from "./releaseRoutesFixture.js";
 import {
   feedWorld,
@@ -25,6 +25,8 @@ import { stmtSetChannelPolicy } from "../src/services/release/model.js";
 import { RESIGN_AFTER_SECONDS } from "../src/services/update/feedDoc.js";
 import { composeChannelFeed } from "../src/services/update/compose.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
+import { upsertDevice } from "../src/core/repo.js";
+import { hashKey } from "../src/platform/crypto.js";
 
 installDigestStream();
 
@@ -539,5 +541,65 @@ describe("GET /release/records/<sha256>", () => {
       );
       expect(res.status).toBe(401);
     }
+  });
+});
+
+// The signed document is the same bytes for every caller, so the window decides who may READ it
+// (the release the requested platform resolves to), never what it says.
+describe("GET /update/<channel>/feed.jws under `entitled`: the version window", () => {
+  async function deviceToken(maxVersion: string): Promise<string> {
+    // One licence and device per call: the id and the token derive from the window.
+    const token = `pkeyt_${maxVersion.padEnd(43, "w").replace(/[^A-Za-z0-9]/g, "w")}`;
+    const { licenseId } = await seedLicenseWithKey(w.db, SLUG, {
+      id: `lic_window_${maxVersion}`,
+      maxVersion,
+    });
+    await upsertDevice(w.db, {
+      product: SLUG,
+      device_id: `dev-window-${maxVersion}`,
+      customer_id: null,
+      license_id: licenseId,
+      status: "authorized",
+      first_seen: NOW,
+      last_seen: NOW,
+      ua: null,
+      label: null,
+      overrides_json: null,
+      reported_json: null,
+      token_hash: await hashKey(token, w.env.KEY_HASH_PEPPER),
+    });
+    return token;
+  }
+
+  const feedAs = (token: string, platform = "macos") =>
+    call(
+      w.env,
+      w.db,
+      noFetch,
+      `${CONSOLE}/${SLUG}/update/stable/feed.jws?platform=${platform}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+
+  it("refuses a licence capped below the release the platform resolves to, and serves one inside it", async () => {
+    await publish(w, "1.3.0");
+    await w.db.run(
+      "UPDATE release_config SET metadata_access = 'entitled' WHERE product = ?",
+      SLUG,
+    );
+    const capped = await feedAs(await deviceToken("1.0.0"));
+    expect(capped.status).toBe(403);
+    expect(await capped.json()).toMatchObject({
+      error: { code: "version_blocked" },
+      allowedRange: { max: "1.0.0" },
+    });
+    expect(capped.headers.get("cache-control") ?? "").not.toMatch(/^public/);
+    const open = await feedAs(await deviceToken("9.0.0"));
+    expect(open.status).toBe(200);
+    expect(open.headers.get("content-type")).toBe("application/jose");
+  });
+
+  it("a public feed is served to anyone, whatever the window", async () => {
+    await publish(w, "1.3.0");
+    expect((await getFeed(w, "stable")).res.status).toBe(200);
   });
 });

@@ -83,6 +83,10 @@ export interface MintRecipeFields {
   claims_template_json: string | null;
   ttl_seconds: number;
   audience: string | null;
+  /** Who may mint this recipe: `none`, `registered` or `licensed`. */
+  requires: string;
+  /** A catalog flag the caller's merged payload must carry, truthy; `null` demands none. */
+  required_entitlement: string | null;
 }
 
 /** An `edge_mint_approvals` row. */
@@ -102,8 +106,10 @@ export interface MintApprovalRow extends MintRecipeFields {
 }
 
 /** The security-relevant fields, in their wire (camelCase) spelling, paired with the column.
- *  `auth_page_template` is deliberately absent: it does not change what is signed, and the
- *  `/auth` page ships its own script-free policy. */
+ *  `requires` and `required_entitlement` are in it because they decide WHO the recipe signs
+ *  for: a push that relaxes `licensed` to `none`, or drops a required entitlement, must not ride
+ *  on an approval given for the stricter form. `auth_page_template` is deliberately absent: it
+ *  does not change what is signed, and the `/auth` page ships its own script-free policy. */
 export const MINT_RECIPE_FIELDS = [
   ["alg", "alg"],
   ["signingKeySecret", "signing_key_secret"],
@@ -111,6 +117,8 @@ export const MINT_RECIPE_FIELDS = [
   ["claimsTemplateJson", "claims_template_json"],
   ["ttlSeconds", "ttl_seconds"],
   ["audience", "audience"],
+  ["requires", "requires"],
+  ["requiredEntitlement", "required_entitlement"],
 ] as const;
 
 export type MintRecipeWireField = (typeof MINT_RECIPE_FIELDS)[number][0];

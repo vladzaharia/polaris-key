@@ -974,6 +974,11 @@ export interface EdgeMintRecipeFields {
   claimsTemplateJson: string | null;
   ttlSeconds: number;
   audience: string | null;
+  /** Who may mint the recipe: any device (`none`), a device of the product (`registered`), or
+   *  a device whose licence is usable (`licensed`, the default). */
+  requires: "none" | "registered" | "licensed";
+  /** A catalog flag the caller's merged payload must carry, truthy, or `null` for none. */
+  requiredEntitlement: string | null;
 }
 
 /** The sign-in trust an edge-mint approval covers: the product's identity provider and the group
@@ -5354,6 +5359,8 @@ const rawApi = {
           claimsTemplateJson: fields.claimsTemplateJson,
           ttlSeconds: fields.ttlSeconds,
           audience: fields.audience,
+          requires: fields.requires,
+          requiredEntitlement: fields.requiredEntitlement,
           identity,
           licenseEnabled,
           ...(acknowledgeOpenRegistration
