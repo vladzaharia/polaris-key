@@ -147,7 +147,7 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
           row.original.lastSignInAt ? (
             <Timestamp at={fromSeconds(row.original.lastSignInAt)} />
           ) : (
-            <span className="text-fg-muted">Never</span>
+            <span className="tabular-nums text-fg-muted">Never</span>
           ),
       });
     }
