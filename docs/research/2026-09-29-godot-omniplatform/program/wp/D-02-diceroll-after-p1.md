@@ -54,7 +54,7 @@ resolution agrees with Diceroll's own decisions before D-03 hands updates over.
   and `.claude/skills/adding-a-catalog-entry/SKILL.md`; the Godot SDK docs page and install steps
   P1-12 publishes (see its hand-off); `products/djdl/product.json` as a complete example (tiers,
   `oidc.provider: platform`); `packages/shared-manifest/schemas/v1/product.schema.json`
-  (`autoIssue`, `tiers`, `devices.registration`).
+  (`autoIssue`, `tiers`).
 - Research: [README §5.1](../../README.md#51-shape-and-api), [§5.3](../../README.md#53-transport-persistence-device-identity), [§5.4](../../README.md#54-managed-config-in-a-game), [§5.8](../../README.md#58-ui-kit-and-pkeyboot), [§6.1](../../README.md#61-developer-adopter), [§13](../../README.md#13-diceroll-adoption-path); [CONTENT §15](../../CONTENT.md#15-diceroll-mapping) (the `extras.diceSkins` entitlement).
 - Diceroll: `project.godot` (autoloads; `Updater` is first), `ui/modals/settings_panel.gd`,
   `ui/modals/dev_menu.gd` (`register_section`), `game/boot/`, `game/update/update_policy.gd`

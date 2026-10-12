@@ -246,20 +246,40 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
     });
     try {
       await h1(o.page, "Your library");
-      const heights = () =>
-        o.page.evaluate(() =>
-          [
-            'header button[aria-label="Jump to a product"]',
-            'header button[aria-label="Activate license"]',
-            'header button[aria-label^="Account:"]',
-          ].map((sel) =>
-            Math.round(
-              [...document.querySelectorAll(sel)]
-                .find((e) => e.checkVisibility())!
-                .getBoundingClientRect().height,
+      const headerControls = [
+        'header button[aria-label="Jump to a product"]',
+        'header button[aria-label="Activate license"]',
+        'header button[aria-label^="Account:"]',
+      ];
+      // The header lays out after a viewport change, so a control can be absent or hidden for a
+      // moment. Wait for each one to be visible before measuring it, and name the control if it
+      // never is; measuring `undefined` threw a TypeError instead.
+      const heights = async () => {
+        for (const sel of headerControls)
+          await o.page
+            .waitForFunction(
+              (s) =>
+                [...document.querySelectorAll(s)].some((e) =>
+                  e.checkVisibility(),
+                ),
+              sel,
+              { timeout: 8000 },
+            )
+            .catch(() => {
+              throw new Error(`header control never became visible: ${sel}`);
+            });
+        return o.page.evaluate(
+          (selectors) =>
+            selectors.map((sel) =>
+              Math.round(
+                [...document.querySelectorAll(sel)]
+                  .find((e) => e.checkVisibility())!
+                  .getBoundingClientRect().height,
+              ),
             ),
-          ),
+          headerControls,
         );
+      };
       for (const width of [1024, 1440]) {
         await o.page.setViewportSize({ width, height: 900 });
         expect.soft(await heights(), `at ${width}`).toEqual([40, 40, 40]);
