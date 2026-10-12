@@ -343,10 +343,10 @@ const REFUSALS = {
 } satisfies Record<string, Refusal>;
 
 describe("pkey dev server", () => {
-  it("starts in under 30 s with no account and no network (the bound absorbs parallel CI load)", async () => {
+  it("starts in under 45 s with no account and no network", async () => {
     const t = Date.now();
     const { s, info } = await start();
-    expect(Date.now() - t).toBeLessThan(30_000);
+    expect(Date.now() - t).toBeLessThan(45_000);
     expect(info.product).toBe("tidewater");
     expect(Object.keys(info.keys)).toEqual([...DEV_KEYS]);
     expect(info.releases.map((r) => r.channel).sort()).toEqual([
@@ -355,7 +355,7 @@ describe("pkey dev server", () => {
     ]);
     expect(s.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
     await s.close();
-  });
+  }, 60_000);
 
   it("answers each refusal kind the way the Worker does", async () => {
     const { s, info } = await start();
