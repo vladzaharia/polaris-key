@@ -33,7 +33,7 @@
     "@polaris-key/manifest": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "@polaris-key/zstd-wasm": "workspace:*",
-    "@simplewebauthn/server": "13.3.3",
+    "@simplewebauthn/server": "14.0.3",
     "jose": "^5.9.6",
     "yaml": "^2.6.1"
   },
