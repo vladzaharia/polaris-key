@@ -14,6 +14,7 @@ import {
   PORTAL_EMAIL_SCOPE,
   signinFlowRef,
 } from "../src/services/identity/card/emailSignIn.js";
+import { seal } from "../src/platform/keyvault.js";
 import type { Env as WorkerEnv } from "../src/platform/env.js";
 
 const workerEnv = {
@@ -34,7 +35,13 @@ describe("email code on workerd", () => {
       ref,
       JSON.stringify({
         v: 1,
-        email,
+        // The record holds the address sealed into this record's own slot, as the start route
+        // writes it.
+        email: await seal(workerEnv, email, {
+          product: PORTAL_EMAIL_SCOPE,
+          kind: "product-secret",
+          id: `${ref.kind}:${ref.id}`,
+        }),
         createdAt: now,
         place: "an unknown location",
         status: "pending",

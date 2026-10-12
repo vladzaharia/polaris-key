@@ -52,6 +52,12 @@ function engineFromArgv(argv: readonly string[]): Engine {
 const OWN_DEPS = ["@polaris-key/manifest", "@polaris-key/protocol"] as const;
 
 export default defineConfig({
+  // The corpus files come in as JSON imports, and a JSON import must keep every key an own
+  // property. Vite's default turns a small file into an object literal, where a key named
+  // `__proto__` sets the prototype instead of defining a property (the corpus has a kid of
+  // exactly that name); `stringify` emits `JSON.parse(...)`, which defines it, and named exports
+  // are off because they take the literal path again.
+  json: { stringify: true, namedExports: false },
   resolve: {
     alias: OWN_DEPS.map((name) => ({
       find: new RegExp(`^${name.replace("/", "\\/")}$`),
