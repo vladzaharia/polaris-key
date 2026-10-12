@@ -261,6 +261,73 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     );
   });
 
+  it("update.install refuses a forged store offer and never installs it", async () => {
+    const { bridge, client: hostClient } = await setup();
+    const client = hostClient as unknown as {
+      update: {
+        decide: (o?: unknown) => Promise<{ decision: unknown }>;
+        install: (d: unknown) => Promise<unknown>;
+      };
+    };
+    const installed: unknown[] = [];
+    const real = {
+      action: "store",
+      release: { version: "2.0.0" },
+      listingUrl: "https://store.example/app",
+      mandatory: false,
+    };
+    client.update.decide = async () => ({ decision: real });
+    client.update.install = async (d) => {
+      installed.push(d);
+      return { kind: "storeOpened", url: "https://store.example/app" };
+    };
+    const forged = { ...real, listingUrl: "https://evil.example/payload" };
+    await expect(
+      bridge.invoke!("update", "install", { decision: forged }),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(installed).toEqual([]);
+    expect(
+      await bridge.invoke!("update", "install", { decision: real }),
+    ).toEqual({ kind: "storeOpened", url: "https://store.example/app" });
+    expect(installed).toEqual([real]);
+  });
+
+  it("update.install re-derives under the channel the renderer last asked", async () => {
+    const { bridge, client: hostClient } = await setup();
+    const client = hostClient as unknown as {
+      update: {
+        decide: (o?: unknown) => Promise<{ decision: unknown }>;
+        install: (d: unknown) => Promise<unknown>;
+      };
+    };
+    const asked: unknown[] = [];
+    const installed: unknown[] = [];
+    const offer = {
+      action: "binary",
+      method: "direct",
+      release: { version: "2.0.0" },
+      build: "b2",
+      mandatory: false,
+      critical: false,
+      prestage: [],
+      discardStaged: false,
+    };
+    client.update.decide = async (o) => {
+      asked.push(o);
+      return { decision: offer };
+    };
+    client.update.install = async (d) => {
+      installed.push(d);
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await bridge.invoke!("update", "decide", { channel: "beta" });
+    expect(
+      await bridge.invoke!("update", "install", { decision: offer }),
+    ).toEqual({ kind: "handedOff", version: "2.0.0" });
+    expect(asked.at(-1)).toEqual({ channel: "beta" });
+    expect(installed).toEqual([offer]);
+  });
+
   it("refuses absolute and escaping release.fetch destinations before a request", async () => {
     const downloadDir = tempDir();
     const { bridge, seen } = await setup({}, "pkeyt_seed", {

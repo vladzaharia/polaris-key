@@ -423,6 +423,9 @@ export function exposePolarisBridge(
   };
   // The restart an install staged, applied by `update.restart` (the function cannot cross IPC).
   let pendingRestart: (() => Promise<void>) | null = null;
+  // The options of the last `update.decide`: an install re-derives the offer under the same ones
+  // (the adapter names the decision only, so a non-default channel is kept here, not re-sent).
+  let lastDecide: Parameters<PolarisKeyClient["update"]["decide"]>[0] = {};
 
   const invokeVerbs: Record<string, (args: unknown) => Promise<unknown>> = {
     "devices.list": async () => client.listDevices(),
@@ -456,6 +459,7 @@ export function exposePolarisBridge(
         o.staged = b.staged as NonNullable<typeof o>["staged"];
       if (typeof b.skipVersion === "string" || b.skipVersion === null)
         o.skipVersion = b.skipVersion as string | null;
+      lastDecide = o;
       return client.update.decide(o);
     },
     "update.install": async (a) => {
@@ -468,11 +472,7 @@ export function exposePolarisBridge(
         );
       // The host decides what to install, never the renderer: a store decision's listing URL goes
       // to the shell, so the renderer may only confirm an offer the host makes now.
-      const current = (
-        await client.update.decide(
-          typeof b.channel === "string" ? { channel: b.channel } : {},
-        )
-      ).decision;
+      const current = (await client.update.decide(lastDecide)).decision;
       if (!sameOffer(current, offered as Record<string, unknown>))
         throw new BridgeRefusal(
           "invalid-argument",
