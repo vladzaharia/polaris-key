@@ -50,7 +50,7 @@ zstdJniAndroid = "1.5.7-12"
 # Roborazzi for the snapshot tests over Robolectric's native graphics (the JVM renders each screen;
 # no emulator).
 composeBom = "2026.06.01"
-zxing = "3.5.3"
+zxing = "3.5.4"
 # Compose Multiplatform for the docs snippet lane's desktop recipe (:docs-snippets, SP-45b); 1.8.x builds
 # with Kotlin 2.1.
 composeMultiplatform = "1.8.2"
