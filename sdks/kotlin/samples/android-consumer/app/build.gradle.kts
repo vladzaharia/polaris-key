@@ -73,7 +73,7 @@ dependencies {
     // Packs' native decoder, opt-in.
     "packsImplementation"("im.plrs.key:polaris-key-zstd:$pkey")
 
-    implementation(platform(if (latest) "androidx.compose:compose-bom:2026.09.00" else "androidx.compose:compose-bom:2025.05.01"))
+    implementation(platform(if (latest) "androidx.compose:compose-bom:2026.09.00" else "androidx.compose:compose-bom:2026.06.01"))
     implementation("androidx.compose.material3:material3")
     implementation(if (latest) "androidx.activity:activity-compose:1.13.0" else "androidx.activity:activity-compose:1.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
