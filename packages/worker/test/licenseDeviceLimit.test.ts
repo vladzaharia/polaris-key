@@ -240,6 +240,7 @@ describe("per-licence device limit (LX-14a)", () => {
         groupsJson: null,
         tierId: "pro",
         expiresAt: null,
+        emailIssuerClass: "platform",
       },
       NOW,
     );

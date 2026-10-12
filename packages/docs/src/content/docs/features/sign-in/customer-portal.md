@@ -833,11 +833,15 @@ Discover to accounts its auto-issue policy covers. Turning it off hides the offe
 changing the policy, which keeps issuing on the product's own sign-in.
 
 `autoLinkEnabled` is **tri-state**, not boolean — `true`/`false` is an explicit operator
-override; `null` ("auto") derives from the product's _own_ OIDC provider: on for a
-`platform`-issuer product, **off** for a `custom`-issuer one. A tenant-controlled IdP's `email`
-and `sub` claims are outside the platform's trust boundary, so a tenant that stands up its own
-IdP is opted out of auto-linking automatically, by the same default rule, rather than by an
-operator remembering to flip a switch.
+override; `null` ("auto") derives from the issuer that vouched for the license's address: on for
+the `platform` issuer, **off** for a product's own `custom` one. A tenant-controlled IdP's
+`email` and `sub` claims are outside the platform's trust boundary, so a tenant that stands up its
+own IdP is opted out of auto-linking automatically, by the same default rule, rather than by an
+operator remembering to flip a switch. The issuer is recorded **on the license** when its address
+is written (`licenses.email_issuer_class`, migration `0118`): editing a product's `oidc.provider`
+later cannot turn a license a tenant minted under its own IdP into one that auto-links. A license
+no IdP vouched for (an operator-created or auto-issued one) has no recorded issuer and follows the
+product's provider as it stands.
 
 This is what decides whether a _verified_ email or OIDC subject may silently fold a product's
 license into the account requesting it — verified in two senses at once: only email addresses

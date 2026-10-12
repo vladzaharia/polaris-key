@@ -66,6 +66,7 @@ import {
   handlePortalLogin,
 } from "../../src/services/identity/portal/auth.js";
 import {
+  activateFromIdentity,
   handleAuthCallback,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
@@ -79,6 +80,7 @@ import {
 } from "../../src/core/products.js";
 import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
 import {
+  getLicense,
   insertSchema,
   upsertDevice,
   upsertProductSecret,
@@ -851,6 +853,127 @@ describe("a catalog that shadows a secret or seals an entitlement is refused at 
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
+// OIDC provisioning writes real product secrets — a subscription URL with a verified claim
+// interpolated into it — into `licenses.overrides_json`, the column the console seals its own
+// writes to. It wrote them in PLAINTEXT, so a read-only D1 dump yielded every provisioned secret
+// while the admin-authored value for the very same catalog key was ciphertext. And a claim of an
+// enrolled licence replaced whatever an operator had set on it with the provisioning's output.
+// ───────────────────────────────────────────────────────────────────────────────
+describe("OIDC provisioning seals what it writes and keeps what it does not own", () => {
+  const TOKEN = "IDP-ISSUED-SUBSCRIPTION-TOKEN";
+  const SUBSCRIPTION_URL = `https://vpn.example.com/${TOKEN}`;
+  const STAFF = {
+    sub: "staff-1",
+    email: "ada@corp.example",
+    name: "Ada",
+    groups: ["staff"],
+    claims: { vpnSub: TOKEN },
+  };
+
+  async function provisioned() {
+    const db: Db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["acme"]);
+    await seedProduct(db, "acme", { catalog: catalogWithSecrets(true) });
+    await db.run(
+      `INSERT INTO oidc_config (product, provider, issuer, client_id,
+         client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?, 'platform', NULL, NULL, NULL, NULL, ?)`,
+      "acme",
+      JSON.stringify({ staff: { role: "user" } }),
+    );
+    await db.run(
+      `INSERT INTO provisioning_config (product, claim, entitlement_key,
+         entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json)
+       VALUES (?,?,?,?,?,?,?)`,
+      "acme",
+      "vpnSub",
+      "vpnFlag",
+      JSON.stringify(true),
+      "proxy.subscriptionUrl",
+      "https://vpn.example.com/{claim}",
+      JSON.stringify(["vpn.example.com"]),
+    );
+    return { db, env, product: (await loadProduct(env, db, "acme"))! };
+  }
+
+  it("ATTACK FAILS: a D1 dump of licenses.overrides_json yields no provisioned secret, on mint or on a later sign-in", async () => {
+    const { db, env, product } = await provisioned();
+    const minted = await activateFromIdentity(db, product, STAFF, NOW, { env });
+    if (!("licenseId" in minted)) throw new Error("expected a licence");
+
+    for (const at of [NOW, NOW + 60]) {
+      if (at !== NOW)
+        await activateFromIdentity(db, product, STAFF, at, { env });
+      const row = await getLicense(db, "acme", minted.licenseId);
+      // The at-rest assertion: the URL carrying the IdP-issued token is ciphertext, exactly like
+      // the same catalog key written from the console.
+      expect(row!.overrides_json).not.toContain(TOKEN);
+      expect(row!.overrides_json).toContain('\\"v\\":2');
+
+      // …and the delivery path still recovers it.
+      const stored = parsePayload(row!.overrides_json);
+      const opened = await openManagedPayload(env, "acme", stored);
+      expect(opened.secrets["proxy.subscriptionUrl"]!.value).toBe(
+        SUBSCRIPTION_URL,
+      );
+      // A blob lifted onto another catalog key does not open (AAD binds product AND key).
+      expect(
+        await openManagedValue(
+          env,
+          "acme",
+          "api.token",
+          stored.secrets["proxy.subscriptionUrl"]!.value,
+        ),
+      ).toBeNull();
+    }
+  });
+
+  it("ATTACK FAILS: an operator's override on an enrolled licence survives the OIDC claim of it", async () => {
+    const { db, env, product } = await provisioned();
+    await seedLicenseWithKey(db, "acme", { id: "lic_enrolled" });
+    await db.run(
+      `UPDATE licenses SET origin = 'enroll', sub = NULL, enroll_hwid = 'HW-1',
+         overrides_json = ? WHERE product = ? AND id = ?`,
+      JSON.stringify({
+        config: {
+          "api.token": {
+            state: "enforced",
+            value: "ADMIN-AUTHORED",
+            updatedAt: NOW,
+          },
+        },
+        secrets: {},
+        entitlements: {},
+      }),
+      "acme",
+      "lic_enrolled",
+    );
+
+    // THE ATTACK: the claim used to replace the column with the provisioning's output, so one
+    // sign-in silently destroyed what an operator had set on the licence: no error, no audit row.
+    const claimed = await activateFromIdentity(db, product, STAFF, NOW + 10, {
+      env,
+      enrolledLicenseId: "lic_enrolled",
+    });
+    expect(claimed).toMatchObject({
+      licenseId: "lic_enrolled",
+      merged: "claimed",
+    });
+
+    const stored = parsePayload(
+      (await getLicense(db, "acme", "lic_enrolled"))!.overrides_json,
+    );
+    expect(stored.config["api.token"]!.value).toBe("ADMIN-AUTHORED");
+    // …and provisioning still WINS on the keys it owns, sealed.
+    expect(JSON.stringify(stored)).not.toContain(TOKEN);
+    const opened = await openManagedPayload(env, "acme", stored);
+    expect(opened.secrets["proxy.subscriptionUrl"]!.value).toBe(
+      SUBSCRIPTION_URL,
+    );
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
 // R12-03 — a live GitHub App installation token is cached in KV in PLAINTEXT.
 // ───────────────────────────────────────────────────────────────────────────────
 
@@ -1467,7 +1590,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     expectNoCredentialInKeys(kv, { state, nonce }, env);
   });
 
-  it("FIXED: the magic-link token is not a KV key name (the value still names the recipient)", async () => {
+  it("FIXED: the magic-link token is not a KV key name (and the value no longer names the recipient)", async () => {
     const kv = new RecordingKv();
     const db: Db = makeTestDb();
     const env = signInEnv(kv);
@@ -1505,11 +1628,15 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
       .keys()
       .filter((k) => k.startsWith("portal-magic:"));
     expect(keys).toEqual([`portal-magic:${await hashKey(token!, PEPPER)}`]);
-    // The record shape is unchanged (out of scope for R12-04): the value still names the
-    // recipient, but a listing no longer yields a token that opens it.
-    expect(
-      await artefacts(env).get(await portalMagicKey(env, token!)),
-    ).toContain("victim@example.com");
+    // The address is sealed under the platform KEK and bound to this one record: a dump of the
+    // store's VALUES lists nobody who was sent a link.
+    const stored = (await artefacts(env).get(
+      await portalMagicKey(env, token!),
+    ))!;
+    expect(stored).not.toContain("victim@example.com");
+    expect(JSON.parse(stored)).toMatchObject({
+      email: expect.stringContaining('"ct"') as string,
+    });
 
     // I-07: the landing page's POST, from the browser that asked (its flow cookie).
     const flowCookie = (res.headers.get("set-cookie") ?? "").split(";")[0]!;

@@ -43,6 +43,18 @@
  * Limits and lifetimes are I-02's (`core/notify/emailLimits.ts`), scoped to the platform bucket
  * `_portal`: 6 digits, 10 minutes, 5 wrong attempts per code, lockout after 10 an hour, 5 sends
  * an hour and 20 a day per recipient, per-IP and per-network hourly caps.
+ *
+ * ── THE ADDRESS AT REST ─────────────────────────────────────────────────────────────────────
+ *
+ * The flow record and the link's record both name the address the code and link were sent to. Their
+ * store addresses are hashes, so a listing of the store is inert, but a dump of the VALUES would
+ * still list everyone who was sent a sign-in link. The address in each is therefore
+ * sealed under the platform KEK and bound by AAD to the record it lives in, so a blob lifted out
+ * of one record and pasted into another fails the auth tag instead of pointing an attacker's
+ * link at somebody else's account. A record whose address does not open (one written before this
+ * sealed it, a transplanted blob, a rotated-away KEK) is not a live flow or link: it answers as
+ * an expired one does. With no usable KEK the start answers `503 email_unavailable`: the address
+ * is never written in the clear.
  */
 
 import { CARD_RETURN_TO, safeReturnTo } from "../../../platform/returnTo.js";
@@ -50,6 +62,7 @@ import { escapeHtml } from "../../../platform/html.js";
 import { hashKey } from "../../../platform/crypto.js";
 import { parseJsonColumn } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
+import { open, seal, type SealContext } from "../../../platform/keyvault.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
@@ -206,6 +219,40 @@ export async function portalMagicKey(
   return artefactRef("portal-magic", await hashKey(token, env.KEY_HASH_PEPPER));
 }
 
+/**
+ * The AAD slot an address is sealed into: the record it lives in, by that record's single-use
+ * address (the hash of the link's token, or of the flow's browser secret). `_portal` is the
+ * product: the account realm names no tenant, as for the portal's rate limits.
+ */
+function addressSlot(ref: ArtefactRef): SealContext {
+  return {
+    product: PORTAL_EMAIL_SCOPE,
+    kind: "product-secret",
+    id: `${ref.kind}:${ref.id}`,
+  };
+}
+
+/**
+ * A stored record with its sealed `email` opened, or `null` when there is no record or the
+ * address does not open (see the header): the caller answers as for an expired one.
+ */
+async function openRecord<T extends { email: string }>(
+  env: Env,
+  ref: ArtefactRef,
+  raw: string | null,
+): Promise<T | null> {
+  const stored = parseJsonColumn<T>(raw);
+  if (!stored || typeof stored.email !== "string") return null;
+  try {
+    return {
+      ...stored,
+      email: await open(env, stored.email, addressSlot(ref)),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** This browser's live flow, if any. */
 async function currentFlow(
   env: Env,
@@ -214,7 +261,11 @@ async function currentFlow(
   const secret = readCookie(req.headers.get("cookie"), SIGNIN_FLOW_COOKIE);
   if (!secret) return null;
   const ref = await signinFlowRef(env, secret);
-  const record = parseJsonColumn<FlowRecord>(await getArtefact(env, ref));
+  const record = await openRecord<FlowRecord>(
+    env,
+    ref,
+    await getArtefact(env, ref),
+  );
   return record ? { ref, record } : null;
 }
 
@@ -334,9 +385,21 @@ async function openFlow(
   // The link's address is minted first so the flow can name it: a resend retires it.
   const token = randomToken(24);
   const magicRef = await portalMagicKey(env, token);
+  // Both records are sealed BEFORE anything is written, and on every path (a refused send and a
+  // routed start included), so a deploy with no usable KEK opens no flow at all and the paths
+  // cost the same.
+  let sealed: { flow: string; magic: string };
+  try {
+    sealed = {
+      flow: await seal(env, email, addressSlot(ref)),
+      magic: await seal(env, email, addressSlot(magicRef)),
+    };
+  } catch {
+    return emailUnavailable();
+  }
   const record: FlowRecord = {
     v: 1,
-    email,
+    email: sealed.flow,
     createdAt: now,
     place,
     ...(returnTo ? { returnTo } : {}),
@@ -362,7 +425,7 @@ async function openFlow(
       JSON.stringify({ flow: ref.id }),
     );
     const magic: MagicRecord = {
-      email,
+      email: sealed.magic,
       flow: ref.id,
       requestedAt: now,
       place,
@@ -711,8 +774,11 @@ export async function handleMagicLanding(
   if (!caps.portalEnabled || !caps.magicEnabled) {
     return signInOffPage();
   }
-  const record = parseJsonColumn<MagicRecord>(
-    await getArtefact(env, await portalMagicKey(env, token)),
+  const magicRef = await portalMagicKey(env, token);
+  const record = await openRecord<MagicRecord>(
+    env,
+    magicRef,
+    await getArtefact(env, magicRef),
   );
   if (!record) return expiredLinkPage();
   const form = (label: string) =>
@@ -759,8 +825,11 @@ export async function handleMagicConfirm(
   }
   if (!token) return expiredLinkPage();
   // Atomic and single-use: two submissions (or a code and a link) cannot both complete.
-  const record = parseJsonColumn<MagicRecord>(
-    await consumeArtefact(env, await portalMagicKey(env, token)),
+  const magicRef = await portalMagicKey(env, token);
+  const record = await openRecord<MagicRecord>(
+    env,
+    magicRef,
+    await consumeArtefact(env, magicRef),
   );
   if (!record) return expiredLinkPage();
 

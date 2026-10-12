@@ -6950,7 +6950,8 @@ paths:
         allow-list or the request is a 400. An optional `return_to` marks this as the BROWSER
         flow (the callback will 302 back and set the cookie); omitting it marks the
         device/CLI flow (the callback renders the "you're signed in" page instead).
-        `return_to` must be same-origin. On a `provider: platform` product the 302 also sets
+        `return_to` must be same-origin and may not point into the console (`/manage`). On a
+        `provider: platform` product the 302 also sets
         the licence chooser's browser binder, `__Host-pk_lcb` (HttpOnly, Secure,
         SameSite=Lax, Path=/, 600 s; I-26): only this browser may later choose a licence for
         the flow (`authChoose`). All errors are LEGACY FLAT.
@@ -6960,8 +6961,11 @@ paths:
           in: query
           required: false
           description: >
-            Where to send the browser after the callback. Must parse as a URL whose origin
-            equals this request's origin; anything else is a 400. Its presence is what
+            Where to send the browser after the callback. Must parse as an absolute URL whose
+            origin equals this request's origin and whose path is not under `/manage`; a value
+            longer than 512 characters, one with whitespace, control characters or backslashes,
+            or one whose path has an empty or `.`/`..` segment (written plainly or
+            percent-encoded) is refused too. Anything else is a 400. Its presence is what
             selects the browser flow over the device flow.
           schema: { type: string, format: uri }
       responses:

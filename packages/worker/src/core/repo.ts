@@ -103,6 +103,15 @@ export interface LicenseRow {
   origin?: string;
   /** The hwid an enrolled license is bound to; NULL for every other origin. */
   enroll_hwid?: string | null;
+  /**
+   * Which issuer class produced `email` on this row: `'platform'` or `'custom'`
+   * (0118_license_email_issuer.sql). Stamped at WRITE time by the OIDC lane from the provider that
+   * was resolved for the sign-in, so a later manifest push cannot re-decide it; NULL = no issuer
+   * vouched for the address (an admin-created, batch-created or enrolled licence), and the portal's
+   * auto-link rules then read the product's live provider. INTERNAL: never in a developer-facing
+   * response.
+   */
+  email_issuer_class?: string | null;
   /** I-05: the Polaris Key account the licence is attached to; NULL = floating. INTERNAL — the
    *  global account id never reaches a developer-facing response, so every shaper names the
    *  columns it emits. Written only through `core/accounts/accountSubjects.ts`. */
@@ -977,8 +986,8 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
   return {
     sql: `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
        activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
-       origin, enroll_hwid, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       origin, enroll_hwid, email_issuer_class, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.product,
       row.id,
@@ -997,6 +1006,10 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
       row.max_version,
       row.origin ?? "admin",
       row.enroll_hwid ?? null,
+      // Only a writer that knows which issuer produced `email` sets this: today the OIDC lane
+      // alone (`activateFromIdentity`). NULL = nobody recorded one, so an operator-entered address
+      // on an admin-minted licence keeps resolving through the product's live provider.
+      row.email_issuer_class ?? null,
       row.modified_by,
       row.modified_at,
     ],
@@ -1038,12 +1051,14 @@ export async function claimEnrolledLicense(
     groupsJson: string | null;
     tierId: string | null;
     expiresAt: number | null;
+    /** The issuer class that produced `email`, written in the same statement. */
+    emailIssuerClass: string;
   },
   at: number,
 ): Promise<void> {
   await db.run(
     `UPDATE licenses SET sub = ?, name = ?, email = ?, groups_json = ?, tier_id = ?,
-       expires_at = ?, origin = 'oidc', modified_by = 'oidc',
+       expires_at = ?, origin = 'oidc', email_issuer_class = ?, modified_by = 'oidc',
        modified_at = ? WHERE product = ? AND id = ?`,
     identity.sub,
     identity.name,
@@ -1051,6 +1066,7 @@ export async function claimEnrolledLicense(
     identity.groupsJson,
     identity.tierId,
     identity.expiresAt,
+    identity.emailIssuerClass,
     at,
     product,
     licenseId,

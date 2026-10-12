@@ -94,6 +94,13 @@ const FAIL_MODE: Record<string, FailMode> = {
   adminCallback: "closed",
   portalLogin: "closed",
   portalMagic: "closed",
+  // The two legs of the portal's own sign-in that had no budget: `/callback` runs a token
+  // exchange and an ID-token verification for anyone who names a `state`, and `/magic/verify` is
+  // a bearer-token redemption endpoint (the shape a guessing loop wants). Their START surfaces
+  // (`portalLogin`, `portalMagic`) were limited, which left the budget on the cheap half of each
+  // flow and the half that mints a session unbounded.
+  portalCallback: "closed",
+  portalMagicVerify: "closed",
   // I-06: the login card's Google, Apple and Steam legs (start and callback), and Apple's
   // server-to-server notifications.
   portalProviderStart: "closed",

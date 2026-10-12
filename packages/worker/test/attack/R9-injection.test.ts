@@ -1301,14 +1301,32 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
       db,
       product,
     );
-    expect(res.status).toBe(302); // accepted
-    const state = new URL(res.headers.get("location")!).searchParams.get(
+    // INVERTED. The product copy of the validator checked the ORIGIN and nothing else, so it
+    // parked a CUSTOMER sign-in on `/manage/…` — the one surface that reads an operator's
+    // session — while its portal twin refused the identical value by name. Both customer realms
+    // refuse it now.
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "bad_request" });
+
+    // Control: `/manage` is refused, not `return_to` as such. An ordinary same-origin target is
+    // accepted and round-trips onto the flow record, query string intact.
+    const allowed = "https://key.plrs.im/djdl/welcome?tab=account";
+    const ok = await handleAuthStart(
+      req(
+        `https://key.plrs.im/${SLUG}/auth/start?return_to=${encodeURIComponent(allowed)}`,
+      ),
+      env,
+      db,
+      product,
+    );
+    expect(ok.status).toBe(302);
+    const state = new URL(ok.headers.get("location")!).searchParams.get(
       "state",
     )!;
     const flow = JSON.parse(
       (await artefacts(env).get(await flowKey(env, SLUG, state)))!,
     ) as { returnTo?: string };
-    expect(flow.returnTo).toBe("https://key.plrs.im/manage/api/products");
+    expect(flow.returnTo).toBe(allowed);
 
     // The portal twin (portal/auth.ts:100) refuses the same value.
     const portal = await handlePortalLogin(

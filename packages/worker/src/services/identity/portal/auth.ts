@@ -342,6 +342,21 @@ export async function handlePortalCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlError(400, "Missing authorization code.");
+  // The callback runs a token exchange and an ID-token verification for anyone who names a
+  // `state`, and had no budget while `/login` next door did. Fails CLOSED (`core/rateLimit.ts`):
+  // losing the limiter must not silently unmeter a session-minting leg.
+  const ok = await rateLimitOk(
+    env,
+    "_portal",
+    {
+      bucket: "portalCallback",
+      id: clientNetwork(req),
+      limit: 20,
+      windowSec: 60,
+    },
+    now,
+  );
+  if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.oidcEnabled) {
     return signInPage.off();
@@ -561,9 +576,26 @@ export async function handleMagicVerify(
   db: Db,
   now: number,
 ): Promise<Response> {
-  if (req.method === "POST") return handleMagicConfirm(req, env, db, now);
-  if (req.method === "GET" || req.method === "HEAD")
-    return handleMagicLanding(req, env, db);
+  if (req.method === "POST" || req.method === "GET" || req.method === "HEAD") {
+    // A bearer-token REDEMPTION endpoint, which had no budget while the start surface that
+    // merely sends the mail was capped: the wrong way round, since this is the online oracle.
+    // Landing and confirm share it. Fails CLOSED like every other credential leg.
+    const ok = await rateLimitOk(
+      env,
+      "_portal",
+      {
+        bucket: "portalMagicVerify",
+        id: clientNetwork(req),
+        limit: 20,
+        windowSec: 60,
+      },
+      now,
+    );
+    if (!ok) return signInPage.tooMany();
+    return req.method === "POST"
+      ? handleMagicConfirm(req, env, db, now)
+      : handleMagicLanding(req, env, db);
+  }
   return new Response("Method Not Allowed", {
     status: 405,
     headers: portalSecurityHeaders(

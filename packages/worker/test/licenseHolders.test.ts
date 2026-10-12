@@ -35,6 +35,7 @@ import {
   floatingLicenseSql,
 } from "../src/core/accounts/accountSubjects.js";
 import {
+  associateLicenseHolder,
   licenseHolder,
   licenseHolderHooksRegistered,
   onAccountEmailVerified,
@@ -1048,5 +1049,37 @@ describe("a product deletion removes its licences' blocks", () => {
     expect(await blocks(created.licenseId)).toEqual([ada.id]);
     await deleteProduct(db, SLUG, NOW);
     expect(await blocks(created.licenseId)).toEqual([]);
+  });
+});
+
+describe("the creation-time email holder hook reads the licence issuer class", () => {
+  it("does not attach a custom-issuer licence merely because the product later resolves to platform", async () => {
+    const ada = await account("ada@example.com");
+    const { licenseId } = await seedLicenseWithKey(db, SLUG, {
+      id: "lic_custom_email",
+    });
+    await db.run(
+      `UPDATE licenses SET email = ?, email_issuer_class = 'custom'
+        WHERE product = ? AND id = ?`,
+      "ada@example.com",
+      SLUG,
+      licenseId,
+    );
+
+    // No oidc_config row means the product's live provider defaults to platform. The row itself
+    // says a tenant's custom issuer produced this address, so the creation-time hook leaves it
+    // floating rather than retroactively attaching it.
+    expect(await associateLicenseHolder(ctx, SLUG, licenseId)).toBe(false);
+    expect(await ownerOf(licenseId)).toBeNull();
+
+    // Control: a platform-issued address is eligible and joins the one verified account.
+    await db.run(
+      `UPDATE licenses SET email_issuer_class = 'platform'
+        WHERE product = ? AND id = ?`,
+      SLUG,
+      licenseId,
+    );
+    expect(await associateLicenseHolder(ctx, SLUG, licenseId)).toBe(true);
+    expect(await ownerOf(licenseId)).toBe(ada.id);
   });
 });
