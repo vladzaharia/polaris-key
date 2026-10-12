@@ -55,7 +55,7 @@ const matrix = JSON.parse(
 describe("gate-matrix v2 — the server build gate is the oracle", () => {
   it("is gate-matrix v2 with the P0-04 channel rows", () => {
     expect(matrix.gateMatrixVersion).toBe(2);
-    expect(matrix.rows).toHaveLength(38);
+    expect(matrix.rows).toHaveLength(43);
     const names = matrix.rows.map((r) => r.name);
     expect(names).not.toContain(
       "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel",

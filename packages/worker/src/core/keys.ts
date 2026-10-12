@@ -7,6 +7,7 @@
  */
 
 import { KID_RE } from "@polaris-key/manifest";
+import { randomBytes } from "../platform/random.js";
 
 /** Base32 without the ambiguous letters (no `i`, `l`, `o`, `u`): a suffix an operator can read
  *  aloud. 32 symbols, so a random byte maps onto it without bias. */
@@ -23,7 +24,7 @@ const SUFFIX_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
  * `insertProductKeyIfAbsent` reports the residual case as a fact instead of an exception.
  */
 export function kidSuffix(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  const bytes = randomBytes(8);
   return Array.from(bytes, (b) => SUFFIX_ALPHABET[b % 32]).join("");
 }
 

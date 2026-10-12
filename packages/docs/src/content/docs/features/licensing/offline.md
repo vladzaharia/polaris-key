@@ -177,7 +177,7 @@ pkey bundle --product djdl --device <32-char-request-code> --grace-days 30 \
 It authenticates with an **admin API token**, not with your browser session:
 
 1. In the console, go to **API tokens** (under /manage) and mint one. Give it a label naming
-   where it will run and an expiry of 1 to 365 days. Minting asks you to sign in again first, and
+   where it runs and an expiry of 1 to 365 days. Minting asks you to sign in again first, and
    the value is shown **once**: the server keeps only a hash.
 2. `export PKEY_ADMIN_TOKEN='pkeya_<value>'` in the shell you'll run `pkey bundle` in.
 

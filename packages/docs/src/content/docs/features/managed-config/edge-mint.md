@@ -282,7 +282,7 @@ Requesting `/<product>/config/mint/<id>/token`:
 That second step is the confused-deputy guard, and its condition is deliberately narrower than
 "always require a license": the license check applies **iff** the product enables License, the
 same scope rule Core's own `/devices` and `/devices/report` surfaces use, and only to a recipe
-that asks for it (`requires: licensed`). On a config-only product (D-08) there is no license to
+that asks for it (`requires: licensed`). On a config-only product there is no license to
 be usable, so a recipe declares `requires: registered` and a valid device token is sufficient,
 which keeps Config's edge-mint capability reachable there. A recipe that says nothing is
 `licensed`, and on such a product answers `500 misconfigured`.
@@ -294,7 +294,7 @@ Approval says a recipe _may_ mint; `requires` and `requiredEntitlement` say for 
 | `requires`   | Who may mint                                                                                                                                   |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `licensed`   | A device whose license is usable. The product must run License: on one that does not, the recipe answers `500 misconfigured`. **The default.** |
-| `registered` | Any device of the product, stated explicitly. What a config-only product (D-08) declares when a device token is the whole of its gate.         |
+| `registered` | Any device of the product, stated explicitly. What a config-only product declares when a device token is the whole of its gate.                |
 | `none`       | The recipe adds no demand of its own. Every mint still needs a device token: this route spends the product's third-party signing key.          |
 
 `registered` and `none` check the same thing; they differ in what the manifest says. Neither is
