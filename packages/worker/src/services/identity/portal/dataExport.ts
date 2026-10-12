@@ -814,9 +814,19 @@ export async function exportAccountData(
   const passkeys: ExportedPasskey[] = (
     await listAccountPasskeys(db, accountId)
   ).map((p) => {
-    // The credential id is a credential: the method id names the passkey instead.
-    const { id: _credentialId, ...view } = passkeyView(p);
-    return view;
+    // An explicit projection: a new passkey view field stays out of the export until it is listed
+    // here. The credential id is a credential; the method id names the passkey instead.
+    const v = passkeyView(p);
+    return {
+      methodId: v.methodId,
+      createdAt: v.createdAt,
+      lastUsedAt: v.lastUsedAt,
+      transports: v.transports,
+      synced: v.synced,
+      aaguid: v.aaguid,
+      addedFrom: v.addedFrom,
+      name: v.name,
+    };
   });
   const sessions = (
     await db.all<{

@@ -699,7 +699,7 @@ const ROWS: V4Row[] = [
   },
   {
     verb: "core.boot",
-    what: "{outcome, state, license, decision, emits}, then a state push",
+    what: "{outcome, state, license, decision, emits, guard}, then a state push",
     args: {
       consent: "never",
       metered: false,
@@ -716,6 +716,7 @@ const ROWS: V4Row[] = [
       license: expect.objectContaining({ status: "ok" }),
       decision: null,
       emits: expect.arrayContaining([{ type: "boot_ready" }]),
+      guard: expect.objectContaining({ result: "ok" }),
     },
     after: ({ pushes }) => expect(pushes.length).toBeGreaterThan(0),
   },

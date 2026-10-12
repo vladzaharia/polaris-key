@@ -358,6 +358,23 @@ function claimPayload(
 }
 
 /**
+ * Whether a renderer's install offer names the same install the host's current decision does: the
+ * same installable action, release version and artifact (build, or listing URL for a store). Only
+ * `binary` and `store` decisions install; anything else never matches.
+ */
+function sameOffer(
+  current: UpdateDecision,
+  offered: Record<string, unknown>,
+): boolean {
+  if (current.action !== "binary" && current.action !== "store") return false;
+  if (offered.action !== current.action) return false;
+  const release = offered.release as { version?: unknown } | undefined;
+  if (!release || release.version !== current.release.version) return false;
+  if (current.action === "binary") return offered.build === current.build;
+  return offered.listingUrl === current.listingUrl;
+}
+
+/**
  * Register the PolarisBridge v4 handlers on `ipcMain` for `client`. Call once, after the client
  * is created; the preload (`@polaris-key/node/electron/preload`) exposes the matching
  * `window.polarisKey`. Returns a handle whose `close()` removes every handler.
@@ -442,13 +459,26 @@ export function exposePolarisBridge(
       return client.update.decide(o);
     },
     "update.install": async (a) => {
-      const decision = bag(a).decision;
-      if (typeof decision !== "object" || decision === null)
+      const b = bag(a);
+      const offered = b.decision;
+      if (typeof offered !== "object" || offered === null)
         throw new BridgeRefusal(
-          "invalid-arguments",
+          "invalid-argument",
           "decision must be an update decision.",
         );
-      const outcome = await client.update.install(decision as UpdateDecision);
+      // The host decides what to install, never the renderer: a store decision's listing URL goes
+      // to the shell, so the renderer may only confirm an offer the host makes now.
+      const current = (
+        await client.update.decide(
+          typeof b.channel === "string" ? { channel: b.channel } : {},
+        )
+      ).decision;
+      if (!sameOffer(current, offered as Record<string, unknown>))
+        throw new BridgeRefusal(
+          "invalid-argument",
+          "that update is no longer offered; check for updates again.",
+        );
+      const outcome = await client.update.install(current);
       // Any install clears a restart left pending from an earlier one.
       pendingRestart = null;
       if (outcome.kind === "restartRequired") {
@@ -461,7 +491,7 @@ export function exposePolarisBridge(
       const restart = pendingRestart;
       if (!restart)
         throw new BridgeRefusal(
-          "invalid-arguments",
+          "not-configured",
           "no install is staged to restart into.",
         );
       pendingRestart = null;
@@ -558,6 +588,7 @@ export function exposePolarisBridge(
       if (typeof b.metered === "boolean") o.metered = b.metered;
       if (typeof b.allowOffline === "boolean") o.allowOffline = b.allowOffline;
       if (typeof b.allowGrace === "boolean") o.allowGrace = b.allowGrace;
+      if (typeof b.autoConfirm === "boolean") o.autoConfirm = b.autoConfirm;
       if (typeof b.registration === "boolean") o.registration = b.registration;
       if (Array.isArray(b.requiredPacks))
         o.requiredPacks = b.requiredPacks.filter(
@@ -571,6 +602,7 @@ export function exposePolarisBridge(
         license: r.license,
         decision: r.decision,
         emits: r.emits,
+        guard: r.guard,
       };
     },
     "core.crashTags": async (a) => {

@@ -8595,7 +8595,7 @@ KIT_COPY: Final[Mapping[str, Mapping[str, str]]] = {
         "core.codes.unavailable.title": "登录不可用",
         "core.codes.unavailable.message": "登录目前不可用。请几分钟后重试。",
         "core.codes.erasure_ledger_unavailable.title": "无法验证账户",
-        "core.codes.erasure_ledger_unavailable.message": "暂时无法确认您的账户状态。请几分钟后重试。",
+        "core.codes.erasure_ledger_unavailable.message": "暂时无法确认你的账户状态。请几分钟后重试。",
         "core.codes.identity_disabled.title": "登录不可用",
         "core.codes.identity_disabled.message": "已关闭通过此应用登录。你的安装和许可证仍可正常使用。",
         "core.codes.auth_method_disabled.title": "登录方式不可用",
