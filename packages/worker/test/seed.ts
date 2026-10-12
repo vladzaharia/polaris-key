@@ -32,7 +32,7 @@ export const TEST_PEM =
   "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBlV9cXFJlt08+qaVvnIkgRmgao8P0rhkVh3onqOXPW1\n-----END PRIVATE KEY-----";
 
 // The test platform KEK: base64 of 32 zero bytes. Imports as a raw AES-256-GCM key; used to
-// seal TEST_PEM into the product_keys row that loadProduct now opens.
+// seal TEST_PEM into the product_keys row that Product.signingKey() opens.
 export const TEST_KEK = btoa("\0".repeat(32));
 
 export const NOW = 1_700_000_000;
@@ -89,7 +89,7 @@ export async function seedProduct(
     modified_at: NOW,
   });
   // KEK-custody: seal TEST_PEM under the constant TEST_KEK and insert the active product key
-  // that loadProduct opens.
+  // that `Product.signingKey()` opens on demand.
   const encPrivate = await seal({ PLATFORM_KEK: TEST_KEK } as Env, TEST_PEM, {
     product: slug,
     kind: "signing-key",

@@ -1128,7 +1128,7 @@ describe("bytes host: dispatch", () => {
     expect(seen).toHaveLength(0);
   });
 
-  it("a byte route is handed the product WITHOUT its signing key (P2-05)", async () => {
+  it("a byte route is handed the product without signing capability", async () => {
     let handed: unknown = null;
     const peek: ByteRoute = {
       ...echo("bytes", octet),
@@ -1145,7 +1145,7 @@ describe("bytes host: dispatch", () => {
     );
     expect(res.status).toBe(200);
     expect(handed).toMatchObject({ slug: SLUG });
-    expect(handed).not.toHaveProperty("signingKeyPem");
+    expect(handed).not.toHaveProperty("signingKey");
   });
 });
 

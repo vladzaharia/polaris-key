@@ -1,8 +1,7 @@
 // Product context — assembled from the `products` row + active schema version + the
-// per-product signing key. The signing key is now KEK-custodied: it lives sealed in the
-// `product_keys` table and is opened per request under `env.PLATFORM_KEK` (src/platform/keyvault.ts),
-// NOT resolved from a Worker secret by name. Fails closed if there is no active product key
-// or it can't be decrypted: a product with no usable key can never sign config.
+// per-product signing key. The signing key is KEK-custodied: it lives sealed in the
+// `product_keys` table and is opened under `env.PLATFORM_KEK` only when a route signs. A
+// product without an active key does not exist to product routes; an unreadable key cannot sign.
 
 import {
   isHexColour,
@@ -39,7 +38,11 @@ export interface Product {
   slug: string;
   name: string;
   signingKid: string;
-  signingKeyPem: string;
+  /**
+   * Opens the active signing key only when a route needs to sign. An unreadable sealed key
+   * answers `null`, and the result is memoized for this loaded product.
+   */
+  signingKey: () => Promise<string | null>;
   signingPub: string | null;
   compatMin: string;
   compatMax: string;
@@ -119,15 +122,14 @@ export async function loadPublicSigningKeys(
 }
 
 /**
- * A product WITHOUT its signing key: everything a route that never signs needs (P2-05).
+ * A product without its signing-key accessor: everything a route that never signs needs.
  *
  * The bytes host (`core/assets/bytesHost.ts`) serves downloads; no byte route signs anything, so
- * unsealing the product's Ed25519 key under `PLATFORM_KEK` on every download chunk would be
- * work for nothing and would hand a private key to code that has no use for it. Byte routes get
- * this shape instead (least privilege), and every Core check a download needs
+ * handing it the accessor would give private-key capability to code that has no use for it. Byte
+ * routes get this shape instead (least privilege), and every Core check a download needs
  * (`validateDeviceToken`, `usableLicensedDevice`, `entitledAccessCheck`) takes it.
  */
-export type ProductPublic = Omit<Product, "signingKeyPem">;
+export type ProductPublic = Omit<Product, "signingKey">;
 
 /** A stored icon ref (`ManifestAssetRef`, as `serializePresentation` wrote it), or `null`. */
 function storedAssetRef(v: unknown): ManifestAssetRef | null {
@@ -216,9 +218,9 @@ function productFields(
   };
 }
 
-/** Load a product + its signing key from the sealed `product_keys` table. Returns null for
- *  an unknown product, a product with no active key, or one whose sealed key fails to open
- *  (fail-closed: no plaintext key ⇒ no Product ⇒ no signed config). */
+/** Load a product with a lazy accessor for its sealed signing key. Returns null for an unknown
+ *  product or one with no active key. An unreadable sealed key remains a product-level signing
+ *  refusal rather than making unrelated product routes unavailable. */
 export async function loadProduct(
   env: Env,
   db: Db,
@@ -229,15 +231,19 @@ export async function loadProduct(
   const keyRow = await getActiveProductKey(db, slug);
   if (!keyRow) return null;
   try {
-    const pem = await open(env, keyRow.enc_private_json, {
-      product: slug,
-      kind: "signing-key",
-      id: keyRow.kid,
-    });
     const schema = await getActiveSchema(db, slug);
+    let opened: Promise<string | null> | undefined;
+    const signingKey = (): Promise<string | null> => {
+      opened ??= open(env, keyRow.enc_private_json, {
+        product: slug,
+        kind: "signing-key",
+        id: keyRow.kid,
+      }).catch(() => null);
+      return opened;
+    };
     return {
       ...productFields(row, keyRow, schema?.catalog_version ?? 1),
-      signingKeyPem: pem,
+      signingKey,
     };
   } catch {
     return null;
@@ -245,9 +251,9 @@ export async function loadProduct(
 }
 
 /**
- * Load a product WITHOUT unsealing its signing key (`ProductPublic`). Same existence rule as
+ * Load a product without its signing-key accessor (`ProductPublic`). Same existence rule as
  * `loadProduct` — an unknown product, or one with no active key, is `null` — so the two can
- * never disagree about whether a product exists; only the KEK unseal is skipped.
+ * never disagree about whether a product exists.
  */
 export async function loadProductPublic(
   db: Db,

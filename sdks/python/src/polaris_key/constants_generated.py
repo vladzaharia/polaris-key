@@ -166,6 +166,7 @@ class ErrorCode:
     REGISTRATION_CLOSED: Final = "registration_closed"
     VALUE_NOT_REPRESENTABLE: Final = "value_not_representable"
     DOCUMENT_NOT_REPRESENTABLE: Final = "document_not_representable"
+    SIGNING_UNAVAILABLE: Final = "signing_unavailable"
     DEVICE_LIMIT: Final = "device_limit"
     KEY_ENTRY_LIMIT: Final = "key_entry_limit"
     LICENSE_DISABLED: Final = "license_disabled"
@@ -331,6 +332,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "registration_closed",
     "value_not_representable",
     "document_not_representable",
+    "signing_unavailable",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -498,6 +500,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "registration_closed": "wire",
         "value_not_representable": "wire",
         "document_not_representable": "wire",
+        "signing_unavailable": "wire",
         "device_limit": "wire",
         "key_entry_limit": "wire",
         "license_disabled": "wire",

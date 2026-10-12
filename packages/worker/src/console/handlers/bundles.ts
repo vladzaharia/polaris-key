@@ -200,9 +200,8 @@ export async function handleBundleMint(
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
-  // The full product, not the row: minting needs the opened signing key, and `loadProduct`
-  // fails closed when there is no active key or it cannot be decrypted. A product that cannot
-  // sign cannot mint, and saying so as a 404 keeps this identical to every other signing path.
+  // The product preserves product-wide existence independently of whether its sealed signing
+  // key can open. Bundle minting resolves that key below and refuses if signing is unavailable.
   const product = await loadProduct(env, db, slug);
   if (!product) return notFound();
 
@@ -239,14 +238,20 @@ export async function handleBundleMint(
 
   // Sign the whole bundle with another live key, for a device whose app pins only
   // that one. A revoked or unknown kid is refused, never silently replaced by the active key.
+  // Resolve only after validating the requested signer so a live override never opens the active
+  // key, and always finish before any audit row can be written.
   let signerKid = product.signingKid;
-  let signerPem = product.signingKeyPem;
+  let signerPem: string;
   if (typeof body.signerKid === "string" && body.signerKid !== signerKid) {
     const signer = await loadTrustSigner(env, db, slug, body.signerKid);
     if (!signer)
       return badRequest("no live signing key with that kid", ["signerKid"]);
     signerKid = signer.kid;
     signerPem = signer.pem;
+  } else {
+    const activeSignerPem = await product.signingKey();
+    if (!activeSignerPem) return notFound();
+    signerPem = activeSignerPem;
   }
 
   const licenseEnabled = product.services.license.enabled;
@@ -382,6 +387,7 @@ export async function handleBundleMint(
       new URL(req.url).origin,
       { kid: signerKid, pem: signerPem },
     );
+    if (trust === null) return notFound();
     typ = "pkey-bundle+jws";
     const bundle: BundleDoc = {
       bundleId,

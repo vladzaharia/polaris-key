@@ -21,7 +21,7 @@ import { loadPublicSigningKeys } from "../products.js";
 import { isStrictJsonError, signDoc } from "../signing.js";
 import type { Env } from "../../platform/env.js";
 import { loadTrustSigner, type TrustSigner } from "./trustSigners.js";
-import { ErrorCode, wireError } from "../errors.js";
+import { ErrorCode, notFound, wireError } from "../errors.js";
 
 const TRUST_CACHE_SECONDS = 300;
 
@@ -66,7 +66,7 @@ export async function signTrustManifest(
   origin: string,
   /** Sign with this key instead of the active one (`?signer=`; see `trustSigners.ts`). */
   signer?: TrustSigner,
-): Promise<string> {
+): Promise<string | null> {
   // §2.3 — revoked keys stay LISTED, with status "revoked", for REVOKED_KEY_LISTING_SECONDS:
   // every client that could hold the key, or a pin of it, reads a positive removal instead
   // of inferring it from absence. Older revocations age out and absence takes over.
@@ -104,9 +104,11 @@ export async function signTrustManifest(
   // Through `signDoc`, not `signJws`, so the manifest passes the same integer-claim guard as
   // every other v3 document (plans/P3-01.md §2.2). The bytes are the same: `signDoc` adds a
   // check, never a transformation.
+  const pem = signer?.pem ?? (await product.signingKey());
+  if (!pem) return null;
   return signDoc(
     doc,
-    signer?.pem ?? product.signingKeyPem,
+    pem,
     signer?.kid ?? product.signingKid,
     "pkey-trust+jws",
   );
@@ -127,7 +129,7 @@ export async function handleTrustManifest(
     want !== null && want !== product.signingKid
       ? await loadTrustSigner(env, db, product.slug, want)
       : null;
-  let jws: string;
+  let jws: string | null;
   try {
     jws = await signTrustManifest(
       db,
@@ -141,6 +143,7 @@ export async function handleTrustManifest(
     if (!isStrictJsonError(e)) throw e;
     return wireError(500, ErrorCode.DocumentNotRepresentable);
   }
+  if (jws === null) return notFound();
   return new Response(jws, {
     status: 200,
     headers: {

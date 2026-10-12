@@ -121,7 +121,7 @@ function makeProduct(): Product {
     slug: SLUG,
     name: "djdl",
     signingKid: "kid",
-    signingKeyPem: "pem",
+    signingKey: async () => "pem",
     signingPub: null,
     compatMin: "0.0.0",
     compatMax: "99.0.0",

@@ -868,7 +868,7 @@ describe("registry host: dispatch", () => {
     expectHardened(down, "down");
   });
 
-  it("a route is handed the owner WITHOUT its signing key", async () => {
+  it("a route is handed the owner without signing capability", async () => {
     let handed: unknown = null;
     await go(
       echo("{}", jsonType, 200, {
@@ -879,7 +879,7 @@ describe("registry host: dispatch", () => {
       }),
     );
     expect(handed).toMatchObject({ slug: SLUG });
-    expect(handed).not.toHaveProperty("signingKeyPem");
+    expect(handed).not.toHaveProperty("signingKey");
   });
 
   describe("the PyPI HTML page", () => {

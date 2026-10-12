@@ -624,9 +624,11 @@ export async function handleFeedRoute(
         now,
       );
       if (!feedSelfCheck(empty, null)) return notComposable();
+      const signingKey = await product.signingKey();
+      if (!signingKey) return null;
       const signed = await signDoc(
         empty,
-        product.signingKeyPem,
+        signingKey,
         product.signingKid,
         "pkey-feed+jws",
       );
@@ -706,6 +708,8 @@ export async function handleFeedRoute(
         )
       : probe;
     if (!feedSelfCheck(signing.doc, signing.platform)) return notComposable();
+    const signingKey = await product.signingKey();
+    if (!signingKey) return null;
     for (const a of signing.audits)
       await appendAudit(db, {
         product: product.slug,
@@ -722,7 +726,7 @@ export async function handleFeedRoute(
       });
     jws = await signDoc(
       signing.doc,
-      product.signingKeyPem,
+      signingKey,
       product.signingKid,
       "pkey-feed+jws",
     );

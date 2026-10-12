@@ -88,6 +88,12 @@
       "description": "A stored value would make the signed document break the wire contract's strict JSON or integer rules, so the Worker refuses to sign it. An operator runs check:representable and fixes the value."
     },
     {
+      "code": "signing_unavailable",
+      "kind": "wire",
+      "service": "core",
+      "description": "A signed license or config document cannot be served because the active sealed signing key could not be opened. This is a retryable operator-side custody failure; no document was served."
+    },
+    {
       "code": "device_limit",
       "kind": "wire",
       "service": "license",

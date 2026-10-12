@@ -65,6 +65,10 @@
       "title": "Problema del servicio",
       "message": "El servicio no pudo preparar tus ajustes. Contacta con el desarrollador."
     },
+    "signing_unavailable": {
+      "title": "Firma no disponible",
+      "message": "El servicio no puede firmar un documento ahora mismo. Vuelve a intentarlo en unos minutos."
+    },
     "device_limit": {
       "title": "Límite de dispositivos alcanzado",
       "message": "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."

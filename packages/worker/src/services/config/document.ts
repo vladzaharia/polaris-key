@@ -183,11 +183,13 @@ export async function handleConfigDocument(
   if (req.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers: { etag } });
   }
+  const signingKey = await product.signingKey();
+  if (!signingKey) return wireError(503, "signing_unavailable");
   let jws: string;
   try {
     jws = await signDoc(
       doc,
-      product.signingKeyPem,
+      signingKey,
       product.signingKid,
       "pkey-config+jws",
     );

@@ -607,6 +607,17 @@ function openSecret(env: Env, db: Db, product: string, name: string) {
   );
 }
 
+/** Assert that a product still exists and that its active signing key opens under this KEK ring. */
+async function expectSigningKeyToOpen(
+  env: Env,
+  db: Db,
+  product: string,
+): Promise<void> {
+  const loaded = await loadProduct(env, db, product);
+  expect(loaded).not.toBeNull();
+  expect(await loaded!.signingKey()).toContain("BEGIN PRIVATE KEY");
+}
+
 describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
   it("is a no-op on a legacy single-KEK deployment", async () => {
     const { db, kv } = await seedSealedRows();
@@ -641,7 +652,7 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
       kids: ["default", "k2"],
       remaining: 0,
     });
-    expect(await loadProduct(added, db, "djdl")).not.toBeNull();
+    await expectSigningKeyToOpen(added, db, "djdl");
 
     // Step 5 — promote k2. Every stored blob is still under `default`, and every one of them
     // still opens: this is the read window that makes the rotation survivable.
@@ -655,7 +666,7 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
       remaining: 4,
       unopenable: 0,
     });
-    expect(await loadProduct(promoted, db, "djdl")).not.toBeNull();
+    await expectSigningKeyToOpen(promoted, db, "djdl");
     expect(await openSecret(promoted, db, "djdl", "OIDC_SECRET")).toBe(
       "djdl-oidc-secret",
     );
@@ -1116,7 +1127,7 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
       },
     });
     // The platform serves throughout: the legacy blobs still open.
-    expect(await loadProduct(env, db, "djdl")).not.toBeNull();
+    await expectSigningKeyToOpen(env, db, "djdl");
     expect(await openSecret(env, db, "acme", "MINTER_KEY")).toBe(
       "acme-minter-key",
     );
@@ -1176,7 +1187,7 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
       unopenable: 0,
     });
     expect(after.body.legacy).toBeUndefined();
-    expect(await loadProduct(env, db, "djdl")).not.toBeNull();
+    await expectSigningKeyToOpen(env, db, "djdl");
     expect(await openSecret(env, db, "djdl", "OIDC_SECRET")).toBe(
       "djdl-oidc-secret",
     );

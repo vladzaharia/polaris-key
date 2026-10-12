@@ -1734,6 +1734,16 @@ paths:
                         reason: channel-not-entitled,
                       }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "503":
+          description: >
+            The active signing key could not be opened, so no signed document was served. Retry
+            after the service restores signing custody.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                signingUnavailable:
+                  value: { error: { code: signing_unavailable } }
     options:
       operationId: preflightGetLicenseDocument
       tags: [license]
@@ -1825,6 +1835,16 @@ paths:
                   value:
                     error: { code: catalog_unavailable }
                     message: active catalog could not validate the config payload
+        "503":
+          description: >
+            The active signing key could not be opened, so no signed document was served. Retry
+            after the service restores signing custody.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                signingUnavailable:
+                  value: { error: { code: signing_unavailable } }
     options:
       operationId: preflightGetConfigDocument
       tags: [config]

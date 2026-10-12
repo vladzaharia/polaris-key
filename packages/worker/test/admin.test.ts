@@ -851,10 +851,10 @@ describe("admin api", () => {
     expect(body.slug).toBe("manualco");
     expect(typeof body.kid).toBe("string");
 
-    // The product loads with a real, KEK-sealed signing key.
+    // The product's accessor opens a real, KEK-sealed signing key.
     const product = await loadProduct(env, db, "manualco");
     expect(product).not.toBeNull();
-    expect(product!.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    expect(await product!.signingKey()).toContain("BEGIN PRIVATE KEY");
 
     // The schema it uploaded is the active catalog.
     const schemaRes = await dispatch(
@@ -887,7 +887,11 @@ describe("admin api", () => {
       profile,
       payload,
     });
-    const jws = await signDoc(doc, product!.signingKeyPem, product!.signingKid);
+    const jws = await signDoc(
+      doc,
+      (await product!.signingKey())!,
+      product!.signingKid,
+    );
     const verified = await verifyJws<FusedSessionDoc>(jws, {
       [product!.signingKid]: product!.signingPub!,
     });
@@ -895,10 +899,10 @@ describe("admin api", () => {
     expect(verified!.payload.aud).toBe("manualco");
   });
 
-  // ── P4 regression: manual-create atomicity ────────────────────────────────────
+  // ── Manual-create atomicity ───────────────────────────────────────────────────
   // A manual product is minted in ONE batch: the `products` row AND an active `product_keys`
   // row must BOTH exist, so a product can never be half-created (a row with no usable signing
-  // key). We assert both rows directly, then prove the pair is usable end-to-end (loadProduct
+  // key). We assert both rows directly, then prove the pair is usable end-to-end (the accessor
   // opens the sealed key + /config signs a verifiable doc).
   it("manual create atomically yields BOTH a products row AND an active product_keys row", async () => {
     const db = makeTestDb();
@@ -939,9 +943,9 @@ describe("admin api", () => {
     // Sealed at rest — the private key is never stored in plaintext.
     expect(keyRow!.enc_private_json).not.toContain("BEGIN PRIVATE KEY");
 
-    // 3) The pair is usable: loadProduct opens the sealed key + /config signs a verifiable doc.
+    // 3) The pair is usable: the signing-key accessor opens the sealed key + /config signs.
     const product = (await loadProduct(env, db, "atomicco"))!;
-    expect(product.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    expect(await product.signingKey()).toContain("BEGIN PRIVATE KEY");
     const { key } = await seedLicenseWithKey(db, "atomicco");
     const activateRes = await handleActivate(
       mkLicReq("POST", {
