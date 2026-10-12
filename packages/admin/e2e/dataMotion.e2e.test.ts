@@ -5,6 +5,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
+import { atRest } from "./atRest.js";
 
 /**
  * The console's data surfaces in motion (notes/S-23 §6.1 list, status, meter, skeleton; MO-09), in
@@ -319,14 +320,6 @@ const running = (page: Page): Promise<string[]> =>
           }`,
       ),
   );
-
-async function atRest(page: Page, timeout = 3000): Promise<void> {
-  await page
-    .waitForFunction(() => document.getAnimations().length === 0, null, {
-      timeout,
-    })
-    .catch(() => undefined);
-}
 
 /** The resolved motion tokens in ms (0 under reduced motion). */
 async function tokens(page: Page): Promise<Record<string, number>> {
