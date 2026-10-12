@@ -52,6 +52,10 @@ window, escalating publicly is reasonable.
 
 - The Worker at `key.plrs.im` and everything under `packages/worker/`
 - The admin console and customer portal (`packages/admin/`)
+- The admin API's credentials: both the browser session and the `pkeya_` machine token
+  (`Authorization: Bearer pkeya_…`). In particular: a way to make a token reach an admin route
+  outside its scopes, to use a revoked or expired token, to recover a token's plaintext from
+  storage or from any surface that displays it, or to mint one without platform-admin authority
 - All six client SDKs — Node, React, Python, Swift, Godot, Kotlin (`packages/sdk-*`, `sdks/`)
 - The shared wire contract and conformance corpus (`packages/shared-*`, `conformance/`)
 - The release-distribution path: appcasts, `install.sh`, artifact serving, the GitHub App

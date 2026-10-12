@@ -345,6 +345,7 @@ describe("negative controls", () => {
         "DELETE /products/:slug",
         "POST /products/kek",
         "POST /platform/override-migration/run",
+        "POST /tokens",
         "GET /products/:slug/users/:subject/export",
         "POST /products/:slug/users/:subject/data/delete",
         "POST /products/:slug/users/:subject/licenses/:id/detach",

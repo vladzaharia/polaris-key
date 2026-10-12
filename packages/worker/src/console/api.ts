@@ -5,22 +5,33 @@
  * Deny by default (ST-29; ST-28 plan §2.7). Every route is a row of the one route table
  * (`./routes.ts`), and this module walks it in a fixed order, never trusting the SPA:
  *
- *   1. **Session, then principal.** A valid signed cookie session is required (401). The
- *      principal is resolved from it (`resolveConsoleCaller`: today the root rule, the platform
- *      admin group) and set on `session.principal` for the handler. This is the ONLY module that
- *      reads the session cookie (`sessionFromRequest`); the docs gate uses the same resolver. A
- *      principal with no grant is no member, and every route answers it 403 (after the limiter).
- *   2. **Rate limit.** A per-member budget on the whole surface (R1-04).
- *   3. **CSRF.** Mutations must echo `X-PKey-CSRF`; a mismatch is a 403 (double-submit;
+ *   1. **Credential, then principal.** A valid signed cookie session, or an admin API token
+ *      (`Authorization: Bearer pkeya_…`, `./apiTokens.ts`), is required (401). They are
+ *      ALTERNATIVES, never additive: a bearer that is presented decides the request, and a bad one
+ *      is a 401, never a fall-through to the cookie. The principal is resolved from the session
+ *      (`resolveConsoleCaller`: today the root rule, the platform admin group) or from the token's
+ *      synthetic one, and set on `session.principal` for the handler. This is the ONLY module that
+ *      reads the session cookie (`sessionFromRequest`) or validates a token; the docs gate uses the
+ *      cookie resolver and nothing else. A principal with no grant is no member, and every route
+ *      answers it 403 (after the limiter).
+ *   2. **Rate limit.** A per-member budget on the whole surface (R1-04): the OIDC subject for a
+ *      session, `token:<id>` for a token, so neither can spend the other's.
+ *   3. **Token reach.** A token caller may call only a row that names a `tokenScope` it holds
+ *      (`./routes.ts`); every other row, path and method is the same 403, so the answer reveals
+ *      nothing about what exists. Default deny.
+ *   4. **CSRF.** A session mutation must echo `X-PKey-CSRF`; a mismatch is a 403 (double-submit;
  *      `SameSite=Strict` is the primary defense). Logout is a POST so it goes through it (R1-03).
- *   4. **Match.** No row: 404. A row for the path but not the method: 405 with `Allow`.
- *   5. **One product load** for a `/products/:slug` row (404).
- *   6. **`can()`** on the row's area and level: a 403 `{error: {code: "forbidden", reason:
+ *      A token request is exempt: nothing but its caller attaches an `Authorization` header, so
+ *      there is no ambient credential to forge.
+ *   5. **Match.** No row: 404. A row for the path but not the method: 405 with `Allow`.
+ *   6. **One product load** for a `/products/:slug` row (404).
+ *   7. **`can()`** on the row's area and level: a 403 `{error: {code: "forbidden", reason:
  *      "no_access", scope, area}}`, with a budgeted `access.denied` row on a product (a few per
  *      member and product per window: the burst is the signal, and an unbudgeted write per 403
  *      is a D1 amplifier).
- *   7. **Step-up** for a row that needs it: a 403 `step_up_required` (`./stepUp.ts`).
- *   8. **The handler**, with a malformed body answered as its 4xx (P0-16).
+ *   8. **Step-up** for a row that needs it: a 403 `step_up_required` (`./stepUp.ts`).
+ *   9. **The handler**, with a token's use audited first (`api_token.used`) and a malformed body
+ *      answered as its 4xx (P0-16).
  *
  * The handlers keep the rest of the posture: product-scoped D1 (every per-product query carries
  * the slug), catalog validation before writes, write-only secrets, an audit row per mutation with
@@ -63,6 +74,14 @@ import {
   type AdminRoute,
 } from "./routes.js";
 import { requireStepUp } from "./stepUp.js";
+import {
+  auditTokenUse,
+  presentedToken,
+  tokenSession,
+  validateAdminApiToken,
+  type AdminApiScope,
+  type ValidAdminApiToken,
+} from "./apiTokens.js";
 import { SETTINGS } from "../mount.js";
 
 /** Admin limiter shard. One global Durable Object for the whole platform — see the note in
@@ -75,11 +94,29 @@ export interface ConsoleCaller {
   principal: Principal;
 }
 
+/** The principal for a verified session, set on the session for the handler: the one step both
+ *  credentials share, so a token is authorized by the same rule as a cookie. */
+async function callerFor(
+  env: Env,
+  db: Db | null,
+  session: AdminSession,
+  now: number,
+): Promise<ConsoleCaller> {
+  const principal = await resolvePrincipal(
+    env,
+    db,
+    { sub: session.sub, groups: session.groups },
+    now,
+  );
+  return { session: { ...session, principal }, principal };
+}
+
 /**
  * The console's one session reader (ST-29): verify the cookie, then resolve the principal. `null`
  * when there is no valid, unrevoked session. The admin API (below) and the docs gate (`docs.ts`)
  * both come through here, so they cannot disagree about who is asking; a grep test keeps
- * `sessionFromRequest` to this module.
+ * `sessionFromRequest` to this module. It reads the COOKIE only: an `Authorization` header is the
+ * admin API's alone, so a token opens nothing else (the docs gate included).
  */
 export async function resolveConsoleCaller(
   env: Env,
@@ -88,14 +125,7 @@ export async function resolveConsoleCaller(
   now: number,
 ): Promise<ConsoleCaller | null> {
   const session = await sessionFromRequest(env, req, now);
-  if (!session) return null;
-  const principal = await resolvePrincipal(
-    env,
-    db,
-    { sub: session.sub, groups: session.groups },
-    now,
-  );
-  return { session: { ...session, principal }, principal };
+  return session ? callerFor(env, db, session, now) : null;
 }
 
 /** The scope string a 403 names: `platform`, or `product:<slug>`. */
@@ -189,8 +219,26 @@ export async function handleAdminApi(
   path: string,
   now: number,
 ): Promise<Response> {
-  // 1. Session, then principal.
-  const caller = await resolveConsoleCaller(env, db, req, now);
+  // 1. Credential, then principal. A bearer that is presented decides the request: a token that
+  // is malformed, unknown, revoked, expired or unusable is a 401, never a fall-through to the
+  // cookie. Falling through would mean a request carrying BOTH an expired token and a live session
+  // silently ran as the human: the ambiguity a "try everything" authenticator always creates, and
+  // the reason the cookie reader fails closed on a duplicate cookie rather than choosing a winner.
+  // One request, one credential, chosen by what it presents.
+  const presented = presentedToken(req);
+  let token: ValidAdminApiToken | null = null;
+  let caller: ConsoleCaller | null;
+  if (presented !== null) {
+    const auth = await validateAdminApiToken(env, db, presented, now);
+    // ONE 401 for every cause. Telling them apart would let the holder of a dead token learn
+    // whether the string was ever valid; the operator who needs the distinction has the roster
+    // (`GET /manage/api/tokens`) to read it from.
+    if (!auth.ok) return unauthorized();
+    token = auth;
+    caller = await callerFor(env, db, tokenSession(env, auth.row), now);
+  } else {
+    caller = await resolveConsoleCaller(env, db, req, now);
+  }
   if (!caller) return unauthorized();
   const { session, principal } = caller;
 
@@ -222,6 +270,20 @@ export async function handleAdminApi(
   const method = req.method === "HEAD" ? "GET" : req.method;
   const found = findRoute(ADMIN_ROUTES, method, segments);
 
+  // 3. A token's reach, DEFAULT DENY. The route table names what a token may call (a row's
+  // `tokenScope`); every other row, a path no row matches and a method no row serves are refused
+  // the same way, so the answer reveals nothing about what exists, and a route added without a
+  // scope decision is unreachable by token rather than silently covered by every token already in
+  // circulation. The token routes name no scope, so a token can neither mint nor revoke one,
+  // itself included.
+  let scopeUsed: AdminApiScope | null = null;
+  if (token) {
+    const needed = found.kind === "route" ? found.route.tokenScope : undefined;
+    if (!needed || !token.scopes.includes(needed))
+      return err(403, "forbidden", "token is not scoped for this route");
+    scopeUsed = needed;
+  }
+
   // A verified session whose principal holds no grant is not a member: every route answers the
   // same 403, so it learns nothing about what exists. (The sign-in gate mints no such session; one
   // appears when the platform group changes under a live cookie.) A reach into an existing
@@ -235,19 +297,28 @@ export async function handleAdminApi(
     return forbiddenArea(PLATFORM, "console");
   }
 
-  // 3. CSRF on every mutation (double-submit; SameSite=Strict is the primary defense).
-  if (isMutation(req.method)) {
-    const presented = req.headers.get(CSRF_HEADER);
-    if (!presented || !constantTimeEqual(presented, session.csrf))
+  // 4. CSRF on every SESSION mutation (double-submit; SameSite=Strict is the primary defense).
+  //
+  // A token request is exempt, and the reason is not convenience. CSRF defends against a
+  // credential the browser attaches AMBIENTLY: an attacker's page can cause a request to this
+  // origin, and the cookie rides along without the attacker ever seeing it. An `Authorization`
+  // header is not ambient: nothing attaches it but the caller, so a cross-site page cannot cause a
+  // token request at all, and there is no forgeable request to defend against. The converse is
+  // what makes the exemption safe only here: `tokenSession` carries an empty `csrf`, so if the
+  // exemption were ever removed the token path would fail closed, refused, not waved through with
+  // a blank token.
+  if (!token && isMutation(req.method)) {
+    const csrf = req.headers.get(CSRF_HEADER);
+    if (!csrf || !constantTimeEqual(csrf, session.csrf))
       return err(403, "forbidden", "csrf");
   }
 
-  // 4. Match.
+  // 5. Match.
   if (found.kind === "none") return notFound();
   if (found.kind === "method") return methodNotAllowed(found.allow);
   const { route, match } = found;
 
-  // 5. One product load for a product-scoped row.
+  // 6. One product load for a product-scoped row.
   let scope: Scope = PLATFORM;
   let product = null;
   if (isProductRoute(route)) {
@@ -256,7 +327,7 @@ export async function handleAdminApi(
     scope = productScope(product);
   }
 
-  // 6. The area.
+  // 7. The area.
   const area = areaFor(route, match.params);
   if (!allowedRoute(principal, scope, route, match.params)) {
     if (scope.kind === "product")
@@ -264,13 +335,30 @@ export async function handleAdminApi(
     return forbiddenArea(scope, area);
   }
 
-  // 7. Step-up.
+  // 8. Step-up. (A token has none, so it is refused every row that needs one.)
   if (route.stepUp) {
     const refused = requireStepUp(session, now);
     if (refused) return refused;
   }
 
-  // 8. The handler.
+  // 9. The handler. A token's use is audited first: the credential was accepted and exercised,
+  // which is the event an operator reviewing a token's history needs, whatever the handler goes on
+  // to answer. It is written here, not earlier, because by now the product is known to exist (the
+  // row is keyed by it) and the request has cleared every gate.
+  if (token && scopeUsed)
+    await auditTokenUse(
+      db,
+      token.row,
+      session,
+      {
+        scope: scopeUsed,
+        method: req.method,
+        path: `/${segments.join("/")}`,
+        product: product?.slug ?? null,
+      },
+      now,
+    );
+
   try {
     return await route.handler({
       req,

@@ -39,8 +39,8 @@ PKEY_ADMIN_TOKEN='pkeya_<admin API token>' \
   pkey bundle --product djdl --device <deviceId> --grace-days 365
 ```
 
-Mint the token in the console (**API tokens**); it is shown once, scoped to `bundles:mint`, and
-revocable on its own. The written file is mode `0600`.
+Mint the token in the console (/manage → API tokens); it is shown once, scoped to
+`bundles:mint`, and revocable on its own. The written file is mode `0600`.
 
 The console's offline-bundle dialog does the same mint over the UI; both hit
 `POST /manage/api/products/<slug>/bundles`, which signs the license document (and the config
@@ -176,20 +176,23 @@ pkey bundle --product djdl --device <32-char-request-code> --grace-days 30 \
 
 It authenticates with an **admin API token**, not with your browser session:
 
-1. In the console, open **API tokens** and mint one. Give it a label naming where it will run
-   and an expiry of 1 to 365 days. The value is shown **once** — the server keeps only a hash.
+1. In the console, go to **API tokens** (under /manage) and mint one. Give it a label naming
+   where it will run and an expiry of 1 to 365 days. Minting asks you to sign in again first, and
+   the value is shown **once**: the server keeps only a hash.
 2. `export PKEY_ADMIN_TOKEN='pkeya_<value>'` in the shell you'll run `pkey bundle` in.
 
 The command then makes exactly one call: `POST /manage/api/products/<slug>/bundles` with
 `Authorization: Bearer pkeya_…`. There's no `GET /manage/api/me` pre-flight and no
-`X-PKey-CSRF` header, because a token-authenticated request is CSRF-exempt — nothing but the
+`X-PKey-CSRF` header, because a token-authenticated request is CSRF-exempt: nothing but the
 caller attaches an `Authorization` header, so there is no ambient credential to forge.
 
 The token is scoped to `bundles:mint`, which covers that one route and nothing else; every
-other admin route refuses a token outright. It's still a credential that can mint a bundle for
-any product on the platform — don't commit it, script it into a file, or export it into a shell
-other people share. When one leaks, revoke that token from the same screen; unlike a console
-session cookie, that costs nobody their console session.
+other admin route refuses a token outright, and a token can never mint, list or revoke a token.
+It's still a credential that can mint a bundle for any product on the platform, so don't commit
+it, script it into a file, or export it into a shell other people share. When one leaks, revoke
+that token from the same screen; unlike the session cookie it replaces, that costs nobody their
+console session. Every use of a token is an audit row under the product it acted on, attributed
+to the token and not to the operator who minted it.
 
 Everything checkable locally is checked before the network call: the device id against the same
 32-character shape the server enforces, grace-days against the same 1–365 range, the token

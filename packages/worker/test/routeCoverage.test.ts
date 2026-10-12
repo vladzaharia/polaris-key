@@ -170,10 +170,12 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 };
 
 /**
- * Admin API routes the spec documents (UX-72, rule 10): the New Product wizard's create probes
- * (FLOWS.md §3.11 W22 to W24). `adminApi` and `products` are narrative as kinds, and only the
- * routes listed here are in the spec, tagged `admin`. None is product-scoped or CORS-covered: they share the console
- * origin with the admin session cookie.
+ * Admin API routes the spec documents (rule 10): the New Product wizard's create probes
+ * (FLOWS.md §3.11 W22 to W24) and the admin API-token roster. `adminApi` and `products` are
+ * narrative as kinds, and only the routes listed here are in the spec, tagged `admin`. None is
+ * product-scoped or CORS-covered: they share the console origin with the admin session cookie.
+ * Both directions are pinned: a listed path missing from the spec fails the kind's test below,
+ * and a spec path missing from this table fails "the spec documents no path that does not exist".
  */
 const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   adminApi: [
@@ -187,6 +189,12 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/override-migration/dry-run", ["post"]],
     ["/manage/api/platform/override-migration/run", ["post"]],
     ["/manage/api/platform/override-migration/report", ["get"]],
+    // The admin API-token roster: the credential a PROGRAM presents (`pkey bundle`, from a
+    // terminal and from CI, sends `Authorization: Bearer pkeya_…` to the bundle mint), documented
+    // here, machine-readable, and not only in prose. The roster itself stays session-only: no
+    // token reaches it.
+    ["/manage/api/tokens", ["get", "post"]],
+    ["/manage/api/tokens/{tokenId}", ["delete"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
@@ -747,6 +755,7 @@ function concrete(template: string): string {
     kind: "google",
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
+    tokenId: "apitok_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

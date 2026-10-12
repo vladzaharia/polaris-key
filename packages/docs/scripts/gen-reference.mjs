@@ -419,6 +419,7 @@ export const TABLE_OWNERS = {
     "platform_audit",
     "registry_render_queue",
     "registry_tokens",
+    "admin_api_tokens",
     "platform_settings",
     "platform_job_runs",
     "platform_heartbeats",

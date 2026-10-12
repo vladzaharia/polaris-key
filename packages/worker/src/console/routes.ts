@@ -14,6 +14,11 @@
  * sub-paths, so a row ending in `/**` covers a handler that owns a subtree (a service's
  * `adminHandle`, the feeds, the store connections). Its methods are the ones that subtree serves.
  *
+ * Token reach. An admin API token (`./apiTokens.ts`) reaches a row only through the row's
+ * `tokenScope`; a row without one refuses every token, and so does a path no row matches. Today
+ * that is one row, `POST /products/:slug/bundles`. A tokenised row still goes through `can()` for
+ * its area like any other, and never needs a step-up (a token has none).
+ *
  * Drift. `test/fixtures/rbac-route-areas.json` pins every row's `METHOD path → area`; a new or
  * removed row updates it in the same change, and a changed area needs an `AREA_MOVES` entry
  * (`core/rbac/areas.ts`). The sidebar is never an input. `test/rbacRouteMatrix.test.ts` drives
@@ -38,6 +43,11 @@ import { handlePlatformStoreConnections } from "./handlers/platformStoreConnecti
 import { handlePlatform } from "./handlers/platform.js";
 import { handleProducts } from "./handlers/products.js";
 import { handleProductScoped } from "./productScoped.js";
+import {
+  handleApiTokenList,
+  handleApiTokenMint,
+  handleApiTokenRevoke,
+} from "./handlers/apiTokens.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
 export interface AdminCtx {
@@ -102,7 +112,7 @@ const product: AdminHandler = (c) =>
 
 // ── The table ────────────────────────────────────────────────────────────────────────────────
 
-type Opts = Pick<AdminRoute, "level" | "stepUp">;
+type Opts = Pick<AdminRoute, "level" | "stepUp" | "tokenScope">;
 
 function rows(
   methods: readonly Method[],
@@ -180,6 +190,17 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     "platform",
     storeConnections,
   ),
+
+  // ── Platform: the admin API tokens ────────────────────────────────────────────────────────
+  // The machine credential `pkey bundle` presents (`./apiTokens.ts`). No row here names a
+  // `tokenScope`, so a token cannot reach them: minting is an interactive act. It also needs a
+  // proven sign-in (the step-up), so a stolen session cannot leave behind a credential that
+  // outlives it. Revoking narrows authority and does not.
+  ...rows(["GET"], "/tokens", "platform", handleApiTokenList),
+  ...rows(["POST"], "/tokens", "platform", handleApiTokenMint, {
+    stepUp: true,
+  }),
+  ...rows(["DELETE"], "/tokens/:id", "platform", handleApiTokenRevoke),
 
   // ── One product: the record ───────────────────────────────────────────────────────────────
   // The record every holder of any of the product's areas reads (the shell's name and services);
@@ -267,8 +288,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   }),
   // An account's per-licence overrides are Managed config's.
   ...rows(["GET", "PUT"], `${P}/users/:subject/overrides`, "config", product),
-  // Offline activation bundles carry the licence (and config) document.
-  ...rows(["POST"], `${P}/bundles`, "license", product),
+  // Offline activation bundles carry the licence (and config) document. The one row an admin API
+  // token reaches: `bundles:mint`, what `pkey bundle` presents.
+  ...rows(["POST"], `${P}/bundles`, "license", product, {
+    tokenScope: "bundles:mint",
+  }),
   // The Polaris Key storefront's panel (PS-06) is Commerce's surface (CM-29 §10).
   ...rows(["GET"], `${P}/storefronts/:store`, "commerce", product),
   ...rows(["POST"], `${P}/storefronts/:store/preview`, "commerce", product),

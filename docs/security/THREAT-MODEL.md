@@ -43,6 +43,26 @@ and what binary it installs next.
 | A12  | **CI credentials** (`pkeyci_` tokens, upload tickets)                                                                                        | `ci_tokens`/`ci_upload_tickets` (peppered hashes only); held by CI jobs                               | Publish, promote (and, if granted, yank) releases of one product for up to 30 min (minted) or 90 days (static). A route into A3/A10.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | A13  | **The R2 parent token** and the temporary credentials it mints                                                                               | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h                                   | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | A14  | **Delegated content keys** (P4-19)                                                                                                           | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team                                 | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| A16  | **`pkeya_` admin API tokens**                                                                                                                | `admin_api_tokens`, stored only as `hashKey(token, pepper)`                                           | A bearer credential for the admin API. Narrower than A4 by construction, and the reason it exists is that the alternative was worse: see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+**A16 is deliberately narrow, and it replaced something broader.** Before it, the one non-browser
+caller of the admin API, `pkey bundle`, run from terminals and CI, authenticated by having an
+operator copy their live `__Host-pkey_admin` cookie into an environment variable. That credential
+carries the human's full authority, cannot be revoked without killing every session that identity
+holds, and is indistinguishable in the audit log from the human clicking in the console. A
+`pkeya_` token is scoped, individually revocable, separately attributed (`token:<id>`, with an
+`api_token.used` row per use under the product it acted on) and given an explicit expiry of 1 to
+365 days at mint. Its blast radius is bounded by **default deny**: a row of the admin route table
+(`console/routes.ts`) reaches a token only through its `tokenScope`, and every other row, path
+and method refuses with one 403, so adding an admin route does not silently widen every existing
+token. The scope vocabulary is exactly one entry (`bundles:mint`), and the token routes
+themselves name no scope, so a token cannot mint, list or revoke a token, including itself.
+Minting needs a console step-up, so a stolen session cannot leave a year-long credential behind
+it. The token is stored only as `hashKey(token, KEY_HASH_PEPPER)` and shown once. It is exempt
+from CSRF (an `Authorization` header is never ambient), a presented bearer that is bad is one
+401 and never a fall-through to a cookie, a deployment with no `PLATFORM_ADMIN_GROUP` makes it
+authorise nothing, as it does a cookie, and it opens nothing but the admin API: the docs gate
+reads the cookie alone.
 
 **A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
 `edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
@@ -8515,7 +8535,7 @@ core (SP-55 to SP-57, SP-62).
 | T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                   | Medium — bounded by §6             |
 | T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02) | High                               |
 | T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                      | High                               |
-| T7  | **Insider / compromised admin**                                                                         | Valid admin session                                                                  | Anything the admin API permits — which today is everything, on every tenant                                                                                                   | High                               |
+| T7 | **Insider / compromised admin** | Valid admin session, or a `pkeya_` token | Anything the admin API permits — which for a session is everything, on every tenant; for a token, the bundle mint | High |
 | T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                               | Low — see the transport note below |
 
 **T8, stated precisely.** Two different things are easy to conflate here, and they are not the same
@@ -8720,6 +8740,7 @@ Forge a signed config doc for product P
 ```
 Obtain admin authority
 ├── Forge the session cookie ─────────────► needs ADMIN_SESSION_SECRET
+├── Steal a `pkeya_` token (A16) ─────────► LIVE but BOUNDED: default-deny scoping reaches one route (the bundle mint); the token routes name no scope; minting needs a step-up
 ├── Plant your own session in an operator's browser (login CSRF) ► DEAD: the sign-in flow is bound to the browser that started it (`ADMIN_FLOW_COOKIE` hash in the flow record; the portal's `PORTAL_SSO_COOKIE` likewise), so another browser's callback is refused before the code is spent
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
 ├── XSS on the platform origin ───────────► DEAD for the sign-in error pages: they carry the strict script-free CSP (`htmlError` in `console/auth.ts`)
@@ -8866,7 +8887,10 @@ operator; and denial of service originating from Cloudflare's own network contro
 
 ## 9. Review triggers
 
-Revisit this document when any of the following changes: a new tenant that is not first-party is
+Revisit this document when any of the following changes: a `pkeya_` admin API token gains a scope
+(an entry in `ADMIN_API_SCOPES`) or a route row gains a `tokenScope`, which widens a credential
+that exists precisely because it is narrower than a session, and A16 stops being true the moment
+the scope vocabulary stops being one word; a new tenant that is not first-party is
 onboarded; a route writes `licenses.account_id` other than through the compare-and-set claim, an
 attach takes its holder from anywhere but the device's sign-in binding, or
 `identity.keyEntry.claimByKey` defaults to on (I-09); the portal gains write capability beyond device disconnect and key claim; a second

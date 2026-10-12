@@ -5,10 +5,23 @@
 # namespaces and the four permanent aliases. The admin (/manage/api/*) and portal (/api/*)
 # APIs are session-authenticated browser surfaces and are documented narratively on the docs
 # site instead (they are not "wire" — no SDK speaks them) — except the portal's library, product
-# and media routes (PX-W1, tag `portal`) and the admin create probes (UX-72, tag `admin`), which
-# rule 10 pins here as they are added. The offline-bundle mint is one of
-# those admin surfaces (`POST /manage/api/products/<slug>/bundles`), so `pkey-bundle+jws`
-# appears here only as a `typ` value, never as a path.
+# and media routes (PX-W1, tag `portal`), the admin create probes (UX-72, tag `admin`) and the
+# admin API-token roster (below), which rule 10 pins here as they are added. The offline-bundle
+# mint is one of those admin surfaces (`POST /manage/api/products/<slug>/bundles`), so
+# `pkey-bundle+jws` appears here only as a `typ` value, never as a path.
+#
+# ── THE ADMIN API-TOKEN ROSTER: /manage/api/tokens ───────────────────────────────────────────
+#
+# "No SDK speaks them" stopped being true of the admin API when it grew a MACHINE credential. The
+# admin API token (`pkeya_…`) is presented by a program, `pkey bundle`, from a terminal and from
+# CI, as `Authorization: Bearer pkeya_…` with no browser anywhere. So the roster that mints, lists
+# and revokes it, and the credential's own security scheme, are documented here, in the
+# machine-readable file, rather than in prose a program cannot read. The rest of `/manage/api/*`
+# stays narrative (apart from the create probes): it is still a browser API driven by a session
+# cookie and a CSRF double-submit.
+#
+# The bundle MINT itself is still not documented as a path, for the same reason as before: only
+# its credential is.
 #
 # Authority: docs/security/WIRE-CONTRACT-V3.md is the normative contract; the worker's
 # services/*/routes.ts are the routing truth; test/routeCoverage.test.ts pins this file
@@ -103,9 +116,12 @@ tags:
   - name: admin
     description: >
       The console's admin API routes rule 10 pins here as they are added (UX-72's New Product
-      create probes): paths under `/manage/api/` on the console host, authenticated by the admin
-      session cookie, mutations by the CSRF header. The rest of the admin API is documented
-      narratively on the docs site.
+      create probes, and the admin API-token roster): paths under `/manage/api/` on the console
+      host, authenticated by the admin session cookie, mutations by the CSRF header. The roster
+      (`/manage/api/tokens`) mints, lists and revokes the `pkeya_` token a program presents, as
+      `Authorization: Bearer pkeya_…`, to the bundle mint: it is session-only and platform-admin
+      gated, and a token cannot mint, list or revoke a token, including itself. The rest of the
+      admin API is documented narratively on the docs site.
   - name: aliases
     description: >
       The permanent alias spellings: the four pre-namespace paths (SUFeedURL values compiled
@@ -16318,6 +16334,179 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  # ── Admin API tokens ──
+  /manage/api/tokens:
+    get:
+      operationId: listAdminApiTokens
+      tags: [admin]
+      summary: List admin API tokens
+      description: >
+        The roster. Carries no secret and no hash: a minted token's plaintext exists in exactly
+        one response, ever, and it is the mint's. `status` collapses the two lifecycle columns so
+        a caller does not re-derive "is this usable" from `revokedAt` and `expiresAt` itself.
+        Platform admins only; admin session cookie. A token cannot call it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: Every token the platform holds, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tokens]
+                properties:
+                  tokens:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminApiToken" }
+              examples:
+                roster:
+                  value:
+                    tokens:
+                      - id: apitok_9Fk2mQ7xLp0a
+                        label: CI bundle minter
+                        scopes: [bundles:mint]
+                        createdAt: 1750000000
+                        expiresAt: 1757776000
+                        lastUsedAt: 1750086400
+                        revokedAt: null
+                        status: active
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    post:
+      operationId: mintAdminApiToken
+      tags: [admin]
+      summary: Mint an admin API token (step-up)
+      description: >
+        Returns the plaintext ONCE, in `secret`. Nothing stored can reproduce it (only
+        `hashKey(token, KEY_HASH_PEPPER)` is written), so a caller that does not capture it here
+        must revoke and mint again. `expiresInDays` is REQUIRED and bounded 1…365: the column is
+        NOT NULL because a machine credential with no clock on it is the one that outlives the
+        laptop it was minted for. Needs a sign-in from the last 5 minutes (`403
+        step_up_required`), so a stolen session cannot leave a credential behind that outlives it.
+        Audited in the platform activity log. Platform admins only; admin session cookie and CSRF
+        header. A token cannot call it.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label, expiresInDays]
+              properties:
+                label:
+                  type: string
+                  maxLength: 200
+                  description: What this token is for. Shown in the roster and in every audit row it writes.
+                expiresInDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 365
+                scopes:
+                  type: array
+                  minItems: 1
+                  items: { $ref: "#/components/schemas/AdminApiScope" }
+                  description: >
+                    Omitted means every scope this build knows about. Stated explicitly so a
+                    future second scope cannot silently widen tokens minted by an older console.
+            examples:
+              ci:
+                value: { label: CI bundle minter, expiresInDays: 90, scopes: [bundles:mint] }
+      responses:
+        "201":
+          description: Minted. `secret` appears here and in no other response.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token, secret]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/AdminApiToken" }
+                  secret:
+                    type: string
+                    pattern: "^pkeya_[A-Za-z0-9_-]{43,}$"
+                    description: The plaintext token, `pkeya_` + 43 base64url characters (256-bit).
+              examples:
+                minted:
+                  value:
+                    ok: true
+                    token:
+                      id: apitok_9Fk2mQ7xLp0a
+                      label: CI bundle minter
+                      scopes: [bundles:mint]
+                      createdAt: 1750000000
+                      expiresAt: 1757776000
+                      lastUsedAt: null
+                      revokedAt: null
+                      status: active
+                    secret: pkeya_bDh3Zm5rQ2xwTXcxdEo4WHZSNXlOc0FnRWJVaTdRb0s
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403":
+          description: "Not a platform admin, a CSRF failure, or `step_up_required` (with `maxAgeSeconds`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The live-token ceiling (100) is already reached; revoke one first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: Invalid request. `fields` names each offending input.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+              examples:
+                badExpiry:
+                  value:
+                    error: { code: bad_request, message: invalid token request, fields: [expiresInDays] }
+                    code: bad_request
+                    message: invalid token request
+                    fields: [expiresInDays]
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/tokens/{tokenId}:
+    delete:
+      operationId: revokeAdminApiToken
+      tags: [admin]
+      summary: Revoke an admin API token
+      description: >
+        Sets `revoked_at`; the row is KEPT so the history survives. Takes effect on the next
+        request the token makes: validation reads the row, so there is no cache to wait out.
+        Audited in the platform activity log. Revoking needs no step-up: it only narrows
+        authority. Platform admins only; admin session cookie and CSRF header. A token cannot
+        call it.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/TokenId" }
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/AdminApiToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No token with that id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: Already revoked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -17648,7 +17837,36 @@ components:
         cookie's `Path` uses the raw slug. `HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`.
         The value is an opaque base64url token with no prefix — unlike `pkeyt_` device
         tokens.
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: __Host-pkey_admin
+      description: >
+        The console's signed admin session cookie. `__Host-` prefixed, `HttpOnly; Secure;
+        SameSite=Strict; Path=/`, 8-hour lifetime, carrying the OIDC subject and the granting
+        groups. Every mutation must additionally echo the session's CSRF token in `X-PKey-CSRF`.
+        Minting, listing and revoking API tokens requires THIS credential: a token cannot do it.
+    adminApiToken:
+      type: http
+      scheme: bearer
+      bearerFormat: pkeya_
+      description: >
+        The admin API token (`pkeya_…`): the admin surface's machine credential, and an
+        ALTERNATIVE to the console session, never additive. A request carrying one is exempt from
+        the CSRF double-submit (an `Authorization` header is not an ambient credential, so there is
+        no cross-site request to forge) and is confined to the token's scopes with DEFAULT DENY:
+        every admin route not explicitly scoped refuses it, the token roster included. A bearer
+        that is presented and bad is one 401, never a fall-through to a cookie. `pkeya_` + 43
+        base64url characters (256-bit), hash-stored server-side under `KEY_HASH_PEPPER`, with a
+        mandatory expiry and an operator kill switch. It reaches `POST
+        /manage/api/products/{product}/bundles` (scope `bundles:mint`) and nothing else.
   parameters:
+    TokenId:
+      name: tokenId
+      in: path
+      required: true
+      description: The admin API token's opaque id (`apitok_…`), from the mint response or the roster.
+      schema: { type: string, pattern: "^apitok_[A-Za-z0-9_-]+$" }
     OciOwner:
       name: owner
       in: path
@@ -17911,15 +18129,41 @@ components:
       schema: { type: string }
   responses:
     AdminUnauthorized:
-      description: No admin session.
+      description: >
+        No usable credential. ONE body for every cause: no session cookie, an expired session, a
+        malformed `pkeya_`, an unknown token, a revoked token, an expired token. Deliberately, so
+        the holder of a dead token cannot learn whether the string was ever valid; the operator
+        who needs that distinction reads it off the roster.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/AdminError" }
     AdminForbidden:
-      description: "Not a platform admin, or (on a mutation) a missing or wrong CSRF header."
+      description: >
+        Not a platform admin, a missing or wrong CSRF header on a session mutation, or a token
+        reaching a route outside its scopes (which includes every route nobody has scoped).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/AdminError" }
+          examples:
+            outOfScope:
+              value:
+                error: { code: forbidden, message: token is not scoped for this route }
+                code: forbidden
+                message: token is not scoped for this route
+    AdminRateLimited:
+      description: >
+        The admin surface's per-principal budget (600 requests per 60 s). Keyed by the VERIFIED
+        principal (`token:<id>` for a token, the OIDC `sub` for a session), so a token cannot
+        spend a human's budget or escape its own.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AdminError" }
+          examples:
+            limited:
+              value:
+                error: { code: rate_limited, message: too many admin API requests }
+                code: rate_limited
+                message: too many admin API requests
     IdentityDisabledRedirect:
       description: >
         PX-W17 (WIRE-CONTRACT-V4 §12.8): the product's Identity service is off and the request is
@@ -18426,6 +18670,37 @@ components:
       properties:
         name: { type: [string, "null"] }
         email: { type: [string, "null"] }
+    AdminApiScope:
+      type: string
+      description: >
+        A coarse admin API-token scope. One value exists, because one machine caller exists. A
+        scope the dispatcher does not consult would be a claim about authority that nothing
+        enforces, so a scope is added alongside the route that needs it, never ahead of it.
+      enum: [bundles:mint]
+    AdminApiToken:
+      type: object
+      description: >
+        A token as the console sees it. Note what is ABSENT: the plaintext (returned once, at
+        mint) and `token_hash` (not a secret, but it is the lookup key, and echoing it invites
+        somebody to treat it as an id).
+      required: [id, label, scopes, createdAt, expiresAt, lastUsedAt, revokedAt, status]
+      properties:
+        id: { type: string, pattern: "^apitok_[A-Za-z0-9_-]+$" }
+        label: { type: string }
+        scopes:
+          type: array
+          items: { $ref: "#/components/schemas/AdminApiScope" }
+        createdAt: { type: integer, description: Epoch seconds. }
+        expiresAt: { type: integer, description: "Epoch seconds. Never null: expiry is mandatory." }
+        lastUsedAt:
+          type: [integer, "null"]
+          description: >
+            Epoch seconds of the last request this token authenticated, or null if never used.
+            The only signal that distinguishes a live integration from a forgotten one.
+        revokedAt: { type: [integer, "null"] }
+        status:
+          type: string
+          enum: [active, expired, revoked]
     AdminError:
       type: object
       description: >

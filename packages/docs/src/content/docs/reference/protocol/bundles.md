@@ -200,10 +200,10 @@ pkey bundle --product <slug> --device <id> --grace-days <n> \
 ```
 
 The CLI authenticates with an admin API token read from `PKEY_ADMIN_TOKEN` and sent as
-`Authorization: Bearer pkeya_…` — scoped to `bundles:mint`, which reaches this route and no
+`Authorization: Bearer pkeya_…`: scoped to `bundles:mint`, which reaches this route and no
 other, and CSRF-exempt because an `Authorization` header is never ambient. It writes the compact
-JWS to a single file — by default `<product>-<first 8 chars of deviceId>.pkeybundle`, mode
-`0600` — with no trailing newline, so a naive read feeds a verifier directly.
+JWS to a single file, by default `<product>-<first 8 chars of deviceId>.pkeybundle` (mode
+`0600`), with no trailing newline, so a naive read feeds a verifier directly.
 
 What the server decides rather than the caller:
 

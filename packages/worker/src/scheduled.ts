@@ -180,13 +180,15 @@ export const SWEEP_MAX_PRODUCTS = 100;
  * `claimDeviceSeat` atomic instead of check-then-act; `idx_product_keys_one_active` is one active
  * signing key per product; `idx_release_download_tokens_hash` is what makes a download token
  * globally unambiguous; `idx_release_metadata_seq` (P2-03) is "two releases of one deliverable never
- * share a seq", the position the signed release record carries. Without them nothing errors — the
+ * share a seq", the position the signed release record carries; `idx_admin_api_tokens_hash` is the
+ * unique lookup path of every `pkeya_` admin API token. Without them nothing errors — the
  * constraint simply stops being enforced.
  *
  * A test asserts this list and the newest `migrations/*_index_assertion.sql` (0018, then its
- * successors — 0035_b today) are the same set, so the two cannot drift apart.
+ * successors — 0119_b today) are the same set, so the two cannot drift apart.
  */
 export const REQUIRED_INDEXES: readonly string[] = [
+  "idx_admin_api_tokens_hash",
   "idx_audit_time",
   "idx_ci_tokens_jti",
   "idx_devices_license_status",

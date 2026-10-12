@@ -50,12 +50,18 @@
  * The bundle's own `expiresAt` is checked on the network profile (§7 step 2) and means
  * something different again: how long this file may sit on a USB stick before it is refused.
  *
- * ── RATE LIMITING ───────────────────────────────────────────────────────────────────────────
+ * ── WHO CALLS IT, AND RATE LIMITING ─────────────────────────────────────────────────────────
+ *
+ * Two credentials reach this route: a console session, or an admin API token holding
+ * `bundles:mint` (`console/apiTokens.ts`; the one row of the route table that names a
+ * `tokenScope`), which is what `pkey bundle` presents. A token request is audited as itself
+ * (`api_token.used`), and the `bundle.minted` row below carries the same actor, `token:<id>`.
  *
  * The admin bucket, applied in `console/api.ts` to the whole surface before any handler runs
- * (`adminApi`, per verified session subject). Nothing bucket-specific is added here: this route
- * is reached only by an authenticated platform admin who has already passed session, CSRF and
- * group gates, and a second budget on top of that would protect nothing the first does not.
+ * (`adminApi`, per verified principal: the session subject, or `token:<id>`). Nothing
+ * bucket-specific is added here: this route is reached only by an authenticated platform admin
+ * who has already passed the credential, CSRF (sessions) or scope (tokens) and group gates, and a
+ * second budget on top of that would protect nothing the first does not.
  */
 
 import { SECONDS_PER_DAY } from "@polaris-key/protocol";
