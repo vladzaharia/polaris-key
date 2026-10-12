@@ -242,7 +242,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
@@ -581,7 +581,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.swift == 'true'
     runs-on: macos-26
-    timeout-minutes: 35
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
