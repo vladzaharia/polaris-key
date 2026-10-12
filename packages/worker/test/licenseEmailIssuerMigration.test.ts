@@ -39,9 +39,9 @@ function populated(): Database.Database {
 }
 
 function classes(db: Database.Database): Record<string, string | null> {
-  const rows: { id: string; c: string | null }[] = db
+  const rows = db
     .prepare("SELECT id, email_issuer_class AS c FROM licenses")
-    .all();
+    .all() as { id: string; c: string | null }[];
   return Object.fromEntries(rows.map((r) => [r.id, r.c]));
 }
 

@@ -189,7 +189,6 @@ interface ProvisioningRow {
   allowed_hosts_json: string | null;
 }
 
-
 export interface OidcIdentity {
   sub: string;
   email?: string;
@@ -1325,8 +1324,7 @@ export async function activateFromIdentity(
   // The issuer class that produces `identity.email` on this sign-in is stamped with the address.
   // Auto-linking must not re-derive it from a later manifest edit, which could turn a custom
   // issuer's assertion into a platform assertion retroactively.
-  const emailIssuerClass =
-    oidc?.provider === "custom" ? "custom" : "platform";
+  const emailIssuerClass = oidc?.provider === "custom" ? "custom" : "platform";
 
   // Case 1 — a claimable enrolled license and no identity license yet: attach the identity to
   // the SAME row. Devices, overrides, and the client's local state all survive; the user

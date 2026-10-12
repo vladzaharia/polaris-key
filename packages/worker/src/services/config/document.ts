@@ -187,12 +187,7 @@ export async function handleConfigDocument(
   if (!signingKey) return wireError(503, "signing_unavailable");
   let jws: string;
   try {
-    jws = await signDoc(
-      doc,
-      signingKey,
-      product.signingKid,
-      "pkey-config+jws",
-    );
+    jws = await signDoc(doc, signingKey, product.signingKid, "pkey-config+jws");
   } catch (e) {
     // The catalog prune drops a flagged config or secret value before this point, so only a
     // value the prune cannot see reaches the guard (plans/P3-01.md §2.2). Refuse with the

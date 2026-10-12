@@ -460,13 +460,11 @@ describe("issuer provenance controls automatic license links", () => {
     );
     if (!("licenseId" in minted)) throw new Error("expected a license");
     expect(
-      (
-        await db.first<{ email_issuer_class: string | null }>(
-          "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
-          EVILCO,
-          minted.licenseId,
-        )
-      )!.email_issuer_class,
+      (await db.first<{ email_issuer_class: string | null }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        minted.licenseId,
+      ))!.email_issuer_class,
     ).toBe("custom");
 
     await db.run(
@@ -507,13 +505,11 @@ describe("issuer provenance controls automatic license links", () => {
       merged: "claimed",
     });
     expect(
-      (
-        await db.first<{ email_issuer_class: string | null }>(
-          "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
-          EVILCO,
-          "lic_enrolled",
-        )
-      )!.email_issuer_class,
+      (await db.first<{ email_issuer_class: string | null }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        "lic_enrolled",
+      ))!.email_issuer_class,
     ).toBe("custom");
 
     await db.run(
@@ -522,13 +518,11 @@ describe("issuer provenance controls automatic license links", () => {
     );
     await activateFromIdentity(db, evilco, identity, NOW + 1);
     expect(
-      (
-        await db.first<{ email_issuer_class: string | null }>(
-          "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
-          EVILCO,
-          "lic_enrolled",
-        )
-      )!.email_issuer_class,
+      (await db.first<{ email_issuer_class: string | null }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        "lic_enrolled",
+      ))!.email_issuer_class,
     ).toBe("platform");
   });
 });

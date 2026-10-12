@@ -106,12 +106,7 @@ export async function signTrustManifest(
   // check, never a transformation.
   const pem = signer?.pem ?? (await product.signingKey());
   if (!pem) return null;
-  return signDoc(
-    doc,
-    pem,
-    signer?.kid ?? product.signingKid,
-    "pkey-trust+jws",
-  );
+  return signDoc(doc, pem, signer?.kid ?? product.signingKid, "pkey-trust+jws");
 }
 
 export async function handleTrustManifest(
