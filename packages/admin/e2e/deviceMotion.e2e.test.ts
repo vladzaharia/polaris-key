@@ -247,11 +247,21 @@ const running = (page: Page): Promise<string[]> =>
     }),
   );
 
+/**
+ * Nothing is animating and no View Transition is in flight. `html[data-vt]` is set before the
+ * transition starts and cleared when it finishes; a View Transition's pseudo-element animations
+ * only exist from its ready phase, so "no animations" alone also holds in the gap between the
+ * DOM swap and the first frame of the transition (which widens on a loaded runner).
+ */
 async function atRest(page: Page, timeout = 4000): Promise<void> {
   await page
-    .waitForFunction(() => document.getAnimations().length === 0, null, {
-      timeout,
-    })
+    .waitForFunction(
+      () =>
+        !document.documentElement.hasAttribute("data-vt") &&
+        document.getAnimations().length === 0,
+      null,
+      { timeout },
+    )
     .catch(() => undefined);
 }
 

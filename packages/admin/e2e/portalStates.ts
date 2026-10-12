@@ -1064,7 +1064,9 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Account");
       await p.getByRole("button", { name: "Delete account" }).click();
       await p
-        .getByRole("heading", { name: "Delete your Polaris Key account?" })
+        .getByRole("heading", {
+          name: "Schedule your Polaris Key account for deletion?",
+        })
         .waitFor();
     },
   },
