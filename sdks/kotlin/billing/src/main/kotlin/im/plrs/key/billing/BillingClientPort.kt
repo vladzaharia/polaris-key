@@ -1,4 +1,4 @@
-// [PlayBillingPort] over Play Billing Library 8's BillingClient. One PurchasesUpdatedListener serves
+// [PlayBillingPort] over Play Billing Library 9's BillingClient. One PurchasesUpdatedListener serves
 // both the purchase flow in progress and the renewals loop: purchases Play reports while no flow waits
 // (a pending purchase that completed, a purchase made in the Play Store app) go to [onUpdate], which
 // `PolarisPlayBilling.create` wires to `onPurchasesUpdated`.
