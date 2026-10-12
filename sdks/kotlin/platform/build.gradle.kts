@@ -138,7 +138,7 @@ val standaloneClasspaths: List<String> = listOf("play", "direct").flatMap { f ->
     listOf("Debug", "Release").flatMap { b -> listOf("${f}${b}CompileClasspath", "${f}${b}RuntimeClasspath") }
 }
 
-val checkStandalone by tasks.registering {
+val checkStandalone = tasks.register("checkStandalone") {
     group = "verification"
     description = "Fails if :platform depends on any other SDK module (a project or an im.plrs.key module)."
     val roots = standaloneClasspaths.map { name ->
