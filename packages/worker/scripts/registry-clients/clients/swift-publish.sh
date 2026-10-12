@@ -45,10 +45,11 @@ put() { # put <with signature: yes|no> → the status; headers in $T/h, body in 
   local extra=()
   [ "$1" = yes ] && extra=(-F "source-archive-signature=@$sig;type=application/octet-stream"
     -H "X-Swift-Package-Signature-Format: cms-1.0.0")
+  # `${extra[@]+"${extra[@]}"}`: macOS's bash 3.2 treats an empty array as unset under `set -u`.
   curl -sS -o "$T/b" -D "$T/h" -w '%{http_code}' -X PUT \
     -H "Accept: application/vnd.swift.registry.v1+json" \
     -H "Authorization: Bearer $PKEY_REGISTRY_PUBLISH_TOKEN" \
-    -F "source-archive=@$zip;type=application/zip" "${extra[@]}" \
+    -F "source-archive=@$zip;type=application/zip" ${extra[@]+"${extra[@]}"} \
     "$URL/smoke/PublishedKit/${2:-1.0.0}"
 }
 status="$(put yes)"

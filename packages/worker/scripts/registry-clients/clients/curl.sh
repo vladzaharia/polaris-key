@@ -48,7 +48,8 @@ check "unknown owner"               404 GET  "/npm/nobody-here/@x%2fy" '"error":
 check "reserved ecosystem"          404 GET  "/cargo/$OWNER/index/config.json"
 check "no preflight"                405 OPTIONS "/npm/$OWNER/x"
 check "GET and HEAD only"           405 POST "/npm/$OWNER/x" '^allow: GET, HEAD'
-check "OCI push refused"            405 POST "/v2/$OWNER/app/blobs/uploads/" '"UNSUPPORTED"'
+# F-23: the OCI push methods are served, so an anonymous push is the Bearer challenge naming pull,push.
+check "OCI push is challenged"      401 POST "/v2/$OWNER/app/blobs/uploads/" '"UNAUTHORIZED"' '^www-authenticate: Bearer realm="[^"]+/v2/token",service=.*scope="repository:[^"]*:pull,push"'
 
 # An anonymous pull token from the token service opens `/v2/` (public pulls keep working).
 host="${REGISTRY#http://}"

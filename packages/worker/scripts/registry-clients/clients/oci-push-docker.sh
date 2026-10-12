@@ -35,8 +35,8 @@ local_digest="$(docker image inspect "$PUSH_REF:1.0.0" --format '{{index .RepoDi
 remote_digest="$(digest_of_name "$PUSH_NAME" 1.0.0)"
 if [ -n "$remote_digest" ] && [ "$local_digest" = "$remote_digest" ]; then ok "the pushed digest is served by tag"; else bad "digest $local_digest vs $remote_digest"; fi
 # The version joins the product's channels like a ticket publish without --channel: the newest
-# stable version is `latest` (and heads `beta` while no beta is newer).
-if [ "$(tags_of "$PUSH_NAME")" = "1.0.0,beta,latest" ]; then ok "tags/list: 1.0.0 and its channel tags"; else bad "tags/list: $(tags_of "$PUSH_NAME")"; fi
+# stable version is `latest` (and heads `beta` and `dev` while no beta or dev version is newer).
+if [ "$(tags_of "$PUSH_NAME")" = "1.0.0,beta,dev,latest" ]; then ok "tags/list: 1.0.0 and its channel tags"; else bad "tags/list: $(tags_of "$PUSH_NAME")"; fi
 
 docker rmi -f "$PUSH_REF:1.0.0" >/dev/null
 if docker pull -q "$PUSH_REF:1.0.0" >/dev/null && docker pull -q "$PUSH_REF@$remote_digest" >/dev/null; then

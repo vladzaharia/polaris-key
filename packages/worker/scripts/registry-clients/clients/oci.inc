@@ -9,7 +9,8 @@ NAME="$OWNER/$REPO"
 HOSTPORT="${REGISTRY#http://}"
 HOSTPORT="${HOSTPORT#https://}"
 REF="$HOSTPORT/$NAME"
-EXPECTED_TAGS='["0.8.0","1.0.0","1.1.0-beta.1","beta","latest"]'
+# `dev` is a built-in channel (P2-08) that includes beta, so it is a moving tag too: here it heads at the beta.
+EXPECTED_TAGS='["0.8.0","1.0.0","1.1.0-beta.1","beta","dev","latest"]'
 
 # need <tool>: the client's tool must be installed. CI (REGISTRY_CLIENTS_REQUIRE=1) fails without
 # it; a local run without it skips this client with a notice.
