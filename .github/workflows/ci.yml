@@ -649,7 +649,7 @@ jobs:
       - name: pkey transport apple-ba package (real xcrun ba-package)
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter "@polaris-key/cli..." build
+          pnpm exec turbo run build --filter="@polaris-key/cli..."
           xcrun ba-package --version
           PKEY_REAL_BA_PACKAGE=1 pnpm --filter @polaris-key/cli exec vitest run test/transport.test.ts
       - uses: actions/cache@v6

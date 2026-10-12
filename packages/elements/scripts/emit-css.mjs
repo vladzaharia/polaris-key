@@ -10,7 +10,9 @@ const dist = join(root, "dist");
 
 // The light-DOM form: every selector anchored to `.pk-root`, all of it in `@layer polaris-key`
 // (src/contract.ts). The elements adopt the shadow form from JS and never load this file.
-const { lightDomCss } = await import(pathToFileURL(join(dist, "contract.js")).href);
+const { lightDomCss } = await import(
+  pathToFileURL(join(dist, "contract.js")).href
+);
 writeFileSync(
   join(dist, "styles.css"),
   `/* @polaris-key/elements: the shared kit stylesheet (generated at build from src/styles.ts). */\n${lightDomCss()}`,

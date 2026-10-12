@@ -686,7 +686,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter "@polaris-key/cli..." build
+      - run: pnpm exec turbo run build --filter="@polaris-key/cli..."
       # The image carries the committed bundle; it must be what this commit's CLI builds.
       - run: pnpm --filter @polaris-key/cli bundle:action -- --check
       - name: Build linux/amd64 and linux/arm64 into an OCI image layout
