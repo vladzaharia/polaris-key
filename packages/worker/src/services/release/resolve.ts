@@ -34,6 +34,7 @@
  * fixtures (`test/resolve.test.ts`). `resolveBuild` is the D1 shell around it.
  */
 
+import type { LinearPattern } from "@polaris-key/catalog";
 import {
   APP_DELIVERABLE_ID,
   BUILT_IN_CHANNELS,
@@ -349,7 +350,7 @@ function channelMembers(
       : null) ?? compileManualChannelRegex(DEFAULT_STABLE_TAG_PATTERN);
   const manualRes = input.manualChannels
     .map((m) => ({ name: m.name, re: compileManualChannelRegex(m.regex) }))
-    .filter((m): m is { name: string; re: RegExp } => m.re !== null);
+    .filter((m): m is { name: string; re: LinearPattern } => m.re !== null);
 
   /** Is `r` a candidate of the channel closure, through which kind of membership? */
   const isMember = (r: Candidate): boolean => {

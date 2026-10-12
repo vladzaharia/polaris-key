@@ -1,5 +1,7 @@
 import {
+  compileLinearPattern,
   representabilityIssue,
+  type LinearPattern,
   type ProductCatalog,
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
@@ -733,8 +735,10 @@ export const SEMVER_RE =
 // R6-07). Reject, never coerce: a manifest that fails these is not applied at all.
 /** `binaryName` — interpolated into the served POSIX shell installer. */
 const BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-/** `ghOwner` / `ghRepo` — interpolated unencoded into `api.github.com` paths. */
-const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+/** `ghOwner` / `ghRepo` — interpolated unencoded into `api.github.com` paths. Exported so the
+ *  Worker's `parseRepoUrl`, which derives the same two values from a pasted URL instead of from
+ *  `.pkey/release`, applies this rule rather than a second, looser one. */
+export const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 /** `channelWorkflow` — a workflow filename or numeric id in an API path segment. */
 const CHANNEL_WORKFLOW_RE = /^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\.ya?ml)$/;
 /** `publishing.trustedPublisher.workflow`: a workflow file path as `job_workflow_ref` spells it. */
@@ -790,20 +794,44 @@ export const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 /** Channel / architecture names — they reach URL path segments and asset-match patterns.
  *  Exported (P3-12) for the admin tier and licence handlers' channels, as `ID_RE` is. */
 export const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-/** `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`). */
+/**
+ * `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`).
+ *
+ * Deliberately NOT reconciled away against the catalog engine's `MAX_PATTERN_SOURCE` (300).
+ * They are two bounds on the same matcher and this is the tighter one, so it is always the
+ * binding check: the anchored form `compileManualChannelRegex` compiles is at most 86
+ * characters, well inside the engine's own limit. It stays because it is the bound the field
+ * DOCUMENTS — a channel rule is a tag shape, not a grammar — and because `release.schema.json`
+ * publishes it verbatim as `maxLength: 80`. Neither number is the ReDoS control; the matcher is.
+ */
 export const MANUAL_CHANNEL_REGEX_MAX = 80;
 /**
  * Compile a manual-channel tag regex under the SAME safety rules the worker's runtime
  * `parseManualChannels` applies: anchor it (so `beta` can't match `beta-old` unless the
- * author wrote it), cap its source length, and reject anything that fails to compile.
+ * author wrote it), cap its source length, and reject anything the matcher will not take.
  * Returns `null` rather than throwing. Exported so ingest validation and the runtime reader
- * are one rule, not two copies (the audit's B1).
+ * are one rule, not two copies.
+ *
+ * The anchored source goes to `compileLinearPattern` (the Thompson/Pike NFA that already
+ * screens catalog `pattern` values), never to `new RegExp`. V8 backtracks, and the source is
+ * attacker-chosen: `.pkey/release` in any linked repo reaches here through a push webhook, and
+ * the worker's `resolveChannel` then matches the compiled pattern against up to 100 release tags
+ * per request. The eight-character `(x+x+)+y` cost seconds against a 28-character tag and doubled
+ * per extra character; a source-length cap is no mitigation because the pathological patterns are
+ * short. The NFA cannot backtrack, so every pattern, hostile ones included, matches in
+ * O(program x tag); the constructs that genuinely need backtracking (backreferences, lookaround,
+ * `\b`) are refused at compile time instead of being handed to an engine that would.
+ *
+ * `LinearPattern.test` is an unanchored "contains a match", so the anchors have to live in the
+ * source; the engine supports `^`/`$` and `(?:…)`, which keeps this identical to the old
+ * `^(?:…)$` wrapping.
  */
-export function compileManualChannelRegex(source: string): RegExp | null {
+export function compileManualChannelRegex(
+  source: string,
+): LinearPattern | null {
   if (source.length > MANUAL_CHANNEL_REGEX_MAX) return null;
-  const anchored = `^(?:${source})$`;
   try {
-    return new RegExp(anchored);
+    return compileLinearPattern(`^(?:${source})$`);
   } catch {
     return null;
   }
@@ -2272,7 +2300,7 @@ function validateDocuments(
                 "release",
                 `${at}/regex`,
                 "invalid_manual_channel",
-                `manualChannels[].regex must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+                `manualChannels[].regex must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`,
               );
             }
           }
@@ -2291,7 +2319,7 @@ function validateDocuments(
           "release",
           "/release/stableTagPattern",
           "invalid_stable_tag_pattern",
-          `release.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+          `release.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`,
         );
       }
       if (relRoot.ignoreTags !== undefined) {
@@ -4218,7 +4246,7 @@ function validateAppDeliverable(
         "release",
         "/release/deliverables/app/versioning/stableTagPattern",
         "invalid_stable_tag_pattern",
-        `deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+        `deliverables.app.versioning.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`,
       );
     }
     if (versioning.ignoreTags !== undefined) {

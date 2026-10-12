@@ -52,9 +52,14 @@ import {
   handleAuthStart,
 } from "../../src/services/identity/oidc.js";
 import {
+  parseManualChannels,
   resolveChannel,
   type ChannelSelector,
 } from "../../src/services/release/channels.js";
+import {
+  compileManualChannelRegex,
+  validateManifestDocuments,
+} from "@polaris-key/manifest";
 import {
   fetchTextAsset,
   MAX_TEXT_ASSET_BYTES,
@@ -1018,16 +1023,16 @@ describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () =
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// R10-07 — 80-char cap does not stop catastrophic regex backtracking
+// R10-07 — the 80-char cap never was the guard; the backtracking-free matcher is
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guard)", () => {
+describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 was never the guard)", () => {
   const EVIL = "(x+x+)+y"; // 8 chars, far below the 80-char cap
 
-  /** Backtracking steps `resolveChannel` costs against `count` releases whose tag is `len` x's:
-   *  every native regex run it makes, replayed on the step-counting engine (test/regexReplay.ts).
-   *  Counted, not timed, so the ratios below are exact on a machine of any speed or load. */
-  function stepsMatch(len: number, count: number): number {
+  /** `resolveChannel` over `count` releases whose tag is `len` x's, and every native regex run it
+   *  made while doing so (test/regexReplay.ts). Counted, not timed, so the assertions below are
+   *  exact on a machine of any speed or load. */
+  function resolveEvil(len: number, count: number) {
     const sel: ChannelSelector = {
       kind: "manual",
       raw: "nightly",
@@ -1038,44 +1043,96 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
       r.tag_name = "x".repeat(len); // a perfectly legal git tag name
       return r;
     });
-    const { runs } = recordRegexRuns(() => resolveChannel(sel, releases));
-    // The manual regex really runs natively, on the tag, which is what makes this a finding.
-    expect(
-      runs.some(
-        (r) => r.source.includes(EVIL) && r.input === releases[0]!.tag_name,
-      ),
-    ).toBe(true);
-    return replaySteps(runs);
+    return recordRegexRuns(() => resolveChannel(sel, releases));
   }
 
-  /** A Worker request's CPU limit (30 s) at a generous billion backtracking steps a second. */
-  const STEPS_PAST_CPU_LIMIT = 30 * 1e9;
+  // `compileManualChannelRegex` no longer calls `new RegExp`; it calls `compileLinearPattern`, the
+  // Thompson NFA that closed the same finding for catalog `pattern`. Two consequences, and this
+  // block pins both:
+  //
+  //  1. Patterns that CANNOT be matched without backtracking (backreferences, lookaround, `\b`)
+  //     are refused at ingest. The manifest validator emits `invalid_manual_channel` and
+  //     `parseManualChannels` drops the row, so they never reach `resolveChannel`.
+  //  2. `(x+x+)+y` is NOT one of them. It is perfectly expressible in a non-backtracking engine;
+  //     it was only ever expensive because V8 backtracks. So it stays ACCEPTED and is DEFUSED
+  //     instead: the pattern never runs on the native engine at all. Rejecting it would be the
+  //     static "nested quantifier" heuristic `shared-catalog/src/regex.ts` explicitly refuses to
+  //     rely on, because it leaks (`(a|a)*` has star height 1 and backtracks just as badly).
 
-  it("an 8-character pattern under the cap backtracks catastrophically", () => {
+  it("the constructs that need backtracking are refused at ingest", () => {
+    for (const regex of ["(v\\d+)-\\1", "(?=(a+)+b)a", "(?<=aa)b", "\\bv1"]) {
+      // The shared rule says no...
+      expect(compileManualChannelRegex(regex), regex).toBeNull();
+
+      // ...so a repo push carrying one is rejected, not stored (githubWebhook, resync, here).
+      const res = validateManifestDocuments({
+        product: { slug: "acme", name: "Acme", compatMin: "1.0.0" },
+        schema: { schemaVersion: 1, catalog: [] },
+        release: {
+          release: {
+            provider: { type: "github", owner: "acme", repo: "desktop" },
+            manualChannels: [{ name: "nightly", regex }],
+          },
+        },
+      });
+      expect(
+        res.errors.map((e) => e.code),
+        regex,
+      ).toContain("invalid_manual_channel");
+
+      // ...and even a row that predates the check cannot be revived by the runtime reader.
+      expect(
+        parseManualChannels(JSON.stringify([{ name: "nightly", regex }])),
+      ).toEqual([]);
+    }
+  });
+
+  it("an 8-character pattern under the cap never runs on the backtracking engine", () => {
     expect(EVIL.length).toBeLessThanOrEqual(80);
-    // Six more characters multiply the cost by ~64; linear matching would add a third.
-    const short = stepsMatch(10, 1);
-    const longer = stepsMatch(16, 1);
-    expect(longer).toBeGreaterThan(short * 16);
-    // At the counted growth per character, one 40-character tag (a legal git tag, the pattern
-    // still under the cap) costs more steps than a Worker request's CPU limit allows.
-    const perChar = Math.pow(longer / short, 1 / 6);
-    expect(longer * Math.pow(perChar, 40 - 16)).toBeGreaterThan(
-      STEPS_PAST_CPU_LIMIT,
+    // This used to REQUIRE the pattern to run natively: ~64x more steps for six more characters,
+    // and past a Worker request's CPU limit by 40. Now there is no native run to count, at any
+    // length and at the largest list one request can be made to match.
+    for (const [len, count] of [
+      [10, 1],
+      [16, 1],
+      [40, 1],
+      [4000, 100],
+    ] as const) {
+      const { result, runs } = resolveEvil(len, count);
+      expect(result, `${len}x${count}`).toBeNull();
+      expect(
+        runs.filter((r) => r.source.includes(EVIL)),
+        `${len}x${count}`,
+      ).toHaveLength(0);
+      expect(replaySteps(runs)).toBe(0);
+    }
+  });
+
+  it("still decides correctly: the defused pattern matches what it says and nothing else", () => {
+    const sel: ChannelSelector = {
+      kind: "manual",
+      raw: "nightly",
+      manual: { name: "nightly", regex: EVIL },
+    };
+    const tagged = (tag: string) => {
+      const r = releaseWith([]);
+      r.tag_name = tag;
+      return r;
+    };
+    expect(resolveChannel(sel, [tagged(`${"x".repeat(40)}y`)])?.tag_name).toBe(
+      `${"x".repeat(40)}y`,
     );
+    expect(resolveChannel(sel, [tagged("x".repeat(40))])).toBeNull();
   });
 
-  it("runtime doubles per extra input character (exponential, not linear)", () => {
-    const short = stepsMatch(10, 1);
-    const longer = stepsMatch(15, 1); // +5 chars ⇒ ~32x
-    expect(longer).toBeGreaterThan(short * 8);
-  });
-
-  it("cost is multiplied by the release list length (up to 3 pages of 100 per request since P0-02)", () => {
-    const single = stepsMatch(14, 1);
-    const batch = stepsMatch(14, 10);
-    // Ten releases cost ten times one: every tag is matched on its own.
-    expect(batch).toBeGreaterThanOrEqual(single * 9);
+  it("the anchoring the old RegExp gave is preserved, so no channel widens", () => {
+    // `^(?:...)$` still wraps the manifest source: `beta` must not answer for `beta-old`.
+    const re = compileManualChannelRegex("v.*-nightly\\..*");
+    expect(re).not.toBeNull();
+    expect(re!.test("v1.3.0-nightly.7")).toBe(true);
+    expect(re!.test("v1.3.0-nightly.7-suffix")).toBe(true); // the author's own `.*`
+    expect(re!.test("prefix-v1.3.0-nightly.7")).toBe(false); // but not an unanchored hit
+    expect(re!.test("v1.3.0")).toBe(false);
   });
 });
 

@@ -201,6 +201,12 @@ state:
   (channel workflow, binary name, Sparkle key, access modes, and the `stableTagPattern` /
   `ignoreTags` candidate filter), OIDC configuration, provisioning rules, and edge-mint
   recipes.
+  Each field a resync actually changes leaves its own `setting.resync` audit row (a resync of an
+  unchanged manifest leaves none), and the Sparkle key is never written to it, only whether it
+  is set. A push may set the Sparkle key where none is stored and may clear it, but may not swap
+  it for another in one step, because that key authenticates every build the update feed
+  serves: to rotate it on purpose, push `.pkey/release` without `sparkleEd25519Pub`, then push
+  the new key. The feed fails closed in between.
 - **Applied unless claimed in the console** (see below): the product name, the default max
   offline days and device limit, the web origins, and the config catalog (only when its content
   actually changed, which publishes a new schema version). The admin group is manifest-only and

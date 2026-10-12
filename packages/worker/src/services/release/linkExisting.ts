@@ -35,6 +35,7 @@ import {
 import { parseJsonColumn } from "../../platform/json.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
+import { declassifyRefusal } from "../../core/configDelivery.js";
 import {
   claimsForApply,
   type BreakGlassClaim,
@@ -71,11 +72,13 @@ import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import {
   countLicensesListingProfile,
   issuerChangeRefusal,
+  profileSecretsRefusal,
   readLinkedManifest,
   resolveManifestPublisher,
   resyncRepo,
   screenCatalog,
   snapshotRowIds,
+  sparkleKeyRefusal,
   unsafeBinaryNameRefusal,
   type ResyncResult,
 } from "./resync.js";
@@ -429,10 +432,12 @@ export async function linkExistingProduct(
 
 /**
  * The refusals `applyRepoManifest` reaches only after its first write (an unsafe binary name, a
- * catalog the validator refuses) plus its issuer gate, checked up front and writing nothing.
- * Each check is the very helper `applyRepoManifest` calls (`resync.ts`), so link and the dry run
- * cannot drift from what the resync refuses. `null` when the manifest passes all three. Link
- * refuses on one; the resync dry run lists it as what blocks the resync.
+ * catalog the validator refuses) plus its issuer gate and the ones that need what is stored (a
+ * catalog change that would remove or declassify a stored server-only secret, a swapped Sparkle
+ * key, a manifest profile value that would overwrite a sealed secret), checked up front and
+ * writing nothing. Each check is the very helper `applyRepoManifest` calls (`resync.ts`), so link
+ * and the dry run cannot drift from what the resync refuses. `null` when the manifest passes them
+ * all. Link refuses on one; the resync dry run lists it as what blocks the resync.
  */
 async function manifestPolicyRefusal(
   env: Env,
@@ -450,12 +455,40 @@ async function manifestPolicyRefusal(
   // unchanged or claimed catalog is not published by the resync.
   const active = await getActiveSchema(db, slug);
   const claims = (await claimsForApply(db, slug, manifest, now)).claimed;
-  const screened = screenCatalog(
-    manifest,
+  const catalogChanged =
     !claims.has("config.catalog") &&
-      active?.catalog_json !== JSON.stringify(manifest.catalog),
-  );
+    active?.catalog_json !== JSON.stringify(manifest.catalog);
+  const screened = screenCatalog(manifest, catalogChanged);
   if (!screened.ok) return { area: "catalog", summary: screened.error };
+  if (catalogChanged) {
+    const declassify = await declassifyRefusal(
+      db,
+      slug,
+      active?.catalog_json,
+      screened.catalog.entries,
+    );
+    if (declassify)
+      return {
+        area: "catalog",
+        summary: `invalid catalog in manifest: ${declassify}`,
+      };
+  }
+  const sparkle = sparkleKeyRefusal(
+    manifest,
+    (await getReleaseConfig(db, slug))?.sparkle_ed25519_pub,
+    slug,
+  );
+  if (sparkle) return { area: "release", summary: sparkle };
+  const secret = await profileSecretsRefusal(
+    env,
+    db,
+    slug,
+    manifest,
+    screened.catalog,
+    active?.catalog_json,
+  );
+  if (secret)
+    return { area: "profiles", id: secret.profile, summary: secret.error };
   return null;
 }
 

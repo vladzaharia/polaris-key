@@ -911,28 +911,32 @@ describe("R9-03 release_config.channel_workflow is interpolated unencoded", () =
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// R9-04 — gh_owner / gh_repo are unencoded too, and parseRepoUrl is permissive
+// R9-04 — gh_owner / gh_repo are unencoded too; parseRepoUrl used to be permissive
 // ═════════════════════════════════════════════════════════════════════════════
 describe("R9-04 gh_owner/gh_repo path injection", () => {
-  it("parseRepoUrl accepts `..`, `?` and `:` in the owner/repo it persists", () => {
-    expect(parseRepoUrl("https://github.com/o/..")).toEqual({
-      owner: "o",
-      repo: "..",
+  // `parseRepoUrl` applies the manifest validator's own `GH_SLUG_RE` to both halves, so none of
+  // these ever becomes a stored coordinate. The URL arm used to match `[^/]+`, which admits every
+  // non-slash byte; the rule is imported from `@polaris-key/manifest` rather than re-typed, so
+  // the console door and the `.pkey/release` door cannot drift apart.
+  it("parseRepoUrl refuses `..`, `?`, `:` and `#` in the owner/repo it would persist", () => {
+    expect(parseRepoUrl("https://github.com/o/..")).toBeNull();
+    expect(parseRepoUrl("https://github.com/o/r?per_page=1")).toBeNull();
+    expect(parseRepoUrl("https://github.com/a:b/c:d")).toBeNull();
+    expect(parseRepoUrl("https://github.com/o/r#frag")).toBeNull();
+    expect(parseRepoUrl("../../orgs/attacker/repos")).toBeNull();
+    // …and the ordinary shapes still parse, so the tightening is not a blanket denial.
+    expect(parseRepoUrl("https://github.com/acme-org/acme-app")).toEqual({
+      owner: "acme-org",
+      repo: "acme-app",
     });
-    expect(parseRepoUrl("https://github.com/o/r?per_page=1")).toEqual({
-      owner: "o",
-      repo: "r?per_page=1",
+    expect(parseRepoUrl("git@github.com:acme-org/acme-app.git")).toEqual({
+      owner: "acme-org",
+      repo: "acme-app",
     });
-    expect(parseRepoUrl("https://github.com/a:b/c:d")).toEqual({
-      owner: "a:b",
-      repo: "c:d",
+    expect(parseRepoUrl("acme-org/acme.app_1")).toEqual({
+      owner: "acme-org",
+      repo: "acme.app_1",
     });
-    // Feeding that straight into the (unencoded) githubApp URL template traverses:
-    const p = parseRepoUrl("https://github.com/o/..")!;
-    expect(
-      new URL(`https://api.github.com/repos/${p.owner}/${p.repo}/installation`)
-        .pathname,
-    ).toBe("/repos/installation");
   });
 
   it("a stored gh_repo of `..` retargets the authenticated releases call", async () => {

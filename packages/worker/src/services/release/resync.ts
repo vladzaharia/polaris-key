@@ -15,6 +15,10 @@
  * (`product_settings`: the name, the licence defaults, the web origins, the catalog) is skipped;
  * tiers and profiles are applied per row, leaving `console` rows alone; and each setting or row
  * the batch changes gets its own `setting.resync` audit row.
+ *
+ * The apply also seals the secret values a manifest declares under catalog-declared secret keys,
+ * and refuses (before the batch, like every other check) a push that would swap the stored Sparkle
+ * key or overwrite an already-sealed profile secret: `sparkleKeyRefusal`, `manifestSecrets.ts`.
  */
 
 import { Catalog } from "@polaris-key/catalog";
@@ -22,7 +26,7 @@ import {
   catalogDeliveryIssues,
   declassifyRefusal,
 } from "../../core/configDelivery.js";
-import type { Db, DbStatement } from "../../db/types.js";
+import type { Db, DbParam, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import {
   auditValue,
@@ -93,6 +97,17 @@ import { manifestDeliverableStatements } from "./deliverables.js";
 import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
 import { enqueueReleaseMirrors } from "./mirror.js";
 import { releaseKeysForSync } from "./records.js";
+import {
+  managedSecretKeyPredicate,
+  parseStoredCatalog,
+  sealedProfilePayload,
+} from "./manifestSecrets.js";
+import {
+  isJsonObject,
+  parseJsonArray,
+  parseJsonColumn,
+  parseJsonOr,
+} from "../../platform/json.js";
 import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
@@ -339,27 +354,34 @@ async function applyRepoManifest(
       return { ok: false, error: `invalid catalog in manifest: ${refusal}` };
   }
 
-  // The catalog the profile carry-forward (R2) asks which keys are managed secrets: the one that
-  // stays installed. With `config.catalog` claimed that is the console's catalog, not the
-  // manifest's (which is not installed), so a secret the console catalog declares and an operator
-  // sealed on a manifest profile is carried rather than silently wiped. The stored catalog was
-  // screened when it was published; one that no longer parses falls back to the manifest's.
-  let carryCatalog = incomingCatalog;
-  if (catalogClaimed && activeSchema) {
-    try {
-      carryCatalog = new Catalog(
-        JSON.parse(activeSchema.catalog_json) as never,
-      );
-    } catch {
-      carryCatalog = incomingCatalog;
-    }
-  }
+  // The catalogs the profile writes ask which keys are managed secrets. Sealing a value the
+  // manifest declares, and refusing to overwrite a sealed one, go by BOTH the incoming and the
+  // stored catalog, so a push that demotes a secret and writes its value in the same commit
+  // cannot slip past; the carry-forward (R2) goes by the one that stays installed. With
+  // `config.catalog` claimed that is the console's catalog, not the manifest's (which is not
+  // installed), so a secret the console catalog declares and an operator sealed on a manifest
+  // profile is carried rather than silently wiped. The stored catalog was screened when it was
+  // published; one that no longer parses falls back to the manifest's.
+  const storedCatalog = parseStoredCatalog(activeSchema?.catalog_json);
+  const carryCatalog =
+    catalogClaimed && storedCatalog ? storedCatalog : incomingCatalog;
+  const isSecretKey = managedSecretKeyPredicate(
+    storedCatalog ? [incomingCatalog, storedCatalog] : [incomingCatalog],
+  );
 
   // Defence in depth for R6-01 (the repo-name fallback bypasses the manifest boundary).
   const rel = manifest.release;
   const binaryRefusal = unsafeBinaryNameRefusal(manifest, repo);
   if (binaryRefusal) return { ok: false, error: binaryRefusal };
   const binaryName = rel ? rel.binaryName || repo : null;
+
+  // The update feed's trust anchor is a repo-owned field: refuse a push that swaps it.
+  const sparkleRefusal = sparkleKeyRefusal(
+    manifest,
+    cfg.sparkle_ed25519_pub,
+    slug,
+  );
+  if (sparkleRefusal) return { ok: false, error: sparkleRefusal };
 
   // Tiers and profiles, per row (S-18 §4.5 item 3). A `manifest` row the manifest still declares
   // is upserted; a `console` row (created or edited in the console) is never touched; a `manifest`
@@ -464,6 +486,21 @@ async function applyRepoManifest(
     "found widened at resync",
   );
 
+  // The manifest-owned rows this apply replaces whole, as they stand now: the "before" of the
+  // `identity.oidc` and `identity.provisioning` audit rows below.
+  const storedOidc = await db.first<OidcColumns>(
+    `SELECT provider, issuer, client_id, client_secret_secret, redirect_uris_json,
+            group_role_map_json
+       FROM oidc_config WHERE product = ?`,
+    slug,
+  );
+  const storedProvisioning = await db.all<ProvisioningColumns>(
+    `SELECT claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template,
+            allowed_hosts_json
+       FROM provisioning_config WHERE product = ? ORDER BY claim`,
+    slug,
+  );
+
   // ── the writes: ONE batch ───────────────────────────────────────────────────
   const updated: string[] = [];
   // The ended break-glass claims go first, so every claim guard below already sees them gone.
@@ -479,6 +516,7 @@ async function applyRepoManifest(
     before: unknown,
     after: unknown,
     claimKey: ClaimKey | null = null,
+    ownedBy: OwnerGuard | null = null,
   ): void => {
     const stmt = stmtSettingAudit(
       slug,
@@ -493,7 +531,14 @@ async function applyRepoManifest(
     );
     // A claimable key's audit row carries the same in-statement guard as its write, so a claim
     // made after `claims` was read leaves neither the write nor an audit row claiming it happened.
-    audits.push(claimKey ? unlessClaimed(stmt, slug, claimKey, now) : stmt);
+    // A key owned through a `*_source` marker gets the same from its marker (`ownedBy`).
+    audits.push(
+      claimKey
+        ? unlessClaimed(stmt, slug, claimKey, now)
+        : ownedBy
+          ? whileManifestOwned(stmt, ownedBy)
+          : stmt,
+    );
   };
 
   // The product row's manifest fields (S-18 §4.5 item 1). A field the console has claimed
@@ -586,32 +631,56 @@ async function applyRepoManifest(
             WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'`,
     params: [manifest.product.compatMin, manifest.product.compatMax, slug],
   });
+  if (
+    (product.compat_source ?? "manifest") === "manifest" &&
+    (product.compat_min !== manifest.product.compatMin ||
+      product.compat_max !== manifest.product.compatMax)
+  )
+    auditSetting(
+      "release.compatWindow",
+      { min: product.compat_min, max: product.compat_max },
+      { min: manifest.product.compatMin, max: manifest.product.compatMax },
+      null,
+      manifestOwned(slug, "products", "slug", "compat_source"),
+    );
   updated.push("product");
 
   // The fingerprint policy is manifest-owned only until an operator edits it live; after
   // that the statement's guard skips the write, so a push can't clobber their change.
   if (manifest.fingerprint) {
+    const fingerprintJson = JSON.stringify(manifest.fingerprint);
     stmts.push(
-      stmtSetFingerprintPolicy(
-        slug,
-        JSON.stringify(manifest.fingerprint),
-        "manifest",
-        now,
-      ),
+      stmtSetFingerprintPolicy(slug, fingerprintJson, "manifest", now),
     );
+    if (
+      (product.fingerprint_policy_source ?? "manifest") === "manifest" &&
+      (product.fingerprint_policy_json ?? null) !== fingerprintJson
+    )
+      auditSetting(
+        "license.fingerprint",
+        parseJsonColumn(product.fingerprint_policy_json),
+        manifest.fingerprint,
+        null,
+        manifestOwned(slug, "products", "slug", "fingerprint_policy_source"),
+      );
     updated.push("fingerprint");
   }
 
   // Same ownership rule for the auto-issue policy: manifest-owned until an operator claims it.
   if (manifest.autoIssue) {
-    stmts.push(
-      stmtSetAutoIssuePolicy(
-        slug,
-        JSON.stringify(manifest.autoIssue),
-        "manifest",
-        now,
-      ),
-    );
+    const autoIssueJson = JSON.stringify(manifest.autoIssue);
+    stmts.push(stmtSetAutoIssuePolicy(slug, autoIssueJson, "manifest", now));
+    if (
+      (product.auto_issue_source ?? "manifest") === "manifest" &&
+      (product.auto_issue_json ?? null) !== autoIssueJson
+    )
+      auditSetting(
+        "license.autoIssue",
+        parseJsonColumn(product.auto_issue_json),
+        manifest.autoIssue,
+        null,
+        manifestOwned(slug, "products", "slug", "auto_issue_source"),
+      );
     updated.push("autoIssue");
   }
 
@@ -625,6 +694,20 @@ async function applyRepoManifest(
     services: manifest.services,
   });
   stmts.push(stmtSetServices(slug, manifestServicesJson, "manifest", now));
+  // Compared as the canonical serialisation both sides go through, so a stored set written by
+  // an older spelling of the same enablement is not a change.
+  const storedServices = parseServices(product.services_json);
+  if (
+    (product.services_source ?? "manifest") === "manifest" &&
+    serializeServices(storedServices) !== manifestServicesJson
+  )
+    auditSetting(
+      "core.services",
+      storedServices.services,
+      manifest.services,
+      null,
+      manifestOwned(slug, "products", "slug", "services_source"),
+    );
   updated.push("services");
 
   // ── schema: publish a new active version only when the catalog changed ──────
@@ -737,6 +820,46 @@ async function applyRepoManifest(
         metadata_access: rel.access.metadata,
         artifacts_access: rel.access.artifacts,
       };
+    // One audit row per column this block actually changes: an unchanged manifest writes none,
+    // and a push that swaps the binary name or sets, clears or replaces the update key leaves a
+    // permanent row naming the field (the key itself is never logged, only whether it is set).
+    for (const [key, column, view] of RELEASE_BLOCK_AUDIT)
+      if ((cfg[column] ?? null) !== block[column])
+        auditSetting(
+          key,
+          columnView(view, cfg[column]),
+          columnView(view, block[column]),
+        );
+    if (releaseKeys?.ok && (cfg.release_keys_json ?? null) !== releaseKeys.json)
+      auditSetting(
+        "release.keys",
+        releaseKeyKids(cfg.release_keys_json),
+        releaseKeyKids(releaseKeys.json),
+      );
+    if ((cfg.access_source ?? "manifest") === "manifest") {
+      const owned = manifestOwned(
+        slug,
+        "release_config",
+        "product",
+        "access_source",
+      );
+      if ((cfg.metadata_access ?? null) !== rel.access.metadata)
+        auditSetting(
+          "update.metadataAccess",
+          cfg.metadata_access ?? null,
+          rel.access.metadata,
+          null,
+          owned,
+        );
+      if ((cfg.artifacts_access ?? null) !== rel.access.artifacts)
+        auditSetting(
+          "distribution.access",
+          cfg.artifacts_access ?? null,
+          rel.access.artifacts,
+          null,
+          owned,
+        );
+    }
     updated.push("release");
   }
 
@@ -745,9 +868,8 @@ async function applyRepoManifest(
     sql: "DELETE FROM oidc_config WHERE product = ?",
     params: [slug],
   });
-  if (manifest.oidc) {
-    stmts.push(
-      stmtInsertOidcConfig({
+  const oidcInsert = manifest.oidc
+    ? stmtInsertOidcConfig({
         product: slug,
         provider: manifest.oidc.provider,
         issuer: manifest.oidc.issuer,
@@ -755,19 +877,36 @@ async function applyRepoManifest(
         clientSecretSecret: manifest.oidc.clientSecretSecret,
         redirectUris: manifest.oidc.redirectUris ?? [],
         groupRoleMap: manifest.oidc.groupRoleMap ?? {},
-      }),
-    );
+      })
+    : null;
+  if (oidcInsert) stmts.push(oidcInsert);
+  {
+    const before = storedOidc
+      ? oidcView([
+          storedOidc.provider,
+          storedOidc.issuer,
+          storedOidc.client_id,
+          storedOidc.client_secret_secret,
+          storedOidc.redirect_uris_json,
+          storedOidc.group_role_map_json,
+        ])
+      : null;
+    const after = oidcInsert ? oidcView(oidcInsert.params.slice(1)) : null;
+    if (JSON.stringify(before) !== JSON.stringify(after))
+      auditSetting("identity.oidc", before, after);
   }
   updated.push("oidc");
 
   // Profiles, per row (above). One carve-out on the rows this resync owns: their SECRET VALUES. A
-  // manifest cannot express a secret value (a sealed envelope is minted by the console under
-  // `PLATFORM_KEK`, and a plaintext secret has no place in a repo), so an operator sets one on a
-  // profile in the console without claiming it, and without this every `.pkey/` push wiped it
-  // (R2). Each row's slot is reserved here with the manifest's payload, and `withStoredSecrets`
-  // fills the carried values in immediately before the batch (below), so a console edit made
-  // while this push was still reading GitHub is the one carried. A dropped manifest profile goes,
-  // secrets and all.
+  // value the manifest declares under a catalog-declared secret key is sealed under `PLATFORM_KEK`
+  // before it is written (a plaintext secret never reaches D1), and a push that would replace an
+  // already-sealed value with a different one is refused (`manifestSecrets.ts`). A value the
+  // manifest does NOT declare is the operator's: they set it on a profile in the console without
+  // claiming it, and without the carry-forward every `.pkey/` push wiped it (R2). Each row's slot
+  // is reserved here with the manifest's payload, and the sealing and `withStoredSecrets` fill it
+  // in immediately before the batch (below), so a console edit made while this push was still
+  // reading GitHub is the one compared and carried. A dropped manifest profile goes, secrets and
+  // all.
   const profileSlots: { index: number; profile: ManifestProfile }[] = [];
   for (const p of dropProfiles) {
     stmts.push(stmtDeleteManifestProfile(slug, p.id));
@@ -813,8 +952,27 @@ async function applyRepoManifest(
     sql: "DELETE FROM provisioning_config WHERE product = ?",
     params: [slug],
   });
-  for (const h of manifest.provisioning)
-    stmts.push(stmtInsertProvisioning({ product: slug, ...h }));
+  const provisioningInserts = manifest.provisioning.map((h) =>
+    stmtInsertProvisioning({ product: slug, ...h }),
+  );
+  stmts.push(...provisioningInserts);
+  {
+    const before = provisioningView(
+      storedProvisioning.map((r) => [
+        r.claim,
+        r.entitlement_key,
+        r.entitlement_value_json,
+        r.secret_key,
+        r.secret_url_template,
+        r.allowed_hosts_json,
+      ]),
+    );
+    const after = provisioningView(
+      provisioningInserts.map((s) => s.params.slice(1)),
+    );
+    if (JSON.stringify(before) !== JSON.stringify(after))
+      auditSetting("identity.provisioning", before, after);
+  }
   updated.push("provisioning");
 
   stmts.push({
@@ -938,8 +1096,19 @@ async function applyRepoManifest(
       (await listProfiles(db, slug)).map((p) => [p.id, p.payload_json]),
     );
     for (const { index, profile } of profileSlots) {
-      const payload = withStoredSecrets(
+      // Seal what the manifest declares under a managed secret key and refuse to replace a
+      // sealed value (`manifestSecrets.ts`), against the row as it stands NOW, like the carry.
+      const sealed = await sealedProfilePayload(
+        env,
+        slug,
+        profile.id,
         profile.payload,
+        isSecretKey,
+        stored.get(profile.id),
+      );
+      if (!sealed.ok) return { ok: false, error: sealed.error };
+      const payload = withStoredSecrets(
+        sealed.payload,
         stored.get(profile.id),
         carryCatalog,
       );
@@ -1103,6 +1272,176 @@ function rowAudit(
     id,
     `${kind === "tier" ? "Tier" : "Profile"} ${id} ${what} by the manifest`,
   );
+}
+
+// ── The manifest-written fields' audit rows ──────────────────────────────────
+
+/** A condition an audit row must still meet when the batch runs, as SQL with its params. */
+interface OwnerGuard {
+  sql: string;
+  params: DbParam[];
+}
+
+/**
+ * True while the row's `*_source` marker still says the manifest owns it (an absent marker reads
+ * as the manifest's): the predicate each ownership-claimable statement carries in its own `WHERE`,
+ * so a claim made after the resync read the row skips the audit row of the write it skipped.
+ * Only ever called with column and table names that are code constants.
+ */
+function manifestOwned(
+  product: string,
+  table: string,
+  keyColumn: string,
+  sourceColumn: string,
+): OwnerGuard {
+  return {
+    sql: `COALESCE((SELECT ${sourceColumn} FROM ${table} WHERE ${keyColumn} = ?), 'manifest') = 'manifest'`,
+    params: [product],
+  };
+}
+
+/**
+ * `stmt` (a single-row `INSERT INTO t (cols) VALUES (...)`) rewritten to insert nothing once
+ * `guard` fails: `unlessClaimed`'s counterpart for the `*_source` markers.
+ */
+function whileManifestOwned(stmt: DbStatement, guard: OwnerGuard): DbStatement {
+  const m = /^(\s*INSERT INTO [^(]+\([^)]*\))\s*VALUES\s*\(([^)]*)\)\s*$/s.exec(
+    stmt.sql,
+  );
+  if (!m)
+    throw new Error("whileManifestOwned: not a single-row INSERT ... VALUES");
+  return {
+    sql: `${m[1]} SELECT ${m[2]} WHERE ${guard.sql}`,
+    params: [...stmt.params, ...guard.params],
+  };
+}
+
+/** How an audit row shows a column's value: as stored, as parsed JSON, or only whether it is set
+ *  (a trust-anchor key is never logged). */
+type ColumnView = "text" | "json" | "presence";
+
+/** The `release_config` columns a resync rewrites from `.pkey/release`, with the setting each is
+ *  audited under (the registry key where one exists, else the manifest field's own name). */
+type ReleaseBlockColumn =
+  | "channel_workflow"
+  | "beta_branch"
+  | "binary_name"
+  | "sparkle_ed25519_pub"
+  | "summary_marker"
+  | "manual_channels_json"
+  | "artifact_policy_json"
+  | "stable_tag_pattern"
+  | "ignore_tags_json";
+const RELEASE_BLOCK_AUDIT: readonly (readonly [
+  key: string,
+  column: ReleaseBlockColumn,
+  view: ColumnView,
+])[] = [
+  ["release.channelWorkflow", "channel_workflow", "text"],
+  ["release.betaBranch", "beta_branch", "text"],
+  ["release.binaryName", "binary_name", "text"],
+  ["release.sparkleEd25519Pub", "sparkle_ed25519_pub", "presence"],
+  ["release.summaryMarker", "summary_marker", "text"],
+  ["release.manualChannels", "manual_channels_json", "json"],
+  ["release.artifactPolicy", "artifact_policy_json", "json"],
+  ["release.stableTagPattern", "stable_tag_pattern", "text"],
+  ["release.ignoreTags", "ignore_tags_json", "json"],
+];
+
+function columnView(view: ColumnView, raw: string | null | undefined): unknown {
+  if (view === "presence") return { set: Boolean(raw) };
+  if (view === "json") return parseJsonColumn(raw);
+  return raw ?? null;
+}
+
+/** The kids of a stored `release_keys_json` (`[{kid, publicKey}]`); the keys themselves are not
+ *  logged. */
+function releaseKeyKids(json: string | null | undefined): string[] {
+  return (parseJsonArray(json) ?? []).flatMap((k) =>
+    isJsonObject(k) && typeof k.kid === "string" ? [k.kid] : [],
+  );
+}
+
+/** A stored `oidc_config` row's columns (`stmtInsertOidcConfig`'s, after the product). */
+interface OidcColumns {
+  provider: string | null;
+  issuer: string | null;
+  client_id: string | null;
+  client_secret_secret: string | null;
+  redirect_uris_json: string | null;
+  group_role_map_json: string | null;
+}
+
+/** A stored `provisioning_config` row's columns (`stmtInsertProvisioning`'s, after the product). */
+interface ProvisioningColumns {
+  claim: string;
+  entitlement_key: string | null;
+  entitlement_value_json: string | null;
+  secret_key: string | null;
+  secret_url_template: string | null;
+  allowed_hosts_json: string | null;
+}
+
+/**
+ * The OIDC row as an audit row shows it, from the six columns after the product in
+ * `stmtInsertOidcConfig`'s order. The batch's own statement supplies the "after" side, so the
+ * view cannot drift from what is written. The secret column is the NAME of a Worker secret.
+ */
+function oidcView(columns: readonly DbParam[]): Record<string, unknown> {
+  const [
+    provider,
+    issuer,
+    clientId,
+    clientSecretSecret,
+    redirectUris,
+    groupRoleMap,
+  ] = columns;
+  return {
+    provider,
+    issuer,
+    clientId,
+    clientSecretSecret,
+    redirectUris: parseJsonOr(
+      typeof redirectUris === "string" ? redirectUris : null,
+      [],
+    ),
+    groupRoleMap: parseJsonOr(
+      typeof groupRoleMap === "string" ? groupRoleMap : null,
+      {},
+    ),
+  };
+}
+
+/** The provisioning hooks as an audit row shows them, from the columns after the product in
+ *  `stmtInsertProvisioning`'s order, in claim order (the table's key). */
+function provisioningView(
+  rows: readonly (readonly DbParam[])[],
+): Record<string, unknown>[] {
+  return rows
+    .map(
+      ([
+        claim,
+        entitlementKey,
+        entitlementValue,
+        secretKey,
+        secretUrlTemplate,
+        allowedHosts,
+      ]) => ({
+        claim,
+        entitlementKey,
+        entitlementValue: parseJsonOr(
+          typeof entitlementValue === "string" ? entitlementValue : null,
+          null,
+        ),
+        secretKey,
+        secretUrlTemplate,
+        allowedHosts: parseJsonOr(
+          typeof allowedHosts === "string" ? allowedHosts : null,
+          null,
+        ),
+      }),
+    )
+    .sort((a, b) => (String(a.claim) < String(b.claim) ? -1 : 1));
 }
 
 /** One profile row of the resync's batch. */
@@ -1392,6 +1731,69 @@ export function unsafeBinaryNameRefusal(
   const binaryName = manifest.release.binaryName || repo;
   if (isSafeBinaryName(binaryName)) return null;
   return `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`;
+}
+
+/**
+ * The Sparkle verification key is what proves a DMG is authentic: the update feed verifies every
+ * `.sig` sidecar against `release_config.sparkle_ed25519_pub` and drops an item that does not
+ * verify, so a push that swaps the key makes the pusher's own signature the one the feed accepts.
+ * Refused on the CHANGE, like the issuer gate, not on the status quo: setting the key where none is
+ * stored and clearing it stay allowed (with no key the feed fails closed unless an operator opted
+ * the product out of signature checks, so clearing costs a repo writer the feed rather than
+ * winning it).
+ *
+ * Nothing else writes this column: `release.sparkleEd25519Pub` is manifest-owned and the console
+ * has no writer for it. So the way to rotate it on purpose is the pair of pushes the refusal
+ * names, remove it and then set the new one. That is friction, not a loophole: the removal is an
+ * audit row and the feed is dark in between, so a rotation is visible instead of silent. The
+ * refusal message, or `null`.
+ */
+export function sparkleKeyRefusal(
+  manifest: ParsedManifest,
+  storedKey: string | null | undefined,
+  slug: string,
+): string | null {
+  const next = manifest.release?.sparkleEd25519Pub || "";
+  if (!next || !storedKey || next === storedKey) return null;
+  return `manifest replaces the stored Sparkle public key for ${slug}; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key`;
+}
+
+/**
+ * The sealed-secret refusal `applyRepoManifest` reaches when it builds the profile rows (a manifest
+ * value that would replace an already-sealed one, or one that cannot be sealed), asked up front
+ * against the profiles as they stand, for the link check and the resync dry run. Writes nothing.
+ * `incomingCatalog` is the manifest's; the stored one joins it, as the apply does. The profile the
+ * refusal is about and its message, or `null`.
+ */
+export async function profileSecretsRefusal(
+  env: Env,
+  db: Db,
+  slug: string,
+  manifest: ParsedManifest,
+  incomingCatalog: Catalog,
+  storedCatalogJson: string | null | undefined,
+): Promise<{ profile: string; error: string } | null> {
+  const storedCatalog = parseStoredCatalog(storedCatalogJson);
+  const isSecretKey = managedSecretKeyPredicate(
+    storedCatalog ? [incomingCatalog, storedCatalog] : [incomingCatalog],
+  );
+  const storedProfiles = await listProfiles(db, slug);
+  const stored = new Map(storedProfiles.map((p) => [p.id, p]));
+  for (const profile of manifest.profiles) {
+    // A console row holding the id is kept and the manifest's is not applied.
+    const row = stored.get(profile.id);
+    if (row?.source === "console") continue;
+    const sealed = await sealedProfilePayload(
+      env,
+      slug,
+      profile.id,
+      profile.payload,
+      isSecretKey,
+      row?.payload_json,
+    );
+    if (!sealed.ok) return { profile: profile.id, error: sealed.error };
+  }
+  return null;
 }
 
 /**

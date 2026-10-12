@@ -43,7 +43,12 @@ import {
   stmtInsertSchema,
   stmtInsertTier,
 } from "../../core/repo.js";
-import { parseManifest, type ParsedManifest } from "@polaris-key/manifest";
+import {
+  GH_SLUG_RE,
+  parseManifest,
+  type ManifestProfile,
+  type ParsedManifest,
+} from "@polaris-key/manifest";
 import {
   discoverInstallation,
   type FetchImpl,
@@ -52,6 +57,10 @@ import {
 import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
+import {
+  managedSecretKeyPredicate,
+  sealedProfilePayload,
+} from "./manifestSecrets.js";
 import { syncReleaseStore } from "./sync.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { releaseKeysForSync } from "./records.js";
@@ -88,7 +97,18 @@ export type LinkRepoResult =
       status?: 409;
     };
 
-/** Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage. */
+/**
+ * Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage.
+ *
+ * Both halves must satisfy the manifest validator's own `GH_SLUG_RE`, whichever arm matched. They
+ * are interpolated UNENCODED into `api.github.com` paths (`github.ts`, `githubApp.ts`) and stored
+ * as the product's permanent coordinates, so a character class that admits `?`, `#`, `:`, `..` or
+ * any other non-slash byte (`https://github.com/acme/repo?x=`, `https://github.com/../../orgs/x/y`)
+ * would steer a request to another path. `.pkey/release` has bounded the same two strings with
+ * that rule all along; this is the console's door onto the identical values, so it is the
+ * identical rule — imported, not re-typed, because two copies of a character class is how one of
+ * them drifts.
+ */
 export function parseRepoUrl(
   repoUrl: string,
 ): { owner: string; repo: string } | null {
@@ -99,8 +119,9 @@ export function parseRepoUrl(
   // Accept https://github.com/owner/repo, git@github.com:owner/repo, or owner/repo.
   const m =
     trimmed.match(/github\.com[/:]([^/]+)\/([^/]+)$/i) ??
-    trimmed.match(/^([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)$/);
+    trimmed.match(/^([^/]+)\/([^/]+)$/);
   if (!m || !m[1] || !m[2]) return null;
+  if (!GH_SLUG_RE.test(m[1]) || !GH_SLUG_RE.test(m[2])) return null;
   return { owner: m[1], repo: m[2] };
 }
 
@@ -801,6 +822,31 @@ export async function registerFromManifest(
   const refused = createPolicyProblems(env, manifest, gh.repo)[0];
   if (refused) return { ok: false, error: refused.message };
 
+  // Catalog-declared secrets carried in a profile payload are sealed under `PLATFORM_KEK` before
+  // they are serialised (`manifestSecrets.ts` says why the manifest paths need this and the
+  // console path already has it). There is no stored row to protect at link time (the product
+  // does not exist yet), so only the sealing half applies. A secret is never persisted unsealed:
+  // without a KEK the link is refused.
+  const isSecretKey = managedSecretKeyPredicate([
+    new Catalog(manifest.catalog as never),
+  ]);
+  const profileRows: {
+    profile: ManifestProfile;
+    payload: Record<string, unknown>;
+  }[] = [];
+  for (const p of manifest.profiles) {
+    const sealed = await sealedProfilePayload(
+      env,
+      slug,
+      p.id,
+      p.payload,
+      isSecretKey,
+      null,
+    );
+    if (!sealed.ok) return { ok: false, error: sealed.error };
+    profileRows.push({ profile: p, payload: sealed.payload });
+  }
+
   // P2-02: a declared trusted publisher pins the repository's NUMERIC ids, resolved here from
   // GitHub with the installation token — never taken from the manifest (a repo must not be able
   // to name someone else's repository as its publisher). Before the batch, so a failed lookup
@@ -894,14 +940,14 @@ export async function registerFromManifest(
     );
   }
 
-  for (const p of manifest.profiles) {
+  for (const { profile: p, payload } of profileRows) {
     statements.push(
       stmtInsertProfile({
         product: slug,
         id: p.id,
         name: p.name,
         description: p.description ?? null,
-        payloadJson: JSON.stringify(p.payload),
+        payloadJson: JSON.stringify(payload),
         modifiedAt: now,
       }),
     );

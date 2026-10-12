@@ -114,7 +114,7 @@ the offending value, or the allowed set.
 | `invalid_listing` | error | distribution | `${at}` | $\{label\} $\{problem\}. |
 | `invalid_manual_channel` | error | release | `/release/manualChannels` | release.manualChannels must be an array of \{ name, regex \} entries. |
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
-| `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
+| `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
 | `invalid_name` | error | product | `/product/name` | product.name |
 | `invalid_oidc_client_id` | error | product | `/oidc/clientId` | oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]\{0,255\}$. |
 | `invalid_oidc_issuer` | error | product | `/oidc/issuer` | oidc.issuer $\{issuerProblem\}. It is the base of the token request that carries this product's OIDC client secret. |
@@ -185,8 +185,8 @@ the offending value, or the allowed set.
 | `invalid_secret_url_template` | error | product | `/provisioning/${i}/secretUrlTemplate` | provisioning.secretUrlTemplate $\{problem\}. |
 | `invalid_semver` | error | product | `/licensing/tiers/${i}/${bound}` | Tier $\{bound\} must be a semver string. |
 | `invalid_slug` | error | product | `/product/slug` | product.slug must match ^[a-z0-9][a-z0-9-]\{0,63\}$. |
-| `invalid_stable_tag_pattern` | error | release | `/release/deliverables/app/versioning/stableTagPattern` | deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
-| `invalid_stable_tag_pattern` | error | release | `/release/stableTagPattern` | release.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
+| `invalid_stable_tag_pattern` | error | release | `/release/deliverables/app/versioning/stableTagPattern` | deliverables.app.versioning.stableTagPattern must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
+| `invalid_stable_tag_pattern` | error | release | `/release/stableTagPattern` | release.stableTagPattern must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
 | `invalid_tier_fingerprint_mode` | error | product | `/licensing/tiers/${i}/policyFingerprint` | Tier policyFingerprint must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be non-empty simple identifiers. |
 | `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |

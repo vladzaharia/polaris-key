@@ -1,20 +1,21 @@
 /**
  * Profile secrets across a manifest resync (R2).
  *
- * `resyncRepo` replaces the `profiles` rows from `.pkey/product` on every push. A manifest can
- * never carry a secret VALUE — a sealed envelope is minted by the console under `PLATFORM_KEK`,
- * and a plaintext secret has no business in a repo — so a profile's secret values are set in the
- * console, and the replace used to wipe them on the next push: a product that delivered an API
- * key through a tier profile silently stopped delivering it after any `.pkey/` change.
+ * `resyncRepo` replaces the `profiles` rows from `.pkey/product` on every push. A profile's secret
+ * values are set in the console (a sealed envelope is minted under `PLATFORM_KEK`), and the
+ * replace used to wipe them on the next push: a product that delivered an API key through a tier
+ * profile silently stopped delivering it after any `.pkey/` change.
  *
  * The rule pinned here: for every profile that SURVIVES the push, a stored value is carried forward
  * exactly as stored when the INCOMING catalog still declares its key a managed secret (a `secret`
  * entry, or a `config` entry flagged `secret: true`), the value is a sealed envelope, and the
  * manifest's payload does not declare that key. A plaintext value is never carried, nor is one
  * whose key the new catalog dropped or stopped calling secret. Everything else on the profile still
- * follows the manifest, a profile the manifest drops is still removed with its secrets, and a key
- * the manifest does declare still wins. The carry reads the profiles immediately before the batch,
- * so a console edit made while the push was fetching from GitHub is the one carried.
+ * follows the manifest and a profile the manifest drops is still removed with its secrets. A value
+ * the manifest DOES declare under a secret key is sealed before it is written (never stored in
+ * cleartext) and may never replace an already-sealed one: that push is refused whole, before any
+ * write (the last blocks). The carry reads the profiles immediately before the batch, so a console
+ * edit made while the push was fetching from GitHub is the one carried.
  *
  * Every case drives the real path: `linkRepo` registers the product from a stubbed GitHub, the
  * console API (`handleAdmin`) sets the value, and `resyncRepo` re-reads a changed `.pkey/`.
@@ -39,6 +40,7 @@ import {
 } from "../src/core/managedSecrets.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
+import { planResync } from "../src/services/release/linkExisting.js";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
 import { withDefaultHead } from "./githubHead.js";
@@ -198,7 +200,7 @@ function envFor(): Env {
 }
 
 /** A linked product, as `.pkey/` first described it, plus a console session to edit it with. */
-async function linked(profiles: ProfileDecl[]) {
+async function linked(profiles: ProfileDecl[], opts: PushOptions = {}) {
   const db = makeTestDb();
   const env = envFor();
   const res = await linkRepo(
@@ -206,7 +208,7 @@ async function linked(profiles: ProfileDecl[]) {
     db,
     "acme-org/acme-app",
     NOW,
-    pkey(productJson(profiles)),
+    pkey(productJson(profiles), opts),
     manifestIngestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
@@ -422,24 +424,32 @@ describe("what a resync still owns (R2)", () => {
     expect(readded!.secrets?.[API_KEY]).toBeUndefined();
   });
 
-  it("lets a secrets entry the manifest declares win, and still carries the ones it does not", async () => {
-    const ctx = await linked([{ id: "standard" }]);
+  it("refuses a secrets entry the manifest declares over a sealed one, and writes nothing", async () => {
+    const ctx = await linked([
+      { id: "standard", payload: baseUrl("https://a.example/v1") },
+    ]);
     await setOnProfile(ctx, "standard", API_KEY, "sk-console-0001");
     await setOnProfile(ctx, "standard", OTHER_SECRET, "backup-console-01");
-    const other = (await stored(ctx, "standard"))!.secrets![OTHER_SECRET]!;
+    const before = await rawPayload(ctx, "standard");
 
     const declared = {
       state: "default",
       value: "from-the-manifest",
       updatedAt: 7,
     };
-    await resync(ctx, [
-      { id: "standard", payload: { secrets: { [API_KEY]: declared } } },
+    const res = await tryResync(ctx, [
+      {
+        id: "standard",
+        payload: {
+          ...baseUrl("https://b.example/v1"),
+          secrets: { [API_KEY]: declared },
+        },
+      },
     ]);
 
-    const after = (await stored(ctx, "standard"))!;
-    expect(after.secrets![API_KEY]).toEqual(declared);
-    expect(after.secrets![OTHER_SECRET]).toEqual(other);
+    expect(res.ok).toBe(false);
+    // The rest of the push did not land either: the refusal precedes every write.
+    expect(await rawPayload(ctx, "standard")).toBe(before);
   });
 });
 
@@ -518,22 +528,22 @@ describe("the carry follows the incoming catalog, never the value's shape (R2)",
     expect(JSON.stringify(after)).not.toContain("sk-legacy-plain");
   });
 
-  it("lets a config value the manifest declares beat a stored sealed one", async () => {
+  it("refuses a config value under a secret key that would replace a stored sealed one", async () => {
     const ctx = await linked([{ id: "standard" }]);
     await setOnProfile(ctx, "standard", SECRET_CONFIG, "hunter2-proxy");
+    const before = await rawPayload(ctx, "standard");
 
     const declared = {
       state: "default",
       value: "from-the-manifest",
       updatedAt: 9,
     };
-    await resync(ctx, [
+    const res = await tryResync(ctx, [
       { id: "standard", payload: { config: { [SECRET_CONFIG]: declared } } },
     ]);
 
-    expect((await stored(ctx, "standard"))!.config![SECRET_CONFIG]).toEqual(
-      declared,
-    );
+    expect(res.ok).toBe(false);
+    expect(await rawPayload(ctx, "standard")).toBe(before);
   });
 });
 
@@ -590,5 +600,314 @@ describe("a catalog the resync cannot build (R2)", () => {
       SLUG,
     );
     expect(after!.payload_json).toBe(before!.payload_json);
+  });
+});
+
+// ── What a manifest may write under a secret key ──────────────────────────────────────────────
+
+const declaredEntry = (value: string) => ({
+  state: "enforced",
+  value,
+  updatedAt: 3,
+});
+const apiKeyPayload = (value: string): Payload => ({
+  secrets: { [API_KEY]: declaredEntry(value) },
+});
+
+/** `resyncRepo`'s answer, refusals included (`resync` above throws on one). */
+function tryResync(
+  ctx: Ctx,
+  profiles: ProfileDecl[],
+  at = NOW + 60,
+  opts: PushOptions = {},
+) {
+  return resyncRepo(
+    ctx.env,
+    ctx.db,
+    SLUG,
+    at,
+    pkey(productJson(profiles), opts),
+    manifestIngestFor(SERVICES),
+  );
+}
+
+/** The profile's stored payload exactly as D1 holds it. */
+async function rawPayload(ctx: Ctx, id: string): Promise<string | undefined> {
+  return (
+    await ctx.db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM profiles WHERE product = ? AND id = ?",
+      SLUG,
+      id,
+    )
+  )?.payload_json;
+}
+
+async function resyncAuditCount(ctx: Ctx): Promise<number> {
+  return (
+    (
+      await ctx.db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM audit WHERE product = ? AND action = 'setting.resync'",
+        SLUG,
+      )
+    )?.n ?? 0
+  );
+}
+
+async function openStored(ctx: Ctx, key: string): Promise<unknown> {
+  const entry = (await stored(ctx, "standard"))!.secrets![key]!;
+  return openManagedValue(ctx.env, SLUG, key, entry.value);
+}
+
+describe("a manifest never persists a secret in cleartext", () => {
+  it("seals a secret the manifest declares when the product is linked", async () => {
+    const ctx = await linked([
+      { id: "standard", payload: apiKeyPayload("from-the-manifest") },
+    ]);
+
+    expect(await rawPayload(ctx, "standard")).not.toContain(
+      "from-the-manifest",
+    );
+    const entry = (await stored(ctx, "standard"))!.secrets![API_KEY]!;
+    expect(isSealedEnvelope(entry.value)).toBe(true);
+    // The entry keeps the manifest's own state and timestamp; only the value is sealed.
+    expect({ state: entry.state, updatedAt: entry.updatedAt }).toEqual({
+      state: "enforced",
+      updatedAt: 3,
+    });
+    expect(await openStored(ctx, API_KEY)).toBe("from-the-manifest");
+  });
+
+  it("seals one under a config key flagged secret and leaves a plain config value readable", async () => {
+    const ctx = await linked([
+      {
+        id: "standard",
+        payload: {
+          config: {
+            [SECRET_CONFIG]: declaredEntry("hunter2-proxy"),
+            [BASE_URL]: declaredEntry("https://a.example/v1"),
+          },
+        },
+      },
+    ]);
+
+    const raw = (await rawPayload(ctx, "standard"))!;
+    expect(raw).not.toContain("hunter2-proxy");
+    expect(raw).toContain("https://a.example/v1");
+    const config = (await stored(ctx, "standard"))!.config!;
+    expect(isSealedEnvelope(config[SECRET_CONFIG]!.value)).toBe(true);
+    expect(config[BASE_URL]!.value).toBe("https://a.example/v1");
+  });
+
+  it("seals a secret a resync introduces", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+
+    await resync(ctx, [
+      { id: "standard", payload: apiKeyPayload("from-the-manifest") },
+    ]);
+
+    expect(await rawPayload(ctx, "standard")).not.toContain(
+      "from-the-manifest",
+    );
+    expect(await openStored(ctx, API_KEY)).toBe("from-the-manifest");
+  });
+
+  it("seals a value under a key the incoming catalog demotes while the stored catalog still calls it secret", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    const demoted = without(SECRET_CONFIG, {
+      key: SECRET_CONFIG,
+      kind: "config",
+      category: "api",
+      label: "Proxy password",
+      description: "",
+      schema: { type: "string" },
+    });
+
+    await resync(
+      ctx,
+      [
+        {
+          id: "standard",
+          payload: {
+            config: { [SECRET_CONFIG]: declaredEntry("plain-in-repo") },
+          },
+        },
+      ],
+      NOW + 60,
+      { schema: demoted },
+    );
+
+    expect(await rawPayload(ctx, "standard")).not.toContain("plain-in-repo");
+  });
+});
+
+describe("a manifest never replaces a sealed secret", () => {
+  it("an unchanged manifest is a clean no-op: the stored envelope is carried, nothing is rewritten or audited", async () => {
+    const payload = apiKeyPayload("from-the-manifest");
+    const ctx = await linked([{ id: "standard", payload }]);
+    const before = await rawPayload(ctx, "standard");
+    const audits = await resyncAuditCount(ctx);
+
+    await resync(ctx, [{ id: "standard", payload }]);
+    await resync(ctx, [{ id: "standard", payload }], NOW + 120);
+
+    expect(await rawPayload(ctx, "standard")).toBe(before);
+    expect(await resyncAuditCount(ctx)).toBe(audits);
+  });
+
+  it("refuses a different value and leaves the console's value in place", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", API_KEY, "sk-console-0001");
+    const audits = await resyncAuditCount(ctx);
+
+    const res = await tryResync(ctx, [
+      { id: "standard", payload: apiKeyPayload("from-the-manifest") },
+    ]);
+
+    expect(res.ok).toBe(false);
+    const error = !res.ok ? res.error : "";
+    expect(error).toContain(API_KEY);
+    expect(error).toContain("already sealed");
+    expect(await openStored(ctx, API_KEY)).toBe("sk-console-0001");
+    expect(await resyncAuditCount(ctx)).toBe(audits);
+  });
+
+  it("does not let a rotation be reverted by a manifest that still declares the old value", async () => {
+    const ctx = await linked([
+      { id: "standard", payload: apiKeyPayload("leaked-old-value") },
+    ]);
+    await setOnProfile(ctx, "standard", API_KEY, "sk-rotated-0002");
+
+    const refused = await tryResync(ctx, [
+      { id: "standard", payload: apiKeyPayload("leaked-old-value") },
+    ]);
+    expect(refused.ok).toBe(false);
+    expect(await openStored(ctx, API_KEY)).toBe("sk-rotated-0002");
+
+    // Dropping the value from the manifest is the way out: the stored one is kept.
+    const dropped = await tryResync(ctx, [{ id: "standard" }], NOW + 120);
+    expect(dropped.ok).toBe(true);
+    expect(await openStored(ctx, API_KEY)).toBe("sk-rotated-0002");
+  });
+
+  it("a push that demotes the secret flag and writes a value in the same commit cannot slip past", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", SECRET_CONFIG, "hunter2-proxy");
+    const before = await rawPayload(ctx, "standard");
+    const demoted = without(SECRET_CONFIG, {
+      key: SECRET_CONFIG,
+      kind: "config",
+      category: "api",
+      label: "Proxy password",
+      description: "",
+      schema: { type: "string" },
+    });
+
+    const res = await tryResync(
+      ctx,
+      [
+        {
+          id: "standard",
+          payload: {
+            config: { [SECRET_CONFIG]: declaredEntry("attacker-value") },
+          },
+        },
+      ],
+      NOW + 60,
+      { schema: demoted },
+    );
+
+    expect(res.ok).toBe(false);
+    expect(await rawPayload(ctx, "standard")).toBe(before);
+  });
+
+  it("the resync dry run lists the same refusal", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", API_KEY, "sk-console-0001");
+
+    const plan = await planResync(
+      ctx.env,
+      ctx.db,
+      SLUG,
+      NOW + 60,
+      pkey(
+        productJson([
+          { id: "standard", payload: apiKeyPayload("from-the-manifest") },
+        ]),
+      ),
+    );
+
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(
+      plan.plan.conflicts.some(
+        (c) =>
+          c.area === "profiles" &&
+          c.id === "standard" &&
+          c.summary.includes(API_KEY),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("a stored server-only secret cannot be removed from the catalog or reclassified", () => {
+  const SERVER_KEY = "backup.serverToken";
+  const serverEntry = {
+    key: SERVER_KEY,
+    kind: "secret",
+    delivery: "serverOnly",
+    category: "api",
+    label: "Server token",
+    description: "",
+    schema: { type: "string", minLength: 8 },
+  };
+  const withServer = (entry: Record<string, unknown> = serverEntry) =>
+    schemaJson([...ENTRIES, entry]);
+  const activeCatalog = async (ctx: Ctx) =>
+    (
+      await ctx.db.first<{ catalog_json: string }>(
+        "SELECT catalog_json FROM product_schema WHERE product = ? AND active = 1",
+        SLUG,
+      )
+    )?.catalog_json;
+
+  it("refuses removing it while a value is stored, and the remove-then-re-add route stays closed", async () => {
+    const ctx = await linked([{ id: "standard" }], { schema: withServer() });
+    await setOnProfile(ctx, "standard", SERVER_KEY, "server-secret-0001");
+    const catalogBefore = await activeCatalog(ctx);
+
+    const removed = await tryResync(ctx, [{ id: "standard" }], NOW + 60, {
+      schema: schemaJson(),
+    });
+    expect(removed.ok).toBe(false);
+    const error = !removed.ok ? removed.error : "";
+    expect(error).toContain(SERVER_KEY);
+    expect(error).toContain("remove or declassify");
+
+    const reclassified = await tryResync(ctx, [{ id: "standard" }], NOW + 120, {
+      schema: withServer({ ...serverEntry, delivery: "clientScoped" }),
+    });
+    expect(reclassified.ok).toBe(false);
+    expect(await activeCatalog(ctx)).toBe(catalogBefore);
+  });
+
+  it("allows both once no layer stores a value, and no value is delivered in between", async () => {
+    const ctx = await linked([{ id: "standard" }], { schema: withServer() });
+    await setOnProfile(ctx, "standard", SERVER_KEY, "server-secret-0001");
+    const cleared = await call(ctx, "PUT", "config/profiles/standard", {
+      updates: [{ key: SERVER_KEY, state: "default" }],
+    });
+    expect(cleared.status).toBe(200);
+
+    const removed = await tryResync(ctx, [{ id: "standard" }], NOW + 60, {
+      schema: schemaJson(),
+    });
+    expect(removed.ok).toBe(true);
+    const readded = await tryResync(ctx, [{ id: "standard" }], NOW + 120, {
+      schema: withServer({ ...serverEntry, delivery: "clientScoped" }),
+    });
+    expect(readded.ok).toBe(true);
+    expect(
+      (await stored(ctx, "standard"))!.secrets?.[SERVER_KEY],
+    ).toBeUndefined();
   });
 });

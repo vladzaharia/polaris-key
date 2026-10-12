@@ -18346,9 +18346,8 @@ var CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 var MANUAL_CHANNEL_REGEX_MAX = 80;
 function compileManualChannelRegex(source) {
   if (source.length > MANUAL_CHANNEL_REGEX_MAX) return null;
-  const anchored = `^(?:${source})$`;
   try {
-    return new RegExp(anchored);
+    return compileLinearPattern(`^(?:${source})$`);
   } catch {
     return null;
   }
@@ -19301,7 +19300,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
                 "release",
                 `${at}/regex`,
                 "invalid_manual_channel",
-                `manualChannels[].regex must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`
+                `manualChannels[].regex must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`
               );
             }
           }
@@ -19313,7 +19312,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "release",
           "/release/stableTagPattern",
           "invalid_stable_tag_pattern",
-          `release.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`
+          `release.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`
         );
       }
       if (relRoot.ignoreTags !== void 0) {
@@ -20790,7 +20789,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         "release",
         "/release/deliverables/app/versioning/stableTagPattern",
         "invalid_stable_tag_pattern",
-        `deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`
+        `deliverables.app.versioning.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`
       );
     }
     if (versioning.ignoreTags !== void 0) {

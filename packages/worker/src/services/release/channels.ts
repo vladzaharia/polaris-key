@@ -15,12 +15,13 @@
  *  - `pr-<n>`       — auto: the latest tag from PR #n's head SHA via `channel_workflow`.
  *  - manual         — manifest-declared `{name, regex}` rules in `manual_channels_json`
  *                     (`release.manualChannels`, persisted by linkRepo/resync); the newest
- *                     release whose tag matches the (anchored, capped) regex.
+ *                     release whose tag matches the (anchored, capped, backtracking-free) regex.
  *
  * Selector parsing is pure. Resolution takes the release list + (for beta/pr) workflow
  * runs, both supplied by the caller, so this module never touches the network itself.
  */
 
+import type { LinearPattern } from "@polaris-key/catalog";
 import {
   compileManualChannelRegex,
   DEFAULT_STABLE_TAG_PATTERN,
@@ -103,6 +104,11 @@ export function isMovingSelector(sel: ChannelSelector): boolean {
 // The anchored/capped/must-compile safety rule lives in @polaris-key/manifest
 // (`compileManualChannelRegex`) so ingest validation and this runtime reader are one rule,
 // not two copies — the validator refuses exactly what this parser would drop.
+//
+// "Compile" there is a backtracking-free NFA (`compileLinearPattern`), not `new RegExp`. It
+// matters most HERE: `resolveChannel` runs the pattern against up to 100 tags per request, so a
+// backtracking engine multiplied a short ReDoS pattern by the release list. The returned matcher
+// exposes the same `.test(string)` a `RegExp` did.
 
 /** Parse `manual_channels_json` into validated rules (drops malformed/unsafe entries). */
 export function parseManualChannels(
@@ -167,7 +173,7 @@ export interface ResolutionPolicy {
 /** The default candidate regex, compiled once (it is a constant, so this cannot be null). */
 const DEFAULT_STABLE_RE = compileManualChannelRegex(
   DEFAULT_STABLE_TAG_PATTERN,
-) as RegExp;
+) as LinearPattern;
 
 /** Epoch millis for a `published_at`, or -Infinity when absent/unparseable (never wins a tie). */
 function publishedMs(r: Release): number {
@@ -233,9 +239,9 @@ export function resolutionPolicy(cfg: {
   const isIgnored = (r: Release) => ignore.has(r.tag_name);
   return {
     isIgnored,
-    // The operator regex runs LAST, after every linear check has had the chance to reject the tag
-    // (R10-09: `stableTagPattern` is compiled under the same length-and-compile rule as a manual
-    // channel, which is not a complexity guard).
+    // The operator pattern runs LAST, after every cheap check has had the chance to reject the
+    // tag. It is matched by the backtracking-free matcher (`compileManualChannelRegex`), so it
+    // costs one linear scan per tag however the pattern is written.
     isCandidate: (r) =>
       !r.draft &&
       !isIgnored(r) &&
