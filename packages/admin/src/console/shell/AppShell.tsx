@@ -36,6 +36,7 @@ import { prefetchSection, sectionPages } from "../pages/index.js";
 import { Home } from "../sections/global/pages/Home.js";
 import { ProductNew } from "../sections/global/pages/ProductNew.js";
 import { Products } from "../sections/global/pages/Products.js";
+import { ApiTokens } from "../sections/global/pages/ApiTokens.js";
 import { LiveRegion } from "../../ui/LiveRegion.js";
 import type { ProductLike } from "./bits.js";
 import { CommandPalette } from "./CommandPalette.js";
@@ -479,6 +480,7 @@ function globalPageFor(
       </React.Suspense>
     );
   }
+  if (page === "api-tokens") return <ApiTokens />;
   if (page === "products") return <Products />;
   if (page === "product-new") return <ProductNew />;
   return <Home />;

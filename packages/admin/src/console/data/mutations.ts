@@ -36,6 +36,8 @@ export type WriteMethod =
   | "logout"
   | "patchPlatformSetting"
   | "revertPlatformSetting"
+  | "mintApiToken"
+  | "revokeApiToken"
   | "putOverrideMigrationPrerequisites"
   | "startOverrideMigrationNotice"
   | "withdrawOverrideMigrationNotice"
@@ -295,6 +297,15 @@ export const MUTATIONS: MutationTable = {
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
     ],
+  },
+  mintApiToken: {
+    label: "admin API token mint",
+    // The roster, and the platform trail (a platform write may leave a row there).
+    invalidates: () => [prefix(qk.apiTokens()), prefix(qk.platformActivity())],
+  },
+  revokeApiToken: {
+    label: "admin API token revoke",
+    invalidates: () => [prefix(qk.apiTokens()), prefix(qk.platformActivity())],
   },
   revertPlatformSetting: {
     label: "platform setting revert",

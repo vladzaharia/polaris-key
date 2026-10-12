@@ -17,23 +17,34 @@
  * stays unless the operator ranks the Godot project higher for that field, and a value typed in
  * the console stays unless `--overwrite`.
  *
- * Authentication is the console session cookie in `PKEY_ADMIN_COOKIE`, as for `pkey bundle`
- * (`bundle.ts` explains why there is no token). `--dry-run` reads the project and prints the
- * upload as JSON without contacting anything, so CI can check what would be sent.
+ * Authentication is the console session cookie in `PKEY_ADMIN_COOKIE` — not the admin API token
+ * `pkey bundle` uses (`bundle.ts`). A `bundles:mint` token reaches exactly one route, and the
+ * import route is not it: every other admin route refuses a token outright, so this command
+ * still presents the operator's console session, with the CSRF double-submit the console itself
+ * performs. `--base-url` obeys the same https-or-loopback rule as `pkey bundle`, checked before
+ * the cookie is sent anywhere. `--dry-run` reads the project and prints the upload as JSON
+ * without contacting anything, so CI can check what would be sent.
  */
 
 import {
-  adminCookie,
-  CSRF_HEADER,
   DEFAULT_BASE_URL,
   httpError,
-  readCsrf,
+  normalizeBaseUrl,
   readJson,
   request,
   statusHint,
 } from "./bundle.js";
 import { readGodotListing, type GodotListing } from "./godotProject.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
+
+/** The environment variable this command reads its admin session cookie from. */
+export const ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
+
+/** The console's session cookie name (`packages/worker/src/core/console/session.ts`). */
+export const ADMIN_COOKIE_NAME = "__Host-pkey_admin";
+
+/** The CSRF header every admin-API mutation must echo `/manage/api/me`'s `csrf` in. */
+export const CSRF_HEADER = "X-PKey-CSRF";
 
 export const LISTING_USAGE =
   "Usage: pkey listing import --godot <project> --product <slug> [--preset <name> ...]\n" +
@@ -98,12 +109,80 @@ export interface ImportAnswer {
 
 const LOCALE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/;
 
+/** The cookie-authenticated commands' hints: a refused cookie, and the rate limit. */
+function cookieHint(status: number): string | undefined {
+  if (status === 401) {
+    return (
+      `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the ` +
+      `console again and copy a fresh \`${ADMIN_COOKIE_NAME}\` cookie (devtools -> Application -> Cookies).`
+    );
+  }
+  if (status === 403) {
+    return (
+      `Rejected on authorization or CSRF. Confirm the account is a platform admin, and that ` +
+      `${ADMIN_COOKIE_ENV} holds the CURRENT \`${ADMIN_COOKIE_NAME}\` value — the ${CSRF_HEADER} ` +
+      "token is read from /manage/api/me with that same cookie, so a half-stale session fails here."
+    );
+  }
+  return status === 429 ? statusHint(status) : undefined;
+}
+
 function listingHint(status: number): string | undefined {
   if (status === 404)
     return "No such product, or the product has no Distribution service enabled.";
-  return status === 401 || status === 403 || status === 429
-    ? statusHint(status)
-    : undefined;
+  return cookieHint(status);
+}
+
+/** The cookie header value, or an error that says exactly how to get one. */
+function adminCookie(raw: string | undefined): string {
+  const value = raw?.trim();
+  if (!value) {
+    throw new Error(
+      `${ADMIN_COOKIE_ENV} is not set.\n` +
+        "`pkey listing import` imports through the admin API, which this command authenticates " +
+        "with the console's browser session: the admin API token `pkey bundle` uses is scoped " +
+        "to minting bundles and cannot reach this route.\n" +
+        "Sign in to the console, then in devtools: Application -> Cookies -> the console " +
+        `origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:\n` +
+        `  export ${ADMIN_COOKIE_ENV}='${ADMIN_COOKIE_NAME}=<value>'\n` +
+        "It is a short-lived session credential carrying full admin authority: do not commit " +
+        "it and do not export it into a shared shell.",
+    );
+  }
+  // Operators paste either the whole `name=value` pair or just the value; `__Host-` cookies
+  // always contain `=`, so the absence of one is unambiguous.
+  return value.includes("=") ? value : `${ADMIN_COOKIE_NAME}=${value}`;
+}
+
+/**
+ * `GET /manage/api/me` → the session's CSRF token. The console reads it from the same place for
+ * the same reason: the token is bound to the session, so it cannot be derived from the cookie
+ * alone, and a stale cookie surfaces HERE rather than as a confusing 403 on the import.
+ */
+async function readCsrf(
+  f: typeof fetch,
+  baseUrl: string,
+  cookie: string,
+): Promise<string> {
+  const url = `${baseUrl}/manage/api/me`;
+  const res = await request(f, url, {
+    headers: { accept: "application/json", cookie },
+  });
+  if (!res.ok)
+    throw await httpError(
+      res,
+      `Reading the admin session at ${url}`,
+      cookieHint,
+    );
+
+  const csrf = (await readJson(res, url)).csrf;
+  if (typeof csrf !== "string" || !csrf.trim()) {
+    throw new Error(
+      `${url} returned no CSRF token, so the import cannot be authorised. ` +
+        `Check that ${ADMIN_COOKIE_ENV} holds a console session cookie and not, say, a proxy's.`,
+    );
+  }
+  return csrf;
 }
 
 /** Run the import. See the file comment. */
@@ -126,13 +205,13 @@ export async function listingImport(
 
   const product = opts.product?.trim();
   if (!product) throw new Error(`--product is required.\n${LISTING_USAGE}`);
-  const cookie = adminCookie(opts.cookie, "`pkey listing import` imports");
-  const baseUrl = (opts.baseUrl?.trim() || DEFAULT_BASE_URL).replace(
-    /\/+$/,
-    "",
+  const cookie = adminCookie(opts.cookie);
+  const baseUrl = normalizeBaseUrl(
+    opts.baseUrl?.trim() || DEFAULT_BASE_URL,
+    ADMIN_COOKIE_ENV,
   );
   const f = opts.fetchImpl ?? fetch;
-  const csrf = await readCsrf(f, baseUrl, cookie, undefined);
+  const csrf = await readCsrf(f, baseUrl, cookie);
   const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/distribution/listing/import`;
   const body = {
     source: "godot",

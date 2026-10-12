@@ -239,7 +239,7 @@ mismatch is visible.
 ### From a Godot project
 
 ```sh
-export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'   # the console session, as for pkey bundle
+export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'   # the console session: pkey bundle's admin API token cannot reach the import
 pkey listing import --godot path/to/project --product <slug>           # prints the diff
 pkey listing import --godot path/to/project --product <slug> --apply   # writes it
 ```
@@ -262,7 +262,8 @@ The first export preset of each platform is read; `--preset <name>` (repeatable)
 ones instead. Icons are resolved under the project (a path that leaves it is not followed) and
 listed with their digest and size. Other flags: `--locale` (a new listing's default locale),
 `--overwrite` (replace values typed in the console), `--fields a,b` with `--apply` (write some
-changes only), `--json`, `--base-url`, and `--dry-run`, which prints what would be uploaded and
+changes only), `--json`, `--base-url` (https, or http on localhost or 127.0.0.1: the cookie goes to
+whatever origin it names), and `--dry-run`, which prints what would be uploaded and
 contacts nothing. Pass valueless flags last.
 
 ## The AltStore and Obtainium feeds

@@ -91,6 +91,14 @@ describe("every page parses and round-trips", () => {
     }
   });
 
+  it("#/tokens is the API tokens page: a global route with no product segment", () => {
+    const { route, redirect } = parse("#/tokens");
+    expect(redirect).toBeUndefined();
+    expect(route).toEqual({ kind: "global", page: "api-tokens" });
+    expect(r.apiTokens()).toBe("#/tokens");
+    expect(hrefFor(parseLocation("#/tokens").route)).toBe("#/tokens");
+  });
+
   it("each product page, at #/p/<slug>/<section>/<page>", () => {
     for (const p of PRODUCT_PAGES) {
       const hash = productPage("djdl", p.page as ProductPageId);
@@ -472,6 +480,7 @@ describe("the nav model (nav.ts)", () => {
       "home",
       "products",
       "product-new",
+      "api-tokens",
       "platform-settings",
       "platform-deployment",
       "platform-operations",
@@ -673,6 +682,7 @@ describe("global pages", () => {
       "home",
       "products",
       "product-new",
+      "api-tokens",
       "platform-deployment",
     ] as GlobalPageId[]) {
       expect(sectionOf(id)).toBeNull();
@@ -695,7 +705,11 @@ describe("global pages", () => {
     }
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
-    expect(platformLinks().map((p) => p.page)).toEqual(["home", "products"]);
+    expect(platformLinks().map((p) => p.page)).toEqual([
+      "home",
+      "products",
+      "api-tokens",
+    ]);
     // P0-47: Override migration (U-03, cancelled) is out of the sidebar and the palette; its
     // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([

@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  ADMIN_COOKIE_ENV,
+  ADMIN_TOKEN_ENV,
   BUNDLE_USAGE,
   DEFAULT_BASE_URL,
   mintBundle,
@@ -119,7 +119,12 @@ import { cmdStorefront } from "./storefronts/command.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
-import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
+import {
+  ADMIN_COOKIE_ENV,
+  formatImport,
+  listingImport,
+  LISTING_USAGE,
+} from "./listing.js";
 import { listingAssets, LISTING_ASSETS_USAGE } from "./listingAssets.js";
 import { ASSETS_PUSH_USAGE, pushAssets } from "./assets.js";
 import {
@@ -375,10 +380,8 @@ export {
 } from "./buildMetadata.js";
 
 export {
-  ADMIN_COOKIE_ENV,
-  ADMIN_COOKIE_NAME,
+  ADMIN_TOKEN_ENV,
   BUNDLE_USAGE,
-  CSRF_HEADER,
   DEFAULT_BASE_URL,
   MAX_GRACE_DAYS,
   bundleFileName,
@@ -431,6 +434,9 @@ export {
   type SteamVdfResult,
 } from "./transportSteam.js";
 export {
+  ADMIN_COOKIE_ENV,
+  ADMIN_COOKIE_NAME,
+  CSRF_HEADER,
   formatImport,
   listingImport,
   LISTING_USAGE,
@@ -1244,8 +1250,8 @@ async function doctorJson(
 
 /**
  * `pkey bundle` — mint one offline activation bundle. A thin shell over `mintBundle`: it reads
- * the flags, reads the admin session cookie out of the environment (the module itself never
- * touches `process.env`, so it stays testable), and prints what came back.
+ * the flags, reads the admin API token out of the environment (the module itself never touches
+ * `process.env`, so it stays testable), and prints what came back.
  */
 async function cmdBundle(
   parsed: ParsedArgs,
@@ -1270,7 +1276,7 @@ async function cmdBundle(
     baseUrl: flagString(parsed, "base-url"),
     out: flagString(parsed, "out"),
     force: flagBool(parsed, "force"),
-    cookie: process.env[ADMIN_COOKIE_ENV],
+    token: process.env[ADMIN_TOKEN_ENV],
   });
 
   const rel = path.relative(cwd, result.file);

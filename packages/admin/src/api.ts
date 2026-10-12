@@ -212,6 +212,65 @@ export interface PlatformActivityPage {
   nextCursor: PlatformCursor | null;
 }
 
+// ── admin API tokens (platform) ───────────────────────────────────────────────
+/**
+ * The admin API's MACHINE credential (`pkeya_…`; worker `console/apiTokens.ts`).
+ *
+ * Platform-scoped like the platform pages rather than per-product, and reachable only by a
+ * SESSION: the worker names no scope for these three routes, so a token principal cannot list,
+ * mint or revoke a token, including itself. Minting a credential is an interactive act, and the
+ * mint also needs a recent sign-in (403 `step_up_required`).
+ */
+
+/** The scope vocabulary: one entry, mirroring the worker's. */
+export const ADMIN_API_SCOPES = ["bundles:mint"] as const;
+export type AdminApiScope = (typeof ADMIN_API_SCOPES)[number];
+
+/** The worker's longest token lifetime. Mirrored so the mint form can bound its input rather
+ *  than teaching the operator the ceiling through a 422. */
+export const MAX_TOKEN_DAYS = 365;
+
+/** The lifecycle the SERVER collapsed out of `revokedAt` and `expiresAt`. Never re-derived here:
+ *  the console would be re-deriving it against the browser's clock, not the worker's. */
+export type AdminApiTokenStatus = "active" | "expired" | "revoked";
+
+/**
+ * A token as the roster shows it. Note what is absent: the plaintext AND the hash. The plaintext
+ * exists in exactly one response ever (`MintAdminApiTokenResult.secret`) and nothing stored can
+ * reproduce it; the hash is withheld so nobody mistakes it for an id. There is therefore no field
+ * on this type a list view could render a secret from.
+ */
+export interface AdminApiToken {
+  id: string;
+  label: string;
+  scopes: AdminApiScope[];
+  /** Epoch seconds. */
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  revokedAt: number | null;
+  status: AdminApiTokenStatus;
+}
+
+export interface MintAdminApiTokenBody {
+  label: string;
+  /** REQUIRED, 1 to `MAX_TOKEN_DAYS`. The server has no default, deliberately: a machine
+   *  credential's lifetime is the one decision the operator has to make consciously. */
+  expiresInDays: number;
+  /** Omitted means every scope the worker knows about; the console always names them. */
+  scopes?: AdminApiScope[];
+}
+
+export interface MintAdminApiTokenResult {
+  ok: true;
+  token: AdminApiToken;
+  /**
+   * The plaintext (`pkeya_…`): the ONLY response that will ever carry it. The mint dialog is the
+   * only thing that ever holds this string, in a component that unmounts on close.
+   */
+  secret: string;
+}
+
 // ── platform settings (A-13, notes/S-13 §5, §6.4) ─────────────────────────────────
 
 /** ADMIN.md §5.2 destructive levels, as the settings registry declares them per direction. */
@@ -4401,6 +4460,24 @@ const rawApi = {
     call<PlatformActivityPage>(
       `/manage/api/platform/activity${cursorQuery(cursor)}`,
     ),
+  // ── admin API tokens (platform, not product-scoped) ─────────────────────────
+  /** The roster. Never carries a secret or a hash: see `AdminApiToken`. */
+  apiTokens: () => call<{ tokens: AdminApiToken[] }>("/manage/api/tokens"),
+  /**
+   * Mint. The resolved value is the one and only carrier of the plaintext. Needs a sign-in from
+   * the last five minutes (403 `step_up_required` otherwise); 422 `fields` names what it refused
+   * (`label`, `scopes`, `expiresInDays`); 409 at the live-token cap.
+   */
+  mintApiToken: (body: MintAdminApiTokenBody) =>
+    call<MintAdminApiTokenResult>("/manage/api/tokens", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Revoke. The row is kept (409 if it was already revoked), so the history survives. */
+  revokeApiToken: (id: string) =>
+    call<{ ok: true; token: AdminApiToken }>(`/manage/api/tokens/${enc(id)}`, {
+      method: "DELETE",
+    }),
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
   platformSettings: () =>
     call<PlatformSettingsView>("/manage/api/platform/settings"),

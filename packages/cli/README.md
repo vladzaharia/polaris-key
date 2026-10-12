@@ -308,14 +308,16 @@ pkey mirror --lang kotlin --catalog catalog.json --package com.acme.catalog --ch
 Mints one **offline activation bundle** (`POST /manage/api/products/<slug>/bundles`) and
 writes it to a file — the operator half of the air-gapped activation flow described in
 [Going offline](https://key.plrs.im/docs/features/licensing/offline/) and, at the protocol level, in
-[Offline bundles](https://key.plrs.im/docs/reference/protocol/bundles/). `--device` and `--grace-days` are validated
-locally (32 base64url characters; an integer 1–365) before any network call, and the output
-path is checked for a collision before **and** after the mint, because a mint is an audited,
-non-free server-side event — discovering the output file already exists only after minting
-would burn a bundle to learn something knowable up front.
+[Offline bundles](https://key.plrs.im/docs/reference/protocol/bundles/). `--device`,
+`--grace-days`, `--base-url` and the admin API token are all validated locally (32 base64url
+characters; an integer 1–365; an `https:` or loopback origin; `pkeya_` + 43 base64url
+characters) before any network call, and the output path is checked for a collision before
+**and** after the mint, because a mint is an audited, non-free server-side event — discovering
+the output file already exists only after minting would burn a bundle to learn something
+knowable up front.
 
 ```sh
-PKEY_ADMIN_COOKIE='__Host-pkey_admin=<console session cookie>' \
+PKEY_ADMIN_TOKEN='pkeya_<admin API token>' \
   pkey bundle --product djdl --device <deviceId> --grace-days 365
 # Minted bundle <ULID>
 # - File: djdl-<first 8 of device id>.pkeybundle
@@ -332,25 +334,48 @@ device to infer a licence from, so it never guesses even when there is only one 
 `--base-url` defaults to `https://key.plrs.im`; `--out` defaults to
 `<product>-<first 8 of device id>.pkeybundle`, resolved against the current directory.
 
-#### `PKEY_ADMIN_COOKIE`
+#### `PKEY_ADMIN_TOKEN`
 
-The admin API has exactly one credential today: the console's OIDC browser session — there is
-no API-token surface yet. `pkey bundle` reads that session out of `PKEY_ADMIN_COOKIE`, uses it
-to `GET /manage/api/me` for the session's CSRF token, and echoes that token in the `X-PKey-CSRF`
-header on the mint — the same double-submit the console itself performs.
+`pkey bundle` authenticates with an **admin API token**, sent as `Authorization: Bearer
+pkeya_…` and read from `PKEY_ADMIN_TOKEN`. That is the whole credential: no cookie, no
+`X-PKey-CSRF` header, and no `GET /manage/api/me` pre-flight — a token-authenticated request is
+CSRF-exempt (nothing but the caller attaches an `Authorization` header, so there is no ambient
+credential for a cross-site page to forge), which leaves the command at exactly one network
+call.
 
-To obtain it: sign in to the console, open devtools → Application → Cookies → the console
-origin, and copy the `__Host-pkey_admin` cookie. Then:
+To obtain one: in the console, go to **API tokens → New token**, give it a label naming where
+it will run and an expiry (1 to 365 days), and copy the value. It is shown **once**, at mint —
+the server stores only a hash, so nothing can reproduce it later. Then:
 
 ```sh
-export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'
+export PKEY_ADMIN_TOKEN='pkeya_<43 base64url characters>'
 ```
 
-The bare value (no `name=`) is accepted too — the CLI prefixes the cookie name itself when the
-variable holds no `=`. This is a **short-lived session credential carrying full admin
-authority**: do not commit it, script it into a file, paste it into a ticket, or export it into
-a shell other people share. A `401` means it is missing or expired; a `403` usually means it is
-stale relative to the CSRF token `/manage/api/me` handed back for it.
+This replaced an exported `__Host-pkey_admin` session cookie, and the reasons are worth stating:
+a session cookie could not be narrowed (it carried the operator's whole admin authority), could
+not be revoked without killing every session that human held, was indistinguishable in the audit
+log from that human clicking in the console, and expired on the session's schedule. A token is
+scoped to `bundles:mint` — which covers exactly `POST /manage/api/products/<slug>/bundles`, and
+every other admin route refuses a token outright — individually revocable, attributed separately
+as `token:<id>` in the audit trail, and expires when you said it would.
+
+It is still a credential that can mint a bundle for **any** product on the platform: do not
+commit it, script it into a file, paste it into a ticket, or export it into a shell other people
+share. A `401` means the token is unknown, revoked or expired (the server answers one status for
+all three on purpose; the console's roster says which). A `403` means either that the token is
+not scoped for the route or that the identity behind it is not a platform admin.
+
+The CLI checks the token's **shape** locally before it sends anything, so a pasted cookie or a
+truncated copy costs a sentence rather than an uninformative 401. `--base-url` is checked the
+same way and must be `https:` — or `http:` on `localhost`/`127.0.0.1` for local development —
+because that flag decides which origin receives a full-authority bearer credential. The bundle
+file is created with mode `0600` and is never written through a symbolic link: without `--force`
+an existing file is refused by the kernel (`O_EXCL`), and `--force` truncates a regular file and
+tightens its mode but still refuses a link.
+
+`pkey listing import` is the one admin command that still presents the console session: its
+route is outside a token's `bundles:mint` scope, so it reads the `__Host-pkey_admin` cookie from
+`PKEY_ADMIN_COOKIE` and applies the same `--base-url` rule before sending it anywhere.
 
 ### The valueless-flag gotcha
 
