@@ -29,7 +29,6 @@ import {
   exportJWK,
   generateKeyPair,
   importJWK,
-  type KeyLike,
   SignJWT,
 } from "jose";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
@@ -151,7 +150,7 @@ interface Ctx {
   env: Env;
   kv: KvMock;
   product: Product;
-  priv: KeyLike;
+  priv: CryptoKey;
 }
 
 async function makeCtx(): Promise<Ctx> {

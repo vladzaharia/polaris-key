@@ -17,7 +17,6 @@ import {
   exportJWK,
   generateKeyPair,
   importJWK,
-  type KeyLike,
   SignJWT,
 } from "jose";
 import { makeTestDb } from "./helpers.js";
@@ -92,7 +91,7 @@ const IP = "198.51.100.7";
 let db: SqliteDb;
 let env: Env;
 let product: Product;
-let priv: KeyLike;
+let priv: CryptoKey;
 let accountId: string;
 
 async function signIdToken(claims: Record<string, unknown>): Promise<string> {

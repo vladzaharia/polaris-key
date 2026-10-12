@@ -25,7 +25,6 @@ import {
   generateKeyPair,
   SignJWT,
   type JWK,
-  type KeyLike,
 } from "jose";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
@@ -81,7 +80,7 @@ const FILES = {
   release: readFileSync(join(ROOT, ".pkey", "release.yaml"), "utf8"),
 };
 
-let key: { privateKey: KeyLike; publicKey: KeyLike };
+let key: { privateKey: CryptoKey; publicKey: CryptoKey };
 let jwk: JWK;
 beforeAll(async () => {
   key = await generateKeyPair("RS256");

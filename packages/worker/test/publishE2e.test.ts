@@ -30,7 +30,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { exportJWK, generateKeyPair, SignJWT, type KeyLike } from "jose";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { parseManifest } from "@polaris-key/manifest";
 import { publishRelease, signV4 } from "@polaris-key/cli";
 import { makeTestDb } from "./helpers.js";
@@ -190,7 +190,7 @@ async function writeRepo(): Promise<void> {
 
 // ── The world: the Worker's D1, KV and R2, a publisher policy, a test OIDC issuer ───────────
 
-let key: { privateKey: KeyLike; publicKey: KeyLike };
+let key: { privateKey: CryptoKey; publicKey: CryptoKey };
 beforeAll(async () => {
   key = await generateKeyPair("RS256");
   const jwk = {

@@ -21,7 +21,6 @@ import {
   decodeProtectedHeader,
   jwtVerify,
   type JWK,
-  type KeyLike,
 } from "jose";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
@@ -68,9 +67,9 @@ const AUD = publishAudience(ORIGIN, SLUG);
 const REPO_ID = 123456789;
 const OWNER_ID = 4242;
 
-let key: { privateKey: KeyLike; publicKey: KeyLike };
+let key: { privateKey: CryptoKey; publicKey: CryptoKey };
 let jwk: JWK;
-let otherKey: { privateKey: KeyLike; publicKey: KeyLike };
+let otherKey: { privateKey: CryptoKey; publicKey: CryptoKey };
 
 beforeAll(async () => {
   key = await generateKeyPair("RS256");
@@ -112,7 +111,7 @@ async function ghToken(
     iat?: number;
     exp?: number;
     kid?: string;
-    signer?: KeyLike;
+    signer?: CryptoKey;
     jti?: string;
     alg?: string;
   } = {},

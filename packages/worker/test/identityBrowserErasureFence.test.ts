@@ -28,7 +28,6 @@ import {
   exportJWK,
   generateKeyPair,
   importJWK,
-  type KeyLike,
   SignJWT,
 } from "jose";
 import { makeTestDb } from "./helpers.js";
@@ -106,7 +105,7 @@ const COOKIE = "pkey_djdl_session";
 const DEV_A = "I11DEVICEA0000000000000000000001";
 const DEV_B = "I11DEVICEB0000000000000000000002";
 
-let priv: KeyLike;
+let priv: CryptoKey;
 let db: SqliteDb;
 let env: Env;
 let product: Product;
