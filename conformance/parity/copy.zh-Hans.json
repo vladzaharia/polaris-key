@@ -139,7 +139,7 @@
     },
     "erasure_ledger_unavailable": {
       "title": "无法验证账户",
-      "message": "暂时无法确认您的账户状态。请几分钟后重试。"
+      "message": "暂时无法确认你的账户状态。请几分钟后重试。"
     },
     "identity_disabled": {
       "title": "登录不可用",

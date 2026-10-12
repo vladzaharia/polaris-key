@@ -139,7 +139,7 @@ jobs:
             -Template (Join-Path $d "windows_release_x86_64.exe") `
             -Work (Join-Path $env:RUNNER_TEMP "e2e-windows")
       - run: git diff --exit-code; if ($LASTEXITCODE -ne 0 -or (git status --porcelain)) { git status --porcelain; exit 1 }
-      - if: failure()
+      - if: always()
         uses: actions/upload-artifact@v7
         with:
           name: native-desktop-windows-logs
