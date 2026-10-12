@@ -323,7 +323,16 @@ public data class TrustManifestDoc(
 
 // ── Gate vocabulary (§5) ─────────────────────────────────────────────────────────────────────
 
-/** A 403 block reason from `GET /<product>/license/document`. */
+/**
+ * A 403 block reason from `GET /<product>/license/document`, and the whole VOCABULARY of the unsigned `blocked`
+ * hint (§4.1).
+ *
+ * The gate reports the reason AS the status, and `ok`, `grace` and `not-applicable` are usable. So "the unsigned
+ * hints can only ever make the gate STRICTER" is a claim about this set, and here it holds by TYPE: the enum is
+ * exactly the three non-usable reasons, so no hint can carry another one. The two edges that decode a reason from
+ * unsigned JSON go through [of], which answers null for a non-member: a 403 body then reads as the stricter block
+ * and a cache record loads without the hint. Never add an entry the gate would call usable.
+ */
 public enum class BlockReason(public val wire: String) {
     versionTooOld("version-too-old"),
     versionTooNew("version-too-new"),

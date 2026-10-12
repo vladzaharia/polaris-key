@@ -1,8 +1,9 @@
 extends RefCounted
 # `sync()` against a loopback server that answers like the Worker, with the documents recorded in
 # the sync-etag-304 transcript: ETag/304, the half-life refetch, one shared re-acquire for
-# parallel 401s, the hard-401 and 403 hints and their clearing, one cache write per pass, the
-# post-sync hook, and zero traffic without a token.
+# parallel 401s, the hard-401 and 403 hints and their clearing, a 403 body that claims a reason
+# outside the block vocabulary, one cache write per pass, the post-sync hook, and zero traffic
+# without a token.
 
 var F: Dictionary
 var plan := {}
@@ -17,6 +18,7 @@ func run(t: PKeyTestContext) -> void:
 	await _etag_and_half_life(t)
 	await _parallel_401s(t)
 	await _hints(t)
+	await _poisoned_403(t)
 	await _no_token(t)
 	await _odd_answers(t)
 	server.queue_free()
@@ -183,6 +185,37 @@ func _hints(t: PKeyTestContext) -> void:
 	r = await sdk.sync()
 	t.check("sync: the flat error spelling is read", store.cache.get("blocked", {}).get("reason") == "channel-not-entitled", str(store.cache.get("blocked")))
 	sdk.queue_free()
+
+
+## The 403 body is attacker-shaped JSON and its `reason` ends up, unsigned, as the gate's status
+## (WIRE-CONTRACT-V4 §4.1). A reason outside PKeyGate.BLOCK_REASONS, a usable status above all,
+## reads like a body that says nothing at all: the stricter block, never a licensed client.
+func _poisoned_403(t: PKeyTestContext) -> void:
+	var cases := [
+		["a usable reason in the nested spelling", {"error": {"code": "version_blocked", "reason": "ok"}}, "version-too-old"],
+		["a usable reason in the pre-nesting spelling", {"reason": "grace"}, "version-too-old"],
+		["not-applicable in the nested spelling", {"error": {"reason": "not-applicable"}}, "version-too-old"],
+		["a number nested and an Array on top", {"error": {"reason": 5}, "reason": ["version-too-old"]}, "version-too-old"],
+		["an empty reason nested and null on top", {"error": {"reason": ""}, "reason": null}, "version-too-old"],
+		["a reason outside the vocabulary and the channel code", {"error": {"code": "channel_not_allowed", "reason": "ok"}}, "channel-not-entitled"],
+		["a reason outside the vocabulary nested and a member on top", {"error": {"reason": "ok"}, "reason": "version-too-new"}, "version-too-new"],
+		["a member nested and another member on top", {"error": {"reason": "channel-not-entitled"}, "reason": "version-too-new"}, "channel-not-entitled"],
+	]
+	for c in cases:
+		server.requests.clear()
+		plan = {
+			"polaris-trust.jws": [_ok(F["trust_jws"])],
+			"/license/document": [{"status": 403, "body": JSON.stringify(c[1])}],
+			"/config/document": [_ok(F["config"], F["config_etag"])],
+		}
+		var store := PKeyMemoryStore.new(F["device_id"], F["token"])
+		var sdk = await _sdk(store, [F["now"]])
+		var r: PKeySyncResult = await sdk.sync()
+		var st: Dictionary = sdk.status()
+		var held = store.cache.get("blocked")
+		t.check("sync: a 403 with %s reads as %s" % [c[0], c[2]], r.blocked and held is Dictionary and held.get("reason") == c[2] and st["status"] == c[2], "%s %s" % [str(held), str(st)])
+		t.check("sync: a 403 with %s never licenses the client" % c[0], not PKeyGate.is_usable(st) and not sdk.license.is_licensed(), str(st))
+		sdk.queue_free()
 
 
 func _no_token(t: PKeyTestContext) -> void:

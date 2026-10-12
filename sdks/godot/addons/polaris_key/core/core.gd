@@ -391,11 +391,17 @@ func get_document(path: String, token: String, etag: String) -> Dictionary:
 			return {"kind": "rate-limited", "limit": e["body"].get("limit"), "deviceCount": e["body"].get("deviceCount")}
 		403:
 			# v3 nests the code and keeps allowedRange at the top level; a pre-nesting body is read
-			# flat; a body that says nothing (or names an unknown reason) is the stricter block.
+			# flat; a body that says nothing (or names no known reason) is the stricter block.
+			#
+			# The reason is lifted from ATTACKER-SHAPED JSON and ends up, unsigned, as the gate's
+			# status, so membership in PKeyGate.BLOCK_REASONS is checked here: a body claiming
+			# {"error": {"reason": "ok"}} must not turn a 403 into a licensed client. The first
+			# candidate inside the vocabulary wins; anything else is read like a body that says
+			# nothing at all.
 			var e := PKeyErrors.read_body(body)
-			var reason: String = e["reason"]
-			if not PKeyGate.BLOCK_REASONS.has(reason):
-				reason = "channel-not-entitled" if e["code"] == "channel_not_allowed" else "version-too-old"
+			var reason := _claimed_block_reason(e["body"])
+			if reason == "":
+				reason = "channel-not-entitled" if e["code"] == "channel_not_allowed" else PKeyGate.STRICTEST_BLOCK_REASON
 			var blocked := {"reason": reason}
 			if e["body"].get("allowedRange") is Dictionary:
 				blocked["allowedRange"] = e["body"]["allowedRange"]
@@ -403,6 +409,17 @@ func get_document(path: String, token: String, etag: String) -> Dictionary:
 		200:
 			return {"kind": "ok", "jws": body.get_string_from_utf8(), "etag": r.detail["headers"].get("etag", "")}
 	return {"kind": "error", "status": status, "message": body.get_string_from_utf8().left(200)}
+
+
+## The first block reason a 403 body claims that is inside PKeyGate.BLOCK_REASONS: the nested
+## `error.reason`, then the pre-nesting top-level `reason`. "" when neither is a member (a status
+## word, a number, an Array, an empty string or nothing at all).
+static func _claimed_block_reason(b: Dictionary) -> String:
+	var nested = b.get("error")
+	for claimed in [nested.get("reason") if nested is Dictionary else null, b.get("reason")]:
+		if PKeyGate.is_block_reason(claimed):
+			return claimed
+	return ""
 
 
 ## Fetch and accept the signed trust manifest (against the usable pins only). Returns the compact

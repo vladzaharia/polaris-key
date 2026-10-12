@@ -1,7 +1,7 @@
 // @pkey-feature license.gate
 //
 // Cross-SDK gate parity — wire contract v3 §5, driven off conformance/corpus/v2's
-// "gate-matrix.json" (version 2, 38 rows), read in place.
+// "gate-matrix.json" (version 2, 43 rows), read in place.
 //
 // Each row carries the BUILD-gate inputs (version, channel, compat window, entitlements) and the
 // LICENCE-state inputs, paired with one expected decision. The build-gate half is a PORT, as in
@@ -10,6 +10,13 @@
 // in packages/worker/test/gateMatrixCorpus.test.ts). The duplication is deliberate: the matrix
 // proves independent implementations agree. The licence half is :core's `licenseState`, which
 // `LicenseClient.status()` calls.
+//
+// A row may also carry `license.blocked`: the unsigned hint as read back off disk or out of a 403 body,
+// which REPLACES the one derived from `gate` (a hint outside the vocabulary is one no build gate could
+// have produced, so those rows cannot be written through `gate`). `expect.reason` keeps naming the
+// DERIVED hint. Kotlin cannot hand the gate an out-of-vocabulary reason, because `BlockReason` is a closed
+// enum, so the runner delivers the hint the way the wire does, as the body of a 403 from
+// `/license/document`, and lets the SDK's own ingress (`CoreContext.getDocument`) read it.
 
 package im.plrs.key.conformance
 
@@ -17,9 +24,17 @@ import im.plrs.key.core.ActivationSource
 import im.plrs.key.core.AllowedRange
 import im.plrs.key.core.BlockInfo
 import im.plrs.key.core.BlockReason
+import im.plrs.key.core.CoreContext
+import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.DocumentResult
+import im.plrs.key.core.DocumentSlice
 import im.plrs.key.core.GateInput
+import im.plrs.key.core.InMemoryStore
 import im.plrs.key.core.LicenseDoc
 import im.plrs.key.core.ManagedEntry
+import im.plrs.key.core.PolarisRequest
+import im.plrs.key.core.PolarisResponse
+import im.plrs.key.core.PolarisTransport
 import im.plrs.key.core.Semver
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
@@ -28,7 +43,9 @@ import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.license.isUsable
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -109,11 +126,38 @@ class GateMatrixTest : ConformanceSuite() {
         return LicenseDoc("key.plrs.im", "djdl", "dev_matrix", issuedAt, expiresAt, graceUntil, "lic_matrix", null, emptyMap())
     }
 
+    /**
+     * The unsigned hint a row supplies DIRECTLY (`license.blocked`), delivered as the wire delivers it: the
+     * body of a 403 from `GET /<product>/license/document`, read by the SDK's own ingress. A reason outside
+     * the vocabulary reads there as the strictest one (the coercion the other SDKs apply inside the gate,
+     * and what the vocabulary rows assert they all agree on); one inside it comes back verbatim, with the
+     * body's top-level `allowedRange`.
+     */
+    private fun suppliedHint(raw: JsonObject): BlockInfo = runBlocking {
+        val body = buildJsonObject {
+            put("error", buildJsonObject { put("reason", raw["reason"]!!) })
+            raw["allowedRange"]?.let { put("allowedRange", it) }
+        }.toString()
+        val core = CoreContext(
+            CoreOptions(
+                productSlug = "djdl", version = "1.0.0", pinnedKeys = emptyMap(), trustRefresh = false,
+                store = InMemoryStore("djdl", "dev_matrix"),
+                transport = object : PolarisTransport {
+                    override suspend fun send(request: PolarisRequest) = PolarisResponse(403, body.toByteArray(Charsets.UTF_8))
+                },
+            ),
+        )
+        core.start()
+        val answer = core.getDocument(DocumentSlice.license, "pkeyt_matrix")
+        val blocked = answer as? DocumentResult.Blocked ?: error("a 403 must read as a block, got $answer")
+        BlockInfo(blocked.reason, blocked.allowedRange)
+    }
+
     // ── The parity assertions ────────────────────────────────────────────────────────────────
     @Test
     fun theMatrixIsV2AndPopulated() {
         assertEquals(2L, matrix["gateMatrixVersion"].longValue)
-        assertEquals(38, rows.size)
+        assertEquals(43, rows.size)
     }
 
     @Test
@@ -123,7 +167,10 @@ class GateMatrixTest : ConformanceSuite() {
             val name = row["name"].stringValue!!
             val l = row["license"]!!.obj
             val expect = row["expect"]!!.obj
-            val blocked = checkBuildGate(row["gate"]!!.obj)
+            val derived = checkBuildGate(row["gate"]!!.obj)
+            // A fixture-supplied hint WINS over the derived one: it models the unsigned value read back
+            // off disk or out of a 403 body, which is what `blocked` is at every real call site.
+            val blocked = l["blocked"].objectValue?.let(::suppliedHint) ?: derived
             val state = licenseState(
                 GateInput(
                     licenseServiceEnabled = l["licenseServiceEnabled"].boolValue!!,
@@ -139,7 +186,7 @@ class GateMatrixTest : ConformanceSuite() {
             f.equal(expect["ok"].boolValue, isUsable(state)) { "$name usable" }
             // `expect.reason` names the DERIVED build-gate hint, which on the activation-precedes-
             // blocked row is deliberately not the status.
-            expect["reason"].stringValue?.let { f.equal(it, blocked?.reason?.wire) { "$name reason" } }
+            expect["reason"].stringValue?.let { f.equal(it, derived?.reason?.wire) { "$name reason" } }
             val range = expect["allowedRange"].objectValue?.let { AllowedRange(it["min"].stringValue, it["max"].stringValue) }
             f.equal(range, state.allowedRange) { "$name allowedRange" }
         }
@@ -159,5 +206,24 @@ class GateMatrixTest : ConformanceSuite() {
         )) {
             assertTrue("gate-matrix v2 must carry: $name", name in names)
         }
+    }
+
+    /** The five rows that carry a `license.blocked` hint, asserted by NAME. */
+    @Test
+    fun theMatrixCarriesTheBlockedVocabularyRows() {
+        val byName = rows.associateBy { it["name"].stringValue!! }
+        for (name in listOf(
+            "version-too-old — an out-of-vocabulary blocked.reason coerces to the STRICTER reason",
+            "version-too-old — `not-applicable` as a blocked.reason is coerced too, allowedRange kept",
+            "channel-not-entitled — an IN-vocabulary blocked.reason is still honoured verbatim",
+            "needs-activation — a poisoned blocked.reason does not outrank the activation guard",
+            "not-applicable — a poisoned blocked.reason cannot be used to gate an unlicensed product either",
+        )) {
+            val row = byName[name] ?: error("gate-matrix v2 must carry: $name")
+            assertTrue("$name must carry the hint it is about", row["license"]!!.obj["blocked"].objectValue != null)
+        }
+        // A usable reason is planted in there, so the rows can fail a gate that returns the hint's reason
+        // verbatim as the status.
+        assertTrue(rows.any { it["license"]!!.obj["blocked"].objectValue?.get("reason").stringValue == "ok" })
     }
 }

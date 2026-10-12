@@ -6,7 +6,8 @@ extends RefCounted
 ##
 ##    1. split into exactly three parts
 ##   2–3. bound the ENCODED header (b64Cap(1024)) and payload (b64Cap(cap)) before decoding;
-##        the cap is max(65536, requested), so a caller can only raise it
+##        the cap is max(65536, requested), so a caller can only raise it, and only together with
+##        a typ: a raise with no typ named is refused (§1: the cap and the type are one grant)
 ##   4–6. strict base64url header, ≤ 1024 bytes, strict JSON (PKeyJson: no duplicate keys),
 ##        must be an object
 ##    7. alg == "EdDSA"
@@ -147,6 +148,13 @@ static func prepare(jws: String, trust: Dictionary, typ: String = "", max_payloa
 	var enc_sig: String = parts[2]
 
 	var payload_cap: int = maxi(MAX_DOC_BYTES, max_payload_bytes)
+	# §1's raised cap is an exception granted to ONE typ, and the cap and the type travel together:
+	# a payload accepted at the raised cap with no type demanded could be re-presented at an
+	# ordinary document call site with the cap already in force. Refused outright, never silently
+	# downgraded to 64 KiB: a caller asking for the bundle cap without naming the bundle type has
+	# made a mistake worth surfacing. (shared-jws `verifyJws`; Kotlin, Swift and Python do the same.)
+	if payload_cap > MAX_DOC_BYTES and typ == "":
+		return null
 	if enc_header.length() > _b64cap(MAX_HEADER_BYTES):
 		return null
 	if enc_payload.length() > _b64cap(payload_cap):

@@ -1,10 +1,11 @@
 extends RefCounted
-# @pkey-feature license.activate license.enroll
+# @pkey-feature license.activate license.enroll license.gate
 # activate_with_key and enroll against a loopback server answering like the Worker: every
 # response mapped to its PKeyActivationResult kind in both error-body spellings, the request
 # shapes (the key as the bearer, no bearer on enrol, the hashed fingerprint or no body at all),
-# the token stored with its source and the forced sync that follows, and the refusals that
-# send nothing (web enrolment, a malformed key, local-only, not started).
+# the token stored with its source and the forced sync that follows, a 403 document answering
+# that sync (a reason outside the block vocabulary never licenses the client), and the refusals
+# that send nothing (web enrolment, a malformed key, local-only, not started).
 
 const S := preload("res://tests/license/support.gd")
 const TOKEN := "pkeyt_ACTIVATEDACTIVATEDACTIVATEDACTIVATED000"
@@ -19,6 +20,7 @@ func run(t: PKeyTestContext) -> void:
 		return
 	await _mapping(t)
 	await _ok_and_shape(t)
+	await _blocked_after_activation(t)
 	await _enroll(t)
 	await _refusals(t)
 	h.free_server()
@@ -113,6 +115,30 @@ func _ok_and_shape(t: PKeyTestContext) -> void:
 	reqs = h.requests("POST", "/license/activate")
 	t.check("activation: fingerprint_enabled = false sends no body", reqs.size() == 1 and (reqs[0]["body"] as PackedByteArray).is_empty() and not reqs[0]["headers"].has("content-type"))
 	off.queue_free()
+
+
+## The forced sync that follows activation reads whatever 403 body answers /license/document, and
+## its `reason` is attacker-shaped JSON that ends up, unsigned, as the gate's status
+## (WIRE-CONTRACT-V4 §4.1). A usable reason, or any other outside PKeyGate.BLOCK_REASONS, reads like
+## a body that says nothing at all (the stricter block); a member is still honoured.
+func _blocked_after_activation(t: PKeyTestContext) -> void:
+	var bodies := [
+		["ok nested", {"error": {"code": "version_blocked", "reason": "ok"}}, "version-too-old"],
+		["grace on top", {"reason": "grace"}, "version-too-old"],
+		["not-applicable nested", {"error": {"reason": "not-applicable"}}, "version-too-old"],
+		["a number nested and an Array on top", {"error": {"reason": 5}, "reason": ["version-too-old"]}, "version-too-old"],
+		["a member", {"error": {"code": "version_blocked", "reason": "version-too-new"}, "allowedRange": {"max": "1.0.0"}}, "version-too-new"],
+	]
+	for c in bodies:
+		h.server.requests.clear()
+		h.plan = {"/license/activate": [S.json(200, {"token": TOKEN, "schemaVersion": 2})]}
+		h.serve_docs([TOKEN])
+		h.plan["/license/document"] = [S.json(403, c[1])]
+		var sdk = await h.sdk(PKeyMemoryStore.new(h.F["device_id"]))
+		var r: PKeyActivationResult = await sdk.license.activate_with_key(KEY)
+		t.check("activation: a 403 document (%s) still leaves the token stored" % c[0], r.ok and r.stored, str(r))
+		t.check("activation: a 403 document (%s) reads as %s, never as a licensed client" % [c[0], c[2]], sdk.license.status()["status"] == c[2] and not sdk.license.is_licensed(), str(sdk.license.status()))
+		sdk.queue_free()
 
 
 func _enroll(t: PKeyTestContext) -> void:

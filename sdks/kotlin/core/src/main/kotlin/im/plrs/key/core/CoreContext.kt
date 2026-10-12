@@ -558,6 +558,11 @@ public class CoreContext(options: CoreOptions) {
             403 -> {
                 // v3 nests the code and keeps `allowedRange` at the top level (§5). A body that says
                 // nothing falls back to the stricter reason, never the permissive one.
+                //
+                // The reason is lifted from ATTACKER-SHAPED JSON and ends up, unsigned, as the gate's
+                // status. [BlockReason.of] is the membership check: a body claiming
+                // `{"error":{"reason":"ok"}}` cannot turn a 403 into a licensed client. The first
+                // candidate inside the vocabulary wins; anything else reads like a body that says nothing.
                 val body = JsonText.parseOrNull(response.text).objectValue
                 val error = body?.get("error").objectValue
                 val reason = BlockReason.of(error?.get("reason").stringValue)

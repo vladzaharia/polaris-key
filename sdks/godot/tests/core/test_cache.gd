@@ -73,6 +73,25 @@ func run(t: PKeyTestContext) -> void:
 	r = await _load(c, hints)
 	t.check("cache: a valid block hint loads", r.blocked == {"reason": "version-too-old", "allowedRange": {"min": "2.0.0"}}, str(r.blocked))
 	t.check("cache: a recorded hard 401 loads", r.last_sync_unauthorized)
+	# The reload edge DROPS a hint outside the vocabulary: it is not coerced into a block, and the
+	# record is not discarded with it, so the documents beside it still load. A hint is display
+	# state that anyone able to write the file could delete anyway (§4.1), so nothing is gained by
+	# inventing a block, and a usable reason must never become the gate's status.
+	for planted in ["ok", "grace", "not-applicable", "expired", "", "Version-Too-Old", " version-too-old", 5, ["version-too-old"], {"reason": "version-too-old"}, null]:
+		var poisoned := good.duplicate(true)
+		poisoned["blocked"] = {"reason": planted, "allowedRange": {"min": "2.0.0"}}
+		r = await _load(c, poisoned)
+		t.check("cache: a block hint naming %s is dropped and the record is kept" % JSON.stringify(planted), not (r.blocked is Dictionary) and not r.record().has("blocked") and r.license != null and r.config != null, str(r.blocked))
+	for planted in ["ok", ["version-too-old"], 5, true]:
+		var not_a_hint := good.duplicate(true)
+		not_a_hint["blocked"] = planted
+		r = await _load(c, not_a_hint)
+		t.check("cache: a block hint that is not an object (%s) is dropped" % JSON.stringify(planted), not (r.blocked is Dictionary) and r.license != null, str(r.blocked))
+	for member in PKeyGate.BLOCK_REASONS:
+		var kept := good.duplicate(true)
+		kept["blocked"] = {"reason": member}
+		r = await _load(c, kept)
+		t.check("cache: a block hint naming %s loads" % member, r.blocked is Dictionary and r.blocked == {"reason": member}, str(r.blocked))
 
 	# One whole-record write: two staged slices and both hints land in a single write.
 	var store := PKeyMemoryStore.new(c["deviceId"])
