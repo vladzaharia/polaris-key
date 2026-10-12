@@ -7,6 +7,7 @@ import {
   type PortalHarness,
 } from "./portalHarness.js";
 import { FIXTURE_NOW, type PortalScenario } from "./portalFixtures.js";
+import { atRest } from "./atRest.js";
 
 /**
  * The Library and Discover motion (notes/S-23 §4.2, §6.1, §6.6; MO-07), in the BUILT portal under
@@ -282,24 +283,6 @@ const running = (page: Page): Promise<string[]> =>
       return `${name}${e?.pseudoElement ?? ""} on ${(e?.target as Element | null)?.tagName ?? "?"}`;
     }),
   );
-
-/**
- * Nothing is animating and no View Transition is in flight. `html[data-vt]` is set before the
- * transition starts and cleared when it finishes; a View Transition's pseudo-element animations
- * only exist from its ready phase, so "no animations" alone also holds in the gap between the
- * DOM swap and the first frame of the transition (which widens on a loaded runner).
- */
-async function atRest(page: Page, timeout = 4000): Promise<void> {
-  await page
-    .waitForFunction(
-      () =>
-        !document.documentElement.hasAttribute("data-vt") &&
-        document.getAnimations().length === 0,
-      null,
-      { timeout },
-    )
-    .catch(() => undefined);
-}
 
 /** Wait until every developer-art image on screen has loaded and shows. */
 async function artShown(page: Page): Promise<void> {
@@ -659,6 +642,23 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
       .getByRole("button", { name: "Add to library: Mossgarden" })
       .click();
     await page.getByRole("link", { name: "Open Mossgarden" }).waitFor();
+    // The pop-in and the ring start a frame after the link appears. Poll (without draining the log)
+    // until both have started, or the settle below would see a page with no animation yet and read
+    // an empty log.
+    const started = async (target: string, name: string): Promise<boolean> =>
+      (await state(page)).log.some(
+        (e) =>
+          e.kind === "animation" &&
+          e.phase === "start" &&
+          e.target === target &&
+          e.name === name,
+      );
+    const bothStarted = async (): Promise<boolean> =>
+      (await started("plate", "pk-pop-in")) &&
+      (await started("ring", "pk-fade-in"));
+    for (let i = 0; i < 100 && !(await bothStarted()); i++)
+      await page.waitForTimeout(50);
+    expect(await bothStarted(), "the pop-in and the ring started").toBe(true);
     await atRest(page);
     const came = (await log(page)).filter(
       (e) =>

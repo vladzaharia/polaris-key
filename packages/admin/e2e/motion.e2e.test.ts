@@ -6,6 +6,7 @@ import { build, preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { h1, startPortal, type PortalHarness } from "./portalHarness.js";
+import { atRest } from "./atRest.js";
 
 /**
  * The motion smoke suite (notes/S-23 §6.8, D9; MO-03): the built SPA in real Chromium under the
@@ -323,15 +324,6 @@ const running = (page: Page): Promise<string[]> =>
           }`,
       ),
   );
-
-/** Wait until nothing animates (a page at rest), up to `timeout` ms. */
-async function atRest(page: Page, timeout = 3000): Promise<void> {
-  await page
-    .waitForFunction(() => document.getAnimations().length === 0, null, {
-      timeout,
-    })
-    .catch(() => undefined);
-}
 
 /** The events of one phase for animations on elements with this role (or pseudo, or side). */
 const pick = (

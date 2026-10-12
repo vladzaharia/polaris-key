@@ -9,6 +9,7 @@ import {
   type PortalHarness,
 } from "./portalHarness.js";
 import type { PortalScenario } from "./portalFixtures.js";
+import { atRest } from "./atRest.js";
 
 /**
  * Portal devices and activation moments (notes/S-23 §6.1, §6.4–§6.6; MO-06), in the BUILT portal
@@ -246,24 +247,6 @@ const running = (page: Page): Promise<string[]> =>
       return `${name}${e?.pseudoElement ?? ""} on ${(e?.target as Element | null)?.tagName ?? "?"}`;
     }),
   );
-
-/**
- * Nothing is animating and no View Transition is in flight. `html[data-vt]` is set before the
- * transition starts and cleared when it finishes; a View Transition's pseudo-element animations
- * only exist from its ready phase, so "no animations" alone also holds in the gap between the
- * DOM swap and the first frame of the transition (which widens on a loaded runner).
- */
-async function atRest(page: Page, timeout = 4000): Promise<void> {
-  await page
-    .waitForFunction(
-      () =>
-        !document.documentElement.hasAttribute("data-vt") &&
-        document.getAnimations().length === 0,
-      null,
-      { timeout },
-    )
-    .catch(() => undefined);
-}
 
 const focused = (page: Page): Promise<string> =>
   page.evaluate(

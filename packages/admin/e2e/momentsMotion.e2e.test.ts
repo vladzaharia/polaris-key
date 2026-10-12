@@ -5,6 +5,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
+import { atRest } from "./atRest.js";
 
 /**
  * The console's moments and counters in motion (EXPERIENCE.md §0.7; notes/S-23 §6.1, §6.4; MO-11),
@@ -210,14 +211,6 @@ const probe = (page: Page): Promise<Probe> =>
  */
 const moving = (p: Probe): AnimStart[] =>
   p.starts.filter((s) => s.duration > 0 || s.delay > 0);
-
-async function atRest(page: Page, timeout = 4000): Promise<void> {
-  await page
-    .waitForFunction(() => document.getAnimations().length === 0, null, {
-      timeout,
-    })
-    .catch(() => undefined);
-}
 
 const runningAnimations = (page: Page): Promise<number> =>
   page.evaluate(() => document.getAnimations().length);
