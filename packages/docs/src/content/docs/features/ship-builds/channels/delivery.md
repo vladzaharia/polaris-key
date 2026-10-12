@@ -73,9 +73,18 @@ without Distribution loses its downloads by choice.
 
 ### Rate limits, caching and CORS
 
-The byte routes count against the same per-client lanes as before (the artifact lane for
-bytes, the metadata lane for the installer), because the budget defended is one product's
-GitHub installation quota. A request counts before its access is decided, so a refused one spends the budget too. None of them is put in the edge cache. CORS follows the product's
+The byte routes count against the per-client lanes the release surfaces have always had (the
+artifact lane for bytes, the metadata lane for the installer), because the budget defended is one
+product's GitHub installation quota. The artifact lane is 60 requests per two minutes per client:
+a download makes two GitHub calls, so that keeps one address under the product's hourly budget.
+A request counts before its access is decided, so a refused one spends the budget too.
+
+Every GitHub API call a byte route makes is also charged to one hourly budget for the whole
+product (4,000 calls), however many clients ask. When it is spent the route answers
+`503 upstream_rate_limited` with a `Retry-After`, never a `404`. A file served from R2, and
+GitHub's signed storage hop, cost nothing against it.
+
+None of them is put in the edge cache. CORS follows the product's
 `web.origins` for the canonical paths and, through the rewrite, for every alias; the bytes host
 applies it in its own dispatcher.
 

@@ -240,13 +240,18 @@ function harden(res: Response): Response {
 // ── Rate limits ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * The release gateway's two budgets (R10-05), under the SAME bucket names: the budget being
- * defended is one product's GitHub installation quota, which an appcast miss and a download miss
- * spend from alike. Bytes are bursty (parallel `Range` requests, a NAT'd office on release day),
- * so their lane is the loose one.
+ * The release gateway's two per-IP budgets (R10-05), under the SAME bucket names and with the
+ * same numbers (`services/release/gateway.ts` has the arithmetic): the budget being defended is
+ * one product's GitHub installation quota, which an appcast miss and a download miss spend from
+ * alike. Bytes are bursty (parallel `Range` requests, a NAT'd office on release day), so the
+ * artifact lane keeps its burst of 60 and is bounded by a two-minute window instead of a higher
+ * rate: a sustained 30/min is at most 3,600 GitHub calls an hour from one address (two per
+ * download), which is under the per-product upstream budget. `blob` and `payload` requests share
+ * the lane though they never reach GitHub; the lane is sized for the dearest request, and one
+ * bucket per client keeps the cost of a refusal bounded too.
  */
 const METADATA_RATE_LIMIT = { limit: 30, windowSec: 60 } as const;
-const ARTIFACT_RATE_LIMIT = { limit: 120, windowSec: 60 } as const;
+const ARTIFACT_RATE_LIMIT = { limit: 60, windowSec: 120 } as const;
 
 // ── The pipeline ─────────────────────────────────────────────────────────────────────────────
 

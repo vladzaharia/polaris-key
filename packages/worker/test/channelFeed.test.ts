@@ -398,6 +398,27 @@ describe("GET /update/<channel>/feed.jws", () => {
     expect(JSON.parse(res.jws)).toEqual({ error: { code: "unauthorized" } });
   });
 
+  it("a refused request spends the caller's feed budget, so a gated feed cannot be probed for free", async () => {
+    await publish(w, "1.3.0");
+    await w.db.run(
+      "UPDATE release_config SET metadata_access = 'entitled' WHERE product = ?",
+      SLUG,
+    );
+    const stranger = { "cf-connecting-ip": "203.0.113.7" };
+    const statuses: number[] = [];
+    for (let i = 0; i < 62; i++)
+      statuses.push((await getFeed(w, "latest", "macos", stranger)).res.status);
+    // Sixty refusals on their merits, then the per-address limit (60 a minute) takes over:
+    // refusing a stranger is work the platform did on its behalf, so it is not free.
+    expect(statuses.slice(0, 60).every((s) => s === 401)).toBe(true);
+    expect(statuses.slice(60)).toEqual([429, 429]);
+    // Another address has its own budget.
+    const other = await getFeed(w, "latest", "macos", {
+      "cf-connecting-ip": "203.0.113.8",
+    });
+    expect(other.res.status).toBe(401);
+  });
+
   it("a channel that offers nothing and has no row is signed at seq 1 and stores nothing", async () => {
     const rows = async () => ({
       state: (
@@ -541,6 +562,30 @@ describe("GET /release/records/<sha256>", () => {
       );
       expect(res.status).toBe(401);
     }
+  });
+
+  it("a refused request spends the caller's record budget, so a gated product cannot be probed for free", async () => {
+    const p = await publish(w, "1.3.0");
+    await w.db.run(
+      "UPDATE release_config SET metadata_access = 'authenticated' WHERE product = ?",
+      SLUG,
+    );
+    const record = (ip: string) =>
+      call(
+        w.env,
+        w.db,
+        noFetch,
+        `${CONSOLE}/${SLUG}/release/records/${p.recordSha}`,
+        { headers: { "cf-connecting-ip": ip } },
+      );
+    const statuses: number[] = [];
+    for (let i = 0; i < 62; i++)
+      statuses.push((await record("203.0.113.7")).status);
+    // Sixty refusals on their merits, then the per-address limit (60 a minute) takes over.
+    expect(statuses.slice(0, 60).every((s) => s === 401)).toBe(true);
+    expect(statuses.slice(60)).toEqual([429, 429]);
+    // Another address has its own budget.
+    expect((await record("203.0.113.8")).status).toBe(401);
   });
 });
 

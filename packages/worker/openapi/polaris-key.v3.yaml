@@ -18492,8 +18492,10 @@ components:
                 allowedRange: { min: "2.0.0", max: "99.0.0" }
     ReleaseRateLimited:
       description: >
-        LEGACY FLAT. Two lanes: metadata (`changelog`, `install.sh`, `version`) at 30 per
-        60 s per client IP, artifacts (`dl`, appcasts) at 120. Only cache MISSES are metered.
+        LEGACY FLAT. Two lanes: metadata (`changelog`, `install.sh`, appcasts, `version`) at
+        30 per 60 s per client IP, artifacts (`dl` and the other byte routes) at 60 per 120 s.
+        Only cache MISSES are metered, and a request is counted before its access is decided,
+        so a refused one spends the budget too.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/FlatError" }
@@ -18505,8 +18507,10 @@ components:
               }
     UpstreamRateLimited:
       description: >
-        GitHub's quota is exhausted, so release truth is momentarily unknowable — LEGACY
-        FLAT, `cache-control: no-store`, with `Retry-After` when the upstream said when.
+        GitHub's quota is exhausted, or the product's own hourly budget for GitHub calls is
+        spent (4,000 calls, charged per call however many clients ask), so release truth is
+        momentarily unknowable — LEGACY FLAT, `cache-control: no-store`, with `Retry-After`
+        when the upstream said when, or for the rest of the product's hour.
         Deliberately NOT a 404: "we cannot tell you right now" must not be cached by a client
         as "it does not exist".
       headers:

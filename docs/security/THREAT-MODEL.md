@@ -3924,7 +3924,8 @@ the composer and the `seq` ceiling script.
   `pr-<n>` spellings, an unused manual channel, a product with no app release — is signed at the
   starting `seq` (1, or the ceiling) and writes no row, so an unauthenticated caller choosing
   channel names cannot grow D1 (R10). What is left is one Ed25519 signing per request, behind
-  the per-network 60/min `updateFeed` bucket (an IPv4 address or an IPv6 /64). Access is
+  the per-network 60/min `updateFeed` bucket (an IPv4 address or an IPv6 /64), which counts a
+  request before its access is decided, so a refused one spends it too. Access is
   the METADATA mode, checked per request
   before anything is composed or served; under `entitled` the licence must hold the CANONICAL
   channel. The composer is the first reader of `dist_rollouts` and `dist_availability` that
@@ -6794,7 +6795,9 @@ can serve the file, and a private repository's address is never handed out at al
 - **Hotlinking.** Bounded by `exp`, by `no-referrer`, and by the `releaseArtifact` per-IP rate
   limit, which runs before the ticket is checked. For a file held in a private GitHub repository
   that same limit bounds how much of the product's installation quota a ticket holder can spend
-  (the bytes host's GitHub leg, unchanged from a device download). The ticket is not bound to the client IP (Q6):
+  (the bytes host's GitHub leg, unchanged from a device download), and the product's
+  `releaseUpstream` budget (every GitHub API call, per product, 4,000 an hour) bounds what all
+  holders together can spend. The ticket is not bound to the client IP (Q6):
   dual-stack browsers, CGNAT and iCloud Private Relay change it mid-download, and the window is
   short.
 - **Revocation between mint and download.** Re-checked at token redemption: a licence disabled,

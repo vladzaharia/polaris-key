@@ -325,7 +325,7 @@
       "code": "upstream_rate_limited",
       "kind": "wire",
       "service": "release",
-      "description": "The release's upstream host rate-limited the Worker's fetch; retry later."
+      "description": "The release's upstream host rate-limited the Worker's fetch, or the product's own hourly budget for GitHub calls is spent; retry later (`Retry-After` says when)."
     },
     {
       "code": "server_misconfigured",

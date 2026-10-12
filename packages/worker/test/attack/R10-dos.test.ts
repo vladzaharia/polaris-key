@@ -12,7 +12,7 @@
  * `EvalError: Code generation from strings disallowed for this context` workerd throws.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb, NO_HOOKS, NO_INGEST } from "../helpers.js";
 import { recordRegexRuns, replaySteps } from "../regexReplay.js";
 import { singleUseMock } from "../singleUseMock.js";
@@ -709,6 +709,21 @@ describe("R10-03 rateLimitOk fail mode", () => {
     ).resolves.toBe(true);
   });
 
+  it("FIXED: the per-product upstream budget fails OPEN, so a limiter outage cannot stop a download", async () => {
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    env.RL = brokenRl("reject");
+    // `releaseUpstream` guards GitHub's installation quota — a cost, not a secret — and the
+    // failure it exists to prevent is a software-distribution outage, so it must not cause one.
+    await expect(
+      rateLimitOk(
+        env,
+        "djdl",
+        { bucket: "releaseUpstream", id: "djdl", limit: 4000, windowSec: 3600 },
+        NOW,
+      ),
+    ).resolves.toBe(true);
+  });
+
   it("FIXED: an unregistered bucket fails CLOSED (safe default for a new credential route)", async () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     env.RL = brokenRl("reject");
@@ -1361,6 +1376,9 @@ describe("R10-09 KV token records: no expirationTtl, revived after revocation", 
 //      distribution outage — the `release` bucket's registered fail mode);
 //   3. GitHub quota exhaustion now surfaces as 503, not 404, so it is distinguishable from
 //      a withdrawn release.
+//   4. a per-PRODUCT budget charged once per GitHub API call, so the per-IP lanes are not the
+//      only bound and rotating source addresses no longer defeats them
+//      (`releaseUpstream`; `attack/R6-release.test.ts`).
 
 /** A minimal Cache API, matching workerd's `caches.default` closely enough to exercise it. */
 class CacheMock {
@@ -1591,6 +1609,61 @@ describe("R10-05 public release surface no longer amplifies into GitHub", () => 
     expect(statuses.filter((s) => s === 429)).toEqual([]);
   });
 
+  describe("the artifact lane", () => {
+    // The lane is a fixed two-minute window. Start the clock on a window edge, so a run cannot
+    // straddle one and the window's length is measurable.
+    const START = Math.ceil(NOW / 120) * 120;
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"], now: START * 1000 });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("FIXED: an address gets 60 artifact requests per two minutes, refused ones included", async () => {
+      // A download is two GitHub calls, so 120 a minute from one address was 14,400 calls an
+      // hour against a 5,000-an-hour quota. 60 per two minutes sustains 3,600 calls an hour,
+      // under the product's upstream budget, and still lets a 60-request burst clear.
+      const db = makeTestDb();
+      await seedReleaseCfg(db);
+      // Every request is refused on its merits: a licensed deliverable and no credential. The
+      // lane still counts them, because deciding to refuse a stranger is work too.
+      await seedDeliveryAccess(db, "djdl", "licensed");
+      const env = releaseEnv(new KvMock());
+      const { fetchImpl, calls } = countingReleaseFetch(
+        releaseWith([asset("djdl-x86_64", 9)]),
+      );
+      const download = async (ip: string): Promise<number> =>
+        (
+          await handleRelease(
+            mkReq("GET", { "cf-connecting-ip": ip }),
+            env,
+            db,
+            makeReleaseProduct(),
+            "cli",
+            { version: "1.2.3", arch: "x86_64" },
+            fetchImpl,
+          )
+        ).status;
+
+      const statuses: number[] = [];
+      for (let i = 0; i < 62; i++) statuses.push(await download("203.0.113.5"));
+      expect(statuses.slice(0, 60).every((s) => s === 401)).toBe(true);
+      expect(statuses.slice(60)).toEqual([429, 429]);
+      // Another address has its own budget.
+      expect(await download("203.0.113.6")).toBe(401);
+
+      // The window is two minutes: a minute in, it is still spent; two minutes in, it is not.
+      vi.setSystemTime((START + 60) * 1000);
+      expect(await download("203.0.113.5")).toBe(429);
+      vi.setSystemTime((START + 120) * 1000);
+      expect(await download("203.0.113.5")).toBe(401);
+
+      // Nothing reached GitHub: access is still decided before any release state is computed.
+      expect(calls).toEqual([]);
+    });
+  });
+
   it("FIXED: a cache HIT is never metered, so a limited IP still gets served from cache", async () => {
     const db = makeTestDb();
     await seedReleaseCfg(db);
@@ -1648,6 +1721,28 @@ describe("R10-05 public release surface no longer amplifies into GitHub", () => 
     );
     // Contrast with the credential buckets in R10-03, which deliberately fail CLOSED.
     expect(res.status).toBe(200);
+  });
+
+  it("FIXED: a limiter outage still serves an artifact: the per-product upstream budget fails OPEN too", async () => {
+    const db = makeTestDb();
+    await seedReleaseCfg(db);
+    const env = releaseEnv(new KvMock());
+    env.RL = brokenRl("reject");
+    const { fetchImpl, calls } = countingReleaseFetch(
+      releaseWith([asset("djdl-x86_64", 9)]),
+    );
+    const res = await handleRelease(
+      mkReq("GET", {}),
+      env,
+      db,
+      makeReleaseProduct(),
+      "cli",
+      { version: "1.2.3", arch: "x86_64" },
+      fetchImpl,
+    );
+    expect(res.status).toBe(200);
+    // The GitHub calls under it were made: nothing was refused for want of a limiter answer.
+    expect(calls.some((url) => url.includes("/releases/assets/9"))).toBe(true);
   });
 
   it("FIXED: GitHub quota exhaustion is a 503, not the old indistinguishable 404", async () => {

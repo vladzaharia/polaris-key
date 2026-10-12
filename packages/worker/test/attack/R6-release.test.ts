@@ -11,7 +11,7 @@
  * now a regression test.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
@@ -29,13 +29,22 @@ import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/core/fingerprint.js";
-import { DEFAULT_SERVICES } from "../../src/core/services.js";
+import { DEFAULT_SERVICES, type ServicesMap } from "../../src/core/services.js";
+import { buildHooks } from "../../src/core/hooks.js";
+import { rateLimitOk } from "../../src/core/rateLimit.js";
+import { recordLimiterChecks } from "../rlMock.js";
+import { SERVICES } from "../../src/mount.js";
 import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import type { Arch } from "../../src/services/release/assets.js";
-import type {
-  Release,
-  ReleaseAsset,
+import {
+  UpstreamRateLimitedError,
+  type Release,
+  type ReleaseAsset,
 } from "../../src/services/release/github.js";
+import {
+  meterUpstreamCalls,
+  UPSTREAM_RATE_LIMIT,
+} from "../../src/services/release/gateway.js";
 import {
   handleReleaseSurface as handleRelease,
   seedDeliveryAccess,
@@ -2276,5 +2285,517 @@ describe("entitled: the version window holds for a moving selector", () => {
       expect(res.status, kind).not.toBe(403);
       expect(res.status, kind).not.toBe(401);
     }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The per-product upstream budget
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The per-IP release lanes bound what ONE address costs, and every one of them is keyed on the
+// caller, so the cheapest way round them is more source addresses. Nothing counted what the
+// PRODUCT spends, which is the only number the GitHub installation quota cares about, and
+// exhausting that quota turns every download, appcast and `install.sh` of every product on the
+// installation into a refusal. A download is also two API calls, not one (the selector, then the
+// asset), so an artifact lane sized as if a request were one call sat above the quota it defends.
+//
+// So every `api.github.com` call a release surface issues is charged to one bucket per product
+// (`releaseUpstream`, 4,000 an hour) at the fetch seam, and the per-address artifact lane is held
+// under that budget on its own. GREEN when a flood cannot spend more than the product's own
+// budget, however many addresses it comes from.
+
+/** The product's whole upstream budget for the hour `NOW` falls in, spent. */
+async function spendUpstreamBudget(env: Env): Promise<void> {
+  const rl = { bucket: "releaseUpstream", id: SLUG, ...UPSTREAM_RATE_LIMIT };
+  for (let i = 0; i < UPSTREAM_RATE_LIMIT.limit; i++)
+    await rateLimitOk(env, SLUG, rl, NOW);
+  expect(await rateLimitOk(env, SLUG, rl, NOW)).toBe(false);
+}
+
+/** An artifact request attributed to `ip` — `cf-connecting-ip` is what `clientIp` reads. */
+function fromIp(ip: string): Request {
+  return new Request("https://key.plrs.im/djdl/release/dl/1.2.3/djdl-arm64", {
+    headers: { "cf-connecting-ip": ip },
+  }) as unknown as Request;
+}
+
+/**
+ * A GitHub stub that counts what GitHub bills (`api.github.com` calls) apart from the signed
+ * storage hop an asset read is redirected to, which is not billed to the App's REST quota.
+ */
+function billedStub(
+  rel: Release,
+  opts: { redirect?: boolean } = {},
+): { fetchImpl: FetchImpl; seen: { api: number; storage: number } } {
+  const seen = { api: 0, storage: 0 };
+  const fetchImpl: FetchImpl = async (input) => {
+    const url = String(input);
+    const host = new URL(url).hostname;
+    if (host === "api.github.com") seen.api += 1;
+    else seen.storage += 1;
+    if (url.includes("/access_tokens"))
+      return new Response(JSON.stringify({ token: "ghs_installation_token" }), {
+        status: 200,
+      });
+    if (url.includes("/releases/tags/"))
+      return new Response(JSON.stringify(rel), { status: 200 });
+    if (url.includes("/releases/assets/"))
+      return opts.redirect
+        ? new Response(null, {
+            status: 302,
+            headers: {
+              location:
+                "https://objects.githubusercontent.com/github-production-release-asset/777?X-Amz-Expires=300",
+            },
+          })
+        : new Response("BINARY", { status: 200 });
+    if (host === "objects.githubusercontent.com")
+      return new Response("BINARY", { status: 200 });
+    return new Response("not found", { status: 404 });
+  };
+  return { fetchImpl, seen };
+}
+
+/** Run `fn` with a Cache API bound to `globalThis`, as workerd provides it. */
+async function withEdgeCache<T>(fn: () => Promise<T>): Promise<T> {
+  const store = new Map<string, Response>();
+  const g = globalThis as { caches?: unknown };
+  const prior = g.caches;
+  g.caches = {
+    default: {
+      match: async (r: Request) => store.get(r.url)?.clone(),
+      put: async (r: Request, res: Response) => {
+        store.set(r.url, res);
+      },
+    },
+  };
+  try {
+    return await fn();
+  } finally {
+    if (prior === undefined) delete g.caches;
+    else g.caches = prior;
+  }
+}
+
+describe("the per-product upstream budget", () => {
+  // The budget is a fixed hour. Pinning the clock keeps a long flood from straddling a window
+  // edge, and makes the Retry-After a known number.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("an artifact flood from rotating addresses cannot spend more GitHub calls than the product's budget", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { channel_workflow: null });
+    const env = envFor();
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64", 777)],
+    });
+    const { fetchImpl, seen } = billedStub(rel);
+
+    // Two GitHub calls per request, so this flood is worth ~5% MORE than the budget allows.
+    // Every request names a version nothing has resolved yet (so the resolution cache never
+    // absorbs it) and comes from a different address (so no per-address lane ever fires): the
+    // one thing left to stop it is the product's own budget.
+    const flood = Math.ceil(UPSTREAM_RATE_LIMIT.limit / 2) + 100;
+    const statuses: number[] = [];
+    for (let i = 0; i < flood; i++) {
+      const res = await handleRelease(
+        fromIp(`198.51.100.${i % 250}`),
+        env,
+        db,
+        makeProduct(),
+        "cli",
+        { version: `1.2.${i}`, arch: "arm64" },
+        fetchImpl,
+      );
+      statuses.push(res.status);
+    }
+
+    // THE ASSERTION THAT MATTERS: a count of GitHub calls, not a wall-clock measurement. The
+    // budget is charged once per call and checked BEFORE the call leaves, so it is an exact
+    // ceiling, not an approximation.
+    expect(seen.api).toBe(UPSTREAM_RATE_LIMIT.limit);
+    // …and the flood really did try to spend more than that.
+    expect(flood * 2).toBeGreaterThan(UPSTREAM_RATE_LIMIT.limit);
+
+    // No 429 anywhere: the per-address lanes never fired, so the bound above is the PRODUCT
+    // budget and nothing else.
+    expect(statuses.filter((s) => s === 429)).toEqual([]);
+    // Past the budget the answer is a 503, never the 404 a withdrawn release gets.
+    expect(statuses.filter((s) => s === 404)).toEqual([]);
+    expect(statuses.filter((s) => s === 503).length).toBeGreaterThan(0);
+    expect(statuses.at(-1)).toBe(503);
+    // Serving the early ones is the point: this is a delivery path, not a tarpit.
+    expect(statuses.filter((s) => s === 200).length).toBeGreaterThan(1000);
+
+    // An exhausted quota is a PLATFORM condition, so it wears the same 503 shape GitHub's own
+    // refusal maps to: a Retry-After for the wait, and never cached.
+    const refused = await handleRelease(
+      fromIp("203.0.113.9"),
+      env,
+      db,
+      makeProduct(),
+      "cli",
+      { version: "9.9.9", arch: "arm64" },
+      fetchImpl,
+    );
+    expect(refused.status).toBe(503);
+    expect(refused.headers.get("cache-control")).toBe("no-store");
+    expect(refused.headers.get("retry-after")).toBe(
+      String(
+        UPSTREAM_RATE_LIMIT.windowSec - (NOW % UPSTREAM_RATE_LIMIT.windowSec),
+      ),
+    );
+    expect(await refused.json()).toMatchObject({
+      error: "upstream_rate_limited",
+    });
+    // Still no further spend: the budget cannot be re-borrowed by asking again.
+    expect(seen.api).toBe(UPSTREAM_RATE_LIMIT.limit);
+  }, 120_000);
+
+  it("charges every api.github.com call and none of the storage hop behind it", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { channel_workflow: null });
+    const env = envFor();
+    const checks = recordLimiterChecks(env);
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64", 777)],
+    });
+    // The asset read redirects into GitHub's storage host, as GitHub's does.
+    const { fetchImpl, seen } = billedStub(rel, { redirect: true });
+
+    // The second request's signed URL is cached, so it reads the storage host without a
+    // second API call for the asset.
+    for (const version of ["1.2.3", "1.2.4"]) {
+      const res = await handleRelease(
+        fromIp("198.51.100.1"),
+        env,
+        db,
+        makeProduct(),
+        "cli",
+        { version, arch: "arm64" },
+        fetchImpl,
+      );
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe("BINARY");
+    }
+
+    expect(seen.storage).toBeGreaterThan(0);
+    // One check per call GitHub bills, to this product's bucket, keyed on the product and not
+    // on the caller…
+    const charges = checks.filter((c) => c.bucket === "releaseUpstream");
+    expect(charges).toHaveLength(seen.api);
+    for (const c of charges)
+      expect(c).toMatchObject({ id: SLUG, ...UPSTREAM_RATE_LIMIT });
+    // …beside the per-address lane, which is a different bucket keyed on the caller.
+    expect(
+      checks.filter((c) => c.bucket === "releaseArtifact").map((c) => c.id),
+    ).toEqual(["198.51.100.1", "198.51.100.1"]);
+  });
+
+  it("answers a spent budget on a metadata surface with the same 503, before anything leaves the isolate", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const env = envFor();
+    await spendUpstreamBudget(env);
+    const { fetchImpl, calls } = stubFetch([]);
+
+    const res = await handleRelease(
+      req("https://key.plrs.im/djdl/update/version"),
+      env,
+      db,
+      makeProduct(),
+      "version",
+      { version: "1.2.3" },
+      fetchImpl,
+    );
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("retry-after")).toBe(
+      String(
+        UPSTREAM_RATE_LIMIT.windowSec - (NOW % UPSTREAM_RATE_LIMIT.windowSec),
+      ),
+    );
+    expect(await res.json()).toMatchObject({ error: "upstream_rate_limited" });
+    expect(calls).toEqual([]);
+  });
+
+  it("serves a cached answer ahead of the limiter, charging neither budget, even once the product's budget is spent", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { channel_workflow: null });
+    const env = envFor();
+    const rel = release({ tag_name: "v1.2.3" });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+    await withEdgeCache(async () => {
+      const versionCheck = async (version: string): Promise<number> =>
+        (
+          await handleRelease(
+            req("https://key.plrs.im/djdl/update/version"),
+            env,
+            db,
+            makeProduct(),
+            "version",
+            { version },
+            fetchImpl,
+          )
+        ).status;
+
+      // A miss fills the cache; then the product's whole budget goes.
+      expect(await versionCheck("latest")).toBe(200);
+      await spendUpstreamBudget(env);
+
+      const checks = recordLimiterChecks(env);
+      for (let i = 0; i < 10; i++)
+        expect(await versionCheck("latest")).toBe(200);
+      // Ten hits that touched neither the per-address lane nor the product's budget…
+      expect(checks).toEqual([]);
+      // …while a selector nobody has cached meets the spent budget.
+      expect(await versionCheck("9.9.9")).toBe(503);
+    });
+  });
+
+  describe("the catalog's GitHub reads", () => {
+    const CHAIN: ServicesMap = {
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      distribution: { enabled: true },
+      update: { enabled: true },
+      identity: { enabled: false },
+      sync: { enabled: false },
+    };
+
+    /** `releaseCatalog.repositoryPublic` — the portal's gate — with `fetchImpl` as the platform `fetch`. */
+    async function repositoryPublic(
+      env: Env,
+      db: Db,
+      fetchImpl: FetchImpl,
+    ): Promise<boolean> {
+      const catalog = buildHooks(SERVICES, CHAIN, {
+        env,
+        db,
+        product: makeProduct(),
+        now: NOW,
+      }).releaseCatalog();
+      if (!catalog) throw new Error("Release is on, so the catalog exists");
+      const saved = globalThis.fetch;
+      globalThis.fetch = fetchImpl as typeof fetch;
+      try {
+        return await catalog.repositoryPublic();
+      } finally {
+        globalThis.fetch = saved;
+      }
+    }
+
+    it("charges the portal's repository check: one token mint and one repository read", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      const env = envFor();
+      const checks = recordLimiterChecks(env);
+      const seen: string[] = [];
+      const fetchImpl: FetchImpl = async (input) => {
+        seen.push(String(input));
+        return String(input).includes("/access_tokens")
+          ? new Response(JSON.stringify({ token: "ghs_installation_token" }), {
+              status: 200,
+            })
+          : new Response(
+              JSON.stringify({ private: false, visibility: "public" }),
+              {
+                status: 200,
+              },
+            );
+      };
+
+      expect(await repositoryPublic(env, db, fetchImpl)).toBe(true);
+      expect(seen).toHaveLength(2);
+      expect(checks.filter((c) => c.bucket === "releaseUpstream")).toHaveLength(
+        2,
+      );
+    });
+
+    it("answers `not public`, without asking GitHub, once the budget is spent", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      const env = envFor();
+      await spendUpstreamBudget(env);
+      const seen: string[] = [];
+      const fetchImpl: FetchImpl = async (input) => {
+        seen.push(String(input));
+        return new Response("{}", { status: 200 });
+      };
+
+      expect(await repositoryPublic(env, db, fetchImpl)).toBe(false);
+      expect(seen).toEqual([]);
+    });
+  });
+});
+
+describe("meterUpstreamCalls", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("charges the product's bucket for api.github.com and for nothing else", async () => {
+    const env = envFor();
+    const checks = recordLimiterChecks(env);
+    const reached: string[] = [];
+    const metered = meterUpstreamCalls(
+      env,
+      SLUG,
+      NOW,
+      async (input: string) => {
+        reached.push(input);
+        return new Response("ok");
+      },
+    );
+    const urls = [
+      // The one billed call.
+      "https://api.github.com/repos/acme/djdl/releases/latest",
+      // The signed storage hop an asset read is redirected to.
+      "https://objects.githubusercontent.com/github-production-release-asset/1",
+      // Neither is the API host…
+      "https://github.com/acme/djdl/releases/download/v1/djdl",
+      "https://uploads.api.github.com/repos/acme/djdl",
+      "https://api.github.com.attacker.example/repos/acme/djdl",
+      // …and a string that is no URL is passed through, never charged.
+      "not a url",
+    ];
+    for (const url of urls) await metered(url);
+
+    // Every call still reaches the underlying fetch…
+    expect(reached).toEqual(urls);
+    // …and exactly one was charged, to the product's bucket, keyed on the product.
+    expect(checks).toEqual([
+      { bucket: "releaseUpstream", id: SLUG, ...UPSTREAM_RATE_LIMIT, now: NOW },
+    ]);
+  });
+
+  it("reads the URL of a Request as well as a string", async () => {
+    const env = envFor();
+    const checks = recordLimiterChecks(env);
+    const metered = meterUpstreamCalls<Request | string>(
+      env,
+      SLUG,
+      NOW,
+      async () => new Response("ok"),
+    );
+    await metered(
+      new Request(
+        "https://api.github.com/repos/acme/djdl",
+      ) as unknown as Request,
+    );
+    await metered(
+      new Request(
+        "https://objects.githubusercontent.com/x",
+      ) as unknown as Request,
+    );
+    expect(checks).toHaveLength(1);
+  });
+
+  it("refuses with the wait to the next window once the budget is spent, and never calls through", async () => {
+    const env = envFor();
+    await spendUpstreamBudget(env);
+    let reached = 0;
+    const underlying: FetchImpl = async () => {
+      reached += 1;
+      return new Response("ok");
+    };
+    const metered = meterUpstreamCalls(env, SLUG, NOW, underlying);
+
+    const refusal = await metered(
+      "https://api.github.com/repos/acme/djdl/releases/latest",
+    ).catch((err: unknown) => err);
+    expect(refusal).toBeInstanceOf(UpstreamRateLimitedError);
+    expect((refusal as UpstreamRateLimitedError).retryAfterSeconds).toBe(
+      UPSTREAM_RATE_LIMIT.windowSec - (NOW % UPSTREAM_RATE_LIMIT.windowSec),
+    );
+    expect(reached).toBe(0);
+
+    // The storage host is not metered, so an asset already redirected there still streams.
+    await metered("https://objects.githubusercontent.com/signed");
+    expect(reached).toBe(1);
+
+    // The next hour is a fresh budget.
+    const later = meterUpstreamCalls(
+      env,
+      SLUG,
+      NOW + UPSTREAM_RATE_LIMIT.windowSec,
+      underlying,
+    );
+    expect((await later("https://api.github.com/repos/acme/djdl")).ok).toBe(
+      true,
+    );
+    expect(reached).toBe(2);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The release limiter runs before access enforcement
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Enforcing access first meant a caller the platform refuses paid nothing for being refused. On a
+// `licensed` or `entitled` product an unauthenticated client could collect 401s and 403s forever,
+// at whatever rate it liked, and enumerate selectors (which versions exist, which channels a
+// grant covers) for free. The budget exists to bound work done on behalf of a stranger, and
+// deciding to refuse a stranger is work.
+
+describe("the release limiter runs before access enforcement", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("an unauthenticated caller cannot enumerate a licensed surface for free", async () => {
+    const db = makeTestDb();
+    // `licensed` metadata: an anonymous caller is refused for every selector it names.
+    await seedReleaseConfig(db, { metadata_access: "licensed" });
+    const env = envFor();
+    const { fetchImpl, calls } = stubFetch([]);
+    const probe = async (ip: string, version: string): Promise<number> =>
+      (
+        await handleRelease(
+          new Request(`https://key.plrs.im/djdl/update/version?v=${version}`, {
+            headers: { "cf-connecting-ip": ip },
+          }) as unknown as Request,
+          env,
+          db,
+          makeProduct(),
+          "version",
+          { version },
+          fetchImpl,
+        )
+      ).status;
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++)
+      statuses.push(await probe("203.0.113.5", `1.2.${i}`));
+
+    // The first 30 are refused on their merits; past the metadata budget the limiter takes
+    // over, because being turned away is work the platform did on a stranger's behalf.
+    expect(statuses.slice(0, 30).every((s) => s === 401)).toBe(true);
+    expect(statuses[30]).toBe(429);
+    expect(statuses.at(-1)).toBe(429);
+    // Another address is untouched: it is refused on the merits, not limited.
+    expect(await probe("203.0.113.6", "1.2.0")).toBe(401);
+    // Nothing ever reached GitHub: access is still enforced before a single byte of release
+    // state is computed.
+    expect(calls).toEqual([]);
   });
 });

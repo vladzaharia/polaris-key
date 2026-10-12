@@ -554,6 +554,18 @@ export async function handleFeedRoute(
   const channel = canonicalFeedChannel(requested, cfg);
   if (channel === null) return null;
 
+  // The limiter first, so a refusal spends the caller's budget like any other request: refusing
+  // a stranger is a licence read and an entitlement merge, and charging only the callers who get
+  // through would leave a gated feed free to enumerate.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "updateFeed", id: clientNetwork(req), ...FEED_RATE_LIMIT },
+      now,
+    ))
+  )
+    return harden(errorResponse(429, "rate_limited", "too many feed requests"));
   // Access before any composition: the metadata mode; under `entitled`, the canonical channel's
   // grant, checked per request before the stored body is served.
   const refused = await enforceReleaseAccess(
@@ -567,15 +579,6 @@ export async function handleFeedRoute(
     now,
   );
   if (refused) return harden(refused);
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { bucket: "updateFeed", id: clientNetwork(req), ...FEED_RATE_LIMIT },
-      now,
-    ))
-  )
-    return harden(errorResponse(429, "rate_limited", "too many feed requests"));
   const mode = accessModeFor(artifactPolicy(cfg), "feed");
   const gated = mode !== "public";
 

@@ -9,6 +9,9 @@
  * matters to trust. A record is immutable, so it is `public, max-age=31536000, immutable` when
  * the release METADATA mode is `public`, and the gated blob's `private, no-store` otherwise.
  *
+ * Every request is counted against the caller's `releaseRecord` budget before access is decided,
+ * as Distribution's blob route counts its own, so a refused request spends it too.
+ *
  * Access, in the order of Distribution's blob route:
  *
  *   1. the metadata mode's request-level check. Under `entitled` it proves only a usable licence
@@ -60,6 +63,21 @@ export async function handleRecordRoute(
   const cfg = await getReleaseConfig(db, product.slug);
   if (!cfg) return null;
 
+  // Counted before access is decided, so a refused request spends the caller's budget like any
+  // other: refusing a stranger is work, and a free refusal would let a probe walk hashes on a
+  // gated product.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "releaseRecord", id: clientNetwork(req), ...RECORD_RATE_LIMIT },
+      now,
+    ))
+  )
+    return harden(
+      errorResponse(429, "rate_limited", "too many release record requests"),
+    );
+
   const mode = accessModeFor(artifactPolicy(cfg), "record");
   // 1. The request-level check: under `entitled`, a usable licence (no channel or version yet).
   const denied = await accessRefusal(
@@ -73,18 +91,6 @@ export async function handleRecordRoute(
     now,
   );
   if (denied) return harden(denied);
-
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { bucket: "releaseRecord", id: clientNetwork(req), ...RECORD_RATE_LIMIT },
-      now,
-    ))
-  )
-    return harden(
-      errorResponse(429, "rate_limited", "too many release record requests"),
-    );
 
   // 2. An unknown hash: the plain not-found.
   const row = await getRecordByHash(db, product.slug, rawHash);
