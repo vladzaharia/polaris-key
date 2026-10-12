@@ -159,6 +159,35 @@ describe("compileLinearPattern — refuses what it cannot match linearly", () =>
       /instruction budget/,
     );
   });
+
+  it("rejects nested empty-body `{n}` repeats, in bounded time", () => {
+    // `(?:)` emits no instructions, so a budget charged only on emission never fires while the
+    // expansion still recurses: five nested `{100}`s is 10^10 traversals of a zero-instruction
+    // program. Compilation has to refuse it, and refuse it *fast*: the point is compile-time
+    // cost, which no assertion on the throw can see.
+    const bomb = "(?:(?:(?:(?:(?:){100}){100}){100}){100}){100}";
+    const t0 = performance.now();
+    expect(() => compileLinearPattern(bomb)).toThrow(UnsupportedPatternError);
+    expect(() => compileLinearPattern(bomb)).toThrow(/instruction budget/);
+    // The three-level form from the report refuses just as fast.
+    expect(() => compileLinearPattern("(?:(?:(?:){100}){100}){100}")).toThrow(
+      /instruction budget/,
+    );
+    // A budget of a couple of thousand steps is microseconds; a second is pure CI slack.
+    expect(performance.now() - t0).toBeLessThan(1000);
+  });
+
+  it("charges traversal cheaply enough that real patterns still compile", () => {
+    // The guard rejects runaway expansion, not ordinary bounded repetition. A pattern that
+    // expands to ~1200 charged steps, far more than any catalog `pattern` carries, must still
+    // compile and still match.
+    const big = compileLinearPattern("^(?:[a-z]{100}){4}$");
+    expect(big.test("a".repeat(400))).toBe(true);
+    expect(big.test("a".repeat(399))).toBe(false);
+    // An empty body is legal input, not an attack, as long as it does not nest.
+    expect(compileLinearPattern("^(?:){3}$").test("")).toBe(true);
+    expect(new RegExp("^(?:){3}$", "u").test("")).toBe(true);
+  });
 });
 
 describe("compileLinearPattern — ReDoS (R10-09 knock-on)", () => {

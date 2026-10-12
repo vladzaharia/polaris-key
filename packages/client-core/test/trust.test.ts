@@ -280,3 +280,76 @@ describe("the ?signer= retry order (§2.3)", () => {
     expect(jwsHeaderKid("garbage")).toBeNull();
   });
 });
+
+// A kid is an opaque string with no reserved values (§1). A trust set built on a plain object
+// loses or misreads the kids that name members of `Object.prototype`, in one language only.
+describe("a kid is an ordinary string: `__proto__` and `constructor` are not special (§1)", () => {
+  const PROTO_KIDS = ["__proto__", "constructor", "toString", "hasOwnProperty"];
+
+  it("stores a published `__proto__` key in the discovered set instead of dropping it", async () => {
+    const jws = await manifest("a", [
+      entry("a", "active"),
+      { ...entry("b", "active"), kid: "__proto__" },
+    ]);
+    const r = await verifyTrustManifest(jws, { pinned: pins("a"), ...reload });
+    expect(r.doc).not.toBeNull();
+    expect(Object.keys(r.discovered).sort()).toEqual(["__proto__", "kid-a"]);
+    expect(
+      Object.getOwnPropertyDescriptor(r.discovered, "__proto__")?.value,
+    ).toBe(keys.b.pub);
+    // The merge keeps it, and the pins still spread last.
+    const merged = mergeTrust(usablePins(pins("a")), r.discovered);
+    expect(Object.keys(merged).sort()).toEqual(["__proto__", "kid-a"]);
+    expect(Object.getOwnPropertyDescriptor(merged, "__proto__")?.value).toBe(
+      keys.b.pub,
+    );
+  });
+
+  it("is not refused as a substitution against a pin that does not exist", async () => {
+    for (const kid of PROTO_KIDS) {
+      const jws = await manifest("a", [
+        entry("a", "active"),
+        { ...entry("b", "active"), kid },
+      ]);
+      const r = await verifyTrustManifest(jws, {
+        pinned: pins("a"),
+        ...reload,
+      });
+      expect(r.doc, kid).not.toBeNull();
+      expect(Object.keys(r.discovered).sort(), kid).toEqual(
+        [kid, "kid-a"].sort(),
+      );
+    }
+  });
+
+  it("keeps a pin named `__proto__` a pin, and a manifest cannot substitute it", async () => {
+    // A COMPUTED key: the literal `__proto__: x` form sets the prototype and makes no member.
+    const pinned: TrustSet = {
+      [keys.a.kid]: keys.a.pub,
+      ["__proto__"]: keys.b.pub,
+    };
+    expect(Object.keys(usablePins(pinned))).toEqual([keys.a.kid, "__proto__"]);
+    const same = await manifest("a", [
+      entry("a", "active"),
+      { ...entry("b", "active"), kid: "__proto__" },
+    ]);
+    expect(
+      (await verifyTrustManifest(same, { pinned, ...reload })).doc,
+    ).not.toBeNull();
+    const other = await manifest("a", [
+      entry("a", "active"),
+      { ...entry("c", "active"), kid: "__proto__" },
+    ]);
+    expect(
+      (await verifyTrustManifest(other, { pinned, ...reload })).doc,
+    ).toBeNull();
+  });
+
+  it("an entry with no kid is fatal: the whole manifest is refused, not skipped", async () => {
+    const { kid: _kid, ...noKid } = entry("b", "active");
+    const jws = await manifest("a", [entry("a", "active"), noKid]);
+    const r = await verifyTrustManifest(jws, { pinned: pins("a"), ...reload });
+    expect(r.doc).toBeNull();
+    expect(r.discovered).toEqual({});
+  });
+});

@@ -1107,3 +1107,91 @@ describe("R4-07: desktop bridge has no handshake, capability token or origin che
     expect(audit).toEqual(["signOut", "submitKey:PKEY-ATTACKER-SEAT-BURNER"]);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// The unsigned `blocked` hint could LOOSEN the gate, not only tighten it.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+describe("the unsigned blocked hint's vocabulary", () => {
+  // §4.1 keeps `blocked` unsigned because it is display state and a forged one can only tighten
+  // the gate. That is a claim about the VOCABULARY, and `BlockReason` is a TypeScript type:
+  // erased at runtime, with no membership check anywhere on the chain. The gate returned
+  // `blocked.reason` verbatim AS the `LicenseStatus`, and `isUsable` answers true for
+  // `ok`/`grace`/`not-applicable`, so a two-field JSON file was a licence bypass, and `blocked`
+  // is evaluated BEFORE `!doc`, so it needed no document at all.
+  it("a cache record claiming blocked.reason 'ok' does not license the client, with or without a token", async () => {
+    for (const token of [TOKEN, null]) {
+      const configDir = tempConfigDir();
+      // A VALID v3 record, so the version-discard rule does not do the work for us, with no
+      // documents, no trust manifest and no signature anywhere in it.
+      plantCache(
+        configDir,
+        { v: CACHE_VERSION, blocked: { reason: "ok" } },
+        DEVICE,
+        token,
+      );
+      const client = clientOn(configDir);
+      await client.init();
+      expect(client.isLicensed()).toBe(false);
+      expect(client.status().status).not.toBe("ok");
+      expect(client.license.isEntitled("pro")).toBe(false);
+    }
+  });
+
+  it("every usable status is refused as a planted blocked.reason", async () => {
+    // The three `isUsable` answers plus a value that is not a status at all: a fix that
+    // special-cased the literal "ok" would pass the case above and fail here.
+    for (const reason of ["ok", "grace", "not-applicable", "definitely-fine"]) {
+      const configDir = tempConfigDir();
+      plantCache(configDir, { v: CACHE_VERSION, blocked: { reason } }, DEVICE);
+      const client = clientOn(configDir);
+      await client.init();
+      expect(client.isLicensed(), `blocked.reason=${reason}`).toBe(false);
+    }
+  });
+
+  it("an IN-vocabulary planted reason still reaches the gate: the fix narrows the hint, it does not delete it", async () => {
+    const configDir = tempConfigDir();
+    plantCache(
+      configDir,
+      {
+        v: CACHE_VERSION,
+        blocked: {
+          reason: "channel-not-entitled",
+          allowedRange: { min: "1.0.0" },
+        },
+      },
+      DEVICE,
+    );
+    const client = clientOn(configDir);
+    await client.init();
+    // Without this the whole hint could have been dropped and the cases above would still pass,
+    // at the cost of the feature.
+    expect(client.status().status).toBe("channel-not-entitled");
+    expect(client.status().allowedRange).toEqual({ min: "1.0.0" });
+  });
+
+  it("a 403 body claiming a usable reason is coerced to the stricter one, not honoured", async () => {
+    // The other ingress: `reason` is lifted verbatim out of attacker-shaped response JSON. A
+    // hostile (or intercepted) control plane answering 403 must not be able to spell its way
+    // into a licensed client.
+    const configDir = tempConfigDir();
+    plantCache(configDir, { v: CACHE_VERSION }, DEVICE);
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const u = new URL(String(input));
+      if (u.pathname.endsWith("/license/document")) {
+        return new Response(
+          JSON.stringify({ error: { reason: "not-applicable" } }),
+          { status: 403, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    const client = clientOn(configDir, { fetchImpl });
+    await client.init();
+    await client.sync();
+    expect(client.isLicensed()).toBe(false);
+    expect(client.status().status).toBe("version-too-old");
+    // The coercion happened at the EDGE, so the poisoned string never reached the disk.
+    expect(readCacheFile(configDir)?.blocked?.reason).toBe("version-too-old");
+  });
+});

@@ -459,3 +459,62 @@ describe("browser facts", () => {
     });
   });
 });
+
+describe("bearer mode: the unsigned blocked hint's vocabulary", () => {
+  // The gate returns `blocked.reason` AS the status and `isUsable` says yes to `ok`, so a hint
+  // outside the block vocabulary must never reach it: not from a stored record (IndexedDB is
+  // writable by any script on the page) and not from a 403 body.
+  it("a stored record claiming blocked.reason 'ok' does not license the page", async () => {
+    const s = await server();
+    const factory = await seededFactory();
+    const store = indexedDbStore("acme", { factory })!;
+    await store.setToken("pkeyt_planted");
+    await store.writeCache({ v: 3, blocked: { reason: "ok" } } as never);
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      auth: "bearer",
+      trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
+      fetchImpl: (async () => {
+        throw new TypeError("Failed to fetch");
+      }) as typeof fetch,
+      now: () => NOW,
+      store,
+    });
+    await settled(adapter);
+    expect(adapter.snapshot().status).not.toBe("ok");
+    expect(adapter.isEntitled("pro")).toBe(false);
+    adapter.dispose();
+  });
+
+  it("a 403 body claiming a usable reason is coerced to the stricter one; an in-vocabulary one is honoured", async () => {
+    const s = await server();
+    let block: unknown = null;
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) =>
+      block !== null &&
+      new URL(String(input)).pathname === "/acme/license/document"
+        ? new Response(JSON.stringify(block), {
+            status: 403,
+            headers: { "content-type": "application/json" },
+          })
+        : s.fetchImpl(input, init)) as typeof fetch;
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      auth: "bearer",
+      trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
+      fetchImpl,
+      now: () => NOW,
+      store: indexedDbStore("acme", { factory: await seededFactory() })!,
+    });
+    await settled(adapter);
+    await adapter.submitKey("pkey_good");
+    expect(adapter.snapshot().status).toBe("ok");
+    block = { error: { reason: "not-applicable" } };
+    await adapter.refresh();
+    expect(adapter.snapshot().status).toBe("version-too-old");
+    expect(adapter.isEntitled("pro")).toBe(false);
+    block = { error: { reason: "channel-not-entitled" } };
+    await adapter.refresh();
+    expect(adapter.snapshot().status).toBe("channel-not-entitled");
+    adapter.dispose();
+  });
+});

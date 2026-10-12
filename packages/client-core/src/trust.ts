@@ -53,16 +53,17 @@ export function mergeTrust(pinned: TrustSet, discovered: TrustSet): TrustSet {
   return { ...discovered, ...pinned };
 }
 
-/** The usable pins: the pins minus the tombstoned kids (§1 tombstone rule 4). */
+/** The usable pins: the pins minus the tombstoned kids (§1 tombstone rule 4). Built with
+ *  `Object.fromEntries`, which DEFINES each kid as an own property, so a pin named `__proto__`
+ *  stays a pin instead of being assigned into the object's prototype and lost. */
 export function usablePins(
   pinned: TrustSet,
   tombstones: Iterable<string> = [],
 ): TrustSet {
   const dead = new Set(tombstones);
-  const out: TrustSet = {};
-  for (const [kid, key] of Object.entries(pinned))
-    if (!dead.has(kid)) out[kid] = key;
-  return out;
+  return Object.fromEntries(
+    Object.entries(pinned).filter(([kid]) => !dead.has(kid)),
+  );
 }
 
 export interface TrustManifestOptions {
@@ -158,7 +159,12 @@ export async function verifyTrustManifest(
   }
   if (!Array.isArray(doc.keys)) return REJECTED;
 
-  const discovered: TrustSet = {};
+  // A null-prototype map, so a manifest publishing a kid of `__proto__` (or `constructor`)
+  // STORES a key under that name instead of writing the object's prototype and dropping the
+  // entry. A kid is an opaque string with no reserved values: Python's dict and Swift's
+  // Dictionary store `__proto__` like any other, and a trust set that silently loses an entry in
+  // one language only is one the corpus could not pin.
+  const discovered = Object.create(null) as TrustSet;
   const revoked = new Set<string>();
   for (const key of doc.keys) {
     if (!key || typeof key !== "object") return REJECTED;
@@ -166,8 +172,13 @@ export async function verifyTrustManifest(
     const status = (key as { status?: unknown }).status;
     if (typeof key.kid !== "string" || typeof key.publicKey !== "string")
       return REJECTED;
-    // Substitution attempt — reject the manifest, keep the previous trust set (§1).
-    const pinnedBytes = opts.pinned[key.kid];
+    // Substitution attempt — reject the manifest, keep the previous trust set (§1). Read OWN
+    // properties only: a plain `pinned[kid]` for `__proto__` answers `Object.prototype`, which
+    // is neither `undefined` nor the published bytes, so the manifest was refused as a
+    // substitution against a pin that does not exist.
+    const pinnedBytes = hasOwn(opts.pinned, key.kid)
+      ? opts.pinned[key.kid]
+      : undefined;
     if (pinnedBytes !== undefined && pinnedBytes !== key.publicKey)
       return REJECTED;
     if (status === "revoked") {

@@ -80,6 +80,7 @@ export {
 export {
   browserAdapter,
   BrowserAdapter,
+  InsecureBaseUrlError,
   splitSessionDoc,
   type BrowserAdapterOptions,
 } from "./browser/browserAdapter.js";
@@ -177,6 +178,7 @@ export {
   PolarisError,
   UnsupportedError,
   initialState,
+  isSecureTransportUrl,
   SERVICE_SLUGS,
   anyBusy,
   copyServices,

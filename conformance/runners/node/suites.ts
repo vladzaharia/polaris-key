@@ -274,6 +274,9 @@ interface JwsCase extends NonWire {
   trust: TrustSet;
   typ?: TypV3;
   maxPayloadBytes?: number;
+  /** Drive this vector through a call site that names NO `typ`. `typ` above still records what
+   *  the ARTIFACT is; this says what the CALLER asked for (the raised cap needs its type). */
+  callSiteOmitsTyp?: boolean;
   expect: { verify: "ok" | "fail"; kid?: string; doc?: unknown };
 }
 
@@ -560,6 +563,11 @@ export interface MatrixRow {
     graceUntil?: number;
     lastSyncUnauthorized?: boolean;
     lastVerifiedAt?: number;
+    /** The unsigned hint supplied DIRECTLY, replacing whatever the build gate would derive. A
+     *  poisoned cache record is exactly a hint no build gate produced, so the vocabulary rows
+     *  cannot be expressed through `gate` at all. `reason` is `string`, not `BlockReason`,
+     *  because the point of those rows is a value outside the union. */
+    blocked?: { reason: string; allowedRange?: AllowedRange };
   };
   expect: {
     status: string;
@@ -936,8 +944,10 @@ export function defineCorpusSuites({
       it(`${c.id} → verify:${c.expect.verify}`, async () => {
         const result = await verifyJws(c.jws, c.trust, {
           // §2 — every vector names its `typ`; a verifier that did not would be asking for
-          // no domain separation at all, which no shipping call site does.
-          typ: c.typ,
+          // no domain separation at all, which no shipping call site does. The one exception is
+          // `callSiteOmitsTyp`, which exists to prove that asking for §1's raised cap WITHOUT
+          // the type it is granted to is refused.
+          typ: c.callSiteOmitsTyp === true ? undefined : c.typ,
           // §1 — the raised cap travels with the vector, so a runner cannot accidentally
           // grant bundle sizes to ordinary documents.
           maxPayloadBytes: c.maxPayloadBytes,
@@ -1110,7 +1120,12 @@ export function defineCorpusSuites({
   describe(`gate-matrix v${matrix.gateMatrixVersion} (§5)`, () => {
     for (const row of matrix.rows) {
       it(row.name, () => {
-        const blocked = checkBuildGate(row.gate);
+        // A fixture-supplied hint WINS over the derived one: it models the unsigned value read
+        // back off disk (or off the wire), which is what `blocked` is at every real call site.
+        const derived = checkBuildGate(row.gate);
+        const blocked = (row.license.blocked ?? derived) as
+          | BlockedState
+          | undefined;
         const state = licenseState({
           licenseServiceEnabled: row.license.licenseServiceEnabled,
           activation: row.license.activation,
@@ -1125,7 +1140,7 @@ export function defineCorpusSuites({
         // `reason` describes the DERIVED build-gate hint, which on the unactivated+blocked row
         // is deliberately not the status — that row is the whole point of v3's ordering.
         if (row.expect.reason !== undefined) {
-          expect(blocked?.reason, `${row.name} reason`).toBe(row.expect.reason);
+          expect(derived?.reason, `${row.name} reason`).toBe(row.expect.reason);
         }
         expect(state.allowedRange, `${row.name} allowedRange`).toEqual(
           row.expect.allowedRange,
@@ -1138,7 +1153,7 @@ export function defineCorpusSuites({
   describe("gate-matrix v2 covers the P0-04 channel rows", () => {
     it("has the 18 channel rows and no longer has the retired dev-bypass row", () => {
       const names = new Set(matrix.rows.map((r) => r.name));
-      expect(matrix.rows).toHaveLength(38);
+      expect(matrix.rows).toHaveLength(43);
       for (const name of P0_04_CHANNEL_ROWS)
         expect(names, name).toContain(name);
       expect(names).not.toContain(
@@ -1217,7 +1232,7 @@ export function defineCorpusSuites({
       (c: JwsCase) => ({
         jws: c.jws,
         keys: c.trust,
-        typ: c.typ,
+        typ: c.callSiteOmitsTyp === true ? undefined : c.typ,
         cap: c.maxPayloadBytes,
       }),
     ],

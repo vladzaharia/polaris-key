@@ -57,7 +57,7 @@ const JWS_FAMILIES: Record<
   jwsCases: (c) => ({
     jws: c.jws,
     keys: c.trust,
-    typ: c.typ,
+    typ: c.callSiteOmitsTyp ? undefined : c.typ,
     cap: c.maxPayloadBytes ?? 65536,
   }),
   licenseDocCases: (c) => ({
@@ -355,11 +355,11 @@ export function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
     }
   }
   const counts: Record<string, number> = {
-    jwsCases: 85,
+    jwsCases: 86,
     // plans/SP-54.md §4: three `profile.user` acceptance cases appended to the 25.
     licenseDocCases: 28,
     configDocCases: 21,
-    trustCases: 30,
+    trustCases: 32,
     bundleCases: 23,
     feedCases: 80,
     feedContentCases: P13_COUNTS.feedContentCases,

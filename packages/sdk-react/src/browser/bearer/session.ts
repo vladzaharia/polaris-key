@@ -65,10 +65,12 @@ import {
   type JSONValue,
 } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
-import type {
-  AllowedRange,
-  BlockReason,
-  LicenseDoc,
+import {
+  STRICTEST_BLOCK_REASON,
+  isBlockReason,
+  type AllowedRange,
+  type BlockReason,
+  type LicenseDoc,
 } from "@polaris-key/protocol/license";
 import {
   Arch,
@@ -407,7 +409,12 @@ export class BearerSession {
           : null,
       doc: this.license?.doc ?? null,
       lastSyncUnauthorized: this.record?.lastSyncUnauthorized === true,
-      blocked: this.record?.blocked ?? null,
+      // Unsigned, and kept in storage a page script can write: a reason outside the block
+      // vocabulary is not a hint this session wrote, and is dropped rather than handed to a gate
+      // that returns the reason AS the status (`isBlockReason`).
+      blocked: isBlockReason(this.record?.blocked?.reason)
+        ? this.record.blocked
+        : null,
       lastVerifiedAt: this.lastVerifiedAt,
       highWaterMark: this.floor,
       config: this.config?.doc.config ?? {},
@@ -850,16 +857,24 @@ export class BearerSession {
       }
       case 403: {
         const b = (await res.json().catch(() => ({}))) as {
-          error?: { code?: string; reason?: BlockReason };
-          reason?: BlockReason;
+          error?: { code?: string; reason?: unknown };
+          reason?: unknown;
           allowedRange?: AllowedRange;
         };
-        const reason =
-          b.error?.reason ??
-          b.reason ??
+        // The reason is lifted from attacker-shaped JSON and ends up, unsigned, as the gate's
+        // status: a body claiming `{"error":{"reason":"ok"}}` must not turn a 403 into a licensed
+        // client. Anything outside the block vocabulary falls back exactly as a body that says
+        // nothing at all does.
+        const claimed = isBlockReason(b.error?.reason)
+          ? b.error?.reason
+          : isBlockReason(b.reason)
+            ? b.reason
+            : undefined;
+        const reason: BlockReason =
+          claimed ??
           (b.error?.code === "channel_not_allowed"
             ? "channel-not-entitled"
-            : "version-too-old");
+            : STRICTEST_BLOCK_REASON);
         return { kind: "blocked", reason, allowedRange: b.allowedRange };
       }
       case 200:

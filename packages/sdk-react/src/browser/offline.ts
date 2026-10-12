@@ -28,6 +28,7 @@
 import {
   CACHE_VERSION,
   compareKidBytes,
+  effectiveNow,
   highWaterMark,
   inspectBundle,
   loadPinRevocations,
@@ -368,12 +369,17 @@ export async function importOfflineBundle(
   });
   if (held.bundle !== null && record.cache?.bundle === jws)
     return { bundleId: held.bundle.bundleId, imported: [...held.bundle.docs] };
+  // §7 step 2 checks the bundle's own import window on NETWORK-path freshness, and every other
+  // freshness decision here runs at `max(systemClock, floor)`: the §4.2 monotonic floor, which
+  // exists so a rolled-back clock buys nothing. The raw page clock would let anyone who can set
+  // the date back reopen a lapsed 30-day import window. The floor only ever rises, and only from
+  // artifacts that just re-verified, so using it can extend no window.
   const result = await inspectBundle(jws, {
     pinned: opts.pinned,
     tombstones: held.tombstones,
     product,
     deviceId: record.deviceId,
-    now: opts.now,
+    now: effectiveNow(opts.now, held.highWaterMark),
     floors: {
       license: held.license?.issuedAt ?? null,
       config: held.config?.issuedAt ?? null,

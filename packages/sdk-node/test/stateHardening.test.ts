@@ -22,7 +22,12 @@ import { describe, expect, it } from "vitest";
 import { PolarisError } from "@polaris-key/client-core";
 import { CoreContext, normalizeBaseUrl } from "../src/core/context.js";
 import { withRedirectPolicy } from "../src/core/redirect.js";
-import { FileStore, InMemoryStore, KeyringStore } from "../src/core/store.js";
+import {
+  FileStore,
+  InMemoryStore,
+  KeyringStore,
+  MAX_STATE_FILE_BYTES,
+} from "../src/core/store.js";
 import { redactOnPrint } from "../src/core/redact.js";
 import {
   exposePolarisBridge,
@@ -349,5 +354,43 @@ describe("the bridge's default sender", () => {
     expect((await call({ url: "https://app.example.com/x" })).ok).toBe(true);
     expect((await call({ url: "https://evil.test/x" })).ok).toBe(false);
     expect((await call({ url: "app://main/" })).ok).toBe(false);
+  });
+});
+
+describe("state-file reads are bounded at MAX_STATE_FILE_BYTES", () => {
+  it("reads a file exactly at the cap and treats one byte over as absent", async () => {
+    expect(MAX_STATE_FILE_BYTES).toBe(1024 * 1024);
+    const root = tmp();
+    const s = new FileStore("djdl", root);
+    const token = join(root, "djdl", "token");
+    writeFileSync(token, "t".repeat(MAX_STATE_FILE_BYTES), { mode: 0o600 });
+    expect((await s.getToken())?.length).toBe(MAX_STATE_FILE_BYTES);
+    writeFileSync(token, "t".repeat(MAX_STATE_FILE_BYTES + 1), { mode: 0o600 });
+    expect(await s.getToken()).toBeNull();
+  });
+
+  it("an over-cap managed.json reads as no cache, never as a partial or a crash", async () => {
+    const root = tmp();
+    const s = new FileStore("djdl", root);
+    const cache = join(root, "djdl", "managed.json");
+    writeFileSync(cache, `{"v":3}`, { mode: 0o600 });
+    expect(await s.readCache()).toEqual({ v: 3 });
+    writeFileSync(
+      cache,
+      `{"v":3,"pad":"${" ".repeat(MAX_STATE_FILE_BYTES)}"}`,
+      {
+        mode: 0o600,
+      },
+    );
+    expect(await s.readCache()).toBeNull();
+  });
+
+  it("a directory planted at the path reads as absent", async () => {
+    const root = tmp();
+    const s = new FileStore("djdl", root);
+    mkdirSync(join(root, "djdl", "token"));
+    mkdirSync(join(root, "djdl", "managed.json"));
+    expect(await s.getToken()).toBeNull();
+    expect(await s.readCache()).toBeNull();
   });
 });

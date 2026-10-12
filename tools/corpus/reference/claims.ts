@@ -199,7 +199,8 @@ export function refTrustClaims(
   }
   if (!Array.isArray(doc.keys)) return null;
   const tombstones = o.tombstones ?? new Set<string>();
-  const out: Record<string, string> = {};
+  // A null-prototype map: a kid of `__proto__` is an ordinary kid (V4 §1).
+  const out = Object.create(null) as Record<string, string>;
   const revoked = new Set<string>();
   for (const key of doc.keys) {
     if (

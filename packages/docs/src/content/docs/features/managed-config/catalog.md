@@ -159,12 +159,12 @@ backtracking**, for every pattern including adversarial ones. What that engine c
 without backtracking is refused at compile time rather than run anyway: backreferences,
 lookahead and lookbehind, and `\b`/`\B` word boundaries. Budgets bound the rest:
 
-| Limit                 | Value             | Bounds                                                                                                |
-| --------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| `MAX_PATTERN_SOURCE`  | 300 characters    | The `pattern` string itself.                                                                          |
-| `MAX_PATTERN_PROGRAM` | 2000 instructions | The compiled NFA — what bounds `{n,m}` expansion.                                                     |
-| `MAX_PATTERN_REPEAT`  | 100               | The largest `{n,m}` bound a pattern may declare.                                                      |
-| `MAX_PATTERN_INPUT`   | 4096 characters   | The longest value ever matched; longer values fail closed — `test()` returns `false`, never an error. |
+| Limit                 | Value           | Bounds                                                                                                |
+| --------------------- | --------------- | ----------------------------------------------------------------------------------------------------- |
+| `MAX_PATTERN_SOURCE`  | 300 characters  | The `pattern` string itself.                                                                          |
+| `MAX_PATTERN_PROGRAM` | 2000 steps      | Compile budget: instructions emitted plus nodes visited. Bounds `{n,m}` expansion in time too.        |
+| `MAX_PATTERN_REPEAT`  | 100             | The largest `{n,m}` bound a pattern may declare.                                                      |
+| `MAX_PATTERN_INPUT`   | 4096 characters | The longest value ever matched; longer values fail closed — `test()` returns `false`, never an error. |
 
 ### Budgets around the fragment, and around a value
 

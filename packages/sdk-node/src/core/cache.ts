@@ -39,6 +39,7 @@ import {
   type CacheRecordV3,
 } from "@polaris-key/client-core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
+import { isBlockReason } from "@polaris-key/protocol/license";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { CoreContext } from "./context.js";
 import type { TrustManager } from "./trust.js";
@@ -211,10 +212,32 @@ export class CacheManager {
     this.keepEvidence();
     this.loaded.lastSyncUnauthorized =
       this.record.lastSyncUnauthorized === true;
-    this.loaded.blocked = this.record.blocked ?? null;
+    this.loaded.blocked = this.readBlocked();
     this.loaded.lastVerifiedAt =
       newestIssuedAt > 0 ? newestIssuedAt * 1000 : null;
     return this.loaded;
+  }
+
+  /**
+   * The `blocked` hint off the record, or null when the file's copy is not one.
+   *
+   * §4.1 keeps `blocked` unsigned because it is display state, and a forged one can only
+   * tighten the gate. That holds only for the three reasons in `BLOCK_REASONS`: the gate returns
+   * the reason AS the `LicenseStatus`, and `isUsable` says yes to `ok`, `grace` and
+   * `not-applicable`, so `{"v":3,"blocked":{"reason":"ok"}}` written into the cache file would
+   * license the client outright: no document, no signature, and evaluated before the `!doc`
+   * check, so it would not even need one.
+   *
+   * A non-member is DROPPED rather than coerced. Coercion is right at the network ingress, where
+   * a real 403 whose body could not be read still means blocked; here the record is simply not
+   * one this client wrote, and the honest reading of an unparseable hint is that there is no
+   * hint, which is the weaker of the two states it could name, so nothing is gained by inventing
+   * the stronger one.
+   */
+  private readBlocked(): BlockedState | null {
+    const raw = this.record?.blocked;
+    if (!raw || typeof raw !== "object") return null;
+    return isBlockReason(raw.reason) ? raw : null;
   }
 
   /**

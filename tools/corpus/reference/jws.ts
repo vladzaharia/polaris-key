@@ -67,6 +67,8 @@ export function refVerifyJws(
   if (parts.length !== 3) return null;
   const [h, p, s] = parts as [string, string, string];
   const cap = Math.max(65536, maxPayloadBytes);
+  // §1: the raised payload cap is granted to a `typ`; asked for with none, it is refused.
+  if (cap > 65536 && typ === undefined) return null;
   if (h.length > Math.ceil((1024 * 4) / 3) + 4) return null;
   if (p.length > Math.ceil((cap * 4) / 3) + 4) return null;
   const ht = refSegmentText(h);

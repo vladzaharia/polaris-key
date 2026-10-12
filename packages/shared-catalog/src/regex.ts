@@ -21,7 +21,11 @@
 
 /** Longest accepted `pattern` source. Long patterns are a smell, not a threat model. */
 export const MAX_PATTERN_SOURCE = 300;
-/** Instruction-budget ceiling for one compiled pattern (bounds `{n,m}` expansion). */
+/**
+ * Compile budget for one pattern: instructions emitted PLUS AST nodes traversed. Charging
+ * traversal as well as output is what bounds `{n,m}` expansion in compile time and not only in
+ * program size — see `Program.spend`.
+ */
 export const MAX_PATTERN_PROGRAM = 2000;
 /** Largest `{n,m}` bound accepted. */
 export const MAX_PATTERN_REPEAT = 100;
@@ -454,12 +458,28 @@ type Inst =
 
 class Program {
   readonly insts: Inst[] = [];
+  /** Compile-time work units charged so far: emitted instructions AND pure traversal. */
+  private steps = 0;
 
-  emit(inst: Inst): number {
-    if (this.insts.length >= MAX_PATTERN_PROGRAM)
+  /**
+   * Charge one unit of compile-time work, refusing the pattern once the budget is gone.
+   *
+   * Counting emitted instructions is not enough. A repeated body that emits nothing still costs
+   * a recursion, and `{n,m}` multiplies those recursions: `(?:(?:(?:){100}){100}){100}` is a
+   * million traversals for a zero-instruction program, and each nesting level is another factor
+   * of a hundred, so an instruction-only budget never fires while compilation itself runs away.
+   * The budget therefore prices the WORK, not its output: `MAX_PATTERN_PROGRAM` is the ceiling
+   * on both, which makes compile time bounded by the same constant that bounds match time.
+   */
+  spend(): void {
+    if (++this.steps > MAX_PATTERN_PROGRAM)
       throw new UnsupportedPatternError(
         `pattern: expands past the ${MAX_PATTERN_PROGRAM}-instruction budget`,
       );
+  }
+
+  emit(inst: Inst): number {
+    this.spend();
     this.insts.push(inst);
     return this.insts.length - 1;
   }
@@ -475,6 +495,9 @@ class Program {
 }
 
 function emitNode(p: Program, node: Node): void {
+  // Charged before the switch, so that visiting a node costs something even when the node emits
+  // nothing: `empty` is a real AST node and `(?:)` is a legal atom to repeat.
+  p.spend();
   switch (node.k) {
     case "empty":
       return;
@@ -511,7 +534,13 @@ function emitNode(p: Program, node: Node): void {
     }
     case "rep": {
       const { min, max } = node;
-      for (let i = 0; i < min; i++) emitNode(p, node.node);
+      // Each turn of an expansion loop is charged in its own right, not merely through whatever
+      // the body happens to emit: the repeat count is the thing that multiplies, so the construct
+      // that multiplies is the one that pays.
+      for (let i = 0; i < min; i++) {
+        p.spend();
+        emitNode(p, node.node);
+      }
       if (max === Infinity) {
         // `x*` — split into body-or-exit, emit the body, jump back to the split.
         const split = p.emit({ op: "split", x: 0, y: 0 });
@@ -523,6 +552,7 @@ function emitNode(p: Program, node: Node): void {
         // `x{min,max}` — `max - min` nested optional copies, all exiting to the same point.
         const splits: number[] = [];
         for (let i = min; i < max; i++) {
+          p.spend();
           const split = p.emit({ op: "split", x: 0, y: 0 });
           p.setX(split, p.insts.length);
           splits.push(split);

@@ -13295,9 +13295,24 @@ function literal(cp3) {
 }
 var Program = class {
   insts = [];
-  emit(inst) {
-    if (this.insts.length >= MAX_PATTERN_PROGRAM)
+  /** Compile-time work units charged so far: emitted instructions AND pure traversal. */
+  steps = 0;
+  /**
+   * Charge one unit of compile-time work, refusing the pattern once the budget is gone.
+   *
+   * Counting emitted instructions is not enough. A repeated body that emits nothing still costs
+   * a recursion, and `{n,m}` multiplies those recursions: `(?:(?:(?:){100}){100}){100}` is a
+   * million traversals for a zero-instruction program, and each nesting level is another factor
+   * of a hundred, so an instruction-only budget never fires while compilation itself runs away.
+   * The budget therefore prices the WORK, not its output: `MAX_PATTERN_PROGRAM` is the ceiling
+   * on both, which makes compile time bounded by the same constant that bounds match time.
+   */
+  spend() {
+    if (++this.steps > MAX_PATTERN_PROGRAM)
       throw new UnsupportedPatternError(`pattern: expands past the ${MAX_PATTERN_PROGRAM}-instruction budget`);
+  }
+  emit(inst) {
+    this.spend();
     this.insts.push(inst);
     return this.insts.length - 1;
   }
@@ -13310,6 +13325,7 @@ var Program = class {
   }
 };
 function emitNode(p, node) {
+  p.spend();
   switch (node.k) {
     case "empty":
       return;
@@ -13348,8 +13364,10 @@ function emitNode(p, node) {
     }
     case "rep": {
       const { min, max } = node;
-      for (let i = 0; i < min; i++)
+      for (let i = 0; i < min; i++) {
+        p.spend();
         emitNode(p, node.node);
+      }
       if (max === Infinity) {
         const split = p.emit({ op: "split", x: 0, y: 0 });
         p.setX(split, p.insts.length);
@@ -13359,6 +13377,7 @@ function emitNode(p, node) {
       } else {
         const splits = [];
         for (let i = min; i < max; i++) {
+          p.spend();
           const split = p.emit({ op: "split", x: 0, y: 0 });
           p.setX(split, p.insts.length);
           splits.push(split);
@@ -26666,6 +26685,7 @@ async function verifyJws(jws, trustedKeys, opts = {}) {
   if (parts.length !== 3) return null;
   const [encHeader, encPayload, encSig] = parts;
   const maxPayloadBytes = payloadCapFor(opts.maxPayloadBytes);
+  if (maxPayloadBytes > MAX_DOC_BYTES && opts.typ === void 0) return null;
   if (encHeader.length > MAX_HEADER_B64) return null;
   if (encPayload.length > b64Cap(maxPayloadBytes)) return null;
   const headerBytes = base64UrlDecodeStrict(encHeader);
@@ -26677,8 +26697,8 @@ async function verifyJws(jws, trustedKeys, opts = {}) {
   if (opts.typ !== void 0 && header.typ !== opts.typ) return null;
   if (header.typ !== void 0 && typeof header.typ !== "string") return null;
   if (typeof header.kid !== "string") return null;
-  const rawKey2 = trustedKeys[header.kid];
-  if (!rawKey2) return null;
+  const rawKey2 = Object.prototype.hasOwnProperty.call(trustedKeys, header.kid) ? trustedKeys[header.kid] : void 0;
+  if (typeof rawKey2 !== "string" || rawKey2 === "") return null;
   let key;
   try {
     key = await importVerifyKey(rawKey2);

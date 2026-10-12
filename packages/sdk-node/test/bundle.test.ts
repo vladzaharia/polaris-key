@@ -689,3 +689,52 @@ describe("importBundle — the §4.2 clock floor rises from what was imported", 
     expect(client.license.status(MINTED - 100_000).status).toBe("grace");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// The import deadline is evaluated against the MONOTONIC FLOOR, not the raw wall clock.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+describe("importBundle — the import window resists a rolled-back clock", () => {
+  it("still refuses a lapsed bundle when the system clock is wound back inside its window", async () => {
+    // §7 step 2 checks the bundle's own `expiresAt` on NETWORK-path freshness, and every other
+    // freshness decision in this client runs at `max(systemClock, floor)`: §4.2's floor, which
+    // exists so a rolled-back clock buys nothing. Passing the RAW wall clock here would let
+    // anyone who can set the date back reopen a lapsed 30-day import window.
+    const store = new FakeStore(DEVICE);
+    // A cached, verified trust manifest dated AFTER the bundle's import window closes: a signed
+    // lower bound on real time that no clock change can lower.
+    const bundleExpiry = decode<BundleDoc>(FULL.bundleJws).expiresAt;
+    const afterWindow = bundleExpiry + 10 * 86_400;
+    store.cache = {
+      v: CACHE_VERSION,
+      trustJws: await signJws(
+        manifest({ issuedAt: afterWindow, expiresAt: afterWindow + 300 }),
+        PEM,
+        KID,
+        "pkey-trust+jws",
+      ),
+    };
+
+    const client = clientOver(store);
+    await client.init();
+    // The attacker's clock: back inside the window the bundle was minted for.
+    await expect(
+      client.importBundle(FULL.bundleJws, NOW),
+    ).rejects.toMatchObject({
+      code: "bundle-claims-rejected",
+    });
+    expect((await store.readCache())?.bundle).toBeUndefined();
+  });
+
+  it("imports normally when the floor is BELOW the clock: the floor is a minimum, not a substitute", async () => {
+    // Without this pair, a client that refused every bundle would pass the case above.
+    const store = new FakeStore(DEVICE);
+    store.cache = {
+      v: CACHE_VERSION,
+      trustJws: await signJws(manifest(), PEM, KID, "pkey-trust+jws"),
+    };
+    const client = clientOver(store);
+    await client.init();
+    const result = await client.importBundle(FULL.bundleJws, NOW);
+    expect(result.imported).toEqual(["license", "config"]);
+  });
+});

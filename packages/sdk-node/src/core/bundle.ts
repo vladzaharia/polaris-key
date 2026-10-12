@@ -75,12 +75,19 @@ export async function importBundle(
   if (held !== null && cache.bundleJws() === jws)
     return { bundleId: held.bundleId, imported: [...held.docs] };
 
+  // §7 step 2 checks the bundle's own import window on NETWORK-path freshness, and every other
+  // freshness decision in this client runs at `max(systemClock, floor)`: the §4.2 monotonic
+  // floor, which exists so a rolled-back clock buys nothing. Passing the RAW wall clock here
+  // would let anyone who can set the date back reopen a lapsed 30-day import window and import
+  // an expired bundle. The floor only ever rises, and only from content whose signature has
+  // been checked, so using it can extend no window: it can only refuse one a tampered clock
+  // was reopening.
   const result = await inspectBundle(jws, {
     pinned: ctx.pinnedTrust,
     tombstones: trust.revokedPins,
     product: ctx.product,
     deviceId: ctx.deviceId,
-    now,
+    now: ctx.now(now),
     // §7 step 4: each inner document strictly newer than the verified cached one of its type.
     floors: {
       license: cache.state.license?.doc.issuedAt ?? null,
